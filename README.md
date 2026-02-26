@@ -91,7 +91,71 @@ El bot iniciará automáticamente:
 - El planificador de roles automáticos
 - Todos los roles configurados y habilitados
 
-## 📁 Estructura del Proyecto
+## � Despliegue con Docker
+
+### Arquitectura de capas
+
+| Imagen | Propósito | Cuándo reconstruir |
+|--------|-----------|-------------------|
+| `roleagentbot-base` | Solo dependencias pip | Al cambiar `requirements.txt` |
+| `roleagentbot` | Código + inyectables (roles, personalidad) | Al cambiar código o config |
+
+La imagen base es **compartida** entre distintas instancias del bot (distintas personalidades o combinaciones de roles), evitando reinstalar las dependencias cada vez.
+
+### Pasos rápidos
+
+**1. Construir la imagen base** (una sola vez o cuando cambie `requirements.txt`):
+```bash
+docker build -f Dockerfile.base -t roleagentbot-base:latest .
+```
+
+**2. Lanzar el bot** con la personalidad y roles elegidos:
+```bash
+# Usando docker compose (recomendado)
+PERSONALITY=kronk ACTIVE_ROLES=vigia_noticias,buscar_anillo \
+  docker compose up --build -d
+
+# O directamente con docker build + run
+docker build \
+  --build-arg PERSONALITY=kronk \
+  --build-arg ACTIVE_ROLES=vigia_noticias,buscar_anillo \
+  -t roleagentbot:latest .
+
+docker run --env-file .env \
+  -v $(pwd)/databases:/app/databases \
+  -v $(pwd)/logs:/app/logs \
+  --name roleagentbot roleagentbot:latest
+```
+
+### Variables inyectables en build-time
+
+| Argumento | Descripción | Ejemplo |
+|-----------|-------------|---------|
+| `PERSONALITY` | Nombre del JSON de personalidad (sin extensión) | `kronk` |
+| `ACTIVE_ROLES` | Roles a habilitar, separados por coma | `vigia_noticias,buscar_anillo` |
+
+Si se omiten, se usan los valores definidos en `agent_config.json`.
+
+### Volúmenes persistentes
+
+| Volumen host | Ruta contenedor | Contenido |
+|-------------|-----------------|-----------|
+| `./databases` | `/app/databases` | Base de datos SQLite |
+| `./logs` | `/app/logs` | Ficheros de log rotativos |
+
+### Múltiples instancias (distintas personalidades)
+
+```bash
+# Instancia 1: Kronk en servidor A
+PERSONALITY=kronk ACTIVE_ROLES=pedir_oro \
+  docker compose -p kronk up --build -d
+
+# Instancia 2: Putre en servidor B (comparte la imagen base)
+PERSONALITY=putre ACTIVE_ROLES=buscar_anillo,vigia_noticias \
+  docker compose -p putre up --build -d
+```
+
+## �📁 Estructura del Proyecto
 
 ```
 RoleAgentBot/

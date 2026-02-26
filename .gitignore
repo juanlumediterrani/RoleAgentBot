@@ -1,0 +1,23 @@
+# Entorno Virtual Python
+bin/
+include/
+lib/
+pyvenv.cfg
+
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Base de datos
+*.db
+*.db-shm
+*.db-wal
+databases/
+
+# Logs
+logs/
+*.log
+
+# Configuración sensible
+.env
+fatiga.json
