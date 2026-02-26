@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.default.yml - Instancia por defecto (usa agent_config.json tal cual)
+#
+# Uso:
+#   docker compose -f docker-compose.default.yml up --build -d
+# ─────────────────────────────────────────────────────────────────────────────
+version: '3.8'
+
+services:
+  bot-default:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PERSONALITY: ""  # Usa lo que tenga agent_config.json
+        ACTIVE_ROLES: "" # Usa lo que tenga agent_config.json
+    image: roleagentbot:default
+    container_name: roleagentbot-default
+
+    # Variables de entorno
+    env_file:
+      - .env
+    environment:
+      - PERSONALITY=
+      - ACTIVE_ROLES=
+
+    # Volúmenes específicos para instancia default
+    volumes:
+      - ./databases-default:/app/databases
+      - ./logs-default:/app/logs
+
+    restart: unless-stopped
+
+    # Logging compacto
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

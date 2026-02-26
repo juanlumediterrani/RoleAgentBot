@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.shared.yml - Múltiples instancias compartiendo entorno Python
+# 
+# Este método comparte las librerías Python entre contenedores para ahorrar:
+# - Memoria RAM: Las librerías se cargan una sola vez
+# - Disco: Las librerías se almacenan una sola vez
+# - Red: Las dependencias se descargan una sola vez
+#
+# Uso:
+#   docker compose -f docker-compose.shared.yml up --build -d
+# ─────────────────────────────────────────────────────────────────────────────
+version: '3.8'
+
+services:
+  # Contenedor 1: Kronk (con vigía y buscador)
+  bot-kronk:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PERSONALITY: kronk
+        ACTIVE_ROLES: vigia_noticias,buscar_anillo
+    image: roleagentbot:kronk
+    container_name: roleagentbot-kronk
+    env_file: .env
+    environment:
+      - PERSONALITY=kronk
+      - ACTIVE_ROLES=vigia_noticias,buscar_anillo
+    volumes:
+      - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
+      - ./databases-kronk:/app/databases
+      - ./logs-kronk:/app/logs
+    restart: unless-stopped
+
+  # Contenedor 2: Putre (con peticiones de oro y buscador)
+  bot-putre:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PERSONALITY: putre
+        ACTIVE_ROLES: pedir_oro,buscar_anillo
+    image: roleagentbot:putre
+    container_name: roleagentbot-putre
+    env_file: .env
+    environment:
+      - PERSONALITY=putre
+      - ACTIVE_ROLES=pedir_oro,buscar_anillo
+    volumes:
+      - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
+      - ./databases-putre:/app/databases
+      - ./logs-putre:/app/logs
+    restart: unless-stopped
+
+# Volumen compartido para Python (ahorro máximo de recursos)
+volumes:
+  python-shared:
+    driver: local
