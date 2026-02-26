@@ -1,0 +1,43 @@
+# Entorno virtual
+bin/
+include/
+lib/
+pyvenv.cfg
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+**/__pycache__/
+**/*.pyc
+
+# Variables de entorno (se montan en tiempo de ejecución)
+.env
+
+# Bases de datos locales (se montan como volumen)
+databases/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs locales (se montan como volumen)
+logs/
+
+# Git
+.git/
+.gitignore
+
+# Backups y temporales
+old/
+*.backup
+*.tmp
+
+# Docker (no incluir en la imagen)
+Dockerfile*
+docker-compose.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
