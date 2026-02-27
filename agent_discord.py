@@ -153,6 +153,8 @@ else:
 async def on_message(message):
     if message.author == bot.user:
         return
+    if message.author.bot:
+        return  # Ignorar mensajes de otros bots para evitar bucles
     await bot.process_commands(message)
 
     if message.content.startswith(bot.command_prefix):

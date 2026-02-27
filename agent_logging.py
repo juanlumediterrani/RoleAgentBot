@@ -4,7 +4,23 @@ from pathlib import Path
 
 LOG_DIR = Path(__file__).parent / 'logs'
 LOG_DIR.mkdir(parents=True, exist_ok=True)
-LOG_FILE = LOG_DIR / 'agent.log'
+
+# Obtener nombre de la personalidad para el log
+def get_personality_name():
+    # Primero intentar desde variable de entorno (prioridad en Docker)
+    import os
+    env_personality = os.getenv('PERSONALITY')
+    if env_personality:
+        return env_personality.lower()
+    
+    # Sino intentar desde agent_engine
+    try:
+        from agent_engine import PERSONALIDAD
+        return PERSONALIDAD.get("name", "agent").lower()
+    except:
+        return "agent"
+
+LOG_FILE = LOG_DIR / f'{get_personality_name()}.log'
 
 def get_logger(name='agent'):
     logger = logging.getLogger(name)

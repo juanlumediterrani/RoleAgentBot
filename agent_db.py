@@ -11,7 +11,23 @@ logger = get_logger('db')
 # Configuración de rutas y límites
 BASE_DIR = Path(__file__).parent
 DB_DIR = BASE_DIR / "databases"
-DB_PATH = DB_DIR / "agent.db"
+
+# Obtener nombre de la personalidad para la base de datos
+def get_personality_name():
+    # Primero intentar desde variable de entorno (prioridad en Docker)
+    import os
+    env_personality = os.getenv('PERSONALITY')
+    if env_personality:
+        return env_personality.lower()
+    
+    # Sino intentar desde agent_engine
+    try:
+        from agent_engine import PERSONALIDAD
+        return PERSONALIDAD.get("name", "agent").lower()
+    except:
+        return "agent"
+
+DB_PATH = DB_DIR / f"{get_personality_name()}.db"
 HISTORIAL_LIMITE = 5
 os.makedirs(DB_DIR, exist_ok=True)
 
@@ -44,7 +60,8 @@ class AgentDatabase:
             fallback_dir = Path.home() / '.roleagentbot' / 'databases'
             try:
                 fallback_dir.mkdir(parents=True, exist_ok=True)
-                fallback_db = fallback_dir / 'agent.db'
+                personality_name = get_personality_name()
+                fallback_db = fallback_dir / f'{personality_name}.db'
                 self.db_path = fallback_db
                 logger.info(f"ℹ️ [DB] DB reubicada a {self.db_path}")
             except Exception as e2:

@@ -17,14 +17,28 @@ BASE_DIR = Path(__file__).parent
 DB_DIR = BASE_DIR / "databases"
 
 def get_db_path(liga: str = "Standard") -> Path:
-    """Genera ruta de BD basada en el nombre de la liga."""
+    """Genera ruta de BD basada en el nombre de la liga y personalidad."""
+    # Obtener nombre de personalidad
+    try:
+        import os
+        env_personality = os.getenv('PERSONALITY')
+        if env_personality:
+            personality_name = env_personality.lower()
+        else:
+            # Intentar desde agent_engine
+            from agent_engine import PERSONALIDAD
+            personality_name = PERSONALIDAD.get("name", "poe").lower()
+    except:
+        personality_name = "poe"
+    
     if liga.lower() == "fate of the vaal":
         liga_sanitized = "FOTV"
     elif liga.lower() == "standard":
         liga_sanitized = "standard"
     else:
         liga_sanitized = liga.lower().replace(' ', '_').replace('-', '_')
-    return DB_DIR / f"poe_{liga_sanitized}.db"
+    
+    return DB_DIR / f"poe_{liga_sanitized}_{personality_name}.db"
 
 DB_DIR.mkdir(parents=True, exist_ok=True)
 

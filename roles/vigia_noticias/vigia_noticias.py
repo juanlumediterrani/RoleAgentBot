@@ -78,7 +78,7 @@ class NoticiaBot(discord.Client):
         logger.info("👀 Vigía oteando noticias...")
         try:
             # Obtener suscriptores de la base de datos
-            suscriptores = db_vigia.obtener_suscriptores()
+            suscriptores = db_vigia.obtener_suscriptores_activos()
             logger.info(f"✅ {len(suscriptores)} suscriptores encontrados")
             # Obtener entradas del feed (feedparser si está disponible, sino XML)
             entries = []
