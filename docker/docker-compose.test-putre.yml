@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # Bot 2: Putre con roles 3 y 4
+  roleagentbot-putre:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: roleagentbot:putre
+    container_name: roleagentbot-putre
+    environment:
+      - ROLE_AGENT_ENV_FILE=/app/.env
+      - PERSONALITY=putre
+      - ROLE_AGENT_PROCESS=false
+      - DISCORD_TOKEN_PUTRE=${DISCORD_TOKEN_PUTRE}
+      # Configurar roles 3 y 4 para putre
+      - VIGIA_NOTICIAS_ENABLED=false
+      - BUSCADOR_TESOROS_ENABLED=false
+      - PEDIR_ORO_ENABLED=true
+      - BUSCAR_ANILLO_ENABLED=true
+    env_file:
+      - ../.env
+    volumes:
+      - ../databases:/app/databases
+      - ../logs:/app/logs
+      - ../fatiga.json:/app/fatiga.json
+      - python-shared:/app/.local
+    restart: unless-stopped
+    networks:
+      - roleagentbot-network
+
+volumes:
+  python-shared:
+
+networks:
+  roleagentbot-network:
+    driver: bridge
