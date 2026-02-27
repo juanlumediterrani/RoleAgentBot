@@ -26,8 +26,8 @@ services:
 
     # Volúmenes específicos para instancia default
     volumes:
-      - ../databases-default:/app/databases
-      - ../logs-default:/app/logs
+      - ../databases:/app/databases
+      - ../logs:/app/logs
 
     restart: unless-stopped
 

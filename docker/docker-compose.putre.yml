@@ -26,8 +26,8 @@ services:
 
     # Volúmenes específicos para Putre
     volumes:
-      - ../databases-putre:/app/databases
-      - ../logs-putre:/app/logs
+      - ../databases:/app/databases
+      - ../logs:/app/logs
 
     restart: unless-stopped
 
