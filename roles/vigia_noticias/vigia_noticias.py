@@ -8,11 +8,12 @@ import asyncio
 import xml.etree.ElementTree as ET
 from dotenv import load_dotenv
 import cohere
-from agent_engine import construir_prompt
+from agent_engine import construir_prompt, get_discord_token
 import sys
 import os
 sys.path.append(os.path.dirname(__file__))
-from db_role_vigia import db_vigia
+from db_role_vigia import get_vigia_db_instance
+from agent_db import get_active_server_name
 from agent_logging import get_logger
 
 _env_candidates = [
@@ -77,6 +78,10 @@ class NoticiaBot(discord.Client):
     async def on_ready(self):
         logger.info("👀 Vigía oteando noticias...")
         try:
+            # Obtener instancia de BD para el servidor activo
+            server_name = get_active_server_name() or "default"
+            db_vigia = get_vigia_db_instance(server_name)
+            
             # Obtener suscriptores de la base de datos
             suscriptores = db_vigia.obtener_suscriptores_activos()
             logger.info(f"✅ {len(suscriptores)} suscriptores encontrados")
@@ -155,4 +160,4 @@ class NoticiaBot(discord.Client):
         finally: await self.close()
 
 if __name__ == "__main__":
-    NoticiaBot(intents=discord.Intents.default()).run(os.getenv('DISCORD_TOKEN'))
+    NoticiaBot(intents=discord.Intents.default()).run(get_discord_token())
