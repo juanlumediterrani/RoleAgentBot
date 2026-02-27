@@ -12,7 +12,7 @@ except Exception:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('anillo')
 
-from db_utils import get_server_db_path_fallback
+from agent_db import get_server_db_path_fallback, get_personality_name
 
 class DatabaseRoleAnillo:
     def __init__(self, server_name: str = "default", db_path="role_anillo.db"):
@@ -131,6 +131,3 @@ def get_anillo_db_instance(server_name: str = "default") -> DatabaseRoleAnillo:
     if server_name not in _db_anillo_instances:
         _db_anillo_instances[server_name] = DatabaseRoleAnillo(server_name)
     return _db_anillo_instances[server_name]
-
-# Instancia global por defecto (para compatibilidad)
-db_anillo = get_anillo_db_instance("default")

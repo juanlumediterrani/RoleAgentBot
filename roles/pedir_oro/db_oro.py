@@ -12,7 +12,7 @@ except Exception:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('oro')
 
-from db_utils import get_server_db_path_fallback
+from agent_db import get_server_db_path_fallback, get_personality_name
 
 class DatabaseRoleOro:
     def __init__(self, server_name: str = "default", db_path="role_oro.db"):
@@ -131,6 +131,3 @@ def get_oro_db_instance(server_name: str = "default") -> DatabaseRoleOro:
     if server_name not in _db_oro_instances:
         _db_oro_instances[server_name] = DatabaseRoleOro(server_name)
     return _db_oro_instances[server_name]
-
-# Instancia global por defecto (para compatibilidad)
-db_oro = get_oro_db_instance("default")

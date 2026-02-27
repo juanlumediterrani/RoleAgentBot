@@ -13,7 +13,7 @@ except Exception:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('db_role_vigia')
 
-from db_utils import get_server_db_path_fallback, get_personality_name
+from agent_db import get_server_db_path_fallback, get_personality_name
 
 def get_db_path(server_name: str = "default") -> Path:
     """Genera ruta de BD para el vigía de noticias con nombre de personalidad."""
@@ -347,6 +347,3 @@ def get_vigia_db_instance(server_name: str = "default") -> DatabaseRoleVigia:
     if server_name not in _db_vigia_instances:
         _db_vigia_instances[server_name] = DatabaseRoleVigia(server_name)
     return _db_vigia_instances[server_name]
-
-# Instancia global por defecto (para compatibilidad)
-db_vigia = get_vigia_db_instance("default")
