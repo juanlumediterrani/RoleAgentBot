@@ -29,8 +29,12 @@ except ImportError:
     module_available = False
     get_vigia_db_instance = None
 
-# Verificar si el rol vigia_noticias está activado en la configuración
-vigia_role_enabled = agent_config.get("roles", {}).get("vigia_noticias", {}).get("enabled", False)
+# Verificar si el rol vigia_noticias está activado (prioridad a variables de entorno)
+import os
+vigia_role_enabled = os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true"
+if not vigia_role_enabled:
+    # Fallback a configuración JSON si no hay variable de entorno
+    vigia_role_enabled = agent_config.get("roles", {}).get("vigia_noticias", {}).get("enabled", False)
 
 # VIGIA_AVAILABLE solo es True si el módulo se puede importar Y el rol está activado
 VIGIA_AVAILABLE = module_available and vigia_role_enabled
@@ -90,6 +94,84 @@ async def limpieza_db():
     filas = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
     logger.info(f"🧹 Limpieza en {target_guild.name}: {filas} registros borrados.")
 
+# --- CONFIGURACIÓN DINÁMICA DE SALUDOS ---
+# Variable global para tracking de configuración por servidor
+if not hasattr(bot, '_greeting_config'):
+    bot._greeting_config = {}
+
+def should_enable_greetings(guild) -> bool:
+    """Determina si los saludos deben estar activados según tamaño del servidor."""
+    # Si ya hay configuración guardada para este servidor, usarla
+    guild_id = str(guild.id)
+    if guild_id in bot._greeting_config:
+        return bot._greeting_config[guild_id].get('enabled', False)
+    
+    # Si no, decidir según tamaño del servidor
+    member_count = len([m for m in guild.members if not m.bot])
+    auto_enable = member_count <= 30
+    
+    # Guardar configuración inicial
+    bot._greeting_config[guild_id] = {
+        'enabled': auto_enable,
+        'auto_detected': True,
+        'member_count': member_count
+    }
+    
+    logger.info(f"🔧 [DISCORD] Servidor {guild.name}: {member_count} miembros, saludos {'activados' if auto_enable else 'desactivados'} por tamaño")
+    return auto_enable
+
+def set_greeting_enabled(guild, enabled: bool):
+    """Establece manualmente el estado de los saludos para un servidor."""
+    guild_id = str(guild.id)
+    if guild_id not in bot._greeting_config:
+        bot._greeting_config[guild_id] = {}
+    
+    bot._greeting_config[guild_id]['enabled'] = enabled
+    bot._greeting_config[guild_id]['auto_detected'] = False
+    bot._greeting_config[guild_id]['manual_override'] = True
+    
+    logger.info(f"🔧 [DISCORD] Saludos {'activados' if enabled else 'desactivados'} manualmente en {guild.name}")
+
+def get_greeting_enabled(guild) -> bool:
+    """Obtiene el estado actual de los saludos para un servidor."""
+    return should_enable_greetings(guild)
+
+# --- COMANDOS DE CONTROL DE SALUDOS ---
+
+async def _cmd_saluda_toggle(ctx, enabled: bool):
+    """Comando genérico para activar/desactivar saludos."""
+    # Verificar permisos (solo admins o mods)
+    if not ctx.author.guild_permissions.administrator and not ctx.author.guild_permissions.manage_guild:
+        await ctx.send("❌ Solo administradores pueden modificar los saludos.")
+        return
+    
+    set_greeting_enabled(ctx.guild, enabled)
+    
+    action = "activados" if enabled else "desactivados"
+    await ctx.send(f"✅ Saludos {action} en este servidor.")
+    logger.info(f"🔧 [DISCORD] {ctx.author.name} {action} los saludos en {ctx.guild.name}")
+
+# Registrar comandos dinámicos para saludos con formato estándar
+personality_name = PERSONALIDAD.get("name", "agent").lower()
+
+# Comando para activar saludos: !saluda[nombre]
+saluda_command_name = f"saluda{personality_name}"
+
+@bot.command(name=saluda_command_name)
+async def cmd_saluda_enable(ctx):
+    await _cmd_saluda_toggle(ctx, True)
+
+logger.info(f"🤖 [DISCORD] Comando de saludos registrado: {saluda_command_name}")
+
+# Comando para desactivar saludos: !nosaludes[nombre]
+nosaludes_command_name = f"nosaludes{personality_name}"
+
+@bot.command(name=nosaludes_command_name)
+async def cmd_saluda_disable(ctx):
+    await _cmd_saluda_toggle(ctx, False)
+
+logger.info(f"🤖 [DISCORD] Comando de saludos registrado: {nosaludes_command_name}")
+
 # --- EVENTOS Y COMANDOS ---
 
 @bot.event
@@ -139,6 +221,163 @@ async def on_guild_join(guild):
     logger.info(f"📁 [DISCORD] Nuevo servidor '{guild.name}': logs/{guild.name.lower().replace(' ', '_')}/{personality_name}.log")
 
 
+@bot.event
+async def on_member_join(member):
+    """Se ejecuta cuando un nuevo usuario se une al servidor."""
+    if member.bot:
+        return  # Ignorar bots
+    
+    # Verificar si los saludos están activados para este servidor
+    if not get_greeting_enabled(member.guild):
+        return  # Saludos desactivados
+    
+    # Obtener configuración de saludo
+    greeting_cfg = _discord_cfg.get("member_greeting", {})
+    if not greeting_cfg.get("enabled", True):
+        return  # Saludo desactivado en configuración
+    
+    # Determinar canal de bienvenida
+    welcome_channel_name = greeting_cfg.get("welcome_channel", "general")
+    welcome_channel = None
+    
+    # Buscar canal de bienvenida
+    for channel in member.guild.text_channels:
+        if channel.name.lower() == welcome_channel_name.lower():
+            welcome_channel = channel
+            break
+    
+    # Si no se encuentra el canal específico, usar el primer canal disponible
+    if welcome_channel is None and member.guild.text_channels:
+        welcome_channel = member.guild.text_channels[0]
+    
+    if welcome_channel is None:
+        logger.warning(f"⚠️ [DISCORD] No se encontró canal de bienvenida para {member.name} en {member.guild.name}")
+        return
+    
+    # Generar saludo personalizado usando la personalidad del bot
+    greeting_prompt = greeting_cfg.get("prompt", "Saluda brevemente al nuevo miembro {member_name} en el servidor {server_name}. Sé amigable y da la bienvenida.")
+    greeting_context = greeting_prompt.format(member_name=member.display_name, server_name=member.guild.name)
+    
+    try:
+        # Generar respuesta usando el motor de IA
+        saludo = await asyncio.to_thread(pensar, greeting_context)
+        
+        # Enviar saludo al canal
+        await welcome_channel.send(f"🎉 {member.mention} {saludo}")
+        
+        # Registrar en el log
+        logger.info(f"👋 [DISCORD] Nuevo usuario {member.name} ({member.id}) saludado en {member.guild.name}")
+        
+        # Registrar interacción en la base de datos
+        db_instance = get_db_for_server(member.guild)
+        await asyncio.to_thread(
+            db_instance.registrar_interaccion,
+            member.id,
+            member.name,
+            "BIENVENIDA",
+            f"Usuario se unió al servidor",
+            welcome_channel.id,
+            member.guild.id,
+            metadata={"saludo": saludo}
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ [DISCORD] Error al saludar a {member.name}: {e}")
+        # Saludo de emergencia si falla la IA
+        fallback_msg = greeting_cfg.get("fallback", "¡Bienvenido al servidor!")
+        await welcome_channel.send(f"🎉 {member.mention} {fallback_msg}")
+
+
+@bot.event
+async def on_member_update(before, after):
+    """Se ejecuta cuando el estado de un miembro cambia (offline a online, etc.)."""
+    if after.bot:
+        return  # Ignorar bots
+    
+    # Verificar si los saludos están activados para este servidor
+    if not get_greeting_enabled(after.guild):
+        return  # Saludos desactivados
+    
+    # Obtener configuración de saludo de reconexión
+    presence_cfg = _discord_cfg.get("member_presence", {})
+    if not presence_cfg.get("enabled", False):
+        return  # Saludo de presencia desactivado
+    
+    # Verificar si cambió de offline a online
+    before_status = before.status if before.status else discord.Status.offline
+    after_status = after.status if after.status else discord.Status.offline
+    
+    # Solo procesar si pasó de offline a online
+    if before_status != discord.Status.offline or after_status != discord.Status.online:
+        return
+    
+    # Evitar spam por reconexiones frecuentes (mínimo 5 minutos entre saludos)
+    import time
+    current_time = time.time()
+    last_greeting_key = f"presence_greeting_{after.id}"
+    
+    # Usar una variable global simple para tracking (se reinicia con el bot)
+    if not hasattr(on_member_update, '_last_greetings'):
+        on_member_update._last_greetings = {}
+    
+    last_greeting_time = on_member_update._last_greetings.get(last_greeting_key, 0)
+    if current_time - last_greeting_time < 300:  # 5 minutos
+        return
+    
+    # Determinar canal para saludos de presencia
+    presence_channel_name = presence_cfg.get("welcome_channel", "general")
+    presence_channel = None
+    
+    # Buscar canal de presencia
+    for channel in after.guild.text_channels:
+        if channel.name.lower() == presence_channel_name.lower():
+            presence_channel = channel
+            break
+    
+    # Si no se encuentra, usar el primer canal disponible
+    if presence_channel is None and after.guild.text_channels:
+        presence_channel = after.guild.text_channels[0]
+    
+    if presence_channel is None:
+        return
+    
+    # Generar saludo de presencia
+    presence_prompt = presence_cfg.get("prompt", "Saluda brevemente a {member_name} que se acaba de conectar. Sé breve y amigable.")
+    presence_context = presence_prompt.format(member_name=after.display_name)
+    
+    try:
+        # Generar respuesta usando el motor de IA
+        saludo = await asyncio.to_thread(pensar, presence_context)
+        
+        # Enviar saludo al canal
+        await presence_channel.send(f"👋 {after.mention} {saludo}")
+        
+        # Registrar en el log
+        logger.info(f"🔄 [DISCORD] Usuario {after.name} ({after.id}) conectado en {after.guild.name}")
+        
+        # Actualizar timestamp para evitar spam
+        on_member_update._last_greetings[last_greeting_key] = current_time
+        
+        # Registrar interacción en la base de datos
+        db_instance = get_db_for_server(after.guild)
+        await asyncio.to_thread(
+            db_instance.registrar_interaccion,
+            after.id,
+            after.name,
+            "PRESENCIA",
+            f"Usuario pasó de offline a online",
+            presence_channel.id,
+            after.guild.id,
+            metadata={"saludo": saludo}
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ [DISCORD] Error al saludar presencia de {after.name}: {e}")
+        # Saludo de emergencia si falla la IA
+        fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
+        await presence_channel.send(f"👋 {after.mention} {fallback_msg}")
+
+
 async def _cmd_insulta(ctx, obj=""):
     target = obj if obj else ctx.author.mention
 
@@ -150,82 +389,141 @@ async def _cmd_insulta(ctx, obj=""):
     res = await asyncio.to_thread(pensar, prompt)
     await ctx.send(f"{target} {res}")
 
-# Registrar el comando dinámicamente con el nombre definido en la personalidad
-# Inyectar el nombre de la personalidad en minúsculas si no está ya especificado
-if _insult_name == "insulta":
-    # Si el nombre por defecto es "insulta", crear uno dinámico
-    dynamic_command_name = f"insulta{_personality_name}"
-    bot.command(name=dynamic_command_name)(_cmd_insulta)
-    logger.info(f"🤖 [DISCORD] Comando insulto dinámico registrado: {dynamic_command_name}")
-else:
-    # Si ya tiene un nombre personalizado, usarlo
-    bot.command(name=_insult_name)(_cmd_insulta)
-    logger.info(f"🤖 [DISCORD] Comando insulto personalizado registrado: {_insult_name}")
+# Registrar el comando dinámicamente con formato estándar
+# Siempre usar formato !insulta[nombre]
+insulta_command_name = f"insulta{personality_name}"
+bot.command(name=insulta_command_name)(_cmd_insulta)
+logger.info(f"🤖 [DISCORD] Comando insulto registrado: {insulta_command_name}")
 
 
-# --- COMANDOS DEL VIGÍA (atendidos por la personalidad activa) ---
+# --- COMANDOS CONDICIONALES POR ROL ACTIVADO ---
 
-if VIGIA_AVAILABLE:
-    @bot.command(name="vigia_suscribir")
-    async def vigia_suscribir(ctx):
-        if not VIGIA_AVAILABLE:
-            await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
-            return
+def register_role_commands():
+    """Registra comandos solo si el rol correspondiente está activado."""
+    import os
+    
+    # Función helper para verificar si un rol está activado
+    def is_role_enabled(role_name):
+        # Prioridad a variables de entorno
+        env_var = os.getenv(f"{role_name.upper()}_ENABLED", "").lower()
+        if env_var:
+            return env_var == "true"
+        # Fallback a configuración JSON
+        return agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
+    
+    # Lista de roles a verificar
+    roles_to_check = ["vigia_noticias", "buscador_tesoros", "pedir_oro", "buscar_anillo"]
+    
+    for role_name in roles_to_check:
+        if not is_role_enabled(role_name):
+            continue
+            
+        logger.info(f"🎭 [DISCORD] Registrando comandos para rol activado: {role_name}")
         
-        db_vigia_instance = get_vigia_db_for_server(ctx.guild)
-        if not db_vigia_instance:
-            await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
-            return
+        if role_name == "vigia_noticias":
+            # Comandos del Vigía de Noticias
+            @bot.command(name="avisanoticias")
+            async def cmd_avisa_noticias(ctx):
+                if not VIGIA_AVAILABLE:
+                    await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                    return
+                
+                db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+                if not db_vigia_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                    return
+                
+                usuario_id = str(ctx.author.id)
+                usuario_nombre = ctx.author.name
+                
+                # Verificar si ya está suscrito
+                if db_vigia_instance.esta_suscrito(usuario_id):
+                    await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
+                    return
+                
+                # Agregar suscripción
+                if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
+                    await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
+                    logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
+                else:
+                    await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
+            
+            @bot.command(name="noavisanoticias")
+            async def cmd_no_avisa_noticias(ctx):
+                if not VIGIA_AVAILABLE:
+                    await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                    return
+                
+                db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+                if not db_vigia_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                    return
+                
+                usuario_id = str(ctx.author.id)
+                usuario_nombre = ctx.author.name
+                
+                # Verificar si está suscrito
+                if not db_vigia_instance.esta_suscrito(usuario_id):
+                    await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
+                    return
+                
+                # Eliminar suscripción
+                if db_vigia_instance.eliminar_suscripcion(usuario_id):
+                    await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
+                    logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
+                else:
+                    await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
         
-        usuario_id = str(ctx.author.id)
-        usuario_nombre = ctx.author.name
-        
-        # Verificar si ya está suscrito
-        if db_vigia_instance.esta_suscrito(usuario_id):
-            await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
-            return
-        
-        # Agregar suscripción
-        if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
-            await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
-            logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
-        else:
-            await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
+        elif role_name == "buscar_anillo":
+            # Comando para acusar por el anillo
+            @bot.command(name="acusaranilo")
+            async def cmd_acusar_anillo(ctx, target: str = ""):
+                if not target:
+                    await ctx.send("❌ Debes mencionar a alguien para acusar. Ejemplo: !acusaranilo @usuario")
+                    return
+                
+                # Obtener instancia de BD para este servidor
+                db_instance = get_db_for_server(ctx.guild)
+                
+                # Buscar al usuario mencionado
+                mentioned_user = None
+                for user in ctx.message.mentions:
+                    if not user.bot and user.id != ctx.author.id:
+                        mentioned_user = user
+                        break
+                
+                if not mentioned_user:
+                    await ctx.send("❌ No se encontró un usuario válido para acusar.")
+                    return
+                
+                # Generar acusación usando la personalidad
+                accusation_prompt = f"Acusa brevemente a {mentioned_user.display_name} de tener el anillo uniko. Sé orco y directo."
+                accusation = await asyncio.to_thread(pensar, accusation_prompt)
+                
+                # Enviar acusación
+                await ctx.send(f"👁️ {mentioned_user.mention} {accusation}")
+                
+                # Registrar en la base de datos
+                servidor_id = getattr(ctx.guild, 'id', None)
+                await asyncio.to_thread(
+                    db_instance.registrar_interaccion,
+                    mentioned_user.id,
+                    mentioned_user.name,
+                    "ACUSACION_ANILLO",
+                    f"Acusado por tener el anillo",
+                    ctx.channel.id,
+                    servidor_id,
+                    metadata={
+                        "acusador_id": str(ctx.author.id),
+                        "acusador_nombre": ctx.author.name,
+                        "acusacion": accusation
+                    }
+                )
+                
+                logger.info(f"👁️ [ANILLO] {ctx.author.name} acusó a {mentioned_user.name} en {ctx.guild.name}")
 
-    @bot.command(name="vigia_desuscribir")
-    async def vigia_desuscribir(ctx):
-        if not VIGIA_AVAILABLE:
-            await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
-            return
-        
-        db_vigia_instance = get_vigia_db_for_server(ctx.guild)
-        if not db_vigia_instance:
-            await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
-            return
-        
-        usuario_id = str(ctx.author.id)
-        usuario_nombre = ctx.author.name
-        
-        # Verificar si está suscrito
-        if not db_vigia_instance.esta_suscrito(usuario_id):
-            await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
-            return
-        
-        # Eliminar suscripción
-        if db_vigia_instance.eliminar_suscripcion(usuario_id):
-            await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
-            logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
-        else:
-            await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
-
-    logger.info("🤖 [DISCORD] Comandos del Vigía registrados: vigia_suscribir, vigia_desuscribir")
-else:
-    if not module_available:
-        logger.warning("🤖 [DISCORD] Módulo del Vigía no disponible, comandos de suscripción desactivados")
-    elif not vigia_role_enabled:
-        logger.info("🤖 [DISCORD] Rol Vigía desactivado en configuración, comandos de suscripción desactivados")
-    else:
-        logger.warning("🤖 [DISCORD] Módulo del Vigía no disponible, comandos de suscripción desactivados")
+# Registrar comandos condicionales
+register_role_commands()
 
 
 @bot.event

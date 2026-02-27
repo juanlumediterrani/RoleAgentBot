@@ -100,7 +100,14 @@ async def planificador(config: dict):
     ahora = datetime.now()
 
     for nombre, cfg in roles_cfg.items():
-        if cfg.get("enabled", False):
+        # Verificar si el rol está activado (prioridad a variables de entorno)
+        env_enabled = os.getenv(f"{nombre.upper()}_ENABLED", "").lower()
+        if env_enabled:
+            enabled = env_enabled == "true"
+        else:
+            enabled = cfg.get("enabled", False)
+            
+        if enabled:
             # Primera ejecución inmediata al arrancar
             proxima[nombre] = ahora
             logger.info(f"[run] 📋 Rol '{nombre}' activado — cada {cfg['interval_hours']}h")
