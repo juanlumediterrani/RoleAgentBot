@@ -5,7 +5,7 @@ import asyncio
 import re
 from discord.ext import commands, tasks
 from agent_engine import pensar, PERSONALIDAD
-from agent_db import db
+from agent_db import get_db_instance
 from agent_logging import get_logger
 
 # Cargar configuración de roles
@@ -22,17 +22,35 @@ agent_config = load_agent_config()
 
 # Importar base de datos del vigía
 try:
-    from roles.vigia_noticias.db_role_vigia import db_vigia
+    from roles.vigia_noticias.db_role_vigia import get_vigia_db_instance
     module_available = True
 except ImportError:
     module_available = False
-    db_vigia = None
+    get_vigia_db_instance = None
 
 # Verificar si el rol vigia_noticias está activado en la configuración
 vigia_role_enabled = agent_config.get("roles", {}).get("vigia_noticias", {}).get("enabled", False)
 
 # VIGIA_AVAILABLE solo es True si el módulo se puede importar Y el rol está activado
 VIGIA_AVAILABLE = module_available and vigia_role_enabled
+
+def get_server_name(guild) -> str:
+    """Obtiene un nombre sanitizado para el servidor."""
+    if guild is None:
+        return "default"
+    return guild.name.lower().replace(' ', '_').replace('-', '_')
+
+def get_db_for_server(guild):
+    """Obtiene instancia de BD para un servidor específico."""
+    server_name = get_server_name(guild)
+    return get_db_instance(server_name)
+
+def get_vigia_db_for_server(guild):
+    """Obtiene instancia de BD del vigía para un servidor específico."""
+    if not VIGIA_AVAILABLE:
+        return None
+    server_name = get_server_name(guild)
+    return get_vigia_db_instance(server_name)
 
 logger = get_logger('discord')
 
@@ -51,8 +69,11 @@ bot = commands.Bot(command_prefix=_cmd_prefix, intents=intents)
 
 @tasks.loop(hours=24)
 async def limpieza_db():
-    filas = await asyncio.to_thread(db.limpiar_interacciones_antiguas, 30)
-    print(f"🧹 Limpieza: {filas} registros borrados.")
+    # Limpiar bases de datos de todos los servidores conectados
+    for guild in bot.guilds:
+        db_instance = get_db_for_server(guild)
+        filas = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
+        logger.info(f"🧹 Limpieza en {guild.name}: {filas} registros borrados.")
 
 # --- EVENTOS Y COMANDOS ---
 
@@ -95,51 +116,59 @@ else:
 # --- COMANDOS DEL VIGÍA (atendidos por la personalidad activa) ---
 
 if VIGIA_AVAILABLE:
-    @bot.command(name="vigianoticias")
-    async def cmd_vigia_noticias(ctx):
-        """Suscribe al usuario a las alertas del Vigía de Noticias."""
-        try:
-            usuario_id = str(ctx.author.id)
-            usuario_nombre = ctx.author.name
-            
-            # Verificar si ya está suscrito
-            if db_vigia.esta_suscrito(usuario_id):
-                await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
-                return
-            
-            # Agregar suscripción
-            if db_vigia.agregar_suscripcion(usuario_id, usuario_nombre):
-                await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
-                logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas")
-            else:
-                await ctx.send(f"❌ {ctx.author.mention} No pude suscribirte. Intenta más tarde.")
-        except Exception as e:
-            logger.exception(f"Error en comando vigianoticias: {e}")
-            await ctx.send(f"❌ {ctx.author.mention} Ocurrió un error al procesar tu suscripción.")
-    
-    @bot.command(name="vigianonoticias")
-    async def cmd_vigia_no_noticias(ctx):
-        """Desuscribe al usuario de las alertas del Vigía de Noticias."""
-        try:
-            usuario_id = str(ctx.author.id)
-            usuario_nombre = ctx.author.name
-            
-            # Verificar si está suscrito
-            if not db_vigia.esta_suscrito(usuario_id):
-                await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
-                return
-            
-            # Eliminar suscripción
-            if db_vigia.eliminar_suscripcion(usuario_id):
-                await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
-                logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas")
-            else:
-                await ctx.send(f"❌ {ctx.author.mention} No pude desuscribirte. Intenta más tarde.")
-        except Exception as e:
-            logger.exception(f"Error en comando vigianonoticias: {e}")
-            await ctx.send(f"❌ {ctx.author.mention} Ocurrió un error al procesar tu desuscripción.")
-    
-    logger.info("🤖 [DISCORD] Comandos del Vigía registrados: vigianoticias, vigianonoticias")
+    @bot.command(name="vigia_suscribir")
+    async def vigia_suscribir(ctx):
+        if not VIGIA_AVAILABLE:
+            await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+            return
+        
+        db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+        if not db_vigia_instance:
+            await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+            return
+        
+        usuario_id = str(ctx.author.id)
+        usuario_nombre = ctx.author.name
+        
+        # Verificar si ya está suscrito
+        if db_vigia_instance.esta_suscrito(usuario_id):
+            await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
+            return
+        
+        # Agregar suscripción
+        if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
+            await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
+            logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
+        else:
+            await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
+
+    @bot.command(name="vigia_desuscribir")
+    async def vigia_desuscribir(ctx):
+        if not VIGIA_AVAILABLE:
+            await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+            return
+        
+        db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+        if not db_vigia_instance:
+            await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+            return
+        
+        usuario_id = str(ctx.author.id)
+        usuario_nombre = ctx.author.name
+        
+        # Verificar si está suscrito
+        if not db_vigia_instance.esta_suscrito(usuario_id):
+            await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
+            return
+        
+        # Eliminar suscripción
+        if db_vigia_instance.eliminar_suscripcion(usuario_id):
+            await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
+            logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
+        else:
+            await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
+
+    logger.info("🤖 [DISCORD] Comandos del Vigía registrados: vigia_suscribir, vigia_desuscribir")
 else:
     if not module_available:
         logger.warning("🤖 [DISCORD] Módulo del Vigía no disponible, comandos de suscripción desactivados")
@@ -173,6 +202,9 @@ async def on_message(message):
                 "accusation_template",
                 "{informante} mencionó a {acusado}"
             )
+            
+            # Obtener instancia de BD para este servidor
+            db_instance = get_db_for_server(message.guild)
 
             if usuarios_mencionados:
                 acusados = [
@@ -187,7 +219,7 @@ async def on_message(message):
                             acusado=acusado.name
                         )
                         await asyncio.to_thread(
-                            db.registrar_interaccion,
+                            db_instance.registrar_interaccion,
                             acusado.id,
                             acusado.name,
                             accusation_type,
@@ -202,10 +234,10 @@ async def on_message(message):
                         )
 
             # --- MEMORIA HÍBRIDA ---
-            hist_user = await asyncio.to_thread(db.obtener_historial_usuario, str(message.author.id))
+            hist_user = await asyncio.to_thread(db_instance.obtener_historial_usuario, str(message.author.id))
             hist_canal = []
             if not isinstance(message.channel, discord.DMChannel):
-                hist_canal = await asyncio.to_thread(db.obtener_historial_usuario, str(message.channel.id), limite=1)
+                hist_canal = await asyncio.to_thread(db_instance.obtener_historial_usuario, str(message.channel.id), limite=1)
 
             # Historial de menciones (keywords importantes de la personalidad)
             hist_sospechas = []
@@ -213,7 +245,7 @@ async def on_message(message):
             if usuarios_mencionados and keywords:
                 for usuario in usuarios_mencionados:
                     if usuario.id != bot.user.id and not usuario.bot:
-                        sospechas = await asyncio.to_thread(db.obtener_historial_usuario, str(usuario.id), limite=3)
+                        sospechas = await asyncio.to_thread(db_instance.obtener_historial_usuario, str(usuario.id), limite=3)
                         for s in sospechas:
                             texto_s = (s.get("humano", "") + " " + s.get("bot", "")).lower()
                             if any(kw in texto_s for kw in keywords):
@@ -249,7 +281,7 @@ async def on_message(message):
 
             servidor_id = getattr(message.guild, 'id', None)
             await asyncio.to_thread(
-                db.registrar_interaccion,
+                db_instance.registrar_interaccion,
                 message.author.id,
                 message.author.name,
                 "CHARLA",

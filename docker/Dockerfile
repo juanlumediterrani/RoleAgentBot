@@ -37,7 +37,7 @@ COPY personalities/ personalities/
 COPY roles/ roles/
 
 # ── Script que aplica los ARG al agent_config.json en tiempo de arranque ──────
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # ── Directorios con estado persistente (montados como volúmenes) ──────────────

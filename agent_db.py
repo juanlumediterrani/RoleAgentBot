@@ -5,35 +5,23 @@ import os
 import threading
 from pathlib import Path
 from agent_logging import get_logger
+from db_utils import get_server_db_path_fallback, get_personality_name
 
 logger = get_logger('db')
 
 # Configuración de rutas y límites
 BASE_DIR = Path(__file__).parent
-DB_DIR = BASE_DIR / "databases"
-
-# Obtener nombre de la personalidad para la base de datos
-def get_personality_name():
-    # Primero intentar desde variable de entorno (prioridad en Docker)
-    import os
-    env_personality = os.getenv('PERSONALITY')
-    if env_personality:
-        return env_personality.lower()
-    
-    # Sino intentar desde agent_engine
-    try:
-        from agent_engine import PERSONALIDAD
-        return PERSONALIDAD.get("name", "agent").lower()
-    except:
-        return "agent"
-
-DB_PATH = DB_DIR / f"{get_personality_name()}.db"
 HISTORIAL_LIMITE = 5
-os.makedirs(DB_DIR, exist_ok=True)
 
 class AgentDatabase:
-    def __init__(self, db_path: Path = DB_PATH):
-        self.db_path = db_path
+    def __init__(self, server_name: str = "default", db_path: Path = None):
+        self.server_name = server_name
+        if db_path is None:
+            personality_name = get_personality_name()
+            db_name = f"{personality_name}.db"
+            self.db_path = get_server_db_path_fallback(server_name, db_name)
+        else:
+            self.db_path = db_path
         self._lock = threading.Lock()
         logger.info(f"🗄️ [DB] Inicializando base de datos en: {self.db_path}")
         self._ensure_writable_db()
@@ -58,6 +46,9 @@ class AgentDatabase:
         except Exception as e:
             logger.warning(f"⚠️ [DB] No write access a {self.db_path}: {e}. Usando fallback en home directory.")
             fallback_dir = Path.home() / '.roleagentbot' / 'databases'
+            server_sanitized = self.server_name.lower().replace(' ', '_').replace('-', '_')
+            server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
+            fallback_dir = fallback_dir / server_sanitized
             try:
                 fallback_dir.mkdir(parents=True, exist_ok=True)
                 personality_name = get_personality_name()
@@ -222,5 +213,15 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error verificando interacciones recientes: {e}")
             return False
 
-db = AgentDatabase()
+# Diccionario para mantener instancias por servidor
+_db_instances = {}
+
+def get_db_instance(server_name: str = "default") -> AgentDatabase:
+    """Obtiene o crea una instancia de base de datos para un servidor específico."""
+    if server_name not in _db_instances:
+        _db_instances[server_name] = AgentDatabase(server_name)
+    return _db_instances[server_name]
+
+# Instancia global por defecto (para compatibilidad)
+db = get_db_instance("default")
 logger.info("🗄️ [DB] Base de datos global inicializada")

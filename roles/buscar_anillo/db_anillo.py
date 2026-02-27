@@ -1,40 +1,32 @@
 import sqlite3
+import threading
 import os
-from datetime import datetime, timedelta
 from pathlib import Path
-from agent_logging import get_logger
+from datetime import datetime, timedelta
 
-logger = get_logger('anillo')
+try:
+    from agent_logging import get_logger
+    logger = get_logger('anillo')
+except Exception:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger('anillo')
+
+from db_utils import get_server_db_path_fallback
 
 class DatabaseRoleAnillo:
-    def __init__(self, db_path="role_anillo.db"):
-        # Intentar usar ruta local, si no funciona usar fallback en home
-        db_paths = [
-            Path(__file__).parent / db_path,  # Local
-            Path.home() / '.roleagentbot' / 'roles' / 'anillo' / db_path  # Fallback
-        ]
+    def __init__(self, server_name: str = "default", db_path="role_anillo.db"):
+        if isinstance(db_path, str):
+            # Usar el nuevo esquema por servidor
+            self.db_path = str(get_server_db_path_fallback(server_name, db_path))
+        else:
+            self.db_path = str(db_path)
         
-        for i, db_path in enumerate(db_paths):
-            try:
-                self.db_path = str(db_path)
-                
-                # Asegurar que el directorio existe
-                db_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                self._init_db()
-                
-                if i == 1:  # Si usamos fallback
-                    logger.info(f"ℹ️ BD anillo reubicada a {self.db_path}")
-                else:
-                    logger.info(f"✅ BD anillo local en {self.db_path}")
-                return
-                    
-            except (PermissionError, OSError, sqlite3.OperationalError) as e:
-                logger.warning(f"⚠️ Intento {i+1} fallido para BD anillo en {db_path}: {e}")
-                if i == len(db_paths) - 1:  # Último intento
-                    logger.error("❌ No se pudo inicializar BD de anillo en ninguna ubicación")
-                    raise
-                continue
+        # Asegurar que el directorio existe
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        self._init_db()
+        logger.info(f"✅ BD anillo local en {self.db_path}")
     
     def _init_db(self):
         """Inicializa la base de datos del rol del anillo."""
@@ -131,5 +123,14 @@ class DatabaseRoleAnillo:
             logger.exception(f"Error limpiando búsquedas antiguas: {e}")
             return 0
 
-# Instancia global
-db_anillo = DatabaseRoleAnillo()
+# Diccionario para mantener instancias por servidor
+_db_anillo_instances = {}
+
+def get_anillo_db_instance(server_name: str = "default") -> DatabaseRoleAnillo:
+    """Obtiene o crea una instancia de base de datos del anillo para un servidor específico."""
+    if server_name not in _db_anillo_instances:
+        _db_anillo_instances[server_name] = DatabaseRoleAnillo(server_name)
+    return _db_anillo_instances[server_name]
+
+# Instancia global por defecto (para compatibilidad)
+db_anillo = get_anillo_db_instance("default")

@@ -13,24 +13,10 @@ except Exception:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('db_role_poe')
 
-BASE_DIR = Path(__file__).parent
-DB_DIR = BASE_DIR / "databases"
+from db_utils import get_server_db_path_fallback, get_personality_name
 
-def get_db_path(liga: str = "Standard") -> Path:
+def get_db_path(server_name: str = "default", liga: str = "Standard") -> Path:
     """Genera ruta de BD basada en el nombre de la liga y personalidad."""
-    # Obtener nombre de personalidad
-    try:
-        import os
-        env_personality = os.getenv('PERSONALITY')
-        if env_personality:
-            personality_name = env_personality.lower()
-        else:
-            # Intentar desde agent_engine
-            from agent_engine import PERSONALIDAD
-            personality_name = PERSONALIDAD.get("name", "poe").lower()
-    except:
-        personality_name = "poe"
-    
     if liga.lower() == "fate of the vaal":
         liga_sanitized = "FOTV"
     elif liga.lower() == "standard":
@@ -38,9 +24,9 @@ def get_db_path(liga: str = "Standard") -> Path:
     else:
         liga_sanitized = liga.lower().replace(' ', '_').replace('-', '_')
     
-    return DB_DIR / f"poe_{liga_sanitized}_{personality_name}.db"
-
-DB_DIR.mkdir(parents=True, exist_ok=True)
+    personality_name = get_personality_name()
+    db_name = f"poe_{liga_sanitized}_{personality_name}.db"
+    return get_server_db_path_fallback(server_name, db_name)
 
 
 class DatabaseRolePoe:
@@ -48,8 +34,11 @@ class DatabaseRolePoe:
     Gestiona el historial de precios con retención de 720 entradas (30 días).
     """
     
-    def __init__(self, db_path: Path):
-        self.db_path = db_path
+    def __init__(self, server_name: str = "default", liga: str = "Standard", db_path: Path = None):
+        if db_path is None:
+            self.db_path = get_db_path(server_name, liga)
+        else:
+            self.db_path = db_path
         self._lock = threading.Lock()
         self._ensure_writable_db()
         self._init_db()
@@ -416,4 +405,12 @@ class DatabaseRolePoe:
             return False  # Si hay error, permitimos la notificación
 
 
-# La instancia se creará en buscador_tesoros.py con la liga correcta
+# Diccionario para mantener instancias por servidor y liga
+_db_poe_instances = {}
+
+def get_poe_db_instance(server_name: str = "default", liga: str = "Standard") -> DatabaseRolePoe:
+    """Obtiene o crea una instancia de base de datos POE para un servidor y liga específicos."""
+    key = f"{server_name}_{liga}"
+    if key not in _db_poe_instances:
+        _db_poe_instances[key] = DatabaseRolePoe(server_name, liga)
+    return _db_poe_instances[key]

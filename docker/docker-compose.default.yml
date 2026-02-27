@@ -1,33 +1,33 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.putre.yml - Instancia Putre
+# docker-compose.default.yml - Instancia por defecto (usa agent_config.json tal cual)
 #
 # Uso:
-#   docker compose -f docker-compose.putre.yml up --build -d
+#   docker compose -f docker-compose.default.yml up --build -d
 # ─────────────────────────────────────────────────────────────────────────────
 version: '3.8'
 
 services:
-  bot-putre:
+  bot-default:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
-        PERSONALITY: putre
-        ACTIVE_ROLES: pedir_oro,buscar_anillo
-    image: roleagentbot:putre
-    container_name: roleagentbot-putre
+        PERSONALITY: ""  # Usa lo que tenga agent_config.json
+        ACTIVE_ROLES: "" # Usa lo que tenga agent_config.json
+    image: roleagentbot:default
+    container_name: roleagentbot-default
 
     # Variables de entorno
     env_file:
-      - .env
+      - ../.env
     environment:
-      - PERSONALITY=putre
-      - ACTIVE_ROLES=pedir_oro,buscar_anillo
+      - PERSONALITY=
+      - ACTIVE_ROLES=
 
-    # Volúmenes específicos para Putre
+    # Volúmenes específicos para instancia default
     volumes:
-      - ./databases-putre:/app/databases
-      - ./logs-putre:/app/logs
+      - ../databases-default:/app/databases
+      - ../logs-default:/app/logs
 
     restart: unless-stopped
 

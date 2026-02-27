@@ -1,40 +1,32 @@
 import sqlite3
+import threading
 import os
-from datetime import datetime, timedelta
 from pathlib import Path
-from agent_logging import get_logger
+from datetime import datetime, timedelta
 
-logger = get_logger('oro')
+try:
+    from agent_logging import get_logger
+    logger = get_logger('oro')
+except Exception:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger('oro')
+
+from db_utils import get_server_db_path_fallback
 
 class DatabaseRoleOro:
-    def __init__(self, db_path="role_oro.db"):
-        # Intentar usar ruta local, si no funciona usar fallback en home
-        db_paths = [
-            Path(__file__).parent / db_path,  # Local
-            Path.home() / '.roleagentbot' / 'roles' / 'oro' / db_path  # Fallback
-        ]
+    def __init__(self, server_name: str = "default", db_path="role_oro.db"):
+        if isinstance(db_path, str):
+            # Usar el nuevo esquema por servidor
+            self.db_path = str(get_server_db_path_fallback(server_name, db_path))
+        else:
+            self.db_path = str(db_path)
         
-        for i, db_path in enumerate(db_paths):
-            try:
-                self.db_path = str(db_path)
-                
-                # Asegurar que el directorio existe
-                db_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                self._init_db()
-                
-                if i == 1:  # Si usamos fallback
-                    logger.info(f"ℹ️ BD oro reubicada a {self.db_path}")
-                else:
-                    logger.info(f"✅ BD oro local en {self.db_path}")
-                return
-                    
-            except (PermissionError, OSError, sqlite3.OperationalError) as e:
-                logger.warning(f"⚠️ Intento {i+1} fallido para BD oro en {db_path}: {e}")
-                if i == len(db_paths) - 1:  # Último intento
-                    logger.error("❌ No se pudo inicializar BD de oro en ninguna ubicación")
-                    raise
-                continue
+        # Asegurar que el directorio existe
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        self._init_db()
+        logger.info(f"✅ BD oro local en {self.db_path}")
     
     def _init_db(self):
         """Inicializa la base de datos del rol de oro."""
@@ -131,5 +123,14 @@ class DatabaseRoleOro:
             logger.exception(f"Error limpiando peticiones antiguas: {e}")
             return 0
 
-# Instancia global
-db_oro = DatabaseRoleOro()
+# Diccionario para mantener instancias por servidor
+_db_oro_instances = {}
+
+def get_oro_db_instance(server_name: str = "default") -> DatabaseRoleOro:
+    """Obtiene o crea una instancia de base de datos de oro para un servidor específico."""
+    if server_name not in _db_oro_instances:
+        _db_oro_instances[server_name] = DatabaseRoleOro(server_name)
+    return _db_oro_instances[server_name]
+
+# Instancia global por defecto (para compatibilidad)
+db_oro = get_oro_db_instance("default")

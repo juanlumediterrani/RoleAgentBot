@@ -10,19 +10,19 @@ services:
   bot:
     platform: linux/arm/v7  # ← Forzar arquitectura ARM 32 bits
     build:
-      context: .
-      dockerfile: Dockerfile.armv7
+      context: ../..
+      dockerfile: docker/armv7/Dockerfile.armv7
       args:
         PERSONALITY: ${PERSONALITY:-kronk}
         ACTIVE_ROLES: ${ACTIVE_ROLES:-pedir_oro,buscador_tesoros}
     image: roleagentbot:armv7
     container_name: roleagentbot
-    env_file: .env
+    env_file: ../../.env
     environment:
       - PERSONALITY=${PERSONALITY:-kronk}
       - ACTIVE_ROLES=${ACTIVE_ROLES:-pedir_oro,buscador_tesoros}
       - DISCORD_TOKEN=${DISCORD_TOKEN}
     volumes:
-      - ./databases:/app/databases
-      - ./logs:/app/logs
+      - ../../databases:/app/databases
+      - ../../logs:/app/logs
     restart: unless-stopped

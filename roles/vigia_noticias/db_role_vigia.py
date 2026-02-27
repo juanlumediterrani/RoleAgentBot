@@ -13,56 +13,13 @@ except Exception:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('db_role_vigia')
 
-BASE_DIR = Path(__file__).parent
-DB_DIR = BASE_DIR / "databases"
+from db_utils import get_server_db_path_fallback, get_personality_name
 
-def get_db_path() -> Path:
+def get_db_path(server_name: str = "default") -> Path:
     """Genera ruta de BD para el vigía de noticias con nombre de personalidad."""
-    # Obtener nombre de personalidad
-    try:
-        import os
-        env_personality = os.getenv('PERSONALITY')
-        if env_personality:
-            personality_name = env_personality.lower()
-        else:
-            # Intentar desde agent_engine
-            from agent_engine import PERSONALIDAD
-            personality_name = PERSONALIDAD.get("name", "vigia").lower()
-    except:
-        personality_name = "vigia"
-    
-    db_name = f"vigia_noticias_{personality_name}.db"
-    local_path = DB_DIR / db_name
-    fallback_path = Path.home() / '.roleagentbot' / 'roles' / 'vigia_noticias' / db_name
-    
-    try:
-        # Probar ruta local primero
-        conn = sqlite3.connect(str(local_path))
-        cursor = conn.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS __test_write (id INTEGER)')
-        conn.commit()
-        cursor.execute('DROP TABLE IF EXISTS __test_write')
-        conn.commit()
-        conn.close()
-        return local_path
-    except (PermissionError, OSError) as e:
-        logger.warning(f"⚠️ No write access a {local_path}: {e}. Usando fallback en home directory.")
-        try:
-            fallback_path.parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(str(fallback_path))
-            cursor = conn.cursor()
-            cursor.execute('CREATE TABLE IF NOT EXISTS __test_write (id INTEGER)')
-            conn.commit()
-            cursor.execute('DROP TABLE IF EXISTS __test_write')
-            conn.commit()
-            conn.close()
-            logger.info(f"ℹ️ BD vigía reubicada a {fallback_path}")
-            return fallback_path
-        except Exception as e2:
-            logger.error(f"❌ No se pudo crear fallback BD vigía: {e2}")
-            raise
-
-DB_DIR.mkdir(parents=True, exist_ok=True)
+    personality_name = get_personality_name()
+    db_name = f"noticias_{personality_name}.db"
+    return get_server_db_path_fallback(server_name, db_name)
 
 
 class DatabaseRoleVigia:
@@ -70,8 +27,11 @@ class DatabaseRoleVigia:
     Gestiona noticias leídas y notificaciones enviadas.
     """
     
-    def __init__(self, db_path: Path = None):
-        self.db_path = db_path or get_db_path()
+    def __init__(self, server_name: str = "default", db_path: Path = None):
+        if db_path is None:
+            self.db_path = get_db_path(server_name)
+        else:
+            self.db_path = db_path
         self._lock = threading.Lock()
         self._ensure_writable_db()
         self._init_db()
@@ -379,5 +339,14 @@ class DatabaseRoleVigia:
             return False
 
 
-# Instancia global de la base de datos
-db_vigia = DatabaseRoleVigia()
+# Diccionario para mantener instancias por servidor
+_db_vigia_instances = {}
+
+def get_vigia_db_instance(server_name: str = "default") -> DatabaseRoleVigia:
+    """Obtiene o crea una instancia de base de datos del vigía para un servidor específico."""
+    if server_name not in _db_vigia_instances:
+        _db_vigia_instances[server_name] = DatabaseRoleVigia(server_name)
+    return _db_vigia_instances[server_name]
+
+# Instancia global por defecto (para compatibilidad)
+db_vigia = get_vigia_db_instance("default")

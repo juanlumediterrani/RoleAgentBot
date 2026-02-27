@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.shared.armv7.yml - Múltiples instancias para Raspberry Pi 32 bits
+# docker-compose.shared.yml - Múltiples instancias compartiendo entorno Python
 # 
 # Este método comparte las librerías Python entre contenedores para ahorrar:
 # - Memoria RAM: Las librerías se cargan una sola vez
@@ -7,54 +7,52 @@
 # - Red: Las dependencias se descargan una sola vez
 #
 # Uso:
-#   docker compose -f docker-compose.shared.armv7.yml up --build -d
+#   docker compose -f docker-compose.shared.yml up --build -d
 # ─────────────────────────────────────────────────────────────────────────────
 services:
   # Contenedor 1: Kronk (con pedir oro y buscador de tesoros)
   bot-kronk:
-    platform: linux/arm/v7  # ← Forzar arquitectura ARM 32 bits
     build:
-      context: .
-      dockerfile: Dockerfile.armv7  # ← Usar Dockerfile para ARMv7
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
         PERSONALITY: kronk
         ACTIVE_ROLES: pedir_oro,buscador_tesoros
-    image: roleagentbot:kronk-armv7
+    image: roleagentbot:kronk
     container_name: roleagentbot-kronk
-    env_file: .env
+    env_file: ../.env
     environment:
       - PERSONALITY=kronk
       - ACTIVE_ROLES=pedir_oro,buscador_tesoros
       - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
     volumes:
-      - python-shared-armv7:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
-      - ./databases:/app/databases
-      - ./logs:/app/logs
+      - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
+      - ../databases:/app/databases
+      - ../logs:/app/logs
     restart: unless-stopped
 
   # Contenedor 2: Putre (vigia de noticias y buscador de anillo)
   bot-putre:
-    platform: linux/arm/v7  # ← Forzar arquitectura ARM 32 bits
     build:
-      context: .
-      dockerfile: Dockerfile.armv7  # ← Usar Dockerfile para ARMv7
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
         PERSONALITY: putre
         ACTIVE_ROLES: vigia_noticias,buscar_anillo
-    image: roleagentbot:putre-armv7
+    image: roleagentbot:putre
     container_name: roleagentbot-putre
-    env_file: .env
+    env_file: ../.env
     environment:
       - PERSONALITY=putre
       - ACTIVE_ROLES=vigia_noticias,buscar_anillo
       - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
     volumes:
-      - python-shared-armv7:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
-      - ./databases:/app/databases
-      - ./logs:/app/logs
+      - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
+      - ../databases:/app/databases
+      - ../logs:/app/logs
     restart: unless-stopped
 
 # Volumen compartido para Python (ahorro máximo de recursos)
 volumes:
-  python-shared-armv7:
+  python-shared:
     driver: local
