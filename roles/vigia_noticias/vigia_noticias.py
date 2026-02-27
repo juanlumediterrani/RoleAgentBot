@@ -33,7 +33,6 @@ MISSION_CONFIG = {
     "system_prompt_addition": "MISION ACTIVA - VIGÍA DE NOTICIAS: Eres el Vigía de la Torre. Tu misión es detectar noticias sumamente importantes. Es crítica cuando: Escala una guerra, cae en bancarrota un país o gran empresa, hay una crisis humanitaria grave, o un evento con impacto global inminente."
 }
 
-MI_ID = 235796491988369408
 # Feed RSS de CNBC
 RSS_URL = "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362"
 
@@ -51,7 +50,7 @@ def _analizar_con_cohere(titulo: str) -> str:
     if not api_key:
         raise RuntimeError("COHERE_API_KEY no está configurada (cárgala desde crontab o desde ~/.putrebot.env)")
 
-    client = cohere.Client(api_key=api_key, timeout=30)
+    client = cohere.Client(api_key=api_key, timeout=60)
 
     # Usar el sistema unificado de construcción de prompts
     system_instruction, prompt_final = construir_prompt(
@@ -78,14 +77,15 @@ class NoticiaBot(discord.Client):
     async def on_ready(self):
         logger.info("👀 Vigía oteando noticias...")
         try:
-            user = await self.fetch_user(MI_ID)
-            logger.info(f"✅ Usuario encontrado: {user.name}")
+            # Obtener suscriptores de la base de datos
+            suscriptores = db_vigia.obtener_suscriptores_activos()
+            logger.info(f"✅ {len(suscriptores)} suscriptores encontrados")
             # Obtener entradas del feed (feedparser si está disponible, sino XML)
             entries = []
             try:
                 import feedparser
                 logger.info(f"📡 Obteniendo feed desde {RSS_URL}")
-                resp = requests.get(RSS_URL, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
+                resp = requests.get(RSS_URL, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
                 feed = feedparser.parse(resp.content)
                 entries = [(getattr(e, 'title', None) or getattr(e, 'summary', '')) for e in feed.entries[:5]]
                 logger.info(f"📰 Obtenidas {len(entries)} noticias del feed")
@@ -93,7 +93,7 @@ class NoticiaBot(discord.Client):
                 # Fallback sin feedparser
                 logger.warning(f"⚠️ Feedparser falló: {e1}, intentando con XML...")
                 try:
-                    r = requests.get(RSS_URL, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
+                    r = requests.get(RSS_URL, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
                     root = ET.fromstring(r.content)
                     items = root.findall('.//item')[:5]
                     entries = [ (item.find('title').text if item.find('title') is not None else '') for item in items ]
@@ -120,10 +120,10 @@ class NoticiaBot(discord.Client):
                 try:
                     analisis = await asyncio.wait_for(
                         asyncio.to_thread(_analizar_con_cohere, titulo),
-                        timeout=45
+                        timeout=90
                     )
                 except asyncio.TimeoutError:
-                    logger.warning(f"⏱️ Vigía: timeout analizando noticia (45s): {titulo[:80]}")
+                    logger.warning(f"⏱️ Vigía: timeout analizando noticia (90s): {titulo[:80]}")
                     analisis = "basura umana"
                 except Exception as e:
                     logger.exception(f"⚠️ Vigía: fallo Cohere analizando noticia: {e}")
@@ -132,8 +132,14 @@ class NoticiaBot(discord.Client):
 
                 if analisis and 'basura umana' not in analisis.lower():
                     try:
-                        await user.send(f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {titulo}*")
-                        logger.info(f"✅ Vigía: enviada noticia: {titulo}")
+                        # Enviar a todos los suscriptores
+                        for suscriptor_id in suscriptores:
+                            try:
+                                user = await self.fetch_user(suscriptor_id)
+                                await user.send(f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {titulo}*")
+                                logger.info(f"✅ Vigía: enviada noticia a {user.name}: {titulo}")
+                            except Exception as e_user:
+                                logger.warning(f"⚠️ Vigía: no se pudo enviar a {suscriptor_id}: {e_user}")
                         
                         # Registrar notificación enviada en la BD local
                         db_vigia.registrar_notificacion_enviada(titulo, analisis, "critica", "CNBC")

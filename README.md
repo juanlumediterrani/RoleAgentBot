@@ -1,8 +1,9 @@
-# RoleAgentBot - Sistema de Bot Discord Modular con Roles Autónomos
+# RoleAgentBot - Agente interactivo con diferentes personalidades
+-----------------------------------------------------------------------------------------
 
 Un bot de Discord modular con sistema de roles autónomos programables, motor de IA integrado y persistencia de datos.
 
-## 🚀 Características
+# 🚀 Características
 
 - **Bot Discord Modular**: Sistema extensible con arquitectura basada en roles
 - **Roles Autónomos**: Ejecución automática de tareas programadas en intervalos configurables
@@ -11,13 +12,25 @@ Un bot de Discord modular con sistema de roles autónomos programables, motor de
 - **Persistencia de Datos**: Base de datos SQLite para almacenar interacciones y contexto
 - **Logging Completo**: Sistema de logging estructurado para depuración y monitoreo
 
-## 📋 Requisitos
+# 📋 Requisitos
 
 - Python 3.8+
 - Cuenta de Bot de Discord
 - API Keys para servicios de IA (Google Gemini y/o Groq)
 
-## 🛠️ Instalación
+# 🔧 Comandos del Bot
+
+- **Menciones**: `@NombreDelBot tu mensaje` - Conversación con IA
+- **DM**: Mensaje directo al bot para conversación privada
+- **Prefijo**: Usa el prefijo configurado para comandos específicos
+- Roles:
+  - vigia_noticias: !vigianoticias, !vigianoticias
+  - buscar_anillo: !acusaranillo
+**Desarrollado con ❤️ para la comunidad**
+-----------------------------------------------------------------------------------------
+
+# 🛠️ Instalación en entorno virtual python
+-----------------------------------------------------------------------------------------
 
 1. **Clonar el repositorio**
    ```bash
@@ -49,15 +62,15 @@ Un bot de Discord modular con sistema de roles autónomos programables, motor de
    - Configurar los roles automáticos deseados
    - Ajustar la personalidad del bot en `personality.json`
 
-## ⚙️ Configuración
+# ⚙️ Configuración
 
-### Archivos de Configuración
+## Archivos de Configuración
 
 - **`.env`**: Variables de entorno (API keys, tokens)
 - **`agent_config.json`**: Configuración principal del bot y roles
 - **`personality.json`**: Configuración de personalidad del bot
 
-### Variables de Entorno (.env)
+## Variables de Entorno (.env)
 
 ```env
 DISCORD_TOKEN=tu_token_de_discord
@@ -65,7 +78,7 @@ GOOGLE_API_KEY=tu_api_key_de_google
 GROQ_API_KEY=tu_api_key_de_groq
 ```
 
-### Configuración de Roles (agent_config.json)
+## Configuración de Roles (agent_config.json)
 
 ```json
 {
@@ -80,7 +93,7 @@ GROQ_API_KEY=tu_api_key_de_groq
 }
 ```
 
-## 🚀 Ejecución
+# 🚀 Ejecución
 
 ```bash
 python run.py
@@ -91,101 +104,240 @@ El bot iniciará automáticamente:
 - El planificador de roles automáticos
 - Todos los roles configurados y habilitados
 
-## 📁 Estructura del Proyecto
+-----------------------------------------------------------------------------------------
 
-```
-RoleAgentBot/
-├── run.py                 # Punto de entrada principal
-├── agent_discord.py       # Bot de Discord
-├── agent_engine.py        # Motor de IA
-├── agent_db.py           # Sistema de base de datos
-├── agent_logging.py      # Sistema de logging
-├── agent_config.json     # Configuración principal
-├── personality.json      # Configuración de personalidad
-├── roles/                # Directorio de roles automáticos
-│   └── ejemplo_rol.py
-├── databases/            # Base de datos SQLite
-├── requirements.txt      # Dependencias Python
-├── .env.example         # Plantilla de variables de entorno
-└── README.md            # Este archivo
-```
+# 🐳 Despliegue con Docker
+-----------------------------------------------------------------------------------------
 
-## 🤖 Creación de Roles
+## 1️⃣ Preparación inicial (una sola vez)
 
-Los roles son scripts Python que se ejecutan automáticamente en intervalos configurados. Ejemplo:
+```bash
+# Clonar el repositorio
+git clone https://github.com/tu-usuario/RoleAgentBot.git
+cd RoleAgentBot
 
-```python
-# roles/mi_rol.py
-import asyncio
-from datetime import datetime
-
-async def main():
-    print(f"[{datetime.now()}] Mi rol automático ejecutándose")
-    # Tu lógica aquí
-
-if __name__ == "__main__":
-    asyncio.run(main())
+# Configurar variables de entorno (API keys) .Editar .env con tus tokens y API keys
+cp .env.example .env
+ 
+# Construir la imagen base (solo cuando cambia requirements.txt)
+docker build -f Dockerfile.base -t roleagentbot-base:latest .
 ```
 
-## 🔧 Comandos del Bot
+## 2️⃣ Despliegue con volumen compartido Python (método por defecto)
 
-- **Menciones**: `@NombreDelBot tu mensaje` - Conversación con IA
-- **DM**: Mensaje directo al bot para conversación privada
-- **Prefijo**: Usa el prefijo configurado para comandos específicos
+```bash
+# Lanza múltiples bots compartiendo librerías Python (ahorro máximo)
+docker compose -f docker-compose.shared.yml up --build -d
 
-## 📊 Monitoreo y Logging
+# Verificar uso de memoria compartida
+docker stats --no-stream
+```
 
-El sistema incluye logging completo:
-- Logs del bot principal
-- Logs de cada rol automático
-- Logs del motor de IA
-- Logs de la base de datos
+### 2️⃣b Despliegue de instancia única (si prefieres)
 
-Los logs se guardan automáticamente en archivos con rotación.
+```bash
+# Opción A: Docker Compose (instancia separada)
+PERSONALITY=kronk ACTIVE_ROLES=vigia_noticias,buscar_anillo \
+  docker compose up --build -d
 
-## 🗄️ Base de Datos
+# Opción B: Docker manual
+docker build \
+  --build-arg PERSONALITY=kronk \
+  --build-arg ACTIVE_ROLES=vigia_noticias,buscar_anillo \
+  -t roleagentbot:latest .
 
-El sistema utiliza SQLite para persistencia:
-- Almacenamiento de interacciones
-- Contexto del bot
-- Historial de conversaciones
-- Datos de roles
+docker run --env-file .env \
+  -v $(pwd)/databases:/app/databases \
+  -v $(pwd)/logs:/app/logs \
+  --name roleagentbot \
+  -d \
+  roleagentbot:latest
+```
+### 2️⃣c Añadir un tercer bot compartiendo el volumen Python
 
-La base de datos se crea automáticamente en `databases/agent.db`.
+#### Construir imagen para el tercer bot
+docker build --build-arg PERSONALITY=default \
+  --build-arg ACTIVE_ROLES=rol_extra1,rol_extra2 \
+  -t roleagentbot:extra .
 
-## 🤝 Contribuir
+#### Lanzar tercer bot compartiendo el volumen Python
+docker run -d \
+  --name roleagentbot-extra \
+  --env-file .env \
+  -e DISCORD_TOKEN=$DISCORD_TOKEN_EXTRA \
+  -e PERSONALITY=default \
+  -e ACTIVE_ROLES=rol_extra1,rol_extra2 \
+  -v $(pwd)/databases-extra:/app/databases \
+  -v $(pwd)/logs-extra:/app/logs \
+  -v roleagentbot_python-shared:/usr/local/lib/python3.13/site-packages \
+  roleagentbot:extra
 
-1. Fork el proyecto
-2. Crear una rama (`git checkout -b feature/nueva-caracteristica`)
-3. Commit tus cambios (`git commit -am 'Añadir nueva característica'`)
-4. Push a la rama (`git push origin feature/nueva-caracteristica`)
-5. Crear un Pull Request
+#### Reconstruir y levantar todos los contenedores
+docker compose -f docker-compose.shared.yml up --build -d
 
-## 📝 Licencia
+## 3️⃣ Verificación y monitoreo
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para detalles.
+```bash
+# Ver logs del contenedor
+docker compose logs -f
 
-## 🔗 Enlaces Útiles
+# Ver logs específicos del bot
+docker exec roleagentbot tail -f /app/logs/agent.log
 
-- [Documentación de Discord.py](https://discordpy.readthedocs.io/)
-- [Google Generative AI](https://ai.google.dev/)
-- [Groq API](https://groq.com/)
+# Verificar estado
+docker compose ps
+```
 
-## 🐛 Issues y Soporte
+## 4️⃣ Cambiar personalidad o roles
 
-Si encuentras algún bug o necesitas ayuda:
-1. Revisa los logs para identificar el problema
-2. Abre un issue en GitHub con detalles del error
-3. Incluye la configuración relevante (ocultando datos sensibles)
+```bash
+# Detener contenedor actual
+docker compose down
 
-## 🔄 Actualizaciones
+# Lanzar con nueva configuración
+PERSONALITY=putre ACTIVE_ROLES=pedir_oro,buscar_anillo \
+  docker compose up --build -d
+```
 
-El bot soporta actualizaciones en caliente:
-- Roles pueden ser añadidos/modificados sin reiniciar
-- Configuración de personalidad ajustable
-- Sistema de logging persistente
+## 5️⃣ Actualizar dependencias
 
----
+```bash
+# Reconstruir solo la imagen base (más rápido)
+docker build -f Dockerfile.base -t roleagentbot-base:latest .
 
-**Desarrollado con ❤️ para la comunidad**
-# RoleAgentBot
+# Volver a construir la imagen del bot
+docker compose up --build -d
+```
+
+## Variables inyectables en build-time
+
+| Argumento | Descripción | Ejemplo |
+|-----------|-------------|---------|
+| `PERSONALITY` | Nombre del JSON de personalidad (sin extensión) | `kronk` |
+| `ACTIVE_ROLES` | Roles a habilitar, separados por coma | `vigia_noticias,buscar_anillo` |
+
+Si se omiten, se usan los valores definidos en `agent_config.json`.
+
+## Volúmenes persistentes
+
+| Volumen host | Ruta contenedor | Contenido |
+|-------------|-----------------|-----------|
+| `./databases` | `/app/databases` | Base de datos SQLite |
+| `./logs` | `/app/logs` | Ficheros de log rotativos |
+
+# Instancias individuales (si necesitas aislamiento total)
+
+```bash
+# Instancia 1: Kronk con vigía y buscador de anillos
+docker compose -f docker-compose.kronk.yml up --build -d
+
+# Instancia 2: Putre con peticiones de oro y buscador de anillos  
+docker compose -f docker-compose.putre.yml up --build -d
+
+# Instancia 3: Default (usa agent_config.json tal cual)
+docker compose -f docker-compose.default.yml up --build -d
+```
+
+#### Gestión de múltiples instancias
+
+```bash
+# Ver todas las instancias corriendo
+docker ps --filter "name=roleagentbot"
+
+# Ver logs de una instancia específica
+docker compose -f docker-compose.kronk.yml logs -f
+
+# Detener una instancia específica
+docker compose -f docker-compose.kronk.yml down
+
+# Reiniciar una instancia específica
+docker compose -f docker-compose.kronk.yml restart
+
+# Detener todas las instancias
+docker compose -f docker-compose.kronk.yml down
+docker compose -f docker-compose.putre.yml down
+docker compose -f docker-compose.default.yml down
+docker compose -f docker-compose.minimal.yml down
+```
+
+### Arquitectura optimizada: Capas + Volumen compartido
+
+El proyecto combina dos técnicas de optimización para máximo ahorro de recursos:
+
+```
+┌─ Capas Docker (disco) ──────────────────────┐
+│ roleagentbot-base: 150MB (librerías pip)    │
+│ roleagentbot:kronk: +5MB (código fuente)    │
+│ roleagentbot:putre: +5MB (código fuente)    │
+└──────────────────────────────────────────────┘
+           ↓
+┌─ Volumen compartido (memoria RAM) ───────────┐
+│ python-shared: 150MB (librerías cargadas)   │
+│ ↳ Ambos contenedores usan las mismas libs   │
+└──────────────────────────────────────────────┘
+```
+
+### ¿Cómo funciona la optimización completa?
+
+| Nivel | Técnica | Ahorro | Cuándo se aplica |
+|-------|---------|--------|------------------|
+| **Disco** | Capas Docker | 48% | Al construir imágenes |
+| **Memoria** | Volumen compartido | 37% | Al ejecutar contenedores |
+| **Red** | Descarga única | 50% | Al instalar dependencias |
+
+### Flujo de construcción y ejecución
+
+```bash
+# 1️⃣ Imagen base (capa compartida en disco)
+docker build -f Dockerfile.base -t roleagentbot-base:latest .
+# ↓ 150MB guardados una sola vez
+
+# 2️⃣ Imágenes específicas (heredan la base)
+docker build --build-arg PERSONALITY=kronk -t roleagentbot:kronk .
+docker build --build-arg PERSONALITY=putre -t roleagentbot:putre .
+# ↓ Solo +5MB por cada imagen
+
+# 3️⃣ Ejecución con volumen compartido (memoria compartida)
+docker compose -f docker-compose.shared.yml up --build -d
+# ↓ ~250MB RAM total vs ~400MB sin optimización
+```
+
+### Resumen visual de la arquitectura completa
+
+```
+📦 DOCKER IMAGES (Capas - Disco)
+┌─────────────────────────────────────┐
+│ roleagentbot-base: 150MB             │ ← Librerías pip (compartido)
+│  ├── discord.py, groq, cohere...   │
+│  └── python:3.13-slim               │
+├─────────────────────────────────────┤
+│ roleagentbot:kronk: 155MB (+5MB)     │ ← Hereda base + código
+│  ├── run.py, agent_*.py             │
+│  ├── personalities/kronk.json        │
+│  └── roles/                          │
+├─────────────────────────────────────┤
+│ roleagentbot:putre: 155MB (+5MB)     │ ← Hereda base + código
+│  ├── run.py, agent_*.py             │
+│  ├── personalities/putre.json        │
+│  └── roles/                          │
+└─────────────────────────────────────┘
+           ↓ build-time optimization
+🚀 DOCKER CONTAINERS (Runtime - Memoria)
+┌─────────────────┐    ┌─────────────────┐
+│ roleagentbot-    │    │ roleagentbot-    │
+│ kronk            │    │ putre            │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │
+│ │ App: 50MB   │ │    │ │ App: 50MB   │ │
+│ └─────────────┘ │    │ └─────────────┘ │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │
+│ │ Python:150MB│◄───┼──►│ Python:150MB│ │ ← Volumen compartido
+│ └─────────────┘ │    │ └─────────────┘ │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │
+│ │ DB: 10MB    │ │    │ │ DB: 10MB    │ │ ← Individual
+│ └─────────────┘ │    │ └─────────────┘ │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │
+│ │ Logs: 5MB   │ │    │ │ Logs: 5MB   │ │ ← Individual
+│ └─────────────┘ │    │ └─────────────┘ │
+└─────────────────┘    └─────────────────┘
+Total RAM: ~250MB vs ~400MB tradicional
+```
