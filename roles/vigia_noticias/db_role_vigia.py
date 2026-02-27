@@ -17,9 +17,23 @@ BASE_DIR = Path(__file__).parent
 DB_DIR = BASE_DIR / "databases"
 
 def get_db_path() -> Path:
-    """Genera ruta de BD para el vigía de noticias con fallback a home."""
-    local_path = DB_DIR / "vigia_noticias.db"
-    fallback_path = Path.home() / '.roleagentbot' / 'roles' / 'vigia_noticias' / "vigia_noticias.db"
+    """Genera ruta de BD para el vigía de noticias con nombre de personalidad."""
+    # Obtener nombre de personalidad
+    try:
+        import os
+        env_personality = os.getenv('PERSONALITY')
+        if env_personality:
+            personality_name = env_personality.lower()
+        else:
+            # Intentar desde agent_engine
+            from agent_engine import PERSONALIDAD
+            personality_name = PERSONALIDAD.get("name", "vigia").lower()
+    except:
+        personality_name = "vigia"
+    
+    db_name = f"vigia_noticias_{personality_name}.db"
+    local_path = DB_DIR / db_name
+    fallback_path = Path.home() / '.roleagentbot' / 'roles' / 'vigia_noticias' / db_name
     
     try:
         # Probar ruta local primero

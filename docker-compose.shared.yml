@@ -9,47 +9,47 @@
 # Uso:
 #   docker compose -f docker-compose.shared.yml up --build -d
 # ─────────────────────────────────────────────────────────────────────────────
-version: '3.8'
-
 services:
-  # Contenedor 1: Kronk (con vigía y buscador)
+  # Contenedor 1: Kronk (con pedir oro y buscador de tesoros)
   bot-kronk:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PERSONALITY: kronk
-        ACTIVE_ROLES: vigia_noticias,buscar_anillo
+        ACTIVE_ROLES: pedir_oro,buscador_tesoros
     image: roleagentbot:kronk
     container_name: roleagentbot-kronk
     env_file: .env
     environment:
       - PERSONALITY=kronk
-      - ACTIVE_ROLES=vigia_noticias,buscar_anillo
+      - ACTIVE_ROLES=pedir_oro,buscador_tesoros
+      - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
-      - ./databases-kronk:/app/databases
-      - ./logs-kronk:/app/logs
+      - ./databases:/app/databases
+      - ./logs:/app/logs
     restart: unless-stopped
 
-  # Contenedor 2: Putre (con peticiones de oro y buscador)
+  # Contenedor 2: Putre (vigia de noticias y buscador de anillo)
   bot-putre:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         PERSONALITY: putre
-        ACTIVE_ROLES: pedir_oro,buscar_anillo
+        ACTIVE_ROLES: vigia_noticias,buscar_anillo
     image: roleagentbot:putre
     container_name: roleagentbot-putre
     env_file: .env
     environment:
       - PERSONALITY=putre
-      - ACTIVE_ROLES=pedir_oro,buscar_anillo
+      - ACTIVE_ROLES=vigia_noticias,buscar_anillo
+      - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
-      - ./databases-putre:/app/databases
-      - ./logs-putre:/app/logs
+      - ./databases:/app/databases
+      - ./logs:/app/logs
     restart: unless-stopped
 
 # Volumen compartido para Python (ahorro máximo de recursos)
