@@ -12,7 +12,8 @@ databases/
 │   ├── putre.db              # Base de datos principal
 │   ├── kronk.db              # Base de datos principal (nombre de personalidad)
 │   ├── noticiasputre.db      # Base de datos del vigía de noticias
-│   ├── poe_standard_putre.db # Base de datos del buscador de tesoros
+│   ├── PoE2FOTV.db          # Base de datos del buscador de tesoros (Fate of the Vaal)
+│   ├── PoE2Standard.db      # Base de datos del buscador de tesoros (Standard)
 │   ├── role_oro.db          # Base de datos del rol de oro
 │   └── role_anillo.db       # Base de datos del rol del anillo
 └── nombredeotroservidor/
@@ -23,13 +24,14 @@ databases/
 
 ## Cambios Realizados
 
-### 1. Nuevo Módulo: `db_utils.py`
+### 1. `agent_db.py` Actualizado
 
 - `get_server_db_path(server_name, db_name)`: Genera rutas de BD para servidores
 - `get_server_db_path_fallback(server_name, db_name)`: Versión con fallback para Docker
+- `get_server_log_path(server_name, log_name)`: Genera rutas de logs por servidor
 - `get_personality_name()`: Obtiene nombre de personalidad desde variable de entorno o configuración
 
-### 2. `agent_db.py` Modificado
+### 2. `AgentDatabase` Modificado
 
 - El constructor `AgentDatabase` ahora acepta `server_name`
 - Función `get_db_instance(server_name)` para obtener instancias por servidor
@@ -41,9 +43,9 @@ databases/
 - `get_vigia_db_instance(server_name)` para instancias por servidor
 - Base de datos: `noticias_{personalidad}.db`
 
-#### `roles/buscador_tesoros/db_putre_poe.py`
+#### `roles/buscador_tesoros/db_role_poe.py`
 - `get_poe_db_instance(server_name, liga)` para instancias por servidor y liga
-- Base de datos: `poe_{liga}_{personalidad}.db`
+- Base de datos: `PoE2FOTV.db` (Fate of the Vaal) o `PoE2Standard.db` (Standard)
 
 #### `roles/pedir_oro/db_oro.py`
 - `get_oro_db_instance(server_name)` para instancias por servidor
@@ -77,7 +79,7 @@ from roles.vigia_noticias.db_role_vigia import get_vigia_db_instance
 db_vigia = get_vigia_db_instance("Mi Servidor")
 
 # Obtener base de datos POE para servidor y liga
-from roles.buscador_tesoros.db_putre_poe import get_poe_db_instance
+from roles.buscador_tesoros.db_role_poe import get_poe_db_instance
 db_poe = get_poe_db_instance("Mi Servidor", "Standard")
 ```
 
