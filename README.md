@@ -26,6 +26,7 @@ Un bot de Discord modular con sistema de roles autónomos programables, motor de
 - Roles:
   - vigia_noticias: !vigianoticias, !vigianoticias
   - buscar_anillo: !acusaranillo
+    
 **Desarrollado con ❤️ para la comunidad**
 -----------------------------------------------------------------------------------------
 
