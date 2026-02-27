@@ -10,46 +10,56 @@
 #   docker compose -f docker-compose.shared.yml up --build -d
 # ─────────────────────────────────────────────────────────────────────────────
 services:
-  # Contenedor 1: Kronk (con pedir oro y buscador de tesoros)
+  # Contenedor 1: Kronk (con vigia noticias y buscador de tesoros)
   bot-kronk:
     build:
       context: ..
       dockerfile: docker/Dockerfile
       args:
         PERSONALITY: kronk
-        ACTIVE_ROLES: pedir_oro,buscador_tesoros
     image: roleagentbot:kronk
     container_name: roleagentbot-kronk
     env_file: ../.env
     environment:
       - PERSONALITY=kronk
-      - ACTIVE_ROLES=pedir_oro,buscador_tesoros
+      - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
+      # Roles activos para Kronk: vigia_noticias y buscador_tesoros
+      - VIGIA_NOTICIAS_ENABLED=true
+      - BUSCADOR_TESOROS_ENABLED=true
+      - PEDIR_ORO_ENABLED=false
+      - BUSCAR_ANILLO_ENABLED=false
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
       - ../databases:/app/databases
       - ../logs:/app/logs
+      - ../fatiga.json:/app/fatiga.json
     restart: unless-stopped
 
-  # Contenedor 2: Putre (vigia de noticias y buscador de anillo)
+  # Contenedor 2: Putre (con pedir oro y buscador de anillo)
   bot-putre:
     build:
       context: ..
       dockerfile: docker/Dockerfile
       args:
         PERSONALITY: putre
-        ACTIVE_ROLES: vigia_noticias,buscar_anillo
     image: roleagentbot:putre
     container_name: roleagentbot-putre
     env_file: ../.env
     environment:
       - PERSONALITY=putre
-      - ACTIVE_ROLES=vigia_noticias,buscar_anillo
+      - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
+      # Roles activos para Putre: pedir oro y buscar anillo
+      - VIGIA_NOTICIAS_ENABLED=false
+      - BUSCADOR_TESOROS_ENABLED=false
+      - PEDIR_ORO_ENABLED=true
+      - BUSCAR_ANILLO_ENABLED=true
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
       - ../databases:/app/databases
       - ../logs:/app/logs
+      - ../fatiga.json:/app/fatiga.json
     restart: unless-stopped
 
 # Volumen compartido para Python (ahorro máximo de recursos)
