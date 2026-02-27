@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.armv7 - Imagen optimizada para Raspberry Pi 32 bits (ARMv7)
+#
+# Construir:
+#   docker build --platform=linux/arm/v7 -f Dockerfile.armv7 \
+#                --build-arg PERSONALITY=kronk \
+#                --build-arg ACTIVE_ROLES="pedir_oro,buscador_tesoros" \
+#                -t roleagentbot:kronk-armv7 .
+#
+# Si no se pasan argumentos se usa la personalidad y los roles definidos en
+# agent_config.json tal cual está en el repositorio.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM --platform=linux/arm/v7 python:3.13-slim-bullseye
+
+# Instalar dependencias del sistema optimizadas para ARM
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    git \
+    curl \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copiar requirements y instalar dependencias Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código fuente
+COPY agent_config.json .
+COPY run.py .
+COPY agent_*.py .
+COPY *.py .
+COPY personalities/ personalities/
+COPY roles/ roles/
+
+# ── Script que aplica los ARG al agent_config.json en tiempo de arranque ──────
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# ── Directorios con estado persistente (montados como volúmenes) ──────────────
+RUN mkdir -p databases logs
+
+# Variables de entorno que el entrypoint puede leer
+ENV PERSONALITY=${PERSONALITY}
+ENV ACTIVE_ROLES=${ACTIVE_ROLES}
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["python", "run.py"]
