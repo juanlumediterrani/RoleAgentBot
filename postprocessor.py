@@ -1,36 +1,18 @@
 """
-Módulo de postprocesamiento para respuestas del agente.
-Contiene funciones para limpiar y formatear las respuestas generadas.
+Módulo simplificado de postprocesamiento para respuestas del agente.
+Contiene funciones esenciales para limpiar y formatear las respuestas generadas.
 """
 
 from agent_logging import get_logger
 
 logger = get_logger('postprocessor')
 
-# Lista completa de preposiciones del español y sus variantes comunes
-PREPOSICIONES = {
-    # Preposiciones formales principales
+# Preposiciones esenciales del español
+PREPOSICIONES_ESSENCIALES = {
     "a", "ante", "bajo", "cabe", "con", "contra", "de", "desde", "durante", "en", "entre", 
     "hacia", "hasta", "mediante", "para", "por", "segun", "sin", "so", "sobre", "tras",
-    
-    # Contracciones y variantes comunes
-    "al", "del", "pa", "pel",
-    
-    # Variantes coloquiales y dialectales
-    "ke", "k", "kon", "pa", "para", "por", "sin", "y", "o",
-    "kuando", "kien", "kienes", "komo", "dilo", "dime",
-    
-    # Preposiciones compuestas y locuciones comunes
-    "acerca", "adentro", "afuera", "alrededor", "antes", "apenas", "a traves", "cerca", 
-    "conforme", "cuanto", "debajo", "delante", "dentro", "despues", "detras", "encima", 
-    "enfrente", "excepto", "fuera", "frente", "gracias", "hasta", "inclusive", "incluso", 
-    "lejos", "menos", "mediante", "respecto", "salvo", "segun", "siempre", "sobre", 
-    "tocante", "versus", "via",
-    
-    # Conjunciones comunes que funcionan como preposiciones
-    "aunque", "como", "cuando", "donde", "mientras", "porque", "pues", "que", "si"
+    "al", "del", "pa", "pel"
 }
-
 
 def is_response_cut_off(text):
     """Detecta si una respuesta está cortada o incompleta."""
@@ -39,62 +21,30 @@ def is_response_cut_off(text):
     
     s = text.strip()
     
-    # Si contiene metadatos como "(49)" o "Total:", no es una respuesta cortada
-    if "(" in s and ")" in s and any(char.isdigit() for char in s):
-        logger.debug(f"   └─ [CORTADA] Descartada por metadatos: {s[:50]}...")
-        return False
-    if "Total:" in s or "characters" in s:
-        logger.debug(f"   └─ [CORTADA] Descartada por metadatos (Total): {s[:50]}...")
+    # Descartar si contiene metadatos
+    if ("(" in s and ")" in s and any(c.isdigit() for c in s)) or "Total:" in s:
         return False
     
-    # Indicadores de corte abrupto
+    # Indicadores claros de corte
     cut_off_indicators = [
-        "..." in s or "…" in s,  # Elipsis
-        s.endswith("...") or s.endswith("…"),
+        "..." in s or "…" in s,
+        s.endswith((" y ", " o ", " pero ", " que ", " para ", " por ", " con ", " de ", " en ", " a ")),
+        len(s) > 15 and s[-1].islower() and s[-1] not in ".!?,"
     ]
     
-    # Verificar si termina en medio de una palabra (sin puntuación final)
-    has_final_punctuation = s[-1] in ".!?"
-    if not has_final_punctuation:
-        last_word = s.split()[-1] if s.split() else ""
-        # Si la última palabra es muy corta y no es preposición, podría estar cortada
-        # pero solo si no parece una palabra completa válida
-        if len(last_word) <= 3 and last_word.lower() not in PREPOSICIONES:
-            # Excluir palabras comunes cortas que no son preposiciones
-            common_short_words = {"grr", "ugh", "bah", "uf", "eh", "oh", "ah", "il", "si", "no", "ya", "ke", "komprar", "tu", "div"}
-            if last_word.lower() not in common_short_words:
-                logger.debug(f"   └─ [CORTADA] Detectada por palabra corta '{last_word}': {s[:50]}...")
-                return True
-    
-    # Verificar patrones comunes de respuestas cortadas
-    cut_off_patterns = [
-        s.endswith((" y ", " o ", " pero ", " sino ", " aunque ", " cuando ", " donde ", " como ")),
-        s.endswith((" que ", " para ", " por ", " con ", " sin ", " de ", " en ", " a ")),
-        # Solo detectar como cortada si termina en minúscula Y tiene más de 15 caracteres
-        # (para evitar detectar respuestas cortas y válidas como cortadas)
-        len(s) > 15 and s[-1].islower() and not has_final_punctuation and not s.endswith("?"),
-    ]
-    
-    is_cut = any(cut_off_indicators) or any(cut_off_patterns)
-    if is_cut:
-        logger.debug(f"   └─ [CORTADA] Detectada: {s[:50]}...")
-    
-    return is_cut
-
+    return any(cut_off_indicators)
 
 def ends_dangling(frase: str) -> bool:
-    """Detecta si una frase termina con una preposición o palabra colgante."""
+    """Detecta si una frase termina con una preposición colgante."""
     if not frase:
         return False
+    
     last = frase.rstrip(".!?").strip().split(" ")[-1].lower() if frase.strip() else ""
-    if not last:
-        return False
-    return last in PREPOSICIONES or len(last) == 1
-
+    return last in PREPOSICIONES_ESSENCIALES or len(last) == 1
 
 def postprocesar_respuesta(text, max_chars=280):
     """
-    Post-procesa una respuesta del LLM para asegurar calidad y coherencia.
+    Post-procesa una respuesta del LLM de forma simplificada.
     
     Args:
         text: Texto original generado por el LLM
@@ -103,59 +53,43 @@ def postprocesar_respuesta(text, max_chars=280):
     Returns:
         Texto limpio y formateado
     """
-    logger.debug("🔧 [POST-PROC] Iniciando post-procesamiento")
-    logger.debug(f"   └─ Input: {len(text)} chars")
-
-    s = (text or "").strip()
-    if not s:
-        logger.debug("   └─ Texto vacío, retornando sin cambios")
-        return s
-
-    s = " ".join(s.split())
-    logger.debug(f"   └─ Después de normalizar espacios: {len(s)} chars")
-
-    # Verificar si la respuesta está cortada
+    if not text:
+        return ""
+    
+    s = " ".join(text.strip().split())
+    
+    # Corregir respuesta cortada
     if is_response_cut_off(s):
-        logger.warning("   └─ ⚠️ Respuesta detectada como cortada, aplicando corrección")
-        # Recortar hasta la frase anterior completa
         last_end = max(s.rfind("."), s.rfind("!"), s.rfind("?"))
         if last_end >= 30:
-            s = s[: last_end + 1].rstrip()
-            logger.debug(f"   └─ Recortado hasta frase anterior (pos {last_end}): {len(s)} chars")
+            s = s[:last_end + 1].rstrip()
         else:
-            # Si no hay frase anterior completa, recortar en espacio
             last_space = s.rfind(" ")
             s = (s[:last_space] if last_space >= 30 else s).rstrip()
-            logger.debug(f"   └─ Recortado en espacio (pos {last_space}): {len(s)} chars")
-
+    
+    # Limitar longitud
     if len(s) > max_chars:
-        logger.debug(f"   └─ ⚠️ Texto excede {max_chars} chars, recortando...")
         recorte = s[:max_chars]
         last_end = max(recorte.rfind("."), recorte.rfind("!"), recorte.rfind("?"))
         if last_end >= 30:
-            s = recorte[: last_end + 1].rstrip()
-            logger.debug(f"   └─ Recortado en puntuación (pos {last_end}): {len(s)} chars")
+            s = recorte[:last_end + 1].rstrip()
         else:
             last_space = recorte.rfind(" ")
             s = (recorte[:last_space] if last_space >= 30 else recorte).rstrip()
-            logger.debug(f"   └─ Recortado en espacio (pos {last_space}): {len(s)} chars")
-
-    if s and s[-1] not in ".!?":
-        if s[-1] in ",;:-":
-            s = s[:-1].rstrip()
+    
+    # Asegurar puntuación final solo si es necesario
+    if s and s[-1] not in ".!?,":
         s = s + "!"
-
+    
+    # Eliminar frases colgantes
     if ends_dangling(s):
-        logger.debug("   └─ ⚠️ Detectada frase colgante, corrigiendo...")
-        logger.debug(f"   └─ Antes: '{s[-30:]}'")
         base = s.rstrip(".!?").strip()
         last_end = max(base.rfind("."), base.rfind("!"), base.rfind("?"))
         if last_end >= 20:
-            base = base[: last_end + 1].rstrip(".!? ")
-            logger.debug(f"   └─ Recortado en puntuación anterior (pos {last_end})")
+            base = base[:last_end + 1].rstrip(".!? ")
         else:
-            tries = 0
-            while tries < 3 and base:
+            # Eliminar últimas palabras hasta que no quede colgante
+            for _ in range(3):
                 if not ends_dangling(base + "!"):
                     break
                 cut = base.rfind(" ")
@@ -163,20 +97,15 @@ def postprocesar_respuesta(text, max_chars=280):
                     base = ""
                     break
                 base = base[:cut].rstrip()
-                tries += 1
-            logger.debug(f"   └─ Recortado {tries} palabras colgantes")
-
+        
         s = base.strip()
-        if s and s[-1] not in ".!?":
+        if s and s[-1] not in ".!?,":
             s = s + "!"
-        logger.debug(f"   └─ Después: '{s[-30:]}'")
-
-    logger.debug(f"   └─ Output final: {len(s)} chars")
+    
     return s
 
-
 def consolidar_contexto(historial_lista, max_interacciones=5, personalidad=None):
-    """Consolida el historial de forma inteligente, priorizando lo más relevante."""
+    """Consolida el historial de forma simplificada."""
     if not historial_lista:
         return ""
 
@@ -243,26 +172,20 @@ def consolidar_contexto(historial_lista, max_interacciones=5, personalidad=None)
 
     return "\n\n".join(entries) if entries else ""
 
-
 def is_blocked_response(text):
-    """Detecta mensajes de rechazo del LLM (off-role, no puede ayudar, etc.)."""
+    """Detecta mensajes de rechazo del LLM."""
     if not text:
         return False
-
+    
     s = " ".join(str(text).lower().split())
     blocked_phrases = [
         "soy un asistente virtual",
         "no puedo ayudar",
         "no puedo hacer",
         "no estoy autorizado",
-        "no puedo ayudar con eso",
-        "no puedo ayudarle",
         "i cannot",
         "cannot help",
-        "i'm sorry, i can't",
-        "i'm sorry i can't",
+        "i'm sorry, i can't"
     ]
-    for p in blocked_phrases:
-        if p in s:
-            return True
-    return False
+    
+    return any(phrase in s for phrase in blocked_phrases)
