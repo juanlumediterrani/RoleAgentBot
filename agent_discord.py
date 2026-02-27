@@ -4,9 +4,10 @@ import discord
 import asyncio
 import re
 from discord.ext import commands, tasks
-from agent_engine import pensar, PERSONALIDAD
+from agent_engine import PERSONALIDAD, pensar, get_discord_token
 from agent_db import get_db_instance
-from agent_logging import get_logger
+from agent_logging import get_logger, update_log_file_path
+from agent_db import set_current_server, get_active_server_name
 
 # Cargar configuración de roles
 def load_agent_config():
@@ -37,6 +38,9 @@ VIGIA_AVAILABLE = module_available and vigia_role_enabled
 def get_server_name(guild) -> str:
     """Obtiene un nombre sanitizado para el servidor."""
     if guild is None:
+        active = get_active_server_name()
+        if active:
+            return active
         return "default"
     return guild.name.lower().replace(' ', '_').replace('-', '_')
 
@@ -69,11 +73,22 @@ bot = commands.Bot(command_prefix=_cmd_prefix, intents=intents)
 
 @tasks.loop(hours=24)
 async def limpieza_db():
-    # Limpiar bases de datos de todos los servidores conectados
-    for guild in bot.guilds:
-        db_instance = get_db_for_server(guild)
-        filas = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
-        logger.info(f"🧹 Limpieza en {guild.name}: {filas} registros borrados.")
+    # Limpiar base de datos SOLO del servidor activo
+    active_name = (get_active_server_name() or "").strip().lower()
+    target_guild = None
+    if active_name:
+        for g in bot.guilds:
+            if g.name.lower() == active_name:
+                target_guild = g
+                break
+    if target_guild is None and bot.guilds:
+        target_guild = bot.guilds[0]
+    if target_guild is None:
+        return
+
+    db_instance = get_db_for_server(target_guild)
+    filas = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
+    logger.info(f"🧹 Limpieza en {target_guild.name}: {filas} registros borrados.")
 
 # --- EVENTOS Y COMANDOS ---
 
@@ -84,9 +99,44 @@ async def on_ready():
     logger.info(f"🤖 [DISCORD] Bot {_bot_display_name} conectado como {bot.user}")
     logger.info(f"🤖 [DISCORD] Comando prefijo: {_cmd_prefix}")
     logger.info(f"🤖 [DISCORD] Comando insulto: {_insult_name}")
+
+    # Elegir UN servidor activo (si el bot está en varios guilds)
+    preferred_guild = os.getenv("DISCORD_ACTIVE_GUILD", "").strip().lower()
+    active_guild = None
+    if preferred_guild:
+        for g in bot.guilds:
+            if g.name.lower() == preferred_guild:
+                active_guild = g
+                break
+    if active_guild is None and bot.guilds:
+        active_guild = bot.guilds[0]
+
+    if active_guild is not None:
+        # Persistir servidor activo para que roles/subprocesos usen la misma carpeta
+        set_current_server(active_guild.name)
+
+        personality_name = PERSONALIDAD.get("name", "agent").lower()
+        update_log_file_path(active_guild.name, personality_name)
+        # Re-obtener logger para que añada handler a fichero ahora que hay servidor activo
+        get_logger('discord')
+
+        server_name = active_guild.name.lower().replace(' ', '_').replace('-', '_')
+        server_name = ''.join(c for c in server_name if c.isalnum() or c == '_')
+        logger.info(f"📁 [DISCORD] Servidor activo: '{active_guild.name}'")
+        logger.info(f"📁 [DISCORD] Logs: logs/{server_name}/{personality_name}.log")
+    
     if not limpieza_db.is_running():
         limpieza_db.start()
         logger.info("🧹 [DISCORD] Tarea de limpieza automática iniciada")
+
+
+@bot.event
+async def on_guild_join(guild):
+    """Se ejecuta cuando el bot se une a un nuevo servidor."""
+    personality_name = PERSONALIDAD.get("name", "agent").lower()
+    update_log_file_path(guild.name, personality_name)
+    get_logger('discord')
+    logger.info(f"📁 [DISCORD] Nuevo servidor '{guild.name}': logs/{guild.name.lower().replace(' ', '_')}/{personality_name}.log")
 
 
 async def _cmd_insulta(ctx, obj=""):
@@ -291,4 +341,4 @@ async def on_message(message):
                 metadata={"respuesta": respuesta}
             )
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(get_discord_token())

@@ -21,6 +21,8 @@ BASE_DIR   = Path(__file__).parent.resolve()
 CONFIG_FILE = BASE_DIR / "agent_config.json"
 PYTHON     = sys.executable   # mismo intérprete del venv activo
 
+ACTIVE_SERVER_FILE = BASE_DIR / ".active_server"
+
 # ── Configuración ─────────────────────────────────────────────────────────────
 
 def cargar_config() -> dict:
@@ -45,6 +47,16 @@ async def lanzar_rol(nombre: str, script_rel: str):
     try:
         env = os.environ.copy()
         env["ROLE_AGENT_PROCESS"] = "1"
+
+        # Propagar servidor activo al subproceso si existe
+        try:
+            if ACTIVE_SERVER_FILE.exists():
+                active_server = ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip()
+                if active_server:
+                    env["ACTIVE_SERVER_NAME"] = active_server
+        except Exception:
+            pass
+
         proc = await asyncio.create_subprocess_exec(
             PYTHON, str(script),
             stdout=asyncio.subprocess.PIPE,
@@ -98,6 +110,14 @@ async def planificador(config: dict):
     if not proxima:
         logger.info("[run] ℹ️  Ningún rol activo. Solo corre el bot principal.")
 
+    # Esperar a que el bot principal publique el servidor activo, para que los roles
+    # escriban en databases/<servidor>/... y logs/<servidor>/...
+    if proxima:
+        for _ in range(60):  # ~60s
+            if ACTIVE_SERVER_FILE.exists() and ACTIVE_SERVER_FILE.stat().st_size > 0:
+                break
+            await asyncio.sleep(1)
+
     while True:
         ahora = datetime.now()
         pendientes = [
@@ -150,10 +170,11 @@ async def main():
     logger.info(f"[run] 📋 Configuración cargada desde: {CONFIG_FILE}")
     logger.info(f"[run] 🤖 Directorio base: {BASE_DIR}")
 
-    tareas = [planificador(config)]
+    tareas = []
 
     if platform == "discord":
         tareas.append(bot_discord())
+        tareas.append(planificador(config))
     elif platform == "telegram":
         # TODO: añadir bot_telegram() cuando esté implementado
         logger.info("[run] ℹ️  Telegram seleccionado — bot principal pendiente de implementar")

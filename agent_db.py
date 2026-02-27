@@ -5,9 +5,144 @@ import os
 import threading
 from pathlib import Path
 from agent_logging import get_logger
-from db_utils import get_server_db_path_fallback, get_personality_name
 
 logger = get_logger('db')
+
+_ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
+
+
+def _sanitize_server_name(server_name: str) -> str:
+    server_sanitized = server_name.lower().replace(' ', '_').replace('-', '_')
+    server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
+    return server_sanitized
+
+
+def get_active_server_name() -> str | None:
+    env_active = os.getenv("ACTIVE_SERVER_NAME")
+    if env_active:
+        value = env_active.strip()
+        return value or None
+    try:
+        if _ACTIVE_SERVER_FILE.exists():
+            value = _ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip()
+            return value or None
+    except Exception:
+        return None
+    return None
+
+
+def persist_active_server_name(server_name: str) -> None:
+    try:
+        _ACTIVE_SERVER_FILE.write_text(server_name.strip(), encoding="utf-8")
+    except Exception:
+        pass
+
+# --- UTILIDADES PARA GESTIÓN DE BASES DE DATOS POR SERVIDOR ---
+
+def get_server_db_path(server_name: str, db_name: str) -> Path:
+    """
+    Genera ruta de base de datos para un servidor específico.
+    
+    Args:
+        server_name: Nombre del servidor (sanitizado)
+        db_name: Nombre del archivo de base de datos
+    
+    Returns:
+        Path: Ruta completa a la base de datos
+    """
+    if server_name == "default":
+        active = get_active_server_name()
+        if active:
+            server_name = active
+
+    # Sanitizar nombre del servidor
+    server_sanitized = _sanitize_server_name(server_name)
+    
+    # Directorio base
+    base_dir = Path(__file__).parent
+    server_dir = base_dir / "databases" / server_sanitized
+    
+    # Crear directorio si no existe
+    server_dir.mkdir(parents=True, exist_ok=True)
+    
+    return server_dir / db_name
+
+def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
+    """
+    Versión con fallback para entornos Docker o permisos restringidos.
+    """
+    if server_name == "default":
+        active = get_active_server_name()
+        if active:
+            server_name = active
+
+    # Intentar ruta local primero
+    local_path = get_server_db_path(server_name, db_name)
+    
+    try:
+        # Probar si podemos escribir
+        conn = sqlite3.connect(str(local_path))
+        cursor = conn.cursor()
+        cursor.execute('CREATE TABLE IF NOT EXISTS __test_write (id INTEGER)')
+        conn.commit()
+        cursor.execute('DROP TABLE IF EXISTS __test_write')
+        conn.commit()
+        conn.close()
+        return local_path
+    except (PermissionError, OSError) as e:
+        logger.warning(f"⚠️ No write access a {local_path}: {e}. Usando fallback en home directory.")
+        
+        # Fallback en home directory
+        server_sanitized = _sanitize_server_name(server_name)
+        
+        fallback_dir = Path.home() / '.roleagentbot' / 'databases' / server_sanitized
+        fallback_dir.mkdir(parents=True, exist_ok=True)
+        
+        fallback_path = fallback_dir / db_name
+        logger.info(f"ℹ️ BD reubicada a {fallback_path}")
+        return fallback_path
+
+def get_server_log_path(server_name: str, log_name: str) -> Path:
+    """
+    Genera ruta de log para un servidor específico.
+    
+    Args:
+        server_name: Nombre del servidor (sanitizado)
+        log_name: Nombre del archivo de log
+    
+    Returns:
+        Path: Ruta completa al archivo de log
+    """
+    if server_name == "default":
+        active = get_active_server_name()
+        if active:
+            server_name = active
+
+    # Sanitizar nombre del servidor
+    server_sanitized = _sanitize_server_name(server_name)
+    
+    # Directorio base
+    base_dir = Path(__file__).parent
+    server_dir = base_dir / "logs" / server_sanitized
+    
+    # Crear directorio si no existe
+    server_dir.mkdir(parents=True, exist_ok=True)
+    
+    return server_dir / log_name
+
+def get_personality_name():
+    """Obtiene nombre de la personalidad desde variable de entorno o configuración."""
+    # Primero intentar desde variable de entorno (prioridad en Docker)
+    env_personality = os.getenv('PERSONALITY')
+    if env_personality:
+        return env_personality.lower()
+    
+    # Sino intentar desde agent_engine
+    try:
+        from agent_engine import PERSONALIDAD
+        return PERSONALIDAD.get("name", "agent").lower()
+    except:
+        return "agent"
 
 # Configuración de rutas y límites
 BASE_DIR = Path(__file__).parent
@@ -218,10 +353,41 @@ _db_instances = {}
 
 def get_db_instance(server_name: str = "default") -> AgentDatabase:
     """Obtiene o crea una instancia de base de datos para un servidor específico."""
+    if server_name == "default":
+        active = get_active_server_name()
+        if active:
+            server_name = active
     if server_name not in _db_instances:
         _db_instances[server_name] = AgentDatabase(server_name)
     return _db_instances[server_name]
 
-# Instancia global por defecto (para compatibilidad)
-db = get_db_instance("default")
-logger.info("🗄️ [DB] Base de datos global inicializada")
+# Instancia global por defecto (para compatibilidad) - inicialización lazy
+db = None
+_current_server_name = None
+
+def get_global_db(server_name: str = None, use_default_for_roles: bool = False) -> AgentDatabase:
+    """Obtiene la instancia global de BD para el servidor actual."""
+    global db, _current_server_name
+    
+    # Si es un proceso de rol y no hay servidor específico, usar default
+    if server_name is None:
+        active = _current_server_name or get_active_server_name()
+        if active:
+            server_name = active
+        elif use_default_for_roles and os.getenv("ROLE_AGENT_PROCESS"):
+            server_name = "default"
+        else:
+            server_name = "default"
+    
+    if db is None or _current_server_name != server_name:
+        db = get_db_instance(server_name)
+        _current_server_name = server_name
+        logger.info(f"🗄️ [DB] Base de datos global inicializada para servidor: {server_name}")
+    
+    return db
+
+def set_current_server(server_name: str):
+    """Establece el servidor actual para la BD global."""
+    global _current_server_name
+    _current_server_name = server_name
+    persist_active_server_name(server_name)
