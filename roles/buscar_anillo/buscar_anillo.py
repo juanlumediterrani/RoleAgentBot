@@ -9,8 +9,8 @@ import re
 from discord.ext import commands
 from dotenv import load_dotenv
 load_dotenv()
-from agent_engine import pensar
-from agent_db import db
+from agent_engine import PERSONALIDAD, pensar, get_discord_token
+from agent_db import get_global_db
 from agent_logging import get_logger
 
 logger = get_logger('anillo')
@@ -37,7 +37,7 @@ class AnilloBot(commands.Bot):
         await self.buscar_anillo_automatico()
         
         # Limpiar BD antigua
-        filas = await asyncio.to_thread(db.limpiar_interacciones_antiguas, 30)
+        filas = await asyncio.to_thread(get_global_db().limpiar_interacciones_antiguas, 30)
         logger.info(f"🧹 Limpieza: {filas} registros borrados.")
         
         await self.close()
@@ -54,7 +54,7 @@ class AnilloBot(commands.Bot):
             objetivo = random.choice(miembros)
             
             # Limitar: max 2 ANILLO por servidor al día
-            cuenta_anillo = await asyncio.to_thread(db.contar_interacciones_tipo_ultimo_dia, "ANILLO", guild.id)
+            cuenta_anillo = await asyncio.to_thread(get_global_db().contar_interacciones_tipo_ultimo_dia, "ANILLO", guild.id)
             if cuenta_anillo >= 2:
                 logger.info(f"🔕 [Límite] Ya hubo {cuenta_anillo} ANILLO hoy en servidor {guild.id}, saltando.")
                 continue
@@ -69,7 +69,7 @@ class AnilloBot(commands.Bot):
                 
                 # Registrar en tabla principal
                 await asyncio.to_thread(
-                    db.registrar_interaccion,
+                    get_global_db().registrar_interaccion,
                     objetivo.id, objetivo.name, "ANILLO", 
                     "Búsqueda del anillo", None, guild.id,
                     metadata={"respuesta": res, "rol": "buscar_anillo"}
@@ -93,7 +93,7 @@ class AnilloBot(commands.Bot):
             
             # Limitar detecciones automáticas: max 3 por servidor al día
             if servidor_id:
-                cuenta_detecciones = await asyncio.to_thread(db.contar_interacciones_tipo_ultimo_dia, "DETECCION_ANILLO", servidor_id)
+                cuenta_detecciones = await asyncio.to_thread(get_global_db().contar_interacciones_tipo_ultimo_dia, "DETECCION_ANILLO", servidor_id)
                 if cuenta_detecciones < 3:
                     async with message.channel.typing():
                         prompt = f"{message.author.name} acaba de decir que tiene el anillo único! Reacciona inmediatamente con sorpresa y exige que te lo entregue. Sé muy insistente."
@@ -104,7 +104,7 @@ class AnilloBot(commands.Bot):
                             
                             # Registrar en tabla principal
                             await asyncio.to_thread(
-                                db.registrar_interaccion,
+                                get_global_db().registrar_interaccion,
                                 message.author.id, message.author.name, "DETECCION_ANILLO",
                                 message.content, message.channel.id, servidor_id,
                                 metadata={"respuesta": respuesta, "mensaje_original": message.content, "rol": "buscar_anillo"}
@@ -132,7 +132,7 @@ class AnilloBot(commands.Bot):
                 servidor_id = getattr(message.guild, 'id', None)
                 for acusado in acusados:
                     await asyncio.to_thread(
-                        db.registrar_interaccion,
+                        get_global_db().registrar_interaccion,
                         acusado.id, acusado.name, "SOSPECHA_ANILLO",
                         f"{message.author.name} mencionó que {acusado.name} tiene el anillo",
                         message.channel.id, servidor_id,
@@ -177,7 +177,7 @@ class AnilloBot(commands.Bot):
         # Verificar límites diarios de acusaciones (max 5 por servidor al día)
         servidor_id = ctx.guild.id if ctx.guild else None
         if servidor_id:
-            cuenta_acusaciones = await asyncio.to_thread(db.contar_interacciones_tipo_ultimo_dia, "ACUSACION_ANILLO", servidor_id)
+            cuenta_acusaciones = await asyncio.to_thread(get_global_db().contar_interacciones_tipo_ultimo_dia, "ACUSACION_ANILLO", servidor_id)
             if cuenta_acusaciones >= 5:
                 await ctx.send(f"👹 BRRR ya ubo muchas akusaciones oy ({cuenta_acusaciones})! putre esta kansado, vuelve mañana!")
                 return
@@ -201,7 +201,7 @@ class AnilloBot(commands.Bot):
                 
                 # Registrar la acusación en tabla principal
                 await asyncio.to_thread(
-                    db.registrar_interaccion,
+                    get_global_db().registrar_interaccion,
                     miembro.id, acusado_nombre, "ACUSACION_ANILLO",
                     f"Acusado por {acusador_nombre} de tener el anillo",
                     None, servidor_id,
@@ -225,4 +225,4 @@ class AnilloBot(commands.Bot):
             await ctx.send("👹 BLEGH putre tiene problema! no puede pensar aora, intenta luego!")
 
 if __name__ == "__main__":
-    AnilloBot().run(os.getenv('DISCORD_TOKEN'))
+    AnilloBot().run(get_discord_token())

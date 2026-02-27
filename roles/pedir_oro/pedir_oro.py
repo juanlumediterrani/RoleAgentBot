@@ -8,8 +8,8 @@ import random
 from discord.ext import tasks
 from dotenv import load_dotenv
 load_dotenv()
-from agent_engine import pensar
-from agent_db import db
+from agent_engine import PERSONALIDAD, pensar, get_discord_token
+from agent_db import get_global_db
 from agent_logging import get_logger
 
 logger = get_logger('oro')
@@ -53,7 +53,7 @@ class OroBot(discord.Client):
         await self.tarea_pedir_oro()
         
         # Limpiar BD antigua
-        filas = await asyncio.to_thread(db.limpiar_interacciones_antiguas, 30)
+        filas = await asyncio.to_thread(get_global_db().limpiar_interacciones_antiguas, 30)
         logger.info(f"🧹 Limpieza: {filas} registros borrados.")
         
         await self.close()
@@ -80,13 +80,13 @@ class OroBot(discord.Client):
         objetivo = random.choice(miembros)
         
         # Limitar: max 2 ORO_DM por servidor al día
-        cuenta_dm = await asyncio.to_thread(db.contar_interacciones_tipo_ultimo_dia, "ORO_DM", guild.id)
+        cuenta_dm = await asyncio.to_thread(get_global_db().contar_interacciones_tipo_ultimo_dia, "ORO_DM", guild.id)
         if cuenta_dm >= 2:
             logger.info(f"🔕 [Límite] Ya hubo {cuenta_dm} ORO_DM hoy en servidor {guild.id}, saltando.")
             return
         
         # Verificar si usuario ha recibido oro recientemente (últimas 12h)
-        ha_pedido_recientemente = await asyncio.to_thread(db.usuario_ha_pedido_tipo_recientemente, objetivo.id, "ORO_DM", 12)
+        ha_pedido_recientemente = await asyncio.to_thread(get_global_db().usuario_ha_pedido_tipo_recientemente, objetivo.id, "ORO_DM", 12)
         if not ha_pedido_recientemente:
             razon = random.choice(RAZONES_PEDIR_ORO)
             res = await asyncio.to_thread(pensar, f"Pídele oro a {objetivo.name}: {razon}, convencele.")
@@ -96,7 +96,7 @@ class OroBot(discord.Client):
                 
                 # Registrar en tabla principal
                 await asyncio.to_thread(
-                    db.registrar_interaccion,
+                    get_global_db().registrar_interaccion,
                     objetivo.id, objetivo.name, "ORO_DM", 
                     "Te pedí oro por privado", None, guild.id, 
                     metadata={"respuesta": res, "rol": "pedir_oro"}
@@ -112,7 +112,7 @@ class OroBot(discord.Client):
             return
         
         # Limitar: max 4 ORO_PUBLICO por servidor al día
-        cuenta_publico = await asyncio.to_thread(db.contar_interacciones_tipo_ultimo_dia, "ORO_PUBLICO", guild.id)
+        cuenta_publico = await asyncio.to_thread(get_global_db().contar_interacciones_tipo_ultimo_dia, "ORO_PUBLICO", guild.id)
         if cuenta_publico >= 4:
             logger.info(f"🔕 [Límite] Ya hubo {cuenta_publico} ORO_PUBLICO hoy en servidor {guild.id}, saltando.")
             return
@@ -129,7 +129,7 @@ class OroBot(discord.Client):
             
             # Registrar en tabla principal
             await asyncio.to_thread(
-                db.registrar_interaccion,
+                get_global_db().registrar_interaccion,
                 str(canal.id), "CANAL_PUBLICO", "ORO_PUBLICO", 
                 "Grito de oro en el canal", canal.id, guild.id, 
                 metadata={"respuesta": res, "rol": "pedir_oro"}
@@ -139,4 +139,4 @@ class OroBot(discord.Client):
             logger.warning(f"⚠️ Error enviando ORO_PUBLICO en {canal}: {e}")
 
 if __name__ == "__main__":
-    OroBot().run(os.getenv('DISCORD_TOKEN'))
+    OroBot().run(get_discord_token())
