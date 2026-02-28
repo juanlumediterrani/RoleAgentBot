@@ -29,6 +29,14 @@ except ImportError:
     module_available = False
     get_vigia_db_instance = None
 
+# Importar base de datos de POE2
+try:
+    from roles.buscador_tesoros.poe2 import get_poe2_db_instance
+    poe2_module_available = True
+except ImportError:
+    poe2_module_available = False
+    get_poe2_db_instance = None
+
 # Verificar si el rol vigia_noticias está activado (prioridad a variables de entorno)
 import os
 vigia_role_enabled = os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true"
@@ -38,6 +46,15 @@ if not vigia_role_enabled:
 
 # VIGIA_AVAILABLE solo es True si el módulo se puede importar Y el rol está activado
 VIGIA_AVAILABLE = module_available and vigia_role_enabled
+
+# Verificar si el rol buscador_tesoros está activado
+buscador_role_enabled = os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true"
+if not buscador_role_enabled:
+    # Fallback a configuración JSON si no hay variable de entorno
+    buscador_role_enabled = agent_config.get("roles", {}).get("buscador_tesoros", {}).get("enabled", False)
+
+# POE2_AVAILABLE solo es True si el módulo se puede importar Y el rol buscador_tesoros está activado
+POE2_AVAILABLE = poe2_module_available and buscador_role_enabled
 
 def get_server_name(guild) -> str:
     """Obtiene un nombre sanitizado para el servidor."""
@@ -59,6 +76,13 @@ def get_vigia_db_for_server(guild):
         return None
     server_name = get_server_name(guild)
     return get_vigia_db_instance(server_name)
+
+def get_poe2_db_for_server(guild):
+    """Obtiene instancia de BD de POE2 para un servidor específico."""
+    if not POE2_AVAILABLE:
+        return None
+    server_name = get_server_name(guild)
+    return get_poe2_db_instance(server_name)
 
 logger = get_logger('discord')
 
@@ -139,38 +163,232 @@ def get_greeting_enabled(guild) -> bool:
 # --- COMANDOS DE CONTROL DE SALUDOS ---
 
 async def _cmd_saluda_toggle(ctx, enabled: bool):
-    """Comando genérico para activar/desactivar saludos."""
+    """Comando genérico para activar/desactivar saludos de presencia."""
     # Verificar permisos (solo admins o mods)
     if not ctx.author.guild_permissions.administrator and not ctx.author.guild_permissions.manage_guild:
-        await ctx.send("❌ Solo administradores pueden modificar los saludos.")
+        await ctx.send("❌ Solo administradores pueden modificar los saludos de presencia.")
         return
     
     set_greeting_enabled(ctx.guild, enabled)
     
     action = "activados" if enabled else "desactivados"
-    await ctx.send(f"✅ Saludos {action} en este servidor.")
-    logger.info(f"🔧 [DISCORD] {ctx.author.name} {action} los saludos en {ctx.guild.name}")
+    await ctx.send(f"✅ Saludos de presencia {action} en este servidor.")
+    logger.info(f"🔧 [DISCORD] {ctx.author.name} {action} los saludos de presencia en {ctx.guild.name}")
 
-# Registrar comandos dinámicos para saludos con formato estándar
+async def _cmd_bienvenida_toggle(ctx, enabled: bool):
+    """Comando genérico para activar/desactivar saludos de bienvenida."""
+    # Verificar permisos (solo admins o mods)
+    if not ctx.author.guild_permissions.administrator and not ctx.author.guild_permissions.manage_guild:
+        await ctx.send("❌ Solo administradores pueden modificar los saludos de bienvenida.")
+        return
+    
+    # Obtener configuración actual
+    greeting_cfg = _discord_cfg.get("member_greeting", {})
+    greeting_cfg["enabled"] = enabled
+    
+    # Actualizar configuración (esto requeriría persistencia en un archivo real)
+    logger.info(f"🔧 [DISCORD] {ctx.author.name} {'activó' if enabled else 'desactivó'} los saludos de bienvenida en {ctx.guild.name}")
+    
+    action = "activados" if enabled else "desactivados"
+    await ctx.send(f"✅ Saludos de bienvenida {action} en este servidor.")
+
+# Registrar comandos dinámicos para saludos de presencia con formato estándar
 personality_name = PERSONALIDAD.get("name", "agent").lower()
 
-# Comando para activar saludos: !saluda[nombre]
+# Comando para activar saludos de presencia: !saluda[nombre]
 saluda_command_name = f"saluda{personality_name}"
 
 @bot.command(name=saluda_command_name)
 async def cmd_saluda_enable(ctx):
     await _cmd_saluda_toggle(ctx, True)
 
-logger.info(f"🤖 [DISCORD] Comando de saludos registrado: {saluda_command_name}")
-
-# Comando para desactivar saludos: !nosaludes[nombre]
+# Comando para desactivar saludos de presencia: !nosaludes[nombre]
 nosaludes_command_name = f"nosaludes{personality_name}"
 
 @bot.command(name=nosaludes_command_name)
 async def cmd_saluda_disable(ctx):
     await _cmd_saluda_toggle(ctx, False)
 
-logger.info(f"🤖 [DISCORD] Comando de saludos registrado: {nosaludes_command_name}")
+# Comandos para bienvenida de nuevos miembros
+bienvenida_command_name = f"bienvenida{personality_name}"
+
+@bot.command(name=bienvenida_command_name)
+async def cmd_bienvenida_enable(ctx):
+    await _cmd_bienvenida_toggle(ctx, True)
+
+nobienvenida_command_name = f"nobienvenida{personality_name}"
+
+@bot.command(name=nobienvenida_command_name)
+async def cmd_bienvenida_disable(ctx):
+    await _cmd_bienvenida_toggle(ctx, False)
+
+# Comando de insulto (definido aquí para estar disponible en la ayuda)
+insulta_command_name = f"insulta{personality_name}"
+
+# Comando de ayuda
+ayuda_command_name = f"ayuda{personality_name}"
+
+@bot.command(name=ayuda_command_name)
+async def cmd_ayuda(ctx):
+    """Muestra todos los comandos activos para este agente."""
+    
+    # Obtener configuración de roles activos
+    roles_activos = []
+    
+    # Verificar roles desde variables de entorno o configuración
+    import os
+    roles_config = agent_config.get("roles", {})
+    
+    # Vigía de noticias
+    if os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true" or roles_config.get("vigia_noticias", {}).get("enabled", False):
+        roles_activos.append("📡 **Vigía de Noticias** - Alertas de noticias críticas")
+    
+    # Buscador de tesoros
+    if os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true" or roles_config.get("buscador_tesoros", {}).get("enabled", False):
+        roles_activos.append("💎 **Buscador de Tesoros** - Alertas de oportunidades de compra")
+    
+    # Pedir oro
+    if os.getenv("PEDIR_ORO_ENABLED", "false").lower() == "true" or roles_config.get("pedir_oro", {}).get("enabled", False):
+        roles_activos.append("💰 **Pedir Oro** - Solicitudes de donaciones")
+    
+    # Buscar anillo
+    if os.getenv("BUSCAR_ANILLO_ENABLED", "false").lower() == "true" or roles_config.get("buscar_anillo", {}).get("enabled", False):
+        roles_activos.append("👁️ **Buscar Anillo** - Acusaciones por el anillo uniko")
+    
+    # Construir mensaje de ayuda
+    ayuda_msg = f"🤖 **Comandos de {_bot_display_name}** 🤖\n\n"
+    
+    ayuda_msg += "📋 **Comandos de Control:**\n"
+    ayuda_msg += f"• `!{saluda_command_name}` - Activar saludos de presencia (DM)\n"
+    ayuda_msg += f"• `!{nosaludes_command_name}` - Desactivar saludos de presencia\n"
+    ayuda_msg += f"• `!{bienvenida_command_name}` - Activar bienvenida de nuevos miembros\n"
+    ayuda_msg += f"• `!{nobienvenida_command_name}` - Desactivar bienvenida de nuevos miembros\n"
+    ayuda_msg += f"• `!{insulta_command_name}` - Lanzar insulto orco\n"
+    ayuda_msg += "• `!rolekronk <rol> <on/off>` - Activar/desactivar roles dinámicamente\n"
+    ayuda_msg += f"• `!{ayuda_command_name}` - Mostrar esta ayuda\n\n"
+    
+    ayuda_msg += "🎭 **Roles Activos y Comandos:**\n"
+    if roles_activos:
+        # Vigía de noticias
+        if os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true" or roles_config.get("vigia_noticias", {}).get("enabled", False):
+            ayuda_msg += "• 📡 **Vigía de Noticias** - `!avisanoticias` / `!noavisanoticias` | `!vigiaayuda` para ayuda específica\n"
+        
+        # Buscador de tesoros
+        if os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true" or roles_config.get("buscador_tesoros", {}).get("enabled", False):
+            ayuda_msg += "• 💎 **Buscador de Tesoros** - `!buscartesoros poe2` / `!nobuscartesoros poe2` | `!poe2ayuda` para ayuda específica\n"
+        
+        # Pedir oro
+        if os.getenv("PEDIR_ORO_ENABLED", "false").lower() == "true" or roles_config.get("pedir_oro", {}).get("enabled", False):
+            ayuda_msg += "• 💰 **Pedir Oro** - Comandos de donación disponibles\n"
+        
+        # Buscar anillo
+        if os.getenv("BUSCAR_ANILLO_ENABLED", "false").lower() == "true" or roles_config.get("buscar_anillo", {}).get("enabled", False):
+            ayuda_msg += "• 👁️ **Buscar Anillo** - `!acusaranillo` para acusaciones\n"
+    else:
+        ayuda_msg += "• No hay roles especiales activos\n"
+    
+    ayuda_msg += "\n💬 **Conversación:**\n"
+    ayuda_msg += "• Menciona al bot para conversar\n"
+    ayuda_msg += "• Responde usando la personalidad del agente\n"
+    
+    ayuda_msg += "\n🎭 **Roles Disponibles:**\n"
+    ayuda_msg += "• `vigia_noticias` - Alertas de noticias críticas\n"
+    ayuda_msg += "• `buscador_tesoros` - Alertas de oportunidades de compra\n"
+    ayuda_msg += "• `pedir_oro` - Solicitudes de donaciones\n"
+    ayuda_msg += "• `buscar_anillo` - Acusaciones por el anillo uniko\n"
+    
+    await ctx.send(ayuda_msg)
+
+# Comando de ayuda específico para POE2
+@bot.command(name="poe2ayuda")
+async def cmd_poe2_ayuda(ctx):
+    """Muestra ayuda específica para el subrol POE2."""
+    
+    ayuda_poe2 = "🔮 **Ayuda del Subrol POE2** 🔮\n\n"
+    ayuda_poe2 += "📋 **Control del Subrol:**\n"
+    ayuda_poe2 += "• `!buscartesoros poe2` - Activa el subrol POE2\n"
+    ayuda_poe2 += "• `!nobuscartesoros poe2` - Desactiva el subrol POE2\n\n"
+    
+    ayuda_poe2 += "🏆 **Gestión de Liga:**\n"
+    ayuda_poe2 += "• `!poe2liga` - Muestra la liga actual\n"
+    ayuda_poe2 += "• `!poe2liga Standard` - Establece liga Standard\n"
+    ayuda_poe2 += "• `!poe2liga Fate of the Vaal` - Establece liga Fate of the Vaal\n\n"
+    
+    ayuda_poe2 += "🎯 **Gestión de Objetivos:**\n"
+    ayuda_poe2 += "• `!poe2add \"Nombre del Item\"` - Añade item a objetivos\n"
+    ayuda_poe2 += "• `!poe2del \"Nombre del Item\"` - Elimina item de objetivos\n"
+    ayuda_poe2 += "• `!poe2list` - Muestra configuración y objetivos actuales\n\n"
+    
+    ayuda_poe2 += "📊 **Items Conocidos:**\n"
+    ayuda_poe2 += "• Ancient Rib • Ancient Collarbone • Ancient Jawbone\n"
+    ayuda_poe2 += "• Fracturing Orb • Igniferis • Idol of Uldurn\n\n"
+    
+    ayuda_poe2 += "⚡ **Análisis Automático:**\n"
+    ayuda_poe2 += "• **COMPRA**: Precio ≤ mínimo histórico × 1.15\n"
+    ayuda_poe2 += "• **VENTA**: Precio ≥ máximo histórico × 0.85\n\n"
+    
+    ayuda_poe2 += "💡 **Ejemplos de Uso:**\n"
+    ayuda_poe2 += "```\n!buscartesoros poe2\n!poe2liga Fate of the Vaal\n!poe2add \"Ancient Rib\"\n!poe2add \"Fracturing Orb\"\n!poe2list\n```"
+    
+    await ctx.send(ayuda_poe2)
+
+# Comando de ayuda específico para Vigía de Noticias
+@bot.command(name="vigiaayuda")
+async def cmd_vigia_ayuda(ctx):
+    """Muestra ayuda específica para el Vigía de Noticias."""
+    
+    ayuda_vigia = "📡 **Ayuda del Vigía de Noticias** 📡\n\n"
+    ayuda_vigia += "📋 **Control de Suscripción:**\n"
+    ayuda_vigia += "• `!avisanoticias` - Suscribirse a alertas críticas\n"
+    ayuda_vigia += "• `!noavisanoticias` - Cancelar suscripción a alertas\n\n"
+    
+    ayuda_vigia += "🔍 **Funcionalidades:**\n"
+    ayuda_vigia += "• Monitorización 24/7 de fuentes de noticias\n"
+    ayuda_vigia += "• Detección de eventos críticos y emergencias\n"
+    ayuda_vigia += "• Notificaciones instantáneas vía Discord\n"
+    ayuda_vigia += "• Filtrado inteligente de información relevante\n\n"
+    
+    ayuda_vigia += "⏰ **Frecuencia:**\n"
+    ayuda_vigia += "• Verificación cada hora\n"
+    ayuda_vigia += "• Alertas inmediatas ante eventos críticos\n"
+    ayuda_vigia += "• Resumen diario de eventos importantes\n\n"
+    
+    ayuda_vigia += "🌐 **Fuentes Monitoreadas:**\n"
+    ayuda_vigia += "• Noticias internacionales\n"
+    ayuda_vigia += "• Eventos geopolíticos\n"
+    ayuda_vigia += "• Desastres naturales\n"
+    ayuda_vigia += "• Crisis económicas\n\n"
+    
+    ayuda_vigia += "💡 **Uso Recomendado:**\n"
+    ayuda_vigia += "1. Usa `!avisanoticias` para activar alertas\n"
+    ayuda_vigia += "2. Recibirás notificaciones de eventos críticos\n"
+    ayuda_vigia += "3. Usa `!noavisanoticias` para desactivar si es necesario\n"
+    
+    await ctx.send(ayuda_vigia)
+
+
+async def _cmd_insulta(ctx, obj=""):
+    target = obj if obj else ctx.author.mention
+
+    if "@everyone" in target or "@here" in target:
+        prompt = _insult_cfg.get("prompt_everyone", "Lanza un insulto breve a TODO EL MUNDO, maximo 1 frase")
+    else:
+        prompt = _insult_cfg.get("prompt_target", "Lanza un insulto breve a una persona especifica, maximo 1 frase")
+
+    res = await asyncio.to_thread(pensar, prompt)
+    await ctx.send(f"{target} {res}")
+
+
+# Registrar el comando de insulto dinámicamente
+bot.command(name=insulta_command_name)(_cmd_insulta)
+
+logger.info(f"🤖 [DISCORD] Comandos registrados:")
+logger.info(f"🤖 [DISCORD] - {saluda_command_name} (activar saludos de presencia)")
+logger.info(f"🤖 [DISCORD] - {nosaludes_command_name} (desactivar saludos de presencia)")
+logger.info(f"🤖 [DISCORD] - {bienvenida_command_name} (activar bienvenida)")
+logger.info(f"🤖 [DISCORD] - {nobienvenida_command_name} (desactivar bienvenida)")
+logger.info(f"🤖 [DISCORD] - {insulta_command_name} (insultos)")
+logger.info(f"🤖 [DISCORD] - {ayuda_command_name} (mostrar ayuda)")
 
 # --- EVENTOS Y COMANDOS ---
 
@@ -181,6 +399,10 @@ async def on_ready():
     logger.info(f"🤖 [DISCORD] Bot {_bot_display_name} conectado como {bot.user}")
     logger.info(f"🤖 [DISCORD] Comando prefijo: {_cmd_prefix}")
     logger.info(f"🤖 [DISCORD] Comando insulto: {_insult_name}")
+    
+    # Verificar intents para presencia
+    logger.info(f"🤖 [DISCORD] Intents - members: {bot.intents.members}")
+    logger.info(f"🤖 [DISCORD] Intents - presences: {bot.intents.presences}")
 
     # Elegir UN servidor activo (si el bot está en varios guilds)
     preferred_guild = os.getenv("DISCORD_ACTIVE_GUILD", "").strip().lower()
@@ -289,8 +511,8 @@ async def on_member_join(member):
 
 
 @bot.event
-async def on_member_update(before, after):
-    """Se ejecuta cuando el estado de un miembro cambia (offline a online, etc.)."""
+async def on_presence_update(before, after):
+    """Se ejecuta cuando el estado de presencia de un miembro cambia (offline a online, etc.)."""
     if after.bot:
         return  # Ignorar bots
     
@@ -317,56 +539,39 @@ async def on_member_update(before, after):
     last_greeting_key = f"presence_greeting_{after.id}"
     
     # Usar una variable global simple para tracking (se reinicia con el bot)
-    if not hasattr(on_member_update, '_last_greetings'):
-        on_member_update._last_greetings = {}
+    if not hasattr(on_presence_update, '_last_greetings'):
+        on_presence_update._last_greetings = {}
     
-    last_greeting_time = on_member_update._last_greetings.get(last_greeting_key, 0)
+    last_greeting_time = on_presence_update._last_greetings.get(last_greeting_key, 0)
     if current_time - last_greeting_time < 300:  # 5 minutos
         return
     
-    # Determinar canal para saludos de presencia
-    presence_channel_name = presence_cfg.get("welcome_channel", "general")
-    presence_channel = None
-    
-    # Buscar canal de presencia
-    for channel in after.guild.text_channels:
-        if channel.name.lower() == presence_channel_name.lower():
-            presence_channel = channel
-            break
-    
-    # Si no se encuentra, usar el primer canal disponible
-    if presence_channel is None and after.guild.text_channels:
-        presence_channel = after.guild.text_channels[0]
-    
-    if presence_channel is None:
-        return
-    
     # Generar saludo de presencia
-    presence_prompt = presence_cfg.get("prompt", "Saluda brevemente a {member_name} que se acaba de conectar. Sé breve y amigable.")
+    presence_prompt = presence_cfg.get("prompt", "Saluda brevemente a {member_name} que se acaba de conectar. Sé orco pero breve.")
     presence_context = presence_prompt.format(member_name=after.display_name)
     
     try:
         # Generar respuesta usando el motor de IA
         saludo = await asyncio.to_thread(pensar, presence_context)
         
-        # Enviar saludo al canal
-        await presence_channel.send(f"👋 {after.mention} {saludo}")
+        # Enviar saludo por DM
+        await after.send(f"👋 {saludo}")
         
         # Registrar en el log
-        logger.info(f"🔄 [DISCORD] Usuario {after.name} ({after.id}) conectado en {after.guild.name}")
+        logger.info(f"🔄 [DISCORD] DM enviado a {after.name} ({after.id})")
         
         # Actualizar timestamp para evitar spam
-        on_member_update._last_greetings[last_greeting_key] = current_time
+        on_presence_update._last_greetings[last_greeting_key] = current_time
         
-        # Registrar interacción en la base de datos
+        # Registrar interacción en la base de datos (sin canal específico por ser DM)
         db_instance = get_db_for_server(after.guild)
         await asyncio.to_thread(
             db_instance.registrar_interaccion,
             after.id,
             after.name,
-            "PRESENCIA",
-            f"Usuario pasó de offline a online",
-            presence_channel.id,
+            "PRESENCIA_DM",
+            f"Usuario pasó de offline a online (saludo por DM)",
+            None,  # No hay canal por ser DM
             after.guild.id,
             metadata={"saludo": saludo}
         )
@@ -375,28 +580,338 @@ async def on_member_update(before, after):
         logger.error(f"❌ [DISCORD] Error al saludar presencia de {after.name}: {e}")
         # Saludo de emergencia si falla la IA
         fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
-        await presence_channel.send(f"👋 {after.mention} {fallback_msg}")
+        await after.send(f"👋 {fallback_msg}")
 
 
-async def _cmd_insulta(ctx, obj=""):
-    target = obj if obj else ctx.author.mention
+# --- COMANDOS DE CONTROL DE ROLES ---
 
-    if "@everyone" in target or "@here" in target:
-        prompt = _insult_cfg.get("prompt_everyone", "Lanza un insulto breve a TODO EL MUNDO, maximo 1 frase")
+async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
+    """Comando genérico para activar/desactivar roles dinámicamente."""
+    # Verificar permisos (solo admins)
+    if not ctx.author.guild_permissions.administrator and not ctx.author.guild_permissions.manage_guild:
+        await ctx.send("❌ Solo administradores pueden modificar los roles.")
+        return
+    
+    # Lista de roles válidos
+    valid_roles = ["vigia_noticias", "buscador_tesoros", "pedir_oro", "buscar_anillo"]
+    
+    if role_name not in valid_roles:
+        await ctx.send(f"❌ Rol '{role_name}' no válido. Roles disponibles: {', '.join(valid_roles)}")
+        return
+    
+    # Variable de entorno
+    env_var_name = f"{role_name.upper()}_ENABLED"
+    env_value = "true" if enabled else "false"
+    
+    # Establecer variable de entorno (solo para esta sesión)
+    os.environ[env_var_name] = env_value
+    
+    # Actualizar configuración en tiempo de ejecución
+    if "roles" not in agent_config:
+        agent_config["roles"] = {}
+    
+    if role_name not in agent_config["roles"]:
+        agent_config["roles"][role_name] = {}
+    
+    agent_config["roles"][role_name]["enabled"] = enabled
+    
+    # Registrar comandos del rol si se está activando
+    if enabled:
+        await register_specific_role_commands(role_name)
     else:
-        prompt = _insult_cfg.get("prompt_target", "Lanza un insulto breve a una persona especifica, maximo 1 frase")
+        # Desregistrar comandos del rol (opcional, complicado)
+        logger.info(f"🎭 [DISCORD] Rol {role_name} desactivado (comandos permanecen registrados)")
+    
+    action = "activado" if enabled else "desactivado"
+    await ctx.send(f"✅ Rol '{role_name}' {action} correctamente.")
+    logger.info(f"🎭 [DISCORD] {ctx.author.name} {action} el rol {role_name} en {ctx.guild.name}")
 
-    res = await asyncio.to_thread(pensar, prompt)
-    await ctx.send(f"{target} {res}")
+async def register_specific_role_commands(role_name: str):
+    """Registra comandos para un rol específico."""
+    logger.info(f"🎭 [DISCORD] Registrando comandos para rol: {role_name}")
+    
+    if role_name == "vigia_noticias":
+        # Comandos del Vigía de Noticias
+        @bot.command(name="avisanoticias")
+        async def cmd_avisa_noticias(ctx):
+            if not VIGIA_AVAILABLE:
+                await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                return
+            
+            db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+            if not db_vigia_instance:
+                await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                return
+            
+            usuario_id = str(ctx.author.id)
+            usuario_nombre = ctx.author.name
+            
+            # Verificar si ya está suscrito
+            if db_vigia_instance.esta_suscrito(usuario_id):
+                await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
+                return
+            
+            # Agregar suscripción
+            if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
+                await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
+                logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
+        
+        @bot.command(name="noavisanoticias")
+        async def cmd_no_avisa_noticias(ctx):
+            if not VIGIA_AVAILABLE:
+                await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                return
+            
+            db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+            if not db_vigia_instance:
+                await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                return
+            
+            usuario_id = str(ctx.author.id)
+            usuario_nombre = ctx.author.name
+            
+            # Verificar si está suscrito
+            if not db_vigia_instance.esta_suscrito(usuario_id):
+                await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
+                return
+            
+            # Eliminar suscripción
+            if db_vigia_instance.eliminar_suscripcion(usuario_id):
+                await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
+                logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
+    
+    elif role_name == "buscar_anillo":
+        # Comando para acusar por el anillo
+        @bot.command(name="acusaranillo")
+        async def cmd_acusar_anillo(ctx, target: str = ""):
+            if not target:
+                await ctx.send("❌ Debes mencionar a alguien para acusar. Ejemplo: !acusaranillo @usuario")
+                return
+            
+            # Obtener instancia de BD para este servidor
+            db_instance = get_db_for_server(ctx.guild)
+            
+            # Buscar al usuario mencionado
+            mentioned_user = None
+            for user in ctx.message.mentions:
+                if not user.bot and user.id != ctx.author.id:
+                    mentioned_user = user
+                    break
+            
+            if not mentioned_user:
+                await ctx.send("❌ No se encontró un usuario válido para acusar.")
+                return
+            
+            # Generar acusación usando la personalidad
+            accusation_prompt = f"Acusa brevemente a {mentioned_user.display_name} de tener el anillo uniko. Sé orco y directo."
+            accusation = await asyncio.to_thread(pensar, accusation_prompt)
+            
+            await ctx.send(f"👁️ {mentioned_user.mention} {accusation}")
+            
+            # Registrar en la base de datos
+            await asyncio.to_thread(
+                db_instance.registrar_interaccion,
+                ctx.author.id,
+                ctx.author.name,
+                "ACUSACION_ANILLO",
+                f"Acusó a {mentioned_user.name} por el anillo",
+                ctx.channel.id,
+                ctx.guild.id,
+                metadata={"acusado": mentioned_user.id, "acusacion": accusation}
+            )
+            
+            logger.info(f"👁️ [ANILLO] {ctx.author.name} acusó a {mentioned_user.name} en {ctx.guild.name}")
+    
+    elif role_name == "buscador_tesoros":
+        # Importar pensar para el subrol POE2
+        from agent_engine import pensar
+        
+        # Comandos del subrol POE2
+        @bot.command(name="buscartesoros")
+        async def cmd_buscar_tesoros(ctx, subrol: str = ""):
+            if not subrol or subrol.lower() != "poe2":
+                await ctx.send("❌ Debes especificar el subrol. Ejemplo: !buscartesoros poe2")
+                return
+            
+            if not POE2_AVAILABLE:
+                await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                return
+            
+            db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+            if not db_poe2_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                return
+            
+            # Activar el subrol
+            if db_poe2_instance.set_activo(True):
+                await ctx.send(f"✅ {ctx.author.mention} Subrol POE2 activado. Ahora buscaré tesoros en Path of Exile 2.")
+                logger.info(f"🔮 [POE2] {ctx.author.name} activó el subrol en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al activar el subrol POE2. Inténtalo de nuevo.")
+        
+        @bot.command(name="nobuscartesoros")
+        async def cmd_no_buscar_tesoros(ctx, subrol: str = ""):
+            if not subrol or subrol.lower() != "poe2":
+                await ctx.send("❌ Debes especificar el subrol. Ejemplo: !nobuscartesoros poe2")
+                return
+            
+            if not POE2_AVAILABLE:
+                await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                return
+            
+            db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+            if not db_poe2_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                return
+            
+            # Desactivar el subrol
+            if db_poe2_instance.set_activo(False):
+                await ctx.send(f"✅ {ctx.author.mention} Subrol POE2 desactivado. Ya no buscaré tesoros en Path of Exile 2.")
+                logger.info(f"🔮 [POE2] {ctx.author.name} desactivó el subrol en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al desactivar el subrol POE2. Inténtalo de nuevo.")
+        
+        # Comandos de gestión del subrol POE2
+        @bot.command(name="poe2liga")
+        async def cmd_poe2_liga(ctx, liga: str = ""):
+            if not POE2_AVAILABLE:
+                await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                return
+            
+            if not liga:
+                # Mostrar liga actual
+                db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                if not db_poe2_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                    return
+                
+                liga_actual = db_poe2_instance.get_liga()
+                await ctx.send(f"🔮 **Liga POE2 actual**: {liga_actual}")
+                return
+            
+            # Validar liga
+            liga_lower = liga.lower()
+            if liga_lower not in ["standard", "fate of the vaal"]:
+                await ctx.send("❌ Liga no válida. Las ligas disponibles son: `Standard` y `Fate of the Vaal`")
+                return
+            
+            db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+            if not db_poe2_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                return
+            
+            # Establecer liga
+            liga_formateada = "Fate of the Vaal" if liga_lower == "fate of the vaal" else "Standard"
+            if db_poe2_instance.set_liga(liga_formateada):
+                await ctx.send(f"✅ {ctx.author.mention} Liga POE2 establecida a: {liga_formateada}")
+                logger.info(f"🔮 [POE2] {ctx.author.name} cambió liga a {liga_formateada} en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al cambiar la liga. Inténtalo de nuevo.")
+        
+        @bot.command(name="poe2add")
+        async def cmd_poe2_add(ctx, item_name: str = ""):
+            if not POE2_AVAILABLE:
+                await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                return
+            
+            if not item_name:
+                await ctx.send("❌ Debes especificar el nombre del item. Ejemplo: !poe2add \"Ancient Rib\"")
+                return
+            
+            db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+            if not db_poe2_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                return
+            
+            # Añadir objetivo
+            if db_poe2_instance.add_objetivo(item_name):
+                await ctx.send(f"✅ {ctx.author.mention} Item añadido a objetivos: {item_name}")
+                logger.info(f"🔮 [POE2] {ctx.author.name} añadió objetivo {item_name} en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al añadir el item. Inténtalo de nuevo.")
+        
+        @bot.command(name="poe2del")
+        async def cmd_poe2_del(ctx, item_name: str = ""):
+            if not POE2_AVAILABLE:
+                await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                return
+            
+            if not item_name:
+                await ctx.send("❌ Debes especificar el nombre del item. Ejemplo: !poe2del \"Ancient Rib\"")
+                return
+            
+            db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+            if not db_poe2_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                return
+            
+            # Eliminar objetivo
+            if db_poe2_instance.remove_objetivo(item_name):
+                await ctx.send(f"✅ {ctx.author.mention} Item eliminado de objetivos: {item_name}")
+                logger.info(f"🔮 [POE2] {ctx.author.name} eliminó objetivo {item_name} en {ctx.guild.name}")
+            else:
+                await ctx.send(f"❌ No se encontró el item '{item_name}' en la lista de objetivos.")
+        
+        @bot.command(name="poe2list")
+        async def cmd_poe2_list(ctx):
+            if not POE2_AVAILABLE:
+                await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                return
+            
+            db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+            if not db_poe2_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                return
+            
+            # Obtener configuración actual
+            liga_actual = db_poe2_instance.get_liga()
+            activo = db_poe2_instance.is_activo()
+            objetivos = db_poe2_instance.get_objetivos()
+            
+            # Formatear respuesta
+            estado = "🟢 Activo" if activo else "🔴 Inactivo"
+            
+            response = f"🔮 **Configuración POE2**\n"
+            response += f"📊 **Estado**: {estado}\n"
+            response += f"🏆 **Liga**: {liga_actual}\n"
+            response += f"🎯 **Objetivos** ({len(objetivos)} items):\n"
+            
+            if objetivos:
+                for i, (nombre, item_id, activo_item, fecha) in enumerate(objetivos, 1):
+                    estado_item = "✅" if activo_item else "❌"
+                    response += f"  {i}. {estado_item} {nombre}\n"
+            else:
+                response += "  *No hay items configurados*\n"
+            
+            await ctx.send(response)
+    
+    logger.info(f"🎭 [DISCORD] Comandos registrados para rol: {role_name}")
 
-# Registrar el comando dinámicamente con formato estándar
-# Siempre usar formato !insulta[nombre]
-insulta_command_name = f"insulta{personality_name}"
-bot.command(name=insulta_command_name)(_cmd_insulta)
-logger.info(f"🤖 [DISCORD] Comando insulto registrado: {insulta_command_name}")
+# Comandos dinámicos para control de roles
+@bot.command(name="rolekronk")
+async def cmd_role_kronk(ctx, role_name: str, action: str = ""):
+    """Control de roles para KRONK. Uso: !rolekronk <rol> <on/off>"""
+    if not role_name:
+        await ctx.send("❌ Debes especificar un rol. Ejemplo: !rolekronk vigia_noticias on")
+        return
+    
+    if not action:
+        await ctx.send("❌ Debes especificar una acción. Ejemplo: !rolekronk vigia_noticias on")
+        return
+    
+    action_lower = action.lower()
+    if action_lower in ["on", "true", "1", "activar", "enable"]:
+        await _cmd_role_toggle(ctx, role_name, True)
+    elif action_lower in ["off", "false", "0", "desactivar", "disable"]:
+        await _cmd_role_toggle(ctx, role_name, False)
+    else:
+        await ctx.send("❌ Acción no válida. Usa: on/off, true/false, 1/0, activar/desactivar")
 
-
-# --- COMANDOS CONDICIONALES POR ROL ACTIVADO ---
+logger.info(f"🤖 [DISCORD] Comando de roles registrado: rolekronk")
 
 def register_role_commands():
     """Registra comandos solo si el rol correspondiente está activado."""
@@ -476,10 +991,10 @@ def register_role_commands():
         
         elif role_name == "buscar_anillo":
             # Comando para acusar por el anillo
-            @bot.command(name="acusaranilo")
+            @bot.command(name="acusaranillo")
             async def cmd_acusar_anillo(ctx, target: str = ""):
                 if not target:
-                    await ctx.send("❌ Debes mencionar a alguien para acusar. Ejemplo: !acusaranilo @usuario")
+                    await ctx.send("❌ Debes mencionar a alguien para acusar. Ejemplo: !acusaranillo @usuario")
                     return
                 
                 # Obtener instancia de BD para este servidor
@@ -521,6 +1036,169 @@ def register_role_commands():
                 )
                 
                 logger.info(f"👁️ [ANILLO] {ctx.author.name} acusó a {mentioned_user.name} en {ctx.guild.name}")
+        
+        elif role_name == "buscador_tesoros":
+            # Importar pensar para el subrol POE2
+            from agent_engine import pensar
+            
+            # Comandos del subrol POE2
+            @bot.command(name="buscartesoros")
+            async def cmd_buscar_tesoros(ctx, subrol: str = ""):
+                if not subrol or subrol.lower() != "poe2":
+                    await ctx.send("❌ Debes especificar el subrol. Ejemplo: !buscartesoros poe2")
+                    return
+                
+                if not POE2_AVAILABLE:
+                    await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                    return
+                
+                db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                if not db_poe2_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                    return
+                
+                # Activar el subrol
+                if db_poe2_instance.set_activo(True):
+                    await ctx.send(f"✅ {ctx.author.mention} Subrol POE2 activado. Ahora buscaré tesoros en Path of Exile 2.")
+                    logger.info(f"🔮 [POE2] {ctx.author.name} activó el subrol en {ctx.guild.name}")
+                else:
+                    await ctx.send("❌ Error al activar el subrol POE2. Inténtalo de nuevo.")
+            
+            @bot.command(name="nobuscartesoros")
+            async def cmd_no_buscar_tesoros(ctx, subrol: str = ""):
+                if not subrol or subrol.lower() != "poe2":
+                    await ctx.send("❌ Debes especificar el subrol. Ejemplo: !nobuscartesoros poe2")
+                    return
+                
+                if not POE2_AVAILABLE:
+                    await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                    return
+                
+                db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                if not db_poe2_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                    return
+                
+                # Desactivar el subrol
+                if db_poe2_instance.set_activo(False):
+                    await ctx.send(f"✅ {ctx.author.mention} Subrol POE2 desactivado. Ya no buscaré tesoros en Path of Exile 2.")
+                    logger.info(f"🔮 [POE2] {ctx.author.name} desactivó el subrol en {ctx.guild.name}")
+                else:
+                    await ctx.send("❌ Error al desactivar el subrol POE2. Inténtalo de nuevo.")
+            
+            # Comandos de gestión del subrol POE2
+            @bot.command(name="poe2liga")
+            async def cmd_poe2_liga(ctx, liga: str = ""):
+                if not POE2_AVAILABLE:
+                    await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                    return
+                
+                if not liga:
+                    # Mostrar liga actual
+                    db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                    if not db_poe2_instance:
+                        await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                        return
+                    
+                    liga_actual = db_poe2_instance.get_liga()
+                    await ctx.send(f"🔮 **Liga POE2 actual**: {liga_actual}")
+                    return
+                
+                # Validar liga
+                liga_lower = liga.lower()
+                if liga_lower not in ["standard", "fate of the vaal"]:
+                    await ctx.send("❌ Liga no válida. Las ligas disponibles son: `Standard` y `Fate of the Vaal`")
+                    return
+                
+                db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                if not db_poe2_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                    return
+                
+                # Establecer liga
+                liga_formateada = "Fate of the Vaal" if liga_lower == "fate of the vaal" else "Standard"
+                if db_poe2_instance.set_liga(liga_formateada):
+                    await ctx.send(f"✅ {ctx.author.mention} Liga POE2 establecida a: {liga_formateada}")
+                    logger.info(f"🔮 [POE2] {ctx.author.name} cambió liga a {liga_formateada} en {ctx.guild.name}")
+                else:
+                    await ctx.send("❌ Error al cambiar la liga. Inténtalo de nuevo.")
+            
+            @bot.command(name="poe2add")
+            async def cmd_poe2_add(ctx, item_name: str = ""):
+                if not POE2_AVAILABLE:
+                    await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                    return
+                
+                if not item_name:
+                    await ctx.send("❌ Debes especificar el nombre del item. Ejemplo: !poe2add \"Ancient Rib\"")
+                    return
+                
+                db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                if not db_poe2_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                    return
+                
+                # Añadir objetivo
+                if db_poe2_instance.add_objetivo(item_name):
+                    await ctx.send(f"✅ {ctx.author.mention} Item añadido a objetivos: {item_name}")
+                    logger.info(f"🔮 [POE2] {ctx.author.name} añadió objetivo {item_name} en {ctx.guild.name}")
+                else:
+                    await ctx.send("❌ Error al añadir el item. Inténtalo de nuevo.")
+            
+            @bot.command(name="poe2del")
+            async def cmd_poe2_del(ctx, item_name: str = ""):
+                if not POE2_AVAILABLE:
+                    await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                    return
+                
+                if not item_name:
+                    await ctx.send("❌ Debes especificar el nombre del item. Ejemplo: !poe2del \"Ancient Rib\"")
+                    return
+                
+                db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                if not db_poe2_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                    return
+                
+                # Eliminar objetivo
+                if db_poe2_instance.remove_objetivo(item_name):
+                    await ctx.send(f"✅ {ctx.author.mention} Item eliminado de objetivos: {item_name}")
+                    logger.info(f"🔮 [POE2] {ctx.author.name} eliminó objetivo {item_name} en {ctx.guild.name}")
+                else:
+                    await ctx.send(f"❌ No se encontró el item '{item_name}' en la lista de objetivos.")
+            
+            @bot.command(name="poe2list")
+            async def cmd_poe2_list(ctx):
+                if not POE2_AVAILABLE:
+                    await ctx.send("❌ El subrol POE2 no está disponible en este servidor.")
+                    return
+                
+                db_poe2_instance = get_poe2_db_for_server(ctx.guild)
+                if not db_poe2_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos de POE2.")
+                    return
+                
+                # Obtener configuración actual
+                liga_actual = db_poe2_instance.get_liga()
+                activo = db_poe2_instance.is_activo()
+                objetivos = db_poe2_instance.get_objetivos()
+                
+                # Formatear respuesta
+                estado = "🟢 Activo" if activo else "🔴 Inactivo"
+                
+                response = f"🔮 **Configuración POE2**\n"
+                response += f"📊 **Estado**: {estado}\n"
+                response += f"🏆 **Liga**: {liga_actual}\n"
+                response += f"🎯 **Objetivos** ({len(objetivos)} items):\n"
+                
+                if objetivos:
+                    for i, (nombre, item_id, activo_item, fecha) in enumerate(objetivos, 1):
+                        estado_item = "✅" if activo_item else "❌"
+                        response += f"  {i}. {estado_item} {nombre}\n"
+                else:
+                    response += "  *No hay items configurados*\n"
+                
+                await ctx.send(response)
 
 # Registrar comandos condicionales
 register_role_commands()

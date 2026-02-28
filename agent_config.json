@@ -3,22 +3,22 @@
   "platform": "discord",
   "roles": {
     "vigia_noticias": {
-      "enabled": true,
+      "enabled": false,
       "interval_hours": 1,
       "script": "roles/vigia_noticias/vigia_noticias.py"
     },
     "buscador_tesoros": {
-      "enabled": true,
+      "enabled": false,
       "interval_hours": 1,
       "script": "roles/buscador_tesoros/buscador_tesoros.py"
     },
     "pedir_oro": {
-      "enabled": true,
+      "enabled": false,
       "interval_hours": 12,
       "script": "roles/pedir_oro/pedir_oro.py"
     },
     "buscar_anillo": {
-      "enabled": true,
+      "enabled": false,
       "interval_hours": 24,
       "script": "roles/buscar_anillo/buscar_anillo.py"
     }
