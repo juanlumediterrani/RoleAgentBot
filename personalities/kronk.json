@@ -95,7 +95,7 @@
       "fallback": "UHHH nuevo umano! kronk ver si sirve para algo!"
     },
     "member_presence": {
-      "enabled": false,
+      "enabled": true,
       "welcome_channel": "general",
       "prompt": "Saluda brevemente a {member_name} que se acaba de conectar. Sé orco pero breve.",
       "fallback": "UHHH kronk verte umano!"
