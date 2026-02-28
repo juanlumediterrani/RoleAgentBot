@@ -14,15 +14,16 @@ services:
       dockerfile: docker/armv7/Dockerfile.armv7
       args:
         PERSONALITY: ${PERSONALITY:-kronk}
-        ACTIVE_ROLES: ${ACTIVE_ROLES:-pedir_oro,buscador_tesoros}
     image: roleagentbot:armv7
     container_name: roleagentbot
     env_file: ../../.env
     environment:
       - PERSONALITY=${PERSONALITY:-kronk}
-      - ACTIVE_ROLES=${ACTIVE_ROLES:-pedir_oro,buscador_tesoros}
+      - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN}
+      # Sin variables de rol específicas -> usa agent_config.json
     volumes:
       - ../../databases:/app/databases
       - ../../logs:/app/logs
+      - ../../fatiga.json:/app/fatiga.json
     restart: unless-stopped
