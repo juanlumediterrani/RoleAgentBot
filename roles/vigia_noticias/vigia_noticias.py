@@ -15,6 +15,7 @@ sys.path.append(os.path.dirname(__file__))
 from db_role_vigia import get_vigia_db_instance
 from agent_db import get_active_server_name
 from agent_logging import get_logger
+from vigia_commands import VigiaCommands, COMANDOS_VIGIA
 
 _env_candidates = [
     (os.getenv("ROLE_AGENT_ENV_FILE") or "").strip(),
@@ -75,89 +76,156 @@ def _analizar_con_cohere(titulo: str) -> str:
         return "basura umana"
 
 class NoticiaBot(discord.Client):
+    def __init__(self, *args, **kwargs):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        super().__init__(intents=intents, *args, **kwargs)
+        self.commands = VigiaCommands(self)
+    
     async def on_ready(self):
         logger.info("👀 Vigía oteando noticias...")
+        await self._procesar_feeds()
+        await self.close()
+    
+    async def on_message(self, message):
+        # Ignorar mensajes del propio bot
+        if message.author == self.user:
+            return
+        
+        # Procesar comandos del vigía
+        if message.content.startswith('!vigia '):
+            parts = message.content[7:].strip().split()
+            if not parts:
+                return
+            
+            comando = parts[0].lower()
+            args = parts[1:] if len(parts) > 1 else []
+            
+            if comando in COMANDOS_VIGIA:
+                try:
+                    await COMANDOS_VIGIA[comando](self.commands, message, args)
+                except Exception as e:
+                    logger.exception(f"Error ejecutando comando {comando}: {e}")
+                    await message.channel.send(f"❌ Error ejecutando comando: {comando}")
+    
+    async def _procesar_feeds(self):
         try:
             # Obtener instancia de BD para el servidor activo
             server_name = get_active_server_name() or "default"
             db_vigia = get_vigia_db_instance(server_name)
             
-            # Obtener suscriptores de la base de datos
-            suscriptores = db_vigia.obtener_suscriptores_activos()
-            logger.info(f"✅ {len(suscriptores)} suscriptores encontrados")
-            # Obtener entradas del feed (feedparser si está disponible, sino XML)
-            entries = []
-            try:
-                import feedparser
-                logger.info(f"📡 Obteniendo feed desde {RSS_URL}")
-                resp = requests.get(RSS_URL, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
-                feed = feedparser.parse(resp.content)
-                entries = [(getattr(e, 'title', None) or getattr(e, 'summary', '')) for e in feed.entries[:5]]
-                logger.info(f"📰 Obtenidas {len(entries)} noticias del feed")
-            except Exception as e1:
-                # Fallback sin feedparser
-                logger.warning(f"⚠️ Feedparser falló: {e1}, intentando con XML...")
-                try:
-                    r = requests.get(RSS_URL, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
-                    root = ET.fromstring(r.content)
-                    items = root.findall('.//item')[:5]
-                    entries = [ (item.find('title').text if item.find('title') is not None else '') for item in items ]
-                    logger.info(f"📰 Obtenidas {len(entries)} noticias del feed (XML)")
-                except Exception as e:
-                    logger.exception(f"❌ Vigía: no se pudo obtener feed: {e}")
-                    entries = []
-
-            # Procesar primeras entradas (filtrar duplicados usando db helpers)
-            logger.info(f"🔍 Procesando {len(entries)} noticias...")
-            for i, titulo in enumerate(entries, 1):
-                titulo = titulo or ''
-                if not titulo:
-                    logger.warning(f"⚠️ Noticia {i} sin título, saltando...")
-                    continue
+            # Obtener todos los feeds activos
+            feeds = db_vigia.obtener_feeds_activos()
+            logger.info(f"✅ {len(feeds)} feeds configurados")
+            
+            if not feeds:
+                logger.warning("⚠️ No hay feeds activos configurados")
+                return
+            
+            # Procesar cada feed
+            for feed_data in feeds:
+                await self._procesar_feed_individual(db_vigia, feed_data)
                 
-                logger.info(f"📄 [{i}/{len(entries)}] Procesando: {titulo[:80]}...")
-
-                if db_vigia.noticia_esta_leida(titulo):
-                    logger.info(f"ℹ️ Vigía: noticia ya leída: {titulo}")
-                    continue
-
-                # Analizar en hilo para no bloquear
-                try:
-                    analisis = await asyncio.wait_for(
-                        asyncio.to_thread(_analizar_con_cohere, titulo),
-                        timeout=90
-                    )
-                except asyncio.TimeoutError:
-                    logger.warning(f"⏱️ Vigía: timeout analizando noticia (90s): {titulo[:80]}")
-                    analisis = "basura umana"
-                except Exception as e:
-                    logger.exception(f"⚠️ Vigía: fallo Cohere analizando noticia: {e}")
-                    # Si Cohere falla, marcar como no crítica y continuar
-                    analisis = "basura umana"
-
-                if analisis and 'basura umana' not in analisis.lower():
-                    try:
-                        # Enviar a todos los suscriptores
-                        for suscriptor_id in suscriptores:
-                            try:
-                                user = await self.fetch_user(suscriptor_id)
-                                await user.send(f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {titulo}*")
-                                logger.info(f"✅ Vigía: enviada noticia a {user.name}: {titulo}")
-                            except Exception as e_user:
-                                logger.warning(f"⚠️ Vigía: no se pudo enviar a {suscriptor_id}: {e_user}")
-                        
-                        # Registrar notificación enviada en la BD local
-                        db_vigia.registrar_notificacion_enviada(titulo, analisis, "critica", "CNBC")
-                    except Exception as e:
-                        logger.exception(f"⚠️ Vigía: fallo enviando noticia: {e}")
-
-                # Marcar siempre como leída para no repetir
-                ok = db_vigia.marcar_noticia_leida(titulo, "CNBC")
-                if not ok:
-                    logger.warning(f"⚠️ Vigía: no se pudo marcar noticia: {titulo}")
         except Exception as e: 
             logger.exception(f"❌ Error Vigía: {e}")
-        finally: await self.close()
+
+    async def _procesar_feed_individual(self, db_vigia, feed_data):
+        """Procesa un feed individual."""
+        feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave = feed_data
+        
+        try:
+            logger.info(f"📡 Procesando feed: {nombre} ({categoria})")
+            
+            # Obtener suscriptores para esta categoría/feed
+            suscriptores = db_vigia.obtener_suscriptores_por_categoria(categoria, feed_id)
+            if not suscriptores:
+                logger.info(f"ℹ️ No hay suscriptores para {categoria}/{feed_id}")
+                return
+            
+            logger.info(f"👥 {len(suscriptores)} suscriptores para {categoria}")
+            
+            # Obtener entradas del feed
+            entries = await self._obtener_entradas_feed(url, nombre)
+            if not entries:
+                return
+            
+            # Procesar cada noticia
+            for i, titulo in enumerate(entries[:3], 1):  # Limitar a 3 por feed
+                titulo = titulo or ''
+                if not titulo:
+                    continue
+                
+                logger.info(f"📄 [{i}/{len(entries)}] {nombre}: {titulo[:80]}...")
+                
+                if db_vigia.noticia_esta_leida(titulo):
+                    logger.info(f"ℹ️ Noticia ya leída: {titulo}")
+                    continue
+                
+                # Analizar noticia
+                analisis = await self._analizar_noticia(titulo)
+                
+                if analisis and 'basura umana' not in analisis.lower():
+                    await self._enviar_notificacion_critica(db_vigia, suscriptores, titulo, analisis, nombre)
+                
+                # Marcar como leída siempre
+                db_vigia.marcar_noticia_leida(titulo, nombre)
+                
+        except Exception as e:
+            logger.exception(f"❌ Error procesando feed {nombre}: {e}")
+    
+    async def _obtener_entradas_feed(self, url: str, nombre_feed: str) -> list:
+        """Obtiene entradas de un feed RSS."""
+        try:
+            import feedparser
+            logger.info(f"📡 Obteniendo feed desde {url}")
+            resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+            feed = feedparser.parse(resp.content)
+            entries = [(getattr(e, 'title', None) or getattr(e, 'summary', '')) for e in feed.entries[:5]]
+            logger.info(f"📰 {len(entries)} noticias de {nombre_feed}")
+            return entries
+        except Exception as e1:
+            logger.warning(f"⚠️ Feedparser falló para {nombre_feed}: {e1}, intentando XML...")
+            try:
+                r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+                root = ET.fromstring(r.content)
+                items = root.findall('.//item')[:5]
+                entries = [(item.find('title').text if item.find('title') is not None else '') for item in items]
+                logger.info(f"📰 {len(entries)} noticias de {nombre_feed} (XML)")
+                return entries
+            except Exception as e:
+                logger.exception(f"❌ No se pudo obtener feed {nombre_feed}: {e}")
+                return []
+    
+    async def _analizar_noticia(self, titulo: str) -> str:
+        """Analiza una noticia usando Cohere."""
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(_analizar_con_cohere, titulo),
+                timeout=90
+            )
+        except asyncio.TimeoutError:
+            logger.warning(f"⏱️ Timeout analizando: {titulo[:80]}")
+            return "basura umana"
+        except Exception as e:
+            logger.exception(f"⚠️ Error Cohere analizando: {e}")
+            return "basura umana"
+    
+    async def _enviar_notificacion_critica(self, db_vigia, suscriptores, titulo, analisis, fuente):
+        """Envía notificación crítica a suscriptores."""
+        try:
+            for suscriptor_id in suscriptores:
+                try:
+                    user = await self.fetch_user(int(suscriptor_id))
+                    await user.send(f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {fuente}*\n*Noticia: {titulo}*")
+                    logger.info(f"✅ Enviada a {user.name}: {titulo[:50]}")
+                except Exception as e_user:
+                    logger.warning(f"⚠️ No se pudo enviar a {suscriptor_id}: {e_user}")
+            
+            # Registrar en BD
+            db_vigia.registrar_notificacion_enviada(titulo, analisis, "critica", fuente)
+            
+        except Exception as e:
+            logger.exception(f"❌ Error enviando notificación: {e}")
 
 if __name__ == "__main__":
-    NoticiaBot(intents=discord.Intents.default()).run(get_discord_token())
+    NoticiaBot().run(get_discord_token())

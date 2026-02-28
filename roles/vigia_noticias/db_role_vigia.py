@@ -93,6 +93,9 @@ class DatabaseRoleVigia:
                 self._init_noticias_table()
                 self._init_notificaciones_table()
                 self._init_suscripciones_table()
+                self._init_feeds_table()
+                self._init_suscripciones_categorias_table()
+                self._insertar_feeds_por_defecto()
                 
                 logger.info(f"✅ Base de datos Vigía lista en {self.db_path}")
         except Exception as e:
@@ -273,6 +276,256 @@ class DatabaseRoleVigia:
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creando tabla suscripciones_vigia: {e}")
+    
+    def _init_feeds_table(self):
+        """Inicializa tabla de feeds configurables."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS feeds_config (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nombre TEXT NOT NULL UNIQUE,
+                        url TEXT NOT NULL UNIQUE,
+                        categoria TEXT NOT NULL,
+                        pais TEXT DEFAULT NULL,
+                        idioma TEXT DEFAULT 'es',
+                        activo INTEGER DEFAULT 1,
+                        prioridad INTEGER DEFAULT 1,
+                        palabras_clave TEXT DEFAULT NULL,
+                        fecha_creacion TEXT NOT NULL,
+                        fecha_actualizacion TEXT DEFAULT NULL
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_categoria ON feeds_config (categoria)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_activo ON feeds_config (activo)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_prioridad ON feeds_config (prioridad)')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creando tabla feeds_config: {e}")
+    
+    def _init_suscripciones_categorias_table(self):
+        """Inicializa tabla de suscripciones por categoría."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS suscripciones_categorias (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        usuario_id TEXT NOT NULL,
+                        categoria TEXT NOT NULL,
+                        feed_id INTEGER DEFAULT NULL,
+                        fecha_suscripcion TEXT NOT NULL,
+                        activa INTEGER DEFAULT 1,
+                        UNIQUE(usuario_id, categoria, feed_id)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_cat_usuario ON suscripciones_categorias (usuario_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_cat_categoria ON suscripciones_categorias (categoria)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_cat_feed ON suscripciones_categorias (feed_id)')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creando tabla suscripciones_categorias: {e}")
+    
+    def _insertar_feeds_por_defecto(self):
+        """Inserta feeds por defecto si no existen."""
+        try:
+            feeds_por_defecto = [
+                {
+                    'nombre': 'CNBC Noticias',
+                    'url': 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362',
+                    'categoria': 'economia',
+                    'pais': 'US',
+                    'idioma': 'en',
+                    'palabras_clave': 'market,stock,economy,business,finance'
+                },
+                {
+                    'nombre': 'El País Internacional',
+                    'url': 'https://elpais.com/internacional/rss/portada.xml',
+                    'categoria': 'internacional',
+                    'pais': 'ES',
+                    'idioma': 'es',
+                    'palabras_clave': 'guerra,conflicto,diplomacia,crisis'
+                },
+                {
+                    'nombre': 'Reuters World',
+                    'url': 'https://www.reuters.com/rssFeed/worldNews',
+                    'categoria': 'internacional',
+                    'pais': 'US',
+                    'idioma': 'en',
+                    'palabras_clave': 'war,conflict,crisis,government,politics'
+                },
+                {
+                    'nombre': 'BBC Technology',
+                    'url': 'https://feeds.bbci.co.uk/news/technology/rss.xml',
+                    'categoria': 'tecnologia',
+                    'pais': 'UK',
+                    'idioma': 'en',
+                    'palabras_clave': 'ai,technology,cybersecurity,innovation'
+                }
+            ]
+            
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                for feed in feeds_por_defecto:
+                    cursor.execute('''
+                        INSERT OR IGNORE INTO feeds_config 
+                        (nombre, url, categoria, pais, idioma, palabras_clave, fecha_creacion)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        feed['nombre'], feed['url'], feed['categoria'], 
+                        feed['pais'], feed['idioma'], feed['palabras_clave'],
+                        datetime.now().isoformat()
+                    ))
+                conn.commit()
+                logger.info("✅ Feeds por defecto insertados")
+        except Exception as e:
+            logger.exception(f"❌ Error insertando feeds por defecto: {e}")
+    
+    def agregar_feed(self, nombre: str, url: str, categoria: str, pais: str = None, 
+                   idioma: str = 'es', palabras_clave: str = None) -> bool:
+        """Agrega un nuevo feed configurado."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO feeds_config 
+                        (nombre, url, categoria, pais, idioma, palabras_clave, 
+                         fecha_creacion, fecha_actualizacion)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (nombre, url, categoria, pais, idioma, palabras_clave,
+                         datetime.now().isoformat(), datetime.now().isoformat()))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.exception(f"Error agregando feed: {e}")
+            return False
+    
+    def obtener_feeds_activos(self, categoria: str = None) -> list:
+        """Obtiene feeds activos, opcionalmente filtrados por categoría."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                if categoria:
+                    cursor.execute('''
+                        SELECT id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave
+                        FROM feeds_config 
+                        WHERE activo = 1 AND categoria = ?
+                        ORDER BY prioridad DESC, nombre
+                    ''', (categoria,))
+                else:
+                    cursor.execute('''
+                        SELECT id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave
+                        FROM feeds_config 
+                        WHERE activo = 1
+                        ORDER BY prioridad DESC, nombre
+                    ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo feeds activos: {e}")
+            return []
+    
+    def obtener_categorias_disponibles(self) -> list:
+        """Obtiene categorías disponibles con feeds activos."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT DISTINCT categoria, COUNT(*) as count
+                    FROM feeds_config 
+                    WHERE activo = 1
+                    GROUP BY categoria
+                    ORDER BY categoria
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo categorías: {e}")
+            return []
+    
+    def suscribir_usuario_categoria(self, usuario_id: str, categoria: str, feed_id: int = None) -> bool:
+        """Suscribe usuario a una categoría o feed específico."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO suscripciones_categorias 
+                        (usuario_id, categoria, feed_id, fecha_suscripcion, activa)
+                        VALUES (?, ?, ?, ?, 1)
+                    ''', (usuario_id, categoria, feed_id, datetime.now().isoformat()))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.exception(f"Error suscribiendo usuario a categoría: {e}")
+            return False
+    
+    def cancelar_suscripcion_categoria(self, usuario_id: str, categoria: str, feed_id: int = None) -> bool:
+        """Cancela suscripción de usuario a categoría/feed."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    if feed_id:
+                        cursor.execute('''
+                            UPDATE suscripciones_categorias SET activa = 0 
+                            WHERE usuario_id = ? AND categoria = ? AND feed_id = ?
+                        ''', (usuario_id, categoria, feed_id))
+                    else:
+                        cursor.execute('''
+                            UPDATE suscripciones_categorias SET activa = 0 
+                            WHERE usuario_id = ? AND categoria = ? AND feed_id IS NULL
+                        ''', (usuario_id, categoria))
+                    conn.commit()
+                    return cursor.rowcount > 0
+        except Exception as e:
+            logger.exception(f"Error cancelando suscripción: {e}")
+            return False
+    
+    def obtener_suscripciones_usuario(self, usuario_id: str) -> list:
+        """Obtiene suscripciones activas de un usuario."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT categoria, feed_id, fecha_suscripcion
+                    FROM suscripciones_categorias 
+                    WHERE usuario_id = ? AND activa = 1
+                ''', (usuario_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscripciones de usuario: {e}")
+            return []
+    
+    def obtener_suscriptores_por_categoria(self, categoria: str, feed_id: int = None) -> list:
+        """Obtiene usuarios suscritos a una categoría o feed específico."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                if feed_id:
+                    cursor.execute('''
+                        SELECT DISTINCT sc.usuario_id
+                        FROM suscripciones_categorias sc
+                        WHERE sc.categoria = ? AND sc.feed_id = ? AND sc.activa = 1
+                        UNION
+                        SELECT DISTINCT sv.usuario_id
+                        FROM suscripciones_vigia sv
+                        WHERE sv.activa = 1
+                    ''', (categoria, feed_id))
+                else:
+                    cursor.execute('''
+                        SELECT DISTINCT sc.usuario_id
+                        FROM suscripciones_categorias sc
+                        WHERE sc.categoria = ? AND sc.feed_id IS NULL AND sc.activa = 1
+                        UNION
+                        SELECT DISTINCT sv.usuario_id
+                        FROM suscripciones_vigia sv
+                        WHERE sv.activa = 1
+                    ''', (categoria,))
+                return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscriptores por categoría: {e}")
+            return []
     
     def agregar_suscripcion(self, usuario_id: str, usuario_nombre: str) -> bool:
         """Agrega una suscripción de usuario al vigía."""
