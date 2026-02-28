@@ -9,7 +9,8 @@ import math
 from datetime import datetime, timedelta, timezone
 # defer importing heavy LLM client until runtime (avoid import-time deps)
 # from agent_engine import pensar_como_agente
-from agent_db import db
+from agent_engine import get_discord_token
+from agent_db import get_global_db
 import sys
 import os
 sys.path.append(os.path.dirname(__file__))
@@ -34,7 +35,7 @@ UMBRAL_COMPRA = 0.15  # 15% por encima del mínimo histórico
 UMBRAL_VENTA = 0.15   # 15% por debajo del máximo histórico
 
 # Crear instancia de BD con la liga correcta
-db_role_poe = DatabaseRolePoe(get_db_path(LIGA))
+db_role_poe = DatabaseRolePoe("default", LIGA)
 
 def verificar_datos_antiguos(item, liga, horas=24):
     """Verifica si los datos de un item son más antiguos que N horas."""
@@ -218,5 +219,5 @@ class BuscadorBot(discord.Client):
         await self.close()
 
 if __name__ == "__main__":
-    BuscadorBot(intents=discord.Intents.default()).run(os.getenv('DISCORD_TOKEN'))
+    BuscadorBot(intents=discord.Intents.default()).run(get_discord_token())
 

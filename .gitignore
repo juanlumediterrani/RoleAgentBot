@@ -21,3 +21,5 @@ logs/
 # Configuración sensible
 .env
 fatiga.json
+fatiga/
+fatiga_temp.json

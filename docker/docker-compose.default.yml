@@ -28,7 +28,7 @@ services:
     volumes:
       - ../databases:/app/databases
       - ../logs:/app/logs
-      - ../fatiga.json:/app/fatiga.json
+      - ../fatiga:/app/fatiga
 
     restart: unless-stopped
 

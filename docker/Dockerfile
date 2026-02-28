@@ -29,7 +29,6 @@ COPY agent_discord.py .
 COPY agent_engine.py .
 COPY agent_logging.py .
 COPY postprocessor.py .
-COPY fatiga.json .
 COPY run.py .
 
 # ── Personalidades y roles (todos se copian; el script de entrypoint filtra) ──

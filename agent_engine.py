@@ -1,5 +1,6 @@
 import os
 import json
+import random
 from datetime import date
 from google import genai
 from google.genai import types
@@ -7,6 +8,7 @@ from groq import Groq
 from dotenv import load_dotenv
 from agent_logging import get_logger
 from postprocessor import postprocesar_respuesta, consolidar_contexto, is_blocked_response
+from agent_db import get_active_server_name
 
 load_dotenv()
 logger = get_logger('agent_engine')
@@ -30,6 +32,22 @@ PERSONALIDAD = _cargar_personalidad()
 # Solo mostrar log de personalidad si no estamos en un subproceso de rol
 if os.getenv('ROLE_AGENT_PROCESS') != '1':
     logger.info(f"🎭 [PERSONALIDAD] Cargada: {PERSONALIDAD.get('name', 'Unknown')} desde {AGENT_CFG.get('personality', 'Unknown')}")
+
+
+def get_discord_token():
+    """Obtiene el token de Discord específico para la personalidad activa."""
+    personality_name = PERSONALIDAD.get("name", "").upper()
+    specific_token = os.getenv(f"DISCORD_TOKEN_{personality_name}")
+    if specific_token:
+        logger.info(f"🔑 Usando token específico: DISCORD_TOKEN_{personality_name}")
+        return specific_token
+    # Fallback al token genérico
+    fallback_token = os.getenv("DISCORD_TOKEN")
+    if fallback_token:
+        logger.info(f"🔑 Usando token genérico: DISCORD_TOKEN")
+    else:
+        logger.warning("⚠️ No se encontró ningún token de Discord (ni específico ni genérico)")
+    return fallback_token
 
 
 # Cache para evitar múltiples verificaciones de roles
@@ -112,7 +130,29 @@ def _cargar_tareas_vigentes_system_additions() -> list[str]:
 
 # --- CLIENTES Y PATHS ---
 client_groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-PATH_CONTADOR = os.path.join(_BASE_DIR, "fatiga.json")
+
+def _get_fatiga_path():
+    """Obtiene la ruta del archivo de fatiga según servidor y personalidad."""
+    # Si no hay servidor activo, usar ruta temporal hasta que se conecte
+    server_name = get_active_server_name()
+    if not server_name:
+        # Ruta temporal hasta que el bot se conecte a un servidor
+        return os.path.join(_BASE_DIR, "fatiga_temp.json")
+    
+    # Sanitizar el nombre del servidor
+    server_name = server_name.lower().replace(' ', '_').replace('-', '_')
+    server_name = ''.join(c for c in server_name if c.isalnum() or c == '_')
+    
+    personality_name = PERSONALIDAD.get("name", "unknown").lower()
+    
+    fatiga_dir = os.path.join(_BASE_DIR, "fatiga", server_name)
+    
+    # Crear directorio si no existe
+    os.makedirs(fatiga_dir, exist_ok=True)
+    
+    return os.path.join(fatiga_dir, f"{personality_name}.json")
+
+PATH_CONTADOR = _get_fatiga_path()
 # Si AGENT_SIMULACION=1, el contador no se persiste (para simulaciones)
 SIMULACION = os.getenv("AGENT_SIMULATION", os.getenv("ROLE_AGENT_SIMULATION", "")).strip() in ("1", "true", "True", "yes")
 
@@ -161,6 +201,9 @@ def incrementar_uso():
 
 def _fallback_response():
     """Respuesta de emergencia definida en la personalidad."""
+    fallbacks = PERSONALIDAD.get("emergency_fallbacks", [])
+    if fallbacks:
+        return random.choice(fallbacks)
     return PERSONALIDAD.get("emergency_fallback", "...")
 
 
@@ -277,19 +320,78 @@ def pensar(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=
         return _fallback_response()
 
 
+def _construir_system_prompt(personalidad: dict) -> str:
+    """Ensambla el system prompt desde las secciones estructuradas de la personalidad."""
+    secciones = []
+
+    # 1. IDENTIDAD ABSOLUTA (never_break) — siempre primero
+    never_break = personalidad.get("never_break", [])
+    if never_break:
+        never_break_text = "\n".join([f"- {r}" for r in never_break])
+        secciones.append(f"## IDENTIDAD ABSOLUTA (NO NEGOCIABLE)\n{never_break_text}")
+
+    # 2. IDENTIDAD del personaje
+    identity = personalidad.get("identity", "")
+    if identity:
+        secciones.append(f"## PERSONAJE\n{identity}")
+
+    # 3. REGLAS DE ORO (auto-generadas desde format_rules)
+    format_rules = personalidad.get("format_rules", {})
+    if format_rules:
+        reglas = []
+        if format_rules.get("length"):
+            reglas.append(f"- SIEMPRE escribe {format_rules['length']}")
+        if format_rules.get("no_tildes"):
+            reglas.append("- NUNCA uses tildes (a e i o u, sin acento)")
+        if format_rules.get("no_dangling"):
+            reglas.append("- NUNCA termines en palabras sueltas: \"ke\", \"a\", \"de\", \"por\", \"para\"")
+        if format_rules.get("end_punctuation"):
+            reglas.append(f"- {format_rules['end_punctuation']}")
+        if reglas:
+            secciones.append("## REGLAS DE ORO (NUNCA ROMPER)\n" + "\n".join(reglas))
+
+    # 4. ORTOGRAFÍA ORCA
+    orthography = personalidad.get("orthography", [])
+    if orthography:
+        ortho_text = "\n".join(orthography)
+        secciones.append(f"## ORTOGRAFIA ORCA\n{ortho_text}")
+
+    # 5. ESTILO
+    style = personalidad.get("style", [])
+    if style:
+        style_text = "\n".join([f"- {s}" for s in style])
+        secciones.append(f"## ESTILO\n{style_text}")
+
+    # 6. EJEMPLOS
+    examples = personalidad.get("examples", [])
+    if examples:
+        examples_text = "\n".join([f'"{e}"' for e in examples])
+        secciones.append(f"## EJEMPLOS (aprende de estos)\n{examples_text}")
+
+    # Si hay secciones estructuradas, usarlas; si no, fallback al viejo system_prompt
+    if secciones:
+        return "\n\n".join(secciones)
+
+    system_prompt = personalidad.get("system_prompt", "")
+    if isinstance(system_prompt, list):
+        system_prompt = "\n".join([str(x) for x in system_prompt])
+    if never_break:
+        never_break_text = "\n".join([f"- {r}" for r in never_break])
+        return f"## IDENTIDAD ABSOLUTA (NO NEGOCIABLE)\n{never_break_text}\n\n{system_prompt}"
+    return system_prompt
+
+
 def construir_prompt(rol_contextual, contenido_usuario="", historial_lista=[], max_interacciones=5, es_publico=False):
     """Construye y devuelve `(system_instruction, prompt_final)` sin llamar a APIs."""
     contexto_historial = consolidar_contexto(historial_lista, max_interacciones=max_interacciones, personalidad=PERSONALIDAD)
 
-    system_prompt = PERSONALIDAD.get("system_prompt", "")
-    if isinstance(system_prompt, list):
-        system_prompt = "\n".join([str(x) for x in system_prompt])
+    bot_name = PERSONALIDAD.get("name", "Bot")
     public_suffix = PERSONALIDAD.get("public_context_suffix", "")
     history_label = PERSONALIDAD.get("context_history_label", "Historial")
 
-    system_instruction = system_prompt
+    system_instruction = _construir_system_prompt(PERSONALIDAD)
     if es_publico and public_suffix:
-        system_instruction = f"{system_prompt}\n\nCONTEXTO: {public_suffix}"
+        system_instruction = f"{system_instruction}\n\nCONTEXTO: {public_suffix}"
 
     contenido = (contenido_usuario or "").strip()
     # Solo sumar tareas vigentes en modo CHAT.
@@ -326,4 +428,7 @@ def construir_prompt(rol_contextual, contenido_usuario="", historial_lista=[], m
         ] + instructions + ["", closing]
 
     prompt_final = "\n".join(partes_user)
+
+    prompt_final = prompt_final.replace("{name}", bot_name)
+
     return system_instruction, prompt_final

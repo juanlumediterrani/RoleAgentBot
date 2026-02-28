@@ -33,7 +33,7 @@ services:
       - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
       - ../databases:/app/databases
       - ../logs:/app/logs
-      - ../fatiga.json:/app/fatiga.json
+      - ../fatiga:/app/fatiga
     restart: unless-stopped
 
   # Contenedor 2: Putre (con pedir oro y buscador de anillo)
@@ -59,7 +59,7 @@ services:
       - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
       - ../databases:/app/databases
       - ../logs:/app/logs
-      - ../fatiga.json:/app/fatiga.json
+      - ../fatiga:/app/fatiga
     restart: unless-stopped
 
 # Volumen compartido para Python (ahorro máximo de recursos)
