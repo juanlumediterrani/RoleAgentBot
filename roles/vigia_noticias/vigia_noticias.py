@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(__file__))
 from db_role_vigia import get_vigia_db_instance
 from agent_db import get_active_server_name
 from agent_logging import get_logger
-from vigia_commands import VigiaCommands, COMANDOS_VIGIA
+from vigia_commands import VigiaCommands, COMANDOS_VIGIA, COMANDOS_VIGIA_CANAL
 
 _env_candidates = [
     (os.getenv("ROLE_AGENT_ENV_FILE") or "").strip(),
@@ -107,6 +107,22 @@ class NoticiaBot(discord.Client):
                 except Exception as e:
                     logger.exception(f"Error ejecutando comando {comando}: {e}")
                     await message.channel.send(f"❌ Error ejecutando comando: {comando}")
+        
+        # Procesar comandos de canal
+        elif message.content.startswith('!vigiacanal '):
+            parts = message.content[11:].strip().split()
+            if not parts:
+                return
+            
+            comando = parts[0].lower()
+            args = parts[1:] if len(parts) > 1 else []
+            
+            if comando in COMANDOS_VIGIA_CANAL:
+                try:
+                    await COMANDOS_VIGIA_CANAL[comando](self.commands, message, args)
+                except Exception as e:
+                    logger.exception(f"Error ejecutando comando de canal {comando}: {e}")
+                    await message.channel.send(f"❌ Error ejecutando comando de canal: {comando}")
     
     async def _procesar_feeds(self):
         try:
@@ -130,11 +146,11 @@ class NoticiaBot(discord.Client):
             logger.exception(f"❌ Error Vigía: {e}")
 
     async def _procesar_feed_individual(self, db_vigia, feed_data):
-        """Procesa un feed individual."""
-        feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave = feed_data
+        """Procesa un feed individual con lógica híbrida."""
+        feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed = feed_data
         
         try:
-            logger.info(f"📡 Procesando feed: {nombre} ({categoria})")
+            logger.info(f"📡 Procesando feed: {nombre} ({categoria}) - Tipo: {tipo_feed}")
             
             # Obtener suscriptores para esta categoría/feed
             suscriptores = db_vigia.obtener_suscriptores_por_categoria(categoria, feed_id)
@@ -161,17 +177,95 @@ class NoticiaBot(discord.Client):
                     logger.info(f"ℹ️ Noticia ya leída: {titulo}")
                     continue
                 
-                # Analizar noticia
-                analisis = await self._analizar_noticia(titulo)
+                # Procesamiento según tipo de feed
+                debe_enviar = await self._procesar_noticia_hibrida(db_vigia, titulo, feed_data, suscriptores)
                 
-                if analisis and 'basura umana' not in analisis.lower():
-                    await self._enviar_notificacion_critica(db_vigia, suscriptores, titulo, analisis, nombre)
+                if debe_enviar:
+                    # Analizar noticia
+                    analisis = await self._analizar_noticia(titulo)
+                    
+                    if analisis and 'basura umana' not in analisis.lower():
+                        await self._enviar_notificacion_critica(db_vigia, suscriptores, titulo, analisis, nombre)
                 
                 # Marcar como leída siempre
                 db_vigia.marcar_noticia_leida(titulo, nombre)
                 
         except Exception as e:
             logger.exception(f"❌ Error procesando feed {nombre}: {e}")
+    
+    async def _procesar_noticia_hibrida(self, db_vigia, titulo: str, feed_data, suscriptores_categoria: list) -> bool:
+        """Procesa noticia con lógica híbrida según tipo de feed."""
+        feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed = feed_data
+        
+        try:
+            # Verificar suscriptores de palabras clave
+            suscriptores_palabras = db_vigia.verificar_palabras_clave_noticia(titulo)
+            
+            # Combinar suscriptores
+            todos_suscriptores = list(set(suscriptores_categoria + suscriptores_palabras))
+            
+            if not todos_suscriptores:
+                return False
+            
+            # Para feeds especializados: enviar siempre si hay suscriptores
+            if tipo_feed == 'especializado':
+                return True
+            
+            # Para feeds generales: usar IA para clasificar
+            elif tipo_feed == 'general':
+                categoria_detectada = await self._clasificar_noticia_con_ia(titulo)
+                logger.info(f"🤖 IA clasificó '{titulo[:50]}...' como: {categoria_detectada}")
+                
+                # Verificar si la categoría detectada coincide con suscripciones
+                return categoria_detectada == categoria
+            
+            # Para feeds de palabras clave: ya se verificó arriba
+            elif tipo_feed == 'palabras_clave':
+                return len(suscriptores_palabras) > 0
+            
+            return False
+            
+        except Exception as e:
+            logger.exception(f"Error en procesamiento híbrido: {e}")
+            return False
+    
+    async def _clasificar_noticia_con_ia(self, titulo: str) -> str:
+        """Usa IA para clasificar una noticia en categorías."""
+        try:
+            # Prompt simplificado para clasificación
+            prompt_clasificacion = f"""
+            Clasifica esta noticia en UNA de estas categorías: economia, internacional, tecnologia, sociedad, politica.
+            
+            Noticia: {titulo}
+            
+            Responde SOLO con el nombre de la categoría (en minúsculas, sin acentos):
+            """
+            
+            api_key = (os.getenv("COHERE_API_KEY") or "").strip()
+            if not api_key:
+                return "general"
+            
+            client = cohere.Client(api_key=api_key, timeout=30)
+            
+            res = client.chat(
+                model="command-a-03-2025",
+                message=prompt_clasificacion,
+                temperature=0.1,  # Baja temperatura para clasificación consistente
+            )
+            
+            categoria = getattr(res, "text", "").strip().lower()
+            
+            # Normalizar categoría
+            categorias_validas = ['economia', 'internacional', 'tecnologia', 'sociedad', 'politica']
+            if categoria in categorias_validas:
+                return categoria
+            else:
+                logger.warning(f"🤖 IA devolvió categoría inválida: {categoria}")
+                return "general"
+                
+        except Exception as e:
+            logger.exception(f"Error clasificando con IA: {e}")
+            return "general"
     
     async def _obtener_entradas_feed(self, url: str, nombre_feed: str) -> list:
         """Obtiene entradas de un feed RSS."""
@@ -211,13 +305,24 @@ class NoticiaBot(discord.Client):
             return "basura umana"
     
     async def _enviar_notificacion_critica(self, db_vigia, suscriptores, titulo, analisis, fuente):
-        """Envía notificación crítica a suscriptores."""
+        """Envía notificación crítica a suscriptores (usuarios y canales)."""
         try:
             for suscriptor_id in suscriptores:
                 try:
-                    user = await self.fetch_user(int(suscriptor_id))
-                    await user.send(f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {fuente}*\n*Noticia: {titulo}*")
-                    logger.info(f"✅ Enviada a {user.name}: {titulo[:50]}")
+                    # Si es un canal (prefijo "channel_")
+                    if suscriptor_id.startswith("channel_"):
+                        canal_id = suscriptor_id[8:]  # Quitar prefijo "channel_"
+                        canal = self.get_channel(int(canal_id))
+                        if canal:
+                            await canal.send(f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {fuente}*\n*Noticia: {titulo}*")
+                            logger.info(f"✅ Enviada al canal {canal.name}: {titulo[:50]}")
+                        else:
+                            logger.warning(f"⚠️ Canal {canal_id} no encontrado")
+                    else:
+                        # Es un usuario
+                        user = await self.fetch_user(int(suscriptor_id))
+                        await user.send(f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {fuente}*\n*Noticia: {titulo}*")
+                        logger.info(f"✅ Enviada a {user.name}: {titulo[:50]}")
                 except Exception as e_user:
                     logger.warning(f"⚠️ No se pudo enviar a {suscriptor_id}: {e_user}")
             

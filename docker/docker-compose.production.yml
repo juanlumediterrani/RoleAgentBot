@@ -1,16 +1,17 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.shared.yml - Múltiples instancias compartiendo entorno Python
-# 
-# Este método comparte las librerías Python entre contenedores para ahorrar:
-# - Memoria RAM: Las librerías se cargan una sola vez
-# - Disco: Las librerías se almacenan una sola vez
-# - Red: Las dependencias se descargan una sola vez
+# docker-compose.production.yml - Configuración de producción optimizada
+#
+# Características:
+# - 2 bots con personalidades diferentes (Kronk y Putre)
+# - Librerías Python compartidas (ahorro de recursos)
+# - Todos los roles activos en ambos contenedores
+# - Volúmenes compartidos para persistencia
 #
 # Uso:
-#   docker compose -f docker-compose.shared.yml up --build -d
+#   docker compose -f docker-compose.production.yml up --build -d
 # ─────────────────────────────────────────────────────────────────────────────
 services:
-  # Contenedor 1: Kronk (con vigia noticias y buscador de tesoros)
+  # Bot 1: Kronk - Todos los roles activos
   bot-kronk:
     build:
       context: ..
@@ -24,19 +25,20 @@ services:
       - PERSONALITY=kronk
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
-      # Roles activos para Kronk: vigia_noticias y buscador_tesoros
+      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,pedir_oro,buscar_anillo,mc
       - VIGIA_NOTICIAS_ENABLED=true
       - BUSCADOR_TESOROS_ENABLED=true
-      - PEDIR_ORO_ENABLED=false
-      - BUSCAR_ANILLO_ENABLED=false
+      - PEDIR_ORO_ENABLED=true
+      - BUSCAR_ANILLO_ENABLED=true
+      - MC_ENABLED=true
     volumes:
-      - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
+      - python-shared:/usr/local/lib/python3.13/site-packages
       - ../databases:/app/databases
       - ../logs:/app/logs
       - ../fatiga:/app/fatiga
     restart: unless-stopped
 
-  # Contenedor 2: Putre (con pedir oro y buscador de anillo)
+  # Bot 2: Putre - Todos los roles activos
   bot-putre:
     build:
       context: ..
@@ -50,19 +52,20 @@ services:
       - PERSONALITY=putre
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
-      # Roles activos para Putre: pedir oro y buscar anillo
-      - VIGIA_NOTICIAS_ENABLED=false
-      - BUSCADOR_TESOROS_ENABLED=false
+      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,pedir_oro,buscar_anillo,mc
+      - VIGIA_NOTICIAS_ENABLED=true
+      - BUSCADOR_TESOROS_ENABLED=true
       - PEDIR_ORO_ENABLED=true
       - BUSCAR_ANILLO_ENABLED=true
+      - MC_ENABLED=true
     volumes:
-      - python-shared:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
+      - python-shared:/usr/local/lib/python3.13/site-packages
       - ../databases:/app/databases
       - ../logs:/app/logs
       - ../fatiga:/app/fatiga
     restart: unless-stopped
 
-# Volumen compartido para Python (ahorro máximo de recursos)
+# Volumen compartido para Python (ahorro de recursos)
 volumes:
   python-shared:
     driver: local

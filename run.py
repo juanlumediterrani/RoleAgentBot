@@ -100,12 +100,21 @@ async def planificador(config: dict):
     ahora = datetime.now()
 
     for nombre, cfg in roles_cfg.items():
-        # Verificar si el rol está activado (prioridad a variables de entorno)
-        env_enabled = os.getenv(f"{nombre.upper()}_ENABLED", "").lower()
-        if env_enabled:
-            enabled = env_enabled == "true"
-        else:
-            enabled = cfg.get("enabled", False)
+        # Verificar si el rol está activado (prioridad a ACTIVE_ROLES, luego variables individuales)
+        active_roles = os.getenv("ACTIVE_ROLES", "").split(",")
+        active_roles = [r.strip() for r in active_roles if r.strip()]
+        
+        if active_roles:  # Si ACTIVE_ROLES está definido, usarlo
+            enabled = nombre in active_roles
+            logger.info(f"[run] 🔍 ACTIVE_ROLES='{os.getenv('ACTIVE_ROLES', '')}' → '{nombre}' {'✅' if enabled else '❌'}")
+        else:  # Sistema antiguo: variables de entorno individuales
+            env_enabled = os.getenv(f"{nombre.upper()}_ENABLED", "").lower()
+            if env_enabled:
+                enabled = env_enabled == "true"
+                logger.info(f"[run] 🔍 {nombre.upper()}_ENABLED='{env_enabled}' → '{nombre}' {'✅' if enabled else '❌'}")
+            else:
+                enabled = cfg.get("enabled", False)
+                logger.info(f"[run] 🔍 Config enabled={enabled} → '{nombre}' {'✅' if enabled else '❌'}")
             
         if enabled:
             # Primera ejecución inmediata al arrancar

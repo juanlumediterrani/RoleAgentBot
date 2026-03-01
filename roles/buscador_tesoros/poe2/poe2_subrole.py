@@ -401,6 +401,38 @@ class Poe2SubroleBot(discord.Client):
         except Exception as e:
             logger.exception(f"Error enviando notificación POE2: {e}")
 
+def inicializar_items_por_defecto(db_instance: DatabaseRolePoe2) -> bool:
+    """Inicializa los items por defecto si no hay ninguno configurado."""
+    try:
+        objetivos_actuales = db_instance.get_objetivos()
+        
+        # Si ya hay items, no hacer nada
+        if objetivos_actuales:
+            logger.info(f"📋 Ya existen {len(objetivos_actuales)} items configurados, omitiendo inicialización")
+            return True
+        
+        # Items por defecto
+        items_por_defecto = {
+            "ancient rib": 4379,
+            "ancient collarbone": 4385,
+            "ancient jawbone": 4373,
+        }
+        
+        logger.info("📋 Inicializando items por defecto para POE2...")
+        
+        for nombre_item, item_id in items_por_defecto.items():
+            if db_instance.add_objetivo(nombre_item, item_id):
+                logger.info(f"✅ Item por defecto añadido: {nombre_item}")
+            else:
+                logger.warning(f"⚠️ No se pudo añadir item por defecto: {nombre_item}")
+        
+        logger.info("✅ Inicialización de items por defecto completada")
+        return True
+        
+    except Exception as e:
+        logger.exception(f"❌ Error inicializando items por defecto: {e}")
+        return False
+
 # --- FUNCIÓN DE REFERENCIA DE ITEMS ---
 
 def get_items_reference():

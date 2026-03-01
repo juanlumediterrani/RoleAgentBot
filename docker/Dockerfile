@@ -3,15 +3,30 @@
 #
 # Construir:
 #   docker build --build-arg PERSONALITY=kronk \
-#                --build-arg ACTIVE_ROLES="vigia_noticias,buscar_anillo" \
-#                -t roleagentbot:latest .
-#
-# Si no se pasan argumentos se usa la personalidad y los roles definidos en
-# agent_config.json tal cual está en el repositorio.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM roleagentbot-base:latest
+# Dockerfile principal - Imagen completa del bot
+#
+# Incluye todas las dependencias necesarias para todos los roles:
+# - PyNaCl para voz de Discord
+# - yt-dlp y ffmpeg para música
+# - Todas las librerías de requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.13-slim
 
 WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc \
+        ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar dependencias Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Instalar dependencias adicionales para voz
+RUN pip install PyNaCl
 
 # ── Argumentos de construcción (inyectables) ──────────────────────────────────
 # PERSONALITY : nombre del fichero sin extensión dentro de personalities/

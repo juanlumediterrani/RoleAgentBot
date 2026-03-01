@@ -26,6 +26,7 @@ Un bot de Discord modular con sistema de roles autónomos programables, motor de
 - Roles:
   - vigia_noticias: !vigianoticias, !vigianoticias
   - buscar_anillo: !acusaranillo
+  - mc: !mc play, !mc queue, !mc help (bot de música autónomo)
     
 **Desarrollado con ❤️ para la comunidad**
 -----------------------------------------------------------------------------------------
@@ -342,3 +343,61 @@ docker compose -f docker-compose.shared.yml up --build -d
 └─────────────────┘    └─────────────────┘
 Total RAM: ~250MB vs ~400MB tradicional
 ```
+
+-----------------------------------------------------------------------------------------
+
+## 🎵 MC (Master of Ceremonies) - Bot de Música
+-----------------------------------------------------------------------------------------
+
+El rol MC es un bot de música completo para Discord que proporciona funcionalidades avanzadas de reproducción:
+
+### 🎤 **Comandos Principales**
+- `!mc play <canción>` - Reproduce o agrega música desde YouTube
+- `!mc queue` - Muestra la cola de reproducción actual
+- `!mc skip` - Salta la canción actual
+- `!mc nowplaying` - Muestra la canción en reproducción
+- `!mc pause/resume` - Control de reproducción
+- `!mc clear` - Limpia la cola (requiere rol DJ)
+- `!mc leave` - Sale del canal de voz (requiere rol DJ)
+- `!mc help` - Ayuda completa del MC
+
+### 🔧 **Características Técnicas**
+- **Streaming desde YouTube** con yt-dlp
+- **Gestión inteligente** de canales de voz
+- **Desconexión automática** por inactividad
+- **Sistema de permisos** para roles DJ/admin
+- **Base de datos persistente** con SQLite
+- **Manejo multi-servidor** simultáneo
+
+### 📋 **Requisitos Adicionales**
+- **FFmpeg** instalado y en el PATH
+- **Dependencias**: yt-dlp, ffmpeg-python
+- **Permisos**: Conectar y hablar en canales de voz
+
+### 🚀 **Activación**
+```bash
+# Habilitar el rol MC en agent_config.json
+{
+  "roles": {
+    "mc": {
+      "enabled": true,
+      "script": "roles/mc/mc.py"
+    }
+  }
+}
+```
+
+### 💡 **Ejemplo de Uso**
+```bash
+# El MC se ejecuta como un bot separado
+# Conéctate a un canal de voz y usa:
+!mc play "Bohemian Rhapsody" Queen
+!mc queue
+!mc skip
+!mc nowplaying
+```
+
+Para más detalles, consulta `roles/mc/README_MC.md`.
+
+**Desarrollado con ❤️ para la comunidad**
+-----------------------------------------------------------------------------------------

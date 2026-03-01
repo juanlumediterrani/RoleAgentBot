@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.dev.yml - Configuración de desarrollo y pruebas
+#
+# Características:
+# - Bot único con todos los roles activos
+# - Personalidad Kronk para desarrollo
+# - Recursos limitados para desarrollo
+# - Logging detallado para debugging
+#
+# Uso:
+#   docker compose -f docker-compose.dev.yml up --build -d
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+  bot-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        PERSONALITY: kronk
+    image: roleagentbot:dev
+    container_name: roleagentbot-dev
+    env_file: ../.env
+    environment:
+      - PERSONALITY=kronk
+      - ROLE_AGENT_PROCESS=false
+      - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
+      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,pedir_oro,buscar_anillo,mc
+      - VIGIA_NOTICIAS_ENABLED=true
+      - BUSCADOR_TESOROS_ENABLED=true
+      - PEDIR_ORO_ENABLED=true
+      - BUSCAR_ANILLO_ENABLED=true
+      - MC_ENABLED=true
+    volumes:
+      - ../databases:/app/databases
+      - ../logs:/app/logs
+      - ../fatiga:/app/fatiga
+    restart: "no"  # No reiniciar automáticamente en desarrollo
+    
+    # Logging detallado para depuración
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    
+    # Limitar recursos en desarrollo
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'

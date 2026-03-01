@@ -86,6 +86,15 @@ def get_poe2_db_for_server(guild):
 
 logger = get_logger('discord')
 
+# Importar clases del Vigía si está disponible
+try:
+    from roles.vigia_noticias.vigia_commands import VigiaCommands, COMANDOS_VIGIA, COMANDOS_VIGIA_CANAL
+    VIGIA_COMMANDS_AVAILABLE = True
+    logger.info("📡 [DISCORD] Comandos del Vigía importados correctamente")
+except ImportError as e:
+    VIGIA_COMMANDS_AVAILABLE = False
+    logger.warning(f"⚠️ [DISCORD] No se pudieron importar comandos del Vigía: {e}")
+
 intents = discord.Intents.all()
 
 _discord_cfg = PERSONALIDAD.get("discord", {})
@@ -225,6 +234,20 @@ async def cmd_bienvenida_disable(ctx):
 # Comando de insulto (definido aquí para estar disponible en la ayuda)
 insulta_command_name = f"insulta{personality_name}"
 
+# Comando de prueba
+@bot.command(name="test")
+async def cmd_test(ctx):
+    """Comando de prueba para verificar si funciona."""
+    logger.info(f"🧪 Comando test ejecutado por {ctx.author.name}")
+    await ctx.send("✅ Comando test funciona!")
+
+# Comando de prueba del Vigía
+@bot.command(name="vigiatest")
+async def cmd_vigia_test(ctx):
+    """Comando de prueba para el Vigía."""
+    logger.info(f"📡 Comando vigiatest ejecutado por {ctx.author.name}")
+    await ctx.send("📡 ✅ Comando vigiatest funciona - el Vigía está respondiendo!")
+
 # Comando de ayuda
 ayuda_command_name = f"ayuda{personality_name}"
 
@@ -287,6 +310,9 @@ async def cmd_ayuda(ctx):
     else:
         ayuda_msg += "• No hay roles especiales activos\n"
     
+    # Música (siempre disponible, independiente de roles)
+    ayuda_msg += "• 🎵 **Música** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (siempre disponible)\n"
+    
     ayuda_msg += "\n💬 **Conversación:**\n"
     ayuda_msg += "• Menciona al bot para conversar\n"
     ayuda_msg += "• Responde usando la personalidad del agente\n"
@@ -296,6 +322,7 @@ async def cmd_ayuda(ctx):
     ayuda_msg += "• `buscador_tesoros` - Alertas de oportunidades de compra\n"
     ayuda_msg += "• `pedir_oro` - Solicitudes de donaciones\n"
     ayuda_msg += "• `buscar_anillo` - Acusaciones por el anillo uniko\n"
+    ayuda_msg += "• **Música** - Siempre disponible (no requiere activación)\n"
     
     await ctx.send(ayuda_msg)
 
@@ -338,31 +365,50 @@ async def cmd_vigia_ayuda(ctx):
     """Muestra ayuda específica para el Vigía de Noticias."""
     
     ayuda_vigia = "📡 **Ayuda del Vigía de Noticias** 📡\n\n"
-    ayuda_vigia += "📋 **Control de Suscripción:**\n"
+    
+    ayuda_vigia += "🎯 **Comandos Principales:**\n"
+    ayuda_vigia += "• `!vigia feeds` - Lista feeds RSS disponibles\n"
+    ayuda_vigia += "• `!vigia categorias` - Muestra categorías activas\n"
+    ayuda_vigia += "• `!vigia estado` - Tus suscripciones activas\n\n"
+    
+    ayuda_vigia += "🎯 **Suscripciones Especializadas:**\n"
+    ayuda_vigia += "• `!vigia suscribir <categoría> [feed_id]` - Suscribirse a feeds\n"
+    ayuda_vigia += "• `!vigia cancelar <categoría> [feed_id]` - Cancelar suscripción\n"
+    ayuda_vigia += "• **Ejemplo:** `!vigia suscribir economia`\n\n"
+    
+    ayuda_vigia += "🤖 **Suscripciones con IA:**\n"
+    ayuda_vigia += "• `!vigia general <categoría>` - Feeds con clasificación IA\n"
+    ayuda_vigia += "• `!vigia mixto <categoría>` - Cobertura mixta (máxima)\n"
+    ayuda_vigia += "• **Ejemplo:** `!vigia general internacional`\n\n"
+    
+    ayuda_vigia += "🔍 **Palabras Clave:**\n"
+    ayuda_vigia += "• `!vigia palabras \"palabra1,palabra2\"` - Suscribir a palabras\n"
+    ayuda_vigia += "• `!vigia cancelar_palabras \"palabras\"` - Cancelar suscripción\n"
+    ayuda_vigia += "• `!vigia estado_palabras` - Ver palabras suscritas\n\n"
+    
+    ayuda_vigia += "📢 **Comandos de Canal:**\n"
+    ayuda_vigia += "• `!vigiacanal suscribir <categoría> [feed_id]` - Suscribir canal\n"
+    ayuda_vigia += "• `!vigiacanal cancelar <categoría> [feed_id]` - Cancelar canal\n"
+    ayuda_vigia += "• `!vigiacanal estado` - Ver suscripciones del canal\n"
+    ayuda_vigia += "• `!vigiacanal palabras \"palabras\"` - Palabras clave para canal\n\n"
+    
+    ayuda_vigia += "⚙️ **Administración:**\n"
+    ayuda_vigia += "• `!vigia agregar_feed <nombre> <url> <categoría> [tipo]` - Agregar feed\n\n"
+    
+    ayuda_vigia += "📂 **Categorías:** economia, internacional, tecnologia, sociedad, politica\n\n"
+    
+    ayuda_vigia += "🔔 **Alertas Críticas:**\n"
     ayuda_vigia += "• `!avisanoticias` - Suscribirse a alertas críticas\n"
     ayuda_vigia += "• `!noavisanoticias` - Cancelar suscripción a alertas\n\n"
     
-    ayuda_vigia += "🔍 **Funcionalidades:**\n"
-    ayuda_vigia += "• Monitorización 24/7 de fuentes de noticias\n"
-    ayuda_vigia += "• Detección de eventos críticos y emergencias\n"
-    ayuda_vigia += "• Notificaciones instantáneas vía Discord\n"
-    ayuda_vigia += "• Filtrado inteligente de información relevante\n\n"
+    ayuda_vigia += "🌐 **Fuentes por Defecto:**\n"
+    ayuda_vigia += "• CNBC (economia) • El País (internacional) • Reuters (internacional)\n"
+    ayuda_vigia += "• BBC (tecnologia) • CNN (general) • Crypto News (cripto)\n\n"
     
-    ayuda_vigia += "⏰ **Frecuencia:**\n"
-    ayuda_vigia += "• Verificación cada hora\n"
-    ayuda_vigia += "• Alertas inmediatas ante eventos críticos\n"
-    ayuda_vigia += "• Resumen diario de eventos importantes\n\n"
+    ayuda_vigia += "💡 **Ejemplos:**\n"
+    ayuda_vigia += "```\n!vigia feeds                    # Ver feeds\n!vigia suscribir economia         # Noticias económicas\n!vigia general internacional      # Noticias con IA\n!vigia palabras \"bitcoin,crypto\"  # Alertas crypto\n!vigiacanal suscribir politica     # Suscribir canal\n```\n\n"
     
-    ayuda_vigia += "🌐 **Fuentes Monitoreadas:**\n"
-    ayuda_vigia += "• Noticias internacionales\n"
-    ayuda_vigia += "• Eventos geopolíticos\n"
-    ayuda_vigia += "• Desastres naturales\n"
-    ayuda_vigia += "• Crisis económicas\n\n"
-    
-    ayuda_vigia += "💡 **Uso Recomendado:**\n"
-    ayuda_vigia += "1. Usa `!avisanoticias` para activar alertas\n"
-    ayuda_vigia += "2. Recibirás notificaciones de eventos críticos\n"
-    ayuda_vigia += "3. Usa `!noavisanoticias` para desactivar si es necesario\n"
+    ayuda_vigia += "⚡ **Características:** Monitorización 24/7, IA, clasificación automática, notificaciones instantáneas, filtrado por palabras clave, detección de eventos críticos."
     
     await ctx.send(ayuda_vigia)
 
@@ -400,10 +446,15 @@ async def on_ready():
     logger.info(f"🤖 [DISCORD] Comando prefijo: {_cmd_prefix}")
     logger.info(f"🤖 [DISCORD] Comando insulto: {_insult_name}")
     
-    # Verificar intents para presencia
+    logger.info(f"🤖 [DISCORD] Bot KRONK conectado como {bot.user}")
+    logger.info(f"🤖 [DISCORD] Comando prefijo: {bot.command_prefix}")
+    logger.info(f"🤖 [DISCORD] Comando insulto: {insulta_command_name}")
     logger.info(f"🤖 [DISCORD] Intents - members: {bot.intents.members}")
     logger.info(f"🤖 [DISCORD] Intents - presences: {bot.intents.presences}")
-
+    logger.info(f"🤖 [DISCORD] Total de comandos registrados: {len(bot.commands)}")
+    for cmd in bot.commands:
+        logger.info(f"🤖 [DISCORD] Comando registrado: {cmd.name}")
+    
     # Elegir UN servidor activo (si el bot está en varios guilds)
     preferred_guild = os.getenv("DISCORD_ACTIVE_GUILD", "").strip().lower()
     active_guild = None
@@ -922,72 +973,108 @@ def register_role_commands():
         # Prioridad a variables de entorno
         env_var = os.getenv(f"{role_name.upper()}_ENABLED", "").lower()
         if env_var:
+            logger.info(f"🔍 Verificando {role_name}: env_var={env_var} -> {env_var == 'true'}")
             return env_var == "true"
         # Fallback a configuración JSON
-        return agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
+        enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
+        logger.info(f"🔍 Verificando {role_name}: config={enabled}")
+        return enabled
     
     # Lista de roles a verificar
     roles_to_check = ["vigia_noticias", "buscador_tesoros", "pedir_oro", "buscar_anillo"]
     
+    logger.info(f"🎭 [DISCORD] Iniciando registro de comandos para {len(roles_to_check)} roles")
+    
     for role_name in roles_to_check:
         if not is_role_enabled(role_name):
+            logger.info(f"🎭 [DISCORD] Rol {role_name} no está activado, omitiendo")
             continue
             
         logger.info(f"🎭 [DISCORD] Registrando comandos para rol activado: {role_name}")
         
         if role_name == "vigia_noticias":
-            # Comandos del Vigía de Noticias
-            @bot.command(name="avisanoticias")
-            async def cmd_avisa_noticias(ctx):
-                if not VIGIA_AVAILABLE:
-                    await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
-                    return
+            if not VIGIA_COMMANDS_AVAILABLE:
+                logger.warning("⚠️ [DISCORD] Comandos del Vigía no disponibles, usando implementación básica")
+                # Implementación básica de fallback
+                @bot.command(name="avisanoticias")
+                async def cmd_avisa_noticias(ctx):
+                    if not VIGIA_AVAILABLE:
+                        await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                        return
+                    
+                    db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+                    if not db_vigia_instance:
+                        await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                        return
+                    
+                    usuario_id = str(ctx.author.id)
+                    usuario_nombre = ctx.author.name
+                    
+                    # Verificar si ya está suscrito
+                    if db_vigia_instance.esta_suscrito(usuario_id):
+                        await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
+                        return
+                    
+                    # Agregar suscripción
+                    if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
+                        await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
+                        logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
+                    else:
+                        await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
                 
-                db_vigia_instance = get_vigia_db_for_server(ctx.guild)
-                if not db_vigia_instance:
-                    await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
-                    return
+                @bot.command(name="noavisanoticias")
+                async def cmd_no_avisa_noticias(ctx):
+                    if not VIGIA_AVAILABLE:
+                        await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                        return
+                    
+                    db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+                    if not db_vigia_instance:
+                        await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                        return
+                    
+                    usuario_id = str(ctx.author.id)
+                    usuario_nombre = ctx.author.name
+                    
+                    # Verificar si está suscrito
+                    if not db_vigia_instance.esta_suscrito(usuario_id):
+                        await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
+                        return
+                    
+                    # Eliminar suscripción
+                    if db_vigia_instance.eliminar_suscripcion(usuario_id):
+                        await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
+                        logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
+                    else:
+                        await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
+            else:
+                # Implementación completa del Vigía usando VigiaCommands
+                logger.info("📡 [DISCORD] Registrando comandos completos del Vigía")
+                vigia_commands = VigiaCommands(bot)
                 
-                usuario_id = str(ctx.author.id)
-                usuario_nombre = ctx.author.name
+                # Comandos principales del Vigía - usar la sintaxis correcta
+                for cmd_name, cmd_func in COMANDOS_VIGIA.items():
+                    @bot.command(name=f"vigia {cmd_name}")
+                    async def vigia_cmd_wrapper(ctx, *args, cmd_func=cmd_func, cmd_name=cmd_name):
+                        try:
+                            message = ctx.message
+                            await cmd_func(vigia_commands, message, list(args))
+                        except Exception as e:
+                            logger.error(f"Error en comando vigia {cmd_name}: {e}")
+                            await ctx.send(f"❌ Error ejecutando comando vigia {cmd_name}")
                 
-                # Verificar si ya está suscrito
-                if db_vigia_instance.esta_suscrito(usuario_id):
-                    await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
-                    return
+                # Comandos de canal del Vigía
+                for cmd_name, cmd_func in COMANDOS_VIGIA_CANAL.items():
+                    @bot.command(name=f"vigiacanal {cmd_name}")
+                    async def vigiacanal_cmd_wrapper(ctx, *args, cmd_func=cmd_func, cmd_name=cmd_name):
+                        try:
+                            message = ctx.message
+                            await cmd_func(vigia_commands, message, list(args))
+                        except Exception as e:
+                            logger.error(f"Error en comando vigiacanal {cmd_name}: {e}")
+                            await ctx.send(f"❌ Error ejecutando comando vigiacanal {cmd_name}")
                 
-                # Agregar suscripción
-                if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
-                    await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
-                    logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
-                else:
-                    await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
-            
-            @bot.command(name="noavisanoticias")
-            async def cmd_no_avisa_noticias(ctx):
-                if not VIGIA_AVAILABLE:
-                    await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
-                    return
-                
-                db_vigia_instance = get_vigia_db_for_server(ctx.guild)
-                if not db_vigia_instance:
-                    await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
-                    return
-                
-                usuario_id = str(ctx.author.id)
-                usuario_nombre = ctx.author.name
-                
-                # Verificar si está suscrito
-                if not db_vigia_instance.esta_suscrito(usuario_id):
-                    await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
-                    return
-                
-                # Eliminar suscripción
-                if db_vigia_instance.eliminar_suscripcion(usuario_id):
-                    await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
-                    logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
-                else:
-                    await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
+                logger.info(f"📡 [DISCORD] Registrados {len(COMANDOS_VIGIA)} comandos vigia y {len(COMANDOS_VIGIA_CANAL)} comandos vigiacanal")
         
         elif role_name == "buscar_anillo":
             # Comando para acusar por el anillo
@@ -1200,9 +1287,6 @@ def register_role_commands():
                 
                 await ctx.send(response)
 
-# Registrar comandos condicionales
-register_role_commands()
-
 
 @bot.event
 async def on_message(message):
@@ -1210,6 +1294,10 @@ async def on_message(message):
         return
     if message.author.bot:
         return  # Ignorar mensajes de otros bots para evitar bucles
+    
+    # Log para ver si los mensajes están llegando
+    logger.info(f"📨 [DISCORD] Mensaje recibido: '{message.content}' de {message.author.name}")
+    
     await bot.process_commands(message)
 
     if message.content.startswith(bot.command_prefix):
@@ -1316,5 +1404,20 @@ async def on_message(message):
                 servidor_id,
                 metadata={"respuesta": respuesta}
             )
+
+# Registrar comandos condicionales antes de iniciar el bot
+print("🔍 Llamando a register_role_commands...")
+try:
+    register_role_commands()
+    print("🔍 register_role_commands completado")
+except Exception as e:
+    print(f"❌ Error en register_role_commands: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Verificar comandos registrados
+print(f"🔍 Total de comandos registrados: {len(bot.commands)}")
+for cmd in bot.commands:
+    print(f"  - {cmd.name}")
 
 bot.run(get_discord_token())

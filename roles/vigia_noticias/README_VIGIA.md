@@ -26,25 +26,58 @@ El Vigía de Noticias ha sido actualizado para soportar múltiples feeds RSS y c
 
 ## 🛠️ Comandos de Discord
 
-### 👀 Ver Opciones
+### � Comando de Ayuda Principal
+```
+!vigiaayuda    # Muestra ayuda completa de todos los comandos
+```
+
+### � Ver Opciones
 ```
 !vigia feeds          # Lista todos los feeds disponibles
 !vigia categorias     # Muestra categorías con feeds activos
 !vigia estado         # Tus suscripciones activas
 ```
 
-### 📝 Gestión de Suscripciones
+### 🎯 Nivel 1 - Suscripciones Especializadas (Simple)
 ```
-!vigia suscribir <categoría> [feed_id]     # Suscribirse a categoría o feed
+!vigia suscribir <categoría> [feed_id]     # Suscribirse a feeds especializados
 !vigia cancelar <categoría> [feed_id]     # Cancelar suscripción
+```
+
+### 🤖 Nivel 2 - Suscripciones Generales con IA (Inteligente)
+```
+!vigia general <categoría>              # Feeds generales con clasificación IA
+!vigia mixto <categoría>                 # Especializado + General (máxima cobertura)
+```
+
+### 🔍 Nivel 3 - Suscripciones por Palabras Clave (Preciso)
+```
+!vigia palabras "palabra1,palabra2,palabra3"  # Suscribir a palabras clave
+!vigia cancelar_palabras "palabras"           # Cancelar suscripción
+!vigia estado_palabras                        # Ver palabras clave suscritas
+```
+
+### 📢 Gestión de Suscripciones de Canal (requiere permisos)
+```
+!vigiacanal suscribir <categoría> [feed_id]  # Suscribir canal actual
+!vigiacanal cancelar <categoría> [feed_id]  # Cancelar suscripción de canal
+!vigiacanal estado                           # Ver suscripciones del canal
+!vigiacanal palabras "palabras"              # Suscribir canal a palabras clave
 ```
 
 ### ⚙️ Administración (solo admins)
 ```
-!vigia agregar_feed <nombre> <url> <categoría> [país] [idioma]
+!vigia agregar_feed <nombre> <url> <categoría> [país] [idioma] [tipo]
+# Tipos: especializado, general, palabras_clave
 ```
 
 ## 💡 Ejemplos de Uso
+
+### Obtener Ayuda Rápida
+```
+!vigiaayuda
+```
+*Resultado:* Muestra ayuda completa organizada por niveles
 
 ### Ver feeds disponibles
 ```
@@ -54,44 +87,75 @@ El Vigía de Noticias ha sido actualizado para soportar múltiples feeds RSS y c
 ```
 📡 Feeds Disponibles
 📂 Economía (2 feeds)
-**CNBC Noticias** (1) 🇺🇸
-Prioridad: 1 | Idioma: EN
-
-**Bloomberg Markets** (2) 🇺🇸  
-Prioridad: 2 | Idioma: EN
+**CNBC Noticias** (1) 🇺🇸 [ESPECIALIZADO]
+**CNN World** (5) 🇺🇸 [GENERAL]
 
 📂 Internacional (2 feeds)
-**El País Internacional** (3) 🇪🇸
-Prioridad: 1 | Idioma: ES
+**El País Internacional** (3) 🇪🇸 [ESPECIALIZADO]
+**Reuters World** (4) 🇺🇸 [GENERAL]
 
-**Reuters World** (4) 🇺🇸
-Prioridad: 2 | Idioma: EN
+📂 Tecnología (2 feeds)
+**BBC Technology** (2) 🇬🇧 [ESPECIALIZADO]
+**Crypto News Feed** (6) 🇺🇸 [PALABRAS CLAVE]
 ```
 
-### Suscribirse a categoría completa
+### Nivel 1 - Para Principiantes
 ```
 !vigia suscribir economia
 ```
 *Resultado:* `✅ Te has suscrito a todas las noticias de 'economia'`
 
-### Suscribirse a feed específico
+### Nivel 2 - Para Usuarios Avanzados
 ```
-!vigia suscribir tecnologia 4
+!vigia general internacional
 ```
-*Resultado:* `✅ Te has suscrito al feed 4 de la categoría 'tecnologia'`
+*Resultado:* `✅ Suscrito a feeds generales de 'internacional' con clasificación IA`
 
-### Ver tus suscripciones
 ```
-!vigia estado
+!vigia mixto tecnologia
+```
+*Resultado:* `✅ Suscrito a cobertura mixta de 'tecnologia' (especializado + general)`
+
+### Nivel 3 - Para Usuarios Específicos
+```
+!vigia palabras "bitcoin,cryptocurrency,blockchain"
+```
+*Resultado:* `✅ Suscrito a palabras clave: 'bitcoin,cryptocurrency,blockchain'`
+
+```
+!vigia estado_palabras
 ```
 *Resultado:*
 ```
-📊 Tus Suscripciones - Juan
+🔍 Tus Palabras Clave - Juan
+🔑 **bitcoin,cryptocurrency,blockchain**
+📅 Suscrito: 2024-02-28
+```
+
+### Suscribir Canal a Categoría (requiere permisos)
+```
+!vigiacanal suscribir tecnologia
+```
+*Resultado:* `✅ Este canal ha sido suscrito a todas las noticias de 'tecnologia'`
+
+### Suscribir Canal a Feed Específico
+```
+!vigiacanal suscribir internacional 4
+```
+*Resultado:* `✅ Este canal ha sido suscrito al feed 4 de la categoría 'internacional'`
+
+### Ver suscripciones del canal
+```
+!vigiacanal estado
+```
+*Resultado:*
+```
+📊 Suscripciones del Canal - #noticias
 💰 Economía
 Todos los feeds de esta categoría
 
 💻 Tecnología  
-Feeds específicos: 4
+Feeds específicos: 2
 ```
 
 ### Cancelar suscripción
@@ -100,11 +164,17 @@ Feeds específicos: 4
 ```
 *Resultado:* `✅ Suscripción cancelada a la categoría 'economia'`
 
+### Cancelar suscripción de canal
+```
+!vigiacanal cancelar tecnologia
+```
+*Resultado:* `✅ Suscripción cancelada a la categoría 'tecnologia'`
+
 ### Agregar nuevo feed (admin)
 ```
-!vigia agregar_feed "TechCrunch" "https://techcrunch.com/feed/" "tecnologia" "US" "en"
+!vigia agregar_feed "Reuters Tech" "https://reuters.com/tech/rss" "tecnologia" "US" "en" "general"
 ```
-*Resultado:* `✅ Feed 'TechCrunch' agregado a categoría 'tecnologia'`
+*Resultado:* `✅ Feed 'Reuters Tech' agregado a categoría 'tecnologia'`
 
 ## 🗄️ Estructura de Base de Datos
 
@@ -112,26 +182,42 @@ Feeds específicos: 4
 
 #### `feeds_config`
 - Almacena configuración de feeds RSS
-- Campos: nombre, url, categoría, país, idioma, prioridad, palabras_clave
+- Campos: nombre, url, categoría, país, idioma, prioridad, palabras_clave, tipo_feed
+- Tipos: especializado, general, palabras_clave
 
 #### `suscripciones_categorias`  
 - Gestiona suscripciones por categoría/feed específico
 - Relaciona usuarios con categorías y feeds individuales
 
+#### `suscripciones_canales`
+- Gestiona suscripciones de canales completos
+- Relaciona canales con categorías y feeds específicos
+- Requiere permisos de "Gestionar Canales"
+
+#### `suscripciones_palabras`
+- Gestiona suscripciones por palabras clave específicas
+- Soporta usuarios y canales
+- Búsqueda exacta en títulos de noticias
+
 ### Feeds por Defecto
 
-1. **CNBC Noticias** (economia) - 🇺🇸 EN
-2. **El País Internacional** (internacional) - 🇪🇸 ES  
-3. **Reuters World** (internacional) - 🇺🇸 EN
-4. **BBC Technology** (tecnologia) - 🇬🇧 EN
+1. **CNBC Noticias** (economia) - 🇺🇸 EN [ESPECIALIZADO]
+2. **El País Internacional** (internacional) - 🇪🇸 ES [ESPECIALIZADO]
+3. **Reuters World** (internacional) - 🇺🇸 EN [GENERAL - IA]
+4. **BBC Technology** (tecnologia) - 🇬🇧 EN [ESPECIALIZADO]
+5. **CNN World** (general) - 🇺🇸 EN [GENERAL - IA]
+6. **Crypto News Feed** (cripto) - 🇺🇸 EN [PALABRAS CLAVE]
 
-## 🔄 Flujo de Trabajo
+## 🔄 Flujo de Trabajo Híbrido
 
 1. **Inicialización**: El vigía crea tablas e inserta feeds por defecto
-2. **Procesamiento**: Revisa cada feed activo según prioridad
-3. **Filtrado**: Solo procesa noticias para usuarios suscritos
+2. **Procesamiento**: Revisa cada feed según tipo y prioridad
+3. **Filtrado Inteligente**:
+   - **Feeds especializados**: Procesamiento directo
+   - **Feeds generales**: Clasificación con IA antes de filtrar
+   - **Feeds de palabras clave**: Búsqueda exacta en títulos
 4. **Análisis**: Usa Cohere para detectar noticias críticas
-5. **Notificación**: Envía alertas solo a suscriptores relevantes
+5. **Notificación**: Envía alertas a usuarios (DM) y canales (público)
 
 ## 🎛️ Configuración
 
@@ -171,9 +257,10 @@ Las noticias no críticas son filtradas con `"basura umana"`.
 
 ### Cambios Principales
 - ✅ Feed único CNBC → Múltiples feeds configurables
-- ✅ Suscripción global → Suscripciones por categoría
+- ✅ Suscripción global → Suscripciones por categoría + canal
 - ✅ Comandos de Discord para gestión
 - ✅ Base de datos extendida con nuevas tablas
+- ✅ Notificaciones a usuarios (DM) y canales (público)
 
 ### Datos Preservados
 - ✅ Noticias leídas históricas
@@ -188,13 +275,14 @@ Las noticias no críticas son filtradas con `"basura umana"`.
 - Probar feed manualmente en navegador
 
 ### No recibo noticias
-- Verificar suscripciones con `!vigia estado`
-- Confirmar que feeds estén activos
+- Verificar suscripciones con `!vigia estado` (personal) o `!vigiacanal estado` (canal)
+- Confirmar que feeds estén activos con `!vigia feeds`
 - Revisar si hay noticias críticas recientes
+- Para canales, verificar permisos del bot en el canal
 
 ### Error en comandos
-- Verificar sintaxis: `!vigia <comando> [args]`
-- Confirmar permisos (algunos comandos requieren admin)
+- Verificar sintaxis: `!vigia <comando> [args]` o `!vigiacanal <comando> [args]`
+- Confirmar permisos (algunos comandos requieren admin/manage_channels)
 - Revisar logs del bot para errores detallados
 
 ---

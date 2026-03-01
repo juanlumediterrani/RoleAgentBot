@@ -136,6 +136,23 @@ def analizar_mercado(item, precio_actual, liga):
 class BuscadorBot(discord.Client):
     async def on_ready(self):
         logger.info("💎 Buscando tesoros...")
+        
+        # Verificar si el subrol POE2 está activo
+        try:
+            from poe2_subrole import get_poe2_db_instance
+            server_name = get_active_server_name() or "default"
+            db_poe2 = get_poe2_db_instance(server_name)
+            
+            if not db_poe2.is_activo():
+                logger.info("💤 Subrol POE2 inactivo, el buscador de tesoros no se ejecutará")
+                await self.close()
+                return
+                
+            logger.info("✅ Subrol POE2 activo, continuando con el buscador de tesoros")
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo verificar estado del subrol POE2: {e}")
+            logger.info("🔄 Continuando con el buscador de tesoros (comportamiento legacy)")
+        
         user = await self.fetch_user(MI_ID)
 
         # Use strict client

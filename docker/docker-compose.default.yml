@@ -4,8 +4,6 @@
 # Uso:
 #   docker compose -f docker-compose.default.yml up --build -d
 # ─────────────────────────────────────────────────────────────────────────────
-version: '3.8'
-
 services:
   bot-default:
     build:

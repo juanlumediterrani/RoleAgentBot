@@ -95,6 +95,8 @@ class DatabaseRoleVigia:
                 self._init_suscripciones_table()
                 self._init_feeds_table()
                 self._init_suscripciones_categorias_table()
+                self._init_suscripciones_canales_table()
+                self._init_suscripciones_palabras_table()
                 self._insertar_feeds_por_defecto()
                 
                 logger.info(f"✅ Base de datos Vigía lista en {self.db_path}")
@@ -293,6 +295,7 @@ class DatabaseRoleVigia:
                         activo INTEGER DEFAULT 1,
                         prioridad INTEGER DEFAULT 1,
                         palabras_clave TEXT DEFAULT NULL,
+                        tipo_feed TEXT DEFAULT 'especializado',
                         fecha_creacion TEXT NOT NULL,
                         fecha_actualizacion TEXT DEFAULT NULL
                     )
@@ -300,6 +303,7 @@ class DatabaseRoleVigia:
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_categoria ON feeds_config (categoria)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_activo ON feeds_config (activo)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_prioridad ON feeds_config (prioridad)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_tipo ON feeds_config (tipo_feed)')
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creando tabla feeds_config: {e}")
@@ -327,6 +331,56 @@ class DatabaseRoleVigia:
         except Exception as e:
             logger.exception(f"❌ Error creando tabla suscripciones_categorias: {e}")
     
+    def _init_suscripciones_canales_table(self):
+        """Inicializa tabla de suscripciones de canales."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS suscripciones_canales (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        canal_id TEXT NOT NULL UNIQUE,
+                        canal_nombre TEXT NOT NULL,
+                        servidor_id TEXT NOT NULL,
+                        servidor_nombre TEXT NOT NULL,
+                        categoria TEXT NOT NULL,
+                        feed_id INTEGER DEFAULT NULL,
+                        fecha_suscripcion TEXT NOT NULL,
+                        activa INTEGER DEFAULT 1,
+                        UNIQUE(canal_id, categoria, feed_id)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_canal_id ON suscripciones_canales (canal_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_canal_categoria ON suscripciones_canales (categoria)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_canal_feed ON suscripciones_canales (feed_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_canal_activa ON suscripciones_canales (activa)')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creando tabla suscripciones_canales: {e}")
+    
+    def _init_suscripciones_palabras_table(self):
+        """Inicializa tabla de suscripciones por palabras clave."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS suscripciones_palabras (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        usuario_id TEXT NOT NULL,
+                        canal_id TEXT DEFAULT NULL,
+                        palabras_clave TEXT NOT NULL,
+                        fecha_suscripcion TEXT NOT NULL,
+                        activa INTEGER DEFAULT 1,
+                        UNIQUE(usuario_id, canal_id, palabras_clave)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_usuario ON suscripciones_palabras (usuario_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_canal ON suscripciones_palabras (canal_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_activa ON suscripciones_palabras (activa)')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creando tabla suscripciones_palabras: {e}")
+    
     def _insertar_feeds_por_defecto(self):
         """Inserta feeds por defecto si no existen."""
         try:
@@ -337,7 +391,8 @@ class DatabaseRoleVigia:
                     'categoria': 'economia',
                     'pais': 'US',
                     'idioma': 'en',
-                    'palabras_clave': 'market,stock,economy,business,finance'
+                    'palabras_clave': 'market,stock,economy,business,finance',
+                    'tipo_feed': 'especializado'
                 },
                 {
                     'nombre': 'El País Internacional',
@@ -345,7 +400,8 @@ class DatabaseRoleVigia:
                     'categoria': 'internacional',
                     'pais': 'ES',
                     'idioma': 'es',
-                    'palabras_clave': 'guerra,conflicto,diplomacia,crisis'
+                    'palabras_clave': 'guerra,conflicto,diplomacia,crisis',
+                    'tipo_feed': 'especializado'
                 },
                 {
                     'nombre': 'Reuters World',
@@ -353,7 +409,8 @@ class DatabaseRoleVigia:
                     'categoria': 'internacional',
                     'pais': 'US',
                     'idioma': 'en',
-                    'palabras_clave': 'war,conflict,crisis,government,politics'
+                    'palabras_clave': 'war,conflict,crisis,government,politics',
+                    'tipo_feed': 'general'
                 },
                 {
                     'nombre': 'BBC Technology',
@@ -361,7 +418,26 @@ class DatabaseRoleVigia:
                     'categoria': 'tecnologia',
                     'pais': 'UK',
                     'idioma': 'en',
-                    'palabras_clave': 'ai,technology,cybersecurity,innovation'
+                    'palabras_clave': 'ai,technology,cybersecurity,innovation',
+                    'tipo_feed': 'especializado'
+                },
+                {
+                    'nombre': 'CNN World',
+                    'url': 'http://rss.cnn.com/rss/edition_world.rss',
+                    'categoria': 'general',
+                    'pais': 'US',
+                    'idioma': 'en',
+                    'palabras_clave': 'world,news,breaking,global',
+                    'tipo_feed': 'general'
+                },
+                {
+                    'nombre': 'Crypto News Feed',
+                    'url': 'https://cointelegraph.com/rss',
+                    'categoria': 'cripto',
+                    'pais': 'US',
+                    'idioma': 'en',
+                    'palabras_clave': 'bitcoin,cryptocurrency,blockchain,ethereum',
+                    'tipo_feed': 'palabras_clave'
                 }
             ]
             
@@ -370,12 +446,12 @@ class DatabaseRoleVigia:
                 for feed in feeds_por_defecto:
                     cursor.execute('''
                         INSERT OR IGNORE INTO feeds_config 
-                        (nombre, url, categoria, pais, idioma, palabras_clave, fecha_creacion)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (nombre, url, categoria, pais, idioma, palabras_clave, tipo_feed, fecha_creacion)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (
                         feed['nombre'], feed['url'], feed['categoria'], 
                         feed['pais'], feed['idioma'], feed['palabras_clave'],
-                        datetime.now().isoformat()
+                        feed['tipo_feed'], datetime.now().isoformat()
                     ))
                 conn.commit()
                 logger.info("✅ Feeds por defecto insertados")
@@ -383,7 +459,7 @@ class DatabaseRoleVigia:
             logger.exception(f"❌ Error insertando feeds por defecto: {e}")
     
     def agregar_feed(self, nombre: str, url: str, categoria: str, pais: str = None, 
-                   idioma: str = 'es', palabras_clave: str = None) -> bool:
+                   idioma: str = 'es', palabras_clave: str = None, tipo_feed: str = 'especializado') -> bool:
         """Agrega un nuevo feed configurado."""
         try:
             with self._lock:
@@ -391,10 +467,10 @@ class DatabaseRoleVigia:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT OR REPLACE INTO feeds_config 
-                        (nombre, url, categoria, pais, idioma, palabras_clave, 
+                        (nombre, url, categoria, pais, idioma, palabras_clave, tipo_feed,
                          fecha_creacion, fecha_actualizacion)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (nombre, url, categoria, pais, idioma, palabras_clave,
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (nombre, url, categoria, pais, idioma, palabras_clave, tipo_feed,
                          datetime.now().isoformat(), datetime.now().isoformat()))
                     conn.commit()
                     return True
@@ -409,14 +485,14 @@ class DatabaseRoleVigia:
                 cursor = conn.cursor()
                 if categoria:
                     cursor.execute('''
-                        SELECT id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave
+                        SELECT id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed
                         FROM feeds_config 
                         WHERE activo = 1 AND categoria = ?
                         ORDER BY prioridad DESC, nombre
                     ''', (categoria,))
                 else:
                     cursor.execute('''
-                        SELECT id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave
+                        SELECT id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed
                         FROM feeds_config 
                         WHERE activo = 1
                         ORDER BY prioridad DESC, nombre
@@ -523,6 +599,221 @@ class DatabaseRoleVigia:
                         WHERE sv.activa = 1
                     ''', (categoria,))
                 return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscriptores por categoría: {e}")
+            return []
+    
+    def suscribir_palabras_clave(self, usuario_id: str, palabras_clave: str, canal_id: str = None) -> bool:
+        """Suscribe usuario o canal a palabras clave específicas."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO suscripciones_palabras 
+                        (usuario_id, canal_id, palabras_clave, fecha_suscripcion, activa)
+                        VALUES (?, ?, ?, ?, 1)
+                    ''', (usuario_id, canal_id, palabras_clave, datetime.now().isoformat()))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.exception(f"Error suscribiendo palabras clave: {e}")
+            return False
+    
+    def cancelar_suscripcion_palabras(self, usuario_id: str, palabras_clave: str, canal_id: str = None) -> bool:
+        """Cancela suscripción a palabras clave."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        UPDATE suscripciones_palabras SET activa = 0 
+                        WHERE usuario_id = ? AND palabras_clave = ? AND canal_id = ?
+                    ''', (usuario_id, palabras_clave, canal_id))
+                    conn.commit()
+                    return cursor.rowcount > 0
+        except Exception as e:
+            logger.exception(f"Error cancelando suscripción palabras: {e}")
+            return False
+    
+    def obtener_suscripciones_palabras(self, usuario_id: str, canal_id: str = None) -> list:
+        """Obtiene suscripciones de palabras clave de un usuario o canal."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT palabras_clave, fecha_suscripcion
+                    FROM suscripciones_palabras 
+                    WHERE usuario_id = ? AND canal_id = ? AND activa = 1
+                ''', (usuario_id, canal_id))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscripciones palabras: {e}")
+            return []
+    
+    def obtener_suscriptores_palabras_clave(self) -> list:
+        """Obtiene todas las suscripciones activas de palabras clave."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT usuario_id, canal_id, palabras_clave
+                    FROM suscripciones_palabras 
+                    WHERE activa = 1
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscriptores palabras clave: {e}")
+            return []
+    
+    def verificar_palabras_clave_noticia(self, titulo: str) -> list:
+        """Verifica si una noticia coincide con suscripciones de palabras clave."""
+        try:
+            suscriptores_palabras = self.obtener_suscriptores_palabras_clave()
+            coincidencias = []
+            
+            titulo_lower = titulo.lower()
+            
+            for usuario_id, canal_id, palabras in suscriptores_palabras:
+                palabras_lista = [p.strip().lower() for p in palabras.split(',')]
+                
+                # Verificar si alguna palabra clave está en el título
+                if any(palabra in titulo_lower for palabra in palabras_lista):
+                    if canal_id:
+                        coincidencias.append(f"channel_{canal_id}")
+                    else:
+                        coincidencias.append(usuario_id)
+            
+            return coincidencias
+        except Exception as e:
+            logger.exception(f"Error verificando palabras clave: {e}")
+            return []
+    
+    def suscribir_canal_categoria(self, canal_id: str, canal_nombre: str, servidor_id: str, 
+                                 servidor_nombre: str, categoria: str, feed_id: int = None) -> bool:
+        """Suscribe un canal a una categoría o feed específico."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO suscripciones_canales 
+                        (canal_id, canal_nombre, servidor_id, servidor_nombre, categoria, feed_id, fecha_suscripcion, activa)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                    ''', (canal_id, canal_nombre, servidor_id, servidor_nombre, categoria, 
+                         feed_id, datetime.now().isoformat()))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.exception(f"Error suscribiendo canal a categoría: {e}")
+            return False
+    
+    def cancelar_suscripcion_canal(self, canal_id: str, categoria: str, feed_id: int = None) -> bool:
+        """Cancela suscripción de canal a categoría/feed."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    if feed_id:
+                        cursor.execute('''
+                            UPDATE suscripciones_canales SET activa = 0 
+                            WHERE canal_id = ? AND categoria = ? AND feed_id = ?
+                        ''', (canal_id, categoria, feed_id))
+                    else:
+                        cursor.execute('''
+                            UPDATE suscripciones_canales SET activa = 0 
+                            WHERE canal_id = ? AND categoria = ? AND feed_id IS NULL
+                        ''', (canal_id, categoria))
+                    conn.commit()
+                    return cursor.rowcount > 0
+        except Exception as e:
+            logger.exception(f"Error cancelando suscripción de canal: {e}")
+            return False
+    
+    def obtener_suscripciones_canal(self, canal_id: str) -> list:
+        """Obtiene suscripciones activas de un canal."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT categoria, feed_id, fecha_suscripcion
+                    FROM suscripciones_canales 
+                    WHERE canal_id = ? AND activa = 1
+                ''', (canal_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscripciones de canal: {e}")
+            return []
+    
+    def obtener_canales_suscritos_categoria(self, categoria: str, feed_id: int = None) -> list:
+        """Obtiene canales suscritos a una categoría o feed específico."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                if feed_id:
+                    cursor.execute('''
+                        SELECT DISTINCT canal_id, canal_nombre, servidor_id
+                        FROM suscripciones_canales
+                        WHERE categoria = ? AND feed_id = ? AND activa = 1
+                    ''', (categoria, feed_id))
+                else:
+                    cursor.execute('''
+                        SELECT DISTINCT canal_id, canal_nombre, servidor_id
+                        FROM suscripciones_canales
+                        WHERE categoria = ? AND feed_id IS NULL AND activa = 1
+                    ''', (categoria,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo canales suscritos por categoría: {e}")
+            return []
+    
+    def obtener_suscriptores_por_categoria(self, categoria: str, feed_id: int = None) -> list:
+        """Obtiene usuarios suscritos a una categoría o feed específico (incluyendo canales)."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                
+                # Obtener suscriptores individuales
+                suscriptores_individuales = []
+                if feed_id:
+                    cursor.execute('''
+                        SELECT DISTINCT sc.usuario_id
+                        FROM suscripciones_categorias sc
+                        WHERE sc.categoria = ? AND sc.feed_id = ? AND sc.activa = 1
+                        UNION
+                        SELECT DISTINCT sv.usuario_id
+                        FROM suscripciones_vigia sv
+                        WHERE sv.activa = 1
+                    ''', (categoria, feed_id))
+                else:
+                    cursor.execute('''
+                        SELECT DISTINCT sc.usuario_id
+                        FROM suscripciones_categorias sc
+                        WHERE sc.categoria = ? AND sc.feed_id IS NULL AND sc.activa = 1
+                        UNION
+                        SELECT DISTINCT sv.usuario_id
+                        FROM suscripciones_vigia sv
+                        WHERE sv.activa = 1
+                    ''', (categoria,))
+                suscriptores_individuales = [row[0] for row in cursor.fetchall()]
+                
+                # Obtener canales (marcados con prefijo especial para identificarlos)
+                canales = []
+                if feed_id:
+                    cursor.execute('''
+                        SELECT DISTINCT canal_id
+                        FROM suscripciones_canales
+                        WHERE categoria = ? AND feed_id = ? AND activa = 1
+                    ''', (categoria, feed_id))
+                else:
+                    cursor.execute('''
+                        SELECT DISTINCT canal_id
+                        FROM suscripciones_canales
+                        WHERE categoria = ? AND feed_id IS NULL AND activa = 1
+                    ''', (categoria,))
+                canales = [f"channel_{row[0]}" for row in cursor.fetchall()]
+                
+                return suscriptores_individuales + canales
         except Exception as e:
             logger.exception(f"Error obteniendo suscriptores por categoría: {e}")
             return []
