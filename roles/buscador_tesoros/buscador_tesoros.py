@@ -215,13 +215,24 @@ class BuscadorBot(discord.Client):
                 
                 try:
                     from agent_engine import pensar
+                    from postprocessor import is_internal_thinking
                     
                     if señal == "COMPRA":
-                        mensaje = f"Misión: Informa de oportunidad de compra. El objeto {nombre} está barato ({actual} Div). ¡Hay que comprar ahora!"
+                        mensaje = f"Oportunidad de compra: {nombre} a {actual} Div. ¡Es muy barato! ¡Comprar ya!"
                     else:  # VENTA
-                        mensaje = f"Misión: Informa de oportunidad de venta. El objeto {nombre} está caro ({actual} Div). ¡Hay que vender ya!"
+                        mensaje = f"Oportunidad de venta: {nombre} a {actual} Div. ¡Es muy caro! ¡Vender ya!"
                     
                     res = await asyncio.to_thread(pensar, mensaje)
+                    
+                    # Validar que la respuesta no sea un pensamiento interno
+                    if is_internal_thinking(res):
+                        logger.warning(f"⚠️ Respuesta detectada como pensamiento interno: {res}")
+                        # Usar respuesta fallback
+                        if señal == "COMPRA":
+                            res = f"¡Barato! {nombre} a solo {actual} Div. ¡Comprar ya mismo!"
+                        else:  # VENTA
+                            res = f"¡Caro! {nombre} a {actual} Div. ¡Vender inmediatamente!"
+                    
                     await user.send(f"💎 **TESORO DETECTADO**: {res}")
                     logger.info(f"✅ Notificación enviada para {nombre} - {señal}")
                     

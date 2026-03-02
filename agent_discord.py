@@ -9,6 +9,14 @@ from agent_db import get_db_instance
 from agent_logging import get_logger, update_log_file_path
 from agent_db import set_current_server, get_active_server_name
 
+# Importar sistema de mensajes del vigía
+try:
+    from roles.vigia_noticias.vigia_messages import get_message
+except ImportError:
+    # Fallback si no está disponible
+    def get_message(key, **kwargs):
+        return "✅ Te he enviado la ayuda por mensaje privado 📩"
+
 # Cargar configuración de roles
 def load_agent_config():
     config_path = os.path.join(os.path.dirname(__file__), 'agent_config.json')
@@ -180,8 +188,16 @@ async def _cmd_saluda_toggle(ctx, enabled: bool):
     
     set_greeting_enabled(ctx.guild, enabled)
     
+    # Obtener mensajes personalizados desde la personalidad
+    greeting_cfg = PERSONALIDAD.get("discord", {}).get("greeting_messages", {})
+    mensaje_activado = greeting_cfg.get("saludos_activados", "GRRR Kronk vigilará llegada de umanos! Kronk saludar cuando umanos aparecer!")
+    mensaje_desactivado = greeting_cfg.get("saludos_desactivados", "BRRR Kronk ya no vigilar umanos! Kronk dejar de saludar, demasiado trabajo!")
+    
+    mensaje = mensaje_activado if enabled else mensaje_desactivado
+    
+    await ctx.send(mensaje)
+    
     action = "activados" if enabled else "desactivados"
-    await ctx.send(f"✅ Saludos de presencia {action} en este servidor.")
     logger.info(f"🔧 [DISCORD] {ctx.author.name} {action} los saludos de presencia en {ctx.guild.name}")
 
 async def _cmd_bienvenida_toggle(ctx, enabled: bool):
@@ -195,44 +211,49 @@ async def _cmd_bienvenida_toggle(ctx, enabled: bool):
     greeting_cfg = _discord_cfg.get("member_greeting", {})
     greeting_cfg["enabled"] = enabled
     
+    # Obtener mensaje personalizado desde la personalidad
+    greeting_messages_cfg = PERSONALIDAD.get("discord", {}).get("greeting_messages", {})
+    
+    if enabled:
+        mensaje = greeting_messages_cfg.get("bienvenida_activados", "✅ Saludos de bienvenida activados en este servidor.")
+    else:
+        mensaje = greeting_messages_cfg.get("bienvenida_desactivados", "✅ Saludos de bienvenida desactivados en este servidor.")
+    
     # Actualizar configuración (esto requeriría persistencia en un archivo real)
     logger.info(f"🔧 [DISCORD] {ctx.author.name} {'activó' if enabled else 'desactivó'} los saludos de bienvenida en {ctx.guild.name}")
     
-    action = "activados" if enabled else "desactivados"
-    await ctx.send(f"✅ Saludos de bienvenida {action} en este servidor.")
+    await ctx.send(mensaje)
 
 # Registrar comandos dinámicos para saludos de presencia con formato estándar
-personality_name = PERSONALIDAD.get("name", "agent").lower()
-
-# Comando para activar saludos de presencia: !saluda[nombre]
-saluda_command_name = f"saluda{personality_name}"
+# Usar _personality_name para consistencia con el resto del archivo
+saluda_command_name = f"saluda{_personality_name}"
 
 @bot.command(name=saluda_command_name)
 async def cmd_saluda_enable(ctx):
     await _cmd_saluda_toggle(ctx, True)
 
 # Comando para desactivar saludos de presencia: !nosaludes[nombre]
-nosaludes_command_name = f"nosaludes{personality_name}"
+nosaludes_command_name = f"nosaludes{_personality_name}"
 
 @bot.command(name=nosaludes_command_name)
 async def cmd_saluda_disable(ctx):
     await _cmd_saluda_toggle(ctx, False)
 
 # Comandos para bienvenida de nuevos miembros
-bienvenida_command_name = f"bienvenida{personality_name}"
+bienvenida_command_name = f"bienvenida{_personality_name}"
 
 @bot.command(name=bienvenida_command_name)
 async def cmd_bienvenida_enable(ctx):
     await _cmd_bienvenida_toggle(ctx, True)
 
-nobienvenida_command_name = f"nobienvenida{personality_name}"
+nobienvenida_command_name = f"nobienvenida{_personality_name}"
 
 @bot.command(name=nobienvenida_command_name)
 async def cmd_bienvenida_disable(ctx):
     await _cmd_bienvenida_toggle(ctx, False)
 
 # Comando de insulto (definido aquí para estar disponible en la ayuda)
-insulta_command_name = f"insulta{personality_name}"
+insulta_command_name = f"insulta{_personality_name}"
 
 # Comando de prueba
 @bot.command(name="test")
@@ -249,39 +270,20 @@ async def cmd_vigia_test(ctx):
     await ctx.send("📡 ✅ Comando vigiatest funciona - el Vigía está respondiendo!")
 
 # Comando de ayuda
-ayuda_command_name = f"ayuda{personality_name}"
+ayuda_command_name = f"ayuda{_personality_name}"
 
 @bot.command(name=ayuda_command_name)
 async def cmd_ayuda(ctx):
     """Muestra todos los comandos activos para este agente."""
     
     # Obtener configuración de roles activos
-    roles_activos = []
+    from agent_engine import AGENT_CFG
+    roles_config = AGENT_CFG.get("roles", {})
     
-    # Verificar roles desde variables de entorno o configuración
-    import os
-    roles_config = agent_config.get("roles", {})
+    ayuda_msg = f"🤖 **Comandos disponibles para {bot.user.name}** 🤖\n\n"
     
-    # Vigía de noticias
-    if os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true" or roles_config.get("vigia_noticias", {}).get("enabled", False):
-        roles_activos.append("📡 **Vigía de Noticias** - Alertas de noticias críticas")
-    
-    # Buscador de tesoros
-    if os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true" or roles_config.get("buscador_tesoros", {}).get("enabled", False):
-        roles_activos.append("💎 **Buscador de Tesoros** - Alertas de oportunidades de compra")
-    
-    # Pedir oro
-    if os.getenv("PEDIR_ORO_ENABLED", "false").lower() == "true" or roles_config.get("pedir_oro", {}).get("enabled", False):
-        roles_activos.append("💰 **Pedir Oro** - Solicitudes de donaciones")
-    
-    # Buscar anillo
-    if os.getenv("BUSCAR_ANILLO_ENABLED", "false").lower() == "true" or roles_config.get("buscar_anillo", {}).get("enabled", False):
-        roles_activos.append("👁️ **Buscar Anillo** - Acusaciones por el anillo uniko")
-    
-    # Construir mensaje de ayuda
-    ayuda_msg = f"🤖 **Comandos de {_bot_display_name}** 🤖\n\n"
-    
-    ayuda_msg += "📋 **Comandos de Control:**\n"
+    # Comandos de control
+    ayuda_msg += "🎛️ **COMANDOS DE CONTROL**\n"
     ayuda_msg += f"• `!{saluda_command_name}` - Activar saludos de presencia (DM)\n"
     ayuda_msg += f"• `!{nosaludes_command_name}` - Desactivar saludos de presencia\n"
     ayuda_msg += f"• `!{bienvenida_command_name}` - Activar bienvenida de nuevos miembros\n"
@@ -290,41 +292,64 @@ async def cmd_ayuda(ctx):
     ayuda_msg += "• `!rolekronk <rol> <on/off>` - Activar/desactivar roles dinámicamente\n"
     ayuda_msg += f"• `!{ayuda_command_name}` - Mostrar esta ayuda\n\n"
     
-    ayuda_msg += "🎭 **Roles Activos y Comandos:**\n"
-    if roles_activos:
-        # Vigía de noticias
-        if os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true" or roles_config.get("vigia_noticias", {}).get("enabled", False):
-            ayuda_msg += "• 📡 **Vigía de Noticias** - `!avisanoticias` / `!noavisanoticias` | `!vigiaayuda` para ayuda específica\n"
-        
-        # Buscador de tesoros
-        if os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true" or roles_config.get("buscador_tesoros", {}).get("enabled", False):
-            ayuda_msg += "• 💎 **Buscador de Tesoros** - `!buscartesoros poe2` / `!nobuscartesoros poe2` | `!poe2ayuda` para ayuda específica\n"
-        
-        # Pedir oro
-        if os.getenv("PEDIR_ORO_ENABLED", "false").lower() == "true" or roles_config.get("pedir_oro", {}).get("enabled", False):
-            ayuda_msg += "• 💰 **Pedir Oro** - Comandos de donación disponibles\n"
-        
-        # Buscar anillo
-        if os.getenv("BUSCAR_ANILLO_ENABLED", "false").lower() == "true" or roles_config.get("buscar_anillo", {}).get("enabled", False):
-            ayuda_msg += "• 👁️ **Buscar Anillo** - `!acusaranillo` para acusaciones\n"
-    else:
-        ayuda_msg += "• No hay roles especiales activos\n"
+    # Comandos disponibles por rol
+    ayuda_msg += "🎭 **COMANDOS DISPONIBLES POR ROL**\n"
+    
+    # Vigía de noticias
+    if os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true" or roles_config.get("vigia_noticias", {}).get("enabled", False):
+        ayuda_msg += "📡 **Vigía de Noticias** - `!avisanoticias` / `!noavisanoticias` | `!vigiaayuda` para ayuda específica\n"
+    
+    # Buscador de tesoros
+    if os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true" or roles_config.get("buscador_tesoros", {}).get("enabled", False):
+        ayuda_msg += "💎 **Buscador de Tesoros** - `!buscartesoros` / `!nobuscartesoros` | `!poe2ayuda` para ayuda específica\n"
+    
+    # Pedir oro
+    if os.getenv("PEDIR_ORO_ENABLED", "false").lower() == "true" or roles_config.get("pedir_oro", {}).get("enabled", False):
+        ayuda_msg += "💰 **Pedir Oro** - `!pediroro` / `!nopediroro`\n"
+    
+    # Buscar anillo
+    if os.getenv("BUSCAR_ANILLO_ENABLED", "false").lower() == "true" or roles_config.get("buscar_anillo", {}).get("enabled", False):
+        ayuda_msg += "👁️ **Buscar Anillo** - `!buscanillo` / `!nobuscanillo`\n"
     
     # Música (siempre disponible, independiente de roles)
-    ayuda_msg += "• 🎵 **Música** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (siempre disponible)\n"
+    ayuda_msg += "🎵 **Música** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (siempre disponible)\n\n"
     
-    ayuda_msg += "\n💬 **Conversación:**\n"
+    # Descripción básica de conversación
+    ayuda_msg += "💬 **DESCRIPCIÓN BÁSICA DE CONVERSACIÓN**\n"
     ayuda_msg += "• Menciona al bot para conversar\n"
     ayuda_msg += "• Responde usando la personalidad del agente\n"
+    ayuda_msg += "• El bot responderá como su personaje (Kronk/Putre)\n\n"
     
-    ayuda_msg += "\n🎭 **Roles Disponibles:**\n"
-    ayuda_msg += "• `vigia_noticias` - Alertas de noticias críticas\n"
-    ayuda_msg += "• `buscador_tesoros` - Alertas de oportunidades de compra\n"
-    ayuda_msg += "• `pedir_oro` - Solicitudes de donaciones\n"
-    ayuda_msg += "• `buscar_anillo` - Acusaciones por el anillo uniko\n"
-    ayuda_msg += "• **Música** - Siempre disponible (no requiere activación)\n"
+    # Roles activos y desactivados
+    ayuda_msg += "🎭 **ROLES ACTIVOS Y DESACTIVADOS**\n"
     
-    await ctx.send(ayuda_msg)
+    # Verificar estado de cada rol
+    roles_estado = []
+    for role_name, role_cfg in roles_config.items():
+        enabled = False
+        # Verificar variable de entorno primero
+        env_enabled = os.getenv(f"{role_name.upper()}_ENABLED", "false").lower() == "true"
+        if env_enabled:
+            enabled = True
+        else:
+            enabled = role_cfg.get("enabled", False)
+        
+        status_emoji = "✅" if enabled else "❌"
+        role_display_name = role_name.replace("_", " ").title()
+        
+        if role_name == "vigia_noticias":
+            ayuda_msg += f"• {status_emoji} **Vigía de Noticias** - Alertas de noticias críticas\n"
+        elif role_name == "buscador_tesoros":
+            ayuda_msg += f"• {status_emoji} **Buscador de Tesoros** - Alertas de oportunidades de compra\n"
+        elif role_name == "pedir_oro":
+            ayuda_msg += f"• {status_emoji} **Pedir Oro** - Solicitudes de donaciones\n"
+        elif role_name == "buscar_anillo":
+            ayuda_msg += f"• {status_emoji} **Buscar Anillo** - Acusaciones por el anillo\n"
+        elif role_name == "mc":
+            ayuda_msg += f"• ✅ **Música** - Siempre disponible (no requiere activación)\n"
+    
+    await ctx.author.send(ayuda_msg)
+    await ctx.send(get_message('ayuda_enviada_privado'))
 
 # Comando de ayuda específico para POE2
 @bot.command(name="poe2ayuda")
@@ -357,12 +382,17 @@ async def cmd_poe2_ayuda(ctx):
     ayuda_poe2 += "💡 **Ejemplos de Uso:**\n"
     ayuda_poe2 += "```\n!buscartesoros poe2\n!poe2liga Fate of the Vaal\n!poe2add \"Ancient Rib\"\n!poe2add \"Fracturing Orb\"\n!poe2list\n```"
     
-    await ctx.send(ayuda_poe2)
+    await ctx.author.send(ayuda_poe2)
+    await ctx.send("✅ Te he enviado la ayuda de POE2 por mensaje privado 📩")
 
 # Comando de ayuda específico para Vigía de Noticias
 @bot.command(name="vigiaayuda")
 async def cmd_vigia_ayuda(ctx):
     """Muestra ayuda específica para el Vigía de Noticias."""
+    
+    # Obtener mensaje personalizado desde la personalidad
+    ayuda_cfg = PERSONALIDAD.get("discord", {}).get("general_messages", {})
+    mensaje_privado = ayuda_cfg.get("help_sent_private", "GRRR Kronk enviar ayuda por mensaje privado umano!")
     
     ayuda_vigia = "📡 **Ayuda del Vigía de Noticias** 📡\n\n"
     
@@ -410,7 +440,8 @@ async def cmd_vigia_ayuda(ctx):
     
     ayuda_vigia += "⚡ **Características:** Monitorización 24/7, IA, clasificación automática, notificaciones instantáneas, filtrado por palabras clave, detección de eventos críticos."
     
-    await ctx.send(ayuda_vigia)
+    await ctx.author.send(ayuda_vigia)
+    await ctx.send(mensaje_privado)
 
 
 async def _cmd_insulta(ctx, obj=""):
@@ -421,7 +452,7 @@ async def _cmd_insulta(ctx, obj=""):
     else:
         prompt = _insult_cfg.get("prompt_target", "Lanza un insulto breve a una persona especifica, maximo 1 frase")
 
-    res = await asyncio.to_thread(pensar, prompt)
+    res = await asyncio.to_thread(pensar, prompt, logger=logger)
     await ctx.send(f"{target} {res}")
 
 
@@ -470,15 +501,15 @@ async def on_ready():
         # Persistir servidor activo para que roles/subprocesos usen la misma carpeta
         set_current_server(active_guild.name)
 
-        personality_name = PERSONALIDAD.get("name", "agent").lower()
-        update_log_file_path(active_guild.name, personality_name)
+        _personality_name = PERSONALIDAD.get("name", "agent").lower()
+        update_log_file_path(active_guild.name, _personality_name)
         # Re-obtener logger para que añada handler a fichero ahora que hay servidor activo
         get_logger('discord')
 
         server_name = active_guild.name.lower().replace(' ', '_').replace('-', '_')
         server_name = ''.join(c for c in server_name if c.isalnum() or c == '_')
         logger.info(f"📁 [DISCORD] Servidor activo: '{active_guild.name}'")
-        logger.info(f"📁 [DISCORD] Logs: logs/{server_name}/{personality_name}.log")
+        logger.info(f"📁 [DISCORD] Logs: logs/{server_name}/{_personality_name}.log")
     
     if not limpieza_db.is_running():
         limpieza_db.start()
@@ -488,10 +519,10 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     """Se ejecuta cuando el bot se une a un nuevo servidor."""
-    personality_name = PERSONALIDAD.get("name", "agent").lower()
-    update_log_file_path(guild.name, personality_name)
+    _personality_name = PERSONALIDAD.get("name", "agent").lower()
+    update_log_file_path(guild.name, _personality_name)
     get_logger('discord')
-    logger.info(f"📁 [DISCORD] Nuevo servidor '{guild.name}': logs/{guild.name.lower().replace(' ', '_')}/{personality_name}.log")
+    logger.info(f"📁 [DISCORD] Nuevo servidor '{guild.name}': logs/{guild.name.lower().replace(' ', '_').replace('-', '_')}/{_personality_name}.log")
 
 
 @bot.event
@@ -1048,31 +1079,51 @@ def register_role_commands():
                     else:
                         await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
             else:
-                # Implementación completa del Vigía usando VigiaCommands
+                # Implementación completa del Vigía usando VigiaCommands con grupos de comandos
                 logger.info("📡 [DISCORD] Registrando comandos completos del Vigía")
                 vigia_commands = VigiaCommands(bot)
                 
-                # Comandos principales del Vigía - usar la sintaxis correcta
-                for cmd_name, cmd_func in COMANDOS_VIGIA.items():
-                    @bot.command(name=f"vigia {cmd_name}")
-                    async def vigia_cmd_wrapper(ctx, *args, cmd_func=cmd_func, cmd_name=cmd_name):
-                        try:
-                            message = ctx.message
-                            await cmd_func(vigia_commands, message, list(args))
-                        except Exception as e:
-                            logger.error(f"Error en comando vigia {cmd_name}: {e}")
-                            await ctx.send(f"❌ Error ejecutando comando vigia {cmd_name}")
+                # Crear grupo de comandos vigia
+                @bot.group(name="vigia")
+                async def vigia_group(ctx):
+                    """Comandos del Vigía de Noticias."""
+                    if ctx.invoked_subcommand is None:
+                        await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
                 
-                # Comandos de canal del Vigía
+                # Crear grupo de comandos vigiacanal
+                @bot.group(name="vigiacanal")
+                async def vigiacanal_group(ctx):
+                    """Comandos del Vigía para canales."""
+                    if ctx.invoked_subcommand is None:
+                        await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
+                
+                # Registrar comandos principales del Vigía
+                for cmd_name, cmd_func in COMANDOS_VIGIA.items():
+                    try:
+                        def make_command(name, func):
+                            async def command(ctx, *args):
+                                return await func(vigia_commands, ctx.message, list(args))
+                            return command
+                        
+                        cmd_func_wrapper = make_command(cmd_name, cmd_func)
+                        vigia_group.command(name=cmd_name)(cmd_func_wrapper)
+                        logger.info(f"📡 [DISCORD] Subcomando vigia {cmd_name} registrado")
+                    except Exception as e:
+                        logger.error(f"Error registrando comando vigia {cmd_name}: {e}")
+                
+                # Registrar comandos de canal del Vigía
                 for cmd_name, cmd_func in COMANDOS_VIGIA_CANAL.items():
-                    @bot.command(name=f"vigiacanal {cmd_name}")
-                    async def vigiacanal_cmd_wrapper(ctx, *args, cmd_func=cmd_func, cmd_name=cmd_name):
-                        try:
-                            message = ctx.message
-                            await cmd_func(vigia_commands, message, list(args))
-                        except Exception as e:
-                            logger.error(f"Error en comando vigiacanal {cmd_name}: {e}")
-                            await ctx.send(f"❌ Error ejecutando comando vigiacanal {cmd_name}")
+                    try:
+                        def make_command(name, func):
+                            async def command(ctx, *args):
+                                return await func(vigia_commands, ctx.message, list(args))
+                            return command
+                        
+                        cmd_func_wrapper = make_command(cmd_name, cmd_func)
+                        vigiacanal_group.command(name=cmd_name)(cmd_func_wrapper)
+                        logger.info(f"📡 [DISCORD] Subcomando vigiacanal {cmd_name} registrado")
+                    except Exception as e:
+                        logger.error(f"Error registrando comando vigiacanal {cmd_name}: {e}")
                 
                 logger.info(f"📡 [DISCORD] Registrados {len(COMANDOS_VIGIA)} comandos vigia y {len(COMANDOS_VIGIA_CANAL)} comandos vigiacanal")
         
@@ -1414,6 +1465,79 @@ except Exception as e:
     print(f"❌ Error en register_role_commands: {e}")
     import traceback
     traceback.print_exc()
+
+# Forzar registro de comandos del Vigía si están disponibles
+if VIGIA_COMMANDS_AVAILABLE:
+    print("🔍 Forzando registro de comandos del Vigía...")
+    try:
+        # Implementación completa del Vigía usando VigiaCommands con grupos de comandos
+        logger.info("📡 [DISCORD] Registrando comandos completos del Vigía (forzado)")
+        vigia_commands = VigiaCommands(bot)
+        
+        # Verificar si el grupo vigia ya existe
+        if "vigia" not in [cmd.name for cmd in bot.commands]:
+            # Crear grupo de comandos vigia
+            @bot.group(name="vigia")
+            async def vigia_group(ctx):
+                """Comandos del Vigía de Noticias."""
+                if ctx.invoked_subcommand is None:
+                    await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
+            
+            logger.info("📡 [DISCORD] Grupo vigia creado (forzado)")
+        else:
+            # Obtener el grupo existente
+            vigia_group = bot.get_command("vigia")
+            logger.info("📡 [DISCORD] Grupo vigia ya existente, reutilizando (forzado)")
+        
+        # Verificar si el grupo vigiacanal ya existe
+        if "vigiacanal" not in [cmd.name for cmd in bot.commands]:
+            # Crear grupo de comandos vigiacanal
+            @bot.group(name="vigiacanal")
+            async def vigiacanal_group(ctx):
+                """Comandos del Vigía para canales."""
+                if ctx.invoked_subcommand is None:
+                    await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
+            
+            logger.info("📡 [DISCORD] Grupo vigiacanal creado (forzado)")
+        else:
+            # Obtener el grupo existente
+            vigiacanal_group = bot.get_command("vigiacanal")
+            logger.info("📡 [DISCORD] Grupo vigiacanal ya existente, reutilizando (forzado)")
+        
+        # Registrar comandos principales del Vigía
+        for cmd_name, cmd_func in COMANDOS_VIGIA.items():
+            try:
+                def make_command(name, func):
+                    async def command(ctx, *args):
+                        return await func(vigia_commands, ctx.message, list(args))
+                    return command
+                
+                cmd_func_wrapper = make_command(cmd_name, cmd_func)
+                vigia_group.command(name=cmd_name)(cmd_func_wrapper)
+                logger.info(f"📡 [DISCORD] Subcomando vigia {cmd_name} registrado (forzado)")
+            except Exception as e:
+                logger.error(f"Error registrando comando vigia {cmd_name}: {e}")
+        
+        # Registrar comandos de canal del Vigía
+        for cmd_name, cmd_func in COMANDOS_VIGIA_CANAL.items():
+            try:
+                def make_command(name, func):
+                    async def command(ctx, *args):
+                        return await func(vigia_commands, ctx.message, list(args))
+                    return command
+                
+                cmd_func_wrapper = make_command(cmd_name, cmd_func)
+                vigiacanal_group.command(name=cmd_name)(cmd_func_wrapper)
+                logger.info(f"📡 [DISCORD] Subcomando vigiacanal {cmd_name} registrado (forzado)")
+            except Exception as e:
+                logger.error(f"Error registrando comando vigiacanal {cmd_name}: {e}")
+        
+        logger.info(f"📡 [DISCORD] Registrados {len(COMANDOS_VIGIA)} comandos vigia y {len(COMANDOS_VIGIA_CANAL)} comandos vigiacanal (forzado)")
+        print("🔍 Comandos del Vigía registrados correctamente (forzado)")
+    except Exception as e:
+        print(f"❌ Error forzando registro del Vigía: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Verificar comandos registrados
 print(f"🔍 Total de comandos registrados: {len(bot.commands)}")

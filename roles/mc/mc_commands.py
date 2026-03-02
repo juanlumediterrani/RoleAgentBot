@@ -546,7 +546,8 @@ class MCCommands:
         
         embed.set_footer(text="Nota: Algunos comandos requieren rol de DJ o permisos de administrador")
         
-        await message.channel.send(embed=embed)
+        await message.author.send(embed=embed)
+        await message.channel.send("✅ Te he enviado la ayuda de música por mensaje privado 📩")
     
     async def _play_next(self, server_id: str, channel):
         """Reproduce la siguiente canción de la cola."""

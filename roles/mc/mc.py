@@ -132,7 +132,11 @@ class MCBot(discord.Client):
                                 # Buscar un canal de texto para enviar mensaje
                                 for channel in voice_client.guild.text_channels:
                                     if channel.permissions_for(voice_client.guild.me).send_messages:
-                                        await channel.send("👋 **Me fui del canal de voz porque no había nadie. Vuelve pronto!**")
+                                        # Obtener mensaje personalizado desde la personalidad
+                                        from agent_engine import PERSONALIDAD
+                                        mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+                                        mensaje_despedida = mc_cfg.get("voice_leave_empty", "👋 **Me fui del canal de voz porque no había nadie. Vuelve pronto!**")
+                                        await channel.send(mensaje_despedida)
                                         break
                             except Exception as e:
                                 logger.warning(f"No pude enviar mensaje de despedida: {e}")

@@ -56,6 +56,11 @@ def postprocesar_respuesta(text, max_chars=280):
     if not text:
         return ""
     
+    # Primero verificar si es pensamiento interno y rechazarlo inmediatamente
+    if is_internal_thinking(text):
+        logger.warning(f"🧠 Pensamiento interno detectado y rechazado: {text[:100]}...")
+        return ""  # Devolver vacío para que el sistema use fallback
+    
     s = " ".join(text.strip().split())
     
     # Corregir respuesta cortada
@@ -171,6 +176,70 @@ def consolidar_contexto(historial_lista, max_interacciones=5, personalidad=None)
             entries.append("\n".join(parts))
 
     return "\n\n".join(entries) if entries else ""
+
+def is_internal_thinking(text):
+    """Detecta si el texto es un pensamiento interno del LLM en lugar de una respuesta en personaje."""
+    if not text:
+        return False
+    
+    text_lower = text.lower().strip()
+    
+    # Patrones que indican pensamiento interno
+    patrones_pensamiento = [
+        "wait, let's",
+        "let me think",
+        "let me check",
+        "let's use",
+        "if possible",
+        "or just",
+        "maybe we should",
+        "i think",
+        "perhaps",
+        "considering",
+        "analyzing",
+        "evaluating",
+        "let me consider",
+        "we could",
+        "maybe use",
+        "should we",
+        "let me see",
+        "wait, let me",
+        "let me just",
+        "maybe i should",
+        "i should",
+        "we need to",
+        "we have to",
+        "it might be",
+        "it could be"
+    ]
+    
+    # Verificar si contiene alguno de los patrones
+    for patron in patrones_pensamiento:
+        if patron in text_lower:
+            return True
+    
+    # Verificar si es muy corta y parece incompleta
+    if len(text.strip()) < 20 and any(palabra in text_lower for palabra in ["wait", "let", "maybe", "perhaps", "could", "should"]):
+        return True
+    
+    # Verificar si contiene frases típicas de razonamiento
+    frases_razonamiento = [
+        "if possible,",
+        "or just",
+        "let's see",
+        "let me check",
+        "let me think about",
+        "i need to",
+        "we need to",
+        "maybe we can",
+        "perhaps we could"
+    ]
+    
+    for frase in frases_razonamiento:
+        if frase in text_lower:
+            return True
+    
+    return False
 
 def is_blocked_response(text):
     """Detecta mensajes de rechazo del LLM."""

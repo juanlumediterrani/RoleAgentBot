@@ -9,6 +9,7 @@ from agent_logging import get_logger
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from db_role_vigia import get_vigia_db_instance
+from vigia_messages import get_message
 
 logger = get_logger('vigia_commands')
 
@@ -34,23 +35,23 @@ class VigiaCommands:
             feeds = db.obtener_feeds_activos()
             
             if not feeds:
-                await message.channel.send("📭 No hay feeds configurados.")
+                await message.channel.send(get_message('error_no_hay_feeds'))
                 return
             
             embed = discord.Embed(
-                title="📡 Feeds Disponibles",
+                title=get_message('feeds_disponibles_title'),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
             feeds_por_categoria = {}
             for feed in feeds:
-                feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave = feed
+                feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed = feed
                 if categoria not in feeds_por_categoria:
                     feeds_por_categoria[categoria] = []
                 feeds_por_categoria[categoria].append({
                     'id': feed_id, 'nombre': nombre, 'url': url,
-                    'pais': pais, 'idioma': idioma, 'prioridad': prioridad
+                    'pais': pais, 'idioma': idioma, 'prioridad': prioridad, 'tipo_feed': tipo_feed
                 })
             
             for categoria, feeds_cat in feeds_por_categoria.items():
@@ -71,7 +72,7 @@ class VigiaCommands:
             
         except Exception as e:
             logger.exception(f"Error en cmd_feeds: {e}")
-            await message.channel.send("❌ Error obteniendo feeds.")
+            await message.channel.send(get_message('error_general', error=e))
     
     async def cmd_categorias(self, message, args):
         """Muestra categorías disponibles."""
@@ -80,11 +81,11 @@ class VigiaCommands:
             categorias = db.obtener_categorias_disponibles()
             
             if not categorias:
-                await message.channel.send("📭 No hay categorías disponibles.")
+                await message.channel.send(get_message('error_no_hay_categorias'))
                 return
             
             embed = discord.Embed(
-                title="📂 Categorías Disponibles",
+                title=get_message('categorias_disponibles_title'),
                 color=discord.Color.green(),
                 timestamp=datetime.now()
             )
@@ -100,12 +101,12 @@ class VigiaCommands:
             
         except Exception as e:
             logger.exception(f"Error en cmd_categorias: {e}")
-            await message.channel.send("❌ Error obteniendo categorías.")
+            await message.channel.send(get_message('error_general', error=e))
     
     async def cmd_suscribir(self, message, args):
         """Suscribe usuario a una categoría o feed específico."""
         if not args:
-            await message.channel.send("📝 Uso: `!vigia suscribir <categoría> [feed_id]`")
+            await message.channel.send(get_message('uso_suscribir'))
             return
         
         try:
@@ -136,20 +137,20 @@ class VigiaCommands:
             # Realizar suscripción
             if db.suscribir_usuario_categoria(str(message.author.id), categoria, feed_id):
                 if feed_id:
-                    await message.channel.send(f"✅ Te has suscrito al feed {feed_id} de la categoría '{categoria}'")
+                    await message.channel.send(get_message('suscripcion_exitosa_feed', feed_id=feed_id, categoria=categoria))
                 else:
-                    await message.channel.send(f"✅ Te has suscrito a todas las noticias de '{categoria}'")
+                    await message.channel.send(get_message('suscripcion_exitosa_categoria', categoria=categoria))
             else:
-                await message.channel.send("❌ Error al realizar suscripción")
+                await message.channel.send(get_message('error_suscripcion'))
                 
         except Exception as e:
             logger.exception(f"Error en cmd_suscribir: {e}")
-            await message.channel.send("❌ Error al suscribirse")
+            await message.channel.send(get_message('error_general', error=e))
     
     async def cmd_cancelar(self, message, args):
         """Cancela suscripción a categoría o feed."""
         if not args:
-            await message.channel.send("📝 Uso: `!vigia cancelar <categoría> [feed_id]`")
+            await message.channel.send(get_message('uso_cancelar'))
             return
         
         try:
@@ -161,20 +162,20 @@ class VigiaCommands:
                 try:
                     feed_id = int(args[1])
                 except ValueError:
-                    await message.channel.send("❌ Feed ID debe ser un número")
+                    await message.channel.send(get_message('error_feed_id_invalido'))
                     return
             
             if db.cancelar_suscripcion_categoria(str(message.author.id), categoria, feed_id):
                 if feed_id:
-                    await message.channel.send(f"✅ Suscripción cancelada al feed {feed_id} de '{categoria}'")
+                    await message.channel.send(get_message('suscripcion_cancelada_feed', feed_id=feed_id, categoria=categoria))
                 else:
-                    await message.channel.send(f"✅ Suscripción cancelada a la categoría '{categoria}'")
+                    await message.channel.send(get_message('suscripcion_cancelada_categoria', categoria=categoria))
             else:
-                await message.channel.send("❌ No se encontró esa suscripción para cancelar")
+                await message.channel.send(get_message('error_cancelacion'))
                 
         except Exception as e:
             logger.exception(f"Error en cmd_cancelar: {e}")
-            await message.channel.send("❌ Error al cancelar suscripción")
+            await message.channel.send(get_message('error_general', error=e))
     
     async def cmd_estado(self, message, args):
         """Muestra estado de suscripciones del usuario."""
@@ -183,11 +184,11 @@ class VigiaCommands:
             suscripciones = db.obtener_suscripciones_usuario(str(message.author.id))
             
             if not suscripciones:
-                await message.channel.send("📭 No tienes suscripciones activas.")
+                await message.channel.send(get_message('error_no_suscripciones'))
                 return
             
             embed = discord.Embed(
-                title=f"📊 Tus Suscripciones - {message.author.display_name}",
+                title=get_message('estado_titulo') + f" - {message.author.display_name}",
                 color=discord.Color.purple(),
                 timestamp=datetime.now()
             )

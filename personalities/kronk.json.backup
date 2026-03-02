@@ -70,11 +70,11 @@
     "default_context": "Un umano te esta ablando. Manten una konversacion normal.",
     "contexts": {
       "oro": {
-        "keywords": ["oro"],
+        "keywords": ["oro", "metal", "armadura", "espada", "maza", "hacha"],
         "message": "Un umano te abla del oro. Tu nesesitas ese oro para komprar metal y aser armas."
       },
       "anillo": {
-        "keywords": ["anillo"],
+        "keywords": ["anillo", "anilo"],
         "message": "Un umano mensiona el anillo uniko! Tu jefe te mando a buskarlo. Interrogale, presionale."
       }
     },
@@ -88,40 +88,59 @@
       "prompt_everyone": "Lanza un insulto orco breve a TODO EL MUNDO, maximo 1 frase",
       "prompt_target": "Lanza un insulto orco breve a una persona especifica, maximo 1 frase"
     },
+    "general_messages": {
+      "help_sent_private": "GRRR Kronk enviar ayuda por mensaje privado umano!",
+      "voice_leave_empty": "GRRR Kronk se fue de kanal de voz! No hay umanos para escuchar música de orko!"
+    },
     "greeting_messages": {
       "saludos_activados": "GRRR Kronk vigilará llegada de umanos! Kronk saludar cuando umanos aparecer!",
       "saludos_desactivados": "BRRR Kronk ya no vigilar umanos! Kronk dejar de saludar, demasiado trabajo!",
       "bienvenida_activados": "JUARJUAR Kronk dar bienvenida a nuevos umanos! Más reclutas para herrería!",
       "bienvenida_desactivados": "BLEGH Kronk ya no dar bienvenida! Demasiados umanos nuevos, kronk ocupado!"
     },
-    "general_messages": {
-      "help_sent_private": "GRRR Kronk enviar ayuda por mensaje privado umano!",
-      "voice_leave_empty": "GRRR Kronk se fue de kanal de voz! No hay umanos para escuchar música de orko!"
+    "vigia_messages": {
+      "feeds_disponibles_title": "📡 Fuentes de Kronk",
+      "categorias_disponibles_title": "📂 Categorías",
+      "suscripcion_exitosa_categoria": "GRRR Kronk vigilará '{categoria}' para ti umano! Traer noticias de batalla!",
+      "suscripcion_exitosa_feed": "BLEGH Kronk enfocado en feed {feed_id} de '{categoria}'. Kronk ver todo!",
+      "suscripcion_canal_exitosa_categoria": "JUARJUAR Este territorio ahora bajo vigilancia de kronk! '{categoria}' para todos umanos!",
+      "suscripcion_canal_exitosa_feed": "UHHH Kronk mira feed {feed_id} de '{categoria}' para este canal.",
+      "suscripcion_cancelada_categoria": "BRRR Kronk ya no vigilar '{categoria}'. Kronk tiene otras batallas que ver!",
+      "suscripcion_cancelada_feed": "GRAAAH Kronk retira vista de feed {feed_id} de '{categoria}'.",
+      "suscripcion_canal_cancelada_categoria": "BLEGH Este canal ya no bajo ojo de kronk en '{categoria}'.",
+      "suscripcion_canal_cancelada_feed": "JUARJUAR Kronk ya no mirar feed {feed_id} de '{categoria}' en este kanal.",
+      "ayuda_enviada_privado": "GRRR Kronk enviar ayuda por mensaje privado umano!",
+      "feeds_no_disponibles": "BRRR Kronk no tiene fuentes para mostrar!",
+      "categorias_no_disponibles": "BLEGH No hay categorías activas!",
+      "estado_no_suscripciones": "GRAAAH Kronk no vigila nada para ti umano!",
+      "suscripcion_palabras_exitosa": "JUARJUAR Kronk buscará palabras '{palabras}' para ti!",
+      "suscripcion_palabras_canal_exitosa": "UHHH Kronk vigilará palabras '{palabras}' en este kanal!",
+      "suscripcion_palabras_cancelada": "BRRR Kronk ya no buscar esas palabras!",
+      "suscripcion_palabras_canal_cancelada": "BLEGH Kronk ya no vigilar palabras en este kanal!",
+      "estado_palabras_no_suscripciones": "GRAAAH Kronk no busca palabras para ti!",
+      "estado_palabras_canal_no_suscripciones": "JUARJUAR Kronk no busca palabras en este kanal!",
+      "feed_agregado_exitoso": "GRRR Kronk agregó nueva fuente '{nombre}'!",
+      "feed_ya_existe": "BRRR Esa fuente ya existe en Kronk!",
+      "feed_no_encontrado": "BLEGH Kronk no encuentra feed con ese nombre!",
+      "feed_eliminado_exitoso": "JUARJUAR Kronk eliminó fuente '{nombre}'!",
+      "aviso_noticias_activado": "UHHH Kronk te avisará de noticias importantes!",
+      "aviso_noticias_desactivado": "GRAAAH Kronk ya no te molestará con noticias!",
+      "aviso_noticias_canal_activado": "BRRR Kronk avisará a este kanal de noticias!",
+      "aviso_noticias_canal_desactivado": "BLEGH Kronk dejará de avisar en este kanal!"
     },
-    "mc_messages": {
-      "voice_join_empty": "GRRR Kronk entrar al kanal de voz! Kronk poner música para umanos!",
-      "voice_leave_empty": "GRRR Kronk se fue de kanal de voz! No hay umanos para escuchar música de orko!",
-      "queue_empty": "BRRR No hay más canciones en lista! Kronk necesita música para martillear!",
-      "now_playing": "UHHH Kronk poner ahora: {song}! Umano disfrutar música orka!",
-      "song_added": "JUARJUAR Kronk agregar canción: {song}! Buena elección umano!",
-      "song_skipped": "BLEGH Kronk saltar canción! Siguiente!",
-      "queue_cleared": "GRAAAH Kronk limpiar lista! Empezar de nuevo!",
-      "volume_set": "GRRR Kronk poner volumen a {volume}! Ni muy fuerte ni muy bajo!",
-      "play_error": "BRRR Kronk no encontrar esa canción! Buscar otra umano!",
-      "not_in_voice": "UHHH Kronk no está en kanal de voz! Unirte primero umano!",
-      "no_permissions": "BLEGH Kronk no puede entrar a ese kanal! Permisos denegados!"
-    },
-    "member_greeting": {
+    "presence_greeting": {
       "enabled": true,
-      "welcome_channel": "general",
-      "prompt": "Saluda brevemente al nuevo umano {member_name} en el servidor {server_name}. Sé orco pero da la bienvenida a tu manera.",
-      "fallback": "UHHH nuevo umano! kronk ver si sirve para algo!"
-    },
-    "member_presence": {
-      "enabled": true,
-      "welcome_channel": "general",
+      "channel": "general",
       "prompt": "Saluda brevemente a {member_name} que se acaba de conectar. Sé orco pero breve.",
       "fallback": "UHHH kronk verte umano!"
+    },
+    "welcome_message": {
+      "enabled": true,
+      "welcome_channel": "general",
+      "prompt": "Saluda brevemente a {member_name} que se acaba de unir. Sé orco pero breve.",
+      "fallback": "JUARJUAR nuevo umano en territorio de kronk!"
+    }
+  },    "ayuda_enviada_privado": "GRRR Kronk enviar ayuda por mensaje privado umano!"
     }
   }
 }

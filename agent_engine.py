@@ -105,9 +105,15 @@ def _cargar_tareas_vigentes_system_additions() -> list[str]:
                     # Unescape comillas y backslashes
                     addition = addition.replace('\\"', '"').replace('\\\\', '\\')
                     if addition:
-                        additions.append(addition)
-                        if not is_role_process:
-                            logger.info(f"   📋 [ROL] '{role_name}' - misión cargada: {addition[:50]}...")
+                        # Solo añadir contextos de roles que no sean de tipo "pedir_oro" 
+                        # para evitar contaminar todas las conversaciones
+                        if role_name not in ["pedir_oro", "buscar_anillo", "buscador_tesoros"]:
+                            additions.append(addition)
+                            if not is_role_process:
+                                logger.info(f"   📋 [ROL] '{role_name}' - misión cargada: {addition[:50]}...")
+                        else:
+                            if not is_role_process:
+                                logger.info(f"   🔄 [ROL] '{role_name}' - contexto contextual (no global): {addition[:50]}...")
                         continue
             
             if not is_role_process:
@@ -207,29 +213,34 @@ def _fallback_response():
     return PERSONALIDAD.get("emergency_fallback", "...")
 
 
-def pensar(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=False):
+def pensar(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=False, logger=None):
     """
     Motor unificado con gemini-3-flash-preview y Fallback a Groq.
     Carga la personalidad desde el archivo JSON activo.
     """
+    import time
+    start_time = time.time()
+    
+    # Usar logger proporcionado o el logger global por defecto
+    if logger is None:
+        from agent_logging import get_logger
+        logger = get_logger('agent_engine')
+    
     uso_actual = incrementar_uso()
+    logger.info(f"🚀 [PENSAR] Iniciando proceso - Uso diario: {uso_actual}/20")
 
     contenido = (contenido_usuario or "").strip()
     es_mision = not bool(contenido)
     system_instruction, prompt_final = construir_prompt(
-        rol_contextual,
-        contenido_usuario=contenido,
-        historial_lista=historial_lista,
-        max_interacciones=3,
-        es_publico=es_publico,
+        rol_contextual, contenido, historial_lista, es_publico, es_mision
     )
-
-    num_interacciones = len(historial_lista)
-    bot_name = PERSONALIDAD.get("name", "Agent")
-    logger.info("=" * 60)
-    logger.info(f"🧠 [{bot_name}] GENERACIÓN DE RESPUESTA - Uso diario: {uso_actual}/20")
+    
+    prep_time = time.time()
+    logger.info(f"⚡ [PENSAR] Preparación completada en {(prep_time - start_time):.2f}s")
+    
+    logger.info(f"🧠 [KRONK] GENERACIÓN DE RESPUESTA - Uso diario: {uso_actual}/20")
     logger.info(f"📝 Contexto: {len(system_instruction)} chars system | {len(prompt_final)} chars prompt")
-    logger.info(f"💬 Historial: {num_interacciones} interacciones | Público: {es_publico}")
+    logger.info(f"💬 Historial: {len(historial_lista)} interacciones | Público: {es_publico}")
     logger.info(f"🎯 Tipo: {'MISIÓN' if es_mision else 'CHARLA'}")
     logger.info(f"🎯 Rol: {rol_contextual[:80]}..." if len(rol_contextual) > 80 else f"🎯 Rol: {rol_contextual}")
     if es_mision:
@@ -239,82 +250,140 @@ def pensar(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=
     # 1. Intento con Gemini. En simulación usamos solo Groq.
     if not SIMULACION and uso_actual <= 20:
         try:
+            gemini_start = time.time()
             logger.info("🤖 [GEMINI] Iniciando llamada a gemini-3-flash-preview")
-            logger.info(f"   └─ Temp: {0.8 if es_mision else 0.85} | Max tokens: 1024")
-            logger.info("   └─ Top-p: 0.9")
+            logger.info(f"   └─ Temp: {0.9 if es_mision else 0.95} | Max tokens: 1024")
+            logger.info("   └─ Top-p: 0.95")
 
             client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-            res = client_gemini.models.generate_content(
-                model='gemini-3-flash-preview',
-                contents=prompt_final,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.8 if es_mision else 0.85,
-                    max_output_tokens=1024,
-                    top_p=0.9,
-                    safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
-                )
-            )
-            if res.text:
-                text = res.text.strip()
-                logger.info(f"✅ [GEMINI] Respuesta recibida: {len(text)} chars")
-                logger.info(f"   └─ Preview: {text[:80]}..." if len(text) > 80 else f"   └─ Preview: {text}")
+            
+            # Agregar timeout más agresivo para Gemini usando threading
+            import threading
+            import queue
+            
+            result_queue = queue.Queue()
+            exception_queue = queue.Queue()
+            
+            def call_gemini():
+                try:
+                    thread_start = time.time()
+                    logger.info(f"🧵 [GEMINI] Thread iniciado")
+                    res = client_gemini.models.generate_content(
+                        model='gemini-3-flash-preview',
+                        contents=prompt_final,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=0.9 if es_mision else 0.95,  # Aumentado para variabilidad
+                            max_output_tokens=1024,
+                            top_p=0.95,  # Aumentado para creatividad
+                            safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
+                        )
+                    )
+                    thread_end = time.time()
+                    logger.info(f"🧵 [GEMINI] Thread completado en {(thread_end - thread_start):.2f}s")
+                    result_queue.put(res)
+                except Exception as e:
+                    exception_queue.put(e)
+            
+            # Iniciar llamada en thread separado con timeout
+            thread_launch_start = time.time()
+            gemini_thread = threading.Thread(target=call_gemini)
+            gemini_thread.start()
+            gemini_thread.join(timeout=5.0)  # Timeout de 5 segundos para Gemini           
+            thread_launch_end = time.time()
+            logger.info(f"⏱️ [GEMINI] Thread execution time: {(thread_launch_end - thread_launch_start):.2f}s")
+            
+            if gemini_thread.is_alive():
+                # El thread todavía está corriendo, timeout alcanzado
+                timeout_time = time.time()
+                logger.warning(f"⚠️ [GEMINI] Timeout de 5s alcanzado en {(timeout_time - gemini_start):.2f}s total, fallback a Groq")
+            elif not exception_queue.empty():
+                # Hubo una excepción
+                error_time = time.time()
+                exception = exception_queue.get()
+                logger.error(f"❌ [GEMINI] Error en {(error_time - gemini_start):.2f}s: {exception}")
+                raise exception
+            else:
+                # Respuesta exitosa
+                success_time = time.time()
+                logger.info(f"✅ [GEMINI] Respuesta recibida en {(success_time - gemini_start):.2f}s total")
+                res = result_queue.get()
+                if res.text:
+                    text = res.text.strip()
+                    logger.info(f"✅ [GEMINI] Respuesta recibida: {len(text)} chars")
+                    logger.info(f"   └─ Preview: {text[:80]}..." if len(text) > 80 else f"   └─ Preview: {text}")
 
-                if is_blocked_response(text):
-                    logger.warning("🚫 [GEMINI] Respuesta bloqueada, usando fallback de emergencia")
-                    return _fallback_response()
+                    if is_blocked_response(text):
+                        logger.warning("🚫 [GEMINI] Respuesta bloqueada, usando fallback de emergencia")
+                        return _fallback_response()
 
-                if len(text) < 50:
-                    logger.warning(f"⚠️ [GEMINI] Respuesta muy corta ({len(text)} chars), fallback a Groq")
-                else:
-                    respuesta_final = postprocesar_respuesta(text)
-                    logger.info(f"✨ [GEMINI] Post-procesado: {len(respuesta_final)} chars")
-                    logger.info("=" * 60)
-                    return respuesta_final
+                    if len(text) < 50:
+                        logger.warning(f"⚠️ [GEMINI] Respuesta muy corta ({len(text)} chars), fallback a Groq")
+                    else:
+                        postprocess_start = time.time()
+                        respuesta_final = postprocesar_respuesta(text)
+                        postprocess_end = time.time()
+                        logger.info(f"✨ [GEMINI] Post-procesado en {(postprocess_end - postprocess_start):.2f}s: {len(respuesta_final)} chars")
+                        
+                        total_time = time.time()
+                        logger.info(f"🏁 [GEMINI] Proceso completado en {(total_time - start_time):.2f}s total")
+                        logger.info("=" * 60)
+                        return respuesta_final
         except Exception as e:
+            error_time = time.time()
             error_msg = str(e).lower()
             if "quota" in error_msg or "limit" in error_msg or "429" in error_msg:
-                logger.warning(f"⚠️ [GEMINI] Límite de tokens/cuota alcanzado: {e}")
+                logger.warning(f"⚠️ [GEMINI] Límite de tokens/cuota alcanzado en {(error_time - start_time):.2f}s: {e}")
             else:
-                logger.error(f"⚠️ [GEMINI] Fallo: {e}")
+                logger.error(f"⚠️ [GEMINI] Fallo en {(error_time - start_time):.2f}s: {e}")
             logger.info("   └─ Fallback a Groq activado")
 
     # 2. Groq (siempre en simulación; si no, fallback tras Gemini o después de 20 usos)
     try:
+        groq_start = time.time()
         if uso_actual > 20:
             logger.info(f"🤖 [GROQ] Límite diario de Gemini alcanzado ({uso_actual}/20)")
         logger.info("🤖 [GROQ] Iniciando llamada a llama-3.3-70b-versatile")
-        logger.info(f"   └─ Temp: {0.8 if es_mision else 0.85} | Max tokens: 512")
-        logger.info("   └─ Top-p: 0.9 | Presence: 0.6 | Frequency: 0.6")
+        logger.info(f"   └─ Temp: {0.95 if es_mision else 1.0} | Max tokens: 600")
+        logger.info("   └─ Top-p: 1.0 | Presence: 1.0 | Frequency: 1.0")
 
+        api_call_start = time.time()
         completion = client_groq.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_instruction},
                 {"role": "user", "content": prompt_final}
             ],
-            temperature=0.8 if es_mision else 0.85,
-            top_p=0.9,
-            max_tokens=512,
-            presence_penalty=0.6,
-            frequency_penalty=0.6
+            temperature=0.95 if es_mision else 1.0,  # Máxima variabilidad
+            top_p=1.0,  # Máxima creatividad
+            max_tokens=600,  # Respuestas más largas y variadas
+            presence_penalty=1.0,  # Máximo penalty contra repetición
+            frequency_penalty=1.0  # Máximo penalty contra repetición
         )
+        api_call_end = time.time()
+        logger.info(f"⚡ [GROQ] Llamada API completada en {(api_call_end - api_call_start):.2f}s")
 
         text = completion.choices[0].message.content.strip()
-        logger.info(f"✅ [GROQ] Respuesta recibida: {len(text)} chars")
+        response_time = time.time()
+        logger.info(f"✅ [GROQ] Respuesta recibida en {(response_time - groq_start):.2f}s total: {len(text)} chars")
         logger.info(f"   └─ Preview: {text[:80]}..." if len(text) > 80 else f"   └─ Preview: {text}")
 
         if is_blocked_response(text):
             logger.warning("🚫 [GROQ] Respuesta bloqueada, usando fallback de emergencia")
             return _fallback_response()
 
+        postprocess_start = time.time()
         respuesta_final = postprocesar_respuesta(text)
-        logger.info(f"✨ [GROQ] Post-procesado: {len(respuesta_final)} chars")
+        postprocess_end = time.time()
+        logger.info(f"✨ [GROQ] Post-procesado en {(postprocess_end - postprocess_start):.2f}s: {len(respuesta_final)} chars")
+        
+        total_time = time.time()
+        logger.info(f"🏁 [GROQ] Proceso completado en {(total_time - start_time):.2f}s total")
         logger.info("=" * 60)
         return respuesta_final
-
     except Exception as e:
-        logger.error(f"❌ [GROQ] Fallo crítico: {e}")
+        error_time = time.time()
+        logger.error(f"❌ [GROQ] Error crítico en {(error_time - start_time):.2f}s: {e}")
         logger.info("   └─ Usando fallback de emergencia")
         logger.info("=" * 60)
         return _fallback_response()
