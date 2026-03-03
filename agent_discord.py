@@ -92,6 +92,13 @@ def get_poe2_db_for_server(guild):
     server_name = get_server_name(guild)
     return get_poe2_db_instance(server_name)
 
+def get_oro_db_for_server(guild):
+    """Obtiene instancia de BD de oro para un servidor específico."""
+    if not ORO_DB_AVAILABLE:
+        return None
+    server_name = get_server_name(guild)
+    return get_oro_db_instance(server_name)
+
 logger = get_logger('discord')
 
 # Importar clases del Vigía si está disponible
@@ -102,6 +109,28 @@ try:
 except ImportError as e:
     VIGIA_COMMANDS_AVAILABLE = False
     logger.warning(f"⚠️ [DISCORD] No se pudieron importar comandos del Vigía: {e}")
+
+# Importar clases del MC si están disponibles (requiere yt_dlp y PyNaCl)
+try:
+    import sys as _sys
+    _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "roles", "mc"))
+    from roles.mc.mc_commands import MCCommands, COMANDOS_MC
+    MC_COMMANDS_AVAILABLE = True
+    logger.info("🎵 [DISCORD] Comandos del MC importados correctamente")
+except ImportError as e:
+    MC_COMMANDS_AVAILABLE = False
+    MCCommands = None
+    COMANDOS_MC = {}
+    logger.warning(f"⚠️ [DISCORD] No se pudieron importar comandos del MC (yt_dlp/PyNaCl no instalados): {e}")
+
+# Importar base de datos de oro
+try:
+    from roles.pedir_oro.db_oro import get_oro_db_instance
+    ORO_DB_AVAILABLE = True
+    logger.info("💰 [DISCORD] Base de datos de oro importada correctamente")
+except ImportError as e:
+    ORO_DB_AVAILABLE = False
+    logger.warning(f"⚠️ [DISCORD] No se pudo importar base de datos de oro: {e}")
 
 intents = discord.Intents.all()
 
@@ -297,22 +326,27 @@ async def cmd_ayuda(ctx):
     
     # Vigía de noticias
     if os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true" or roles_config.get("vigia_noticias", {}).get("enabled", False):
-        ayuda_msg += "📡 **Vigía de Noticias** - `!avisanoticias` / `!noavisanoticias` | `!vigiaayuda` para ayuda específica\n"
+        interval = roles_config.get("vigia_noticias", {}).get("interval_hours", 1)
+        ayuda_msg += f"📡 **Vigía de Noticias** - ` Ej: !vigia suscribir economia` | `!vigiafrecuencia <h>` (cada {interval}h) | `!vigiaayuda` para ayuda específica\n"
     
     # Buscador de tesoros
     if os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true" or roles_config.get("buscador_tesoros", {}).get("enabled", False):
-        ayuda_msg += "💎 **Buscador de Tesoros** - `!buscartesoros` / `!nobuscartesoros` | `!poe2ayuda` para ayuda específica\n"
+        interval = roles_config.get("buscador_tesoros", {}).get("interval_hours", 1)
+        ayuda_msg += f"💎 **Buscador de Tesoros** - `!buscartesoros` / `!nobuscartesoros` | `!tesorosfrecuencia <h>` (cada {interval}h) | `!poe2ayuda` para ayuda específica\n"
     
     # Pedir oro
     if os.getenv("PEDIR_ORO_ENABLED", "false").lower() == "true" or roles_config.get("pedir_oro", {}).get("enabled", False):
-        ayuda_msg += "💰 **Pedir Oro** - `!pediroro` / `!nopediroro`\n"
+        interval = roles_config.get("pedir_oro", {}).get("interval_hours", 12)
+        ayuda_msg += f"💰 **Pedir Oro** - `!pediroro` / `!nopediroro` | `!orofrecuencia <h>` (cada {interval}h)\n"
     
     # Buscar anillo
     if os.getenv("BUSCAR_ANILLO_ENABLED", "false").lower() == "true" or roles_config.get("buscar_anillo", {}).get("enabled", False):
-        ayuda_msg += "👁️ **Buscar Anillo** - `!buscanillo` / `!nobuscanillo`\n"
+        interval = roles_config.get("buscar_anillo", {}).get("interval_hours", 24)
+        ayuda_msg += f"👁️ **Buscar Anillo** - `!acusaranillo` <@usuario> | `!anillofrecuencia <h>` (cada {interval}h)\n"
     
     # Música (siempre disponible, independiente de roles)
-    ayuda_msg += "🎵 **Música** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (siempre disponible)\n\n"
+    music_help_msg = PERSONALIDAD.get("discord", {}).get("role_messages", {}).get("music_help", "🎵 **Música** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (siempre disponible)")
+    ayuda_msg += f"{music_help_msg}\n\n"
     
     # Descripción básica de conversación
     ayuda_msg += "💬 **DESCRIPCIÓN BÁSICA DE CONVERSACIÓN**\n"
@@ -348,8 +382,11 @@ async def cmd_ayuda(ctx):
         elif role_name == "mc":
             ayuda_msg += f"• ✅ **Música** - Siempre disponible (no requiere activación)\n"
     
-    await ctx.author.send(ayuda_msg)
-    await ctx.send(get_message('ayuda_enviada_privado'))
+    try:
+        await ctx.author.send(ayuda_msg)
+        await ctx.send(get_message('ayuda_enviada_privado'))
+    except discord.errors.Forbidden:
+        await ctx.send(ayuda_msg[:2000])
 
 # Comando de ayuda específico para POE2
 @bot.command(name="poe2ayuda")
@@ -382,8 +419,14 @@ async def cmd_poe2_ayuda(ctx):
     ayuda_poe2 += "💡 **Ejemplos de Uso:**\n"
     ayuda_poe2 += "```\n!buscartesoros poe2\n!poe2liga Fate of the Vaal\n!poe2add \"Ancient Rib\"\n!poe2add \"Fracturing Orb\"\n!poe2list\n```"
     
-    await ctx.author.send(ayuda_poe2)
-    await ctx.send("✅ Te he enviado la ayuda de POE2 por mensaje privado 📩")
+    try:
+        await ctx.author.send(ayuda_poe2)
+        # Usar mensaje personalizado desde role_messages
+        role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+        poe2_privado_msg = role_cfg.get("poe2_help_sent", "✅ Te he enviado la ayuda de POE2 por mensaje privado 📩")
+        await ctx.send(poe2_privado_msg)
+    except discord.errors.Forbidden:
+        await ctx.send(ayuda_poe2[:2000])
 
 # Comando de ayuda específico para Vigía de Noticias
 @bot.command(name="vigiaayuda")
@@ -440,8 +483,11 @@ async def cmd_vigia_ayuda(ctx):
     
     ayuda_vigia += "⚡ **Características:** Monitorización 24/7, IA, clasificación automática, notificaciones instantáneas, filtrado por palabras clave, detección de eventos críticos."
     
-    await ctx.author.send(ayuda_vigia)
-    await ctx.send(mensaje_privado)
+    try:
+        await ctx.author.send(ayuda_vigia)
+        await ctx.send(mensaje_privado)
+    except discord.errors.Forbidden:
+        await ctx.send(ayuda_vigia[:2000])
 
 
 async def _cmd_insulta(ctx, obj=""):
@@ -665,28 +711,63 @@ async def on_presence_update(before, after):
         await after.send(f"👋 {fallback_msg}")
 
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """Desconecta al bot de un canal de voz si se queda sin usuarios humanos (funcionalidad MC)."""
+    if member.bot:
+        return
+    for vc in list(bot.voice_clients):
+        if not vc.is_connected():
+            continue
+        human_users = [m for m in vc.channel.members if not m.bot]
+        if len(human_users) == 0:
+            await asyncio.sleep(30)
+            if vc.is_connected():
+                current_users = [m for m in vc.channel.members if not m.bot]
+                if len(current_users) == 0:
+                    guild = vc.guild
+                    await vc.disconnect()
+                    try:
+                        mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+                        msg = mc_cfg.get("voice_leave_empty", "👋 Canal vacío, me voy!")
+                        canal = next(
+                            (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages),
+                            None
+                        )
+                        if canal:
+                            await canal.send(msg)
+                    except Exception:
+                        pass
+
+
 # --- COMANDOS DE CONTROL DE ROLES ---
 
 async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
     """Comando genérico para activar/desactivar roles dinámicamente."""
+    # Obtener mensajes personalizados
+    role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+    
     # Verificar permisos (solo admins)
     if not ctx.author.guild_permissions.administrator and not ctx.author.guild_permissions.manage_guild:
-        await ctx.send("❌ Solo administradores pueden modificar los roles.")
+        await ctx.send(role_cfg.get("role_no_permission", "❌ Solo administradores pueden modificar los roles."))
         return
     
     # Lista de roles válidos
     valid_roles = ["vigia_noticias", "buscador_tesoros", "pedir_oro", "buscar_anillo"]
     
     if role_name not in valid_roles:
-        await ctx.send(f"❌ Rol '{role_name}' no válido. Roles disponibles: {', '.join(valid_roles)}")
+        await ctx.send(role_cfg.get("role_not_found", "❌ Rol '{role}' no válido.").format(role=role_name))
         return
     
     # Variable de entorno
     env_var_name = f"{role_name.upper()}_ENABLED"
     env_value = "true" if enabled else "false"
     
+    logger.info(f"🎭 [DISCORD] Actualizando rol {role_name}: enabled={enabled}, env_var={env_var_name}, env_value={env_value}")
+    
     # Establecer variable de entorno (solo para esta sesión)
     os.environ[env_var_name] = env_value
+    logger.info(f"🎭 [DISCORD] Variable de entorno {env_var_name} establecida a: {os.environ.get(env_var_name)}")
     
     # Actualizar configuración en tiempo de ejecución
     if "roles" not in agent_config:
@@ -696,6 +777,7 @@ async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
         agent_config["roles"][role_name] = {}
     
     agent_config["roles"][role_name]["enabled"] = enabled
+    logger.info(f"🎭 [DISCORD] Config actualizada: {agent_config['roles'][role_name]}")
     
     # Registrar comandos del rol si se está activando
     if enabled:
@@ -704,15 +786,61 @@ async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
         # Desregistrar comandos del rol (opcional, complicado)
         logger.info(f"🎭 [DISCORD] Rol {role_name} desactivado (comandos permanecen registrados)")
     
-    action = "activado" if enabled else "desactivado"
-    await ctx.send(f"✅ Rol '{role_name}' {action} correctamente.")
-    logger.info(f"🎭 [DISCORD] {ctx.author.name} {action} el rol {role_name} en {ctx.guild.name}")
+    # Mensaje personalizado según acción
+    if enabled:
+        await ctx.send(role_cfg.get("role_activated", "✅ Rol '{role}' activado correctamente.").format(role=role_name))
+        logger.info(f"🎭 [DISCORD] {ctx.author.name} activó el rol {role_name} en {ctx.guild.name}")
+    else:
+        await ctx.send(role_cfg.get("role_deactivated", "✅ Rol '{role}' desactivado correctamente.").format(role=role_name))
+        logger.info(f"🎭 [DISCORD] {ctx.author.name} desactivó el rol {role_name} en {ctx.guild.name}")
+
+async def _cmd_role_frequency(ctx, role_name: str, hours: str):
+    """Comando genérico para configurar frecuencia de roles."""
+    # Obtener mensajes personalizados
+    role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+    
+    # Verificar permisos (solo admins)
+    if not ctx.author.guild_permissions.administrator and not ctx.author.guild_permissions.manage_guild:
+        await ctx.send(role_cfg.get("role_no_permission", "❌ Solo administradores pueden modificar la frecuencia."))
+        return
+    
+    # Validar que el rol existe
+    valid_roles = ["vigia_noticias", "buscador_tesoros", "pedir_oro", "buscar_anillo"]
+    if role_name not in valid_roles:
+        await ctx.send(role_cfg.get("role_not_found", "❌ Rol '{role}' no válido.").format(role=role_name))
+        return
+    
+    # Validar horas
+    try:
+        hours_int = int(hours)
+        if hours_int < 1 or hours_int > 168:  # Máximo 1 semana
+            await ctx.send(role_cfg.get("frequency_invalid", "❌ Las horas deben estar entre 1 y 168."))
+            return
+    except ValueError:
+        await ctx.send(role_cfg.get("frequency_invalid", "❌ Debes especificar un número válido de horas."))
+        return
+    
+    # Actualizar configuración
+    if "roles" not in agent_config:
+        agent_config["roles"] = {}
+    
+    if role_name not in agent_config["roles"]:
+        agent_config["roles"][role_name] = {}
+    
+    agent_config["roles"][role_name]["interval_hours"] = hours_int
+    
+    # Mensaje de confirmación
+    await ctx.send(role_cfg.get("frequency_updated", "✅ Frecuencia de '{role}' actualizada a {hours} horas.").format(role=role_name, hours=hours_int))
+    logger.info(f"🎭 [DISCORD] {ctx.author.name} actualizó frecuencia de {role_name} a {hours_int} horas en {ctx.guild.name}")
 
 async def register_specific_role_commands(role_name: str):
-    """Registra comandos para un rol específico."""
+    """Registra comandos para un rol específico (idempotente)."""
     logger.info(f"🎭 [DISCORD] Registrando comandos para rol: {role_name}")
     
     if role_name == "vigia_noticias":
+        if bot.get_command("avisanoticias") is not None:
+            logger.info("🎭 [DISCORD] Comandos de vigia_noticias ya registrados, omitiendo")
+            return
         # Comandos del Vigía de Noticias
         @bot.command(name="avisanoticias")
         async def cmd_avisa_noticias(ctx):
@@ -767,6 +895,9 @@ async def register_specific_role_commands(role_name: str):
                 await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
     
     elif role_name == "buscar_anillo":
+        if bot.get_command("acusaranillo") is not None:
+            logger.info("🎭 [DISCORD] Comandos de buscar_anillo ya registrados, omitiendo")
+            return
         # Comando para acusar por el anillo
         @bot.command(name="acusaranillo")
         async def cmd_acusar_anillo(ctx, target: str = ""):
@@ -816,7 +947,9 @@ async def register_specific_role_commands(role_name: str):
         @bot.command(name="buscartesoros")
         async def cmd_buscar_tesoros(ctx, subrol: str = ""):
             if not subrol or subrol.lower() != "poe2":
-                await ctx.send("❌ Debes especificar el subrol. Ejemplo: !buscartesoros poe2")
+                role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+                subrol_msg = role_cfg.get("subrol_required", "❌ Debes especificar el subrol. Ejemplo: !buscartesoros poe2")
+                await ctx.send(subrol_msg.format(command="buscartesoros"))
                 return
             
             if not POE2_AVAILABLE:
@@ -838,7 +971,9 @@ async def register_specific_role_commands(role_name: str):
         @bot.command(name="nobuscartesoros")
         async def cmd_no_buscar_tesoros(ctx, subrol: str = ""):
             if not subrol or subrol.lower() != "poe2":
-                await ctx.send("❌ Debes especificar el subrol. Ejemplo: !nobuscartesoros poe2")
+                role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+                subrol_msg = role_cfg.get("subrol_required", "❌ Debes especificar el subrol. Ejemplo: !nobuscartesoros poe2")
+                await ctx.send(subrol_msg.format(command="nobuscartesoros"))
                 return
             
             if not POE2_AVAILABLE:
@@ -996,138 +1131,207 @@ async def cmd_role_kronk(ctx, role_name: str, action: str = ""):
 logger.info(f"🤖 [DISCORD] Comando de roles registrado: rolekronk")
 
 def register_role_commands():
-    """Registra comandos solo si el rol correspondiente está activado."""
+    """Registra comandos de roles (idempotente: omite comandos ya registrados)."""
     import os
     
-    # Función helper para verificar si un rol está activado
     def is_role_enabled(role_name):
-        # Prioridad a variables de entorno
         env_var = os.getenv(f"{role_name.upper()}_ENABLED", "").lower()
         if env_var:
             logger.info(f"🔍 Verificando {role_name}: env_var={env_var} -> {env_var == 'true'}")
             return env_var == "true"
-        # Fallback a configuración JSON
         enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
         logger.info(f"🔍 Verificando {role_name}: config={enabled}")
         return enabled
     
-    # Lista de roles a verificar
-    roles_to_check = ["vigia_noticias", "buscador_tesoros", "pedir_oro", "buscar_anillo"]
+    logger.info("🎭 [DISCORD] Iniciando registro de comandos de roles")
     
-    logger.info(f"🎭 [DISCORD] Iniciando registro de comandos para {len(roles_to_check)} roles")
+    # --- Vigía de Noticias: siempre registrar si disponible (suscripción independiente del rol) ---
+    if VIGIA_COMMANDS_AVAILABLE and bot.get_command("vigia") is None:
+        logger.info("📡 [DISCORD] Registrando comandos completos del Vigía")
+        vigia_commands = VigiaCommands(bot)
+        
+        @bot.group(name="vigia")
+        async def vigia_group(ctx):
+            """Comandos del Vigía de Noticias."""
+            if ctx.invoked_subcommand is None:
+                await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
+        
+        @bot.group(name="vigiacanal")
+        async def vigiacanal_group(ctx):
+            """Comandos del Vigía para canales."""
+            if ctx.invoked_subcommand is None:
+                await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
+        
+        for cmd_name, cmd_func in COMANDOS_VIGIA.items():
+            try:
+                def make_command(name, func):
+                    async def command(ctx, *args):
+                        return await func(vigia_commands, ctx.message, list(args))
+                    return command
+                vigia_group.command(name=cmd_name)(make_command(cmd_name, cmd_func))
+                logger.info(f"📡 [DISCORD] Subcomando vigia {cmd_name} registrado")
+            except Exception as e:
+                logger.error(f"Error registrando comando vigia {cmd_name}: {e}")
+        
+        for cmd_name, cmd_func in COMANDOS_VIGIA_CANAL.items():
+            try:
+                def make_command(name, func):
+                    async def command(ctx, *args):
+                        return await func(vigia_commands, ctx.message, list(args))
+                    return command
+                vigiacanal_group.command(name=cmd_name)(make_command(cmd_name, cmd_func))
+                logger.info(f"📡 [DISCORD] Subcomando vigiacanal {cmd_name} registrado")
+            except Exception as e:
+                logger.error(f"Error registrando comando vigiacanal {cmd_name}: {e}")
+        
+        logger.info(f"📡 [DISCORD] Registrados {len(COMANDOS_VIGIA)} comandos vigia y {len(COMANDOS_VIGIA_CANAL)} comandos vigiacanal")
     
+    elif not VIGIA_COMMANDS_AVAILABLE and bot.get_command("avisanoticias") is None:
+        logger.warning("⚠️ [DISCORD] Comandos del Vigía no disponibles, usando implementación básica")
+        
+        @bot.command(name="avisanoticias")
+        async def cmd_avisa_noticias(ctx):
+            if not VIGIA_AVAILABLE:
+                await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                return
+            db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+            if not db_vigia_instance:
+                await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                return
+            usuario_id = str(ctx.author.id)
+            usuario_nombre = ctx.author.name
+            if db_vigia_instance.esta_suscrito(usuario_id):
+                await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
+                return
+            if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
+                await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
+                logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
+        
+        @bot.command(name="noavisanoticias")
+        async def cmd_no_avisa_noticias(ctx):
+            if not VIGIA_AVAILABLE:
+                await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
+                return
+            db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+            if not db_vigia_instance:
+                await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                return
+            usuario_id = str(ctx.author.id)
+            usuario_nombre = ctx.author.name
+            if not db_vigia_instance.esta_suscrito(usuario_id):
+                await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
+                return
+            if db_vigia_instance.eliminar_suscripcion(usuario_id):
+                await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
+                logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
+    else:
+        logger.info("📡 [DISCORD] Comandos del Vigía ya registrados, omitiendo")
+
+    # --- MC (Master of Ceremonies): siempre registrar grupo !mc ---
+    if bot.get_command("mc") is None:
+        if MC_COMMANDS_AVAILABLE:
+            logger.info("🎵 [DISCORD] Registrando comandos completos del MC")
+            mc_commands_instance = MCCommands(bot)
+
+            @bot.group(name="mc")
+            async def mc_group(ctx):
+                """Comandos del MC (música)."""
+                if ctx.invoked_subcommand is None:
+                    music_help = PERSONALIDAD.get("discord", {}).get("role_messages", {}).get("music_help", "🎵 Usa `!mc help` para ver los comandos disponibles")
+                    await ctx.send(music_help)
+
+            for cmd_name, cmd_func in COMANDOS_MC.items():
+                try:
+                    def make_mc_command(name, func):
+                        async def command(ctx, *args):
+                            return await func(mc_commands_instance, ctx.message, list(args))
+                        return command
+                    mc_group.command(name=cmd_name)(make_mc_command(cmd_name, cmd_func))
+                    logger.info(f"🎵 [DISCORD] Subcomando mc {cmd_name} registrado")
+                except Exception as e:
+                    logger.error(f"Error registrando comando mc {cmd_name}: {e}")
+
+            logger.info(f"🎵 [DISCORD] Registrados {len(COMANDOS_MC)} comandos mc")
+        else:
+            @bot.command(name="mc")
+            async def cmd_mc_unavailable(ctx, *args):
+                await ctx.send("⚠️ El MC no está disponible (requiere `yt_dlp` y `PyNaCl`).")
+            logger.warning("⚠️ [DISCORD] MC no disponible, registrado stub de aviso")
+    else:
+        logger.info("🎵 [DISCORD] Comandos del MC ya registrados, omitiendo")
+
+    # --- Comandos de pedir oro: siempre registrar si está disponible ---
+    if ORO_DB_AVAILABLE and bot.get_command("pediroro") is None:
+        logger.info("💰 [DISCORD] Registrando comandos de pedir oro")
+        
+        @bot.command(name="pediroro")
+        async def cmd_pedir_oro(ctx):
+            """Activa las peticiones de oro."""
+            if not ORO_DB_AVAILABLE:
+                await ctx.send("❌ El sistema de peticiones de oro no está disponible en este servidor.")
+                return
+            
+            db_oro_instance = get_oro_db_for_server(ctx.guild)
+            if not db_oro_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de oro.")
+                return
+            
+            usuario_id = str(ctx.author.id)
+            usuario_nombre = ctx.author.name
+            
+            if db_oro_instance.esta_suscrito(usuario_id, str(ctx.guild.id)):
+                await ctx.send(f"💰 {ctx.author.mention} Ya estás suscrito a las peticiones de oro.")
+                return
+            
+            if db_oro_instance.agregar_suscripcion(usuario_id, usuario_nombre, str(ctx.guild.id)):
+                await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las peticiones de oro. Te pediré oro periódicamente.")
+                logger.info(f"💰 [ORO] {usuario_nombre} ({usuario_id}) se suscribió a peticiones de oro en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al suscribirte a las peticiones de oro. Inténtalo de nuevo.")
+        
+        @bot.command(name="nopediroro")
+        async def cmd_no_pedir_oro(ctx):
+            """Desactiva las peticiones de oro."""
+            if not ORO_DB_AVAILABLE:
+                await ctx.send("❌ El sistema de peticiones de oro no está disponible en este servidor.")
+                return
+            
+            db_oro_instance = get_oro_db_for_server(ctx.guild)
+            if not db_oro_instance:
+                await ctx.send("❌ Error al acceder a la base de datos de oro.")
+                return
+            
+            usuario_id = str(ctx.author.id)
+            usuario_nombre = ctx.author.name
+            
+            if not db_oro_instance.esta_suscrito(usuario_id, str(ctx.guild.id)):
+                await ctx.send(f"💰 {ctx.author.mention} No estás suscrito a las peticiones de oro.")
+                return
+            
+            if db_oro_instance.eliminar_suscripcion(usuario_id, str(ctx.guild.id)):
+                await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las peticiones de oro. Ya no te pediré oro.")
+                logger.info(f"💰 [ORO] {usuario_nombre} ({usuario_id}) se desuscrito de peticiones de oro en {ctx.guild.name}")
+            else:
+                await ctx.send("❌ Error al desuscribirte de las peticiones de oro. Inténtalo de nuevo.")
+    else:
+        logger.info("💰 [DISCORD] Comandos de pedir oro ya registrados o no disponibles, omitiendo")
+
+    # --- Resto de roles: solo si están habilitados ---
+    roles_to_check = ["buscador_tesoros", "buscar_anillo"]
     for role_name in roles_to_check:
         if not is_role_enabled(role_name):
             logger.info(f"🎭 [DISCORD] Rol {role_name} no está activado, omitiendo")
             continue
-            
         logger.info(f"🎭 [DISCORD] Registrando comandos para rol activado: {role_name}")
         
-        if role_name == "vigia_noticias":
-            if not VIGIA_COMMANDS_AVAILABLE:
-                logger.warning("⚠️ [DISCORD] Comandos del Vigía no disponibles, usando implementación básica")
-                # Implementación básica de fallback
-                @bot.command(name="avisanoticias")
-                async def cmd_avisa_noticias(ctx):
-                    if not VIGIA_AVAILABLE:
-                        await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
-                        return
-                    
-                    db_vigia_instance = get_vigia_db_for_server(ctx.guild)
-                    if not db_vigia_instance:
-                        await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
-                        return
-                    
-                    usuario_id = str(ctx.author.id)
-                    usuario_nombre = ctx.author.name
-                    
-                    # Verificar si ya está suscrito
-                    if db_vigia_instance.esta_suscrito(usuario_id):
-                        await ctx.send(f"🛡️ {ctx.author.mention} Ya estás suscrito a las alertas del Vigía de la Torre.")
-                        return
-                    
-                    # Agregar suscripción
-                    if db_vigia_instance.agregar_suscripcion(usuario_id, usuario_nombre):
-                        await ctx.send(f"✅ {ctx.author.mention} Te has suscrito a las alertas del Vigía de la Torre. Recibirás noticias críticas cuando ocurran.")
-                        logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se suscribió a las alertas en {ctx.guild.name}")
-                    else:
-                        await ctx.send("❌ Error al suscribirte a las alertas. Inténtalo de nuevo.")
-                
-                @bot.command(name="noavisanoticias")
-                async def cmd_no_avisa_noticias(ctx):
-                    if not VIGIA_AVAILABLE:
-                        await ctx.send("❌ El Vigía de la Torre no está disponible en este servidor.")
-                        return
-                    
-                    db_vigia_instance = get_vigia_db_for_server(ctx.guild)
-                    if not db_vigia_instance:
-                        await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
-                        return
-                    
-                    usuario_id = str(ctx.author.id)
-                    usuario_nombre = ctx.author.name
-                    
-                    # Verificar si está suscrito
-                    if not db_vigia_instance.esta_suscrito(usuario_id):
-                        await ctx.send(f"🛡️ {ctx.author.mention} No estás suscrito a las alertas del Vigía de la Torre.")
-                        return
-                    
-                    # Eliminar suscripción
-                    if db_vigia_instance.eliminar_suscripcion(usuario_id):
-                        await ctx.send(f"✅ {ctx.author.mention} Te has desuscrito de las alertas del Vigía de la Torre. Ya no recibirás noticias críticas.")
-                        logger.info(f"📡 [VIGÍA] {usuario_nombre} ({usuario_id}) se desuscribió de las alertas en {ctx.guild.name}")
-                    else:
-                        await ctx.send("❌ Error al desuscribirte de las alertas. Inténtalo de nuevo.")
-            else:
-                # Implementación completa del Vigía usando VigiaCommands con grupos de comandos
-                logger.info("📡 [DISCORD] Registrando comandos completos del Vigía")
-                vigia_commands = VigiaCommands(bot)
-                
-                # Crear grupo de comandos vigia
-                @bot.group(name="vigia")
-                async def vigia_group(ctx):
-                    """Comandos del Vigía de Noticias."""
-                    if ctx.invoked_subcommand is None:
-                        await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
-                
-                # Crear grupo de comandos vigiacanal
-                @bot.group(name="vigiacanal")
-                async def vigiacanal_group(ctx):
-                    """Comandos del Vigía para canales."""
-                    if ctx.invoked_subcommand is None:
-                        await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
-                
-                # Registrar comandos principales del Vigía
-                for cmd_name, cmd_func in COMANDOS_VIGIA.items():
-                    try:
-                        def make_command(name, func):
-                            async def command(ctx, *args):
-                                return await func(vigia_commands, ctx.message, list(args))
-                            return command
-                        
-                        cmd_func_wrapper = make_command(cmd_name, cmd_func)
-                        vigia_group.command(name=cmd_name)(cmd_func_wrapper)
-                        logger.info(f"📡 [DISCORD] Subcomando vigia {cmd_name} registrado")
-                    except Exception as e:
-                        logger.error(f"Error registrando comando vigia {cmd_name}: {e}")
-                
-                # Registrar comandos de canal del Vigía
-                for cmd_name, cmd_func in COMANDOS_VIGIA_CANAL.items():
-                    try:
-                        def make_command(name, func):
-                            async def command(ctx, *args):
-                                return await func(vigia_commands, ctx.message, list(args))
-                            return command
-                        
-                        cmd_func_wrapper = make_command(cmd_name, cmd_func)
-                        vigiacanal_group.command(name=cmd_name)(cmd_func_wrapper)
-                        logger.info(f"📡 [DISCORD] Subcomando vigiacanal {cmd_name} registrado")
-                    except Exception as e:
-                        logger.error(f"Error registrando comando vigiacanal {cmd_name}: {e}")
-                
-                logger.info(f"📡 [DISCORD] Registrados {len(COMANDOS_VIGIA)} comandos vigia y {len(COMANDOS_VIGIA_CANAL)} comandos vigiacanal")
-        
-        elif role_name == "buscar_anillo":
+        if role_name == "buscar_anillo":
+            if bot.get_command("acusaranillo") is not None:
+                logger.info("🎭 [DISCORD] Comandos de buscar_anillo ya registrados, omitiendo")
+                continue
             # Comando para acusar por el anillo
             @bot.command(name="acusaranillo")
             async def cmd_acusar_anillo(ctx, target: str = ""):
@@ -1176,14 +1380,16 @@ def register_role_commands():
                 logger.info(f"👁️ [ANILLO] {ctx.author.name} acusó a {mentioned_user.name} en {ctx.guild.name}")
         
         elif role_name == "buscador_tesoros":
-            # Importar pensar para el subrol POE2
-            from agent_engine import pensar
-            
+            if bot.get_command("buscartesoros") is not None:
+                logger.info("🎭 [DISCORD] Comandos de buscador_tesoros ya registrados, omitiendo")
+                continue
             # Comandos del subrol POE2
             @bot.command(name="buscartesoros")
             async def cmd_buscar_tesoros(ctx, subrol: str = ""):
                 if not subrol or subrol.lower() != "poe2":
-                    await ctx.send("❌ Debes especificar el subrol. Ejemplo: !buscartesoros poe2")
+                    role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+                    subrol_msg = role_cfg.get("subrol_required", "❌ Debes especificar el subrol. Ejemplo: !buscartesoros poe2")
+                    await ctx.send(subrol_msg.format(command="buscartesoros"))
                     return
                 
                 if not POE2_AVAILABLE:
@@ -1205,7 +1411,9 @@ def register_role_commands():
             @bot.command(name="nobuscartesoros")
             async def cmd_no_buscar_tesoros(ctx, subrol: str = ""):
                 if not subrol or subrol.lower() != "poe2":
-                    await ctx.send("❌ Debes especificar el subrol. Ejemplo: !nobuscartesoros poe2")
+                    role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+                    subrol_msg = role_cfg.get("subrol_required", "❌ Debes especificar el subrol. Ejemplo: !nobuscartesoros poe2")
+                    await ctx.send(subrol_msg.format(command="nobuscartesoros"))
                     return
                 
                 if not POE2_AVAILABLE:
@@ -1338,6 +1546,34 @@ def register_role_commands():
                 
                 await ctx.send(response)
 
+# --- Comandos de frecuencia para roles ---
+role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+
+# Vigía de Noticias
+@bot.command(name="vigiafrecuencia")
+async def cmd_vigia_frecuencia(ctx, hours: str = ""):
+    """Configura la frecuencia del Vigía de Noticias."""
+    await _cmd_role_frequency(ctx, "vigia_noticias", hours)
+
+# Buscador de Tesoros  
+@bot.command(name="tesorosfrecuencia")
+async def cmd_tesoros_frecuencia(ctx, hours: str = ""):
+    """Configura la frecuencia del Buscador de Tesoros."""
+    await _cmd_role_frequency(ctx, "buscador_tesoros", hours)
+
+# Pedir Oro
+@bot.command(name="orofrecuencia")
+async def cmd_oro_frecuencia(ctx, hours: str = ""):
+    """Configura la frecuencia de Pedir Oro."""
+    await _cmd_role_frequency(ctx, "pedir_oro", hours)
+
+# Buscar Anillo
+@bot.command(name="anillofrecuencia")
+async def cmd_anillo_frecuencia(ctx, hours: str = ""):
+    """Configura la frecuencia de Buscar Anillo."""
+    await _cmd_role_frequency(ctx, "buscar_anillo", hours)
+
+
 
 @bot.event
 async def on_message(message):
@@ -1423,7 +1659,7 @@ async def on_message(message):
             contexts_cfg = _discord_cfg.get("contexts", {})
             texto_lower = texto.lower()
 
-            # Primero el mensaje actual, luego el historial
+            # Primero buscar en el mensaje actual
             matched = False
             for ctx_key, ctx_def in contexts_cfg.items():
                 if any(kw in texto_lower for kw in ctx_def.get("keywords", [])):
@@ -1431,14 +1667,17 @@ async def on_message(message):
                     matched = True
                     break
 
+            # Si no hay match, buscar en historial reciente (últimos 3 minutos)
             if not matched:
+                hist_reciente = await asyncio.to_thread(db_instance.obtener_historial_usuario_reciente, str(message.author.id), minutos=3)
                 for ctx_key, ctx_def in contexts_cfg.items():
                     if any(
                         any(kw in (h.get("humano", "") + " " + h.get("bot", "")).lower() for kw in ctx_def.get("keywords", []))
-                        for h in hist_total
+                        for h in hist_reciente
                     ):
                         contexto = ctx_def["message"]
                         break
+
 
             es_canal_publico = not isinstance(message.channel, discord.DMChannel)
             respuesta = await asyncio.to_thread(pensar, contexto, texto, hist_total, es_canal_publico)
@@ -1457,91 +1696,12 @@ async def on_message(message):
             )
 
 # Registrar comandos condicionales antes de iniciar el bot
-print("🔍 Llamando a register_role_commands...")
 try:
     register_role_commands()
-    print("🔍 register_role_commands completado")
+    logger.info(f"� [DISCORD] Total de comandos registrados: {len(bot.commands)}")
 except Exception as e:
-    print(f"❌ Error en register_role_commands: {e}")
+    logger.error(f"❌ Error en register_role_commands: {e}")
     import traceback
     traceback.print_exc()
-
-# Forzar registro de comandos del Vigía si están disponibles
-if VIGIA_COMMANDS_AVAILABLE:
-    print("🔍 Forzando registro de comandos del Vigía...")
-    try:
-        # Implementación completa del Vigía usando VigiaCommands con grupos de comandos
-        logger.info("📡 [DISCORD] Registrando comandos completos del Vigía (forzado)")
-        vigia_commands = VigiaCommands(bot)
-        
-        # Verificar si el grupo vigia ya existe
-        if "vigia" not in [cmd.name for cmd in bot.commands]:
-            # Crear grupo de comandos vigia
-            @bot.group(name="vigia")
-            async def vigia_group(ctx):
-                """Comandos del Vigía de Noticias."""
-                if ctx.invoked_subcommand is None:
-                    await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
-            
-            logger.info("📡 [DISCORD] Grupo vigia creado (forzado)")
-        else:
-            # Obtener el grupo existente
-            vigia_group = bot.get_command("vigia")
-            logger.info("📡 [DISCORD] Grupo vigia ya existente, reutilizando (forzado)")
-        
-        # Verificar si el grupo vigiacanal ya existe
-        if "vigiacanal" not in [cmd.name for cmd in bot.commands]:
-            # Crear grupo de comandos vigiacanal
-            @bot.group(name="vigiacanal")
-            async def vigiacanal_group(ctx):
-                """Comandos del Vigía para canales."""
-                if ctx.invoked_subcommand is None:
-                    await ctx.send("📡 Usa `!vigiaayuda` para ver la ayuda completa del Vigía")
-            
-            logger.info("📡 [DISCORD] Grupo vigiacanal creado (forzado)")
-        else:
-            # Obtener el grupo existente
-            vigiacanal_group = bot.get_command("vigiacanal")
-            logger.info("📡 [DISCORD] Grupo vigiacanal ya existente, reutilizando (forzado)")
-        
-        # Registrar comandos principales del Vigía
-        for cmd_name, cmd_func in COMANDOS_VIGIA.items():
-            try:
-                def make_command(name, func):
-                    async def command(ctx, *args):
-                        return await func(vigia_commands, ctx.message, list(args))
-                    return command
-                
-                cmd_func_wrapper = make_command(cmd_name, cmd_func)
-                vigia_group.command(name=cmd_name)(cmd_func_wrapper)
-                logger.info(f"📡 [DISCORD] Subcomando vigia {cmd_name} registrado (forzado)")
-            except Exception as e:
-                logger.error(f"Error registrando comando vigia {cmd_name}: {e}")
-        
-        # Registrar comandos de canal del Vigía
-        for cmd_name, cmd_func in COMANDOS_VIGIA_CANAL.items():
-            try:
-                def make_command(name, func):
-                    async def command(ctx, *args):
-                        return await func(vigia_commands, ctx.message, list(args))
-                    return command
-                
-                cmd_func_wrapper = make_command(cmd_name, cmd_func)
-                vigiacanal_group.command(name=cmd_name)(cmd_func_wrapper)
-                logger.info(f"📡 [DISCORD] Subcomando vigiacanal {cmd_name} registrado (forzado)")
-            except Exception as e:
-                logger.error(f"Error registrando comando vigiacanal {cmd_name}: {e}")
-        
-        logger.info(f"📡 [DISCORD] Registrados {len(COMANDOS_VIGIA)} comandos vigia y {len(COMANDOS_VIGIA_CANAL)} comandos vigiacanal (forzado)")
-        print("🔍 Comandos del Vigía registrados correctamente (forzado)")
-    except Exception as e:
-        print(f"❌ Error forzando registro del Vigía: {e}")
-        import traceback
-        traceback.print_exc()
-
-# Verificar comandos registrados
-print(f"🔍 Total de comandos registrados: {len(bot.commands)}")
-for cmd in bot.commands:
-    print(f"  - {cmd.name}")
 
 bot.run(get_discord_token())
