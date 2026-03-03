@@ -290,7 +290,9 @@ class Poe2ScoutClient:
         # Mapeo actualizado de nombres a IDs según la API
         item_ids = {
             'ancient rib': 4379,
+            'ancient jawbone': 4373,
             'ancient collarbone': 4385,
+            'preserved jawbone': 4371,
             'fracturing orb': 294,
         }
         

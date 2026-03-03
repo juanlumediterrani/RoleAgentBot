@@ -53,6 +53,17 @@ class DatabaseRoleOro:
                 )
             """)
             
+            # Tabla de suscripciones a peticiones de oro
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS suscripciones_oro (
+                    usuario_id TEXT,
+                    usuario_nombre TEXT,
+                    servidor_id TEXT,
+                    fecha_suscripcion DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (usuario_id, servidor_id)
+                )
+            """)
+            
             conn.commit()
     
     def registrar_peticion_oro(self, usuario_id, usuario_nombre, tipo, mensaje, canal_id, servidor_id, metadata=None):
@@ -122,6 +133,55 @@ class DatabaseRoleOro:
         except Exception as e:
             logger.exception(f"Error limpiando peticiones antiguas: {e}")
             return 0
+    
+    def agregar_suscripcion(self, usuario_id, usuario_nombre, servidor_id):
+        """Agrega una suscripción para peticiones de oro."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO suscripciones_oro 
+                    (usuario_id, usuario_nombre, servidor_id, fecha_suscripcion)
+                    VALUES (?, ?, ?, ?)
+                """, (usuario_id, usuario_nombre, servidor_id, datetime.now()))
+                conn.commit()
+                logger.info(f"Usuario {usuario_nombre} suscrito a peticiones de oro")
+                return True
+        except Exception as e:
+            logger.exception(f"Error agregando suscripción de oro: {e}")
+            return False
+    
+    def eliminar_suscripcion(self, usuario_id, servidor_id):
+        """Elimina una suscripción para peticiones de oro."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    DELETE FROM suscripciones_oro 
+                    WHERE usuario_id = ? AND servidor_id = ?
+                """, (usuario_id, servidor_id))
+                conn.commit()
+                eliminado = cursor.rowcount > 0
+                if eliminado:
+                    logger.info(f"Usuario {usuario_id} desuscrito de peticiones de oro")
+                return eliminado
+        except Exception as e:
+            logger.exception(f"Error eliminando suscripción de oro: {e}")
+            return False
+    
+    def esta_suscrito(self, usuario_id, servidor_id):
+        """Verifica si un usuario está suscrito a peticiones de oro."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT COUNT(*) FROM suscripciones_oro 
+                    WHERE usuario_id = ? AND servidor_id = ?
+                """, (usuario_id, servidor_id))
+                return cursor.fetchone()[0] > 0
+        except Exception:
+            logger.exception("Error verificando suscripción de oro")
+            return False
+
 
 # Diccionario para mantener instancias por servidor
 _db_oro_instances = {}
