@@ -43,6 +43,7 @@ COPY agent_db.py .
 COPY agent_discord.py .
 COPY agent_engine.py .
 COPY agent_logging.py .
+COPY discord_http.py .
 COPY postprocessor.py .
 COPY run.py .
 

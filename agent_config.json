@@ -23,7 +23,8 @@
       "script": "roles/buscar_anillo/buscar_anillo.py"
     },
     "mc": {
-      "enabled": true,
+      "enabled": false,
+      "persistent": true,
       "interval_hours": 1,
       "script": "roles/mc/mc.py"
     }
