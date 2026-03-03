@@ -6,6 +6,7 @@ import sys
 import os
 from urllib.parse import urlparse
 from agent_logging import get_logger
+from agent_engine import PERSONALIDAD
 
 # Asegurar que el path del directorio mc esté en sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -547,7 +548,10 @@ class MCCommands:
         embed.set_footer(text="Nota: Algunos comandos requieren rol de DJ o permisos de administrador")
         
         await message.author.send(embed=embed)
-        await message.channel.send("✅ Te he enviado la ayuda de música por mensaje privado 📩")
+        # Usar mensaje personalizado desde role_messages
+        role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+        music_privado_msg = role_cfg.get("music_help_sent", "✅ Te he enviado la ayuda de música por mensaje privado 📩")
+        await message.channel.send(music_privado_msg)
     
     async def _play_next(self, server_id: str, channel):
         """Reproduce la siguiente canción de la cola."""
