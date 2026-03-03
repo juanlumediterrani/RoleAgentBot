@@ -22,6 +22,48 @@ class MCCommands:
         self._playing_next = False  # Flag para evitar duplicaciones
         self.now_playing = {}    # Almacenar canción actual por servidor
         self.queues = {}          # Almacenar colas por servidor
+    
+    def get_mc_message(self, key, default=None, **kwargs):
+        """Obtiene mensaje personalizado del MC desde la personalidad."""
+        try:
+            role_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+            message = role_cfg.get(key)
+            
+            # Si no hay mensaje en personalidad, usar fallback por defecto
+            if message is None:
+                fallbacks = {
+                    'queue_end_disconnect': "🎵 Fin de la cola. Me desconectaré en 5 minutos si no se agregan más canciones.",
+                    'inactive_disconnect': "👋 Desconectado por inactividad.",
+                    'timeout_connecting': "❌ **Timeout al conectar al canal de voz. Intenta de nuevo.**",
+                    'voice_connection_error': "❌ **Error de conexión de voz. Intenta de nuevo.**",
+                    'discord_connect_error': "❌ **Error de Discord al conectar.**",
+                    'general_connect_error': "❌ **No pude conectarme al canal de voz.**",
+                    'volume_range_error': "🎵 **El volumen debe ser un número entre 0 y 100.**",
+                    'volume_adjust_error': "❌ **No pude ajustar el volumen.**",
+                    'dm_help_error': "📭 **No puedo enviarte mensaje privado.**\n**Por favor, activa los DMs de servidores o usa otro canal.**",
+                    'dm_help_blocked': "📭 **No puedo enviarte mensaje privado.**\n**Por favor, activa los DMs de servidores o usa otro canal.**",
+                    'help_dm_error': "❌ **Error al enviar ayuda por mensaje privado.**",
+                    'no_voice_connection': "❌ **Error: No hay conexión de voz establecida.**",
+                    'voice_disconnected': "❌ **Error crítico: Conexión de voz inválida.**\n**El bot necesita reconectarse al canal.**",
+                    'critical_voice_error': "❌ **Error crítico: Conexión de voz inválida.**\n**El bot necesita reconectarse al canal.**",
+                    'discord_voice_error': "❌ **Error de Discord: {error}**",
+                    'unexpected_error': "❌ **Error inesperado: {error_type}**",
+                    'next_song_error': "❌ **Error reproduciendo la siguiente canción.**",
+                    'connected_to_voice': "🎤 **Conectado a {channel_name}**",
+                    'no_dm_permission': "📭 **No puedo enviarte mensaje privado.**\n**Por favor, activa los DMs de servidores o usa otro canal.**"
+                }
+                message = fallbacks.get(key, default or f"Mensaje no encontrado: {key}")
+            
+            # Reemplazar variables si se proporcionan
+            if kwargs:
+                try:
+                    message = message.format(**kwargs)
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"Error formateando mensaje {key}: {e}")
+            return message
+        except Exception as e:
+            logger.warning(f"Error obteniendo mensaje MC {key}: {e}")
+            return default or f"Error: {key}"
         
     async def cmd_play(self, message, args):
         """Reproduce una canción o la agrega a la cola."""
@@ -34,7 +76,7 @@ class MCCommands:
         
         # Verificar que el usuario esté en un canal de voz
         if not message.author.voice:
-            await message.channel.send("🎤 **Debes estar en un canal de voz para usar este comando.**")
+            await message.channel.send(self.get_mc_message("not_in_voice", "🎤 **Debes estar en un canal de voz para usar este comando.**"))
             return
         
         voice_channel = message.author.voice.channel
@@ -44,12 +86,16 @@ class MCCommands:
         try:
             if server_id not in self.voice_clients:
                 logger.info(f"MC: Conectando al canal {voice_channel.name}...")
-                voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=10.0)
+                logger.info(f"MC: Iniciando conexión de voz (timeout: 60s)...")
+                voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=60.0)
+                logger.info(f"MC: ✅ Conexión exitosa a {voice_channel.name}")
                 self.voice_clients[server_id] = voice_client
-                await message.channel.send(f"🎤 **Conectado a {voice_channel.name}**")
+                await message.channel.send(self.get_mc_message("voice_join_empty", f"🎤 **Conectado a {voice_channel.name}**"))
             elif not self.voice_clients[server_id].is_connected():
                 logger.info(f"MC: Reconectando al canal {voice_channel.name}...")
-                voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=10.0)
+                logger.info(f"MC: Iniciando reconexión de voz (timeout: 60s)...")
+                voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=60.0)
+                logger.info(f"MC: ✅ Reconexión exitosa a {voice_channel.name}")
                 self.voice_clients[server_id] = voice_client
                 await message.channel.send(f"🎤 **Reconectado a {voice_channel.name}**")
             else:
@@ -63,7 +109,7 @@ class MCCommands:
             logger.error(f"MC: Timeout al conectar a {voice_channel.name}")
             # No enviar mensaje de timeout si ya estamos conectados y reproduciendo
             if server_id not in self.voice_clients or not self.voice_clients[server_id].is_connected():
-                await message.channel.send("❌ **Timeout al conectar al canal de voz. Intenta de nuevo.**")
+                await message.channel.send(self.get_mc_message('timeout_connecting'))
             return
         except discord.errors.ClientException as e:
             if "Already connected to a voice channel" in str(e):
@@ -75,15 +121,15 @@ class MCCommands:
                     await message.channel.send(f"🎤 **Conectado a {voice_channel.name}**")
                 else:
                     logger.error(f"MC: Error: Discord dice que está conectado pero no hay cliente de voz")
-                    await message.channel.send("❌ **Error de conexión de voz. Intenta de nuevo.**")
+                    await message.channel.send(self.get_mc_message('voice_connection_error'))
                     return
             else:
                 logger.exception(f"MC: Error Discord conectando: {e}")
-                await message.channel.send("❌ **Error de Discord al conectar.**")
+                await message.channel.send(self.get_mc_message('discord_connect_error'))
                 return
         except Exception as e:
             logger.exception(f"MC: Error general conectando a {voice_channel.name}: {e}")
-            await message.channel.send("❌ **No pude conectarme al canal de voz.**")
+            await message.channel.send(self.get_mc_message('general_connect_error'))
             return
         
         # Buscar la canción
@@ -136,14 +182,21 @@ class MCCommands:
                 
                 # Detener canción actual si hay una y reproducir la nueva
                 if server_id in self.voice_clients and self.voice_clients[server_id].is_playing():
+                    logger.info(f"MC: Deteniendo canción actual en servidor {server_id}")
                     self.voice_clients[server_id].stop()
                 
+                # Verificar estado de la conexión justo antes de reproducir
+                if server_id in self.voice_clients:
+                    vc = self.voice_clients[server_id]
+                    logger.info(f"MC: Estado antes de reproducir - Conectado: {vc.is_connected()}, Reproduciendo: {vc.is_playing()}, Canal: {vc.channel}")
+                
                 # Reproducir inmediatamente
+                logger.info(f"MC: Iniciando reproducción para '{title}' en servidor {server_id}")
                 await self._play_next(server_id, message.channel)
                 
         except Exception as e:
             logger.exception(f"Error buscando canción: {e}")
-            await message.channel.send("❌ **No pude encontrar la canción.**")
+            await message.channel.send(self.get_mc_message("play_error", "❌ **No pude encontrar la canción.**"))
     
     async def cmd_add(self, message, args):
         """Agrega una canción al final de la cola."""
@@ -190,15 +243,15 @@ class MCCommands:
                     self.voice_clients[server_id] = voice_client
                 else:
                     logger.error(f"MC: Error: Discord dice que está conectado pero no hay cliente de voz")
-                    await message.channel.send("❌ **Error de conexión de voz. Intenta de nuevo.**")
+                    await message.channel.send(self.get_mc_message('voice_connection_error'))
                     return
             else:
                 logger.exception(f"MC: Error Discord conectando: {e}")
-                await message.channel.send("❌ **Error de Discord al conectar.**")
+                await message.channel.send(self.get_mc_message('discord_connect_error'))
                 return
         except Exception as e:
             logger.exception(f"MC: Error general conectando a {voice_channel.name}: {e}")
-            await message.channel.send("❌ **No pude conectarme al canal de voz.**")
+            await message.channel.send(self.get_mc_message('general_connect_error'))
             return
         
         # Buscar la canción
@@ -250,10 +303,7 @@ class MCCommands:
                 )
                 
                 # Siempre mostrar mensaje de agregado y NUNCA interrumpir
-                await message.channel.send(f"🎵 **Agregado al final de la cola:**\n"
-                                        f"🎶 {title}\n"
-                                        f"👤 {artist}\n"
-                                        f"⏱️ {duration_str}")
+                await message.channel.send(self.get_mc_message("song_added", f"🎵 **Agregado al final de la cola:**\n🎶 {title}\n👤 {artist}\n⏱️ {duration_str}", song=title))
                 
                 # Solo reproducir si no hay nada reproduciéndose Y no hay cliente de voz
                 if (server_id not in self.voice_clients or 
@@ -263,7 +313,7 @@ class MCCommands:
                 
         except Exception as e:
             logger.exception(f"Error buscando canción: {e}")
-            await message.channel.send("❌ **No pude encontrar la canción.**")
+            await message.channel.send(self.get_mc_message("play_error", "❌ **No pude encontrar la canción.**"))
     
     async def cmd_skip(self, message, args):
         """Salta la canción actual."""
@@ -280,7 +330,7 @@ class MCCommands:
         
         # Detener la canción actual (esto activará el callback para la siguiente)
         self.voice_clients[server_id].stop()
-        await message.channel.send("⏭️ **Canción saltada.**")
+        await message.channel.send(self.get_mc_message("song_skipped", "⏭️ **Canción saltada.**"))
     
     async def cmd_stop(self, message, args):
         """Detiene completamente la reproducción y limpia la cola."""
@@ -293,11 +343,21 @@ class MCCommands:
         # Detener la reproducción
         self.voice_clients[server_id].stop()
         
-        # Limpiar la cola
+        # Limpiar la cola de la base de datos
+        try:
+            from db_role_mc import get_mc_db_instance
+            from agent_db import get_active_server_name
+            server_name = get_active_server_name() or "default"
+            db_mc = get_mc_db_instance(server_name)
+            db_mc.limpiar_queue(server_id, str(message.channel.id))
+        except Exception as e:
+            logger.exception(f"Error limpiando cola: {e}")
+        
+        # Limpiar cola local
         if server_id in self.queues:
             self.queues[server_id].clear()
         
-        await message.channel.send("⏹️ **Reproducción detenida y cola limpiada.**")
+        await message.channel.send(self.get_mc_message("queue_cleared", "⏹️ **Reproducción detenida y cola limpiada.**"))
     
     async def cmd_queue(self, message, args):
         """Muestra la cola de reproducción o reanuda la reproducción."""
@@ -384,7 +444,7 @@ class MCCommands:
         
         db_mc.limpiar_queue(server_id, str(message.channel.id))
         
-        await message.channel.send("🗑️ **Cola de reproducción limpiada.**")
+        await message.channel.send(self.get_mc_message("queue_cleared", "🗑️ **Cola de reproducción limpiada.**"))
     
     async def cmd_pause(self, message, args):
         """Pausa la reproducción."""
@@ -514,7 +574,7 @@ class MCCommands:
             volume_float = volume / 100.0
             self.voice_clients[server_id].source.volume = volume_float
             
-            await message.channel.send(f"🔊 **Volumen ajustado a {volume}%**")
+            await message.channel.send(self.get_mc_message("volume_set", f"🔊 **Volumen ajustado a {volume}%**", volume=volume))
         except ValueError:
             await message.channel.send("🎵 **El volumen debe ser un número entre 0 y 100.**")
         except Exception as e:
@@ -524,34 +584,46 @@ class MCCommands:
     async def cmd_help(self, message, args):
         """Muestra la ayuda de comandos del MC."""
         embed = discord.Embed(
-            title="🎵 MC - Master of Ceremonies",
-            description="Comandos de música para Discord",
+            title="🎵 Música de Kronk - Master of Ceremonies Orko",
+            description="Komandos de música para umanos valientes!",
             color=discord.Color.gold()
         )
         
         commands = [
-            ("!mc play <canción>", "Reproduce o agrega una canción"),
-            ("!mc skip", "Salta la canción actual"),
-            ("!mc queue", "Muestra la cola de reproducción"),
-            ("!mc clear", "Limpia la cola (requiere rol DJ)"),
-            ("!mc pause", "Pausa la reproducción"),
-            ("!mc resume", "Reanuda la reproducción"),
-            ("!mc nowplaying", "Muestra la canción actual"),
-            ("!mc history", "Muestra el historial"),
-            ("!mc leave", "Sale del canal de voz (requiere rol DJ)"),
-            ("!mc help", "Muestra esta ayuda")
+            ("!mc play <canción>", "Reproduce o agrega kanción inmediatamente"),
+            ("!mc add <canción>", "Agrega kanción al final de la lista"),
+            ("!mc skip", "Salta kanción actual"),
+            ("!mc stop", "Detiene reproducción y limpia lista"),
+            ("!mc queue", "Muestra lista de reproducción"),
+            ("!mc queue clear", "Limpia toda la lista"),
+            ("!mc queue resume", "Reanuda reproducción si está pausada"),
+            ("!mc clear", "Limpia la lista (requiere rol DJ)"),
+            ("!mc pause", "Pausa reproducción"),
+            ("!mc resume", "Reanuda reproducción"),
+            ("!mc nowplaying / !mc np", "Muestra kanción actual"),
+            ("!mc history", "Muestra historial de reproducción"),
+            ("!mc volume <0-100>", "Ajusta volumen de música"),
+            ("!mc leave / !mc disconnect", "Sale de kanal de voz (requiere rol DJ)"),
+            ("!mc help / !mc commands", "Muestra esta ayuda")
         ]
         
         for cmd, desc in commands:
             embed.add_field(name=cmd, value=desc, inline=False)
         
-        embed.set_footer(text="Nota: Algunos comandos requieren rol de DJ o permisos de administrador")
+        embed.set_footer(text="GRRR: Algunos komandos necesitan rol DJ o ser jefe orko!")
         
-        await message.author.send(embed=embed)
-        # Usar mensaje personalizado desde role_messages
-        role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
-        music_privado_msg = role_cfg.get("music_help_sent", "✅ Te he enviado la ayuda de música por mensaje privado 📩")
-        await message.channel.send(music_privado_msg)
+        try:
+            await message.author.send(embed=embed)
+            # Usar mensaje personalizado desde role_messages
+            role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+            music_privado_msg = role_cfg.get("music_help_sent", "GRRR Kronk enviar ayuda de música por mensaje privado umano!")
+            await message.channel.send(music_privado_msg)
+        except discord.errors.Forbidden:
+            # No se puede enviar DM (el usuario los tiene bloqueados)
+            await message.channel.send("📭 **No puedo enviarte mensaje privado.**\n**Por favor, activa los DMs de servidores o usa otro canal.**")
+        except Exception as e:
+            logger.exception(f"Error enviando DM de ayuda: {e}")
+            await message.channel.send("❌ **Error al enviar ayuda por mensaje privado.**")
     
     async def _play_next(self, server_id: str, channel):
         """Reproduce la siguiente canción de la cola."""
@@ -566,7 +638,7 @@ class MCCommands:
             
             if not queue:
                 # No hay más canciones, desconectar después de 5 minutos
-                await channel.send("🎵 **Fin de la cola. Me desconectaré en 5 minutos si no se agregan más canciones.**")
+                await channel.send(self.get_mc_message('queue_end_disconnect'))
                 
                 # Programar desconexión
                 await asyncio.sleep(300)  # 5 minutos
@@ -577,7 +649,7 @@ class MCCommands:
                         del self.voice_clients[server_id]
                         if server_id in self.now_playing:
                             del self.now_playing[server_id]
-                        await channel.send("👋 **Desconectado por inactividad.**")
+                        await channel.send(self.get_mc_message('inactive_disconnect'))
                 return
             
             # Obtener primera canción de la cola
@@ -601,9 +673,33 @@ class MCCommands:
                 options="-vn -b:a 128k"
             )
             
-            # Reproducir
-            voice_client = self.voice_clients[server_id]
-            voice_client.play(audio_source, after=lambda e: self._after_song(e, server_id, channel))
+            # Verificar que el cliente de voz sigue conectado
+            voice_client = self.voice_clients.get(server_id)
+            if not voice_client:
+                logger.error(f"MC: No hay cliente de voz para servidor {server_id}")
+                await channel.send("❌ **Error: No hay conexión de voz establecida.**")
+                return
+            elif not voice_client.is_connected():
+                logger.error(f"MC: Cliente de voz desconectado para servidor {server_id}")
+                logger.error(f"MC: Estado del cliente - Conectado: {voice_client.is_connected()}, Canal: {getattr(voice_client, 'channel', 'Ninguno')}")
+                await channel.send("🔌 **Conexión de voz perdida.**\n**Por favor, intenta reproducir la canción nuevamente.**")
+                return
+            
+            # Intentar reproducir con captura detallada de excepciones
+            try:
+                voice_client.play(audio_source, after=lambda e: self._after_song(e, server_id, channel))
+                logger.info(f"MC: Reproducción iniciada para {title}")
+            except discord.errors.ClientException as e:
+                logger.error(f"MC: Error de Discord ClientException: {e}")
+                if "Not connected to voice" in str(e):
+                    await channel.send("❌ **Error crítico: Conexión de voz inválida.**\n**El bot necesita reconectarse al canal.**")
+                else:
+                    await channel.send(f"❌ **Error de Discord: {e}**")
+                return
+            except Exception as e:
+                logger.exception(f"MC: Error inesperado al reproducir: {e}")
+                await channel.send(f"❌ **Error inesperado: {type(e).__name__}**")
+                return
             
             # Actualizar ahora reproduciendo
             try:
@@ -625,16 +721,7 @@ class MCCommands:
             db_mc.registrar_historial(server_id, str(channel.id), user_id, title, url, duration, artist)
             
             # Anunciar
-            embed = discord.Embed(
-                title="🎵 Ahora Reproduciendo",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="Título", value=title, inline=False)
-            embed.add_field(name="Artista", value=artist, inline=True)
-            embed.add_field(name="Duración", value=duration, inline=True)
-            embed.add_field(name="Agregada por", value=user_name, inline=True)
-            
-            await channel.send(embed=embed)
+            await channel.send(self.get_mc_message("now_playing", f"🎵 **Ahora Reproduciendo**\n🎶 {title}\n👤 {artist}\n⏱️ {duration}\n🎤 Agregada por: {user_name}", song=title))
             
         except Exception as e:
             logger.exception(f"Error reproduciendo siguiente canción: {e}")
@@ -653,8 +740,19 @@ class MCCommands:
         # Marcar que estamos procesando siguiente canción
         self._playing_next = True
         
-        # Programar siguiente canción
-        asyncio.create_task(self._play_next_safe(server_id, channel))
+        # Programar siguiente canción usando el loop del bot
+        try:
+            # Obtener el loop del bot principal
+            bot_loop = self.bot._connection.loop
+            if bot_loop and not bot_loop.is_closed():
+                # Programar la siguiente canción en el loop principal
+                asyncio.run_coroutine_threadsafe(self._play_next_safe(server_id, channel), bot_loop)
+            else:
+                logger.error("MC: Loop del bot no disponible")
+                self._playing_next = False
+        except Exception as e:
+            logger.exception(f"MC: Error programando siguiente canción: {e}")
+            self._playing_next = False
     
     async def _play_next_safe(self, server_id: str, channel):
         """Versión segura de _play_next que evita duplicaciones."""
@@ -691,6 +789,7 @@ COMANDOS_MC = {
     'play': MCCommands.cmd_play,
     'add': MCCommands.cmd_add,
     'skip': MCCommands.cmd_skip,
+    'stop': MCCommands.cmd_stop,
     'queue': MCCommands.cmd_queue,
     'clear': MCCommands.cmd_clear,
     'pause': MCCommands.cmd_pause,

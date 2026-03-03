@@ -197,7 +197,7 @@ docker compose ps
 docker compose down
 
 # Lanzar con nueva configuración
-PERSONALITY=putre ACTIVE_ROLES=pedir_oro,buscar_anillo \
+PERSONALITY=putre ACTIVE_ROLES=trilero,buscar_anillo \
   docker compose up --build -d
 ```
 

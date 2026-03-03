@@ -44,7 +44,11 @@
   "public_context_suffix": "Estas hablando en un canal publico con MUCHOS humanos. Usa PLURAL: 'ustedes', 'umanos', 'todos ustedes'.",
   "context_history_label": "Historial",
   "context_important_label": "CONTEXTO IMPORTANTE - Anillo",
-  "history_keywords": ["anillo", "anilo", "ring"],
+  "history_keywords": [
+    "anillo",
+    "anilo",
+    "ring"
+  ],
   "context_labels": {
     "human": "Humano",
     "bot": "Putre"
@@ -70,11 +74,15 @@
     "default_context": "Un umano te esta ablando. Manten una konversacion normal.",
     "contexts": {
       "oro": {
-        "keywords": ["oro"],
+        "keywords": [
+          "oro"
+        ],
         "message": "Un umano te abla del oro que le pediste. Konvenzelo ke te lo de."
       },
       "anillo": {
-        "keywords": ["anillo"],
+        "keywords": [
+          "anillo"
+        ],
         "message": "Un umano mensiona el anillo uniko! Tu jefe te mando a buskarlo. Interrogale, presionale, asustale."
       }
     },
@@ -175,7 +183,10 @@
       "music_help": "🎵 **Música de Putre** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (Música de la mierda para el infierno cabrón!)",
       "poe2_help_sent": "GRRR Putre enviar ayuda de tesoros por privado joder!",
       "music_help_sent": "GRRR Putre enviar ayuda de música por privado cabrón!",
-      "subrol_required": "🖕 Putre necesita saber el subrol joder! Usa `!{command} poe2` imbécil!"
+      "subrol_required": "🖕 Putre necesita saber el subrol joder! Usa `!{command} poe2` imbécil!",
+      "admin_permission": "❌ Solo jefes orcos pueden modificar eso umano!",
+      "test_command": "✅ Komando de orko funciona!",
+      "vigia_test_command": "📡 ✅ Komando vigia de orko funciona!"
     }
   }
 }

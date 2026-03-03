@@ -3,30 +3,47 @@
   "platform": "discord",
   "roles": {
     "vigia_noticias": {
-      "enabled": false,
+      "enabled": true,
       "interval_hours": 1,
       "script": "roles/vigia_noticias/vigia_noticias.py"
     },
     "buscador_tesoros": {
-      "enabled": false,
+      "enabled": true,
       "interval_hours": 1,
       "script": "roles/buscador_tesoros/buscador_tesoros.py"
     },
-    "pedir_oro": {
-      "enabled": false,
+    "trilero": {
+      "enabled": true,
       "interval_hours": 12,
-      "script": "roles/pedir_oro/pedir_oro.py"
+      "script": "roles/trilero/trilero.py"
     },
     "buscar_anillo": {
-      "enabled": false,
+      "enabled": true,
       "interval_hours": 24,
       "script": "roles/buscar_anillo/buscar_anillo.py"
     },
     "mc": {
-      "enabled": false,
-      "persistent": true,
-      "interval_hours": 1,
-      "script": "roles/mc/mc.py"
+      "enabled": true,
+      "mode": "integrated",
+      "features": {
+        "voice_commands": true,
+        "queue_management": true,
+        "playlist_support": true,
+        "auto_disconnect": true,
+        "mention_responses": true,
+        "presence_status": true
+      },
+      "voice_settings": {
+        "timeout_seconds": 60,
+        "auto_disconnect_timeout": 300,
+        "max_queue_size": 50,
+        "volume": 1.0
+      },
+      "audio_quality": {
+        "bitrate": "128k",
+        "format": "mp3",
+        "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+      }
     }
   }
 }

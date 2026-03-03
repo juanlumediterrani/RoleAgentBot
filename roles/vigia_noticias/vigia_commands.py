@@ -122,16 +122,16 @@ class VigiaCommands:
                     feeds = db.obtener_feeds_activos(categoria)
                     feed_existente = any(f[0] == feed_id for f in feeds)
                     if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} no encontrado en categoría '{categoria}'")
+                        await message.channel.send(get_message('feed_id_no_encontrado', feed_id=feed_id, categoria=categoria))
                         return
                 except ValueError:
-                    await message.channel.send("❌ Feed ID debe ser un número")
+                    await message.channel.send(get_message('feed_id_numero'))
                     return
             else:
                 # Verificar que la categoría exista
                 categorias = db.obtener_categorias_disponibles()
                 if not any(cat[0] == categoria for cat in categorias):
-                    await message.channel.send(f"❌ Categoría '{categoria}' no encontrada. Usa `!vigia categorías`")
+                    await message.channel.send(get_message('categoria_no_encontrada', categoria=categoria))
                     return
             
             # Realizar suscripción
@@ -244,7 +244,7 @@ class VigiaCommands:
             if db.agregar_feed(nombre, url, categoria, pais, idioma):
                 await message.channel.send(f"✅ Feed '{nombre}' agregado a categoría '{categoria}'")
             else:
-                await message.channel.send("❌ Error al agregar feed")
+                await message.channel.send(get_message('error_agregar_feed'))
                 
         except Exception as e:
             logger.exception(f"Error en cmd_agregar_feed: {e}")
@@ -279,7 +279,7 @@ class VigiaCommands:
             feeds_generales = [f for f in feeds if f[8] == 'general']  # tipo_feed en posición 8
             
             if not feeds_generales:
-                await message.channel.send(f"❌ No hay feeds generales para '{categoria}'. Usa `!vigia feeds`")
+                await message.channel.send(get_message('no_feeds_generales', categoria=categoria))
                 return
             
             # Suscribir a feeds generales
@@ -288,7 +288,7 @@ class VigiaCommands:
                 if db.suscribir_usuario_categoria(str(message.author.id), categoria, feed_id):
                     await message.channel.send(f"✅ Suscrito a feeds generales de '{categoria}' con clasificación IA")
                 else:
-                    await message.channel.send("❌ Error al suscribirse a feeds generales")
+                    await message.channel.send(get_message('error_suscribir_generales'))
                     
         except Exception as e:
             logger.exception(f"Error en cmd_general_suscribir: {e}")
@@ -305,7 +305,7 @@ class VigiaCommands:
             palabras_clave = " ".join(args).strip('"\'')
             
             if not palabras_clave:
-                await message.channel.send("❌ Debes proporcionar palabras clave")
+                await message.channel.send(get_message('debes_proporcionar_palabras'))
                 return
             
             if db.suscribir_palabras_clave(str(message.author.id), palabras_clave):
@@ -349,7 +349,7 @@ class VigiaCommands:
             # Verificar que la categoría exista
             categorias = db.obtener_categorias_disponibles()
             if not any(cat[0] == categoria for cat in categorias):
-                await message.channel.send(f"❌ Categoría '{categoria}' no encontrada. Usa `!vigia categorías`")
+                await message.channel.send(get_message('categoria_no_encontrada', categoria=categoria))
                 return
             
             # Suscribir a feeds especializados (sin feed_id)
@@ -379,7 +379,7 @@ class VigiaCommands:
             suscripciones = db.obtener_suscripciones_palabras(str(message.author.id))
             
             if not suscripciones:
-                await message.channel.send("📭 No tienes suscripciones de palabras clave.")
+                await message.channel.send(get_message('error_no_hay_palabras_clave'))
                 return
             
             embed = discord.Embed(
@@ -464,16 +464,16 @@ class VigiaCommands:
                     feeds = db.obtener_feeds_activos(categoria)
                     feed_existente = any(f[0] == feed_id for f in feeds)
                     if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} no encontrado en categoría '{categoria}'")
+                        await message.channel.send(get_message('feed_id_no_encontrado', feed_id=feed_id, categoria=categoria))
                         return
                 except ValueError:
-                    await message.channel.send("❌ Feed ID debe ser un número")
+                    await message.channel.send(get_message('feed_id_numero'))
                     return
             else:
                 # Verificar que la categoría exista
                 categorias = db.obtener_categorias_disponibles()
                 if not any(cat[0] == categoria for cat in categorias):
-                    await message.channel.send(f"❌ Categoría '{categoria}' no encontrada. Usa `!vigia categorías`")
+                    await message.channel.send(get_message('categoria_no_encontrada', categoria=categoria))
                     return
             
             # Realizar suscripción del canal
@@ -484,9 +484,9 @@ class VigiaCommands:
                 str(canal.id), canal.name, str(servidor.id), servidor.name, categoria, feed_id
             ):
                 if feed_id:
-                    await message.channel.send(f"✅ Este canal ha sido suscrito al feed {feed_id} de '{categoria}'")
+                    await message.channel.send(get_message('suscripcion_canal_exitosa_feed', feed_id=feed_id, categoria=categoria))
                 else:
-                    await message.channel.send(f"✅ Este canal ha sido suscrito a todas las noticias de '{categoria}'")
+                    await message.channel.send(get_message('suscripcion_canal_exitosa_categoria', categoria=categoria))
             else:
                 await message.channel.send("❌ Error al realizar suscripción del canal")
                 
@@ -514,7 +514,7 @@ class VigiaCommands:
                 try:
                     feed_id = int(args[1])
                 except ValueError:
-                    await message.channel.send("❌ Feed ID debe ser un número")
+                    await message.channel.send(get_message('feed_id_numero'))
                     return
             
             canal = message.channel

@@ -1,8 +1,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.dev.yml - Configuración de desarrollo y pruebas
+# docker-compose.dev.yml - Configuración de desarrollo con todos los roles
 #
 # Características:
-# - Bot único con todos los roles activos
+# - Bot único con TODOS los roles activados
 # - Personalidad Kronk para desarrollo
 # - Recursos limitados para desarrollo
 # - Logging detallado para debugging
@@ -24,7 +24,8 @@ services:
       - PERSONALITY=kronk
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
-      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,pedir_oro,buscar_anillo
+      # ACTIVAR TODOS LOS ROLES (excepto MC persistente)
+      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,pedir_oro,buscar_anillo,mc
       - VIGIA_NOTICIAS_ENABLED=true
       - BUSCADOR_TESOROS_ENABLED=true
       - PEDIR_ORO_ENABLED=true

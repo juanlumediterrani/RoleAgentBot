@@ -23,3 +23,7 @@ logs/
 fatiga.json
 fatiga/
 fatiga_temp.json
+
+# Archivos de backup
+*.backup
+*.bak

@@ -68,7 +68,7 @@ class MCBot(discord.Client):
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.listening,
-                name="música con !mc play"
+                name="musika kon !mc play"
             )
         )
     
@@ -127,54 +127,31 @@ class MCBot(discord.Client):
                             if server_id in self.commands.now_playing:
                                 del self.commands.now_playing[server_id]
                             
-                            # Enviar mensaje de despedida
-                            try:
-                                # Buscar un canal de texto para enviar mensaje
-                                for channel in voice_client.guild.text_channels:
-                                    if channel.permissions_for(voice_client.guild.me).send_messages:
-                                        # Obtener mensaje personalizado desde la personalidad
-                                        from agent_engine import PERSONALIDAD
-                                        mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
-                                        mensaje_despedida = mc_cfg.get("voice_leave_empty", "👋 **Me fui del canal de voz porque no había nadie. Vuelve pronto!**")
-                                        await channel.send(mensaje_despedida)
-                                        break
-                            except Exception as e:
-                                logger.warning(f"No pude enviar mensaje de despedida: {e}")
+                            # Desconectar sin enviar mensaje (manejado por agent_discord.py)
+                            pass
     
     async def _handle_mention(self, message):
         """Maneja menciones directas al bot con estilo de DJ."""
-        # Respuestas estilo DJ
-        dj_responses = [
+        # Obtener respuestas desde la personalidad
+        from agent_engine import PERSONALIDAD
+        mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+        
+        # Respuestas estilo DJ desde personalidad o fallback neutro
+        dj_responses = mc_cfg.get("mention_responses", [
             "🎵 **¿Qué tal la música?** Usa `!mc play <canción>` para poner algo!",
             "🎶 **Soy tu DJ personal!** ¿Qué quieres escuchar hoy?",
             "🎤 **La fiesta está activa!** Usa `!mc help` para ver todos mis comandos.",
             "🎧 **¿Lista para rockear?** ¡Estoy aquí para poner la mejor música!",
             "🎼 **MC en la casa!** ¿Qué tal si probamos con `!mc queue` para ver la lista?"
-        ]
+        ])
         
         import random
         response = random.choice(dj_responses)
         await message.channel.send(response)
     
-    async def on_guild_join(self, guild):
-        """Cuando el bot se une a un nuevo servidor."""
-        logger.info(f"🎵 MC se ha unido al servidor: {guild.name}")
-        
-        # Buscar canal general para dar la bienvenida
-        for channel in guild.text_channels:
-            if channel.permissions_for(guild.me).send_messages:
-                await channel.send(
-                    "🎵 **¡MC ha llegado para rockear!** 🎵\n\n"
-                    "Soy tu DJ personal y estoy aquí para poner la mejor música.\n\n"
-                    "**Comandos básicos:**\n"
-                    "• `!mc play <canción>` - Reproduce o agrega música\n"
-                    "• `!mc queue` - Muestra la cola de reproducción\n"
-                    "• `!mc help` - Muestra todos los comandos\n\n"
-                    "🎤 **Conéctate a un canal de voz y empieza la fiesta!**"
-                )
-                break
 
 
 if __name__ == "__main__":
     logger.info("🎵 Iniciando MC (Master of Ceremonies)...")
-    MCBot().run(get_discord_token())
+    logger.info("🎵 MC persistente desactivado - usar comandos integrados del bot principal")
+    # MCBot().run(get_discord_token())  # Desactivado para evitar doble conexión

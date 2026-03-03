@@ -20,6 +20,37 @@ _AGENT_CONFIG_PATH = os.path.join(_BASE_DIR, "agent_config.json")
 with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
     AGENT_CFG = json.load(f)
 
+# --- FUNCIONES DE CONFIGURACIÓN MC ---
+def get_mc_mode():
+    """Obtiene el modo de ejecución del MC desde config."""
+    mc_config = AGENT_CFG.get("roles", {}).get("mc", {})
+    return mc_config.get("mode", "integrated")  # default: integrated
+
+def is_mc_enabled():
+    """Verifica si el MC está habilitado."""
+    mc_config = AGENT_CFG.get("roles", {}).get("mc", {})
+    return mc_config.get("enabled", False)
+
+def get_mc_config():
+    """Obtiene la configuración completa del MC."""
+    return AGENT_CFG.get("roles", {}).get("mc", {})
+
+def get_mc_feature(feature_name):
+    """Obtiene una feature específica del MC."""
+    mc_config = get_mc_config()
+    features = mc_config.get("features", {})
+    return features.get(feature_name, False)
+
+def get_mc_voice_settings():
+    """Obtiene la configuración de voz del MC."""
+    mc_config = get_mc_config()
+    return mc_config.get("voice_settings", {})
+
+def get_mc_audio_quality():
+    """Obtiene la configuración de calidad de audio del MC."""
+    mc_config = get_mc_config()
+    return mc_config.get("audio_quality", {})
+
 def _cargar_personalidad() -> dict:
     with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
         agent_cfg = json.load(f)

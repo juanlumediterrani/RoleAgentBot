@@ -126,6 +126,21 @@ async def planificador(config: dict):
                 logger.info(f"[run] 🔍 Config enabled={enabled} → '{nombre}' {'✅' if enabled else '❌'}")
             
         if enabled:
+            # Caso especial para MC: verificar modo
+            if nombre == "mc":
+                from agent_engine import get_mc_mode
+                mc_mode = get_mc_mode()
+                logger.info(f"[run] 🎵 MC modo: '{mc_mode}'")
+                
+                if mc_mode == "integrated":
+                    logger.info(f"[run] 🎵 MC modo integrado, omitiendo lanzamiento separado")
+                    continue  # No lanzar como proceso separado
+                elif mc_mode == "standalone":
+                    logger.info(f"[run] 🎵 MC modo standalone, lanzando como proceso")
+                else:
+                    logger.info(f"[run] 🎵 MC modo '{mc_mode}' no reconocido, omitiendo")
+                    continue
+            
             # Primera ejecución inmediata al arrancar
             proxima[nombre] = ahora
             logger.info(f"[run] 📋 Rol '{nombre}' activado — cada {cfg['interval_hours']}h")

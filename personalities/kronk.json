@@ -44,7 +44,11 @@
   "public_context_suffix": "Estas hablando en un canal publico con MUCHOS humanos. Usa PLURAL: 'ustedes', 'umanos', 'todos ustedes'.",
   "context_history_label": "Historial",
   "context_important_label": "CONTEXTO IMPORTANTE - Anillo",
-  "history_keywords": ["anillo", "anilo", "ring"],
+  "history_keywords": [
+    "anillo",
+    "anilo",
+    "ring"
+  ],
   "context_labels": {
     "human": "Humano",
     "bot": "Kronk"
@@ -70,11 +74,15 @@
     "default_context": "Un umano te esta ablando. Manten una konversacion normal.",
     "contexts": {
       "oro": {
-        "keywords": ["oro"],
+        "keywords": [
+          "oro"
+        ],
         "message": "Un umano te abla del oro. Tu nesesitas ese oro para komprar metal y aser armas."
       },
       "anillo": {
-        "keywords": ["anillo"],
+        "keywords": [
+          "anillo"
+        ],
         "message": "Un umano mensiona el anillo uniko! Tu jefe te mando a buskarlo. Interrogale, presionale."
       }
     },
@@ -109,14 +117,33 @@
       "volume_set": "GRRR Kronk poner volumen a {volume}! Ni muy fuerte ni muy bajo!",
       "play_error": "BRRR Kronk no encontrar esa canción! Buscar otra umano!",
       "not_in_voice": "UHHH Kronk no está en kanal de voz! Unirte primero umano!",
-      "no_permissions": "BLEGH Kronk no puede entrar a ese kanal! Permisos denegados!"
+      "no_permissions": "BLEGH Kronk no puede entrar a ese kanal! Permisos denegados!",
+      "queue_end_disconnect": "BLEGH Kronk no tener más canciones! Orko irse en 5 minutos si umanos no poner más música!",
+      "inactive_disconnect": "BRRR Kronk irse dormir! No hay umanos para escuchar música de orko!",
+      "timeout_connecting": "UHHH Kronk no puede conectar! Demasiado lento umano!",
+      "voice_connection_error": "BLEGH Error de voz de Kronk! Intentar de nuevo!",
+      "discord_connect_error": "GRRR Discord no dejar a Kronk conectar!",
+      "general_connect_error": "UHHH Kronk no pudo conectar al kanal de voz!",
+      "volume_range_error": "BRRR El volumen debe ser número entre 0 y 100 umano bobo!",
+      "volume_adjust_error": "BLEGH Kronk no pudo ajustar volumen!",
+      "dm_help_error": "UHHH Kronk no puede mandar mensaje privado umano!",
+      "dm_help_blocked": "BLEGH Kronk no puede mandar ayuda! Activa DMs umano!",
+      "help_dm_error": "GRRR Error mandando ayuda privada de Kronk!",
+      "no_voice_connection": "UHHH No hay conexión de voz de Kronk!",
+      "voice_disconnected": "BLEGH Conexión de voz de Kronk rota!",
+      "critical_voice_error": "GRAAAH Error crítico de voz! Kronk necesita reconectar!",
+      "discord_voice_error": "UHHH Error de Discord: {error}",
+      "unexpected_error": "BLEGH Error inesperado: {error_type}",
+      "next_song_error": "GRRR Error reproduciendo siguiente canción!",
+      "connected_to_voice": "🎤 Kronk conectado a {channel_name}",
+      "no_dm_permission": "📭 No puedo enviarte mensaje privado.\nPor favor, activa los DMs de servidores o usa otro canal."
     },
     "vigia_messages": {
       "feeds_disponibles_title": "📡 Fuentes de Kronk",
       "categorias_disponibles_title": "📂 Kategorias",
       "suscripcion_exitosa_categoria": "UHHH Kronk vigilar '{categoria}' para umano! Traer noticias feas!",
       "suscripcion_exitosa_feed": "GRRR Kronk mirar feed {feed_id} de '{categoria}'!",
-      "suscripcion_canal_exitosa_categoria": "JUARJUAR Kronk vigilar '{categoria}' para todo el kanal!",
+      "suscripcion_canal_exitosa_categoria": "✅ Este canal ha sido suscrito a todas las noticias de '{categoria}'",
       "suscripcion_canal_exitosa_feed": "UHHH Kronk ver feed {feed_id} de '{categoria}' en kanal.",
       "suscripcion_cancelada_categoria": "BRRR Kronk ya no vigilar '{categoria}'! Demasiado trabajo!",
       "suscripcion_cancelada_feed": "GRAAAH Kronk dejar ver feed {feed_id} de '{categoria}'.",
@@ -134,7 +161,7 @@
       "error_no_suscripciones": "UHHH Kronk no vigilar nada para umano!",
       "error_no_suscripciones_canal": "BLEGH Kronk no vigilar nada en kanal!",
       "error_no_hay_feeds_generales": "BRRR No hay fuentes generales en '{categoria}'!",
-      "error_no_hay_palabras_clave": "UHHH No tienes palabras para Kronk buskar!",
+      "error_no_hay_palabras_clave": "📭 No tienes suscripciones de palabras clave",
       "estado_titulo": "🔨 Vigilancia de Kronk",
       "estado_canal_titulo": "⚒️ Kanales de Kronk",
       "palabras_clave_titulo": "🔍 Palabras de Kronk",
@@ -157,7 +184,30 @@
       "notificacion_critica_detectada": "🚨 PELIGRO GRAAAH! Kronk ver: {titulo}",
       "notificacion_normal": "📡 Kronk detectar notisia: {titulo}",
       "feed_agregado_exitosa": "✅ Kronk agregar fuente: '{nombre}' en kategoria '{categoria}'!",
-      "ayuda_enviada_privado": "GRRR Kronk enviar ayuda por mensaje privado umano!"
+      "ayuda_enviada_privado": "GRRR Kronk enviar ayuda por mensaje privado umano!",
+      "feed_id_no_encontrado": "❌ Feed ID {feed_id} no encontrado en kategoria '{categoria}'",
+      "categoria_no_encontrada": "❌ Kategoria '{categoria}' no encontrada. Usa `!vigia kategorias`",
+      "feed_id_numero": "❌ Feed ID debe ser numero umano bobo!",
+      "solo_admins_feeds": "❌ Solo jefes orkos pueden agregar fuentes!",
+      "error_agregar_feed": "❌ Kronk no pudo agregar fuente!",
+      "no_feeds_generales": "❌ No hay fuentes generales para '{categoria}'. Usa `!vigia feeds`",
+      "error_suscribir_generales": "❌ Kronk no pudo suskibirse a fuentes generales!",
+      "debes_proporcionar_palabras": "❌ Debes dar palabras clave umano!",
+      "error_suscribir_palabras": "❌ Kronk no pudo suskibirse a palabras clave!",
+      "no_suscripcion_palabras": "❌ Kronk no encontrar esa suskripsion de palabras!",
+      "error_cancelar_palabras": "❌ Kronk no pudo cancelar suskripsion de palabras!",
+      "error_suscripcion_mixta": "❌ Kronk no pudo realizar suskripsion mixta!",
+      "error_suscribir_cobertura": "❌ Kronk no pudo suskibirse a kobertura mixta!",
+      "permisos_gestionar_canales": "❌ Solo jefes orkos pueden gestionar kanales!",
+      "error_suscribir_canal_palabras": "❌ Kronk no pudo suskibir kanal a palabras!",
+      "permisos_cancelar_canal": "❌ Solo jefes orkos pueden cancelar suskripsion!",
+      "feed_id_cancelar_numero": "❌ Feed ID debe ser numero umano!",
+      "no_suscripcion_cancelar": "❌ Kronk no encontrar suskripsion para cancelar!",
+      "error_cancelar_suscripcion_canal": "❌ Kronk no pudo cancelar suskripsion del kanal!",
+      "no_suscripciones_canal_activas": "📭 Este kanal no tener suskripsiones aktivas.",
+      "error_obteniendo_estado_canal": "❌ Kronk no pudo obtener estado del kanal!",
+      "error_obteniendo_palabras_clave": "❌ Kronk no pudo obtener palabras clave!",
+      "error_obteniendo_estado": "❌ Kronk no pudo obtener estado!"
     },
     "member_greeting": {
       "enabled": true,
@@ -187,7 +237,10 @@
       "music_help": "🎵 **Música de Kronk** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (Orco poner música fuerte para guerra!)",
       "poe2_help_sent": "GRRR Kronk enviar ayuda de tesoros por mensaje privado umano!",
       "music_help_sent": "GRRR Kronk enviar ayuda de música por mensaje privado umano!",
-      "subrol_required": "UHHH Kronk necesita saber subrol! Usar `!{command} poe2` umano tonto!"
+      "subrol_required": "UHHH Kronk necesita saber subrol! Usar `!{command} poe2` umano tonto!",
+      "admin_permission": "❌ Solo jefes orcos pueden modificar eso umano!",
+      "test_command": "✅ Komando de orko funciona!",
+      "vigia_test_command": "📡 ✅ Komando vigia de orko funciona!"
     }
   }
 }
