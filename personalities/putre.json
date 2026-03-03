@@ -158,6 +158,24 @@
       "notificacion_normal": "📡 Putre detectó mierda: {titulo}",
       "feed_agregado_exitosa": "✅ Putre agregó fuente maldita: '{nombre}' en dominio '{categoria}'!",
       "ayuda_enviada_privado": "GRRR Putre te enviar ayuda por privado joder!"
+    },
+    "role_messages": {
+      "role_activated": "☠️ Putre activa '{role}'! A la mierda con todo!",
+      "role_deactivated": "💀 Putre mata '{role}'! Lo enterró vivo!",
+      "role_not_found": "🖕 Ese rol no existe joder! Putre no sabe qué cojones es '{role}'!",
+      "role_no_permission": "👹 Solo los jefes de la mierda pueden hacer eso! Imbécil!",
+      "role_already_enabled": "🤬 '{role}' ya estaba activo cabrón! Putre no repite mierda!",
+      "role_already_disabled": "🦴 '{role}' ya está muerto! Putre no puede matar dos veces!",
+      "role_list_title": "☠️ Dominios de Putre",
+      "role_available": "✅ {role} - ACTIVO",
+      "role_unavailable": "❌ {role} - MUERTO",
+      "frequency_updated": "🕐 Putre cambió la mierda de '{role}' a {hours} horas! Más rápido cabrón!",
+      "frequency_invalid": "🖕 Ese número es una mierda! Putre necesita entre 1 y 168 horas joder!",
+      "frequency_help": "📝 Uso: `!{role}frecuencia <horas>` (1-168 horas)\nEjemplo: `!vigiafrecuencia 2` cada 2 horas de mierda",
+      "music_help": "🎵 **Música de Putre** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (Música de la mierda para el infierno cabrón!)",
+      "poe2_help_sent": "GRRR Putre enviar ayuda de tesoros por privado joder!",
+      "music_help_sent": "GRRR Putre enviar ayuda de música por privado cabrón!",
+      "subrol_required": "🖕 Putre necesita saber el subrol joder! Usa `!{command} poe2` imbécil!"
     }
   }
 }
