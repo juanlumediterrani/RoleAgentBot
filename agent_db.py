@@ -271,6 +271,29 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error al recuperar historial: {e}")
             return []
 
+    def obtener_historial_usuario_reciente(self, usuario_id, minutos=3):
+        """Obtener historial de los últimos N minutos para contexto temporal."""
+        fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=minutos)).isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT contexto, metadata FROM interacciones
+                    WHERE usuario_id = ? AND fecha > ? ORDER BY fecha DESC
+                ''', (str(usuario_id), fecha_limite))
+
+                res = cursor.fetchall()
+                historial = []
+                for row in res:
+                    meta = json.loads(row['metadata']) if row['metadata'] else {}
+                    historial.append({"humano": row['contexto'], "bot": meta.get('respuesta', '')})
+                return list(reversed(historial))
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error al recuperar historial reciente: {e}")
+            return []
+
     def usuario_ha_pedido_tipo_recientemente(self, usuario_id, tipo_like, horas=12):
         """Evita que el agente repita peticiones al mismo usuario en poco tiempo."""
         fecha_limite = (datetime.datetime.now() - datetime.timedelta(hours=horas)).isoformat()

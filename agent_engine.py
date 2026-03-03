@@ -158,12 +158,11 @@ def _get_fatiga_path():
     
     return os.path.join(fatiga_dir, f"{personality_name}.json")
 
-PATH_CONTADOR = _get_fatiga_path()
 # Si AGENT_SIMULACION=1, el contador no se persiste (para simulaciones)
 SIMULACION = os.getenv("AGENT_SIMULATION", os.getenv("ROLE_AGENT_SIMULATION", "")).strip() in ("1", "true", "True", "yes")
 
 logger.info(f"🔧 [CONFIG] Modo simulación: {'ACTIVADO' if SIMULACION else 'DESACTIVADO'}")
-logger.info(f"🔧 [CONFIG] Contador de uso: {PATH_CONTADOR}")
+logger.info(f"🔧 [CONFIG] Contador de uso (ruta se resuelve en tiempo de ejecución)")
 logger.info(f"🤖 [IA] Cliente Groq inicializado: {'✅' if os.getenv('GROQ_API_KEY') else '❌'}")
 logger.info(f"🤖 [IA] Cliente Gemini: {'✅' if os.getenv('GEMINI_API_KEY') else '❌'}")
 
@@ -171,23 +170,24 @@ logger.info(f"🤖 [IA] Cliente Gemini: {'✅' if os.getenv('GEMINI_API_KEY') el
 def obtener_uso_diario():
     if SIMULACION:
         return 0
+    path_contador = _get_fatiga_path()
     hoy = str(date.today())
-    if not os.path.exists(PATH_CONTADOR):
+    if not os.path.exists(path_contador):
         return 0
     try:
-        if os.path.getsize(PATH_CONTADOR) == 0:
+        if os.path.getsize(path_contador) == 0:
             return 0
-        with open(PATH_CONTADOR, 'r') as f:
+        with open(path_contador, 'r') as f:
             contenido = f.read().strip()
             if not contenido:
                 return 0
             data = json.loads(contenido)
             return data.get("peticiones", 0) if data.get("ultima_fecha") == hoy else 0
     except (json.JSONDecodeError, ValueError, KeyError, OSError, IOError) as e:
-        print(f"⚠️ Error leyendo {PATH_CONTADOR}: {e}. Reiniciando contador.")
+        print(f"⚠️ Error leyendo {path_contador}: {e}. Reiniciando contador.")
         try:
-            if os.path.exists(PATH_CONTADOR):
-                os.remove(PATH_CONTADOR)
+            if os.path.exists(path_contador):
+                os.remove(path_contador)
         except Exception:
             pass
         return 0
@@ -196,12 +196,13 @@ def obtener_uso_diario():
 def incrementar_uso():
     if SIMULACION:
         return 1
+    path_contador = _get_fatiga_path()
     uso = obtener_uso_diario() + 1
     try:
-        with open(PATH_CONTADOR, 'w') as f:
+        with open(path_contador, 'w') as f:
             json.dump({"peticiones": uso, "ultima_fecha": str(date.today())}, f)
     except (OSError, IOError) as e:
-        print(f"⚠️ Error escribiendo {PATH_CONTADOR}: {e}")
+        print(f"⚠️ Error escribiendo {path_contador}: {e}")
     return uso
 
 
@@ -232,7 +233,7 @@ def pensar(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=
     contenido = (contenido_usuario or "").strip()
     es_mision = not bool(contenido)
     system_instruction, prompt_final = construir_prompt(
-        rol_contextual, contenido, historial_lista, es_publico, es_mision
+        rol_contextual, contenido, historial_lista, es_publico=es_publico
     )
     
     prep_time = time.time()

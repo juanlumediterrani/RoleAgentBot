@@ -8,6 +8,7 @@ según el intervalo configurado en agent_config.json.
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -36,12 +37,20 @@ def cargar_config() -> dict:
 
 # ── Lanzador de subprocesos ───────────────────────────────────────────────────
 
-async def lanzar_rol(nombre: str, script_rel: str):
-    """Ejecuta el script del rol como subproceso y espera a que termine."""
+_procesos_persistentes: dict = {}
+
+async def lanzar_rol(nombre: str, script_rel: str, persistent: bool = False):
+    """Ejecuta el script del rol como subproceso. Los roles persistentes se lanzan una vez y no bloquean."""
     script = BASE_DIR / script_rel
     if not script.exists():
         logger.warning(f"[run] ⚠️  Script no encontrado para '{nombre}': {script}")
         return
+
+    if persistent:
+        proc_actual = _procesos_persistentes.get(nombre)
+        if proc_actual and proc_actual.returncode is None:
+            logger.info(f"[run] 🔄 Rol persistente '{nombre}' ya activo (PID {proc_actual.pid}), omitiendo relanzamiento")
+            return
 
     logger.info(f"[run] 🚀 Ejecutando rol '{nombre}' → {script.name}")
     try:
@@ -64,20 +73,20 @@ async def lanzar_rol(nombre: str, script_rel: str):
             cwd=str(BASE_DIR),
             env=env,
         )
+
+        if persistent:
+            _procesos_persistentes[nombre] = proc
+            logger.info(f"[run] 🔄 Rol persistente '{nombre}' lanzado en segundo plano (PID {proc.pid})")
+            return
+
         stdout, _ = await proc.communicate()
         salida = stdout.decode(errors="replace").strip()
         if salida:
             for linea in salida.splitlines():
-                # Eliminar duplicación de fecha para cualquier línea que tenga formato de timestamp
-                import re
-                # Patrón para detectar y eliminar fecha al inicio
                 match = re.match(r'^\s*\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}\s+(.+)$', linea.strip())
                 if match:
-                    # Tiene fecha - eliminarla
-                    linea_limpia = match.group(1)
-                    logger.info(f"  [{nombre}] {linea_limpia}")
+                    logger.info(f"  [{nombre}] {match.group(1)}")
                 else:
-                    # No tiene fecha - mostrarla tal cual
                     logger.info(f"  [{nombre}] {linea.strip()}")
         codigo = proc.returncode
         estado = "✅" if codigo == 0 else f"⚠️  (código {codigo})"
@@ -143,7 +152,11 @@ async def planificador(config: dict):
         # Lanzar roles pendientes en paralelo
         if pendientes:
             await asyncio.gather(*[
-                lanzar_rol(nombre, roles_cfg[nombre]["script"])
+                lanzar_rol(
+                    nombre,
+                    roles_cfg[nombre]["script"],
+                    persistent=roles_cfg[nombre].get("persistent", False)
+                )
                 for nombre in pendientes
             ])
             # Reprogramar tras la ejecución
