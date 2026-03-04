@@ -5,9 +5,10 @@ import asyncio
 import re
 import time
 import threading
+import random
 from collections import defaultdict
 from discord.ext import commands, tasks
-from agent_engine import PERSONALIDAD, pensar, get_discord_token
+from agent_engine import PERSONALIDAD, pensar, get_discord_token, AGENT_CFG
 from agent_db import get_db_instance
 from agent_logging import get_logger, update_log_file_path
 from agent_db import set_current_server, get_active_server_name
@@ -95,12 +96,19 @@ def get_poe2_db_for_server(guild):
     server_name = get_server_name(guild)
     return get_poe2_db_instance(server_name)
 
-def get_oro_db_for_server(guild):
-    """Obtiene instancia de BD de oro para un servidor específico."""
-    if not ORO_DB_AVAILABLE:
+def get_limosna_db_for_server(guild):
+    """Obtiene instancia de BD de limosna para un servidor específico."""
+    if not LIMOSNA_DB_AVAILABLE:
         return None
     server_name = get_server_name(guild)
-    return get_oro_db_instance(server_name)
+    return get_limosna_db_instance(server_name)
+
+def get_banquero_db_for_server(guild):
+    """Obtiene instancia de BD del banquero para un servidor específico."""
+    if not BANQUERO_DB_AVAILABLE:
+        return None
+    server_name = get_server_name(guild)
+    return get_banquero_db_instance(server_name)
 
 logger = get_logger('discord')
 
@@ -126,14 +134,44 @@ except ImportError as e:
     COMANDOS_MC = {}
     logger.warning(f"⚠️ [DISCORD] No se pudieron importar comandos del MC (yt_dlp/PyNaCl no instalados): {e}")
 
-# Importar base de datos de oro
+# Importar base de datos de limosna
 try:
-    from roles.trilero.subroles.pedir_oro.db_oro import get_oro_db_instance
-    ORO_DB_AVAILABLE = True
-    logger.info("💰 [DISCORD] Base de datos de oro importada correctamente")
+    from roles.trilero.subroles.limosna.db_limosna import get_limosna_db_instance
+    LIMOSNA_DB_AVAILABLE = True
+    logger.info(" [DISCORD] Base de datos de limosna importada correctamente")
 except ImportError as e:
-    ORO_DB_AVAILABLE = False
-    logger.warning(f"⚠️ [DISCORD] No se pudo importar base de datos de oro: {e}")
+    LIMOSNA_DB_AVAILABLE = False
+    get_limosna_db_instance = None
+    logger.warning(f" [DISCORD] No se pudo importar base de datos de limosna: {e}")
+
+# Importar base de datos del bote
+try:
+    from roles.trilero.subroles.bote.db_bote import get_bote_db_instance
+    BOTE_DB_AVAILABLE = True
+    logger.info(" [DISCORD] Base de datos del bote importada correctamente")
+except ImportError as e:
+    BOTE_DB_AVAILABLE = False
+    get_bote_db_instance = None
+    logger.warning(f" [DISCORD] No se pudo importar base de datos del bote: {e}")
+
+# Importar sistema del bote
+try:
+    from roles.trilero.subroles.bote.bote import procesar_jugada
+    BOTE_AVAILABLE = True
+    logger.info(" [DISCORD] Sistema del bote importado correctamente")
+except ImportError as e:
+    BOTE_AVAILABLE = False
+    procesar_jugada = None
+    logger.warning(f" [DISCORD] No se pudo importar sistema del bote: {e}")
+
+# Importar base de datos del banquero (necesaria para el bote)
+try:
+    from roles.banquero.db_role_banquero import get_banquero_db_instance
+    BANQUERO_DB_AVAILABLE = True
+    logger.info("💰 [DISCORD] Base de datos del banquero importada correctamente")
+except ImportError as e:
+    BANQUERO_DB_AVAILABLE = False
+    logger.warning(f"⚠️ [DISCORD] No se pudo importar base de datos del banquero: {e}")
 
 intents = discord.Intents.all()
 
@@ -166,6 +204,66 @@ async def limpieza_db():
     db_instance = get_db_for_server(target_guild)
     filas = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
     logger.info(f"🧹 Limpieza en {target_guild.name}: {filas} registros borrados.")
+
+@tasks.loop(hours=1)
+async def buscador_tesoros_task():
+    """Ejecuta el buscador de tesoros automáticamente en todos los servidores activos."""
+    if not POE2_AVAILABLE:
+        return
+    
+    # Obtener configuración de frecuencia
+    roles_config = load_agent_config().get("roles", {})
+    buscador_config = roles_config.get("buscador_tesoros", {})
+    interval_hours = buscador_config.get("interval_hours", 1)
+    
+    # Actualizar frecuencia si cambió en la configuración
+    if buscador_tesoros_task.hours != interval_hours:
+        buscador_tesoros_task.change_interval(hours=interval_hours)
+        logger.info(f"💎 [BUSCADOR] Frecuencia actualizada a {interval_hours} horas")
+    
+    logger.info("💎 [BUSCADOR] Iniciando búsqueda automática de tesoros...")
+    
+    for guild in bot.guilds:
+        try:
+            db_poe2_instance = get_poe2_db_for_server(guild)
+            if not db_poe2_instance:
+                continue
+            
+            # Verificar si el subrol POE2 está activo
+            if not db_poe2_instance.is_activo():
+                continue
+            
+            # Ejecutar lógica del buscador para este servidor
+            await _ejecutar_buscador_para_servidor(guild, db_poe2_instance)
+            
+        except Exception as e:
+            logger.exception(f"Error en buscador automático para {guild.name}: {e}")
+    
+    logger.info("💎 [BUSCADOR] Búsqueda automática completada")
+
+async def _ejecutar_buscador_para_servidor(guild, db_poe2_instance):
+    """Ejecuta la lógica completa del buscador para un servidor específico."""
+    try:
+        # Importar las dependencias necesarias
+        from roles.buscador_tesoros.buscador_tesoros import main as buscador_main
+        from roles.buscador_tesoros.db_role_poe import DatabaseRolePoe
+        from agent_db import get_active_server_name
+        
+        # Establecer el servidor como activo temporalmente
+        original_server = get_active_server_name()
+        set_current_server(guild.name)
+        
+        # Ejecutar la lógica principal del buscador
+        await buscador_main()
+        
+        # Restaurar servidor original
+        if original_server:
+            set_current_server(original_server)
+        
+        logger.info(f"💎 [BUSCADOR] Proceso completado para {guild.name}")
+        
+    except Exception as e:
+        logger.exception(f"Error ejecutando buscador para {guild.name}: {e}")
 
 # --- CONFIGURACIÓN DINÁMICA DE SALUDOS ---
 # Variable global para tracking de configuración por servidor
@@ -303,15 +401,15 @@ async def cmd_test(ctx):
     logger.info(f"🧪 Comando test ejecutado por {ctx.author.name}")
     await ctx.send(role_cfg.get("test_command", "✅ Comando test funciona!"))
 
-# Comando de prueba del Vigía
-@bot.command(name="vigiatest")
-async def cmd_vigia_test(ctx):
-    """Comando de prueba para el Vigía."""
-    # Obtener mensajes personalizados
-    role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
-    
-    logger.info(f"📡 Comando vigiatest ejecutado por {ctx.author.name}")
-    await ctx.send(role_cfg.get("vigia_test_command", "📡 ✅ Comando vigiatest funciona - el Vigía está respondiendo!"))
+# Comando de prueba del Vigía - ELIMINADO para evitar conflictos
+# @bot.command(name="vigiatest")
+# async def cmd_vigia_test(ctx):
+#     """Comando de prueba para el Vigía."""
+#     # Obtener mensajes personalizados
+#     role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
+#     
+#     logger.info(f"📡 Comando vigiatest ejecutado por {ctx.author.name}")
+#     await ctx.send(role_cfg.get("vigia_test_command", "📡 ✅ Comando vigiatest funciona - el Vigía está respondiendo!"))
 
 # --- CONTROL DE EVENTOS (NUEVO PARADIGMA) ---
 import hashlib
@@ -344,37 +442,29 @@ def _mark_event_processed(event_key):
     _event_cache[event_key] = datetime.now()
 
 # --- CONTROL DE COMANDOS (MEJORADO) ---
-_command_cache = {}
-_command_cooldown = timedelta(seconds=2)
+_last_command_time = {}
 
 def is_duplicate_command(ctx, command_name):
-    """Verificación mejorada de comandos duplicados."""
-    user_id = ctx.author.id
-    guild_id = ctx.guild.id
-    now = datetime.now()
-    
-    # Clave del comando
-    cmd_key = f"{guild_id}_{user_id}_{command_name}"
-    
-    # Verificar cooldown
-    if cmd_key in _command_cache:
-        if now - _command_cache[cmd_key] < _command_cooldown:
-            logger.warning(f"🚫 [DISCORD] Comando duplicado bloqueado: {command_name} por {ctx.author.name}")
-            return True
-    
-    # Marcar como procesado
-    _command_cache[cmd_key] = now
-    
-    # Limpiar cache antigua
-    _cleanup_command_cache()
-    
-    return False
-
-def _cleanup_command_cache():
-    """Limpia entradas antiguas del cache."""
-    now = datetime.now()
-    expired = [k for k, v in _command_cache.items() if now - v > timedelta(minutes=5)]
-    for k in expired:
+    """Verifica si el comando ya fue ejecutado recientemente para evitar duplicados."""
+    try:
+        # Si ctx.guild es None (DM), usar el ID del canal como fallback
+        if ctx.guild is None:
+            channel_id = ctx.channel.id
+        else:
+            channel_id = ctx.guild.id
+        
+        key = f"{command_name}_{channel_id}"
+        now = time.time()
+        
+        if key in _last_command_time:
+            if now - _last_command_time[key] < 1.0:  # 1 segundo de cooldown
+                return True
+        
+        _last_command_time[key] = now
+        return False
+    except Exception as e:
+        logger.error(f"Error verificando comando duplicado: {e}")
+        return False
         del _command_cache[k]
 
 # Bloqueo global para evitar múltiples conexiones del mismo bot
@@ -411,6 +501,7 @@ def acquire_connection_lock():
 
 # Comando de ayuda
 ayuda_command_name = f"ayuda{_personality_name}"
+logger.info(f"🤖 [DISCORD] Registrando comando de ayuda: {ayuda_command_name}")
 
 @bot.command(name=ayuda_command_name)
 async def cmd_ayuda(ctx):
@@ -442,22 +533,30 @@ async def cmd_ayuda(ctx):
     # Vigía de noticias
     if os.getenv("VIGIA_NOTICIAS_ENABLED", "false").lower() == "true" or roles_config.get("vigia_noticias", {}).get("enabled", False):
         interval = roles_config.get("vigia_noticias", {}).get("interval_hours", 1)
-        ayuda_msg += f"📡 **Vigía de Noticias** - ` Ej: !vigia suscribir economia` | `!vigiafrecuencia <h>` (cada {interval}h) | `!vigiaayuda` para ayuda específica\n"
+        ayuda_msg += f"📡 **Vigía de Noticias** - Alertas inteligentes (cada {interval}h)\n"
+        ayuda_msg += " - **IMPORTANTE:** Solo puedes tener UN TIPO de suscripción activa\n"
+        ayuda_msg += "  - **Ayuda:** `!vigiaayuda` (usuarios) | `!vigiacanalayuda` (admins)\n"
+        ayuda_msg += "  - **Ejemplo:** `!vigia general internacional` → Noticias internacionales evaluadas con IA, con la opinión del agente personalizado\n"
     
     # Buscador de tesoros
     if os.getenv("BUSCADOR_TESOROS_ENABLED", "false").lower() == "true" or roles_config.get("buscador_tesoros", {}).get("enabled", False):
         interval = roles_config.get("buscador_tesoros", {}).get("interval_hours", 1)
         ayuda_msg += f"💎 **Buscador de Tesoros** - `!buscartesoros` / `!nobuscartesoros` | `!tesorosfrecuencia <h>` (cada {interval}h) | `!poe2ayuda` para ayuda específica\n"
     
-    # Trilero (incluye pedir oro)
+    # Trilero (incluye limosna)
     if os.getenv("TRILERO_ENABLED", "false").lower() == "true" or roles_config.get("trilero", {}).get("enabled", False):
         interval = roles_config.get("trilero", {}).get("interval_hours", 12)
-        ayuda_msg += f"🎭 **Trilero** - `!trilero` / `!notrilero` | `!trilerofrecuencia <h>` (cada {interval}h)\n"
+        ayuda_msg += f"🎭 **Trilero** - `!trilero ayuda` para comandos de limosna (cada {interval}h)\n"
     
     # Buscar anillo
     if os.getenv("BUSCAR_ANILLO_ENABLED", "false").lower() == "true" or roles_config.get("buscar_anillo", {}).get("enabled", False):
         interval = roles_config.get("buscar_anillo", {}).get("interval_hours", 24)
         ayuda_msg += f"👁️ **Buscar Anillo** - `!acusaranillo` <@usuario> | `!anillofrecuencia <h>` (cada {interval}h)\n"
+    
+    # Banquero
+    if os.getenv("BANQUERO_ENABLED", "false").lower() == "true" or roles_config.get("banquero", {}).get("enabled", False):
+        banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+        ayuda_msg += f"{banquero_msgs.get('banquero_help', '💰 **Banquero** - `!banquero saldo` | `!banquero tae <cantidad>` (admins) | `!banquero ayuda` para ayuda completa')}\n"
     
     # Música (siempre disponible, independiente de roles)
     music_help_msg = PERSONALIDAD.get("discord", {}).get("role_messages", {}).get("music_help", "🎵 **Música** - `!mc play <canción>` / `!mc queue` | `!mc help` para ayuda completa (siempre disponible)")
@@ -491,119 +590,102 @@ async def cmd_ayuda(ctx):
         elif role_name == "buscador_tesoros":
             ayuda_msg += f"• {status_emoji} **Buscador de Tesoros** - Alertas de oportunidades de compra\n"
         elif role_name == "trilero":
-            ayuda_msg += f"• {status_emoji} **Trilero** - Estafas y manipulación para conseguir recursos\n"
+            ayuda_msg += f"• {status_emoji} **Trilero** - Subrol limosna: peticiones de donaciones y engaños\n"
         elif role_name == "buscar_anillo":
             ayuda_msg += f"• {status_emoji} **Buscar Anillo** - Acusaciones por el anillo\n"
+        elif role_name == "banquero":
+            ayuda_msg += f"• {status_emoji} **Banquero** - Gestión económica y TAE diaria\n"
         elif role_name == "mc":
             ayuda_msg += f"• ✅ **Música** - Siempre disponible (no requiere activación)\n"
     
     try:
-        await ctx.author.send(ayuda_msg)
+        # Verificar si el mensaje es demasiado largo antes de enviar
+        if len(ayuda_msg) > 2000:
+            # Dividir en partes y enviar al usuario por DM
+            partes = [ayuda_msg[i:i+1900] for i in range(0, len(ayuda_msg), 1900)]
+            for parte in partes:
+                await ctx.author.send(parte)
+        else:
+            await ctx.author.send(ayuda_msg)
+        
         await ctx.send(get_message('ayuda_enviada_privado'))
     except discord.errors.Forbidden:
-        await ctx.send(ayuda_msg[:2000])
+        # Si no puede enviar DM, enviar en el canal (dividido si es necesario)
+        if len(ayuda_msg) > 2000:
+            partes = [ayuda_msg[i:i+1900] for i in range(0, len(ayuda_msg), 1900)]
+            for parte in partes:
+                await ctx.send(parte)
+        else:
+            await ctx.send(ayuda_msg[:2000])
 
-# Comando de ayuda específico para POE2
-@bot.command(name="poe2ayuda")
-async def cmd_poe2_ayuda(ctx):
-    """Muestra ayuda específica para el subrol POE2."""
+# Comando de ayuda específico para canales del Vigía de Noticias
+@bot.command(name="vigiacanalayuda")
+async def cmd_vigia_canal_ayuda(ctx):
+    """Muestra ayuda específica para el Vigía de Noticias en canales (solo admins)."""
     
-    ayuda_poe2 = "🔮 **Ayuda del Subrol POE2** 🔮\n\n"
-    ayuda_poe2 += "📋 **Control del Subrol:**\n"
-    ayuda_poe2 += "• `!buscartesoros poe2` - Activa el subrol POE2\n"
-    ayuda_poe2 += "• `!nobuscartesoros poe2` - Desactiva el subrol POE2\n\n"
+    if not ctx.guild:
+        await ctx.send("❌ Este comando solo funciona en servidores, no por mensaje privado.")
+        return
     
-    ayuda_poe2 += "🏆 **Gestión de Liga:**\n"
-    ayuda_poe2 += "• `!poe2liga` - Muestra la liga actual\n"
-    ayuda_poe2 += "• `!poe2liga Standard` - Establece liga Standard\n"
-    ayuda_poe2 += "• `!poe2liga Fate of the Vaal` - Establece liga Fate of the Vaal\n\n"
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.send("❌ Solo administradores pueden usar este comando.")
+        return
     
-    ayuda_poe2 += "🎯 **Gestión de Objetivos:**\n"
-    ayuda_poe2 += "• `!poe2add \"Nombre del Item\"` - Añade item a objetivos\n"
-    ayuda_poe2 += "• `!poe2del \"Nombre del Item\"` - Elimina item de objetivos\n"
-    ayuda_poe2 += "• `!poe2list` - Muestra configuración y objetivos actuales\n\n"
+    if not VIGIA_COMMANDS_AVAILABLE:
+        await ctx.send("❌ El Vigía de Noticias no está disponible en este servidor.")
+        return
     
-    ayuda_poe2 += "📊 **Items Conocidos:**\n"
-    ayuda_poe2 += "• Ancient Rib • Ancient Collarbone • Ancient Jawbone\n"
-    ayuda_poe2 += "• Fracturing Orb • Igniferis • Idol of Uldurn\n\n"
+    db_vigia_instance = get_vigia_db_for_server(ctx.guild)
+    if not db_vigia_instance:
+        await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+        return
     
-    ayuda_poe2 += "⚡ **Análisis Automático:**\n"
-    ayuda_poe2 += "• **COMPRA**: Precio ≤ mínimo histórico × 1.15\n"
-    ayuda_poe2 += "• **VENTA**: Precio ≥ máximo histórico × 0.85\n\n"
+    ayuda_msg = "📡 **AYUDA DEL VIGÍA - COMANDOS DE CANAL** 📡\n\n"
+    ayuda_msg += "🔧 **Comandos de Administración:**\n"
+    ayuda_msg += "```\n"
+    ayuda_msg += "!vigiacanal suscribir <feed_id>     # Suscribir canal a un feed\n"
+    ayuda_msg += "!vigiacanal cancelar <feed_id>     # Cancelar suscripción del canal\n"
+    ayuda_msg += "!vigiacanal estado                 # Ver estado de suscripciones del canal\n"
+    ayuda_msg += "!vigiacanal palabras add <palabra> # Añadir palabra clave al canal\n"
+    ayuda_msg += "!vigiacanal palabras del <palabra>  # Eliminar palabra clave del canal\n"
+    ayuda_msg += "!vigiacanal premisas add <texto>    # Añadir premisa al canal\n"
+    ayuda_msg += "!vigiacanal premisas del <id>       # Eliminar premisa del canal\n"
+    ayuda_msg += "!vigiacanal general <categoria> [feed_id]     # Suscribir canal con IA\n"
+    ayuda_msg += "!vigiacanal general cancelar <categoria> [feed_id]  # Cancelar suscripción IA\n"
+    ayuda_msg += "```\n\n"
+    ayuda_msg += "💡 **Para ver todos los feeds disponibles:** `!vigia feeds`\n"
+    ayuda_msg += "📋 **Para ver categorías:** `!vigia categorias`\n"
     
-    ayuda_poe2 += "💡 **Ejemplos de Uso:**\n"
-    ayuda_poe2 += "```\n!buscartesoros poe2\n!poe2liga Fate of the Vaal\n!poe2add \"Ancient Rib\"\n!poe2add \"Fracturing Orb\"\n!poe2list\n```"
+    await ctx.send(ayuda_msg[:2000])
+    # Ejemplos de uso
+    embed.add_field(
+        name="💡 Ejemplos de Uso",
+        value=(
+            "`!vigiacanal suscribir economia` - Todas las noticias económicas con opinión\n"
+            "`!vigiacanal palabras \"bitcoin,crypto\"` - Solo noticias con esas palabras\n"
+            "`!vigiacanal general internacional` - Noticias críticas según premisas\n"
+            "`!vigiacanal general cancelar internacional` - Cancelar suscripción con IA\n"
+            "`!vigiacanal premisas add \"crisis financiera\"` - Añadir premisa al canal\n"
+            "`!vigiacanal estado` - Ver tipo de suscripción del canal"
+        ),
+        inline=False
+    )
     
-    try:
-        await ctx.author.send(ayuda_poe2)
-        # Usar mensaje personalizado desde role_messages
-        role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
-        poe2_privado_msg = role_cfg.get("poe2_help_sent", "✅ Te he enviado la ayuda de POE2 por mensaje privado 📩")
-        await ctx.send(poe2_privado_msg)
-    except discord.errors.Forbidden:
-        await ctx.send(ayuda_poe2[:2000])
-
-# Comando de ayuda específico para Vigía de Noticias
-@bot.command(name="vigiaayuda")
-async def cmd_vigia_ayuda(ctx):
-    """Muestra ayuda específica para el Vigía de Noticias."""
+    # Información importante
+    embed.add_field(
+        name="⚠️ IMPORTANTE - Exclusión Mutua",
+        value=(
+            "• Un canal puede tener **SOLO UN TIPO** de suscripción activa\n"
+            "• Al cambiar de tipo, se cancela automáticamente la anterior\n"
+            "• **Tipos:** Plana (todas), Palabras (filtradas), IA (críticas)\n"
+            "• Las notificaciones se envían al canal configurado\n"
+            "• Solo administradores pueden gestionar suscripciones de canal"
+        ),
+        inline=False
+    )
     
-    # Obtener mensaje personalizado desde la personalidad
-    ayuda_cfg = PERSONALIDAD.get("discord", {}).get("general_messages", {})
-    mensaje_privado = ayuda_cfg.get("help_sent_private", "GRRR Kronk enviar ayuda por mensaje privado umano!")
-    
-    ayuda_vigia = "📡 **Ayuda del Vigía de Noticias** 📡\n\n"
-    
-    ayuda_vigia += "🎯 **Comandos Principales:**\n"
-    ayuda_vigia += "• `!vigia feeds` - Lista feeds RSS disponibles\n"
-    ayuda_vigia += "• `!vigia categorias` - Muestra categorías activas\n"
-    ayuda_vigia += "• `!vigia estado` - Tus suscripciones activas\n\n"
-    
-    ayuda_vigia += "🎯 **Suscripciones Especializadas:**\n"
-    ayuda_vigia += "• `!vigia suscribir <categoría> [feed_id]` - Suscribirse a feeds\n"
-    ayuda_vigia += "• `!vigia cancelar <categoría> [feed_id]` - Cancelar suscripción\n"
-    ayuda_vigia += "• **Ejemplo:** `!vigia suscribir economia`\n\n"
-    
-    ayuda_vigia += "🤖 **Suscripciones con IA:**\n"
-    ayuda_vigia += "• `!vigia general <categoría>` - Feeds con clasificación IA\n"
-    ayuda_vigia += "• `!vigia mixto <categoría>` - Cobertura mixta (máxima)\n"
-    ayuda_vigia += "• **Ejemplo:** `!vigia general internacional`\n\n"
-    
-    ayuda_vigia += "🔍 **Palabras Clave:**\n"
-    ayuda_vigia += "• `!vigia palabras \"palabra1,palabra2\"` - Suscribir a palabras\n"
-    ayuda_vigia += "• `!vigia cancelar_palabras \"palabras\"` - Cancelar suscripción\n"
-    ayuda_vigia += "• `!vigia estado_palabras` - Ver palabras suscritas\n\n"
-    
-    ayuda_vigia += "📢 **Comandos de Canal:**\n"
-    ayuda_vigia += "• `!vigiacanal suscribir <categoría> [feed_id]` - Suscribir canal\n"
-    ayuda_vigia += "• `!vigiacanal cancelar <categoría> [feed_id]` - Cancelar canal\n"
-    ayuda_vigia += "• `!vigiacanal estado` - Ver suscripciones del canal\n"
-    ayuda_vigia += "• `!vigiacanal palabras \"palabras\"` - Palabras clave para canal\n\n"
-    
-    ayuda_vigia += "⚙️ **Administración:**\n"
-    ayuda_vigia += "• `!vigia agregar_feed <nombre> <url> <categoría> [tipo]` - Agregar feed\n\n"
-    
-    ayuda_vigia += "📂 **Categorías:** economia, internacional, tecnologia, sociedad, politica\n\n"
-    
-    ayuda_vigia += "🔔 **Alertas Críticas:**\n"
-    ayuda_vigia += "• `!avisanoticias` - Suscribirse a alertas críticas\n"
-    ayuda_vigia += "• `!noavisanoticias` - Cancelar suscripción a alertas\n\n"
-    
-    ayuda_vigia += "🌐 **Fuentes por Defecto:**\n"
-    ayuda_vigia += "• CNBC (economia) • El País (internacional) • Reuters (internacional)\n"
-    ayuda_vigia += "• BBC (tecnologia) • CNN (general) • Crypto News (cripto)\n\n"
-    
-    ayuda_vigia += "💡 **Ejemplos:**\n"
-    ayuda_vigia += "```\n!vigia feeds                    # Ver feeds\n!vigia suscribir economia         # Noticias económicas\n!vigia general internacional      # Noticias con IA\n!vigia palabras \"bitcoin,crypto\"  # Alertas crypto\n!vigiacanal suscribir politica     # Suscribir canal\n```\n\n"
-    
-    ayuda_vigia += "⚡ **Características:** Monitorización 24/7, IA, clasificación automática, notificaciones instantáneas, filtrado por palabras clave, detección de eventos críticos."
-    
-    try:
-        await ctx.author.send(ayuda_vigia)
-        await ctx.send(mensaje_privado)
-    except discord.errors.Forbidden:
-        await ctx.send(ayuda_vigia[:2000])
-
+    embed.set_footer(text="Vigía de Noticias - Sistema de Monitoreo Inteligente")
+    await ctx.send(embed=embed)
 
 async def _cmd_insulta(ctx, obj=""):
     target = obj if obj else ctx.author.mention
@@ -666,6 +748,35 @@ def acquire_process_lock():
             return None
         logger.error(f"❌ [DISCORD] Error adquiriendo bloqueo de proceso: {e}")
         return None
+
+async def set_mc_presence_if_enabled():
+    """Establece el estado del bot con mensaje personalizado si el rol MC está activo."""
+    try:
+        # Verificar si el rol MC está activo (prioridad a variable de entorno)
+        mc_enabled = os.getenv("MC_ENABLED", "false").lower() == "true"
+        if not mc_enabled:
+            # Fallback a configuración JSON si no hay variable de entorno
+            mc_enabled = agent_config.get("roles", {}).get("mc", {}).get("enabled", False)
+        
+        if mc_enabled:
+            # Obtener mensaje personalizado desde la personalidad
+            mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+            presence_message = mc_cfg.get("presence_status", "🎵 ¡MC disponible! Usa !mc play para música")
+            
+            # Establecer estado del bot con el mensaje personalizado
+            await bot.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.listening,
+                    name=presence_message
+                )
+            )
+            logger.info(f"🎵 [DISCORD] Rol MC activo - Estado establecido: {presence_message}")
+        else:
+            logger.info("🎵 [DISCORD] Rol MC no está activo - usando estado por defecto")
+            
+    except Exception as e:
+        logger.error(f"❌ [DISCORD] Error estableciendo estado MC: {e}")
+
 
 @bot.event
 async def on_ready():
@@ -799,8 +910,16 @@ async def on_ready():
         limpieza_db.start()
         logger.info("🧹 [DISCORD] Tarea de limpieza automática iniciada")
     
+    # Iniciar tarea automática del buscador de tesoros si está disponible
+    if POE2_AVAILABLE and not buscador_tesoros_task.is_running():
+        buscador_tesoros_task.start()
+        logger.info("💎 [DISCORD] Tarea automática del buscador de tesoros iniciada")
+    
     # Registrar comandos de roles activados según agent_config.json
     await register_commands_for_enabled_roles()
+    
+    # Establecer estado personalizado si el rol MC está activo
+    await set_mc_presence_if_enabled()
 
 
 @bot.event
@@ -1010,6 +1129,105 @@ async def on_voice_state_update(member, before, after):
 
 # --- COMANDOS DE CONTROL DE ROLES ---
 
+
+# Manejar errores de comandos para procesar chat normal
+@bot.event
+async def on_command_error(ctx, error):
+    """Maneja errores de comandos, incluyendo CommandNotFound para chat normal."""
+    # Si es un comando no encontrado, mantenerlo en la ruta de comandos.
+    # Regla del bot:
+    # - Si empieza por "!" => es comando (aunque sea inválido)
+    # - Si no empieza por "!" => se procesa como charla LLM (en DMs o menciones)
+    if isinstance(error, commands.CommandNotFound):
+        return
+    
+    # Para otros errores, dejar que se propaguen
+    if isinstance(error, commands.MissingRequiredArgument) or isinstance(error, commands.BadArgument):
+        return  # No hacer nada, dejar que discord.py muestre el error
+    
+    # Para errores críticos, loggear
+    logger.error(f"Error en comando: {error}")
+
+
+# Evento para manejar menciones y DMs que no son comandos
+@bot.event
+async def on_message(message):
+    """Maneja mensajes que no son comandos (menciones y DMs)."""
+    # Ignorar mensajes del propio bot
+    if message.author == bot.user:
+        return
+    
+    # Si empieza con "!", es comando: hay que pasarlo explícitamente al sistema de comandos
+    # (porque al definir on_message, discord.py NO procesa comandos automáticamente).
+    if message.content.startswith(bot.command_prefix):
+        await bot.process_commands(message)
+        return
+    
+    # Solo procesar si es DM o mención directa (y no empieza con !)
+    if message.guild is None or bot.user.mentioned_in(message):
+        await _process_chat_message(message)
+
+    # Para cualquier otro mensaje no-comando, no hacemos nada.
+
+
+async def _process_chat_message(message):
+    """Procesa mensajes de chat normales (DMs y menciones)."""
+    try:
+        from agent_engine import pensar, incrementar_uso, obtener_uso_diario
+        
+        # Determinar si es público o privado
+        es_publico = message.guild is not None
+        
+        # Obtener contexto del servidor si está en un canal
+        contexto_servidor = ""
+        if message.guild:
+            server_name = get_server_name(message.guild)
+            contexto_servidor = f"Servidor: {message.guild.name} ({server_name})"
+        
+        # Construir rol contextual con información de roles activos
+        roles_activos = []
+        roles_config = AGENT_CFG.get("roles", {})
+        
+        # Verificar roles activos
+        if roles_config.get("buscar_anillo", {}).get("enabled", False):
+            roles_activos.append("buscar_anillo")
+        if roles_config.get("trilero", {}).get("enabled", False):
+            roles_activos.append("trilero")
+        
+        rol_contextual = f"Kronk - Orco herrero"
+        if roles_activos:
+            rol_contextual += f" (roles activos: {', '.join(roles_activos)})"
+        
+        # Agregar contexto del servidor si aplica
+        if contexto_servidor:
+            rol_contextual += f" - {contexto_servidor}"
+        
+        # Obtener historial reciente (simplificado para chat)
+        historial_lista = []
+        
+        # Procesar el mensaje con el engine
+        respuesta = pensar(
+            rol_contextual=rol_contextual,
+            contenido_usuario=message.content,
+            historial_lista=historial_lista,
+            es_publico=es_publico,
+            logger=logger
+        )
+        
+        # Incrementar contador de uso
+        incrementar_uso()
+        
+        # Enviar respuesta
+        if respuesta and respuesta.strip():
+            await message.channel.send(respuesta)
+        
+    except Exception as e:
+        logger.exception(f"Error procesando mensaje de chat: {e}")
+        # Enviar respuesta de emergencia
+        fallbacks = PERSONALIDAD.get("emergency_fallbacks", [])
+        if fallbacks:
+            await message.channel.send(random.choice(fallbacks))
+
 async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
     """Comando genérico para activar/desactivar roles dinámicamente."""
     # Obtener mensajes personalizados
@@ -1021,7 +1239,7 @@ async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
         return
     
     # Lista de roles válidos
-    valid_roles = ["vigia_noticias", "buscador_tesoros", "trilero", "buscar_anillo"]
+    valid_roles = ["vigia_noticias", "buscador_tesoros", "trilero", "buscar_anillo", "banquero"]
     
     if role_name not in valid_roles:
         await ctx.send(role_cfg.get("role_not_found", "❌ Rol '{role}' no válido.").format(role=role_name))
@@ -1073,7 +1291,7 @@ async def _cmd_role_frequency(ctx, role_name: str, hours: str):
         return
     
     # Validar que el rol existe
-    valid_roles = ["vigia_noticias", "buscador_tesoros", "trilero", "buscar_anillo"]
+    valid_roles = ["vigia_noticias", "buscador_tesoros", "trilero", "buscar_anillo", "banquero"]
     if role_name not in valid_roles:
         await ctx.send(role_cfg.get("role_not_found", "❌ Rol '{role}' no válido.").format(role=role_name))
         return
@@ -1108,11 +1326,14 @@ async def register_commands_for_enabled_roles():
     # Registrar comandos MC primero (siempre disponibles)
     register_mc_commands()
     
+    # Registrar comandos del trilero (siempre si la base de datos está disponible)
+    register_trilero_commands()
+    
     # Obtener configuración de roles
     roles_config = agent_config.get("roles", {})
     
-    # Lista de roles que tienen comandos Discord
-    roles_with_commands = ["vigia_noticias", "buscador_tesoros", "trilero", "buscar_anillo"]
+    # Lista de roles que tienen comandos Discord (trilero ya se registró por separado)
+    roles_with_commands = ["vigia_noticias", "buscador_tesoros", "buscar_anillo", "banquero"]
     
     for role_name in roles_with_commands:
         role_config = roles_config.get(role_name, {})
@@ -1121,9 +1342,10 @@ async def register_commands_for_enabled_roles():
         if is_enabled:
             logger.info(f"🎭 [DISCORD] Rol {role_name} está activado, registrando TODOS los comandos...")
             await register_specific_role_commands(role_name)
-        else:
-            logger.info(f"🎭 [DISCORD] Rol {role_name} no está activado, omitiendo registro de comandos")
-
+    
+    # Marcar como registrado para evitar duplicaciones
+    _commands_registered = True
+    logger.info("🎭 [DISCORD] Registro de comandos completado")
 
 async def register_specific_role_commands(role_name: str):
     """Registra TODOS los comandos para un rol específico (idempotente)."""
@@ -1178,17 +1400,15 @@ async def register_specific_role_commands(role_name: str):
                     elif subcommand == "cancelar":
                         await vigia_commands.cmd_cancelar(ctx, subargs)
                     elif subcommand == "general":
-                        await vigia_commands.cmd_general(ctx, subargs)
-                    elif subcommand == "mixto":
-                        await vigia_commands.cmd_mixto(ctx, subargs)
+                        await vigia_commands.cmd_general_suscribir(ctx, subargs)
                     elif subcommand == "palabras":
-                        await vigia_commands.cmd_palabras(ctx, subargs)
-                    elif subcommand == "cancelar_palabras":
-                        await vigia_commands.cmd_cancelar_palabras(ctx, subargs)
-                    elif subcommand == "estado_palabras":
-                        await vigia_commands.cmd_estado_palabras(ctx, subargs)
-                    elif subcommand == "agregar_feed":
-                        await vigia_commands.cmd_agregar_feed(ctx, subargs)
+                        await vigia_commands.cmd_palabras_suscribir(ctx, subargs)
+                    elif subcommand == "premisas":
+                        await vigia_commands.cmd_premisas(ctx, subargs)
+                    elif subcommand == "mod":
+                        await vigia_commands.cmd_premisas_mod(ctx, subargs)
+                    elif subcommand == "reset":
+                        await vigia_commands.cmd_reset(ctx, subargs)
                     else:
                         await ctx.author.send(f"❌ Subcomando `{subcommand}` no reconocido. Usa `!vigiaayuda` para ver ayuda.")
                         if ctx.guild:
@@ -1302,62 +1522,95 @@ async def register_specific_role_commands(role_name: str):
             
             @bot.command(name="vigiaayuda")
             async def cmd_vigia_ayuda(ctx):
-                """Muestra ayuda específica para el Vigía de Noticias (funciona por DM)."""
+                """Muestra ayuda específica para el Vigía de Noticias (usuarios)."""
+                # Prevenir duplicación usando un ID único del mensaje
+                message_id = f"{ctx.message.id}_{ctx.author.id}"
+                
+                # Si ya procesamos este mensaje, ignorar
+                if hasattr(bot, '_processed_ayuda_messages'):
+                    if message_id in bot._processed_ayuda_messages:
+                        return
+                else:
+                    bot._processed_ayuda_messages = set()
+                
+                bot._processed_ayuda_messages.add(message_id)
+                
                 ayuda_cfg = PERSONALIDAD.get("discord", {}).get("general_messages", {})
                 mensaje_privado = ayuda_cfg.get("help_sent_private", "GRRR Kronk enviar ayuda por mensaje privado umano!")
                 
-                ayuda_vigia = "📡 **Ayuda del Vigía de Noticias** 📡\n\n"
+                ayuda_vigia = "📡 **Ayuda del Vigía de Noticias - Usuarios** 📡\n\n"
+                
+                ayuda_vigia += "⚠️ **IMPORTANTE:** Solo puedes tener **UN TIPO** de suscripción activa a la vez\n"
+                ayuda_vigia += "• Si te suscribes a un nuevo tipo, se cancelará automáticamente el anterior\n\n"
                 
                 ayuda_vigia += "🎯 **Comandos Principales:**\n"
                 ayuda_vigia += "• `!vigia feeds` - Lista feeds RSS disponibles\n"
                 ayuda_vigia += "• `!vigia categorias` - Muestra categorías activas\n"
-                ayuda_vigia += "• `!vigia estado` - Tus suscripciones activas\n\n"
+                ayuda_vigia += "• `!vigia estado` - Tu tipo de suscripción activa\n\n"
                 
-                ayuda_vigia += "🎯 **Suscripciones Especializadas:**\n"
-                ayuda_vigia += "• `!vigia suscribir <categoría> [feed_id]` - Suscribirse a feeds\n"
-                ayuda_vigia += "• `!vigia cancelar <categoría> [feed_id]` - Cancelar suscripción\n"
+                ayuda_vigia += "📰 **Suscripciones Planas:**\n"
+                ayuda_vigia += "• `!vigia suscribir <categoría>` - Todas las noticias con opinión\n"
                 ayuda_vigia += "• **Ejemplo:** `!vigia suscribir economia`\n\n"
                 
+                ayuda_vigia += "🔍 **Palabras Clave:**\n"
+                ayuda_vigia += "• `!vigia palabras \"palabra1,palabra2\"` - Suscripción directa con palabras\n"
+                ayuda_vigia += "• `!vigia palabras add <palabra>` - Añadir palabra a tu lista\n"
+                ayuda_vigia += "• `!vigia palabras list` - Ver todas tus palabras clave\n"
+                ayuda_vigia += "• `!vigia palabras mod <num> \"nueva\"` - Modificar palabra específica\n"
+                ayuda_vigia += "• `!vigia palabras suscribir <categoría>` - Usar palabras ya configuradas\n"
+                ayuda_vigia += "• `!vigia palabras suscripciones` - Ver suscripciones con palabras\n"
+                ayuda_vigia += "• `!vigia palabras desuscribir <categoría>` - Cancelar suscripción\n"
+                ayuda_vigia += "• **Ejemplo:** `!vigia palabras \"bitcoin,crypto\"`\n\n"
+                
                 ayuda_vigia += "🤖 **Suscripciones con IA:**\n"
-                ayuda_vigia += "• `!vigia general <categoría>` - Feeds con clasificación IA\n"
-                ayuda_vigia += "• `!vigia mixto <categoría>` - Cobertura mixta (máxima)\n"
+                ayuda_vigia += "• `!vigia general <categoría>` - Noticias críticas según tus premisas\n"
+                ayuda_vigia += "• `!vigia general cancelar <categoría>` - Cancelar suscripción con IA\n"
+                ayuda_vigia += "• **Requiere:** Configurar premisas primero (`!vigia premisas add`)\n"
                 ayuda_vigia += "• **Ejemplo:** `!vigia general internacional`\n\n"
                 
-                ayuda_vigia += "🔍 **Palabras Clave:**\n"
-                ayuda_vigia += "• `!vigia palabras \"palabra1,palabra2\"` - Suscribir a palabras\n"
-                ayuda_vigia += "• `!vigia cancelar_palabras \"palabras\"` - Cancelar suscripción\n"
-                ayuda_vigia += "• `!vigia estado_palabras` - Ver palabras suscritas\n\n"
+                ayuda_vigia += "🎯 **Gestión de Premisas:**\n"
+                ayuda_vigia += "• `!vigia premisas` / `!vigia premisas list` - Ver tus premisas\n"
+                ayuda_vigia += "• `!vigia premisas add \"texto\"` - Añadir premisa (máx 7)\n"
+                ayuda_vigia += "• `!vigia mod <num> \"nueva premisa\"` - Modificar premisa #<num>\n\n"
                 
-                ayuda_vigia += "📢 **Comandos de Canal:**\n"
-                ayuda_vigia += "• `!vigiacanal suscribir <categoría> [feed_id]` - Suscribir canal\n"
-                ayuda_vigia += "• `!vigiacanal cancelar <categoría> [feed_id]` - Cancelar canal\n"
-                ayuda_vigia += "• `!vigiacanal estado` - Ver suscripciones del canal\n"
-                ayuda_vigia += "• `!vigiacanal palabras \"palabras\"` - Palabras clave para canal\n\n"
+                ayuda_vigia += "🔄 **Reset de Suscripciones:**\n"
+                ayuda_vigia += "• `!vigia reset` - Ver qué tipo de suscripción tienes activa\n"
+                ayuda_vigia += "• `!vigia reset confirmar` - Eliminar TODAS tus suscripciones\n"
+                ayuda_vigia += "• **Úsalo para cambiar de tipo de suscripción**\n\n"
                 
-                ayuda_vigia += "⚙️ **Administración:**\n"
-                ayuda_vigia += "• `!vigia agregar_feed <nombre> <url> <categoría> [tipo]` - Agregar feed\n\n"
+                ayuda_vigia += "📊 **Estado y Control:**\n"
+                ayuda_vigia += "• `!vigia estado` - Ver tu tipo de suscripción activa\n"
+                ayuda_vigia += "• `!vigia cancelar <categoría>` - Cancelar suscripción plana\n\n"
                 
                 ayuda_vigia += "📂 **Categorías:** economia, internacional, tecnologia, sociedad, politica\n\n"
                 
-                ayuda_vigia += "🔔 **Alertas Críticas:**\n"
-                ayuda_vigia += "• `!avisanoticias` - Suscribirse a alertas críticas\n"
-                ayuda_vigia += "• `!noavisanoticias` - Cancelar suscripción a alertas\n\n"
+                ayuda_vigia += "💡 **Ejemplos Rápidos:**\n"
+                ayuda_vigia += "```\n!vigia palabras add bitcoin           # Añadir palabra\n!vigia palabras list                  # Ver palabras\n!vigia palabras suscribir economia   # Suscribir con palabras\n!vigia reset                         # Ver tipo activo\n!vigia reset confirmar               # Limpiar todo\n!vigia general internacional         # Suscribir con IA\n```\n\n"
                 
-                ayuda_vigia += "🌐 **Fuentes por Defecto:**\n"
-                ayuda_vigia += "• CNBC (economia) • El País (internacional) • Reuters (internacional)\n"
-                ayuda_vigia += "• BBC (tecnologia) • CNN (general) • Crypto News (cripto)\n\n"
-                
-                ayuda_vigia += "💡 **Ejemplos:**\n"
-                ayuda_vigia += "```\n!vigia feeds                    # Ver feeds\n!vigia suscribir economia         # Noticias económicas\n!vigia general internacional      # Noticias con IA\n!vigia palabras \"bitcoin,crypto\"  # Alertas crypto\n!vigiacanal suscribir politica     # Suscribir canal\n```\n\n"
-                
-                ayuda_vigia += "⚡ **Características:** Monitorización 24/7, IA, clasificación automática, notificaciones instantáneas, filtrado por palabras clave, detección de eventos críticos."
+                ayuda_vigia += "📢 **Para Admins:** Usa `!vigiacanalayuda` para comandos de canal\n"
                 
                 try:
-                    await ctx.author.send(ayuda_vigia)
+                    # Verificar si el mensaje es demasiado largo antes de enviar
+                    if len(ayuda_vigia) > 2000:
+                        # Dividir en partes y enviar al usuario por DM
+                        partes = [ayuda_vigia[i:i+1900] for i in range(0, len(ayuda_vigia), 1900)]
+                        for parte in partes:
+                            await ctx.author.send(parte)
+                    else:
+                        await ctx.author.send(ayuda_vigia)
+                    
+                    # Enviar confirmación breve en el canal (solo si está en servidor)
                     if ctx.guild:
-                        await ctx.send(mensaje_privado)
+                        await ctx.send("📩 Ayuda enviada por mensaje privado.")
+                        
                 except discord.errors.Forbidden:
-                    await ctx.send(ayuda_vigia[:2000])
+                    # Si no puede enviar DM, enviar en el canal (dividido si es necesario)
+                    if len(ayuda_vigia) > 2000:
+                        partes = [ayuda_vigia[i:i+1900] for i in range(0, len(ayuda_vigia), 1900)]
+                        for parte in partes:
+                            await ctx.send(parte)
+                    else:
+                        await ctx.send(ayuda_vigia[:2000])
         
         # Comandos de canal (solo en servidor)
         if bot.get_command("vigiacanal") is None:
@@ -1391,8 +1644,18 @@ async def register_specific_role_commands(role_name: str):
                         await vigia_commands.cmd_canal_estado(ctx, subargs)
                     elif subcommand == "palabras":
                         await vigia_commands.cmd_canal_palabras(ctx, subargs)
+                    elif subcommand == "premisas":
+                        await vigia_commands.cmd_canal_premisas(ctx, subargs)
+                    elif subcommand == "general":
+                        # Manejar !vigiacanal general y !vigiacanal general cancelar
+                        if len(subargs) > 0 and subargs[0].lower() == "cancelar":
+                            # Es !vigiacanal general cancelar <categoria> [feed_id]
+                            await vigia_commands.cmd_canal_general_cancelar(ctx, subargs[1:] if len(subargs) > 1 else [])
+                        else:
+                            # Es !vigiacanal general <categoria> [feed_id]
+                            await vigia_commands.cmd_canal_general_suscribir(ctx, subargs)
                     else:
-                        await ctx.send(f"❌ Subcomando `{subcommand}` no reconocido. Usa `!vigiaayuda` para ver ayuda.")
+                        await ctx.send(f"❌ Subcomando `{subcommand}` no reconocido. Usa `!vigiacanalayuda` para ver ayuda.")
                 except Exception as e:
                     logger.error(f"Error en comando vigiacanal {subcommand}: {e}")
                     await ctx.send("❌ Error al ejecutar el comando. Inténtalo de nuevo.")
@@ -1424,7 +1687,44 @@ async def register_specific_role_commands(role_name: str):
                 
                 if db_poe2_instance.set_activo(True):
                     await ctx.send(f"✅ {ctx.author.mention} Subrol POE2 activado. Ahora buscaré tesoros en Path of Exile 2.")
-                    logger.info(f"🔮 [POE2] {ctx.author.name} activó el subrol en {ctx.guild.name}")
+                    server_name = ctx.guild.name if ctx.guild else "DM"
+                    logger.info(f"🔮 [POE2] {ctx.author.name} activó el subrol en {server_name}")
+                    
+                    # Descargar datos para todos los items existentes
+                    await ctx.send(f"🔄 {ctx.author.mention} Descargando datos de items existentes...")
+                    
+                    try:
+                        from roles.buscador_tesoros.poe2scout_client import Poe2ScoutClient
+                        from roles.buscador_tesoros.db_role_poe import DatabaseRolePoe
+                        from agent_db import get_active_server_name
+                        
+                        # Obtener configuración
+                        liga_actual = db_poe2_instance.get_liga()
+                        server_name = get_active_server_name() or "default"
+                        objetivos_activos = db_poe2_instance.get_objetivos_activos()
+                        
+                        if objetivos_activos:
+                            db_role_poe = DatabaseRolePoe(server_name, liga_actual)
+                            scout = Poe2ScoutClient()
+                            
+                            for nombre_item, item_id in objetivos_activos:
+                                try:
+                                    entries = scout.get_item_history(nombre_item, league=liga_actual)
+                                    if entries:
+                                        insertados = db_role_poe.insertar_precios_bulk(nombre_item, entries, liga_actual)
+                                        logger.info(f"📊 {nombre_item}: {len(entries)} datos recibidos, {insertados} nuevos")
+                                    else:
+                                        logger.warning(f"⚠️ No hay datos para {nombre_item}")
+                                except Exception as e:
+                                    logger.warning(f"⚠️ Error descargando {nombre_item}: {e}")
+                            
+                            await ctx.send(f"✅ {ctx.author.mention} Datos descargados para {len(objetivos_activos)} items.")
+                        else:
+                            await ctx.send(f"ℹ️ {ctx.author.mention} No hay items configurados. Usa `!poe2add \"nombre item\"` para añadir.")
+                            
+                    except Exception as e:
+                        logger.exception(f"Error descargando datos al activar POE2: {e}")
+                        await ctx.send(f"⚠️ {ctx.author.mention} Hubo un error descargando datos, pero el subrol está activo.")
                 else:
                     await ctx.send("❌ Error al activar el subrol POE2. Inténtalo de nuevo.")
         
@@ -1484,8 +1784,10 @@ async def register_specific_role_commands(role_name: str):
                     return
                 
                 liga_formateada = "Fate of the Vaal" if liga_lower == "fate of the vaal" else "Standard"
+                
                 if db_poe2_instance.set_liga(liga_formateada):
                     await ctx.send(f"✅ {ctx.author.mention} Liga POE2 establecida a: {liga_formateada}")
+                    await ctx.send(f"ℹ️ {ctx.author.mention} El buscador automático descargará los datos en la próxima ejecución.")
                     logger.info(f"🔮 [POE2] {ctx.author.name} cambió liga a {liga_formateada} en {ctx.guild.name}")
                 else:
                     await ctx.send("❌ Error al cambiar la liga. Inténtalo de nuevo.")
@@ -1508,11 +1810,114 @@ async def register_specific_role_commands(role_name: str):
                     await ctx.send("❌ Error al acceder a la base de datos de POE2.")
                     return
                 
-                if db_poe2_instance.add_objetivo(item_name):
-                    await ctx.send(f"✅ {ctx.author.mention} Item añadido a objetivos: {item_name}")
-                    logger.info(f"🔮 [POE2] {ctx.author.name} añadió objetivo {item_name} en {ctx.guild.name}")
-                else:
+                # Añadir item a objetivos
+                if not db_poe2_instance.add_objetivo(item_name):
                     await ctx.send("❌ Error al añadir el item. Inténtalo de nuevo.")
+                    return
+                
+                # Descargar historial inmediatamente
+                await ctx.send(f"🔄 {ctx.author.mention} Descargando historial para {item_name}...")
+                
+                # Variables para control de flujo
+                original_server = None
+                exito_descarga = False
+                precio_actual = None
+                
+                try:
+                    # Importar dependencias necesarias
+                    from roles.buscador_tesoros.db_role_poe import DatabaseRolePoe
+                    from roles.buscador_tesoros.poe2scout_client import Poe2ScoutClient
+                    from agent_db import get_active_server_name, set_current_server
+                    
+                    # Establecer servidor activo temporalmente
+                    original_server = get_active_server_name()
+                    set_current_server(get_server_name(ctx.guild))
+                    
+                    # Obtener configuración
+                    liga_actual = db_poe2_instance.get_liga()
+                    db_precios = DatabaseRolePoe(get_server_name(ctx.guild), liga_actual)
+                    scout = Poe2ScoutClient()
+                    
+                    # Descargar historial
+                    entries = scout.get_item_history(item_name, league=liga_actual)
+                    
+                    if entries:
+                        insertados = db_precios.insertar_precios_bulk(item_name, entries, liga_actual)
+                        precio_actual = entries[0].price if entries else None
+                        
+                        if precio_actual:
+                            await ctx.send(f"✅ {ctx.author.mention} Item añadido y actualizado: **{item_name}** - Precio actual: **{precio_actual:.2f} Div** ({insertados} registros nuevos)")
+                        else:
+                            await ctx.send(f"✅ {ctx.author.mention} Item añadido: **{item_name}** ({insertados} registros nuevos, sin precio actual)")
+                        
+                        logger.info(f"🔮 [POE2] {ctx.author.name} añadió y actualizó {item_name} con {insertados} registros en {ctx.guild.name}")
+                        exito_descarga = True
+                    else:
+                        await ctx.send(f"⚠️ {ctx.author.mention} Item añadido pero no se encontraron datos: **{item_name}**")
+                        logger.warning(f"🔮 [POE2] No hay datos para {item_name} en liga {liga_actual}")
+                        exito_descarga = True
+                    
+                except Exception as e:
+                    logger.exception(f"Error descargando historial para {item_name}: {e}")
+                    if not exito_descarga:
+                        await ctx.send(f"⚠️ {ctx.author.mention} Error al descargar historial para **{item_name}**. El item fue añadido a objetivos y se intentará descargar en la próxima ejecución automática.")
+                
+                finally:
+                    # Siempre restaurar servidor original
+                    if original_server:
+                        set_current_server(original_server)
+                
+                # Análisis inmediato del precio (fuera del bloque try principal)
+                if exito_descarga and precio_actual:
+                    try:
+                        # Re-importar para asegurar contexto correcto
+                        from roles.buscador_tesoros.db_role_poe import DatabaseRolePoe
+                        from roles.buscador_tesoros.buscador_tesoros import analizar_mercado
+                        from agent_engine import pensar
+                        from postprocessor import is_internal_thinking
+                        
+                        # Obtener configuración nuevamente
+                        liga_actual = db_poe2_instance.get_liga()
+                        db_precios = DatabaseRolePoe(get_server_name(ctx.guild), liga_actual)
+                        
+                        señal = analizar_mercado(db_precios, item_name, precio_actual, liga_actual)
+                        
+                        if señal:
+                            logger.info(f"🚨 SEÑAL INMEDIATA: {item_name} - {señal} a {precio_actual} Div")
+                            
+                            # Verificar si hay notificación reciente
+                            notificacion_reciente = db_precios.verificar_notificacion_reciente(
+                                item_name, liga_actual, señal, precio_actual, horas=6, umbral_similitud=0.15
+                            )
+                            
+                            if not notificacion_reciente:
+                                # Enviar notificación inmediata
+                                if señal == "COMPRA":
+                                    mensaje = f"Oportunidad de compra inmediata: {item_name} a {precio_actual} Div. ¡Es muy barato! ¡Comprar ya mismo!"
+                                else:
+                                    mensaje = f"Oportunidad de venta inmediata: {item_name} a {precio_actual} Div. ¡Es muy caro! ¡Vender ya mismo!"
+                                
+                                res = await asyncio.to_thread(pensar, mensaje)
+                                
+                                if is_internal_thinking(res):
+                                    logger.warning(f"⚠️ Respuesta detectada como pensamiento interno: {res}")
+                                    res = (
+                                        f"¡Barato! {item_name} a solo {precio_actual} Div. ¡Comprar ya mismo!"
+                                        if señal == "COMPRA"
+                                        else f"¡Caro! {item_name} a {precio_actual} Div. ¡Vender inmediatamente!"
+                                    )
+                                
+                                # Enviar notificación al usuario
+                                await ctx.send(f"💎 **TESORO DETECTADO INMEDIATO**: {res}")
+                                
+                                # Registrar notificación
+                                db_precios.registrar_notificacion(item_name, liga_actual, señal, precio_actual)
+                                logger.info(f"✅ Notificación inmediata enviada para {item_name} - {señal}")
+                            else:
+                                logger.info(f"🔕 Notificación inmediata omitida por duplicidad: {item_name} - {señal}")
+                    except Exception as analisis_e:
+                        logger.exception(f"Error en análisis inmediato para {item_name}: {analisis_e}")
+                        # No mostrar error al usuario, solo log
         
         if bot.get_command("poe2del") is None:
             logger.info("🔮 [DISCORD] Registrando comando poe2del")
@@ -1524,7 +1929,7 @@ async def register_specific_role_commands(role_name: str):
                     return
                 
                 if not item_name:
-                    await ctx.send("❌ Debes especificar el nombre del item. Ejemplo: !poe2del \"Ancient Rib\"")
+                    await ctx.send("❌ Debes especificar el nombre del item o número. Ejemplo: !poe2del \"Ancient Rib\" o !poe2del 3")
                     return
                 
                 db_poe2_instance = get_poe2_db_for_server(ctx.guild)
@@ -1532,11 +1937,31 @@ async def register_specific_role_commands(role_name: str):
                     await ctx.send("❌ Error al acceder a la base de datos de POE2.")
                     return
                 
-                if db_poe2_instance.remove_objetivo(item_name):
-                    await ctx.send(f"✅ {ctx.author.mention} Item eliminado de objetivos: {item_name}")
-                    logger.info(f"🔮 [POE2] {ctx.author.name} eliminó objetivo {item_name} en {ctx.guild.name}")
-                else:
-                    await ctx.send(f"❌ No se encontró el item '{item_name}' en la lista de objetivos.")
+                # Verificar si es un número (selección por índice)
+                try:
+                    item_index = int(item_name)
+                    # Es un número, buscar por índice en la lista de objetivos
+                    objetivos = db_poe2_instance.get_objetivos()
+                    
+                    if 1 <= item_index <= len(objetivos):
+                        # Obtener el nombre del item en esa posición
+                        item_real_name = objetivos[item_index - 1][0]  # objetivos es (nombre, item_id, activo, fecha)
+                        
+                        if db_poe2_instance.remove_objetivo(item_real_name):
+                            await ctx.send(f"✅ {ctx.author.mention} Item #{item_index} eliminado de objetivos: **{item_real_name}**")
+                            logger.info(f"🔮 [POE2] {ctx.author.name} eliminó objetivo #{item_index} ({item_real_name}) en {ctx.guild.name}")
+                        else:
+                            await ctx.send(f"❌ Error al eliminar el item #{item_index}.")
+                    else:
+                        await ctx.send(f"❌ Número inválido. Hay {len(objetivos)} items. Usa un número entre 1 y {len(objetivos)}.")
+                
+                except ValueError:
+                    # No es un número, tratar como nombre de item
+                    if db_poe2_instance.remove_objetivo(item_name):
+                        await ctx.send(f"✅ {ctx.author.mention} Item eliminado de objetivos: {item_name}")
+                        logger.info(f"🔮 [POE2] {ctx.author.name} eliminó objetivo {item_name} en {ctx.guild.name}")
+                    else:
+                        await ctx.send(f"❌ No se encontró el item '{item_name}' en la lista de objetivos.")
         
         if bot.get_command("poe2list") is None:
             logger.info("🔮 [DISCORD] Registrando comando poe2list")
@@ -1564,9 +1989,19 @@ async def register_specific_role_commands(role_name: str):
                 response += f"🎯 **Objetivos** ({len(objetivos)} items):\n"
                 
                 if objetivos:
+                    # Importar la BD de precios para obtener precios actuales
+                    from roles.buscador_tesoros.db_role_poe import DatabaseRolePoe
+                    db_precios = DatabaseRolePoe(get_server_name(ctx.guild), liga_actual)
+                    
                     for i, (nombre, item_id, activo_item, fecha) in enumerate(objetivos, 1):
                         estado_item = "✅" if activo_item else "❌"
-                        response += f"  {i}. {estado_item} {nombre}\n"
+                        
+                        # Obtener precio actual
+                        precio_actual = db_precios.obtener_precio_actual(nombre, liga_actual)
+                        if precio_actual:
+                            response += f"  {i}. {estado_item} {nombre} - **{precio_actual:.2f} Div**\n"
+                        else:
+                            response += f"  {i}. {estado_item} {nombre} - *Sin datos*\n"
                 else:
                     response += "  *No hay items configurados*\n"
                 
@@ -1585,14 +2020,12 @@ async def register_specific_role_commands(role_name: str):
                 ayuda_poe2 += "🏆 **Gestión de Liga:**\n"
                 ayuda_poe2 += "• `!poe2liga` - Muestra la liga actual\n"
                 ayuda_poe2 += "• `!poe2liga Standard` - Establece liga Standard\n"
-                ayuda_poe2 += "• `!poe2liga Fate of the Vaal` - Establece liga Fate of the Vaal\n\n"
+                ayuda_poe2 += "• `!poe2liga Fate of the Vaal` - Establece liga Fate of the Vaal\n"
+                ayuda_poe2 += "• ℹ️ **Nota**: Después de cambiar liga, ejecuta `!buscartesoros poe2` para descargar datos inmediatamente\n\n"
                 ayuda_poe2 += "🎯 **Gestión de Objetivos:**\n"
                 ayuda_poe2 += "• `!poe2add \"Nombre del Item\"` - Añade item a objetivos\n"
                 ayuda_poe2 += "• `!poe2del \"Nombre del Item\"` - Elimina item de objetivos\n"
                 ayuda_poe2 += "• `!poe2list` - Muestra configuración y objetivos actuales\n\n"
-                ayuda_poe2 += "📊 **Items Conocidos:**\n"
-                ayuda_poe2 += "• Ancient Rib • Ancient Collarbone • Ancient Jawbone\n"
-                ayuda_poe2 += "• Fracturing Orb • Chaos Orb • Divine Orb\n\n"
                 ayuda_poe2 += "⚖️ **Lógica de Compra/Venta:**\n"
                 ayuda_poe2 += "• **COMPRA**: Precio ≤ mínimo histórico × 1.15\n"
                 ayuda_poe2 += "• **VENTA**: Precio ≥ máximo histórico × 0.85\n\n"
@@ -1604,6 +2037,19 @@ async def register_specific_role_commands(role_name: str):
                     await ctx.send("📩 Ayuda enviada por mensaje privado.")
                 except discord.errors.Forbidden:
                     await ctx.send(ayuda_poe2)
+        
+        # Comando de frecuencia para el buscador de tesoros
+        if bot.get_command("tesorosfrecuencia") is None:
+            logger.info("💎 [DISCORD] Registrando comando tesorosfrecuencia")
+            
+            @bot.command(name="tesorosfrecuencia")
+            async def cmd_tesoros_frecuencia(ctx, hours: str = ""):
+                """Configura la frecuencia de ejecución automática del buscador de tesoros."""
+                if not POE2_AVAILABLE:
+                    await ctx.send("❌ El buscador de tesoros no está disponible en este servidor.")
+                    return
+                
+                await _cmd_role_frequency(ctx, "buscador_tesoros", hours)
     
     elif role_name == "buscar_anillo":
         if bot.get_command("acusaranillo") is None:
@@ -1645,162 +2091,898 @@ async def register_specific_role_commands(role_name: str):
                 
                 logger.info(f"👁️ [ANILLO] {ctx.author.name} acusó a {mentioned_user.name} en {ctx.guild.name}")
     
-    elif role_name == "trilero":
-        if bot.get_command("trilero") is None:
-            logger.info("🎭 [DISCORD] Registrando comando trilero")
-            
-            @bot.command(name="trilero")
-            async def cmd_trilero(ctx):
-                """Activa el rol trilero."""
-                if not ORO_DB_AVAILABLE:
-                    await ctx.send("❌ El sistema del trilero no está disponible en este servidor.")
-                    return
-                
-                db_oro_instance = get_oro_db_for_server(ctx.guild)
-                if not db_oro_instance:
-                    await ctx.send("❌ Error al acceder a la base de datos del trilero.")
-                    return
-                
-                usuario_id = str(ctx.author.id)
-                usuario_nombre = ctx.author.name
-                
-                if not db_oro_instance.esta_suscrito(usuario_id, str(ctx.guild.id)):
-                    await ctx.send(f"{get_message('trilero_not_subscribed')} {ctx.author.mention}")
-                    return
-                
-                if db_oro_instance.agregar_suscripcion(usuario_id, usuario_nombre, str(ctx.guild.id)):
-                    await ctx.send(f"{get_message('trilero_subscribe')} {ctx.author.mention}")
-                    logger.info(f"🎭 [TRILERO] {usuario_nombre} ({usuario_id}) se suscribió al rol trilero en {ctx.guild.name}")
-                else:
-                    await ctx.send("❌ Error al suscribirte al rol trilero. Inténtalo de nuevo.")
+    elif role_name == "banquero":
+        # Importar la base de datos del banquero
+        from roles.banquero.db_role_banquero import DatabaseRoleBanquero
         
-        if bot.get_command("notrilero") is None:
-            logger.info("🎭 [DISCORD] Registrando comando notrilero")
-            
-            @bot.command(name="notrilero")
-            async def cmd_no_trilero(ctx):
-                """Desactiva el rol trilero."""
-                if not ORO_DB_AVAILABLE:
-                    await ctx.send("❌ El sistema del trilero no está disponible en este servidor.")
-                    return
-                
-                db_oro_instance = get_oro_db_for_server(ctx.guild)
-                if not db_oro_instance:
-                    await ctx.send("❌ Error al acceder a la base de datos del trilero.")
-                    return
-                
-                usuario_id = str(ctx.author.id)
-                usuario_nombre = ctx.author.name
-                
-                if not db_oro_instance.esta_suscrito(usuario_id, str(ctx.guild.id)):
-                    await ctx.send(f"{get_message('trilero_not_subscribed')} {ctx.author.mention}")
-                    return
-                
-                if db_oro_instance.eliminar_suscripcion(usuario_id, str(ctx.guild.id)):
-                    await ctx.send(f"{get_message('trilero_unsubscribe')} {ctx.author.mention}")
-                    logger.info(f"🎭 [TRILERO] {usuario_nombre} ({usuario_id}) se desuscrito del rol trilero en {ctx.guild.name}")
-                else:
-                    await ctx.send("❌ Error al desuscribirte del rol trilero. Inténtalo de nuevo.")
+        # Verificar disponibilidad de la base de datos
+        if not BANQUERO_DB_AVAILABLE:
+            logger.warning("💰 [DISCORD] Base de datos del banquero no disponible, omitiendo registro de comandos")
+            return
         
-        if bot.get_command("trato") is None:
-            logger.info("🎭 [DISCORD] Registrando comando trato")
+        if bot.get_command("banquero") is None:
+            logger.info("💰 [DISCORD] Registrando comando banquero")
             
-            @bot.command(name="trato")
-            async def cmd_trato(ctx, target: str = "", amount: str = ""):
-                """Ofrece un trato sospechoso."""
-                if not ORO_DB_AVAILABLE:
-                    await ctx.send("❌ El sistema del trilero no está disponible en este servidor.")
+            @bot.command(name="banquero")
+            async def cmd_banquero(ctx, *args):
+                """Comando principal del Banquero para gestión económica."""
+                # Debug: mostrar qué argumentos se reciben
+                logger.info(f"💰 [DEBUG] Comando banquero recibido con args: {args}")
+                
+                # Verificar que estamos en un servidor
+                if not ctx.guild:
+                    banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                    await ctx.send(banquero_msgs.get("error_bd_banquero", "❌ Este comando solo funciona en servidores."))
                     return
                 
-                if not target or not amount:
-                    await ctx.send("❌ Debes mencionar a alguien y una cantidad. Ejemplo: !trato @usuario 100")
-                    return
-                
-                db_oro_instance = get_oro_db_for_server(ctx.guild)
-                if not db_oro_instance:
-                    await ctx.send("❌ Error al acceder a la base de datos del trilero.")
-                    return
-                
-                mentioned_user = None
-                for user in ctx.message.mentions:
-                    if not user.bot and user.id != ctx.author.id:
-                        mentioned_user = user
-                        break
-                
-                if not mentioned_user:
-                    await ctx.send("❌ No se encontró un usuario válido para el trato.")
-                    return
-                
+                # Verificar disponibilidad de la base de datos
                 try:
-                    amount_int = int(amount)
-                    if amount_int <= 0:
-                        await ctx.send("❌ La cantidad debe ser un número positivo.")
+                    db_banquero = get_banquero_db_for_server(ctx.guild)
+                    if db_banquero is None:
+                        banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                        await ctx.send(banquero_msgs.get("error_bd_banquero", "❌ Base de datos del banquero no disponible."))
                         return
-                except ValueError:
-                    await ctx.send("❌ La cantidad debe ser un número válido.")
+                except Exception as e:
+                    logger.exception(f"Error obteniendo BD del banquero: {e}")
+                    banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                    await ctx.send(banquero_msgs.get("error_bd_banquero", "❌ Error accediendo a la base de datos del banquero."))
                     return
                 
-                trato_prompt = f"Ofrece un trato sospechoso y tentador a {mentioned_user.display_name} por {amount_int} de oro. Sé manipulador y persuasivo, como un trilero."
-                trato = await asyncio.to_thread(pensar, trato_prompt)
+                # Obtener información del servidor
+                servidor_id = str(ctx.guild.id)
+                servidor_nombre = ctx.guild.name
                 
-                await ctx.send(f"🎭 {mentioned_user.mention} {trato}")
-                
-                await asyncio.to_thread(
-                    db_oro_instance.registrar_interaccion,
-                    ctx.author.id,
-                    ctx.author.name,
-                    "TRATO_OFRECIDO",
-                    f"Ofreció trato a {mentioned_user.name} por {amount_int} de oro",
-                    ctx.channel.id,
-                    ctx.guild.id,
-                    metadata={"objetivo": mentioned_user.id, "cantidad": amount_int, "trato": trato}
-                )
-                
-                logger.info(f"🎭 [TRILERO] {ctx.author.name} ofreció trato a {mentioned_user.name} por {amount_int} en {ctx.guild.name}")
-        
-        if bot.get_command("pediroro") is None:
-            logger.info("🎭 [DISCORD] Registrando comando pediroro")
-            
-            @bot.command(name="pediroro")
-            async def cmd_pedir_oro(ctx, amount: str = ""):
-                """Pide oro de forma sospechosa."""
-                if not ORO_DB_AVAILABLE:
-                    await ctx.send("❌ El sistema del trilero no está disponible en este servidor.")
+                # Si no hay argumentos, mostrar ayuda
+                if not args:
+                    banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                    embed = discord.Embed(
+                        title=banquero_msgs.get("ayuda_title", "💰 Banquero - Ayuda"),
+                        description=banquero_msgs.get("ayuda_description", "Comandos disponibles para gestionar la economía del servidor"),
+                        color=discord.Color.gold()
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("ver_saldo", "💎 Ver Saldo"),
+                        value=banquero_msgs.get("ver_saldo_desc", "`!banquero saldo`\nMuestra tu saldo actual de oro y transacciones recientes.\nLas cuentas nuevas reciben bono de apertura automáticamente."),
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("configurar_tae", "🏦 Configurar TAE (Admins)"),
+                        value=banquero_msgs.get("configurar_tae_desc", "`!banquero tae <cantidad>`\nEstablece la TAE diaria (0-1000 monedas).\n`!banquero tae` - Ver configuración actual."),
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("configurar_bono", "🎁 Configurar Bono de Apertura (Admins)"),
+                        value=banquero_msgs.get("configurar_bono_desc", "`!banquero bono <cantidad>`\nEstablece el bono para nuevas cuentas (0-10000 monedas).\n`!banquero bono` - Ver configuración actual."),
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("informacion", "ℹ️ Información"),
+                        value=banquero_msgs.get("informacion_desc", "• La TAE se distribuye automáticamente cada día a todos los usuarios con cartera.\n• Las cuentas nuevas reciben automáticamente el bono de apertura configurado.\n• Todas las transacciones quedan registradas.\n• Solo los administradores pueden configurar la TAE y el bono de apertura."),
+                        inline=False
+                    )
+                    
+                    embed.set_footer(text=banquero_msgs.get("ayuda_footer", "💼 Banquero - Gestión Económica del Servidor"))
+                    await ctx.send(embed=embed)
                     return
                 
-                if not amount:
-                    await ctx.send("❌ Debes especificar una cantidad. Ejemplo: !pediroro 50")
+                # Procesar subcomandos
+                subcommand = args[0].lower()
+                subargs = args[1:] if len(args) > 1 else []
+                
+                # Si el subcomando es "ayuda", mostrar ayuda
+                if subcommand == "ayuda":
+                    banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                    embed = discord.Embed(
+                        title=banquero_msgs.get("ayuda_title", "💰 Banquero - Ayuda"),
+                        description=banquero_msgs.get("ayuda_description", "Comandos disponibles para gestionar la economía del servidor"),
+                        color=discord.Color.gold()
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("ver_saldo", "💎 Ver Saldo"),
+                        value=banquero_msgs.get("ver_saldo_desc", "`!banquero saldo`\nMuestra tu saldo actual de oro y transacciones recientes.\nLas cuentas nuevas reciben bono de apertura automáticamente."),
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("configurar_tae", "🏦 Configurar TAE (Admins)"),
+                        value=banquero_msgs.get("configurar_tae_desc", "`!banquero tae <cantidad>`\nEstablece la TAE diaria (0-1000 monedas).\n`!banquero tae` - Ver configuración actual."),
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("configurar_bono", "🎁 Configurar Bono de Apertura (Admins)"),
+                        value=banquero_msgs.get("configurar_bono_desc", "`!banquero bono <cantidad>`\nEstablece el bono para nuevas cuentas (0-10000 monedas).\n`!banquero bono` - Ver configuración actual."),
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name=banquero_msgs.get("informacion", "ℹ️ Información"),
+                        value=banquero_msgs.get("informacion_desc", "• La TAE se distribuye automáticamente cada día a todos los usuarios con cartera.\n• Las cuentas nuevas reciben automáticamente el bono de apertura configurado.\n• Todas las transacciones quedan registradas.\n• Solo los administradores pueden configurar la TAE y el bono de apertura."),
+                        inline=False
+                    )
+                    
+                    embed.set_footer(text=banquero_msgs.get("ayuda_footer", "💼 Banquero - Gestión Económica del Servidor"))
+                    
+                    # Enviar por mensaje privado
+                    try:
+                        await ctx.author.send(embed=embed)
+                        # Enviar confirmación en el canal
+                        await ctx.send(banquero_msgs.get("ayuda_enviada", "📩 Ayuda del banquero enviada por mensaje privado."))
+                    except discord.errors.Forbidden:
+                        # Si no puede enviar DM, enviar en el canal
+                        await ctx.send(embed=embed)
                     return
                 
-                try:
-                    amount_int = int(amount)
-                    if amount_int <= 0:
-                        await ctx.send("❌ La cantidad debe ser un número positivo.")
+                if subcommand == "saldo":
+                    # Mostrar saldo del usuario
+                    usuario_id = str(ctx.author.id)
+                    usuario_nombre = ctx.author.display_name
+                    
+                    # Crear cartera si no existe
+                    db_banquero.crear_cartera(usuario_id, usuario_nombre, servidor_id, servidor_nombre)
+                    
+                    # Obtener saldo
+                    saldo = db_banquero.obtener_saldo(usuario_id, servidor_id)
+                    
+                    # Obtener historial reciente
+                    historial = db_banquero.obtener_historial_transacciones(usuario_id, servidor_id, 5)
+                    
+                    # Crear embed con la información
+                    banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                    embed = discord.Embed(
+                        title=banquero_msgs.get("saldo_title", "💰 Cartera del Banquero"),
+                        description=banquero_msgs.get("saldo_description", "Estado de tu cartera de oro"),
+                        color=discord.Color.gold()
+                    )
+                    
+                    embed.add_field(name=banquero_msgs.get("saldo_actual", "💎 Saldo Actual"), value=f"{saldo:,} monedas de oro", inline=False)
+                    embed.add_field(name=banquero_msgs.get("titular", "👤 Titular"), value=usuario_nombre, inline=True)
+                    embed.add_field(name=banquero_msgs.get("banco", "🏦 Banco"), value=servidor_nombre, inline=True)
+                    
+                    # Agregar historial reciente si hay
+                    if historial:
+                        historial_text = ""
+                        for trans in historial:
+                            tipo, cantidad, saldo_ant, saldo_nuevo, descripcion, fecha, admin = trans
+                            emoji = "📥" if cantidad > 0 else "📤"
+                            historial_text += f"{emoji} {cantidad:,} ({tipo})\n"
+                        
+                        if historial_text:
+                            embed.add_field(name=banquero_msgs.get("transacciones_recientes", "📊 Transacciones Recientes"), value=historial_text[:1024], inline=False)
+                    
+                    embed.set_footer(text=banquero_msgs.get("ayuda_footer", "💼 Banquero - Gestión Económica del Servidor"))
+                    embed.set_thumbnail(url=ctx.author.display_avatar.url if ctx.author.display_avatar else None)
+                    
+                    # Enviar por mensaje privado
+                    try:
+                        await ctx.author.send(embed=embed)
+                        # Enviar confirmación en el canal
+                        await ctx.send(banquero_msgs.get("saldo_enviado", "💰 Información de tu cartera enviada por mensaje privado."))
+                    except discord.errors.Forbidden:
+                        # Si no puede enviar DM, enviar en el canal
+                        await ctx.send(embed=embed)
+                    return
+                
+                elif subcommand == "tae":
+                    # Configurar o ver TAE (solo admins)
+                    if not ctx.author.guild_permissions.administrator:
+                        banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                        await ctx.send(banquero_msgs.get("error_no_admin_tae", "❌ Solo los jefes orkos pueden configurar la TAE umano!"))
                         return
-                except ValueError:
-                    await ctx.send("❌ La cantidad debe ser un número válido.")
-                    return
+                    
+                    if not subargs:
+                        # Mostrar TAE actual
+                        tae_actual = db_banquero.obtener_tae(servidor_id)
+                        ultima_dist = db_banquero.obtener_ultima_distribucion(servidor_id)
+                        
+                        banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                        embed = discord.Embed(
+                            title=banquero_msgs.get("tae_config_title", "🏦 Konfiguración de TAE"),
+                            description=banquero_msgs.get("tae_description", "Konfiguración aktual de la Tasa Anual Ekuivalente"),
+                            color=discord.Color.blue()
+                        )
+                        
+                        embed.add_field(name=banquero_msgs.get("tae_actual", "💰 TAE Diaria Aktual"), value=f"{tae_actual:,} monedas", inline=True)
+                        embed.add_field(name=banquero_msgs.get("ultima_distribucion", "📅 Última Distribución"), value=ultima_dist[:10] if ultima_dist else "Nunca", inline=True)
+                        
+                        if tae_actual == 0:
+                            embed.add_field(name=banquero_msgs.get("tae_no_configurada", "⚠️ Estado: TAE no konfigurada"), inline=False)
+                        else:
+                            embed.add_field(name=banquero_msgs.get("tae_info", "ℹ️ Info"), value=f"Kada usuario recibirá {tae_actual:,} monedas diarias", inline=False)
+                        
+                        embed.set_footer(text=banquero_msgs.get("tae_footer", "💼 Usa !banquero tae <cantidad> para konfigurar"))
+                        await ctx.send(embed=embed)
+                    else:
+                        # Establecer nueva TAE
+                        try:
+                            cantidad = int(subargs[0])
+                            banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                            if cantidad < 0 or cantidad > 1000:
+                                await ctx.send(banquero_msgs.get("error_tae_rango", "❌ La TAE debe estar entre 0 y 1000 monedas diarias!"))
+                                return
+                            
+                            admin_id = str(ctx.author.id)
+                            admin_nombre = ctx.author.display_name
+                            
+                            if db_banquero.establecer_tae(servidor_id, cantidad, admin_id, admin_nombre):
+                                embed = discord.Embed(
+                                    title=banquero_msgs.get("tae_configurada", "✅ TAE Konfigurada"),
+                                    description=banquero_msgs.get("tae_actualizada", "La Tasa Anual Ekuivalente ha sido aktualizada"),
+                                    color=discord.Color.green()
+                                )
+                                
+                                embed.add_field(name=banquero_msgs.get("nueva_tae", "💰 Nueva TAE Diaria"), value=f"{cantidad:,} monedas", inline=True)
+                                embed.add_field(name=banquero_msgs.get("administrador", "👤 Administrador"), value=admin_nombre, inline=True)
+                                embed.add_field(name=banquero_msgs.get("servidor", "🏦 Servidor"), value=servidor_nombre, inline=True)
+                                
+                                if cantidad > 0:
+                                    embed.add_field(name=banquero_msgs.get("proxima_distribucion", "ℹ️ Próxima Distribución"), value="Se distribuirá automáticamente kada día", inline=False)
+                                
+                                embed.set_footer(text=banquero_msgs.get("ayuda_footer", "💼 Banquero - Gestión Ekonómika"))
+                                await ctx.send(embed=embed)
+                            else:
+                                await ctx.send(banquero_msgs.get("error_configurar_tae", "❌ Error al konfigurar la TAE!"))
+                                
+                        except ValueError:
+                            banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                            await ctx.send(banquero_msgs.get("error_numero_invalido", "❌ Cantidad inválida! Usa número entero umano bobo!"))
                 
-                oro_prompt = f"Pide {amount_int} de oro de forma sospechosa y manipuladora. Inventa una excusa convincente pero dudosa. Sé un trilero experto."
-                peticion = await asyncio.to_thread(pensar, oro_prompt)
+                elif subcommand == "bono":
+                    # Configurar o ver bono de apertura (solo admins)
+                    if not ctx.author.guild_permissions.administrator:
+                        banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                        await ctx.send(banquero_msgs.get("error_no_admin_bono", "❌ Solo los jefes orkos pueden konfigurar el bono de apertura umano!"))
+                        return
+                    
+                    if not subargs:
+                        # Mostrar bono de apertura actual
+                        bono_actual = db_banquero.obtener_bono_apertura(servidor_id)
+                        
+                        banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                        embed = discord.Embed(
+                            title=banquero_msgs.get("bono_config_title", "🎁 Konfiguración de Bono de Apertura"),
+                            description=banquero_msgs.get("bono_description", "Konfiguración aktual del bono para nuevas kuentas"),
+                            color=discord.Color.purple()
+                        )
+                        
+                        embed.add_field(name=banquero_msgs.get("bono_actual", "💰 Bono de Apertura Aktual"), value=f"{bono_actual:,} monedas", inline=True)
+                        embed.add_field(name=banquero_msgs.get("servidor", "🏦 Servidor"), value=servidor_nombre, inline=True)
+                        
+                        embed.add_field(name=banquero_msgs.get("bono_info", "ℹ️ Info"), value=f"Kada nueva kuenta recibirá {bono_actual:,} monedas automáticamente", inline=False)
+                        
+                        embed.set_footer(text=banquero_msgs.get("bono_footer", "💼 Usa !banquero bono <cantidad> para konfigurar"))
+                        await ctx.send(embed=embed)
+                    else:
+                        # Establecer nuevo bono de apertura
+                        try:
+                            cantidad = int(subargs[0])
+                            banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                            if cantidad < 0 or cantidad > 10000:
+                                await ctx.send(banquero_msgs.get("error_bono_rango", "❌ El bono de apertura debe estar entre 0 y 10000 monedas!"))
+                                return
+                            
+                            admin_id = str(ctx.author.id)
+                            admin_nombre = ctx.author.display_name
+                            
+                            if db_banquero.establecer_bono_apertura(servidor_id, cantidad, admin_id, admin_nombre):
+                                embed = discord.Embed(
+                                    title=banquero_msgs.get("bono_configurado", "✅ Bono de Apertura Konfigurado"),
+                                    description=banquero_msgs.get("bono_actualizado", "El bono de apertura ha sido aktualizado"),
+                                    color=discord.Color.green()
+                                )
+                                
+                                embed.add_field(name=banquero_msgs.get("nuevo_bono", "💰 Nuevo Bono de Apertura"), value=f"{cantidad:,} monedas", inline=True)
+                                embed.add_field(name=banquero_msgs.get("administrador", "👤 Administrador"), value=admin_nombre, inline=True)
+                                embed.add_field(name=banquero_msgs.get("servidor", "🏦 Servidor"), value=servidor_nombre, inline=True)
+                                
+                                embed.add_field(name=banquero_msgs.get("aplicacion", "ℹ️ Aplikación"), value="Las próximas kuentas nuevas recibirán este bono", inline=False)
+                                
+                                embed.set_footer(text=banquero_msgs.get("ayuda_footer", "💼 Banquero - Konfiguración Ekonómika"))
+                                await ctx.send(embed=embed)
+                            else:
+                                await ctx.send(banquero_msgs.get("error_configurar_bono", "❌ Error al konfigurar el bono de apertura!"))
+                                
+                        except ValueError:
+                            banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                            await ctx.send(banquero_msgs.get("error_numero_invalido", "❌ Cantidad inválida! Usa número entero umano bobo!"))
                 
-                await ctx.send(f"💰 {peticion}")
-                
-                db_oro_instance = get_oro_db_for_server(ctx.guild)
-                await asyncio.to_thread(
-                    db_oro_instance.registrar_interaccion,
-                    ctx.author.id,
-                    ctx.author.name,
-                    "ORO_PEDIDO",
-                    f"Pidió {amount_int} de oro",
-                    ctx.channel.id,
-                    ctx.guild.id,
-                    metadata={"cantidad": amount_int, "peticion": peticion}
-                )
-                
-                logger.info(f"🎭 [TRILERO] {ctx.author.name} pidió {amount_int} de oro en {ctx.guild.name}")
+                else:
+                    banquero_msgs = PERSONALIDAD.get("discord", {}).get("banquero_messages", {})
+                    await ctx.send(banquero_msgs.get("comando_no_reconocido", f"❌ Subkomando '{subcommand}' no rekonocido! Usa `!banquero ayuda` para ver ayuda umano tonto!").format(subcommand=subcommand))
     
     logger.info(f"🎭 [DISCORD] Comandos registrados para rol: {role_name}")
+    
+    # El trilero se maneja en la sección principal de registro de comandos
+
+# --- REGISTRO DE COMANDOS DEL TRILERO ---
+def register_trilero_commands():
+    """Registra comandos del trilero con subrol limosna."""
+    if LIMOSNA_DB_AVAILABLE:
+        if bot.get_command("trilero") is not None:
+            logger.info("🎭 [DISCORD] Comandos del trilero ya registrados")
+        else:
+            logger.info("🎭 [DISCORD] Registrando comandos del trilero con limosna")
+            
+            @bot.command(name="trilero")
+            async def cmd_trilero(ctx, *args):
+                """Comando principal del trilero - gestiona el subrol limosna."""
+                if not LIMOSNA_DB_AVAILABLE:
+                    await ctx.send("❌ El sistema del trilero no está disponible en este servidor.")
+                    return
+        
+                # Si no hay argumentos, mostrar ayuda
+                if not args:
+                    await ctx.send("❌ Debes especificar una acción. Usa `!trilero ayuda` para ver los comandos disponibles.")
+                    return
+                
+                subcommand = args[0].lower()
+                subargs = args[1:] if len(args) > 1 else []
+                
+                if subcommand == "limosna":
+                    await cmd_trilero_limosna(ctx, subargs)
+                elif subcommand == "ayuda":
+                    await cmd_trilero_ayuda(ctx)
+                else:
+                    await ctx.send(f"❌ Subcomando `{subcommand}` no reconocido. Usa `!trilero ayuda` para ver ayuda.")
+            
+            async def cmd_trilero_limosna(ctx, args):
+                """Gestiona el subrol limosna."""
+                if not args:
+                    await ctx.send("❌ Debes especificar una acción. Usa `!trilero limosna on/off` o `!trilero limosna frecuencia <horas>`. ")
+                    return
+                
+                action = args[0].lower()
+                
+                if action in ["on", "off"]:
+                    await cmd_trilero_limosna_toggle(ctx, action)
+                elif action == "frecuencia":
+                    await cmd_trilero_limosna_frecuencia(ctx, args[1:])
+                elif action == "estado":
+                    await cmd_trilero_limosna_estado(ctx)
+                else:
+                    await ctx.send(f"❌ Acción `{action}` no reconocida. Usa `on`, `off`, `frecuencia` o `estado`.")
+            
+            async def cmd_trilero_limosna_toggle(ctx, action):
+                """Activa o desactiva el subrol limosna (solo administradores)."""
+                if not ctx.guild:
+                    await ctx.send("❌ Este comando solo funciona en servidores, no por mensaje privado.")
+                    return
+                
+                if not ctx.author.guild_permissions.administrator:
+                    await ctx.send("❌ Solo los administradores pueden activar/desactivar limosna en el servidor.")
+                    return
+                    
+                db_limosna_instance = get_limosna_db_for_server(ctx.guild)
+                if not db_limosna_instance:
+                    await ctx.send("❌ Error al acceder a la base de datos del trilero.")
+                    return
+                
+                if action == "on":
+                    # Activar limosna para todo el servidor
+                    server_id = str(ctx.guild.id)
+                    server_name = ctx.guild.name
+                    
+                    # Usar un ID especial para el servidor
+                    server_user_id = f"server_{server_id}"
+                    
+                    if db_limosna_instance.agregar_suscripcion(server_user_id, server_name, server_id):
+                        await ctx.send(f"🙏 **Limosna activada para el servidor** - Ahora todos los miembros recibirán peticiones de limosna periódicamente.")
+                        logger.info(f"🎭 [TRILERO] {ctx.author.name} activó limosna para el servidor {server_name}")
+                    else:
+                        await ctx.send("❌ Error al activar limosna. Inténtalo de nuevo.")
+                else:  # off
+                    # Desactivar limosna para todo el servidor
+                    server_id = str(ctx.guild.id)
+                    server_user_id = f"server_{server_id}"
+                    
+                    if db_limosna_instance.eliminar_suscripcion(server_user_id, server_id):
+                        await ctx.send(f"🚫 **Limosna desactivada para el servidor** - Ya no se enviarán peticiones de limosna.")
+                        logger.info(f"🎭 [TRILERO] {ctx.author.name} desactivó limosna para el servidor {ctx.guild.name}")
+                    else:
+                        await ctx.send("❌ Error al desactivar limosna. Inténtalo de nuevo.")
+    
+    async def cmd_trilero_limosna_frecuencia(ctx, args):
+        """Ajusta la frecuencia de envío de limosna (solo administradores)."""
+        if not ctx.guild:
+            await ctx.send("❌ Este comando solo funciona en servidores, no por mensaje privado.")
+            return
+        
+        if not ctx.author.guild_permissions.administrator:
+            await ctx.send("❌ Solo los administradores pueden ajustar la frecuencia de limosna.")
+            return
+            
+        if not args:
+            await ctx.send("❌ Debes especificar un número de horas. Ejemplo: `!trilero limosna frecuencia 6`")
+            return
+        
+        try:
+            horas = int(args[0])
+            if horas < 1 or horas > 168:
+                await ctx.send("❌ La frecuencia debe estar entre 1 y 168 horas (1 semana).")
+                return
+            
+            # Aquí podrías guardar la configuración en la base de datos del servidor
+            # Por ahora, solo mostramos confirmación
+            await ctx.send(f"⏰ **Frecuencia ajustada** - Las peticiones de limosna se enviarán cada {horas} horas.")
+            logger.info(f"🎭 [TRILERO] {ctx.author.name} ajustó frecuencia de limosna a {horas} horas en {ctx.guild.name}")
+            
+        except ValueError:
+            await ctx.send("❌ Debes especificar un número válido de horas.")
+    
+    async def cmd_trilero_limosna_estado(ctx):
+        """Muestra el estado actual de limosna en el servidor."""
+        if not ctx.guild:
+            await ctx.send("❌ Este comando solo funciona en servidores, no por mensaje privado.")
+            return
+        
+        db_limosna_instance = get_limosna_db_for_server(ctx.guild)
+        if not db_limosna_instance:
+            await ctx.send("❌ Error al acceder a la base de datos del trilero.")
+            return
+        
+        server_id = str(ctx.guild.id)
+        server_user_id = f"server_{server_id}"
+        
+        # Verificar si limosna está activada para el servidor
+        is_active = db_limosna_instance.esta_suscrito(server_user_id, server_id)
+        
+        # Contar peticiones hoy
+        from datetime import datetime, timedelta
+        hoy = datetime.now().date()
+        
+        # Obtener estadísticas básicas
+        try:
+            # Esto es una aproximación, podrías necesitar agregar métodos específicos a la BD
+            count_dm = db_limosna_instance.contar_peticiones_tipo_ultimo_dia("LIMOSNA_DM", server_id)
+            count_public = db_limosna_instance.contar_peticiones_tipo_ultimo_dia("LIMOSNA_PUBLICO", server_id)
+        except:
+            count_dm = 0
+            count_public = 0
+        
+        status_emoji = "✅" if is_active else "❌"
+        status_text = "Activada" if is_active else "Desactivada"
+        
+        estado_msg = f"📊 **Estado de Limosna en {ctx.guild.name}**\n\n"
+        estado_msg += f"{status_emoji} **Estado:** {status_text}\n"
+        estado_msg += f"📈 **Peticiones hoy (últimas 24h):**\n"
+        estado_msg += f"  • Privadas: {count_dm}/2\n"
+        estado_msg += f"  • Públicas: {count_public}/4\n"
+        estado_msg += f"🆔 **ID del servidor:** {server_id}\n"
+        
+        if is_active:
+            estado_msg += f"\n🙏 Limosna está activa y funcionando en este servidor."
+        else:
+            estado_msg += f"\n🚫 Limosna está desactivada. Usa `!trilero limosna on` para activarla."
+        
+        await ctx.send(estado_msg)
+    
+    async def cmd_trilero_ayuda(ctx):
+        """Muestra ayuda específica para el trilero."""
+        ayuda_msg = "🎭 **TRILERO - AYUDA** 🎭\n\n"
+        ayuda_msg += "**Subrol Limosna** - Solicitudes de donaciones y engaños\n\n"
+        ayuda_msg += "📋 **COMANDOS LIMOSNA:** (solo administradores)\n"
+        ayuda_msg += "• `!trilero limosna on` - Activa limosna para todo el servidor\n"
+        ayuda_msg += "• `!trilero limosna off` - Desactiva limosna del servidor\n"
+        ayuda_msg += "• `!trilero limosna frecuencia <horas>` - Ajusta frecuencia (1-168h)\n"
+        ayuda_msg += "• `!trilero limosna estado` - Muestra estado actual\n\n"
+        ayuda_msg += "**Subrol Bote** - Juego de dados contra la banca\n\n"
+        ayuda_msg += "📋 **COMANDOS BOTE:**\n"
+        ayuda_msg += "• `!bote jugar` - Realiza una tirada de dados (solo en canales de servidor)\n"
+        ayuda_msg += "• `!bote ayuda` - Muestra ayuda completa del juego del Bote\n"
+        ayuda_msg += "• `!bote saldo` - Muestra el saldo actual del bote (responde por DM)\n"
+        ayuda_msg += "• `!bote stats` - Muestra tus estadísticas personales (responde por DM)\n"
+        ayuda_msg += "• `!bote ranking` - Muestra ranking de jugadores del servidor\n"
+        ayuda_msg += "• `!bote historial` - Muestra últimas partidas jugadas\n"
+        ayuda_msg += "• `!bote config apuesta <cantidad>` - Configura apuesta fija (solo admins)\n"
+        ayuda_msg += "• `!bote config anuncios on/off` - Activa/desactiva anuncios (solo admins)\n\n"
+        ayuda_msg += "💡 **EJEMPLOS:**\n"
+        ayuda_msg += "• `!trilero limosna on` → Activar para todo el servidor\n"
+        ayuda_msg += "• `!trilero limosna frecuencia 6` → Cada 6 horas\n"
+        ayuda_msg += "• `!trilero limosna estado` → Ver estado y estadísticas\n"
+        ayuda_msg += "• `!trilero limosna off` → Desactivar del servidor\n"
+        ayuda_msg += "• `!bote jugar` → Jugar al juego de dados\n"
+        ayuda_msg += "• `!bote config apuesta 15` → Configurar apuesta a 15 monedas\n\n"
+        ayuda_msg += "⚠️ **REQUISITOS:**\n"
+        ayuda_msg += "• Solo administradores pueden usar comandos de limosna y configuración del bote\n"
+        ayuda_msg += "• Los comandos de limosna y bote solo funcionan en canales del servidor\n"
+        ayuda_msg += "• El bote requiere que el rol banquero esté activo\n\n"
+        ayuda_msg += "⚠️ **LÍMITES:**\n"
+        ayuda_msg += "• Máximo 2 mensajes privados por servidor al día (limosna)\n"
+        ayuda_msg += "• Máximo 4 mensajes públicos por servidor al día (limosna)\n"
+        ayuda_msg += "• No molestar al mismo usuario en 12 horas (limosna)\n"
+        ayuda_msg += "• Apuesta única fija para todos los jugadores (bote)\n"
+        
+        try:
+            await ctx.author.send(ayuda_msg)
+            await ctx.send("📩 Ayuda del trilero enviada por mensaje privado.")
+        except discord.errors.Forbidden:
+            await ctx.send(ayuda_msg[:2000])
+    
+    if not LIMOSNA_DB_AVAILABLE:
+        logger.info("🎭 [DISCORD] Base de datos de limosna no disponible, omitiendo registro de comandos del trilero")
+
+    logger.info("🎭 [DISCORD] Comandos del trilero registrados exitosamente")
+    
+    # Registrar comandos del bote si está disponible
+    if BOTE_AVAILABLE and BOTE_DB_AVAILABLE and BANQUERO_DB_AVAILABLE:
+        if bot.get_command("bote") is None:
+            logger.info("🎲 [DISCORD] Registrando comandos del bote")
+            
+            @bot.command(name="bote")
+            async def cmd_bote(ctx, *args):
+                """Comando principal del juego del Bote."""
+                if not ctx.guild:
+                    await ctx.send("❌ Este comando solo funciona en servidores, no por mensaje privado.")
+                    return
+                
+                if not BOTE_AVAILABLE or not BOTE_DB_AVAILABLE or not BANQUERO_DB_AVAILABLE:
+                    await ctx.send("❌ El juego del Bote no está disponible en este servidor.")
+                    return
+                
+                # Si no hay argumentos, mostrar ayuda
+                if not args:
+                    await cmd_bote_ayuda(ctx)
+                    return
+                
+                subcommand = args[0].lower()
+                subargs = args[1:] if len(args) > 1 else []
+                
+                if subcommand == "jugar":
+                    await cmd_bote_jugar(ctx)
+                elif subcommand == "ayuda":
+                    await cmd_bote_ayuda(ctx)
+                elif subcommand == "saldo":
+                    await cmd_bote_saldo(ctx)
+                elif subcommand == "stats":
+                    await cmd_bote_stats(ctx)
+                elif subcommand == "ranking":
+                    await cmd_bote_ranking(ctx)
+                elif subcommand == "historial":
+                    await cmd_bote_historial(ctx)
+                elif subcommand == "config":
+                    await cmd_bote_config(ctx, subargs)
+                else:
+                    await ctx.send(f"❌ Subcomando `{subcommand}` no reconocido. Usa `!bote ayuda` para ver ayuda.")
+            
+            async def cmd_bote_jugar(ctx):
+                """Realiza una tirada de dados en el juego del bote."""
+                if not ctx.guild:
+                    await ctx.send("❌ Este comando solo funciona en servidores.")
+                    return
+                
+                try:
+                    # Obtener instancias de bases de datos
+                    db_banquero = get_banquero_db_instance(ctx.guild.name)
+                    db_bote = get_bote_db_instance(ctx.guild.name)
+                    
+                    if not db_banquero or not db_bote:
+                        await ctx.send("❌ Error al acceder a las bases de datos del juego.")
+                        return
+                    
+                    # Verificar que el rol banquero esté activo
+                    try:
+                        saldo_bote = db_banquero.obtener_saldo("bote_banca", str(ctx.guild.id))
+                    except Exception as e:
+                        await ctx.send("❌ El rol Banquero debe estar activo para jugar al Bote.")
+                        return
+                    
+                    # Procesar la jugada (ejecutar en thread por ser síncrona)
+                    resultado = await asyncio.to_thread(procesar_jugada,
+                        str(ctx.author.id),
+                        ctx.author.display_name,
+                        str(ctx.guild.id),
+                        ctx.guild.name,
+                        None  # http no necesario para este comando
+                    )
+                    
+                    if resultado["success"]:
+                        await ctx.send(resultado["mensaje"])
+                        logger.info(f"🎲 [BOTE] {ctx.author.name} jugó en {ctx.guild.name} - Premio: {resultado.get('premio', 0)}")
+                    else:
+                        await ctx.send(f"❌ {resultado['message']}")
+                        
+                except Exception as e:
+                    logger.exception(f"Error en cmd_bote_jugar: {e}")
+                    await ctx.send("❌ Error al procesar la jugada. Inténtalo de nuevo.")
+            
+            async def cmd_bote_ayuda(ctx):
+                """Muestra ayuda completa del juego del Bote."""
+                ayuda_msg = "🎲 **JUEGO DEL BOTE - AYUDA** 🎲\n\n"
+                ayuda_msg += "**¿Qué es el Bote?**\n"
+                ayuda_msg += "Es un juego de dados donde apuestas una cantidad fija contra la banca. "
+                ayuda_msg += "Saca 1-1-1 y te llevas todo el bote acumulado.\n\n"
+                ayuda_msg += "**🎲 TABLA DE PREMIOS:**\n"
+                ayuda_msg += "• **1-1-1** (0.46%) → 🎉 **TODO EL BOTE** 🎉\n"
+                ayuda_msg += "• **Triple cualquiera** (2.78%) → x3 tu apuesta\n"
+                ayuda_msg += "• **Escalera 4-5-6** (2.78%) → x5 tu apuesta\n"
+                ayuda_msg += "• **Par** (41.67%) → Recuperas tu apuesta\n"
+                ayuda_msg += "• **Cualquier otra** (52.31%) → Sin premio\n\n"
+                ayuda_msg += "**📋 COMANDOS:**\n"
+                ayuda_msg += "• `!bote jugar` - Realiza una tirada de dados\n"
+                ayuda_msg += "• `!bote saldo` - Muestra el saldo actual del bote (DM)\n"
+                ayuda_msg += "• `!bote stats` - Tus estadísticas personales (DM)\n"
+                ayuda_msg += "• `!bote ranking` - Ranking de jugadores del servidor\n"
+                ayuda_msg += "• `!bote historial` - Últimas partidas jugadas\n"
+                ayuda_msg += "• `!bote config apuesta <cantidad>` - Configura apuesta (admins)\n"
+                ayuda_msg += "• `!bote config anuncios on/off` - Anuncios automáticos (admins)\n\n"
+                ayuda_msg += "**💡 EJEMPLOS:**\n"
+                ayuda_msg += "• `!bote jugar` → Tira los dados\n"
+                ayuda_msg += "• `!bote config apuesta 15` → Apuesta fija de 15 monedas\n\n"
+                ayuda_msg += "**⚠️ REQUISITOS:**\n"
+                ayuda_msg += "• Solo funciona en canales de servidor\n"
+                ayuda_msg += "• Requiere que el rol Banquero esté activo\n"
+                ayuda_msg += "• Apuesta única fija para todos los jugadores\n\n"
+                ayuda_msg += "**🏦 ECONOMÍA:**\n"
+                ayuda_msg += "• El bote crece con cada tirada sin premio\n"
+                ayuda_msg += "• Los premios parciales se pagan de la banca\n"
+                ayuda_msg += "• ¡El 1-1-1 vacía todo el bote acumulado!"
+                
+                try:
+                    await ctx.author.send(ayuda_msg)
+                    await ctx.send("📩 Ayuda del Bote enviada por mensaje privado.")
+                except discord.errors.Forbidden:
+                    await ctx.send("❌ No puedo enviarte mensajes privados. Actívalos en la configuración de privacidad.")
+                except Exception as e:
+                    await ctx.send("❌ Error al enviar la ayuda.")
+            
+            async def cmd_bote_saldo(ctx):
+                """Muestra el saldo actual del bote."""
+                if not BANQUERO_DB_AVAILABLE:
+                    await ctx.send("❌ El sistema del banquero no está disponible en este servidor.")
+                    return
+                
+                if not BOTE_DB_AVAILABLE:
+                    await ctx.send("❌ El sistema del bote no está disponible en este servidor.")
+                    return
+                
+                try:
+                    # Obtener mensajes personalizados
+                    from roles.trilero.subroles.bote.bote import get_bote_messages
+                    messages = get_bote_messages()
+                    # Obtener mensajes específicos de saldo o usar fallbacks
+                    saldo_messages = PERSONALIDAD.get("discord", {}).get("bote_saldo_messages", {})
+                    
+                    # Fallbacks si no hay mensajes en la personalidad
+                    if not saldo_messages:
+                        saldo_messages = {
+                            "titulo": "💰 **ESTADO DEL BOTE - {servidor}** 💰\n\n",
+                            "saldo_actual": "🎲 **Saldo actual del bote:** {saldo:,} monedas\n",
+                            "apuesta_fija": "💎 **Apuesta fija:** {apuesta:,} monedas\n",
+                            "jugadas_posibles": "🎯 **Jugadas posibles:** {jugadas}\n\n",
+                            "bote_grande": "🔥 **¡EL BOTE ESTÁ GRANDE!** 🔥\n¡Buen momento para intentar ganar {saldo:,} monedas!\n",
+                            "bote_mediano": "📈 **Bote mediano** - Bueno para jugar\n",
+                            "bote_pequeno": "📉 **Bote pequeño** - Sigue creciendo\n",
+                            "usar_comando": "\n💡 Usa `!bote jugar` para intentar tu suerte!",
+                            "enviado_privado": "📩 Saldo del bote enviado por mensaje privado.",
+                            "error_saldo": "❌ Error al obtener el saldo del bote."
+                        }
+                    
+                    db_banquero = get_banquero_db_instance(ctx.guild.name)
+                    saldo_bote = db_banquero.obtener_saldo("bote_banca", str(ctx.guild.id))
+                    
+                    # Obtener configuración del bote
+                    db_bote = get_bote_db_instance(ctx.guild.name)
+                    config = db_bote.obtener_configuracion_servidor(str(ctx.guild.id))
+                    apuesta_fija = config.get("apuesta_fija", 10)
+                    
+                    # Construir mensaje usando plantillas desde la personalidad
+                    saldo_msg = saldo_messages.get("titulo", "💰 **ESTADO DEL BOTE - {servidor}** 💰\n\n").format(servidor=ctx.guild.name.upper())
+                    saldo_msg += saldo_messages.get("saldo_actual", "🎲 **Saldo actual del bote:** {saldo:,} monedas\n").format(saldo=saldo_bote)
+                    saldo_msg += saldo_messages.get("apuesta_fija", "💎 **Apuesta fija:** {apuesta:,} monedas\n").format(apuesta=apuesta_fija)
+                    saldo_msg += saldo_messages.get("jugadas_posibles", "🎯 **Jugadas posibles:** {jugadas}\n\n").format(jugadas=saldo_bote // apuesta_fija if apuesta_fija > 0 else 0)
+                    
+                    if saldo_bote >= 100:
+                        saldo_msg += saldo_messages.get("bote_grande", "🔥 **¡EL BOTE ESTÁ GRANDE!** 🔥\n¡Buen momento para intentar ganar {saldo:,} monedas!\n").format(saldo=saldo_bote)
+                    elif saldo_bote >= 50:
+                        saldo_msg += saldo_messages.get("bote_mediano", "📈 **Bote mediano** - Bueno para jugar\n")
+                    else:
+                        saldo_msg += saldo_messages.get("bote_pequeno", "📉 **Bote pequeño** - Sigue creciendo\n")
+                    
+                    saldo_msg += saldo_messages.get("usar_comando", "\n💡 Usa `!bote jugar` para intentar tu suerte!")
+                    
+                    await ctx.author.send(saldo_msg)
+                    await ctx.send(saldo_messages.get("enviado_privado", "📩 Saldo del bote enviado por mensaje privado."))
+                    
+                except Exception as e:
+                    logger.exception(f"Error en cmd_bote_saldo: {e}")
+                    from roles.trilero.subroles.bote.bote import get_bote_messages
+                    messages = get_bote_messages()
+                    saldo_messages = PERSONALIDAD.get("discord", {}).get("bote_saldo_messages", {})
+                    await ctx.send(saldo_messages.get("error_saldo", "❌ Error al obtener el saldo del bote."))
+            
+            async def cmd_bote_stats(ctx):
+                """Muestra estadísticas personales del jugador."""
+                if not ctx.guild:
+                    await ctx.send("❌ Este comando solo funciona en servidores.")
+                    return
+                
+                if not BOTE_DB_AVAILABLE:
+                    await ctx.send("❌ El sistema del bote no está disponible en este servidor.")
+                    return
+                
+                try:
+                    db_bote = get_bote_db_instance(ctx.guild.name)
+                    if not db_bote:
+                        await ctx.send("❌ Error al acceder a la base de datos del bote.")
+                        return
+                    
+                    stats = db_bote.obtener_estadisticas_jugador(str(ctx.author.id), str(ctx.guild.id))
+                    
+                    stats_msg = f"📊 **TUS ESTADÍSTICAS DEL BOTE** 📊\n\n"
+                    stats_msg += f"👤 **Jugador:** {ctx.author.display_name}\n"
+                    stats_msg += f"🎲 **Partidas jugadas:** {stats.get('total_jugadas', 0)}\n"
+                    stats_msg += f"💰 **Total apostado:** {stats.get('total_apostado', 0):,} monedas\n"
+                    stats_msg += f"🏆 **Total ganado:** {stats.get('total_ganado', 0):,} monedas\n"
+                    stats_msg += f"💎 **Botes ganados:** {stats.get('botes_ganados', 0)}\n"
+                    stats_msg += f"🎯 **Mayor premio:** {stats.get('mayor_premio', 0):,} monedas\n"
+                    stats_msg += f"📈 **Balance neto:** {stats.get('balance', 0):,} monedas\n\n"
+                    
+                    if stats.get('total_jugadas', 0) > 0:
+                        rentabilidad = (stats.get('total_ganado', 0) / stats.get('total_apostado', 1)) * 100
+                        stats_msg += f"📊 **Rentabilidad:** {rentabilidad:.1f}%\n"
+                        
+                        if stats.get('botes_ganados', 0) > 0:
+                            stats_msg += f"🎉 **¡FELICIDADES! Has ganado {stats.get('botes_ganados', 0)} bote(s)!\n"
+                    else:
+                        stats_msg += f"🎲 **Aún no has jugado** - Usa `!bote jugar` para empezar!\n"
+                    
+                    await ctx.author.send(stats_msg)
+                    await ctx.send("📩 Estadísticas enviadas por mensaje privado.")
+                    
+                except Exception as e:
+                    logger.exception(f"Error en cmd_bote_stats: {e}")
+                    await ctx.send("❌ Error al obtener tus estadísticas.")
+            
+            async def cmd_bote_ranking(ctx):
+                """Muestra ranking de jugadores del servidor."""
+                if not ctx.guild:
+                    await ctx.send("❌ Este comando solo funciona en servidores.")
+                    return
+                
+                try:
+                    db_bote = get_bote_db_instance(ctx.guild.name)
+                    if not db_bote:
+                        await ctx.send("❌ Error al acceder a la base de datos del bote.")
+                        return
+                    
+                    ranking = db_bote.obtener_ranking_jugadores(str(ctx.guild.id), "total_ganado", 10)
+                    
+                    if not ranking:
+                        await ctx.send("📊 **RANKING DEL BOTE** - Aún no hay jugadores registrados.")
+                        return
+                    
+                    ranking_msg = f"🏆 **RANKING DEL BOTE - {ctx.guild.name.upper()}** 🏆\n\n"
+                    
+                    for i, (nombre, ganado, jugadas, total_ganado, total_apostado) in enumerate(ranking, 1):
+                        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"#{i}"
+                        balance = total_ganado - total_apostado
+                        rentabilidad = (total_ganado / total_apostado * 100) if total_apostado > 0 else 0
+                        
+                        ranking_msg += f"{medal} **{nombre}**\n"
+                        ranking_msg += f"   💰 Ganado: {ganado:,} | 🎲 Partidas: {jugadas}\n"
+                        ranking_msg += f"   📈 Balance: {balance:,} ({rentabilidad:.1f}%)\n\n"
+                    
+                    await ctx.send(ranking_msg)
+                    
+                except Exception as e:
+                    logger.exception(f"Error en cmd_bote_ranking: {e}")
+                    await ctx.send("❌ Error al obtener el ranking.")
+            
+            async def cmd_bote_historial(ctx):
+                """Muestra las últimas partidas jugadas."""
+                if not ctx.guild:
+                    await ctx.send("❌ Este comando solo funciona en servidores.")
+                    return
+                
+                try:
+                    db_bote = get_bote_db_instance(ctx.guild.name)
+                    if not db_bote:
+                        await ctx.send("❌ Error al acceder a la base de datos del bote.")
+                        return
+                    
+                    historial = db_bote.obtener_historial_partidas(str(ctx.guild.id), 15)
+                    
+                    if not historial:
+                        await ctx.send("📜 **HISTORIAL DEL BOTE** - Aún no hay partidas registradas.")
+                        return
+                    
+                    historial_msg = f"📜 **ÚLTIMAS PARTIDAS DEL BOTE** 📜\n\n"
+                    
+                    for nombre, apuesta, dados, combinacion, premio, fecha in historial:
+                        # Formatear fecha
+                        try:
+                            from datetime import datetime
+                            dt = datetime.fromisoformat(fecha.replace('Z', '+00:00'))
+                            fecha_formateada = dt.strftime("%d/%m %H:%M")
+                        except:
+                            fecha_formateada = fecha[:16]
+                        
+                        premio_emoji = "🎉" if premio > 0 else "😅"
+                        historial_msg += f"👤 **{nombre}** | {fecha_formateada}\n"
+                        historial_msg += f"   🎲 {dados} → {combinacion}\n"
+                        historial_msg += f"   {premio_emoji} Premio: {premio:,} monedas\n\n"
+                    
+                    await ctx.send(historial_msg)
+                    
+                except Exception as e:
+                    logger.exception(f"Error en cmd_bote_historial: {e}")
+                    await ctx.send("❌ Error al obtener el historial.")
+            
+            async def cmd_bote_config(ctx, args):
+                """Configura parámetros del bote (solo administradores)."""
+                if not ctx.guild:
+                    await ctx.send("❌ Este comando solo funciona en servidores.")
+                    return
+                
+                if not ctx.author.guild_permissions.administrator:
+                    await ctx.send("❌ Solo los administradores pueden configurar el bote.")
+                    return
+                
+                if not args:
+                    await ctx.send("❌ Debes especificar qué configurar. Usa `!bote config apuesta <cantidad>` o `!bote config anuncios on/off`.")
+                    return
+                
+                try:
+                    db_bote = get_bote_db_instance(ctx.guild.name)
+                    if not db_bote:
+                        await ctx.send("❌ Error al acceder a la base de datos del bote.")
+                        return
+                    
+                    param = args[0].lower()
+                    
+                    if param == "apuesta":
+                        if len(args) < 2:
+                            await ctx.send("❌ Debes especificar la cantidad. Ejemplo: `!bote config apuesta 15`.")
+                            return
+                        
+                        try:
+                            cantidad = int(args[1])
+                            if cantidad < 1 or cantidad > 1000:
+                                await ctx.send("❌ La apuesta debe estar entre 1 y 1000 monedas.")
+                                return
+                            
+                            if db_bote.configurar_servidor(str(ctx.guild.id), apuesta_fija=cantidad):
+                                await ctx.send(f"✅ **Apuesta fija configurada** - Ahora todas las jugadas costarán {cantidad:,} monedas.")
+                                logger.info(f"🎲 [BOTE] {ctx.author.name} configuró apuesta a {cantidad} en {ctx.guild.name}")
+                            else:
+                                await ctx.send("❌ Error al configurar la apuesta.")
+                                
+                        except ValueError:
+                            await ctx.send("❌ Cantidad inválida. Usa un número entero.")
+                    
+                    elif param == "anuncios":
+                        if len(args) < 2:
+                            await ctx.send("❌ Debes especificar on/off. Ejemplo: `!bote config anuncios on`.")
+                            return
+                        
+                        estado = args[1].lower()
+                        if estado not in ["on", "off"]:
+                            await ctx.send("❌ Usa 'on' o 'off'. Ejemplo: `!bote config anuncios on`.")
+                            return
+                        
+                        anuncios_activos = estado == "on"
+                        if db_bote.configurar_servidor(str(ctx.guild.id), anuncios_activos=anuncios_activos):
+                            estado_msg = "activados" if anuncios_activos else "desactivados"
+                            await ctx.send(f"✅ **Anuncios {estado_msg}** - Los anuncios automáticos del bote han sido {estado_msg}.")
+                            logger.info(f"🎲 [BOTE] {ctx.author.name} {estado_msg} anuncios en {ctx.guild.name}")
+                        else:
+                            await ctx.send("❌ Error al configurar los anuncios.")
+                    
+                    else:
+                        await ctx.send("❌ Parámetro no reconocido. Usa `apuesta` o `anuncios`.")
+                        
+                except Exception as e:
+                    logger.exception(f"Error en cmd_bote_config: {e}")
+                    await ctx.send("❌ Error al configurar el bote.")
+            
+            logger.info("🎲 [DISCORD] Comandos del bote registrados exitosamente")
+    else:
+        logger.warning("🎲 [DISCORD] Sistema del bote no disponible completamente - omitiendo registro de comandos")
 
 # Comandos dinámicos para control de roles
 @bot.command(name="rolekronk")
@@ -1949,74 +3131,175 @@ def register_role_commands():
     # OMITIR - ahora se maneja en register_commands_for_enabled_roles
     logger.info("🎵 [DISCORD] Omitiendo registro MC - ahora manejado por register_commands_for_enabled_roles en on_ready")
 
-    # --- Comandos del trilero: siempre registrar si está disponible ---
-    if ORO_DB_AVAILABLE and bot.get_command("trilero") is None:
-        logger.info("🎭 [DISCORD] Registrando comandos del trilero")
-        
-        @bot.command(name="trilero")
-        async def cmd_trilero(ctx):
-            """Activa el rol trilero."""
-            if not ORO_DB_AVAILABLE:
-                await ctx.send("❌ El sistema del trilero no está disponible en este servidor.")
-                return
-            
-            db_oro_instance = get_oro_db_for_server(ctx.guild)
-            if not db_oro_instance:
-                await ctx.send("❌ Error al acceder a la base de datos del trilero.")
-                return
-            
-            usuario_id = str(ctx.author.id)
-            usuario_nombre = ctx.author.name
-            
-            if not db_oro_instance.esta_suscrito(usuario_id, str(ctx.guild.id)):
-                await ctx.send(f"{get_message('trilero_not_subscribed')} {ctx.author.mention}")
-                return
-            
-            if db_oro_instance.agregar_suscripcion(usuario_id, usuario_nombre, str(ctx.guild.id)):
-                await ctx.send(f"{get_message('trilero_subscribe')} {ctx.author.mention}")
-                logger.info(f"🎭 [TRILERO] {usuario_nombre} ({usuario_id}) se suscribió al rol trilero en {ctx.guild.name}")
-            else:
-                await ctx.send("❌ Error al suscribirte al rol trilero. Inténtalo de nuevo.")
-        
-        @bot.command(name="notrilero")
-        async def cmd_no_trilero(ctx):
-            """Desactiva el rol trilero."""
-            if not ORO_DB_AVAILABLE:
-                await ctx.send("❌ El sistema del trilero no está disponible en este servidor.")
-                return
-            
-            db_oro_instance = get_oro_db_for_server(ctx.guild)
-            if not db_oro_instance:
-                await ctx.send("❌ Error al acceder a la base de datos del trilero.")
-                return
-            
-            usuario_id = str(ctx.author.id)
-            usuario_nombre = ctx.author.name
-            
-            if not db_oro_instance.esta_suscrito(usuario_id, str(ctx.guild.id)):
-                await ctx.send(f"{get_message('trilero_not_subscribed')} {ctx.author.mention}")
-                return
-            
-            if db_oro_instance.eliminar_suscripcion(usuario_id, str(ctx.guild.id)):
-                await ctx.send(f"{get_message('trilero_unsubscribe')} {ctx.author.mention}")
-                logger.info(f"🎭 [TRILERO] {usuario_nombre} ({usuario_id}) se desuscrito del rol trilero en {ctx.guild.name}")
-            else:
-                await ctx.send("❌ Error al desuscribirte del rol trilero. Inténtalo de nuevo.")
-    else:
-        logger.info("🎭 [DISCORD] Comandos del trilero ya registrados, omitiendo")
-    
-    # Marcar como registrado para evitar duplicaciones
-    _commands_registered = True
-    logger.info("🎭 [DISCORD] Registro de comandos completado")
-
-# --- INICIO DEL BOT ---
+    # --- INICIO DEL BOT ---
 if __name__ == "__main__":
     try:
         # Registrar comandos condicionales antes de iniciar el bot
         try:
-            # OMITIR register_role_commands - ahora se maneja en on_ready
-            logger.info("📡 [DISCORD] Omitiendo register_role_commands - ahora manejado por register_commands_for_enabled_roles en on_ready")
+            # Registrar comandos del Vigía ANTES de conectar el bot
+            if VIGIA_COMMANDS_AVAILABLE:
+                from roles.vigia_noticias.vigia_commands import VigiaCommands
+                
+                # Crear instancia de comandos
+                vigia_commands = VigiaCommands(bot)
+                
+                # Comandos del Vigía de Noticias (funcionan por DM)
+                if bot.get_command("vigia") is None:
+                    logger.info("📡 [DISCORD] Registrando comando vigia")
+                    
+                    @bot.command(name="vigia")
+                    async def cmd_vigia(ctx, *args):
+                        """Comando principal del Vigía de Noticias (funciona por DM)."""
+                        if not VIGIA_COMMANDS_AVAILABLE:
+                            await ctx.send("❌ El Vigía de Noticias no está disponible en este servidor.")
+                            return
+                        
+                        # Permitir uso por DM y en servidor
+                        server_name = ctx.guild.name if ctx.guild else "DM"
+                        db_vigia_instance = get_vigia_db_for_server(ctx.guild) if ctx.guild else get_vigia_db_for_server(None)
+                        
+                        if not db_vigia_instance:
+                            await ctx.send("❌ Error al acceder a la base de datos del Vigía.")
+                            return
+                        
+                        # Si no hay argumentos, mostrar ayuda
+                        if not args:
+                            await ctx.author.send("📡 **Vigía de Noticias** - Usa `!vigiaayuda` para ver todos los comandos disponibles.")
+                            if ctx.guild:
+                                await ctx.send("📩 Ayuda enviada por mensaje privado.")
+                            return
+                        
+                        # Procesar subcomandos
+                        subcommand = args[0].lower()
+                        subargs = args[1:] if len(args) > 1 else []
+                        
+                        try:
+                            if subcommand == "feeds":
+                                await vigia_commands.cmd_feeds(ctx, subargs)
+                            elif subcommand == "categorias":
+                                await vigia_commands.cmd_categorias(ctx, subargs)
+                            elif subcommand == "estado":
+                                await vigia_commands.cmd_estado(ctx, subargs)
+                            elif subcommand == "suscribir":
+                                await vigia_commands.cmd_suscribir(ctx, subargs)
+                            elif subcommand == "cancelar":
+                                await vigia_commands.cmd_cancelar(ctx, subargs)
+                            elif subcommand == "general":
+                                await vigia_commands.cmd_general_suscribir(ctx, subargs)
+                            elif subcommand == "palabras":
+                                await vigia_commands.cmd_palabras_suscribir(ctx, subargs)
+                            elif subcommand == "premisas":
+                                await vigia_commands.cmd_premisas(ctx, subargs)
+                            elif subcommand == "mod":
+                                await vigia_commands.cmd_premisas_mod(ctx, subargs)
+                            elif subcommand == "reset":
+                                await vigia_commands.cmd_reset(ctx, subargs)
+                            else:
+                                await ctx.author.send(f"❌ Subcomando `{subcommand}` no reconocido. Usa `!vigiaayuda` para ver ayuda.")
+                                if ctx.guild:
+                                    await ctx.send("📩 Ayuda enviada por mensaje privado.")
+                        except Exception as e:
+                            logger.exception(f"Error en comando vigia: {e}")
+                            await ctx.send("❌ Error al procesar comando del Vigía")
+                
+                # Comando de ayuda del Vigía
+                if bot.get_command("vigiaayuda") is None:
+                    logger.info("📡 [DISCORD] Registrando comando vigiaayuda")
+                    
+                    @bot.command(name="vigiaayuda")
+                    async def cmd_vigia_ayuda(ctx):
+                        """Muestra ayuda específica para el Vigía de Noticias (usuarios)."""
+                        # Prevenir duplicación usando un ID único del mensaje
+                        message_id = f"{ctx.message.id}_{ctx.author.id}"
+                        
+                        # Si ya procesamos este mensaje, ignorar
+                        if hasattr(bot, '_processed_ayuda_messages'):
+                            if message_id in bot._processed_ayuda_messages:
+                                return
+                        else:
+                            bot._processed_ayuda_messages = set()
+                        
+                        bot._processed_ayuda_messages.add(message_id)
+                        
+                        ayuda_cfg = PERSONALIDAD.get("discord", {}).get("general_messages", {})
+                        mensaje_privado = ayuda_cfg.get("help_sent_private", "GRRR Kronk enviar ayuda por mensaje privado umano!")
+                        
+                        ayuda_vigia = "📡 **Ayuda del Vigía de Noticias - Usuarios** 📡\n\n"
+                        
+                        ayuda_vigia += "⚠️ **IMPORTANTE:** Solo puedes tener **UN TIPO** de suscripción activa a la vez\n"
+                        ayuda_vigia += "• Si te suscribes a un nuevo tipo, se cancelará automáticamente el anterior\n\n"
+                        
+                        ayuda_vigia += "🎯 **Comandos Principales:**\n"
+                        ayuda_vigia += "• `!vigia feeds` - Lista feeds RSS disponibles\n"
+                        ayuda_vigia += "• `!vigia categorias` - Muestra categorías activas\n"
+                        ayuda_vigia += "• `!vigia estado` - Tu tipo de suscripción activa\n\n"
+                        
+                        ayuda_vigia += "📰 **Suscripciones Planas:**\n"
+                        ayuda_vigia += "• `!vigia suscribir <categoría>` - Todas las noticias con opinión\n"
+                        ayuda_vigia += "• **Ejemplo:** `!vigia suscribir economia`\n\n"
+                        
+                        ayuda_vigia += "🔍 **Palabras Clave:**\n"
+                        ayuda_vigia += "• `!vigia palabras \"palabra1,palabra2\"` - Suscripción directa con palabras\n"
+                        ayuda_vigia += "• `!vigia palabras add <palabra>` - Añadir palabra a tu lista\n"
+                        ayuda_vigia += "• `!vigia palabras list` - Ver todas tus palabras clave\n"
+                        ayuda_vigia += "• `!vigia palabras mod <num> \"nueva\"` - Modificar palabra específica\n"
+                        ayuda_vigia += "• `!vigia palabras suscribir <categoría>` - Usar palabras ya configuradas\n"
+                        ayuda_vigia += "• `!vigia palabras suscripciones` - Ver suscripciones con palabras\n"
+                        ayuda_vigia += "• `!vigia palabras desuscribir <categoría>` - Cancelar suscripción\n"
+                        ayuda_vigia += "• **Ejemplo:** `!vigia palabras \"bitcoin,crypto\"`\n\n"
+                        
+                        ayuda_vigia += "🤖 **Suscripciones con IA:**\n"
+                        ayuda_vigia += "• `!vigia general <categoría>` - Noticias críticas según tus premisas\n"
+                        ayuda_vigia += "• `!vigia general cancelar <categoría>` - Cancelar suscripción con IA\n"
+                        ayuda_vigia += "• **Requiere:** Configurar premisas primero (`!vigia premisas add`)\n"
+                        ayuda_vigia += "• **Ejemplo:** `!vigia general internacional`\n\n"
+                        
+                        ayuda_vigia += "🎯 **Gestión de Premisas:**\n"
+                        ayuda_vigia += "• `!vigia premisas` / `!vigia premisas list` - Ver tus premisas\n"
+                        ayuda_vigia += "• `!vigia premisas add \"texto\"` - Añadir premisa (máx 7)\n"
+                        ayuda_vigia += "• `!vigia mod <num> \"nueva premisa\"` - Modificar premisa #<num>\n\n"
+                        
+                        ayuda_vigia += "🔄 **Reset de Suscripciones:**\n"
+                        ayuda_vigia += "• `!vigia reset` - Ver qué tipo de suscripción tienes activa\n"
+                        ayuda_vigia += "• `!vigia reset confirmar` - Eliminar TODAS tus suscripciones\n"
+                        ayuda_vigia += "• **Úsalo para cambiar de tipo de suscripción**\n\n"
+                        
+                        ayuda_vigia += "📊 **Estado y Control:**\n"
+                        ayuda_vigia += "• `!vigia estado` - Ver tu tipo de suscripción activa\n"
+                        ayuda_vigia += "• `!vigia cancelar <categoría>` - Cancelar suscripción plana\n\n"
+                        
+                        ayuda_vigia += "📂 **Categorías:** economia, internacional, tecnologia, sociedad, politica\n\n"
+                        
+                        ayuda_vigia += "💡 **Ejemplos Rápidos:**\n"
+                        ayuda_vigia += "```\n!vigia palabras add bitcoin           # Añadir palabra\n!vigia palabras list                  # Ver palabras\n!vigia palabras suscribir economia   # Suscribir con palabras\n!vigia reset                         # Ver tipo activo\n!vigia reset confirmar               # Limpiar todo\n!vigia general internacional         # Suscribir con IA\n```\n\n"
+                        
+                        ayuda_vigia += "📢 **Para Admins:** Usa `!vigiacanalayuda` para comandos de canal"
+                        
+                        try:
+                            # Verificar si el mensaje es demasiado largo antes de enviar
+                            if len(ayuda_vigia) > 2000:
+                                # Dividir en partes y enviar al usuario por DM
+                                partes = [ayuda_vigia[i:i+1900] for i in range(0, len(ayuda_vigia), 1900)]
+                                for parte in partes:
+                                    await ctx.author.send(parte)
+                            else:
+                                await ctx.author.send(ayuda_vigia)
+                            
+                            # Enviar confirmación breve en el canal (solo si está en servidor)
+                            if ctx.guild:
+                                await ctx.send("📩 Ayuda enviada por mensaje privado.")
+                                
+                        except discord.errors.Forbidden:
+                            # Si no puede enviar DM, enviar en el canal (dividido si es necesario)
+                            if len(ayuda_vigia) > 2000:
+                                partes = [ayuda_vigia[i:i+1900] for i in range(0, len(ayuda_vigia), 1900)]
+                                for parte in partes:
+                                    await ctx.send(parte)
+                            else:
+                                await ctx.send(ayuda_vigia[:2000])
+            
             logger.info(f"✅ [DISCORD] Total de comandos registrados: {len(bot.commands)}")
+            logger.info(f"🤖 [DISCORD] Comandos registrados: {[cmd.name for cmd in bot.commands]}")
         except Exception as e:
             logger.error(f"❌ Error en registro de comandos: {e}")
             import traceback

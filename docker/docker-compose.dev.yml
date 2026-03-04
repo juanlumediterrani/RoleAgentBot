@@ -25,12 +25,13 @@ services:
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
       # ACTIVAR TODOS LOS ROLES (excepto MC persistente)
-      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,pedir_oro,buscar_anillo,mc
+      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,trilero,buscar_anillo,mc,banquero
       - VIGIA_NOTICIAS_ENABLED=true
       - BUSCADOR_TESOROS_ENABLED=true
-      - PEDIR_ORO_ENABLED=true
+      - TRILERO_ENABLED=true
       - BUSCAR_ANILLO_ENABLED=true
       - MC_ENABLED=true
+      - BANQUERO_ENABLED=true
     volumes:
       - ../databases:/app/databases
       - ../logs:/app/logs

@@ -1,12 +1,11 @@
+import json
 import sqlite3
 import threading
-import os
-import stat
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timedelta
+from agent_logging import get_logger
 
 try:
-    from agent_logging import get_logger
     logger = get_logger('db_role_vigia')
 except Exception:
     import logging
@@ -309,7 +308,7 @@ class DatabaseRoleVigia:
             logger.exception(f"❌ Error creando tabla feeds_config: {e}")
     
     def _init_suscripciones_categorias_table(self):
-        """Inicializa tabla de suscripciones por categoría."""
+        """Inicializa tabla de suscripciones por categorías (para suscripciones con IA)."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
@@ -321,12 +320,13 @@ class DatabaseRoleVigia:
                         feed_id INTEGER DEFAULT NULL,
                         fecha_suscripcion TEXT NOT NULL,
                         activa INTEGER DEFAULT 1,
+                        premisas_usuario TEXT DEFAULT NULL,  -- JSON con premisas personalizadas del usuario
                         UNIQUE(usuario_id, categoria, feed_id)
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_cat_usuario ON suscripciones_categorias (usuario_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_cat_categoria ON suscripciones_categorias (categoria)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_cat_feed ON suscripciones_categorias (feed_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_categorias_usuario ON suscripciones_categorias (usuario_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_categorias_categoria ON suscripciones_categorias (categoria)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_categorias_activa ON suscripciones_categorias (activa)')
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creando tabla suscripciones_categorias: {e}")
@@ -369,14 +369,18 @@ class DatabaseRoleVigia:
                         usuario_id TEXT NOT NULL,
                         canal_id TEXT DEFAULT NULL,
                         palabras_clave TEXT NOT NULL,
+                        categoria TEXT DEFAULT NULL,
+                        feed_id INTEGER DEFAULT NULL,
                         fecha_suscripcion TEXT NOT NULL,
                         activa INTEGER DEFAULT 1,
-                        UNIQUE(usuario_id, canal_id, palabras_clave)
+                        UNIQUE(usuario_id, canal_id, palabras_clave, categoria, feed_id)
                     )
                 ''')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_usuario ON suscripciones_palabras (usuario_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_canal ON suscripciones_palabras (canal_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_activa ON suscripciones_palabras (activa)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_categoria ON suscripciones_palabras (categoria)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_suscripciones_palabras_feed ON suscripciones_palabras (feed_id)')
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creando tabla suscripciones_palabras: {e}")
@@ -502,6 +506,22 @@ class DatabaseRoleVigia:
             logger.exception(f"Error obteniendo feeds activos: {e}")
             return []
     
+    def obtener_feed_por_id(self, feed_id: int) -> list:
+        """Obtiene un feed específico por su ID."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed
+                    FROM feeds_config 
+                    WHERE id = ? AND activo = 1
+                ''', (feed_id,))
+                result = cursor.fetchone()
+                return result if result else None
+        except Exception as e:
+            logger.exception(f"Error obteniendo feed por ID: {e}")
+            return None
+    
     def obtener_categorias_disponibles(self) -> list:
         """Obtiene categorías disponibles con feeds activos."""
         try:
@@ -534,6 +554,23 @@ class DatabaseRoleVigia:
                     return True
         except Exception as e:
             logger.exception(f"Error suscribiendo usuario a categoría: {e}")
+            return False
+    
+    def suscribir_usuario_categoria_ia(self, usuario_id: str, categoria: str, feed_id: int = None, premisas: str = None) -> bool:
+        """Suscribe usuario a una categoría con análisis IA."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO suscripciones_categorias 
+                        (usuario_id, categoria, feed_id, fecha_suscripcion, activa, premisas_usuario)
+                        VALUES (?, ?, ?, ?, 1, ?)
+                    ''', (usuario_id, categoria, feed_id, datetime.now().isoformat(), premisas))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.exception(f"Error suscribiendo usuario a categoría con IA: {e}")
             return False
     
     def cancelar_suscripcion_categoria(self, usuario_id: str, categoria: str, feed_id: int = None) -> bool:
@@ -603,17 +640,17 @@ class DatabaseRoleVigia:
             logger.exception(f"Error obteniendo suscriptores por categoría: {e}")
             return []
     
-    def suscribir_palabras_clave(self, usuario_id: str, palabras_clave: str, canal_id: str = None) -> bool:
-        """Suscribe usuario o canal a palabras clave específicas."""
+    def suscribir_palabras_clave(self, usuario_id: str, palabras_clave: str, canal_id: str = None, categoria: str = None, feed_id: int = None) -> bool:
+        """Suscribe usuario o canal a palabras clave específicas (opcionalmente en categoría/feed)."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT OR REPLACE INTO suscripciones_palabras 
-                        (usuario_id, canal_id, palabras_clave, fecha_suscripcion, activa)
-                        VALUES (?, ?, ?, ?, 1)
-                    ''', (usuario_id, canal_id, palabras_clave, datetime.now().isoformat()))
+                        (usuario_id, canal_id, palabras_clave, categoria, feed_id, fecha_suscripcion, activa)
+                        VALUES (?, ?, ?, ?, ?, ?, 1)
+                    ''', (usuario_id, canal_id, palabras_clave, categoria, feed_id, datetime.now().isoformat()))
                     conn.commit()
                     return True
         except Exception as e:
@@ -728,6 +765,24 @@ class DatabaseRoleVigia:
                     return cursor.rowcount > 0
         except Exception as e:
             logger.exception(f"Error cancelando suscripción de canal: {e}")
+            return False
+    
+    def suscribir_canal_categoria_ia(self, canal_id: str, canal_nombre: str, servidor_id: str, 
+                                   servidor_nombre: str, categoria: str, feed_id: int = None, premisas: str = None) -> bool:
+        """Suscribe un canal a una categoría con análisis IA."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO suscripciones_categorias 
+                        (usuario_id, categoria, feed_id, fecha_suscripcion, activa, premisas_usuario)
+                        VALUES (?, ?, ?, ?, 1, ?)
+                    ''', (f"canal_{canal_id}", categoria, feed_id, datetime.now().isoformat(), premisas))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.exception(f"Error suscribiendo canal a categoría con IA: {e}")
             return False
     
     def obtener_suscripciones_canal(self, canal_id: str) -> list:
@@ -881,6 +936,535 @@ class DatabaseRoleVigia:
         except Exception as e:
             logger.exception(f"Error verificando suscripción: {e}")
             return False
+    
+    def obtener_todas_suscripciones_categorias_activas(self) -> list:
+        """Obtiene todas las suscripciones activas con IA (con premisas)."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT DISTINCT usuario_id, categoria, feed_id, fecha_suscripcion
+                    FROM suscripciones_categorias 
+                    WHERE activa = 1 AND premisas_usuario IS NOT NULL AND premisas_usuario != ''
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo todas las suscripciones de categorías: {e}")
+            return []
+    
+    def obtener_todas_suscripciones_palabras_activas(self) -> list:
+        """Obtiene todas las suscripciones activas de palabras clave."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT usuario_id, canal_id, palabras_clave, categoria, feed_id
+                    FROM suscripciones_palabras 
+                    WHERE activa = 1
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo todas las suscripciones de palabras: {e}")
+            return []
+    
+    # ===== GESTIÓN DE PREMISAS PERSONALIZADAS POR USUARIO =====
+    
+    def obtener_premisas_usuario(self, usuario_id: str) -> list:
+        """Obtiene las premisas personalizadas de un usuario."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT DISTINCT premisas_usuario
+                    FROM suscripciones_categorias 
+                    WHERE usuario_id = ? AND activa = 1 AND premisas_usuario IS NOT NULL
+                ''', (usuario_id,))
+                result = cursor.fetchone()
+                
+                if result and result[0]:
+                    try:
+                        return json.loads(result[0])
+                    except json.JSONDecodeError:
+                        logger.warning(f"Error decodificando premisas del usuario {usuario_id}")
+                        return []
+                return []
+        except Exception as e:
+            logger.exception(f"Error obteniendo premisas del usuario: {e}")
+            return []
+    
+    def actualizar_premisas_usuario(self, usuario_id: str, premisas: list) -> bool:
+        """Actualiza las premisas personalizadas de un usuario (máximo 7)."""
+        try:
+            if len(premisas) > 7:
+                logger.warning(f"Usuario {usuario_id} intentó guardar más de 7 premisas")
+                return False
+            
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    # Actualizar todas las suscripciones del usuario con las nuevas premisas
+                    cursor.execute('''
+                        UPDATE suscripciones_categorias 
+                        SET premisas_usuario = ?
+                        WHERE usuario_id = ? AND activa = 1
+                    ''', (json.dumps(premisas), usuario_id))
+                    conn.commit()
+                    
+                    logger.info(f"✅ Premisas actualizadas para usuario {usuario_id}: {len(premisas)} premisas")
+                    return True
+        except Exception as e:
+            logger.exception(f"Error actualizando premisas del usuario: {e}")
+            return False
+    
+    def obtener_premisas_con_contexto(self, usuario_id: str) -> tuple:
+        """Obtiene las premisas del usuario con contexto (si tiene personalizadas o usa las globales)."""
+        premisas_usuario = self.obtener_premisas_usuario(usuario_id)
+        
+        if premisas_usuario:
+            return premisas_usuario, "personalizadas"
+        else:
+            # Usar premisas globales del premisas_manager
+            try:
+                import sys
+                import os
+                # Añadir el path del directorio vigia_noticias al sys.path
+                vigia_path = os.path.dirname(os.path.abspath(__file__))
+                if vigia_path not in sys.path:
+                    sys.path.insert(0, vigia_path)
+                
+                from premisas_manager import get_premisas_manager
+                from agent_db import get_active_server_name
+                server_name = get_active_server_name() or "default"
+                premisas_manager = get_premisas_manager(server_name)
+                return premisas_manager.obtener_premisas_activas(), "globales"
+            except ImportError as e:
+                logger.error(f"Error importando premisas_manager: {e}")
+                return [], "error"
+    
+    def añadir_premisa_usuario(self, usuario_id: str, nueva_premisa: str) -> tuple:
+        """Añade una premisa al usuario si hay hueco (máximo 7)."""
+        try:
+            premisas_actuales = self.obtener_premisas_usuario(usuario_id)
+            
+            if len(premisas_actuales) >= 7:
+                return False, "Has alcanzado el máximo de 7 premisas personalizadas"
+            
+            if nueva_premisa in premisas_actuales:
+                return False, "Esa premisa ya existe en tu lista"
+            
+            premisas_actuales.append(nueva_premisa)
+            
+            if self.actualizar_premisas_usuario(usuario_id, premisas_actuales):
+                return True, f"Premisa añadida: \"{nueva_premisa}\" ({len(premisas_actuales)}/7)"
+            else:
+                return False, "Error al guardar la premisa"
+                
+        except Exception as e:
+            logger.exception(f"Error añadiendo premisa del usuario: {e}")
+            return False, "Error al añadir la premisa"
+    
+    def modificar_premisa_usuario(self, usuario_id: str, indice: int, nueva_premisa: str) -> tuple:
+        """Modifica una premisa específica por su índice (1-based)."""
+        try:
+            premisas_actuales = self.obtener_premisas_usuario(usuario_id)
+            
+            if not premisas_actuales:
+                return False, "No tienes premisas personalizadas. Usa !vigia premisas add para crearlas."
+            
+            if indice < 1 or indice > len(premisas_actuales):
+                return False, f"Índice inválido. Debe estar entre 1 y {len(premisas_actuales)}"
+            
+            # Modificar la premisa
+            premisa_anterior = premisas_actuales[indice - 1]
+            premisas_actuales[indice - 1] = nueva_premisa
+            
+            if self.actualizar_premisas_usuario(usuario_id, premisas_actuales):
+                return True, f"Premisa #{indice} actualizada: \"{premisa_anterior}\" → \"{nueva_premisa}\""
+            else:
+                return False, "Error al modificar la premisa"
+                
+        except Exception as e:
+            logger.exception(f"Error modificando premisa del usuario: {e}")
+            return False, "Error al modificar la premisa"
+    
+    # ===== MÉTODOS PARA PREMISAS DE CANALES =====
+    
+    def obtener_premisas_canal(self, canal_id: str) -> list:
+        """Obtiene las premisas personalizadas de un canal."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT DISTINCT premisas_canal
+                    FROM suscripciones_canales 
+                    WHERE canal_id = ? AND activa = 1 AND premisas_canal IS NOT NULL
+                ''', (canal_id,))
+                result = cursor.fetchone()
+                
+                if result and result[0]:
+                    try:
+                        return json.loads(result[0])
+                    except json.JSONDecodeError:
+                        logger.warning(f"Error decodificando premisas del canal {canal_id}")
+                        return []
+                return []
+        except Exception as e:
+            logger.exception(f"Error obteniendo premisas del canal: {e}")
+            return []
+    
+    def actualizar_premisas_canal(self, canal_id: str, premisas: list) -> bool:
+        """Actualiza las premisas personalizadas de un canal (máximo 7)."""
+        try:
+            if len(premisas) > 7:
+                logger.warning(f"Canal {canal_id} intentó guardar más de 7 premisas")
+                return False
+            
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    # Actualizar todas las suscripciones del canal con las nuevas premisas
+                    cursor.execute('''
+                        UPDATE suscripciones_canales 
+                        SET premisas_canal = ?
+                        WHERE canal_id = ? AND activa = 1
+                    ''', (json.dumps(premisas), canal_id))
+                    conn.commit()
+                    
+                    logger.info(f"✅ Premisas actualizadas para canal {canal_id}: {len(premisas)} premisas")
+                    return True
+        except Exception as e:
+            logger.exception(f"Error actualizando premisas del canal: {e}")
+            return False
+    
+    def añadir_premisa_canal(self, canal_id: str, nueva_premisa: str) -> tuple:
+        """Añade una premisa al canal si hay hueco (máximo 7)."""
+        try:
+            premisas_actuales = self.obtener_premisas_canal(canal_id)
+            
+            if len(premisas_actuales) >= 7:
+                return False, "El canal ha alcanzado el máximo de 7 premisas personalizadas"
+            
+            if nueva_premisa in premisas_actuales:
+                return False, "Esa premisa ya existe en la lista del canal"
+            
+            premisas_actuales.append(nueva_premisa)
+            
+            if self.actualizar_premisas_canal(canal_id, premisas_actuales):
+                return True, f"Premisa de canal añadida: \"{nueva_premisa}\" ({len(premisas_actuales)}/7)"
+            else:
+                return False, "Error al guardar la premisa del canal"
+                
+        except Exception as e:
+            logger.exception(f"Error añadiendo premisa del canal: {e}")
+            return False, "Error al añadir la premisa del canal"
+    
+    def modificar_premisa_canal(self, canal_id: str, indice: int, nueva_premisa: str) -> tuple:
+        """Modifica una premisa específica del canal por su índice (1-based)."""
+        try:
+            premisas_actuales = self.obtener_premisas_canal(canal_id)
+            
+            if not premisas_actuales:
+                return False, "El canal no tiene premisas personalizadas. Usa !vigiacanal premisas add para crearlas."
+            
+            if indice < 1 or indice > len(premisas_actuales):
+                return False, f"Índice inválido. Debe estar entre 1 y {len(premisas_actuales)}"
+            
+            # Modificar la premisa
+            premisa_anterior = premisas_actuales[indice - 1]
+            premisas_actuales[indice - 1] = nueva_premisa
+            
+            if self.actualizar_premisas_canal(canal_id, premisas_actuales):
+                return True, f"Premisa de canal #{indice} actualizada: \"{premisa_anterior}\" → \"{nueva_premisa}\""
+            else:
+                return False, "Error al modificar la premisa del canal"
+                
+        except Exception as e:
+            logger.exception(f"Error modificando premisa del canal: {e}")
+            return False, "Error al modificar la premisa del canal"
+    
+    def obtener_premisas_canal_con_contexto(self, canal_id: str) -> tuple:
+        """Obtiene las premisas del canal con contexto (si tiene personalizadas o usa las globales)."""
+        premisas_canal = self.obtener_premisas_canal(canal_id)
+        
+        if premisas_canal:
+            return premisas_canal, "personalizadas"
+        else:
+            # Usar premisas globales del premisas_manager
+            import sys
+            import os
+            # Añadir el path del directorio vigia_noticias al sys.path
+            vigia_path = os.path.dirname(os.path.abspath(__file__))
+            if vigia_path not in sys.path:
+                sys.path.insert(0, vigia_path)
+            
+            from premisas_manager import get_premisas_manager
+            from agent_db import get_active_server_name
+            server_name = get_active_server_name() or "default"
+            premisas_manager = get_premisas_manager(server_name)
+            return premisas_manager.obtener_premisas_activas(), "globales"
+
+    def verificar_tipo_suscripcion_usuario(self, usuario_id: str) -> str:
+        """Verifica qué tipo de suscripción tiene un usuario (exclusivo).
+        
+        Returns:
+            str: 'plana', 'palabras', 'ia', or 'ninguna'
+        """
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                
+                # Verificar si tiene suscripción plana (suscripciones_categorias sin IA)
+                cursor.execute('''
+                    SELECT COUNT(*) FROM suscripciones_categorias 
+                    WHERE usuario_id = ? AND activa = 1 AND (premisas_usuario IS NULL OR premisas_usuario = '')
+                ''', (usuario_id,))
+                
+                if cursor.fetchone()[0] > 0:
+                    return 'plana'
+                
+                # Verificar si tiene suscripción con palabras clave
+                cursor.execute('''
+                    SELECT COUNT(*) FROM suscripciones_palabras 
+                    WHERE usuario_id = ? AND activa = 1
+                ''', (usuario_id,))
+                
+                if cursor.fetchone()[0] > 0:
+                    return 'palabras'
+                
+                # Verificar si tiene suscripción con IA (suscripciones_categorias con premisas)
+                cursor.execute('''
+                    SELECT COUNT(*) FROM suscripciones_categorias 
+                    WHERE usuario_id = ? AND activa = 1 AND premisas_usuario IS NOT NULL AND premisas_usuario != ''
+                ''', (usuario_id,))
+                
+                if cursor.fetchone()[0] > 0:
+                    return 'ia'
+                
+                return 'ninguna'
+                
+        except Exception as e:
+            logger.exception(f"Error verificando tipo de suscripción usuario: {e}")
+            return 'ninguna'
+    
+    def verificar_tipo_suscripcion_canal(self, canal_id: str) -> str:
+        """Verifica qué tipo de suscripción tiene un canal (exclusivo).
+        
+        Returns:
+            str: 'plana', 'palabras', 'ia', or 'ninguna'
+        """
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                
+                # Verificar si tiene suscripción plana
+                cursor.execute('''
+                    SELECT COUNT(*) FROM suscripciones_canales 
+                    WHERE canal_id = ? AND activa = 1 AND (premisas_canal IS NULL OR premisas_canal = '')
+                ''', (canal_id,))
+                
+                if cursor.fetchone()[0] > 0:
+                    return 'plana'
+                
+                # Verificar si tiene suscripción con palabras clave
+                cursor.execute('''
+                    SELECT COUNT(*) FROM suscripciones_palabras 
+                    WHERE canal_id = ? AND activa = 1
+                ''', (canal_id,))
+                
+                if cursor.fetchone()[0] > 0:
+                    return 'palabras'
+                
+                # Verificar si tiene suscripción con IA (canales con premisas)
+                cursor.execute('''
+                    SELECT COUNT(*) FROM suscripciones_canales 
+                    WHERE canal_id = ? AND activa = 1 AND premisas_canal IS NOT NULL AND premisas_canal != ''
+                ''', (canal_id,))
+                
+                if cursor.fetchone()[0] > 0:
+                    return 'ia'
+                
+                return 'ninguna'
+                
+        except Exception as e:
+            logger.exception(f"Error verificando tipo de suscripción canal: {e}")
+            return 'ninguna'
+    
+    def cancelar_otras_suscripciones_usuario(self, usuario_id: str, tipo_a_mantener: str):
+        """Cancela todas las suscripciones del usuario excepto el tipo especificado.
+        
+        Args:
+            usuario_id: ID del usuario
+            tipo_a_mantener: 'plana', 'palabras', 'ia', or 'ninguna'
+        """
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                
+                # Cancelar suscripciones planas si no se deben mantener
+                if tipo_a_mantener != 'plana':
+                    cursor.execute('''
+                        UPDATE suscripciones_categorias 
+                        SET activa = 0 
+                        WHERE usuario_id = ? AND activa = 1 AND (premisas_usuario IS NULL OR premisas_usuario = '')
+                    ''', (usuario_id,))
+                
+                # Cancelar suscripciones con palabras clave si no se deben mantener
+                if tipo_a_mantener != 'palabras':
+                    cursor.execute('''
+                        UPDATE suscripciones_palabras 
+                        SET activa = 0 
+                        WHERE usuario_id = ? AND activa = 1
+                    ''', (usuario_id,))
+                
+                # Cancelar suscripciones con IA si no se deben mantener
+                if tipo_a_mantener != 'ia':
+                    cursor.execute('''
+                        UPDATE suscripciones_categorias 
+                        SET activa = 0 
+                        WHERE usuario_id = ? AND activa = 1 AND premisas_usuario IS NOT NULL AND premisas_usuario != ''
+                    ''', (usuario_id,))
+                
+                conn.commit()
+                logger.info(f"✅ Canceladas suscripciones anteriores del usuario {usuario_id}")
+                
+        except Exception as e:
+            logger.exception(f"Error cancelando otras suscripciones usuario: {e}")
+    
+    def cancelar_otras_suscripciones_canal(self, canal_id: str, tipo_a_mantener: str):
+        """Cancela todas las suscripciones del canal excepto el tipo especificado.
+        
+        Args:
+            canal_id: ID del canal
+            tipo_a_mantener: 'plana', 'palabras', 'ia', or 'ninguna'
+        """
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                
+                # Cancelar suscripciones planas si no se deben mantener
+                if tipo_a_mantener != 'plana':
+                    cursor.execute('''
+                        UPDATE suscripciones_canales 
+                        SET activa = 0 
+                        WHERE canal_id = ? AND activa = 1 AND (premisas_canal IS NULL OR premisas_canal = '')
+                    ''', (canal_id,))
+                
+                # Cancelar suscripciones con palabras clave si no se deben mantener
+                if tipo_a_mantener != 'palabras':
+                    cursor.execute('''
+                        UPDATE suscripciones_palabras 
+                        SET activa = 0 
+                        WHERE canal_id = ? AND activa = 1
+                    ''', (canal_id,))
+                
+                # Cancelar suscripciones con IA si no se deben mantener
+                if tipo_a_mantener != 'ia':
+                    cursor.execute('''
+                        UPDATE suscripciones_canales 
+                        SET activa = 0 
+                        WHERE canal_id = ? AND activa = 1 AND premisas_canal IS NOT NULL AND premisas_canal != ''
+                    ''', (canal_id,))
+                
+                conn.commit()
+                logger.info(f"✅ Canceladas suscripciones anteriores del canal {canal_id}")
+                
+        except Exception as e:
+            logger.exception(f"Error cancelando otras suscripciones canal: {e}")
+    
+    def obtener_todas_suscripciones_activas(self):
+        """Obtiene todas las suscripciones planas activas."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT usuario_id, categoria, feed_id, fecha_suscripcion
+                    FROM suscripciones_categorias 
+                    WHERE activa = 1 AND (premisas_usuario IS NULL OR premisas_usuario = '')
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscripciones activas: {e}")
+            return []
+    
+    def obtener_palabras_usuario(self, usuario_id: str) -> str:
+        """Obtiene las palabras clave configuradas de un usuario."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT palabras_clave FROM suscripciones_palabras 
+                    WHERE usuario_id = ? AND activa = 1
+                    ORDER BY id DESC LIMIT 1
+                ''', (usuario_id,))
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            logger.exception(f"Error obteniendo palabras del usuario: {e}")
+            return None
+    
+    def actualizar_palabras_usuario(self, usuario_id: str, palabras: str) -> bool:
+        """Actualiza las palabras clave de un usuario."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE suscripciones_palabras 
+                    SET palabras_clave = ?, actualizado_en = datetime('now')
+                    WHERE usuario_id = ? AND activa = 1
+                ''', (palabras, usuario_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.exception(f"Error actualizando palabras del usuario: {e}")
+            return False
+    
+    def obtener_suscripciones_palabras_usuario(self, usuario_id: str) -> list:
+        """Obtiene todas las suscripciones con palabras clave de un usuario."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT categoria, feed_id, palabras_clave 
+                    FROM suscripciones_palabras 
+                    WHERE usuario_id = ? AND activa = 1
+                    ORDER BY categoria, feed_id
+                ''', (usuario_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscripciones con palabras: {e}")
+            return []
+    
+    def cancelar_suscripcion_palabras_usuario(self, usuario_id: str, categoria: str) -> bool:
+        """Cancela la suscripción con palabras clave de un usuario para una categoría."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE suscripciones_palabras 
+                    SET activa = 0, actualizado_en = datetime('now')
+                    WHERE usuario_id = ? AND categoria = ? AND activa = 1
+                ''', (usuario_id, categoria))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.exception(f"Error cancelando suscripción con palabras: {e}")
+            return False
+    
+    def obtener_suscripciones_ia_usuario(self, usuario_id: str) -> list:
+        """Obtiene todas las suscripciones con IA de un usuario."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT categoria, feed_id, premisas_usuario 
+                    FROM suscripciones_categorias 
+                    WHERE usuario_id = ? AND activa = 1 AND premisas_usuario IS NOT NULL AND premisas_usuario != ''
+                    ORDER BY categoria, feed_id
+                ''', (usuario_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo suscripciones con IA: {e}")
+            return []
 
 
 # Diccionario para mantener instancias por servidor

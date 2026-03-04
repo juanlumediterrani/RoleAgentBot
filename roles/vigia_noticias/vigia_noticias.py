@@ -1,24 +1,443 @@
-import sys
 import os
+import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.append(os.path.dirname(__file__))
 
 import asyncio
-import xml.etree.ElementTree as ET
+import re
+import feedparser
 import aiohttp
+import logging
 from dotenv import load_dotenv
-import cohere
-from agent_engine import construir_prompt, get_discord_token
-from db_role_vigia import get_vigia_db_instance
 from agent_db import get_active_server_name
 from agent_logging import get_logger
 from discord_http import DiscordHTTP
 
+logger = get_logger('vigia_noticias')
+
+
+async def procesar_suscripciones(http, server_name: str = "default"):
+    """Procesa todos los tipos de suscripciones según la lógica correcta."""
+    from db_role_vigia import get_vigia_db_instance
+    
+    db_vigia = get_vigia_db_instance(server_name)
+    
+    try:
+        logger.info("🚀 Iniciando procesamiento de suscripciones...")
+        
+        # 1. Procesar suscripciones planas (todas las noticias con opinión)
+        await procesar_suscripciones_planas(http, db_vigia, server_name)
+        
+        # 2. Procesar suscripciones con palabras clave (regex)
+        await procesar_suscripciones_palabras(http, db_vigia, server_name)
+        
+        # 3. Procesar suscripciones con IA (detección por premisas)
+        await procesar_suscripciones_ia(http, db_vigia, server_name)
+        
+        logger.info("✅ Procesamiento de suscripciones completado")
+        
+    except Exception as e:
+        logger.exception(f"❌ Error general en procesamiento de suscripciones: {e}")
+
+
+async def procesar_suscripciones_planas(http, db_vigia, server_name: str):
+    """Procesa suscripciones planas (envía todas las noticias con opinión)."""
+    try:
+        logger.info("📰 Procesando suscripciones planas...")
+        
+        suscripciones = db_vigia.obtener_todas_suscripciones_activas()
+        
+        for usuario_id, categoria, feed_id, fecha in suscripciones:
+            if feed_id:
+                # Feed específico
+                feed_data = db_vigia.obtener_feed_por_id(feed_id)
+                if feed_data:
+                    await _procesar_feed_suscripcion_plana(http, db_vigia, (feed_data[2], feed_data[1]), usuario_id, None)
+            else:
+                # Todos los feeds de la categoría
+                feeds = db_vigia.obtener_feeds_activos(categoria)
+                for feed in feeds:
+                    await _procesar_feed_suscripcion_plana(http, db_vigia, (feed[2], feed[1]), usuario_id, None)
+                    
+    except Exception as e:
+        logger.exception(f"❌ Error procesando suscripciones planas: {e}")
+
+
+async def procesar_suscripciones_palabras(http, db_vigia, server_name: str):
+    """Procesa suscripciones con palabras clave (regex)."""
+    try:
+        logger.info("🔍 Procesando suscripciones con palabras clave...")
+        
+        suscripciones_palabras = db_vigia.obtener_todas_suscripciones_palabras_activas()
+        
+        for usuario_id, canal_id, palabras_clave, categoria, feed_id in suscripciones_palabras:
+            if feed_id:
+                # Feed específico
+                feed_data = db_vigia.obtener_feed_por_id(feed_id)
+                if feed_data:
+                    await _procesar_feed_suscripcion_palabras(http, db_vigia, (feed_data[2], feed_data[1]), usuario_id, canal_id, palabras_clave)
+            else:
+                # Todos los feeds de la categoría
+                feeds = db_vigia.obtener_feeds_activos(categoria)
+                for feed in feeds:
+                    await _procesar_feed_suscripcion_palabras(http, db_vigia, (feed[2], feed[1]), usuario_id, canal_id, palabras_clave)
+                    
+    except Exception as e:
+        logger.exception(f"❌ Error procesando suscripciones con palabras clave: {e}")
+
+
+async def procesar_suscripciones_ia(http, db_vigia, server_name: str):
+    """Procesa suscripciones con IA (detección por premisas)."""
+    try:
+        logger.info("🤖 Procesando suscripciones con IA...")
+        
+        suscripciones_ia = db_vigia.obtener_todas_suscripciones_categorias_activas()
+        
+        for usuario_id, categoria, feed_id, fecha in suscripciones_ia:
+            if feed_id:
+                # Feed específico
+                feed_data = db_vigia.obtener_feed_por_id(feed_id)
+                if feed_data:
+                    await _procesar_feed_suscripcion_ia(http, db_vigia, (feed_data[2], feed_data[1]), usuario_id, None)
+            else:
+                # Todos los feeds de la categoría
+                feeds = db_vigia.obtener_feeds_activos(categoria)
+                for feed in feeds:
+                    await _procesar_feed_suscripcion_ia(http, db_vigia, (feed[2], feed[1]), usuario_id, None)
+                    
+    except Exception as e:
+        logger.exception(f"❌ Error procesando suscripciones con IA: {e}")
+
+
+async def _procesar_feed_suscripcion_plana(http, db_vigia, feed_data, usuario_id, canal_id):
+    """Procesa un feed para suscripciones planas (envía todas las noticias con opinión)."""
+    try:
+        url, nombre = feed_data
+        logger.info(f"📰 Procesando feed plano: {nombre}")
+        
+        entries = await _obtener_ultimas_noticias(url, nombre, 5)
+        for i, titulo in enumerate(entries[:5], 1):
+            titulo = titulo or ''
+            if not titulo:
+                continue
+
+            logger.info(f"📄 [{i}/5] {nombre}: {titulo[:80]}...")
+
+            if db_vigia.noticia_esta_leida(titulo):
+                logger.info(f"ℹ️ Noticia ya leída: {titulo}")
+                continue
+
+            # Para suscripciones planas, generar opinión de la personalidad sobre el título
+            opinion = await _generar_opinion_personalidad(titulo, usuario_id)
+            
+            if opinion:
+                await _enviar_notificacion_plana(http, db_vigia, [usuario_id], titulo, opinion, nombre)
+
+            db_vigia.marcar_noticia_leida(titulo, nombre)
+
+    except Exception as e:
+        logger.exception(f"❌ Error procesando feed plano {nombre}: {e}")
+
+
+async def _procesar_feed_suscripcion_palabras(http, db_vigia, feed_data, usuario_id, canal_id, palabras_clave):
+    """Procesa un feed para suscripciones con palabras clave (regex)."""
+    try:
+        url, nombre = feed_data
+        logger.info(f"🔍 Procesando feed palabras: {nombre}")
+        
+        entries = await _obtener_ultimas_noticias(url, nombre, 5)
+        for i, titulo in enumerate(entries[:5], 1):
+            titulo = titulo or ''
+            if not titulo:
+                continue
+
+            logger.info(f"📄 [{i}/5] {nombre}: {titulo[:80]}...")
+
+            if db_vigia.noticia_esta_leida(titulo):
+                logger.info(f"ℹ️ Noticia ya leída: {titulo}")
+                continue
+
+            # Verificar coincidencia con palabras clave usando regex
+            if _verificar_palabras_clave_regex(titulo, palabras_clave):
+                logger.info(f"🎯 Coincidencia palabras clave: {titulo[:60]}...")
+                
+                # Generar opinión de la personalidad sobre el título
+                opinion = await _generar_opinion_personalidad(titulo, usuario_id)
+                
+                if opinion:
+                    await _enviar_notificacion_palabras(http, db_vigia, [usuario_id], titulo, opinion, nombre, palabras_clave)
+
+            db_vigia.marcar_noticia_leida(titulo, nombre)
+
+    except Exception as e:
+        logger.exception(f"❌ Error procesando feed palabras {nombre}: {e}")
+
+
+async def _procesar_feed_suscripcion_ia(http, db_vigia, feed_data, usuario_id, canal_id):
+    """Procesa un feed para suscripciones con IA (detección por premisas)."""
+    try:
+        url, nombre = feed_data
+        logger.info(f"🤖 Procesando feed IA: {nombre}")
+        
+        entries = await _obtener_ultimas_noticias(url, nombre, 5)
+        for i, titulo in enumerate(entries[:5], 1):
+            titulo = titulo or ''
+            if not titulo:
+                continue
+
+            logger.info(f"📄 [{i}/5] {nombre}: {titulo[:80]}...")
+
+            if db_vigia.noticia_esta_leida(titulo):
+                logger.info(f"ℹ️ Noticia ya leída: {titulo}")
+                continue
+
+            # Analizar con IA según premisas clave del usuario (Cohere SIN personalidad)
+            coincidencia = await _analizar_con_cohere_premisas(titulo, usuario_id)
+            
+            if coincidencia:
+                logger.info(f"🎯 Coincidencia IA: {titulo[:60]}...")
+                
+                # Obtener las premisas del usuario para mostrarlas
+                from agent_db import get_active_server_name
+                server_name = get_active_server_name() or "default"
+                db_vigia_local = get_vigia_db_instance(server_name)
+                premisas, contexto = db_vigia_local.obtener_premisas_con_contexto(usuario_id)
+                premisas_texto = ", ".join(premisas[:3])  # Mostrar primeras 3 premisas
+                
+                # Generar opinión de la personalidad sobre la noticia y las premisas
+                opinion = await _generar_opinion_premisa(titulo, premisas_texto, usuario_id)
+                
+                if opinion:
+                    await _enviar_notificacion_ia(http, db_vigia, [usuario_id], titulo, opinion, nombre, premisas_texto)
+
+            db_vigia.marcar_noticia_leida(titulo, nombre)
+
+    except Exception as e:
+        logger.exception(f"❌ Error procesando feed IA {nombre}: {e}")
+
+
+async def _analizar_con_cohere_premisas(titulo: str, usuario_id: str) -> bool:
+    """Analiza UN TITULAR con Cohere para detectar coincidencias con premisas (SIN personalidad)."""
+    try:
+        import cohere
+        import os
+        from agent_db import get_active_server_name
+        from db_role_vigia import get_vigia_db_instance
+        
+        api_key = (os.getenv("COHERE_API_KEY") or "").strip()
+        if not api_key:
+            raise RuntimeError("COHERE_API_KEY no está configurada")
+
+        client = cohere.Client(api_key=api_key, timeout=30)  # Timeout más corto para un titular
+        
+        # Obtener premisas del usuario (personalizadas o globales)
+        server_name = get_active_server_name() or "default"
+        db_vigia = get_vigia_db_instance(server_name)
+        premisas, contexto = db_vigia.obtener_premisas_con_contexto(usuario_id)
+        
+        if not premisas:
+            logger.warning(f"⚠️ No hay premisas configuradas para usuario {usuario_id}")
+            return False
+        
+        # Construir texto de premisas de forma ultra concisa
+        texto_premisas = "\n".join([f"{i}. {p}" for i, p in enumerate(premisas, 1)])
+        
+        # Prompt ultra neutro - solo devuelve TRUE/FALSE para UN TITULAR
+        prompt_analisis = f"""{texto_premisas}
+
+Título: "{titulo}"
+
+¿Coincide este título con ALGUNA premisa?
+Responde únicamente: TRUE o FALSE"""
+        
+        try:
+            res = client.chat(
+                model="command-a-03-2025",
+                message=prompt_analisis,
+                temperature=0.0,  # Máxima objetividad
+                max_tokens=5  # Solo necesita responder TRUE/FALSE
+            )
+            
+            resultado = getattr(res, "text", "").strip()
+            logger.info(f"🤖 TITULAR: {titulo[:30]}... → {resultado}")
+            
+            # Parsear resultado - solo TRUE/FALSE
+            return resultado.upper() == "TRUE"
+                
+        except Exception as e:
+            logger.exception(f"Error en llamada a Cohere para titular: {e}")
+            return False
+            
+    except Exception as e:
+        logger.exception(f"Error en análisis de titular con Cohere: {e}")
+        return False
+
+
+async def _generar_opinion_personalidad(titulo: str, usuario_id: str) -> str:
+    """Genera opinión de la personalidad sobre un título de noticia."""
+    try:
+        from agent_engine import pensar
+        from agent_db import get_active_server_name
+        
+        server_name = get_active_server_name() or "default"
+        
+        # Importar el prompt de la personalidad
+        from vigia_noticias import ROL_VIGIA_PERSONALIDAD
+        
+        # Crear prompt para la personalidad sobre la noticia
+        prompt = f"{ROL_VIGIA_PERSONALIDAD}\n\n¿Qué opinas de esta noticia? \"{titulo}\""
+        
+        # Obtener opinión de la personalidad
+        opinion = await pensar(prompt, server_name)
+        
+        if opinion and len(opinion.strip()) > 0:
+            logger.info(f"💭 Opinión generada: {opinion[:50]}...")
+            return opinion.strip()
+        else:
+            logger.warning("⚠️ No se pudo generar opinión de la personalidad")
+            return None
+            
+    except Exception as e:
+        logger.exception(f"Error generando opinión de personalidad: {e}")
+        return None
+
+
+async def _generar_opinion_premisa(titulo: str, premisa: str, usuario_id: str) -> str:
+    """Genera opinión de la personalidad sobre una noticia que coincide con una premisa."""
+    try:
+        from agent_engine import pensar
+        from agent_db import get_active_server_name
+        
+        server_name = get_active_server_name() or "default"
+        
+        # Importar el prompt de la personalidad
+        from vigia_noticias import ROL_VIGIA_PERSONALIDAD
+        
+        # Crear prompt específico para la premisa
+        prompt = f"{ROL_VIGIA_PERSONALIDAD}\n\nEsta noticia coincide con la premisa: \"{premisa}\"\nNoticia: \"{titulo}\"\n¿Cuál es tu opinión sobre esta situación?"
+        
+        # Obtener opinión de la personalidad
+        opinion = await pensar(prompt, server_name)
+        
+        if opinion and len(opinion.strip()) > 0:
+            logger.info(f"💭 Opinión sobre premisa: {opinion[:50]}...")
+            return opinion.strip()
+        else:
+            logger.warning("⚠️ No se pudo generar opinión sobre la premisa")
+            return None
+            
+    except Exception as e:
+        logger.exception(f"Error generando opinión sobre premisa: {e}")
+        return None
+
+
+async def _enviar_notificacion_plana(http, db_vigia, usuarios, titulo, opinion, nombre_feed):
+    """Envía notificación de suscripción plana."""
+    try:
+        # Obtener link de la noticia (simulado por ahora)
+        link = f"https://example.com/noticia/{hash(titulo) % 10000}"
+        
+        mensaje = (
+            f"📰 **Nueva Noticia** - {nombre_feed}\n\n"
+            f"📌 **{titulo}**\n"
+            f"🔗 [Leer más]({link})\n\n"
+            f"💭 **Opinión:** {opinion}"
+        )
+        
+        for usuario_id in usuarios:
+            await http.send_message(usuario_id, mensaje)
+            
+    except Exception as e:
+        logger.exception(f"Error enviando notificación plana: {e}")
+
+
+async def _enviar_notificacion_palabras(http, db_vigia, usuarios, titulo, opinion, nombre_feed, palabras_clave):
+    """Envía notificación de coincidencia de palabras clave."""
+    try:
+        # Obtener link de la noticia (simulado por ahora)
+        link = f"https://example.com/noticia/{hash(titulo) % 10000}"
+        
+        mensaje = (
+            f"🔍 **Coincidencia de Palabras Clave** - {nombre_feed}\n\n"
+            f"📌 **{titulo}**\n"
+            f"🔗 [Leer más]({link})\n"
+            f"🎯 **Palabras:** `{palabras_clave}`\n\n"
+            f"💭 **Opinión:** {opinion}"
+        )
+        
+        for usuario_id in usuarios:
+            await http.send_message(usuario_id, mensaje)
+            
+    except Exception as e:
+        logger.exception(f"Error enviando notificación de palabras: {e}")
+
+
+async def _enviar_notificacion_ia(http, db_vigia, usuarios, titulo, opinion, nombre_feed, premisa):
+    """Envía notificación de coincidencia de IA."""
+    try:
+        # Obtener link de la noticia (simulado por ahora)
+        link = f"https://example.com/noticia/{hash(titulo) % 10000}"
+        
+        mensaje = (
+            f"🤖 **Alerta Crítica Detectada** - {nombre_feed}\n\n"
+            f"📌 **{titulo}**\n"
+            f"🔗 [Leer más]({link})\n"
+            f"🎯 **Premisa:** {premisa}\n\n"
+            f"💭 **Análisis:** {opinion}"
+        )
+        
+        for usuario_id in usuarios:
+            await http.send_message(usuario_id, mensaje)
+            
+    except Exception as e:
+        logger.exception(f"Error enviando notificación IA: {e}")
+
+
+def _verificar_palabras_clave_regex(titulo: str, palabras_clave: str) -> bool:
+    """Verifica si una noticia coincide con palabras clave usando regex."""
+    try:
+        titulo_lower = titulo.lower()
+        palabras_lista = [p.strip().lower() for p in palabras_clave.split(',')]
+        
+        # Crear patrón regex para cada palabra clave
+        for palabra in palabras_lista:
+            # Escapar caracteres especiales y crear patrón que coincida con la palabra completa
+            patron = re.escape(palabra)
+            if re.search(rf'\b{patron}\b', titulo_lower):
+                return True
+        
+        return False
+    except Exception as e:
+        logger.exception(f"Error verificando palabras clave con regex: {e}")
+        return False
+
+
+async def _obtener_ultimas_noticias(url: str, nombre_feed: str, limite: int = 5) -> list:
+    """Obtiene las últimas noticias de un feed RSS."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status != 200:
+                    logger.warning(f"⚠️ Feed {nombre_feed} respondió con status {response.status}")
+                    return []
+                
+                content = await response.text()
+                root = feedparser.parse(content)
+                entries = root.entries[:limite]
+                titles = [entry.title for entry in entries if entry.title]
+                logger.info(f"📰 {len(titles)} noticias de {nombre_feed}")
+                return titles
+    except Exception as e:
+        logger.exception(f"❌ No se pudo obtener feed {nombre_feed}: {e}")
+        return []
+
+# Cargar variables de entorno
 _env_candidates = [
     (os.getenv("ROLE_AGENT_ENV_FILE") or "").strip(),
     os.path.expanduser("~/.roleagentbot.env"),
     os.path.join(os.path.dirname(__file__), ".env"),
 ]
+
 for _p in _env_candidates:
     if _p and os.path.exists(_p):
         load_dotenv(_p, override=False)
@@ -29,252 +448,48 @@ logger = get_logger('vigia')
 # Configuración de la misión
 MISSION_CONFIG = {
     "name": "vigia_noticias",
-    "system_prompt_addition": "MISION ACTIVA - VIGÍA DE NOTICIAS: Eres el Vigía de la Torre. Tu misión es detectar noticias sumamente importantes. Es crítica cuando: Escala una guerra, cae en bancarrota un país o gran empresa, hay una crisis humanitaria grave, o un evento con impacto global inminente."
+    "system_prompt_addition": "MISION ACTIVA - VIGÍA DE NOTICIAS: Eres el Vigía de la Torre. Tu misión es detectar noticias sumamente importantes."
 }
 
-# Feed RSS de CNBC
-RSS_URL = "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100727362"
+# Prompt para la personalidad (opinión sobre titulares)
+ROL_VIGIA_PERSONALIDAD = (
+    "Eres el Vigía de la Torre, un guardián ancestral que vigila el mundo desde lo alto. "
+    "Tu carácter es sabio, directo y a veces un poco sombrío. "
+    "Cuando das tu opinión sobre las noticias, sé conciso pero impactante. "
+    "Usa un lenguaje que refleje tu naturaleza vigilante y tu larga experiencia observando los eventos del mundo."
+)
 
-ROL_VIGIA = (
-    "Eres el Vigía de la Torre. Tu misión es detectar noticias sumamente importantes. "
-    "Es crítica cuando: Escala una guerra, cae en bancarrota un país o gran empresa, hay una crisis humanitaria grave, "
-    "o un evento con impacto global inminente. Si la noticia no es crítica, responde únicamente: 'basura umana'. "
-    "Si es crítica, responde con un análisis breve y directo como un orco, resaltando la gravedad y el impacto potencial."
+# Prompt neutro para análisis de premisas con Cohere (SIN personalidad)
+PROMPT_COHERE_ANALISIS = (
+    "Analiza objetivamente si el título de una noticia coincide con las premisas proporcionadas. "
+    "Responde únicamente según las instrucciones dadas, sin añadir opiniones ni estilo personal."
 )
 
 
-def _analizar_con_cohere(titulo: str) -> str:
-    """Analiza una noticia usando Cohere con el sistema unificado de prompts de Putre."""
-    api_key = (os.getenv("COHERE_API_KEY") or "").strip()
-    if not api_key:
-        raise RuntimeError("COHERE_API_KEY no está configurada (cárgala desde crontab o desde ~/.putrebot.env)")
-
-    client = cohere.Client(api_key=api_key, timeout=60)
-
-    # Usar el sistema unificado de construcción de prompts
-    system_instruction, prompt_final = construir_prompt(
-        ROL_VIGIA,
-        contenido_usuario=f"Noticia para vigilar: {titulo}",
-        es_publico=False
-    )
-
-    try:
-        res = client.chat(
-            model="command-a-03-2025",
-            message=prompt_final,
-            preamble=system_instruction,
-            temperature=0.8,  # Temperatura similar a la de Putre
-        )
-        
-        text = getattr(res, "text", None)
-        return (text or "").strip()
-    except Exception as e:
-        logger.exception(f"Error en llamada a Cohere: {e}")
-        return "basura umana"
-
-async def _procesar_feeds(http: DiscordHTTP):
-    try:
-        server_name = get_active_server_name() or "default"
-        db_vigia = get_vigia_db_instance(server_name)
-
-        feeds = db_vigia.obtener_feeds_activos()
-        logger.info(f"✅ {len(feeds)} feeds configurados")
-
-        if not feeds:
-            logger.warning("⚠️ No hay feeds activos configurados")
-            return
-
-        for feed_data in feeds:
-            await _procesar_feed_individual(http, db_vigia, feed_data)
-
-    except Exception as e:
-        logger.exception(f"❌ Error Vigía: {e}")
-
-
-async def _procesar_feed_individual(http: DiscordHTTP, db_vigia, feed_data):
-    """Procesa un feed individual con lógica híbrida."""
-    feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed = feed_data
-
-    try:
-        logger.info(f"📡 Procesando feed: {nombre} ({categoria}) - Tipo: {tipo_feed}")
-
-        suscriptores = db_vigia.obtener_suscriptores_por_categoria(categoria, feed_id)
-        if not suscriptores:
-            logger.info(f"ℹ️ No hay suscriptores para {categoria}/{feed_id}")
-            return
-
-        logger.info(f"👥 {len(suscriptores)} suscriptores para {categoria}")
-
-        entries = await _obtener_entradas_feed(url, nombre)
-        if not entries:
-            return
-
-        for i, titulo in enumerate(entries[:3], 1):
-            titulo = titulo or ''
-            if not titulo:
-                continue
-
-            logger.info(f"📄 [{i}/{len(entries)}] {nombre}: {titulo[:80]}...")
-
-            if db_vigia.noticia_esta_leida(titulo):
-                logger.info(f"ℹ️ Noticia ya leída: {titulo}")
-                continue
-
-            debe_enviar = await _procesar_noticia_hibrida(db_vigia, titulo, feed_data, suscriptores)
-
-            if debe_enviar:
-                analisis = await _analizar_noticia(titulo)
-                if analisis and 'basura umana' not in analisis.lower():
-                    await _enviar_notificacion_critica(http, db_vigia, suscriptores, titulo, analisis, nombre)
-
-            db_vigia.marcar_noticia_leida(titulo, nombre)
-
-    except Exception as e:
-        logger.exception(f"❌ Error procesando feed {nombre}: {e}")
-
-
-async def _procesar_noticia_hibrida(db_vigia, titulo: str, feed_data, suscriptores_categoria: list) -> bool:
-    """Procesa noticia con lógica híbrida según tipo de feed."""
-    feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed = feed_data
-
-    try:
-        suscriptores_palabras = db_vigia.verificar_palabras_clave_noticia(titulo)
-        todos_suscriptores = list(set(suscriptores_categoria + suscriptores_palabras))
-
-        if not todos_suscriptores:
-            return False
-
-        if tipo_feed == 'especializado':
-            return True
-        elif tipo_feed == 'general':
-            categoria_detectada = await _clasificar_noticia_con_ia(titulo)
-            logger.info(f"🤖 IA clasificó '{titulo[:50]}...' como: {categoria_detectada}")
-            return categoria_detectada == categoria
-        elif tipo_feed == 'palabras_clave':
-            return len(suscriptores_palabras) > 0
-
-        return False
-
-    except Exception as e:
-        logger.exception(f"Error en procesamiento híbrido: {e}")
-        return False
-
-
-async def _clasificar_noticia_con_ia(titulo: str) -> str:
-    """Usa IA para clasificar una noticia en categorías."""
-    try:
-        prompt_clasificacion = f"""
-        Clasifica esta noticia en UNA de estas categorías: economia, internacional, tecnologia, sociedad, politica.
-        
-        Noticia: {titulo}
-        
-        Responde SOLO con el nombre de la categoría (en minúsculas, sin acentos):
-        """
-
-        api_key = (os.getenv("COHERE_API_KEY") or "").strip()
-        if not api_key:
-            return "general"
-
-        client = cohere.Client(api_key=api_key, timeout=30)
-        res = client.chat(
-            model="command-a-03-2025",
-            message=prompt_clasificacion,
-            temperature=0.1,
-        )
-
-        categoria = getattr(res, "text", "").strip().lower()
-        categorias_validas = ['economia', 'internacional', 'tecnologia', 'sociedad', 'politica']
-        if categoria in categorias_validas:
-            return categoria
-        else:
-            logger.warning(f"🤖 IA devolvió categoría inválida: {categoria}")
-            return "general"
-
-    except Exception as e:
-        logger.exception(f"Error clasificando con IA: {e}")
-        return "general"
-
-
-async def _obtener_entradas_feed(url: str, nombre_feed: str) -> list:
-    """Obtiene entradas de un feed RSS usando aiohttp (no bloqueante)."""
-    import feedparser
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    try:
-        logger.info(f"📡 Obteniendo feed desde {url}")
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                content = await resp.read()
-
-        feed = feedparser.parse(content)
-        entries = [(getattr(e, 'title', None) or getattr(e, 'summary', '')) for e in feed.entries[:5]]
-        logger.info(f"📰 {len(entries)} noticias de {nombre_feed}")
-        return entries
-
-    except Exception as e1:
-        logger.warning(f"⚠️ Feedparser falló para {nombre_feed}: {e1}, intentando XML...")
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                    content = await resp.read()
-
-            root = ET.fromstring(content)
-            items = root.findall('.//item')[:5]
-            entries = [(item.find('title').text if item.find('title') is not None else '') for item in items]
-            logger.info(f"📰 {len(entries)} noticias de {nombre_feed} (XML)")
-            return entries
-        except Exception as e:
-            logger.exception(f"❌ No se pudo obtener feed {nombre_feed}: {e}")
-            return []
-
-
-async def _analizar_noticia(titulo: str) -> str:
-    """Analiza una noticia usando Cohere."""
-    try:
-        return await asyncio.wait_for(
-            asyncio.to_thread(_analizar_con_cohere, titulo),
-            timeout=90
-        )
-    except asyncio.TimeoutError:
-        logger.warning(f"⏱️ Timeout analizando: {titulo[:80]}")
-        return "basura umana"
-    except Exception as e:
-        logger.exception(f"⚠️ Error Cohere analizando: {e}")
-        return "basura umana"
-
-
-async def _enviar_notificacion_critica(http: DiscordHTTP, db_vigia, suscriptores, titulo, analisis, fuente):
-    """Envía notificación crítica a suscriptores (usuarios y canales) via REST API."""
-    try:
-        mensaje = f"🚨 **VIGÍA**\n{analisis}\n*Fuente: {fuente}*\n*Noticia: {titulo}*"
-
-        for suscriptor_id in suscriptores:
-            try:
-                if suscriptor_id.startswith("channel_"):
-                    canal_id = int(suscriptor_id[8:])
-                    ok = await http.send_channel_message(canal_id, mensaje)
-                    if ok:
-                        logger.info(f"✅ Enviada al canal {canal_id}: {titulo[:50]}")
-                    else:
-                        logger.warning(f"⚠️ No se pudo enviar al canal {canal_id}")
-                else:
-                    ok = await http.send_dm(int(suscriptor_id), mensaje)
-                    if ok:
-                        logger.info(f"✅ Enviada a usuario {suscriptor_id}: {titulo[:50]}")
-                    else:
-                        logger.warning(f"⚠️ No se pudo enviar a usuario {suscriptor_id}")
-            except Exception as e_user:
-                logger.warning(f"⚠️ No se pudo enviar a {suscriptor_id}: {e_user}")
-
-        db_vigia.registrar_notificacion_enviada(titulo, analisis, "critica", fuente)
-
-    except Exception as e:
-        logger.exception(f"❌ Error enviando notificación: {e}")
-
-
 async def main():
-    logger.info("👀 Vigía oteando noticias...")
-    http = DiscordHTTP(get_discord_token())
-    await _procesar_feeds(http)
+    """Función principal del Vigía de Noticias."""
+    try:
+        logger.info("🚀 Iniciando Vigía de Noticias...")
+        
+        # Obtener configuración del servidor
+        server_name = get_active_server_name() or "default"
+        logger.info(f"📡 Servidor: {server_name}")
+        
+        # Inicializar cliente HTTP para Discord
+        discord_token = os.getenv("DISCORD_TOKEN")
+        if not discord_token:
+            logger.error("❌ DISCORD_TOKEN no está configurado")
+            return
+        
+        http = DiscordHTTP(discord_token)
+        
+        # Procesar todas las suscripciones
+        await procesar_suscripciones(http, server_name)
+        
+        logger.info("✅ Vigía de Noticias completado")
+        
+    except Exception as e:
+        logger.exception(f"❌ Error en main del Vigía: {e}")
 
 
 if __name__ == "__main__":

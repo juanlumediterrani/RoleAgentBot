@@ -14,7 +14,7 @@ databases/
 │   ├── noticiasputre.db      # Base de datos del vigía de noticias
 │   ├── PoE2FOTV.db          # Base de datos del buscador de tesoros (Fate of the Vaal)
 │   ├── PoE2Standard.db      # Base de datos del buscador de tesoros (Standard)
-│   ├── role_oro.db          # Base de datos del rol de oro
+│   ├── role_limosna.db      # Base de datos del rol de limosna
 │   └── role_anillo.db       # Base de datos del rol del anillo
 └── nombredeotroservidor/
     ├── putre.db
@@ -47,9 +47,9 @@ databases/
 - `get_poe_db_instance(server_name, liga)` para instancias por servidor y liga
 - Base de datos: `PoE2FOTV.db` (Fate of the Vaal) o `PoE2Standard.db` (Standard)
 
-#### `roles/pedir_oro/db_oro.py`
-- `get_oro_db_instance(server_name)` para instancias por servidor
-- Base de datos: `role_oro.db`
+#### `roles/trilero/subroles/limosna/db_limosna.py`
+- `get_limosna_db_instance(server_name)` para instancias por servidor
+- Base de datos: `role_limosna.db`
 
 #### `roles/buscar_anillo/db_anillo.py`
 - `get_anillo_db_instance(server_name)` para instancias por servidor

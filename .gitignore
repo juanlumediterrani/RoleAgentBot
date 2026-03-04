@@ -3,6 +3,7 @@ bin/
 include/
 lib/
 pyvenv.cfg
+venv/
 
 # Caché de Python
 __pycache__/
@@ -19,6 +20,7 @@ logs/
 *.log
 
 # Configuración sensible
+old/
 .env
 fatiga.json
 fatiga/
@@ -27,3 +29,6 @@ fatiga_temp.json
 # Archivos de backup
 *.backup
 *.bak
+
+# JSON de items de POE2 (se descargan dinámicamente de la API)
+roles/buscador_tesoros/items_ID_*.json

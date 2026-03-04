@@ -19,7 +19,7 @@ Este proyecto contiene múltiples configuraciones de Docker Compose para diferen
 **Roles Activos**:
 - ✅ vigia_noticias
 - ✅ buscador_tesoros  
-- ✅ pedir_oro
+- ✅ trilero
 - ✅ buscar_anillo
 - ✅ mc
 
@@ -86,7 +86,7 @@ DISCORD_TOKEN_PUTRE=tu_token_putre
 ### Roles Disponibles
 1. **🦅 Vigía de Noticias**: Alertas de noticias críticas
 2. **💎 Buscador de Tesoros**: Alertas de oportunidades POE2
-3. **💰 Pedir Oro**: Solicitudes de donaciones
+3. **🎭 Trilero**: Solicitudes de limosna y engaños
 4. **�️ Buscar Anillo**: Acusaciones por el anillo único
 5. **🎵 MC**: Master of Ceremonies (música)
 

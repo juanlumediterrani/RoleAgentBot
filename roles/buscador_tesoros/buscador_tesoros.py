@@ -131,11 +131,7 @@ def analizar_mercado(db, item, precio_actual, liga):
 async def main():
     logger.info("💎 Buscando tesoros...")
 
-    # Leer configuración desde la BD del subrol POE2 (C8)
-    liga = _LIGA_DEFAULT
-    objetivos = dict(_OBJETIVOS_DEFAULT)
-    mi_id = _MI_ID_DEFAULT
-
+    # SOLO usar configuración desde la BD del subrol POE2
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "poe2"))
         from poe2_subrole import get_poe2_db_instance, MI_ID as POE2_MI_ID
@@ -146,15 +142,27 @@ async def main():
             logger.info("💤 Subrol POE2 inactivo, el buscador de tesoros no se ejecutará")
             return
 
-        liga = db_poe2.get_liga() or liga
-        objetivos_db = db_poe2.get_objetivos()
-        if objetivos_db:
-            objetivos = {item["nombre_item"]: item.get("item_id") for item in objetivos_db}
+        # Obtener configuración EXCLUSIVAMENTE de la BD
+        liga = db_poe2.get_liga()
+        objetivos_db = db_poe2.get_objetivos_activos()
+        
+        if not liga:
+            logger.error("❌ No se pudo obtener la liga desde la BD POE2")
+            return
+            
+        if not objetivos_db:
+            logger.warning("⚠️ No hay objetivos configurados en la BD POE2")
+            return
+            
+        objetivos = {item[0]: item[1] for item in objetivos_db}
         mi_id = POE2_MI_ID
+        
         logger.info(f"✅ Config POE2 cargada — Liga: {liga}, Objetivos: {list(objetivos.keys())}")
+        
     except Exception as e:
-        logger.warning(f"⚠️ No se pudo cargar config del subrol POE2: {e}")
-        logger.info("🔄 Usando configuración por defecto (comportamiento legacy)")
+        logger.exception(f"❌ Error crítico cargando config del subrol POE2: {e}")
+        logger.error("❌ El buscador de tesoros requiere configuración POE2 válida")
+        return
 
     db_role_poe = DatabaseRolePoe("default", liga)
     http = DiscordHTTP(get_discord_token())
@@ -211,23 +219,37 @@ async def main():
             if notificacion_reciente:
                 logger.info(f"🔕 Notificación omitida por duplicidad reciente: {nombre} - {señal}")
                 continue
+            
+            logger.info(f"📨 Enviando notificación: {nombre} - {señal} a {actual} Div")
 
             try:
                 if señal == "COMPRA":
-                    mensaje = f"Oportunidad de compra: {nombre} a {actual} Div. ¡Es muy barato! ¡Comprar ya!"
+                    mensaje = f"Oportunidad de compra: {nombre} a {actual} Div. ¡Es muy barato! ¡Comprar ya! Kronk quiere este item."
                 else:
-                    mensaje = f"Oportunidad de venta: {nombre} a {actual} Div. ¡Es muy caro! ¡Vender ya!"
+                    mensaje = f"Oportunidad de venta: {nombre} a {actual} Div. ¡Es muy caro! ¡Vender ya! Kronk puede vender este item."
 
-                res = await asyncio.to_thread(pensar, mensaje)
+                try:
+                    res = await asyncio.to_thread(pensar, mensaje)
+                    
+                    if is_internal_thinking(res):
+                        logger.warning(f"⚠️ Respuesta detectada como pensamiento interno: {res}")
+                        res = (
+                            f"¡Barato! {nombre} a solo {actual} Div. ¡Comprar ya mismo!"
+                            if señal == "COMPRA"
+                            else f"¡Caro! {nombre} a {actual} Div. ¡Vender inmediatamente!"
+                        )
+                except Exception as ia_error:
+                    logger.warning(f"⚠️ Error en IA ({type(ia_error).__name__}), usando fallback: {ia_error}")
+                    # Fallback hardcoded con nombre del item y información clara
+                    if señal == "COMPRA":
+                        res = f"UHHH {nombre} muy barato! kronk kerer comprar por {actual} Div! ¡Buen trato umano! **COMPRA**"
+                    else:
+                        res = f"BLEGH {nombre} muy karo! {actual} Div es locura! kronk vender ya, umano tonto! **VENTA**"
 
-                if is_internal_thinking(res):
-                    logger.warning(f"⚠️ Respuesta detectada como pensamiento interno: {res}")
-                    res = (
-                        f"¡Barato! {nombre} a solo {actual} Div. ¡Comprar ya mismo!"
-                        if señal == "COMPRA"
-                        else f"¡Caro! {nombre} a {actual} Div. ¡Vender inmediatamente!"
-                    )
-
+                # Asegurar que la información clave esté presente
+                if nombre not in res or str(actual) not in res or señal not in res:
+                    res = f"**{señal}** - {nombre}: {actual} Div. {res}"
+                
                 if await http.send_dm(mi_id, f"💎 **TESORO DETECTADO**: {res}"):
                     logger.info(f"✅ Notificación enviada para {nombre} - {señal}")
                     db_role_poe.registrar_notificacion(nombre, liga, señal, actual)

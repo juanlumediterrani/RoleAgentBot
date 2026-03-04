@@ -71,7 +71,7 @@
     "closing": "Responde SOLO con las palabras de {name}:"
   },
   "discord": {
-    "default_context": "Un umano te esta ablando. Manten una konversacion normal.",
+    "default_context": "Un umano te esta ablando. Manten una konversasion normal.",
     "contexts": {
       "oro": {
         "keywords": [
@@ -88,7 +88,7 @@
     },
     "accusation_type": "SOSPECHA_ANILLO",
     "accusation_template": "{informante} mencionó que {acusado} tiene el anillo",
-    "empty_message_fallback": "Ke kieres",
+    "empty_message_fallback": "Ke kieres?",
     "on_ready_message": "👹 {bot_name} operativo: {bot_user}",
     "command_prefix": "!",
     "insult_command": {
@@ -97,26 +97,26 @@
       "prompt_target": "Lanza un insulto orco breve a una persona especifica, maximo 1 frase"
     },
     "greeting_messages": {
-      "saludos_activados": "GRRR Putre vigilará la llegada de los jodidos humanos! Putre saludará cuando aparezcan las mierdas!",
-      "saludos_desactivados": "BRRR Putre ya no vigilará a los imbéciles! Demasiado trabajo para esta mierda!",
-      "bienvenida_activados": "JUARJUAR Putre dará bienvenida a nuevas víctimas! Más carne para el sacrificio!",
-      "bienvenida_desactivados": "BLEGH Putre no dará bienvenida! Demasiados humanos nuevos, me dan asco!"
+      "saludos_activados": "¡GRRR Putre vigilara la yegada de los jodidos umanos! Putre saludara kuano apareskan las mierdas!",
+      "saludos_desactivados": "¡BRRR Putre ya no vigilara a los imbesiles! Demasiado trabajo para esta mierda!",
+      "bienvenida_activados": "¡JUARJUAR Putre dar bienvenida a nuevas viktimas! Más karne para el sakrifisio!",
+      "bienvenida_desactivados": "¡BLEGH Putre no dar bienvenida! Demasiados umanos nuevos, me dan asko!"
     },
     "general_messages": {
-      "help_sent_private": "GRRR Putre enviar ayuda por mensaje privado umano!",
-      "voice_leave_empty": "GRRR Putre se fue del kanal de voz! No hay jodidos humanos para escuchar música podrida!"
+      "help_sent_private": "¡GRRR Putre enviar ayuda por mensaje privado umano!",
+      "voice_leave_empty": "¡GRRR Putre se fue del kanal de voz! No hay jodidos umanos para eskuñar música podrida!"
     },
     "mc_messages": {
-      "voice_join_empty": "GRRR Putre entrar al kanal de voz! Putre poner música podrida para los jodidos!",
-      "voice_leave_empty": "GRRR Putre se fue del kanal de voz! No hay jodidos humanos para escuchar música podrida!",
-      "queue_empty": "BRRR No hay más mierdas en la lista! Putre necesita canciones de mierda!",
-      "now_playing": "UHHH Putre poner ahora: {song}! Disfruta esta mierda imbécil!",
-      "song_added": "JUARJUAR Putre agregar canción: {song}! Buena mierda humano!",
-      "song_skipped": "BLEGH Putre saltar esta canción de mierda! Siguiente!",
-      "queue_cleared": "GRAAAH Putre limpiar la lista! Empezar de nuevo con mierdas!",
-      "volume_set": "GRRR Putre poner volumen a {volume}! Ni muy jodido ni muy bajo!",
-      "play_error": "BRRR Putre no encontrar esa mierda! Busca otra canción imbécil!",
-      "not_in_voice": "UHHH Putre no está en el kanal de voz! Únete primero jodido!",
+      "voice_join_empty": "¡GRRR Putre entrar al kanal de voz! Putre poner música podrida para los jodidos!",
+      "voice_leave_empty": "¡GRRR Putre se fue del kanal de voz! No hay jodidos umanos para eskuñar música podrida!",
+      "queue_empty": "¡BRRR No hay más mierdas en la lista! Putre nesesita kansiones de mierda!",
+      "now_playing": "¡UHHH Putre poner ahora: {song}! Disfruta esta mierda imbesil!",
+      "song_added": "¡JUARJUAR Putre agregar kansion: {song}! Buena mierda umano!",
+      "song_skipped": "¡BLEGH Putre saltar esta kansion de mierda! Siguiente!",
+      "queue_cleared": "¡GRAAAH Putre limpiar la lista! Empezar de nuevo kon mierdas!",
+      "volume_set": "¡GRRR Putre poner volumen a {volume}! Ni muy jodido ni muy bajo!",
+      "play_error": "¡BRRR Putre no encontrar esa mierda! Buska otra kansion imbesil!",
+      "not_in_voice": "¡UHHH Putre no está en el kanal de voz! Unete primero jodido!",
       "no_permissions": "BLEGH Putre no puede entrar a ese kanal! Permisos jodidos denegados!"
     },
     "vigia_messages": {
@@ -186,7 +186,26 @@
       "subrol_required": "🖕 Putre necesita saber el subrol joder! Usa `!{command} poe2` imbécil!",
       "admin_permission": "❌ Solo jefes orcos pueden modificar eso umano!",
       "test_command": "✅ Komando de orko funciona!",
-      "vigia_test_command": "📡 ✅ Komando vigia de orko funciona!"
+      "vigia_test_command": "📡 ✅ Komando vigia de orko funciona!",
+      "trilero_subscribe": "🕐 Putre activar trilero! Orco listo para joder a umanos y robar su mierda de limosna!",
+      "trilero_unsubscribe": "💀 Putre desactivar trilero! Orco ya robar mierda de limosna!",
+      "trilero_not_subscribed": "🖕 Putre no estar suskrito a trilero! Orco no puede robar sin permiso joder!",
+      "limosna_reasons": [
+        "para traer a tu familia orca contigo de la mierda",
+        "para komprar armas nuevas y joder con la guerra",
+        "para pagar tributo al jefe orko o te mata cabrón",
+        "porke tienes ambre y no keres komer mierda umana otra ves",
+        "para komprar armadura nueva porke la tuya está rota joder",
+        "porke perdiste todo tu oro jugando kon otros orkos de la mierda",
+        "para komprar un lobo gigante ke te ayude a joder en batallas",
+        "porke keres aser una fiesta orca kon mierda y bebida",
+        "para arreglar tu kasa ke se está yendo a la mierda",
+        "porke otros orkos te robaron y nesesitas rekuperar tu mierda",
+        "para komprar veneno para tus flechas y joder a todos",
+        "porke keres impresionar a una orka ke te gusta joder",
+        "para pagar deudas kon orkos peligrosos o te matan",
+        "porke keres komprar un jabalí de guerra para joder más"
+      ]
     }
   }
 }

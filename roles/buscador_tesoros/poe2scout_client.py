@@ -4,6 +4,8 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 from datetime import datetime, timezone, timedelta
 import logging
+import json
+import os
 
 try:
     from agent_logging import get_logger
@@ -38,6 +40,7 @@ class Poe2ScoutClient:
     """
 
     BASE = 'https://poe2scout.com/api'
+    _items_cache = {}  # Cache por liga: {league: {name: id}}
 
     def __init__(self, session: Optional[requests.Session] = None, timeout: int = 10):
         if session is None:
@@ -46,6 +49,90 @@ class Poe2ScoutClient:
             session.mount('https://', HTTPAdapter(max_retries=retries))
         self.session = session
         self.timeout = timeout
+
+    def _load_items_database(self, league: str = "Standard"):
+        """Carga la base de datos de items desde la API para una liga específica."""
+        if league in Poe2ScoutClient._items_cache:
+            return
+        
+        try:
+            logger.info(f"🔄 Descargando base de datos de items para liga: {league}")
+            
+            # Usar el endpoint /items?league={league}
+            url = f"{self.BASE}/items"
+            params = {'league': league}
+            
+            response = self.session.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            
+            items_data = response.json()
+            
+            # Crear diccionario de búsqueda nombre -> ID
+            items_dict = {}
+            
+            for item in items_data:
+                item_id = item.get('itemId')
+                
+                # Buscar en diferentes campos de nombre
+                name_fields = [item.get('text', ''), item.get('name', '')]
+                api_id = item.get('apiId', '')
+                
+                for name in name_fields:
+                    if name and item_id:
+                        name_lower = name.lower().strip()
+                        if name_lower not in items_dict:
+                            items_dict[name_lower] = item_id
+                
+                # También agregar el apiId como clave
+                if api_id and item_id:
+                    api_id_lower = api_id.lower().strip()
+                    if api_id_lower not in items_dict:
+                        items_dict[api_id_lower] = item_id
+            
+            Poe2ScoutClient._items_cache[league] = items_dict
+            logger.info(f"✅ Base de datos de items cargada para {league}: {len(items_dict)} items")
+            
+        except Exception as e:
+            logger.error(f"❌ Error cargando base de datos de items para {league}: {e}")
+            # Fallback a diccionario básico
+            Poe2ScoutClient._items_cache[league] = {
+                'ancient rib': 4379,
+                'ancient jawbone': 4373,
+                'ancient collarbone': 4385,
+                'fracturing orb': 294,
+            }
+
+    def _find_item_id(self, item_name: str, league: str = "Standard") -> Optional[int]:
+        """Busca el ID de un item por nombre para una liga específica."""
+        self._load_items_database(league)
+        
+        item_name_lower = item_name.lower().strip()
+        items_cache = Poe2ScoutClient._items_cache.get(league, {})
+        
+        # Búsqueda exacta primero
+        if item_name_lower in items_cache:
+            return items_cache[item_name_lower]
+        
+        # Búsqueda parcial (contiene)
+        for name, item_id in items_cache.items():
+            if item_name_lower in name or name in item_name_lower:
+                logger.info(f"🔍 Búsqueda parcial: '{item_name}' -> '{name}' (ID: {item_id})")
+                return item_id
+        
+        return None
+
+    def clear_items_cache(self, league: str = None):
+        """Limpia el cache de items. Si league es None, limpia todo."""
+        if league:
+            Poe2ScoutClient._items_cache.pop(league, None)
+            logger.info(f"🗑️ Cache de items limpiado para liga: {league}")
+        else:
+            Poe2ScoutClient._items_cache.clear()
+            logger.info("🗑️ Todo el cache de items limpiado")
+
+    def get_cached_leagues(self) -> List[str]:
+        """Devuelve lista de ligas en cache."""
+        return list(Poe2ScoutClient._items_cache.keys())
 
     def _find_price_list(self, obj: Any) -> Optional[List[Any]]:
         """Recursively find a candidate list of price-like dicts inside a JSON object."""
@@ -287,24 +374,10 @@ class Poe2ScoutClient:
             league: Liga (si no se especifica, usa Standard)
             days: Días de historial (default: 30)
         """
-        # Mapeo actualizado de nombres a IDs según la API
-        item_ids = {
-            'ancient rib': 4379,
-            'ancient jawbone': 4373,
-            'ancient collarbone': 4385,
-            'preserved jawbone': 4371,
-            'fracturing orb': 294,
-        }
-        
-        item_name_lower = item_name.lower().strip()
         league = league or "Standard"
         
-        # Buscar el ID del item
-        item_id = None
-        for name, id in item_ids.items():
-            if item_name_lower == name.lower():
-                item_id = id
-                break
+        # Buscar el ID del item usando la base de datos de la liga específica
+        item_id = self._find_item_id(item_name, league)
         
         if item_id:
             try:
@@ -315,12 +388,12 @@ class Poe2ScoutClient:
                     log_count=720,  # 24h * 30d = 720 entradas
                     reference_currency='divine'
                 )
-                logger.info(f"Historial obtenido para {item_name} (ID {item_id}): {len(entries)} entradas")
+                logger.info(f"Historial obtenido para {item_name} (ID {item_id}) en {league}: {len(entries)} entradas")
                 return entries
             except Exception as e:
-                logger.error(f"Error obteniendo historial para {item_name}: {e}")
+                logger.error(f"Error obteniendo historial para {item_name} en {league}: {e}")
                 return []
         else:
-            logger.warning(f"No se encontró ID para el item: {item_name}")
+            logger.warning(f"No se encontró ID para el item: {item_name} en liga {league}")
             return []
 

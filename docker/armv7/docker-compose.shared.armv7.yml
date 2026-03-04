@@ -28,7 +28,7 @@ services:
       # Roles activos para Kronk: vigia_noticias y buscador_tesoros
       - VIGIA_NOTICIAS_ENABLED=false
       - BUSCADOR_TESOROS_ENABLED=true
-      - PEDIR_ORO_ENABLED=true
+      - TRILERO_ENABLED=true
       - BUSCAR_ANILLO_ENABLED=false
     volumes:
       - python-shared-armv7:/usr/local/lib/python3.13/site-packages  # ← Compartir Python
@@ -52,10 +52,10 @@ services:
       - PERSONALITY=putre
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
-      # Roles activos para Putre: pedir oro y buscar anillo
+      # Roles activos para Putre: limosna y buscar anillo
       - VIGIA_NOTICIAS_ENABLED=true
       - BUSCADOR_TESOROS_ENABLED=false
-      - PEDIR_ORO_ENABLED=false
+      - TRILERO_ENABLED=false
       - BUSCAR_ANILLO_ENABLED=true
     volumes:
       - python-shared-armv7:/usr/local/lib/python3.13/site-packages  # ← Compartir Python

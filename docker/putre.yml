@@ -13,7 +13,7 @@ services:
       dockerfile: docker/Dockerfile
       args:
         PERSONALITY: putre
-        ACTIVE_ROLES: pedir_oro,buscar_anillo
+        ACTIVE_ROLES: trilero,buscar_anillo
     image: roleagentbot:putre
     container_name: roleagentbot-putre
 
@@ -22,7 +22,7 @@ services:
       - ../.env
     environment:
       - PERSONALITY=putre
-      - ACTIVE_ROLES=pedir_oro,buscar_anillo
+      - ACTIVE_ROLES=trilero,buscar_anillo
 
     # Volúmenes específicos para Putre
     volumes:

@@ -138,6 +138,9 @@ class DatabaseRolePoe2:
                 
                 conn.commit()
                 logger.info(f"✅ Base de datos POE2 lista en {self.db_path}")
+                
+                # Inicializar items por defecto si no hay ninguno
+                inicializar_items_por_defecto(self)
         except Exception as e:
             logger.exception(f"❌ Error en inicialización de DB POE2: {e}")
     
@@ -153,6 +156,13 @@ class DatabaseRolePoe2:
                         WHERE id = 1
                     ''', (liga, datetime.now().isoformat()))
                     conn.commit()
+                    
+                    # Limpiar cache de items de la liga anterior
+                    from poe2scout_client import Poe2ScoutClient
+                    scout = Poe2ScoutClient()
+                    scout.clear_items_cache()  # Limpiar todo el cache para forzar recarga
+                    logger.info(f"🗑️ Cache de items limpiado al cambiar de liga")
+                    
                     logger.info(f"✅ Liga actualizada a: {liga}")
                     return True
         except Exception as e:
@@ -402,8 +412,11 @@ class Poe2SubroleBot(discord.Client):
             logger.exception(f"Error enviando notificación POE2: {e}")
 
 def inicializar_items_por_defecto(db_instance: DatabaseRolePoe2) -> bool:
-    """Inicializa los items por defecto si no hay ninguno configurado."""
+    """Inicializa los items por defecto si no hay ninguno configurado y descarga sus datos."""
     try:
+        from poe2scout_client import Poe2ScoutClient
+        from db_role_poe import DatabaseRolePoe
+        
         objetivos_actuales = db_instance.get_objetivos()
         
         # Si ya hay items, no hacer nada
@@ -420,13 +433,49 @@ def inicializar_items_por_defecto(db_instance: DatabaseRolePoe2) -> bool:
         
         logger.info("📋 Inicializando items por defecto para POE2...")
         
+        # Obtener configuración necesaria para descargar datos
+        liga_actual = db_instance.get_liga()
+        server_name = db_instance.server_name if hasattr(db_instance, 'server_name') else "default"
+        
+        # Crear instancia de DatabaseRolePoe para descargar datos
+        db_role_poe = DatabaseRolePoe(server_name, liga_actual)
+        scout = Poe2ScoutClient()
+        
+        items_añadidos = []
+        
         for nombre_item, item_id in items_por_defecto.items():
             if db_instance.add_objetivo(nombre_item, item_id):
                 logger.info(f"✅ Item por defecto añadido: {nombre_item}")
+                items_añadidos.append(nombre_item)
+                
+                # Descargar historial y precio actual
+                try:
+                    logger.info(f"📥 Descargando historial de {nombre_item}...")
+                    entries = scout.get_item_history(nombre_item, league=liga_actual)
+                    
+                    if entries:
+                        insertados = db_role_poe.insertar_precios_bulk(nombre_item, entries, liga_actual)
+                        logger.info(f"📊 {nombre_item}: {len(entries)} datos recibidos, {insertados} nuevos insertados")
+                        
+                        # Obtener precio actual
+                        precio_actual = db_role_poe.obtener_precio_actual(nombre_item, liga_actual)
+                        if precio_actual:
+                            logger.info(f"💰 Precio actual de {nombre_item}: {precio_actual} Div")
+                        else:
+                            logger.warning(f"⚠️ No se pudo obtener precio actual para {nombre_item}")
+                    else:
+                        logger.warning(f"⚠️ No hay datos disponibles para {nombre_item}")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Error descargando datos para {nombre_item}: {e}")
             else:
                 logger.warning(f"⚠️ No se pudo añadir item por defecto: {nombre_item}")
         
-        logger.info("✅ Inicialización de items por defecto completada")
+        if items_añadidos:
+            logger.info(f"✅ Inicialización completada. Items añadidos y datos descargados: {', '.join(items_añadidos)}")
+        else:
+            logger.warning("⚠️ No se pudo añadir ningún item por defecto")
+            
         return True
         
     except Exception as e:
