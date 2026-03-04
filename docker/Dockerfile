@@ -44,6 +44,9 @@ COPY agent_discord.py .
 COPY agent_engine.py .
 COPY agent_logging.py .
 COPY discord_http.py .
+COPY discord_utils.py .
+COPY discord_core_commands.py .
+COPY discord_role_loader.py .
 COPY postprocessor.py .
 COPY run.py .
 

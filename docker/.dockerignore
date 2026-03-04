@@ -32,6 +32,7 @@ logs/
 old/
 *.backup
 *.tmp
+agent_discord_old.py
 
 # Docker (no incluir en la imagen)
 Dockerfile*
