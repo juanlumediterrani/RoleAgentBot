@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-RoleAgentBot - Orquestador principal
-Arranca el bot de Discord principal y lanza cada rol como subproceso
-según el intervalo configurado en agent_config.json.
+RoleAgentBot - Main orchestrator
+Starts the main Discord bot and launches each role as a subprocess
+according to the interval configured in agent_config.json.
 """
 
 import asyncio
@@ -17,47 +17,47 @@ from agent_logging import get_logger
 
 logger = get_logger('run')
 
-# ── Rutas ─────────────────────────────────────────────────────────────────────
+# ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).parent.resolve()
 CONFIG_FILE = BASE_DIR / "agent_config.json"
-PYTHON     = sys.executable   # mismo intérprete del venv activo
+PYTHON     = sys.executable   # same interpreter from active venv
 
 ACTIVE_SERVER_FILE = BASE_DIR / ".active_server"
 
-# ── Configuración ─────────────────────────────────────────────────────────────
+# ── Configuration ─────────────────────────────────────────────────────────────
 
-def cargar_config() -> dict:
+def load_config() -> dict:
     if not CONFIG_FILE.exists():
-        logger.error(f"[run] ❌ No se encontró {CONFIG_FILE}")
+        logger.error(f"[run] ❌ Config file not found: {CONFIG_FILE}")
         sys.exit(1)
     with CONFIG_FILE.open(encoding="utf-8") as f:
         config = json.load(f)
-        logger.info(f"[run] 📋 Configuración cargada exitosamente")
+        logger.info(f"[run] 📋 Configuration loaded successfully")
         return config
 
-# ── Lanzador de subprocesos ───────────────────────────────────────────────────
+# ── Subprocess launcher ───────────────────────────────────────────────────────
 
-_procesos_persistentes: dict = {}
+_persistent_processes: dict = {}
 
-async def lanzar_rol(nombre: str, script_rel: str, persistent: bool = False):
-    """Ejecuta el script del rol como subproceso. Los roles persistentes se lanzan una vez y no bloquean."""
+async def launch_role(name: str, script_rel: str, persistent: bool = False):
+    """Run the role script as a subprocess. Persistent roles are launched once and don't block."""
     script = BASE_DIR / script_rel
     if not script.exists():
-        logger.warning(f"[run] ⚠️  Script no encontrado para '{nombre}': {script}")
+        logger.warning(f"[run] ⚠️  Script not found for '{name}': {script}")
         return
 
     if persistent:
-        proc_actual = _procesos_persistentes.get(nombre)
-        if proc_actual and proc_actual.returncode is None:
-            logger.info(f"[run] 🔄 Rol persistente '{nombre}' ya activo (PID {proc_actual.pid}), omitiendo relanzamiento")
+        current_proc = _persistent_processes.get(name)
+        if current_proc and current_proc.returncode is None:
+            logger.info(f"[run] 🔄 Persistent role '{name}' already active (PID {current_proc.pid}), skipping relaunch")
             return
 
-    logger.info(f"[run] 🚀 Ejecutando rol '{nombre}' → {script.name}")
+    logger.info(f"[run] 🚀 Running role '{name}' → {script.name}")
     try:
         env = os.environ.copy()
         env["ROLE_AGENT_PROCESS"] = "1"
 
-        # Propagar servidor activo al subproceso si existe
+        # Propagate active server to subprocess if it exists
         try:
             if ACTIVE_SERVER_FILE.exists():
                 active_server = ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip()
@@ -75,162 +75,162 @@ async def lanzar_rol(nombre: str, script_rel: str, persistent: bool = False):
         )
 
         if persistent:
-            _procesos_persistentes[nombre] = proc
-            logger.info(f"[run] 🔄 Rol persistente '{nombre}' lanzado en segundo plano (PID {proc.pid})")
+            _persistent_processes[name] = proc
+            logger.info(f"[run] 🔄 Persistent role '{name}' launched in background (PID {proc.pid})")
             return
 
         stdout, _ = await proc.communicate()
-        salida = stdout.decode(errors="replace").strip()
-        if salida:
-            for linea in salida.splitlines():
-                match = re.match(r'^\s*\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}\s+(.+)$', linea.strip())
+        output = stdout.decode(errors="replace").strip()
+        if output:
+            for line in output.splitlines():
+                match = re.match(r'^\s*\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}\s+(.+)$', line.strip())
                 if match:
-                    logger.info(f"  [{nombre}] {match.group(1)}")
+                    logger.info(f"  [{name}] {match.group(1)}")
                 else:
-                    logger.info(f"  [{nombre}] {linea.strip()}")
-        codigo = proc.returncode
-        estado = "✅" if codigo == 0 else f"⚠️  (código {codigo})"
-        logger.info(f"[run] {estado} Rol '{nombre}' finalizado")
+                    logger.info(f"  [{name}] {line.strip()}")
+        exit_code = proc.returncode
+        status = "✅" if exit_code == 0 else f"⚠️  (code {exit_code})"
+        logger.info(f"[run] {status} Role '{name}' finished")
     except Exception as e:
-        logger.error(f"[run] ❌ Error lanzando '{nombre}': {e}")
+        logger.error(f"[run] ❌ Error launching '{name}': {e}")
 
-# ── Planificador de roles ─────────────────────────────────────────────────────
+# ── Role scheduler ────────────────────────────────────────────────────────────
 
-async def planificador(config: dict):
+async def scheduler(config: dict):
     """
-    Bucle principal que lanza cada rol activo según su intervalo.
-    Ejecuta todos los roles habilitados al inicio, luego respeta el intervalo.
+    Main loop that launches each active role according to its interval.
+    Runs all enabled roles immediately on startup, then respects the interval.
     """
     roles_cfg = config.get("roles", {})
-    logger.info(f"[run] 📋 Iniciando planificador con {len(roles_cfg)} roles configurados")
+    logger.info(f"[run] 📋 Starting scheduler with {len(roles_cfg)} configured roles")
 
-    # Estado: próxima ejecución de cada rol
-    proxima: dict[str, datetime] = {}
-    ahora = datetime.now()
+    # State: next execution time per role
+    next_run: dict[str, datetime] = {}
+    now = datetime.now()
 
-    for nombre, cfg in roles_cfg.items():
-        # Verificar si el rol está activado (prioridad a ACTIVE_ROLES, luego variables individuales)
+    for name, cfg in roles_cfg.items():
+        # Check if role is enabled (ACTIVE_ROLES takes priority, then individual env vars)
         active_roles = os.getenv("ACTIVE_ROLES", "").split(",")
         active_roles = [r.strip() for r in active_roles if r.strip()]
         
-        if active_roles:  # Si ACTIVE_ROLES está definido, usarlo
-            enabled = nombre in active_roles
-            logger.info(f"[run] 🔍 ACTIVE_ROLES='{os.getenv('ACTIVE_ROLES', '')}' → '{nombre}' {'✅' if enabled else '❌'}")
-        else:  # Sistema antiguo: variables de entorno individuales
-            env_enabled = os.getenv(f"{nombre.upper()}_ENABLED", "").lower()
+        if active_roles:  # If ACTIVE_ROLES is defined, use it
+            enabled = name in active_roles
+            logger.info(f"[run] 🔍 ACTIVE_ROLES='{os.getenv('ACTIVE_ROLES', '')}' → '{name}' {'✅' if enabled else '❌'}")
+        else:  # Legacy: individual environment variables
+            env_enabled = os.getenv(f"{name.upper()}_ENABLED", "").lower()
             if env_enabled:
                 enabled = env_enabled == "true"
-                logger.info(f"[run] 🔍 {nombre.upper()}_ENABLED='{env_enabled}' → '{nombre}' {'✅' if enabled else '❌'}")
+                logger.info(f"[run] 🔍 {name.upper()}_ENABLED='{env_enabled}' → '{name}' {'✅' if enabled else '❌'}")
             else:
                 enabled = cfg.get("enabled", False)
-                logger.info(f"[run] 🔍 Config enabled={enabled} → '{nombre}' {'✅' if enabled else '❌'}")
+                logger.info(f"[run] 🔍 Config enabled={enabled} → '{name}' {'✅' if enabled else '❌'}")
             
         if enabled:
-            # Caso especial para MC: verificar modo
-            if nombre == "mc":
+            # Special case for MC: check mode
+            if name == "mc":
                 from agent_engine import get_mc_mode
                 mc_mode = get_mc_mode()
-                logger.info(f"[run] 🎵 MC modo: '{mc_mode}'")
+                logger.info(f"[run] 🎵 MC mode: '{mc_mode}'")
                 
                 if mc_mode == "integrated":
-                    logger.info(f"[run] 🎵 MC modo integrado, omitiendo lanzamiento separado")
-                    continue  # No lanzar como proceso separado
+                    logger.info(f"[run] 🎵 MC integrated mode, skipping separate launch")
+                    continue  # Don't launch as separate process
                 elif mc_mode == "standalone":
-                    logger.info(f"[run] 🎵 MC modo standalone, lanzando como proceso")
+                    logger.info(f"[run] 🎵 MC standalone mode, launching as process")
                 else:
-                    logger.info(f"[run] 🎵 MC modo '{mc_mode}' no reconocido, omitiendo")
+                    logger.info(f"[run] 🎵 MC mode '{mc_mode}' not recognized, skipping")
                     continue
             
-            # Primera ejecución inmediata al arrancar
-            proxima[nombre] = ahora
-            logger.info(f"[run] 📋 Rol '{nombre}' activado — cada {cfg['interval_hours']}h")
+            # First execution immediately on startup
+            next_run[name] = now
+            logger.info(f"[run] 📋 Role '{name}' enabled — every {cfg['interval_hours']}h")
         else:
-            logger.info(f"[run] 💤 Rol '{nombre}' desactivado")
+            logger.info(f"[run] 💤 Role '{name}' disabled")
 
-    if not proxima:
-        logger.info("[run] ℹ️  Ningún rol activo. Solo corre el bot principal.")
+    if not next_run:
+        logger.info("[run] ℹ️  No active roles. Only the main bot is running.")
 
-    # Esperar a que el bot principal publique el servidor activo, para que los roles
-    # escriban en databases/<servidor>/... y logs/<servidor>/...
-    if proxima:
+    # Wait for the main bot to publish the active server, so roles
+    # write to databases/<server>/... and logs/<server>/...
+    if next_run:
         for _ in range(60):  # ~60s
             if ACTIVE_SERVER_FILE.exists() and ACTIVE_SERVER_FILE.stat().st_size > 0:
                 break
             await asyncio.sleep(1)
 
     while True:
-        ahora = datetime.now()
-        pendientes = [
-            nombre for nombre, t in proxima.items() if ahora >= t
+        now = datetime.now()
+        pending = [
+            name for name, t in next_run.items() if now >= t
         ]
 
-        # Lanzar roles pendientes en paralelo
-        if pendientes:
+        # Launch pending roles in parallel
+        if pending:
             await asyncio.gather(*[
-                lanzar_rol(
-                    nombre,
-                    roles_cfg[nombre]["script"],
-                    persistent=roles_cfg[nombre].get("persistent", False)
+                launch_role(
+                    name,
+                    roles_cfg[name]["script"],
+                    persistent=roles_cfg[name].get("persistent", False)
                 )
-                for nombre in pendientes
+                for name in pending
             ])
-            # Reprogramar tras la ejecución
-            for nombre in pendientes:
-                horas = roles_cfg[nombre]["interval_hours"]
-                proxima[nombre] = datetime.now() + timedelta(hours=horas)
-                logger.info(f"[run] ⏳ '{nombre}' próxima ejecución: {proxima[nombre]:%H:%M:%S}")
+            # Reschedule after execution
+            for name in pending:
+                hours = roles_cfg[name]["interval_hours"]
+                next_run[name] = datetime.now() + timedelta(hours=hours)
+                logger.info(f"[run] ⏳ '{name}' next execution: {next_run[name]:%H:%M:%S}")
 
-        await asyncio.sleep(30)   # revisamos cada 30 s
+        await asyncio.sleep(30)   # check every 30s
 
-# ── Bot principal de Discord ──────────────────────────────────────────────────
+# ── Main Discord bot ─────────────────────────────────────────────────────────
 
-async def bot_discord():
+async def discord_bot():
     """
-    Mantiene el bot principal (agent_discord.py) vivo como subproceso.
-    Si muere, lo relanza automáticamente tras 10 s.
-    Solo se usa cuando platform == "discord".
+    Keeps the main bot (agent_discord.py) alive as a subprocess.
+    If it dies, relaunches automatically after 10s.
+    Only used when platform == "discord".
     """
-    script = BASE_DIR / "agent_discord.py"
+    script = BASE_DIR / "discord_bot" / "agent_discord.py"
     while True:
-        logger.info("[run] 🤖 Arrancando bot principal de Discord…")
+        logger.info("[run] 🤖 Starting main Discord bot...")
         proc = await asyncio.create_subprocess_exec(
             PYTHON, str(script),
             cwd=str(BASE_DIR),
         )
-        codigo = await proc.wait()
-        if codigo == 0:
-            logger.info("[run] 👋 Bot principal terminó limpiamente.")
+        exit_code = await proc.wait()
+        if exit_code == 0:
+            logger.info("[run] 👋 Main bot terminated cleanly.")
             break
-        logger.warning(f"[run] ⚠️  Bot principal terminó con código {codigo}. Relanzando en 10 s…")
+        logger.warning(f"[run] ⚠️  Main bot terminated with code {exit_code}. Relaunching in 10s...")
         await asyncio.sleep(10)
 
-# ── Punto de entrada ──────────────────────────────────────────────────────────
+# ── Entry point ──────────────────────────────────────────────────────────────
 
 async def main():
-    config   = cargar_config()
+    config   = load_config()
     platform = config.get("platform", "discord")
 
-    logger.info(f"[run] 🌐 Plataforma: {platform}")
-    logger.info(f"[run] 📋 Configuración cargada desde: {CONFIG_FILE}")
-    logger.info(f"[run] 🤖 Directorio base: {BASE_DIR}")
+    logger.info(f"[run] 🌐 Platform: {platform}")
+    logger.info(f"[run] 📋 Configuration loaded from: {CONFIG_FILE}")
+    logger.info(f"[run] 🤖 Base directory: {BASE_DIR}")
 
-    tareas = []
+    tasks = []
 
     if platform == "discord":
-        tareas.append(bot_discord())
-        tareas.append(planificador(config))
+        tasks.append(discord_bot())
+        tasks.append(scheduler(config))
     elif platform == "telegram":
-        # TODO: añadir bot_telegram() cuando esté implementado
-        logger.info("[run] ℹ️  Telegram seleccionado — bot principal pendiente de implementar")
+        # TODO: add bot_telegram() when implemented
+        logger.info("[run] ℹ️  Telegram selected — main bot pending implementation")
     else:
-        logger.error(f"[run] ❌ Plataforma desconocida: {platform}")
+        logger.error(f"[run] ❌ Unknown platform: {platform}")
         sys.exit(1)
 
-    await asyncio.gather(*tareas)
+    await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     try:
-        logger.info("[run] 🚀 Iniciando RoleAgentBot...")
+        logger.info("[run] 🚀 Starting RoleAgentBot...")
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("\n[run] 🛑 Detenido por el usuario.")
+        logger.info("\n[run] 🛑 Stopped by user.")

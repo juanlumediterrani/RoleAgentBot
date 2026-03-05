@@ -40,13 +40,9 @@ ARG ACTIVE_ROLES=""
 # ── Código fuente principal ───────────────────────────────────────────────────
 COPY agent_config.json .
 COPY agent_db.py .
-COPY agent_discord.py .
 COPY agent_engine.py .
 COPY agent_logging.py .
-COPY discord_http.py .
-COPY discord_utils.py .
-COPY discord_core_commands.py .
-COPY discord_role_loader.py .
+COPY discord_bot/ discord_bot/
 COPY postprocessor.py .
 COPY run.py .
 

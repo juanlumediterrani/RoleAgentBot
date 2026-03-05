@@ -370,6 +370,33 @@ class AgentDatabase:
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error verificando interacciones recientes: {e}")
             return False
+    
+    def get_active_servers(self) -> list:
+        """Obtiene lista de todos los servidores activos."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                
+                # Obtener servidores únicos de las interacciones
+                cursor.execute('''
+                    SELECT DISTINCT servidor_id 
+                    FROM interacciones 
+                    WHERE servidor_id IS NOT NULL 
+                    ORDER BY servidor_id
+                ''')
+                
+                servers = [row[0] for row in cursor.fetchall()]
+                conn.close()
+                
+                # Si no hay servidores en interacciones, devolver el servidor actual
+                if not servers:
+                    return [self.server_name]
+                
+                return servers
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error obteniendo servidores activos: {e}")
+            return [self.server_name]  # Fallback al servidor actual
 
 # Diccionario para mantener instancias por servidor
 _db_instances = {}

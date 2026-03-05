@@ -1,0 +1,471 @@
+"""
+Discord bot core — setup, events, automatic tasks and message processing.
+Role commands are delegated to roles/*_discord.py.
+Dynamic loading is managed from discord_role_loader.py.
+"""
+
+import os
+import sys
+import json
+import discord
+import asyncio
+import random
+import time
+from discord.ext import commands, tasks
+
+# Add parent directory to Python path to import root modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from agent_engine import PERSONALIDAD, pensar, get_discord_token, AGENT_CFG
+from agent_db import get_db_instance, set_current_server, get_active_server_name
+from agent_logging import get_logger, update_log_file_path
+from discord_bot.discord_utils import (
+    get_server_name, get_db_for_server,
+    get_greeting_enabled, check_chat_rate_limit,
+    is_already_initialized, mark_as_initialized,
+    acquire_connection_lock, acquire_process_lock,
+    get_connection_lock, get_is_connected, set_is_connected,
+    is_role_enabled_check,
+)
+
+logger = get_logger('discord')
+
+# --- CONFIGURATION ---
+
+_discord_cfg = PERSONALIDAD.get("discord", {})
+_cmd_prefix = _discord_cfg.get("command_prefix", "!")
+_bot_display_name = PERSONALIDAD.get("bot_display_name", PERSONALIDAD.get("name", "Bot"))
+_personality_name = PERSONALIDAD.get("name", "bot").lower()
+
+
+def load_agent_config():
+    config_path = os.path.join(os.path.dirname(__file__), 'agent_config.json')
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading agent_config.json: {e}")
+        return {"roles": {}}
+
+
+agent_config = load_agent_config()
+
+# --- INTENTS (only required ones — security fix: was Intents.all()) ---
+intents = discord.Intents.default()
+intents.members = True
+intents.presences = True
+intents.message_content = True
+intents.voice_states = True
+
+bot = commands.Bot(command_prefix=_cmd_prefix, intents=intents)
+
+# Check POE2 availability for automatic task
+try:
+    from roles.buscador_tesoros.poe2 import get_poe2_db_instance as _get_poe2_db
+    _POE2_MODULE_AVAILABLE = True
+except ImportError:
+    _POE2_MODULE_AVAILABLE = False
+    _get_poe2_db = None
+
+
+def _is_poe2_available():
+    if not _POE2_MODULE_AVAILABLE:
+        return False
+    return is_role_enabled_check("buscador_tesoros", agent_config)
+
+
+# --- AUTOMATIC TASKS ---
+
+@tasks.loop(hours=24)
+async def limpieza_db():
+    active_name = (get_active_server_name() or "").strip().lower()
+    target_guild = None
+    if active_name:
+        for g in bot.guilds:
+            if g.name.lower() == active_name:
+                target_guild = g
+                break
+    if target_guild is None and bot.guilds:
+        target_guild = bot.guilds[0]
+    if target_guild is None:
+        return
+    db_instance = get_db_for_server(target_guild)
+    rows = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
+    logger.info(f"🧹 Cleanup in {target_guild.name}: {rows} records deleted.")
+
+
+@tasks.loop(hours=1)
+async def buscador_tesoros_task():
+    """Run treasure hunter automatically."""
+    if not _is_poe2_available():
+        return
+    roles_config = load_agent_config().get("roles", {})
+    interval_hours = roles_config.get("buscador_tesoros", {}).get("interval_hours", 1)
+    if buscador_tesoros_task.hours != interval_hours:
+        buscador_tesoros_task.change_interval(hours=interval_hours)
+        logger.info(f"💎 Treasure hunter frequency updated to {interval_hours}h")
+    logger.info("💎 Starting automatic treasure search...")
+    for guild in bot.guilds:
+        try:
+            server_name = get_server_name(guild)
+            db_poe2 = _get_poe2_db(server_name) if _get_poe2_db else None
+            if not db_poe2 or not db_poe2.is_activo():
+                continue
+            await _ejecutar_buscador_para_servidor(guild)
+        except Exception as e:
+            logger.exception(f"Error en buscador para {guild.name}: {e}")
+    logger.info("💎 Automatic search completed")
+
+
+async def _ejecutar_buscador_para_servidor(guild):
+    """Run treasure hunter logic for a server."""
+    try:
+        from roles.buscador_tesoros.buscador_tesoros import main as buscador_main
+        original_server = get_active_server_name()
+        set_current_server(guild.name)
+        await buscador_main()
+        if original_server:
+            set_current_server(original_server)
+        logger.info(f"💎 Treasure hunter completed for {guild.name}")
+    except Exception as e:
+        logger.exception(f"Error running treasure hunter for {guild.name}: {e}")
+
+
+async def set_mc_presence_if_enabled():
+    """Set bot presence status if MC role is active."""
+    try:
+        if is_role_enabled_check("mc", agent_config):
+            mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+            presence_message = mc_cfg.get("presence_status", "🎵 ¡MC disponible! Usa !mc play")
+            await bot.change_presence(
+                activity=discord.Activity(type=discord.ActivityType.listening, name=presence_message)
+            )
+            logger.info(f"🎵 MC status: {presence_message}")
+    except Exception as e:
+        logger.error(f"Error setting MC status: {e}")
+
+
+# --- EVENTS ---
+
+_initialization_complete = False
+
+
+@bot.event
+async def on_ready():
+    """Runs when the bot is ready."""
+    global _initialization_complete, logger
+
+    if is_already_initialized(_personality_name):
+        logger.warning("Bot already initialized, ignoring duplicate on_ready")
+        return
+
+    process_sock = acquire_process_lock(_personality_name)
+    if process_sock is None:
+        return
+
+    if is_already_initialized(_personality_name):
+        process_sock.close()
+        return
+
+    lock_fd = acquire_connection_lock(_personality_name)
+    if lock_fd is None:
+        process_sock.close()
+        return
+
+    if is_already_initialized(_personality_name):
+        lock_fd.close()
+        process_sock.close()
+        return
+
+    with get_connection_lock():
+        if get_is_connected():
+            lock_fd.close()
+            process_sock.close()
+            return
+        set_is_connected(True)
+
+    mark_as_initialized(_personality_name)
+    _initialization_complete = True
+    await asyncio.sleep(0.2)
+
+    if not get_is_connected():
+        lock_fd.close()
+        process_sock.close()
+        return
+
+    template = _discord_cfg.get("on_ready_message", "✅ {bot_name} operativo: {bot_user}")
+    print(template.format(bot_name=_bot_display_name, bot_user=bot.user))
+
+    # Choose active server
+    preferred_guild = os.getenv("DISCORD_ACTIVE_GUILD", "").strip().lower()
+    active_guild = None
+    if preferred_guild:
+        for g in bot.guilds:
+            if g.name.lower() == preferred_guild:
+                active_guild = g
+                break
+    if active_guild is None and bot.guilds:
+        active_guild = bot.guilds[0]
+
+    if active_guild is not None:
+        set_current_server(active_guild.name)
+        update_log_file_path(active_guild.name, _personality_name)
+        logger = get_logger('discord')
+        logger.info(f"📁 Servidor activo: '{active_guild.name}'")
+
+    logger.info(f"🤖 Bot {_bot_display_name} conectado como {bot.user}")
+    logger.info(f"🤖 Prefijo: {_cmd_prefix} | Intents: members={bot.intents.members}, presences={bot.intents.presences}")
+
+    # Register core commands (help, greetings, insult, test, role toggle)
+    from discord_bot.discord_core_commands import register_core_commands
+    register_core_commands(bot, agent_config)
+
+    # Register commands for enabled roles (MC, watcher, trickster, banker, etc.)
+    from discord_bot.discord_role_loader import register_all_role_commands
+    await register_all_role_commands(bot, agent_config, PERSONALIDAD)
+
+    logger.info(f"🤖 Total commands registered: {len(bot.commands)}")
+    for cmd in bot.commands:
+        logger.info(f"  → {cmd.name}")
+
+    # Automatic tasks
+    if not limpieza_db.is_running():
+        limpieza_db.start()
+        logger.info("🧹 DB cleanup task started")
+    if _is_poe2_available() and not buscador_tesoros_task.is_running():
+        buscador_tesoros_task.start()
+        logger.info("💎 Treasure hunter task started")
+
+    await set_mc_presence_if_enabled()
+
+
+@bot.event
+async def on_guild_join(guild):
+    """Runs when the bot joins a new server."""
+    update_log_file_path(guild.name, _personality_name)
+    logger.info(f"📁 New server: '{guild.name}'")
+
+    if is_role_enabled_check("mc", agent_config):
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+                msg = mc_cfg.get("welcome_message",
+                    "🎵 **¡MC ha llegado!** 🎵\n"
+                    "• `!mc play <canción>` - Reproduce música\n"
+                    "• `!mc help` - Todos los comandos\n"
+                    "🎤 **Conéctate a un canal de voz!**")
+                await channel.send(msg)
+                break
+
+
+@bot.event
+async def on_member_join(member):
+    """Runs when a new user joins the server."""
+    if member.bot:
+        return
+    if not get_greeting_enabled(member.guild):
+        return
+
+    greeting_cfg = _discord_cfg.get("member_greeting", {})
+    if not greeting_cfg.get("enabled", True):
+        return
+
+    welcome_channel_name = greeting_cfg.get("welcome_channel", "general")
+    welcome_channel = None
+    for channel in member.guild.text_channels:
+        if channel.name.lower() == welcome_channel_name.lower():
+            welcome_channel = channel
+            break
+    if welcome_channel is None and member.guild.text_channels:
+        welcome_channel = member.guild.text_channels[0]
+    if welcome_channel is None:
+        return
+
+    greeting_prompt = greeting_cfg.get("prompt",
+        "Saluda brevemente al nuevo miembro {member_name} en el servidor {server_name}. Sé amigable.")
+    greeting_context = greeting_prompt.format(member_name=member.display_name, server_name=member.guild.name)
+
+    try:
+        saludo = await asyncio.to_thread(pensar, greeting_context)
+        await welcome_channel.send(f"🎉 {member.mention} {saludo}")
+        logger.info(f"👋 New user {member.name} greeted in {member.guild.name}")
+        db_instance = get_db_for_server(member.guild)
+        await asyncio.to_thread(
+            db_instance.registrar_interaccion,
+            member.id, member.name, "BIENVENIDA",
+            "Usuario se unió al servidor",
+            welcome_channel.id, member.guild.id,
+            metadata={"saludo": saludo}
+        )
+    except Exception as e:
+        logger.error(f"Error greeting {member.name}: {e}")
+        fallback_msg = greeting_cfg.get("fallback", "¡Bienvenido al servidor!")
+        await welcome_channel.send(f"🎉 {member.mention} {fallback_msg}")
+
+
+@bot.event
+async def on_presence_update(before, after):
+    """Runs when a member goes from offline to online."""
+    if after.bot:
+        return
+    if not get_greeting_enabled(after.guild):
+        return
+
+    presence_cfg = _discord_cfg.get("member_presence", {})
+    if not presence_cfg.get("enabled", False):
+        return
+
+    before_status = before.status if before.status else discord.Status.offline
+    after_status = after.status if after.status else discord.Status.offline
+    if before_status != discord.Status.offline or after_status != discord.Status.online:
+        return
+
+    current_time = time.time()
+    last_greeting_key = f"presence_greeting_{after.id}"
+    if not hasattr(on_presence_update, '_last_greetings'):
+        on_presence_update._last_greetings = {}
+    if current_time - on_presence_update._last_greetings.get(last_greeting_key, 0) < 300:
+        return
+
+    presence_prompt = presence_cfg.get("prompt",
+        "Saluda brevemente a {member_name} que se acaba de conectar. Sé orco pero breve.")
+    presence_context = presence_prompt.format(member_name=after.display_name)
+
+    try:
+        saludo = await asyncio.to_thread(pensar, presence_context)
+        await after.send(f"👋 {saludo}")
+        logger.info(f"🔄 Presence DM sent to {after.name}")
+        on_presence_update._last_greetings[last_greeting_key] = current_time
+        db_instance = get_db_for_server(after.guild)
+        await asyncio.to_thread(
+            db_instance.registrar_interaccion,
+            after.id, after.name, "PRESENCIA_DM",
+            "Usuario pasó de offline a online (saludo por DM)",
+            None, after.guild.id,
+            metadata={"saludo": saludo}
+        )
+    except Exception as e:
+        logger.error(f"Error greeting presence of {after.name}: {e}")
+        fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
+        try:
+            await after.send(f"👋 {fallback_msg}")
+        except Exception:
+            pass
+
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """Disconnect the bot from voice if the channel is empty (MC feature)."""
+    if member.bot:
+        return
+    for vc in list(bot.voice_clients):
+        if not vc.is_connected():
+            continue
+        human_users = [m for m in vc.channel.members if not m.bot]
+        if len(human_users) == 0:
+            await asyncio.sleep(30)
+            if vc.is_connected():
+                current_users = [m for m in vc.channel.members if not m.bot]
+                if len(current_users) == 0:
+                    guild = vc.guild
+                    await vc.disconnect()
+                    try:
+                        mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+                        msg = mc_cfg.get("voice_leave_empty", "👋 Canal vacío, me voy!")
+                        canal = next(
+                            (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages),
+                            None
+                        )
+                        if canal:
+                            await canal.send(msg)
+                    except Exception:
+                        pass
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Handle command errors."""
+    if isinstance(error, commands.CommandNotFound):
+        return
+    if isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
+        return
+    logger.error(f"Command error: {error}")
+
+
+@bot.event
+async def on_message(message):
+    """Handle messages: commands (!) and chat (mentions/DMs)."""
+    if message.author == bot.user:
+        return
+
+    if message.content.startswith(bot.command_prefix):
+        await bot.process_commands(message)
+        return
+
+    # Only process if DM or direct mention
+    if message.guild is None or bot.user.mentioned_in(message):
+        await _process_chat_message(message)
+
+
+async def _process_chat_message(message):
+    """Process normal chat messages (DMs and mentions) with rate limiting."""
+    # Rate limiting per user (security fix)
+    if check_chat_rate_limit(message.author.id):
+        return
+
+    try:
+        from agent_engine import pensar, incrementar_uso
+
+        is_public = message.guild is not None
+
+        server_context = ""
+        if message.guild:
+            server_name = get_server_name(message.guild)
+            server_context = f"Server: {message.guild.name} ({server_name})"
+
+        active_roles = []
+        roles_config = AGENT_CFG.get("roles", {})
+        if roles_config.get("trickster", {}).get("enabled", False):
+            active_roles.append("trickster")
+        if roles_config.get("banker", {}).get("enabled", False):
+            active_roles.append("banker")
+
+        # Use dynamic name instead of hardcoded (security/portability fix)
+        contextual_role = f"{_bot_display_name}"
+        if active_roles:
+            contextual_role += f" (active roles: {', '.join(active_roles)})"
+        if server_context:
+            contextual_role += f" - {server_context}"
+
+        history_list = []
+
+        response = pensar(
+            rol_contextual=contextual_role,
+            contenido_usuario=message.content,
+            historial_lista=history_list,
+            es_publico=is_public,
+            logger=logger
+        )
+
+        incrementar_uso()
+
+        if response and response.strip():
+            await message.channel.send(response)
+
+    except Exception as e:
+        logger.exception(f"Error processing chat message: {e}")
+        fallbacks = PERSONALIDAD.get("emergency_fallbacks", [])
+        if fallbacks:
+            await message.channel.send(random.choice(fallbacks))
+
+
+# --- BOT STARTUP ---
+if __name__ == "__main__":
+    try:
+        bot.run(get_discord_token())
+    except KeyboardInterrupt:
+        logger.info("👋 Bot stopped by user")
+    except Exception as e:
+        logger.error(f"❌ Fatal error: {e}")
+        import traceback
+        traceback.print_exc()

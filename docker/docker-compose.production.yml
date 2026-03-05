@@ -25,11 +25,11 @@ services:
       - PERSONALITY=kronk
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
-      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,trilero,buscar_anillo,mc
-      - VIGIA_NOTICIAS_ENABLED=true
-      - BUSCADOR_TESOROS_ENABLED=true
-      - TRILERO_ENABLED=true
-      - BUSCAR_ANILLO_ENABLED=true
+      - ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc
+      - NEWS_WATCHER_ENABLED=true
+      - TREASURE_HUNTER_ENABLED=true
+      - TRICKSTER_ENABLED=true
+      - BANKER_ENABLED=true
       - MC_ENABLED=true
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages
@@ -52,11 +52,11 @@ services:
       - PERSONALITY=putre
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
-      - ACTIVE_ROLES=vigia_noticias,buscador_tesoros,trilero,buscar_anillo,mc
-      - VIGIA_NOTICIAS_ENABLED=true
-      - BUSCADOR_TESOROS_ENABLED=true
-      - TRILERO_ENABLED=true
-      - BUSCAR_ANILLO_ENABLED=true
+      - ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc
+      - NEWS_WATCHER_ENABLED=true
+      - TREASURE_HUNTER_ENABLED=true
+      - TRICKSTER_ENABLED=true
+      - BANKER_ENABLED=true
       - MC_ENABLED=true
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages

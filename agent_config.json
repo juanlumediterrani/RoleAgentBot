@@ -2,25 +2,34 @@
   "personality": "personalities/kronk.json",
   "platform": "discord",
   "roles": {
-    "vigia_noticias": {
+    "news_watcher": {
       "enabled": true,
       "interval_hours": 1,
-      "script": "roles/vigia_noticias/vigia_noticias.py"
+      "script": "roles/news_watcher/news_watcher.py"
     },
-    "buscador_tesoros": {
+    "treasure_hunter": {
       "enabled": true,
       "interval_hours": 1,
-      "script": "roles/buscador_tesoros/buscador_tesoros.py"
+      "script": "roles/treasure_hunter/treasure_hunter.py"
     },
-    "trilero": {
+    "trickster": {
       "enabled": true,
       "interval_hours": 12,
-      "script": "roles/trilero/trilero.py"
-    },
-    "buscar_anillo": {
-      "enabled": true,
-      "interval_hours": 24,
-      "script": "roles/buscar_anillo/buscar_anillo.py"
+      "script": "roles/trickster/trickster.py",
+      "subroles": {
+        "beggar": {
+          "enabled": true,
+          "frequency_hours": 12
+        },
+        "dice_game": {
+          "enabled": true,
+          "fixed_bet": 10
+        },
+        "ring": {
+          "enabled": true,
+          "frequency_hours": 24
+        }
+      }
     },
     "mc": {
       "enabled": true,
@@ -45,10 +54,10 @@
         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
       }
     },
-    "banquero": {
+    "banker": {
       "enabled": true,
       "interval_hours": 24,
-      "script": "roles/banquero/banquero.py"
+      "script": "roles/banker/banker.py"
     }
   }
 }
