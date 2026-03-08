@@ -17,6 +17,8 @@ services:
       dockerfile: docker/Dockerfile
       args:
         PERSONALITY: putre
+        HOST_UID: ${HOST_UID:-1001}
+        HOST_GID: ${HOST_GID:-1001}
     image: roleagentbot:dev
     container_name: roleagentbot-dev
     env_file: ../.env
@@ -24,6 +26,9 @@ services:
       - PERSONALITY=putre
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - COHERE_API_KEY=${COHERE_API_KEY}
       # ACTIVAR TODOS LOS ROLES (versión ingles)
       - ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc
       - NEWS_WATCHER_ENABLED=true

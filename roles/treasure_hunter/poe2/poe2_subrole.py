@@ -23,7 +23,7 @@ except Exception:
     logger = logging.getLogger('poe2_subrole')
 
 from agent_db import get_server_db_path_fallback
-from agent_engine import get_discord_token, pensar
+from agent_engine import get_discord_token, think
 from agent_db import get_active_server_name
 from .poe2scout_client import Poe2ScoutClient, ResponseFormatError, APIError
 
@@ -402,102 +402,102 @@ class Poe2SubroleBot(discord.Client):
         return None
     
     async def _enviar_notificacion(self, nombre_item: str, señal: str, precio: float, user):
-        """Envía una notificación sobre oportunidad detectada."""
+        """Send notification about detected opportunity."""
         try:
             if señal == "COMPRA":
-                mensaje = f"Misión POE2: Oportunidad de compra detectada. El item {nombre_item} está barato ({precio:.2f} Div). ¡Momento de comprar!"
+                mensaje = f"POE2 Mission: Purchase opportunity detected. The item {nombre_item} is cheap ({precio:.2f} Div). Time to buy!"
             else:  # VENTA
-                mensaje = f"Misión POE2: Oportunidad de venta detectada. El item {nombre_item} está caro ({precio:.2f} Div). ¡Momento de vender!"
+                mensaje = f"POE2 Mission: Sale opportunity detected. The item {nombre_item} is expensive ({precio:.2f} Div). Time to sell!"
             
-            res = await asyncio.to_thread(pensar, mensaje)
-            await user.send(f"🔮 **POE2 TESORO**: {res}")
-            logger.info(f"✅ Notificación POE2 enviada para {nombre_item} - {señal}")
+            res = await asyncio.to_thread(think, mensaje)
+            await user.send(f"🔮 **POE2 TREASURE**: {res}")
+            logger.info(f"✅ POE2 notification sent for {nombre_item} - {señal}")
             
         except Exception as e:
-            logger.exception(f"Error enviando notificación POE2: {e}")
+            logger.exception(f"Error sending POE2 notification: {e}")
 
 def inicializar_items_por_defecto(db_instance: DatabaseRolePoe2) -> bool:
-    """Inicializa los items por defecto si no hay ninguno configurado y descarga sus datos."""
+    """Initialize default items if none are configured and download their data."""
     try:
         from .poe2scout_client import Poe2ScoutClient
         from ..db_role_treasure_hunter import DatabaseRolePoe
         
-        objetivos_actuales = db_instance.get_objetivos()
+        current_objectives = db_instance.get_objetivos()
         
-        # Si ya hay items, no hacer nada
-        if objetivos_actuales:
-            logger.info(f"📋 Ya existen {len(objetivos_actuales)} items configurados, omitiendo inicialización")
+        # If there are already items, do nothing
+        if current_objectives:
+            logger.info(f"📋 {len(current_objectives)} items already configured, skipping initialization")
             return True
         
-        # Items por defecto
-        items_por_defecto = {
+        # Default items
+        default_items = {
             "ancient rib": 4379,
             "ancient collarbone": 4385,
             "ancient jawbone": 4373,
         }
         
-        logger.info("📋 Inicializando items por defecto para POE2...")
+        logger.info("📋 Initializing default items for POE2...")
         
-        # Obtener configuración necesaria para descargar datos
-        liga_actual = db_instance.get_liga()
+        # Get necessary configuration to download data
+        current_league = db_instance.get_liga()
         server_name = db_instance.server_name if hasattr(db_instance, 'server_name') else "default"
         
-        # Crear instancia de DatabaseRolePoe para descargar datos
-        db_role_treasure_hunter = DatabaseRolePoe(server_name, liga_actual)
+        # Create DatabaseRolePoe instance to download data
+        db_role_treasure_hunter = DatabaseRolePoe(server_name, current_league)
         scout = Poe2ScoutClient()
         
-        items_añadidos = []
+        items_added = []
         
-        for nombre_item, item_id in items_por_defecto.items():
+        for nombre_item, item_id in default_items.items():
             if db_instance.add_objetivo(nombre_item, item_id):
-                logger.info(f"✅ Item por defecto añadido: {nombre_item}")
-                items_añadidos.append(nombre_item)
+                logger.info(f"✅ Default item added: {nombre_item}")
+                items_added.append(nombre_item)
                 
-                # Descargar historial y precio actual
+                # Download history and current price
                 try:
-                    logger.info(f"📥 Descargando historial de {nombre_item}...")
-                    entries = scout.get_item_history(nombre_item, league=liga_actual)
+                    logger.info(f"📥 Downloading history for {nombre_item}...")
+                    entries = scout.get_item_history(nombre_item, league=current_league)
                     
                     if entries:
-                        insertados = db_role_treasure_hunter.insertar_precios_bulk(nombre_item, entries, liga_actual)
-                        logger.info(f"📊 {nombre_item}: {len(entries)} datos recibidos, {insertados} nuevos insertados")
+                        inserted = db_role_treasure_hunter.insertar_precios_bulk(nombre_item, entries, current_league)
+                        logger.info(f"📊 {nombre_item}: {len(entries)} data received, {inserted} new inserted")
                         
-                        # Obtener precio actual
-                        precio_actual = db_role_treasure_hunter.obtener_precio_actual(nombre_item, liga_actual)
-                        if precio_actual:
-                            logger.info(f"💰 Precio actual de {nombre_item}: {precio_actual} Div")
+                        # Get current price
+                        current_price = db_role_treasure_hunter.obtener_precio_actual(nombre_item, current_league)
+                        if current_price:
+                            logger.info(f"💰 Current price of {nombre_item}: {current_price} Div")
                         else:
-                            logger.warning(f"⚠️ No se pudo obtener precio actual para {nombre_item}")
+                            logger.warning(f"⚠️ Could not get current price for {nombre_item}")
                     else:
-                        logger.warning(f"⚠️ No hay datos disponibles para {nombre_item}")
+                        logger.warning(f"⚠️ No data available for {nombre_item}")
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ Error descargando datos para {nombre_item}: {e}")
+                    logger.warning(f"⚠️ Error downloading data for {nombre_item}: {e}")
             else:
-                logger.warning(f"⚠️ No se pudo añadir item por defecto: {nombre_item}")
+                logger.warning(f"⚠️ Could not add default item: {nombre_item}")
         
-        if items_añadidos:
-            logger.info(f"✅ Inicialización completada. Items añadidos y datos descargados: {', '.join(items_añadidos)}")
+        if items_added:
+            logger.info(f"✅ Initialization completed. Items added and data downloaded: {', '.join(items_added)}")
         else:
-            logger.warning("⚠️ No se pudo añadir ningún item por defecto")
+            logger.warning("⚠️ Could not add any default item")
             
         return True
         
     except Exception as e:
-        logger.exception(f"❌ Error inicializando items por defecto: {e}")
+        logger.exception(f"❌ Error initializing default items: {e}")
         return False
 
-# --- FUNCIÓN DE REFERENCIA DE ITEMS ---
+# --- ITEM REFERENCE FUNCTION ---
 
 def get_items_reference():
-    """Obtiene la referencia de items disponibles usando el método getItems del scrapper."""
+    """Get reference of available items using the getItems method from the scraper."""
     try:
         client = Poe2ScoutClient()
         
-        # Intentar obtener items de la API
-        # Nota: Esto necesitaría implementarse en el cliente si la API lo soporta
-        # Por ahora, devolvemos un diccionario con los items conocidos
-        items_conocidos = {
+        # Try to get items from the API
+        # Note: This would need to be implemented in the client if the API supports it
+        # For now, we return a dictionary with known items
+        known_items = {
             "ancient rib": 4379,
             "ancient collarbone": 4385,
             "ancient jawbone": 4373,
@@ -506,14 +506,14 @@ def get_items_reference():
             "idol of uldurn": 24,
         }
         
-        logger.info(f"📋 Referencia de items cargada: {len(items_conocidos)} items")
-        return items_conocidos
+        logger.info(f"📋 Items reference loaded: {len(known_items)} items")
+        return known_items
         
     except Exception as e:
-        logger.exception(f"Error obteniendo referencia de items: {e}")
+        logger.exception(f"Error getting items reference: {e}")
         return {}
 
-# --- EJECUCIÓN PRINCIPAL ---
+# --- MAIN EXECUTION ---
 
 if __name__ == "__main__":
     Poe2SubroleBot().run(get_discord_token())

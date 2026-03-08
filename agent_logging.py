@@ -54,11 +54,29 @@ def get_server_log_path(server_name: str, personality_name: str = None) -> Path:
     
     # Directorio base
     server_dir = LOG_DIR / server_sanitized
-    server_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        server_dir.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError) as e:
+        # Si no podemos crear el directorio del servidor, usar el directorio base
+        print(f"⚠️ No se puede crear directorio de servidor {server_dir}: {e}")
+        print(f"📝 Usando directorio base: {LOG_DIR}")
+        server_dir = LOG_DIR
     
     # Usar nombre de personalidad si se proporciona, si no el global
     log_name = personality_name or get_personality_name()
-    return server_dir / f'{log_name}.log'
+    log_file = server_dir / f'{log_name}.log'
+    
+    # Intentar crear/tocar el archivo para verificar permisos
+    try:
+        log_file.touch(exist_ok=True)
+    except (PermissionError, OSError) as e:
+        # Si no podemos crear el archivo, usar un archivo en el directorio base
+        print(f"⚠️ No se puede crear archivo de log {log_file}: {e}")
+        fallback_file = LOG_DIR / f'{log_name}.log'
+        print(f"📝 Usando archivo fallback: {fallback_file}")
+        return fallback_file
+    
+    return log_file
 
 
 # Variable global para el archivo de log actual
@@ -87,16 +105,14 @@ def get_logger(name='agent'):
     if logger.handlers:
         has_file = any(isinstance(h, RotatingFileHandler) for h in logger.handlers)
         if not has_file:
-            active_server = _get_active_server_name()
-            if active_server:
-                try:
-                    fmt = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
-                    fh = RotatingFileHandler(_current_log_file, maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
-                    fh.setLevel(logging.INFO)
-                    fh.setFormatter(fmt)
-                    logger.addHandler(fh)
-                except (PermissionError, OSError):
-                    pass
+            try:
+                fmt = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
+                fh = RotatingFileHandler(_current_log_file, maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
+                fh.setLevel(logging.INFO)
+                fh.setFormatter(fmt)
+                logger.addHandler(fh)
+            except (PermissionError, OSError):
+                pass
         return logger
 
     logger.propagate = False
@@ -113,13 +129,11 @@ def get_logger(name='agent'):
 
     # Rotating file handler con manejo de errores de permisos
     try:
-        # Solo crear log a fichero si ya tenemos servidor activo
-        active_server = _get_active_server_name()
-        if active_server:
-            fh = RotatingFileHandler(_current_log_file, maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
-            fh.setLevel(logging.INFO)
-            fh.setFormatter(fmt)
-            logger.addHandler(fh)
+        # Always create log file (server-specific if available, otherwise personality-based)
+        fh = RotatingFileHandler(_current_log_file, maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
+        fh.setLevel(logging.INFO)
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
     except (PermissionError, OSError) as e:
         # Si no podemos escribir al archivo, solo usamos console
         print(f"⚠️ No se puede escribir en log file {_current_log_file}: {e}")

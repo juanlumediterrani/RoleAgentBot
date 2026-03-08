@@ -2,28 +2,69 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # docker-entrypoint.sh
 #
-# Aplica los inyectables de construcción/entorno sobre agent_config.json
-# antes de arrancar el bot.
+# Apply build/environment injectables to agent_config.json
+# before starting the bot.
 #
-# Variables de entorno leídas:
-#   PERSONALITY   - nombre del JSON de personalidad (sin extensión ni ruta)
-#                   p.ej. "kronk"  →  personalities/kronk.json
-#   ACTIVE_ROLES  - lista separada por comas de roles a habilitar
-#                   p.ej. "vigia_noticias,buscar_anillo"
-#                   Los roles NO incluidos se deshabilitan automáticamente.
-#                   Si la variable está vacía se deja el config tal cual.
+# Environment variables read:
+#   PERSONALITY   - name of personality JSON (without extension or path)
+#                   e.g. "kronk"  →  personalities/kronk.json
+#   ACTIVE_ROLES  - comma-separated list of roles to enable
+#                   e.g. "news_watcher,treasure_hunter,trickster,banker,mc"
+#                   Roles NOT included are automatically disabled.
+#                   If variable is empty, config is left as-is.
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
 
+# ── 0. Fix ownership of mounted directories (only if running as root) ────────
+if [ "$(id -u)" = "0" ]; then
+    # Get the target user ID from environment or fallback to 1001
+    TARGET_UID=${HOST_UID:-1001}
+    TARGET_GID=${HOST_GID:-1001}
+    
+    # Ensure mounted directories have correct ownership for target user
+    if [ -d "/app/logs" ]; then
+        chown -R ${TARGET_UID}:${TARGET_GID} /app/logs 2>/dev/null || true
+    fi
+    if [ -d "/app/databases" ]; then
+        chown -R ${TARGET_UID}:${TARGET_GID} /app/databases 2>/dev/null || true
+    fi
+    if [ -d "/app/fatiga" ]; then
+        chown -R ${TARGET_UID}:${TARGET_GID} /app/fatiga 2>/dev/null || true
+    fi
+    
+    # Pre-create server directories that the program will need
+    # This prevents permission errors when the program tries to create them at runtime
+    mkdir -p /app/logs/dev_server 2>/dev/null || true
+    mkdir -p /app/databases/dev_server 2>/dev/null || true
+    
+    chown -R ${TARGET_UID}:${TARGET_GID} /app/logs /app/databases 2>/dev/null || true
+    
+    # Also fix any existing log directories that might have wrong permissions
+    find /app/logs -type d -exec chown ${TARGET_UID}:${TARGET_GID} {} \; 2>/dev/null || true
+    
+    # Fix permissions for any existing database files
+    find /app/databases -type f -exec chown ${TARGET_UID}:${TARGET_GID} {} \; 2>/dev/null || true
+fi
+
+# ── Now running as target user (or already running as correct user) ──────────────
 CONFIG="agent_config.json"
 
-# ── 1. Aplicar personalidad ───────────────────────────────────────────────────
+# ── 1. Apply personality ───────────────────────────────────────────────────
 if [ -n "${PERSONALITY}" ]; then
-    PERSONALITY_PATH="personalities/${PERSONALITY}.json"
-    if [ ! -f "${PERSONALITY_PATH}" ]; then
-        echo "ERROR: No se encontró la personalidad '${PERSONALITY_PATH}'" >&2
+    # Try split structure first: personalities/putre/personality.json
+    PERSONALITY_PATH_SPLIT="personalities/${PERSONALITY}/personality.json"
+    # Fallback to legacy: personalities/putre.json
+    PERSONALITY_PATH_LEGACY="personalities/${PERSONALITY}.json"
+    
+    if [ -f "${PERSONALITY_PATH_SPLIT}" ]; then
+        PERSONALITY_PATH="${PERSONALITY_PATH_SPLIT}"
+    elif [ -f "${PERSONALITY_PATH_LEGACY}" ]; then
+        PERSONALITY_PATH="${PERSONALITY_PATH_LEGACY}"
+    else
+        echo "ERROR: Personality not found '${PERSONALITY_PATH_SPLIT}' nor '${PERSONALITY_PATH_LEGACY}'" >&2
         exit 1
     fi
+    
     python3 - <<PYEOF
 import json, sys
 with open("${CONFIG}", encoding="utf-8") as f:
@@ -31,11 +72,11 @@ with open("${CONFIG}", encoding="utf-8") as f:
 cfg["personality"] = "${PERSONALITY_PATH}"
 with open("${CONFIG}", "w", encoding="utf-8") as f:
     json.dump(cfg, f, indent=2, ensure_ascii=False)
-print(f"[entrypoint] Personalidad → ${PERSONALITY_PATH}")
+print(f"[entrypoint] Personality → ${PERSONALITY_PATH}")
 PYEOF
 fi
 
-# ── 2. Aplicar roles activos ──────────────────────────────────────────────────
+# ── 2. Apply active roles ──────────────────────────────────────────────────
 if [ -n "${ACTIVE_ROLES}" ]; then
     python3 - <<PYEOF
 import json, os, sys
@@ -48,7 +89,7 @@ with open("${CONFIG}", encoding="utf-8") as f:
 for role_name, role_cfg in cfg.get("roles", {}).items():
     enabled = role_name in active
     role_cfg["enabled"] = enabled
-    state = "✅ activo" if enabled else "💤 desactivado"
+    state = "✅ active" if enabled else "💤 disabled"
     print(f"[entrypoint] Rol '{role_name}' → {state}")
 
 with open("${CONFIG}", "w", encoding="utf-8") as f:

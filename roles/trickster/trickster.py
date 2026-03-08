@@ -60,11 +60,11 @@ def _load_subrole_function(module_file, func_name):
 
 # Load subrole task functions
 _beggar_task = _load_subrole_function(
-    os.path.join(_TRICKSTER_DIR, "subroles", "beggar", "limosna", "limosna.py"),
+    os.path.join(_TRICKSTER_DIR, "subroles", "beggar", "beggar.py"),
     "beggar_task"
 )
 _dice_game_task = _load_subrole_function(
-    os.path.join(_TRICKSTER_DIR, "subroles", "dice_game", "bote", "bote.py"),
+    os.path.join(_TRICKSTER_DIR, "subroles", "dice_game", "dice_game.py"),
     "dice_game_task"
 )
 

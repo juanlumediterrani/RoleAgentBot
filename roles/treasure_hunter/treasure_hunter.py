@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from agent_engine import get_discord_token, pensar
+from agent_engine import get_discord_token, think
 from agent_db import get_global_db, get_active_server_name
 from dotenv import load_dotenv
 from agent_logging import get_logger

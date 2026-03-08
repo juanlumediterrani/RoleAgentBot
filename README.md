@@ -24,8 +24,10 @@ Un bot de Discord modular con sistema de roles autónomos programables, motor de
 - **DM**: Mensaje directo al bot para conversación privada
 - **Prefijo**: Usa el prefijo configurado para comandos específicos
 - Roles:
-  - vigia_noticias: !vigianoticias, !vigianoticias
-  - buscar_anillo: !acusaranillo
+  - news_watcher: !watcher, !watcherhelp
+  - treasure_hunter: !hunter, !hunterhelp
+  - trickster: !trickster, !tricksterhelp
+  - banker: !banker, !bankerhelp
   - mc: !mc play, !mc queue, !mc help (bot de música autónomo)
     
 **Desarrollado con ❤️ para la comunidad**
@@ -139,13 +141,13 @@ docker stats --no-stream
 
 ```bash
 # Opción A: Docker Compose (instancia separada)
-PERSONALITY=kronk ACTIVE_ROLES=vigia_noticias,buscar_anillo \
+PERSONALITY=kronk ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc \
   docker compose up --build -d
 
 # Opción B: Docker manual
 docker build \
   --build-arg PERSONALITY=kronk \
-  --build-arg ACTIVE_ROLES=vigia_noticias,buscar_anillo \
+  --build-arg ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc \
   -t roleagentbot:latest .
 
 docker run --env-file .env \
@@ -197,7 +199,7 @@ docker compose ps
 docker compose down
 
 # Lanzar con nueva configuración
-PERSONALITY=putre ACTIVE_ROLES=trilero,buscar_anillo \
+PERSONALITY=putre ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc \
   docker compose up --build -d
 ```
 
@@ -216,7 +218,7 @@ docker compose up --build -d
 | Argumento | Descripción | Ejemplo |
 |-----------|-------------|---------|
 | `PERSONALITY` | Nombre del JSON de personalidad (sin extensión) | `kronk` |
-| `ACTIVE_ROLES` | Roles a habilitar, separados por coma | `vigia_noticias,buscar_anillo` |
+| `ACTIVE_ROLES` | Roles a habilitar, separados por coma | `news_watcher,treasure_hunter,trickster,banker,mc` |
 
 Si se omiten, se usan los valores definidos en `agent_config.json`.
 
@@ -315,12 +317,16 @@ docker compose -f docker-compose.shared.yml up --build -d
 ├─────────────────────────────────────┤
 │ roleagentbot:kronk: 155MB (+5MB)     │ ← Hereda base + código
 │  ├── run.py, agent_*.py             │
-│  ├── personalities/kronk.json        │
+│  ├── personalities/kronk/personality.json │
+│  ├── personalities/kronk/prompts.json     │
+│  ├── personalities/kronk/messages.json    │
 │  └── roles/                          │
 ├─────────────────────────────────────┤
 │ roleagentbot:putre: 155MB (+5MB)     │ ← Hereda base + código
 │  ├── run.py, agent_*.py             │
-│  ├── personalities/putre.json        │
+│  ├── personalities/putre/personality.json │
+│  ├── personalities/putre/prompts.json     │
+│  ├── personalities/putre/messages.json    │
 │  └── roles/                          │
 └─────────────────────────────────────┘
            ↓ build-time optimization

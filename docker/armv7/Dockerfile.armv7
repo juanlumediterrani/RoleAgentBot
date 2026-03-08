@@ -4,7 +4,7 @@
 # Construir:
 #   docker build --platform=linux/arm/v7 -f Dockerfile.armv7 \
 #                --build-arg PERSONALITY=kronk \
-#                --build-arg ACTIVE_ROLES="trilero,buscador_tesoros" \
+#                --build-arg ACTIVE_ROLES="news_watcher,treasure_hunter,trickster,banker,mc" \
 #                -t roleagentbot:kronk-armv7 .
 #
 # Si no se pasan argumentos se usa la personalidad y los roles definidos en

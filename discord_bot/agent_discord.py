@@ -16,7 +16,7 @@ from discord.ext import commands, tasks
 # Add parent directory to Python path to import root modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agent_engine import PERSONALIDAD, pensar, get_discord_token, AGENT_CFG
+from agent_engine import PERSONALIDAD, think, get_discord_token, AGENT_CFG
 from agent_db import get_db_instance, set_current_server, get_active_server_name
 from agent_logging import get_logger, update_log_file_path
 from discord_bot.discord_utils import (
@@ -77,7 +77,7 @@ def _is_poe2_available():
 # --- AUTOMATIC TASKS ---
 
 @tasks.loop(hours=24)
-async def limpieza_db():
+async def database_cleanup():
     active_name = (get_active_server_name() or "").strip().lower()
     target_guild = None
     if active_name:
@@ -95,14 +95,14 @@ async def limpieza_db():
 
 
 @tasks.loop(hours=1)
-async def buscador_tesoros_task():
+async def treasure_hunter_task():
     """Run treasure hunter automatically."""
     if not _is_poe2_available():
         return
     roles_config = load_agent_config().get("roles", {})
     interval_hours = roles_config.get("buscador_tesoros", {}).get("interval_hours", 1)
-    if buscador_tesoros_task.hours != interval_hours:
-        buscador_tesoros_task.change_interval(hours=interval_hours)
+    if treasure_hunter_task.hours != interval_hours:
+        treasure_hunter_task.change_interval(hours=interval_hours)
         logger.info(f"💎 Treasure hunter frequency updated to {interval_hours}h")
     logger.info("💎 Starting automatic treasure search...")
     for guild in bot.guilds:
@@ -229,11 +229,11 @@ async def on_ready():
         logger.info(f"  → {cmd.name}")
 
     # Automatic tasks
-    if not limpieza_db.is_running():
-        limpieza_db.start()
+    if not database_cleanup.is_running():
+        database_cleanup.start()
         logger.info("🧹 DB cleanup task started")
-    if _is_poe2_available() and not buscador_tesoros_task.is_running():
-        buscador_tesoros_task.start()
+    if _is_poe2_available() and not treasure_hunter_task.is_running():
+        treasure_hunter_task.start()
         logger.info("💎 Treasure hunter task started")
 
     await set_mc_presence_if_enabled()
@@ -286,7 +286,7 @@ async def on_member_join(member):
     greeting_context = greeting_prompt.format(member_name=member.display_name, server_name=member.guild.name)
 
     try:
-        saludo = await asyncio.to_thread(pensar, greeting_context)
+        saludo = await asyncio.to_thread(think, greeting_context)
         await welcome_channel.send(f"🎉 {member.mention} {saludo}")
         logger.info(f"👋 New user {member.name} greeted in {member.guild.name}")
         db_instance = get_db_for_server(member.guild)
@@ -332,7 +332,7 @@ async def on_presence_update(before, after):
     presence_context = presence_prompt.format(member_name=after.display_name)
 
     try:
-        saludo = await asyncio.to_thread(pensar, presence_context)
+        saludo = await asyncio.to_thread(think, presence_context)
         await after.send(f"👋 {saludo}")
         logger.info(f"🔄 Presence DM sent to {after.name}")
         on_presence_update._last_greetings[last_greeting_key] = current_time
@@ -414,7 +414,7 @@ async def _process_chat_message(message):
         return
 
     try:
-        from agent_engine import pensar, incrementar_uso
+        from agent_engine import think, incrementar_uso
 
         is_public = message.guild is not None
 
@@ -439,7 +439,7 @@ async def _process_chat_message(message):
 
         history_list = []
 
-        response = pensar(
+        response = think(
             rol_contextual=contextual_role,
             contenido_usuario=message.content,
             historial_lista=history_list,

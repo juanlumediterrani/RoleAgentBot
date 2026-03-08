@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 import asyncio
 from agent_logging import get_logger
 from agent_engine import PERSONALIDAD
-from db_role_banker import get_banquero_db_instance as get_banker_db_instance
+from db_role_banker import get_banker_db_instance
 from agent_db import get_active_server_name, set_current_server
 
 logger = get_logger('banker')
@@ -66,13 +66,13 @@ async def distribute_daily_tae():
         for user_id, user_name, server_id, server_name in wallets:
             try:
                 # Distribute TAE
-                success = db_banker.registrar_transaccion(
+                success = db_banker.update_balance(
                     user_id=user_id,
                     user_name=user_name,
                     server_id=server_id,
                     server_name=server_name,
                     amount=tae_amount,
-                    trans_type="TAE_DAILY",
+                    type="TAE_DAILY",
                     description="Daily TAE distribution"
                 )
                 

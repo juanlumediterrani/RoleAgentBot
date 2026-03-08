@@ -1,11 +1,11 @@
 """
-Subrol POE2 para el Buscador de Tesoros.
+POE2 subrole for the Treasure Hunter.
 
-Este módulo contiene toda la funcionalidad del subrol POE2:
-- Base de datos para gestión de configuración y objetivos
-- Lógica de análisis de precios de Path of Exile 2
-- Bot de Discord para notificaciones
-- Integración con el API de poe2scout
+This module contains all POE2 subrole functionality:
+- Database for configuration and objectives management
+- Path of Exile 2 price analysis logic
+- Discord bot for notifications
+- Integration with poe2scout API
 """
 
 from .poe2_subrole import (

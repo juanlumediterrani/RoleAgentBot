@@ -20,7 +20,7 @@ import asyncio
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent_logging import get_logger
-from agent_engine import PERSONALIDAD, pensar, AGENT_CFG
+from agent_engine import PERSONALIDAD, think, AGENT_CFG
 from discord_bot.discord_utils import (
     is_admin, is_duplicate_command, send_dm_or_channel,
     set_greeting_enabled, get_greeting_enabled,
@@ -36,7 +36,7 @@ _insult_cfg = _discord_cfg.get("insult_command", {})
 
 
 def register_core_commands(bot, agent_config):
-    """Registra todos los comandos base del bot."""
+    """Register all base bot commands."""
 
     # --- Dynamic names based on personality ---
     greet_name = f"greet{_personality_name}"
@@ -57,11 +57,11 @@ def register_core_commands(bot, agent_config):
 
         set_greeting_enabled(ctx.guild, enabled)
 
-        greeting_cfg = PERSONALIDAD.get("discord", {}).get("greeting_messages", {})
-        mensaje_activado = greeting_cfg.get("saludos_activados", "GRRR Kronk will watch for humans! Kronk will greet when humans appear!")
-        mensaje_desactivado = greeting_cfg.get("saludos_desactivados", "BRRR Kronk will no longer watch humans! Kronk will stop greeting, too much work!")
+        greeting_cfg = PERSONALIDAD.get("discord", {}).get("member_greeting", {})
+        mensaje_activado = greeting_cfg.get("saludos_activados", "GRRR {_bot_name} will watch for humans! {_bot_name} will greet when humans appear!")
+        mensaje_desactivado = greeting_cfg.get("saludos_desactivados", "BRRR {_bot_name} will no longer watch humans! {_bot_name} will stop greeting, too much work!")
 
-        mensaje = mensaje_activado if enabled else mensaje_desactivado
+        mensaje = mensaje_activado.format(_bot_name=_bot_display_name) if enabled else mensaje_desactivado.format(_bot_name=_bot_display_name)
         await ctx.send(mensaje)
 
         action = "enabled" if enabled else "disabled"
@@ -89,7 +89,7 @@ def register_core_commands(bot, agent_config):
         greeting_cfg = _discord_cfg.get("member_greeting", {})
         greeting_cfg["enabled"] = enabled
 
-        greeting_messages_cfg = PERSONALIDAD.get("discord", {}).get("greeting_messages", {})
+        greeting_messages_cfg = PERSONALIDAD.get("discord", {}).get("member_greeting", {})
         if enabled:
             mensaje = greeting_messages_cfg.get("bienvenida_activados", "✅ Welcome greetings enabled on this server.")
         else:
@@ -108,16 +108,16 @@ def register_core_commands(bot, agent_config):
 
     # --- INSULT ---
 
-    async def _cmd_insulta(ctx, obj=""):
+    async def _cmd_insult(ctx, obj=""):
         target = obj if obj else ctx.author.mention
         if "@everyone" in target or "@here" in target:
             prompt = _insult_cfg.get("prompt_everyone", "Lanza un insulto breve a TODO EL MUNDO, maximo 1 frase")
         else:
             prompt = _insult_cfg.get("prompt_target", "Lanza un insulto breve a una persona especifica, maximo 1 frase")
-        res = await asyncio.to_thread(pensar, prompt, logger=logger)
+        res = await asyncio.to_thread(think, prompt, logger=logger)
         await ctx.send(f"{target} {res}")
 
-    bot.command(name=insult_name)(_cmd_insulta)
+    bot.command(name=insult_name)(_cmd_insult)
 
     # --- TEST ---
 
@@ -126,7 +126,7 @@ def register_core_commands(bot, agent_config):
         """Test command to verify the bot works."""
         role_cfg = PERSONALIDAD.get("discord", {}).get("role_messages", {})
         logger.info(f"Test command executed by {ctx.author.name}")
-        await ctx.send(role_cfg.get("test_command", "✅ Comando test funciona!"))
+        await ctx.send(role_cfg.get("test_command", "✅ Test command works!"))
 
     # --- ROLE CONTROL ---
 
@@ -137,8 +137,7 @@ def register_core_commands(bot, agent_config):
             await ctx.send(role_cfg.get("role_no_permission", "❌ Only administrators can modify roles."))
             return
 
-        valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker",
-                       "vigia_noticias", "buscador_tesoros", "trilero", "banquero"]
+        valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
         if role_name not in valid_roles:
             await ctx.send(role_cfg.get("role_not_found", "❌ Role '{role}' not valid.").format(role=role_name))
             return
@@ -153,7 +152,7 @@ def register_core_commands(bot, agent_config):
             agent_config["roles"][role_name] = {}
         agent_config["roles"][role_name]["enabled"] = enabled
 
-        # Registrar comandos del rol si se está activando
+        # Register role commands if activating
         if enabled:
             from discord_bot.discord_role_loader import register_single_role
             await register_single_role(bot, role_name, agent_config, PERSONALIDAD)
@@ -248,15 +247,7 @@ def register_core_commands(bot, agent_config):
             help_msg += "  • **Main:** `!watcher` | `!nowatcher` | `!watchernotify`\n"
             help_msg += "  • **Help:** `!watcherhelp` (users) | `!watcherchannelhelp` (admins)\n"
             help_msg += "  • **Channel:** `!watcherchannel` group (subscribe, unsubscribe, status, keywords, premises)\n"
-            help_msg += "  • **Subscription:** `!watcher feeds/categories/status/subscribe/unsubscribe/keywords/general/reset`\n"
-            help_msg += "  • **Spanish legacy:** `!vigia`, `!vigiaayuda` (deprecated)\n\n"
-        elif is_role_enabled_check("vigia_noticias", agent_config):
-            interval = roles_config.get("vigia_noticias", {}).get("interval_hours", 1)
-            help_msg += f"📡 **Vigía de Noticias** (Spanish) - Alertas inteligentes (cada {interval}h)\n"
-            help_msg += "  • **Main:** `!vigia` | `!novigia` | `!avisanoticias`\n"
-            help_msg += "  • **Help:** `!vigiaayuda` (usuarios) | `!vigiacanalayuda` (admins)\n"
-            help_msg += "  • **Channel:** `!vigiacanal` comandos\n\n"
-
+            help_msg += "  • **Subscription:** `!watcher feeds/categories/status/subscribe/unsubscribe/keywords/general/reset`\n\n"
         # Treasure Hunter - Check English first, then Spanish
         if is_role_enabled_check("treasure_hunter", agent_config):
             interval = roles_config.get("treasure_hunter", {}).get("interval_hours", 1)
@@ -264,16 +255,7 @@ def register_core_commands(bot, agent_config):
             help_msg += "  • **Main:** `!hunter poe2` | `!nohunter poe2`\n"
             help_msg += "  • **League:** `!hunterpoe2` | `!hunterpoe2 Standard` | `!hunterpoe2 Fate of the Vaal`\n"
             help_msg += "  • **Items:** `!hunteradd \"item\"` | `!hunterdel \"item\"` | `!hunterdel <number>` | `!hunterlist`\n"
-            help_msg += "  • **Help:** `!hunterhelp` | `!hunterfrequency <h>`\n"
-            help_msg += "  • **Spanish legacy:** `!buscartesoros`, `!poe2ayuda` (deprecated)\n\n"
-        elif is_role_enabled_check("buscador_tesoros", agent_config):
-            interval = roles_config.get("buscador_tesoros", {}).get("interval_hours", 1)
-            help_msg += f"💎 **Buscador de Tesoros** (Spanish) - Alertas POE2 (cada {interval}h)\n"
-            help_msg += "  • **Main:** `!buscartesoros poe2` | `!nobuscartesoros poe2`\n"
-            help_msg += "  • **League:** `!poe2liga` | `!poe2liga Standard`\n"
-            help_msg += "  • **Items:** `!poe2add \"item\"` | `!poe2del \"item\"` | `!poe2list`\n"
-            help_msg += "  • **Help:** `!poe2ayuda` | `!tesorosfrecuencia <h>`\n\n"
-
+            help_msg += "  • **Help:** `!hunterhelp` | `!hunterfrequency <h>`\n\n"
         # Trickster - Check English first, then Spanish
         if is_role_enabled_check("trickster", agent_config):
             trickster_config = roles_config.get("trickster", {})
@@ -291,38 +273,13 @@ def register_core_commands(bot, agent_config):
             if subroles.get("dice_game", {}).get("enabled", False):
                 help_msg += "  • 🎲 **Dice Game:** `!dice play/help/balance/stats/ranking/history` | `!dice config bet <amount>` | `!dice config announcements on/off`\n"
             
-            help_msg += "  • **Main:** `!trickster help`\n"
-            help_msg += "  • **Spanish legacy:** `!trilero`, `!bote`, `!acusaranillo` (deprecated)\n\n"
-        elif is_role_enabled_check("trilero", agent_config):
-            trilero_config = roles_config.get("trilero", {})
-            interval = trilero_config.get("interval_hours", 12)
-            subroles = trilero_config.get("subroles", {})
-            
-            help_msg += f"🎭 **Trilero** (Spanish) - Múltiples subroles:\n"
-            
-            if subroles.get("limosna", {}).get("enabled", False):
-                help_msg += "  • 🙏 **Limosna:** `!trilero limosna on/off/frecuencia <h>`\n"
-            
-            if subroles.get("anillo", {}).get("enabled", False):
-                help_msg += "  • 👁️ **Anillo:** `!acusaranillo @usuario` | `!trilero anillo on/off`\n"
-            
-            if subroles.get("bote", {}).get("enabled", False):
-                help_msg += "  • 🎲 **Bote:** `!bote` comandos | `!bote jugar`\n"
-            
-            help_msg += "  • **Help:** `!trilero ayuda` | `!bote ayuda`\n\n"
-
+            help_msg += "  • **Main:** `!trickster help`\n\n"
         # Banker - Check English first, then Spanish
         if is_role_enabled_check("banker", agent_config):
             help_msg += f"💰 **Banker** - Economic management\n"
             help_msg += "  • **Main:** `!banker help`\n"
             help_msg += "  • **Balance:** `!banker balance` (DM)\n"
-            help_msg += "  • **Config:** `!banker tae <amount>` | `!banker tae` | `!banker bonus <amount>` | `!banker bonus` (admins)\n"
-            help_msg += "  • **Spanish legacy:** `!banquero` (deprecated)\n\n"
-        elif is_role_enabled_check("banquero", agent_config):
-            help_msg += f"💰 **Banquero** (Spanish) - Gestión económica\n"
-            help_msg += "  • **Main:** `!banquero comandos | `!banquero saldo`\n"
-            help_msg += "  • **Config:** `!banquero tae <cantidad>` | `!banquero bono <cantidad>` (admins)\n\n"
-
+            help_msg += "  • **Config:** `!banker tae <amount>` | `!banker tae` | `!banker bonus <amount>` | `!banker bonus` (admins)\n\n"
         # Music - Always available (same as Spanish help)
         music_help_msg = PERSONALIDAD.get("discord", {}).get("role_messages", {}).get("music_help", "🎵 **Music** - `!mc play <song>` / `!mc queue` | `!mc help` for complete help (always available)")
         help_msg += f"{music_help_msg}\n\n"
@@ -342,11 +299,7 @@ def register_core_commands(bot, agent_config):
         # Active and inactive roles (exact same logic as Spanish help)
         help_msg += "🎭 **ACTIVE AND INACTIVE ROLES**\n"
         role_descriptions = {
-            "vigia_noticias": "📡 **Vigía de Noticias** - Alertas de noticias críticas",
-            "buscador_tesoros": "💎 **Buscador de Tesoros** - Alertas de oportunidades de compra",
-            "trilero": "🎭 **Trilero** - Subroles limosna, anillo y bote",
-            "banquero": "💰 **Banquero** - Gestión económica y TAE diaria",
-            "mc": "🎵 **Música** - Siempre disponible (no requiere activación)",
+            "mc": "🎵 **Music** - Always available (no activation required)",
             "news_watcher": "📡 **News Watcher** - Critical news alerts",
             "treasure_hunter": "💎 **Treasure Hunter** - Purchase opportunity alerts",
             "trickster": "🎭 **Trickster** - Beggar, ring, and dice game subroles",
@@ -363,8 +316,9 @@ def register_core_commands(bot, agent_config):
             display = role_descriptions.get(role_name_key, f"**{role_name_key.replace('_', ' ').title()}**")
             help_msg += f"• {status_emoji} {display}\n"
 
-        # Send help (same as Spanish help but English confirmation)
-        await send_dm_or_channel(ctx, help_msg, "📩 Help sent by private message.")
+        # Send help (use personality message with fallback)
+        help_sent_msg = PERSONALIDAD.get("discord", {}).get("general_messages", {}).get("help_sent_private", "📩 Help sent by private message.")
+        await send_dm_or_channel(ctx, help_msg, help_sent_msg)
 
     # --- Log registered commands ---
     logger.info(f"Core commands registered: {greet_name}, {nogreet_name}, {welcome_name}, {nowelcome_name}, {insult_name}, agenthelp, {role_cmd_name}, test")

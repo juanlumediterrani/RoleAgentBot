@@ -1,5 +1,5 @@
 # RoleAgentBot — Architecture Reference
-
+THE COMMANDS ARE REGISTERED DINAMICLY
 ## 1. System Overview
 
 ```
@@ -91,10 +91,33 @@ def register_banker_commands(bot, personality, agent_config):
     title = msgs.get("help_title", "💰 Banker - Help")  # English fallback
 ```
 
-### Personality JSON structure:
+### Personality JSON structure (split files):
+
+**personality.json** - Core personality settings:
 ```json
 {
   "name": "putre",
+  "identity": "Eres PUTRE, un guerrero orko...",
+  "format_rules": { "length": "2-3 frases..." },
+  "orthography": ["que→ke | quien→kien..."],
+  "style": ["Onomatopeyas guturales..."]
+}
+```
+
+**prompts.json** - System prompts and role configurations:
+```json
+{
+  "prompt_chat": { "context_prefix": "KONTEXTO" },
+  "role_system_prompts": {
+    "banker": "MISION ACTIVO - BANQUERO...",
+    "news_watcher": "MISION ACTIVO - VIGÍA..."
+  }
+}
+```
+
+**messages.json** - User-facing messages:
+```json
+{
   "discord": {
     "banker_messages": { "help_title": "💰 El Banquero - Ayuda" },
     "mc_messages": { "presence_status": "🎵 ¡MC disponible!" },
@@ -140,8 +163,14 @@ RoleAgentBot/
 ├── agent_logging.py            # Logging
 │
 ├── personalities/
-│   ├── putre.json              # Personality: Putre (Spanish)
-│   └── kronk.json              # Personality: Kronk
+│   ├── putre/                  # Personality: Putre (Spanish)
+│   │   ├── personality.json    # Core personality settings
+│   │   ├── prompts.json        # System prompts & roles
+│   │   └── messages.json       # Discord messages
+│   └── kronk/                  # Personality: Kronk (Spanish)
+│       ├── personality.json    # Core personality settings
+│       ├── prompts.json        # System prompts & roles
+│       └── messages.json       # Discord messages
 │
 └── roles/
     ├── __init__.py
@@ -215,7 +244,6 @@ All major refactoring tasks have been completed:
 - **Integrated Bot**: Single Discord client in `agent_discord.py` with dynamic role loading
 - **Task Scripts**: Standalone role scripts (`*_discord.py`) handle background tasks via scheduler
 - **Clean Separation**: Discord commands vs task logic properly separated
-- **English First**: Canonical English names with Spanish legacy support
 - **Docker Ready**: Containerized deployment with `docker-compose.dev.yml`
 
 ### 🎯 **Key Features**

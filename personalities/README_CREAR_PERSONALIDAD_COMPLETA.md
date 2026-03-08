@@ -8,30 +8,30 @@ Este documento proporciona una guía completa para crear archivos de personalida
 
 El RoleAgentBot tiene los siguientes roles, cada uno con sus propios tipos de mensajes:
 
-### 1. **Vigía de Noticias** (`vigia_noticias`)
+### 1. **News Watcher** (`news_watcher`)
 - **Función**: Monitoreo y distribución de noticias
 - **Sección JSON**: `discord.vigia_messages`
-- **Comandos**: `!vigiaayuda`, `!vigiacanalayuda`
+- **Comandos**: `!watcherhelp`, `!watcher`
 
 ### 2. **MC (Master of Ceremonies)** (`mc`)
 - **Función**: Música y entretenimiento en canales de voz
 - **Sección JSON**: `discord.mc_messages`
 - **Comandos**: `!mc play`, `!mc add`, `!mc help`, etc.
 
-### 3. **Trilero** (`trilero`)
-- **Función**: Estafas y engaños para conseguir recursos
-- **Sección JSON**: `discord.trilero_messages`
-- **Comandos**: `!trilero pedir_oro on/off`
+### 3. **Trickster** (`trickster`)
+- **Función**: Juegos y donaciones para conseguir recursos
+- **Sección JSON**: `discord.bote_messages`, `discord.role_messages`
+- **Comandos**: `!trickster`, `!dice play`, `!dice stats`
 
-### 4. **Buscador de Tesoros** (`buscador_tesoros`)
+### 4. **Treasure Hunter** (`treasure_hunter`)
 - **Función**: Búsqueda de tesoros y objetos valiosos
-- **Sección JSON**: `discord.buscador_messages`
-- **Comandos**: `!buscadortesoros poe2`, `!poe2ayuda`
+- **Sección JSON**: `discord.poe2_messages`
+- **Comandos**: `!hunter`, `!hunterhelp`
 
-### 5. **Buscar Anillo** (`buscar_anillo`)
-- **Función**: Búsqueda del "anillo uniko"
-- **Sección JSON**: `discord.anillo_messages`
-- **Comandos**: `!acusaranillo`, `!noacusaranillo`
+### 5. **Banker** (`banker`)
+- **Función**: Gestión de economía y transacciones
+- **Sección JSON**: `discord.banquero_messages`
+- **Comandos**: `!banker`, `!bankerhelp`
 
 
 ---
@@ -604,13 +604,20 @@ El RoleAgentBot tiene los siguientes roles, cada uno con sus propios tipos de me
 
 ## 🎯 Tutorial Completo: Crear Personalidad con Todos los Mensajes
 
-### Paso 1: Copiar Plantilla Base
+### Paso 1: Crear Estructura de Directorio
 
 ```bash
-cp personalities/kronk.json personalities/mi_personaje.json
+# Opción A: Usar estructura split (recomendado)
+mkdir personalities/mi_personaje
+cp personalities/putre/personality.json personalities/mi_personaje/
+cp personalities/putre/prompts.json personalities/mi_personaje/
+cp personalities/putre/messages.json personalities/mi_personaje/
+
+# Opción B: Usar estructura legacy (solo para compatibilidad)
+# Nota: kronk.json ahora también usa estructura split
 ```
 
-### Paso 2: Definir Identidad Principal
+### Paso 2: Definir Identidad Principal (personality.json)
 
 ```json
 {
@@ -752,8 +759,8 @@ python3 test_personalidad_completa.py mi_personaje
 
 # Probar mensajes específicos
 python3 -c "
-from personalities.mi_personaje import load_personality
-p = load_personality()
+from agent_engine import PERSONALIDAD
+p = PERSONALIDAD
 print('Vigía:', p['discord']['vigia_messages']['suscripcion_exitosa_categoria'])
 print('MC:', p['discord']['mc_messages']['now_playing'])
 print('Trilero:', p['discord']['trilero_messages']['estafa_iniciada'])

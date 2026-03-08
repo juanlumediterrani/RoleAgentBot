@@ -9,6 +9,8 @@ from agent_logging import get_logger
 logger = get_logger('db')
 
 _ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
+DB_DIR = Path(__file__).parent / 'databases'
+DB_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _sanitize_server_name(server_name: str) -> str:
@@ -37,50 +39,51 @@ def persist_active_server_name(server_name: str) -> None:
     except Exception:
         pass
 
-# --- UTILIDADES PARA GESTIÓN DE BASES DE DATOS POR SERVIDOR ---
+# --- UTILITIES FOR SERVER-SPECIFIC DATABASE MANAGEMENT ---
 
-def get_server_db_path(server_name: str, db_name: str) -> Path:
+def get_server_db_path(server_name: str, db_name: str = None) -> Path:
     """
     Genera ruta de base de datos para un servidor específico.
     
     Args:
         server_name: Nombre del servidor (sanitizado)
-        db_name: Nombre del archivo de base de datos
+        db_name: Nombre de la base de datos (opcional)
     
     Returns:
-        Path: Ruta completa a la base de datos
+        Path: Ruta completa al archivo de base de datos
     """
-    if server_name == "default":
-        active = get_active_server_name()
-        if active:
-            server_name = active
-
     # Sanitizar nombre del servidor
-    server_sanitized = _sanitize_server_name(server_name)
+    server_sanitized = server_name.lower().replace(' ', '_').replace('-', '_')
+    server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
     
     # Directorio base
-    base_dir = Path(__file__).parent
-    server_dir = base_dir / "databases" / server_sanitized
+    server_dir = DB_DIR / server_sanitized
+    try:
+        server_dir.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError) as e:
+        # Si no podemos crear el directorio del servidor, usar el directorio base
+        print(f"⚠️ No se puede crear directorio de BD {server_dir}: {e}")
+        print(f"🗄️ Usando directorio base: {DB_DIR}")
+        server_dir = DB_DIR
     
-    # Crear directorio si no existe
-    server_dir.mkdir(parents=True, exist_ok=True)
-    
-    return server_dir / db_name
+    # Usar nombre de BD si se proporciona, si no el global
+    db_filename = db_name or get_personality_name()
+    return server_dir / f'{db_filename}.db'
 
 def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
     """
-    Versión con fallback para entornos Docker o permisos restringidos.
+    Version with fallback for Docker environments or restricted permissions.
     """
     if server_name == "default":
         active = get_active_server_name()
         if active:
             server_name = active
 
-    # Intentar ruta local primero
+    # Try local path first
     local_path = get_server_db_path(server_name, db_name)
     
     try:
-        # Probar si podemos escribir
+        # Test if we can write
         conn = sqlite3.connect(str(local_path))
         cursor = conn.cursor()
         cursor.execute('CREATE TABLE IF NOT EXISTS __test_write (id INTEGER)')
@@ -90,61 +93,61 @@ def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
         conn.close()
         return local_path
     except (PermissionError, OSError) as e:
-        logger.warning(f"⚠️ No write access a {local_path}: {e}. Usando fallback en home directory.")
+        logger.warning(f"⚠️ No write access to {local_path}: {e}. Using fallback in home directory.")
         
-        # Fallback en home directory
+        # Fallback in home directory
         server_sanitized = _sanitize_server_name(server_name)
         
         fallback_dir = Path.home() / '.roleagentbot' / 'databases' / server_sanitized
         fallback_dir.mkdir(parents=True, exist_ok=True)
         
         fallback_path = fallback_dir / db_name
-        logger.info(f"ℹ️ BD reubicada a {fallback_path}")
+        logger.info(f"ℹ️ DB relocated to {fallback_path}")
         return fallback_path
 
 def get_server_log_path(server_name: str, log_name: str) -> Path:
     """
-    Genera ruta de log para un servidor específico.
+    Generate log path for a specific server.
     
     Args:
-        server_name: Nombre del servidor (sanitizado)
-        log_name: Nombre del archivo de log
+        server_name: Server name (sanitized)
+        log_name: Log file name
     
     Returns:
-        Path: Ruta completa al archivo de log
+        Path: Full path to the log file
     """
     if server_name == "default":
         active = get_active_server_name()
         if active:
             server_name = active
 
-    # Sanitizar nombre del servidor
+    # Sanitize server name
     server_sanitized = _sanitize_server_name(server_name)
     
-    # Directorio base
+    # Base directory
     base_dir = Path(__file__).parent
     server_dir = base_dir / "logs" / server_sanitized
     
-    # Crear directorio si no existe
+    # Create directory if it doesn't exist
     server_dir.mkdir(parents=True, exist_ok=True)
     
     return server_dir / log_name
 
 def get_personality_name():
-    """Obtiene nombre de la personalidad desde variable de entorno o configuración."""
-    # Primero intentar desde variable de entorno (prioridad en Docker)
+    """Get personality name from environment variable or configuration."""
+    # First try from environment variable (priority in Docker)
     env_personality = os.getenv('PERSONALITY')
     if env_personality:
         return env_personality.lower()
     
-    # Sino intentar desde agent_engine
+    # Then try from agent_engine
     try:
         from agent_engine import PERSONALIDAD
         return PERSONALIDAD.get("name", "agent").lower()
     except:
         return "agent"
 
-# Configuración de rutas y límites
+# Path and limits configuration
 BASE_DIR = Path(__file__).parent
 HISTORIAL_LIMITE = 5
 
@@ -153,12 +156,12 @@ class AgentDatabase:
         self.server_name = server_name
         if db_path is None:
             personality_name = get_personality_name()
-            db_name = f"{personality_name}.db"
+            db_name = f"{personality_name}"
             self.db_path = get_server_db_path_fallback(server_name, db_name)
         else:
             self.db_path = db_path
         self._lock = threading.Lock()
-        logger.info(f"🗄️ [DB] Inicializando base de datos en: {self.db_path}")
+        logger.info(f"🗄️ [DB] Initializing database at: {self.db_path}")
         self._ensure_writable_db()
         self._init_db()
 
@@ -176,10 +179,10 @@ class AgentDatabase:
             cursor.execute('DROP TABLE IF EXISTS __agent_test_write')
             conn.commit()
             conn.close()
-            logger.info(f"✅ [DB] Base de datos accesible en: {self.db_path}")
+            logger.info(f"✅ [DB] Database accessible at: {self.db_path}")
             return
         except Exception as e:
-            logger.warning(f"⚠️ [DB] No write access a {self.db_path}: {e}. Usando fallback en home directory.")
+            logger.warning(f"⚠️ [DB] No write access to {self.db_path}: {e}. Using fallback in home directory.")
             fallback_dir = Path.home() / '.roleagentbot' / 'databases'
             server_sanitized = self.server_name.lower().replace(' ', '_').replace('-', '_')
             server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
@@ -187,14 +190,14 @@ class AgentDatabase:
             try:
                 fallback_dir.mkdir(parents=True, exist_ok=True)
                 personality_name = get_personality_name()
-                fallback_db = fallback_dir / f'{personality_name}.db'
+                fallback_db = fallback_dir / f'{personality_name}'
                 self.db_path = fallback_db
-                logger.info(f"ℹ️ [DB] DB reubicada a {self.db_path}")
+                logger.info(f"ℹ️ [DB] Database relocated to {self.db_path}")
             except Exception as e2:
-                logger.error(f"❌ [DB] No se pudo crear fallback DB directory: {e2}")
+                logger.error(f"❌ [DB] Could not create fallback DB directory: {e2}")
 
     def _init_db(self):
-        """Inicializa todas las tablas necesarias."""
+        """Initialize all necessary tables."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -216,9 +219,9 @@ class AgentDatabase:
 
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_uid_fecha ON interacciones (usuario_id, fecha)')
                 conn.commit()
-                logger.info(f"✅ Base de datos lista en {self.db_path}")
+                logger.info(f"✅ Database ready at {self.db_path}")
         except Exception as e:
-            logger.exception(f"❌ [DB] Error en inicialización: {e}")
+            logger.exception(f"❌ [DB] Error in initialization: {e}")
 
     def registrar_interaccion(self, usuario_id, usuario_nombre, tipo_interaccion, contexto, canal_id=None, servidor_id=None, metadata=None):
         fecha = datetime.datetime.now().isoformat()
@@ -268,11 +271,11 @@ class AgentDatabase:
                     historial.append({"humano": row['contexto'], "bot": meta.get('respuesta', '')})
                 return list(reversed(historial))
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error al recuperar historial: {e}")
+            logger.exception(f"⚠️ [DB] Error retrieving history: {e}")
             return []
 
     def obtener_historial_usuario_reciente(self, usuario_id, minutos=3):
-        """Obtener historial de los últimos N minutos para contexto temporal."""
+        """Get history from the last N minutes for temporal context."""
         fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=minutos)).isoformat()
         try:
             with self._lock:
@@ -320,11 +323,11 @@ class AgentDatabase:
                 cursor.execute('DROP TABLE IF EXISTS busquedas_anillo')
                 cursor.execute('DROP TABLE IF EXISTS noticias_leidas')
                 conn.commit()
-                logger.info(f"🧹 Eliminadas interacciones anteriores a {fecha_limite} y tablas duplicadas")
+                logger.info(f"🧹 Cleaned interactions before {fecha_limite} and duplicate tables")
                 return cursor.rowcount
 
     def contar_interacciones_tipo_ultimo_dia(self, tipo_interaccion, servidor_id=None):
-        """Cuenta cuántas interacciones de `tipo_interaccion` hubo hoy."""
+        """Count how many interactions of `tipo_interaccion` occurred today."""
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
@@ -372,13 +375,13 @@ class AgentDatabase:
             return False
     
     def get_active_servers(self) -> list:
-        """Obtiene lista de todos los servidores activos."""
+        """Get list of all active servers."""
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 
-                # Obtener servidores únicos de las interacciones
+                # Get unique servers from interactions
                 cursor.execute('''
                     SELECT DISTINCT servidor_id 
                     FROM interacciones 
@@ -389,20 +392,20 @@ class AgentDatabase:
                 servers = [row[0] for row in cursor.fetchall()]
                 conn.close()
                 
-                # Si no hay servidores en interacciones, devolver el servidor actual
+                # If no servers in interactions, return current server
                 if not servers:
                     return [self.server_name]
                 
                 return servers
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error obteniendo servidores activos: {e}")
-            return [self.server_name]  # Fallback al servidor actual
+            logger.exception(f"⚠️ [DB] Error getting active servers: {e}")
+            return [self.server_name]  # Fallback to current server
 
-# Diccionario para mantener instancias por servidor
+# Dictionary to maintain instances per server
 _db_instances = {}
 
 def get_db_instance(server_name: str = "default") -> AgentDatabase:
-    """Obtiene o crea una instancia de base de datos para un servidor específico."""
+    """Get or create a database instance for a specific server."""
     if server_name == "default":
         active = get_active_server_name()
         if active:
@@ -411,15 +414,15 @@ def get_db_instance(server_name: str = "default") -> AgentDatabase:
         _db_instances[server_name] = AgentDatabase(server_name)
     return _db_instances[server_name]
 
-# Instancia global por defecto (para compatibilidad) - inicialización lazy
+# Global default instance (for compatibility) - lazy initialization
 db = None
 _current_server_name = None
 
 def get_global_db(server_name: str = None, use_default_for_roles: bool = False) -> AgentDatabase:
-    """Obtiene la instancia global de BD para el servidor actual."""
+    """Get the global DB instance for the current server."""
     global db, _current_server_name
     
-    # Si es un proceso de rol y no hay servidor específico, usar default
+    # If it's a role process and no specific server, use default
     if server_name is None:
         active = _current_server_name or get_active_server_name()
         if active:
@@ -432,12 +435,39 @@ def get_global_db(server_name: str = None, use_default_for_roles: bool = False) 
     if db is None or _current_server_name != server_name:
         db = get_db_instance(server_name)
         _current_server_name = server_name
-        logger.info(f"🗄️ [DB] Base de datos global inicializada para servidor: {server_name}")
+        logger.info(f"🗄️ [DB] Global database initialized for server: {server_name}")
     
     return db
 
 def set_current_server(server_name: str):
-    """Establece el servidor actual para la BD global."""
+    """Set the current server for the global DB."""
     global _current_server_name
     _current_server_name = server_name
     persist_active_server_name(server_name)
+
+def get_database_path(server_name: str, db_type: str) -> str:
+    """
+    Get database path for role-specific databases.
+    
+    Args:
+        server_name: Server name
+        db_type: Database type (banker, news_watcher, dice_game, etc.)
+    
+    Returns:
+        str: Full path to the database file
+    """
+    server_sanitized = _sanitize_server_name(server_name)
+    personality_name = get_personality_name()
+    
+    # Map database types to filenames
+    db_filenames = {
+        'banker': f'banker_{personality_name}',
+        'news_watcher': f'watcher_{personality_name}', 
+        'dice_game': f'dice_game_{personality_name}',
+        'treasure_hunter': f'hunter_{personality_name}',
+        'trickster': f'trickster_{personality_name}',
+        'mc': f'mc_{personality_name}'
+    }
+    
+    db_name = db_filenames.get(db_type, f'{db_type}_{personality_name}')
+    return str(get_server_db_path_fallback(server_name, db_name))

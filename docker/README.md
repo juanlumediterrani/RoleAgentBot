@@ -17,10 +17,10 @@ Este proyecto contiene múltiples configuraciones de Docker Compose para diferen
   - Reinicio automático
 
 **Roles Activos**:
-- ✅ vigia_noticias
-- ✅ buscador_tesoros  
-- ✅ trilero
-- ✅ buscar_anillo
+- ✅ news_watcher
+- ✅ treasure_hunter  
+- ✅ trickster
+- ✅ banker
 - ✅ mc
 
 **Uso**:
@@ -76,18 +76,18 @@ DISCORD_TOKEN_PUTRE=tu_token_putre
 ## 🎭 Roles y Comandos
 
 ### Comandos de Ayuda
-- `!ayudakronk` - Ayuda general del bot Kronk
-- `!ayudaputre` - Ayuda general del bot Putre
-- `!vigiaayuda` - Ayuda del Vigía de Noticias
-- `!poe2ayuda` - Ayuda del Buscador de Tesoros
-- `!mcayuda` - Ayuda del MC (música)
-- `!acusaranillo` - Acusar por el anillo
+- `!agenthelp` - Ayuda general del bot
+- `!watcherhelp` - Ayuda del News Watcher
+- `!hunterhelp` - Ayuda del Treasure Hunter
+- `!tricksterhelp` - Ayuda del Trickster
+- `!bankerhelp` - Ayuda del Banker
+- `!mchelp` - Ayuda del MC (música)
 
 ### Roles Disponibles
-1. **🦅 Vigía de Noticias**: Alertas de noticias críticas
-2. **💎 Buscador de Tesoros**: Alertas de oportunidades POE2
-3. **🎭 Trilero**: Solicitudes de limosna y engaños
-4. **�️ Buscar Anillo**: Acusaciones por el anillo único
+1. **🦅 News Watcher**: Alertas de noticias críticas
+2. **💎 Treasure Hunter**: Alertas de oportunidades POE2
+3. **🎭 Trickster**: Solicitudes de donaciones y juegos
+4. **💰 Banker**: Gestión de economía y transacciones
 5. **🎵 MC**: Master of Ceremonies (música)
 
 ## 🛠️ Comandos Útiles

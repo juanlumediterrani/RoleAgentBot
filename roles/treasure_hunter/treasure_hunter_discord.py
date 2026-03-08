@@ -8,6 +8,14 @@ import discord
 from agent_logging import get_logger
 from discord_bot.discord_utils import get_server_name, send_dm_or_channel
 
+# Import get_message for personality support
+try:
+    from agent_engine import get_message
+except ImportError:
+    # Fallback for direct loading
+    def get_message(personality, key, default):
+        return personality.get("discord", {}).get("treasure_hunter_messages", {}).get(key, default)
+
 logger = get_logger('treasure_hunter_discord')
 
 # Availability flags
@@ -44,7 +52,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
             if ctx.invoked_subcommand is None:
                 # Show general help about available subroles
                 help_text = _build_general_help_text(POE2_AVAILABLE)
-                await send_dm_or_channel(ctx, help_text, "📩 Hunter help sent by private message.")
+                await send_dm_or_channel(ctx, help_text, get_message(personality, "hunter_help_sent", "📩 Hunter help sent by private message."))
                 return
         
         logger.info("🔮 Hunter group command registered")
@@ -61,7 +69,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                 if ctx.invoked_subcommand is None:
                     # Show POE2-specific help
                     help_text = _build_poe2_help_text()
-                    await send_dm_or_channel(ctx, help_text, "📩 POE2 help sent by private message.")
+                    await send_dm_or_channel(ctx, help_text, get_message(personality, "poe2_help_sent", "📩 POE2 help sent by private message."))
                     return
             
             logger.info("🔮 Hunter POE2 group registered")
@@ -77,44 +85,44 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
             async def cmd_poe2_on(ctx):
                 """Activate POE2 subrole (admin only)."""
                 if not poe2_manager.is_admin(ctx):
-                    await ctx.send("❌ Only administrators can activate the POE2 subrole.")
+                    await ctx.send(get_message(personality, "admin_permission", "❌ Only administrators can activate the POE2 subrole."))
                     return
                 
                 server_id = str(ctx.guild.id)
                 if poe2_manager.is_activated(server_id):
-                    await ctx.send("ℹ️ POE2 subrole is already activated on this server.")
+                    await ctx.send(get_message(personality, "poe2_already_active", "ℹ️ POE2 subrole is already activated on this server."))
                     return
                 
                 # Download item list if needed
                 league = poe2_manager.get_active_league(server_id)
                 if poe2_manager.should_refresh_item_list(league):
-                    await ctx.send("🔄 Downloading item list...")
+                    await ctx.send(get_message(personality, "downloading_items", "🔄 Downloading item list..."))
                     success = await poe2_manager.download_item_list(league)
                     if not success:
-                        await ctx.send("❌ Error downloading item list. Please try again.")
+                        await ctx.send(get_message(personality, "download_error", "❌ Error downloading item list. Please try again."))
                         return
                 
                 if poe2_manager.activate_subrole(server_id):
-                    await ctx.send("✅ POE2 subrole activated! Use `!hunter poe2 help` for commands.")
+                    await ctx.send(get_message(personality, "poe2_activated", "✅ POE2 subrole activated! Use `!hunter poe2 help` for commands."))
                 else:
-                    await ctx.send("❌ Error activating POE2 subrole.")
+                    await ctx.send(get_message(personality, "activation_error", "❌ Error activating POE2 subrole."))
             
             @cmd_poe2_group.command(name="off")
             async def cmd_poe2_off(ctx):
                 """Deactivate POE2 subrole (admin only)."""
                 if not poe2_manager.is_admin(ctx):
-                    await ctx.send("❌ Only administrators can deactivate the POE2 subrole.")
+                    await ctx.send(get_message(personality, "admin_permission", "❌ Only administrators can deactivate the POE2 subrole."))
                     return
                 
                 server_id = str(ctx.guild.id)
                 if not poe2_manager.is_activated(server_id):
-                    await ctx.send("ℹ️ POE2 subrole is not activated on this server.")
+                    await ctx.send(get_message(personality, "poe2_not_active", "ℹ️ POE2 subrole is not activated on this server."))
                     return
                 
                 if poe2_manager.deactivate_subrole(server_id):
-                    await ctx.send("❌ POE2 subrole deactivated.")
+                    await ctx.send(get_message(personality, "poe2_deactivated", "❌ POE2 subrole deactivated."))
                 else:
-                    await ctx.send("❌ Error deactivating POE2 subrole.")
+                    await ctx.send(get_message(personality, "deactivation_error", "❌ Error deactivating POE2 subrole."))
             
             # !hunter poe2 league <league>
             @cmd_poe2_group.command(name="league")
@@ -122,36 +130,36 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                 """Set or show the active league (admin only, DM only)."""
                 # Check if in DM
                 if ctx.guild is not None:
-                    await ctx.send("❌ This command can only be used via DM.")
+                    await ctx.send(get_message(personality, "dm_only", "❌ This command can only be used via DM."))
                     return
                 
                 # Check if admin
                 if not poe2_manager.is_admin(ctx):
-                    await ctx.send("❌ Only administrators can change the league.")
+                    await ctx.send(get_message(personality, "admin_permission", "❌ Only administrators can change the league."))
                     return
                 
                 user_id = str(ctx.author.id)
                 server_id = poe2_manager.get_user_active_server(user_id)
                 
                 if not server_id:
-                    await ctx.send("❌ No active servers found. Please activate POE2 on a server first.")
+                    await ctx.send(get_message(personality, "no_active_servers", "❌ No active servers found. Please activate POE2 on a server first."))
                     return
                 
                 if not league:
                     current_league = poe2_manager.get_user_league(user_id, server_id)
-                    await ctx.send(f"🏆 **Current POE2 League**: {current_league}")
+                    await ctx.send(get_message(personality, "current_league", "🏆 **Current POE2 League**: {league}").format(league=current_league))
                     return
                 
                 # Validate league
                 valid_leagues = ["Standard", "Fate of the Vaal", "Hardcore", "Hardcore Fate of the Vaal"]
                 if league not in valid_leagues:
-                    await ctx.send(f"❌ Invalid league. Available: {', '.join(valid_leagues)}")
+                    await ctx.send(get_message(personality, "invalid_league", "❌ Invalid league. Available: {leagues}").format(leagues=', '.join(valid_leagues)))
                     return
                 
                 if poe2_manager.set_user_league(user_id, league, server_id):
                     # Download item list for new league if needed
                     if poe2_manager.should_refresh_item_list(league):
-                        await ctx.send("🔄 Downloading item list for new league...")
+                        await ctx.send(get_message(personality, "downloading_league_items", "🔄 Downloading item list for new league..."))
                         await poe2_manager.download_item_list(league)
                     
                     # Add default objectives for this league
@@ -160,21 +168,21 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                     # Download price history for default objectives
                     poe2_manager._download_default_objectives_history(user_id, league)
                     
-                    await ctx.send(f"✅ Your personal league changed to: {league}")
-                    await ctx.send("💡 Default objectives added and price history downloaded.")
+                    await ctx.send(get_message(personality, "league_changed", "✅ Your personal league changed to: {league}").format(league=league))
+                    await ctx.send(get_message(personality, "default_objectives_added", "💡 Default objectives added and price history downloaded."))
                 else:
-                    await ctx.send("❌ Error changing league (POE2 subrole not activated).")
+                    await ctx.send(get_message(personality, "league_change_error", "❌ Error changing league (POE2 subrole not activated)."))
             
             # !hunter poe2 help
             @cmd_poe2_group.command(name="help")
             async def cmd_poe2_help(ctx):
                 """Show POE2-specific help."""
                 if not poe2_manager.is_activated(str(ctx.guild.id)):
-                    await ctx.send("❌ POE2 subrole is not activated on this server.")
+                    await ctx.send(get_message(personality, "poe2_not_active_server", "❌ POE2 subrole is not activated on this server."))
                     return
                 
                 help_text = _build_poe2_help_text()
-                await send_dm_or_channel(ctx, help_text, "📩 POE2 help sent by private message.")
+                await send_dm_or_channel(ctx, help_text, get_message(personality, "poe2_help_sent", "📩 POE2 help sent by private message."))
             
             # !hunter poe2 add <item>
             @cmd_poe2_group.command(name="add")
@@ -182,18 +190,18 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                 """Add an item to objectives (DM only)."""
                 # Check if in DM
                 if ctx.guild is not None:
-                    await ctx.send("❌ This command can only be used via DM.")
+                    await ctx.send(get_message(personality, "dm_only", "❌ This command can only be used via DM."))
                     return
                 
                 user_id = str(ctx.author.id)
                 server_id = poe2_manager.get_user_active_server(user_id)
                 
                 if not server_id:
-                    await ctx.send("❌ No active servers found. Please activate POE2 on a server first.")
+                    await ctx.send(get_message(personality, "no_active_servers", "❌ No active servers found. Please activate POE2 on a server first."))
                     return
                 
                 if not item_name:
-                    await ctx.send("❌ Please specify an item name. Usage: `!hunter poe2 add \"item name\"`")
+                    await ctx.send(get_message(personality, "specify_item_name", "❌ Please specify an item name. Usage: `!hunter poe2 add \"item name\"`"))
                     return
                 
                 success, message = poe2_manager.add_objective(server_id, user_id, item_name)
@@ -205,18 +213,18 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                 """Remove an item from objectives (DM only)."""
                 # Check if in DM
                 if ctx.guild is not None:
-                    await ctx.send("❌ This command can only be used via DM.")
+                    await ctx.send(get_message(personality, "dm_only", "❌ This command can only be used via DM."))
                     return
                 
                 user_id = str(ctx.author.id)
                 server_id = poe2_manager.get_user_active_server(user_id)
                 
                 if not server_id:
-                    await ctx.send("❌ No active servers found. Please activate POE2 on a server first.")
+                    await ctx.send(get_message(personality, "no_active_servers", "❌ No active servers found. Please activate POE2 on a server first."))
                     return
                 
                 if not item_name:
-                    await ctx.send("❌ You must specify an item name or number. Example: `!hunter poe2 del \"Ancient Rib\"`")
+                    await ctx.send(get_message(personality, "specify_item_del", "❌ You must specify an item name or number. Example: `!hunter poe2 del \"Ancient Rib\"`"))
                     return
                 
                 success, message = poe2_manager.remove_objective(server_id, user_id, item_name)
@@ -228,14 +236,14 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                 """Show current objectives with prices (DM only)."""
                 # Check if in DM
                 if ctx.guild is not None:
-                    await ctx.send("❌ This command can only be used via DM.")
+                    await ctx.send(get_message(personality, "dm_only", "❌ This command can only be used via DM."))
                     return
                 
                 user_id = str(ctx.author.id)
                 server_id = poe2_manager.get_user_active_server(user_id)
                 
                 if not server_id:
-                    await ctx.send("❌ No active servers found. Please activate POE2 on a server first.")
+                    await ctx.send(get_message(personality, "no_active_servers", "❌ No active servers found. Please activate POE2 on a server first."))
                     return
                 
                 success, message = poe2_manager.list_objectives(server_id, user_id)
@@ -243,7 +251,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                 if success:
                     await ctx.send(message)
                 else:
-                    await ctx.send("❌ " + message)
+                    await ctx.send(get_message(personality, "list_error", "❌ {message}").format(message=message))
             
             logger.info("🔮 POE2 subcommands registered")
     
@@ -253,7 +261,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
         async def cmd_hunter_help_subcommand(ctx):
             """Show general hunter help."""
             help_text = _build_general_help_text(POE2_AVAILABLE)
-            await send_dm_or_channel(ctx, help_text, "📩 Hunter help sent by private message.")
+            await send_dm_or_channel(ctx, help_text, get_message(personality, "hunter_help_sent", "📩 Hunter help sent by private message."))
         
         logger.info("🔮 Hunter help subcommand registered")
     except Exception as e:
@@ -265,7 +273,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
         async def cmd_hunter_frequency(ctx, hours: str = ""):
             """Configure automatic execution frequency of treasure hunter."""
             if not POE2_AVAILABLE:
-                await ctx.send("❌ The treasure hunter is not available on this server.")
+                await ctx.send(get_message(personality, "treasure_hunter_unavailable", "❌ The treasure hunter is not available on this server."))
                 return
             await _cmd_role_frequency(ctx, "treasure_hunter", hours, personality, agent_config)
 

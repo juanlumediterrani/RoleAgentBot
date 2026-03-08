@@ -339,76 +339,76 @@ class DatabaseRolePoe:
             logger.exception(f"❌ Error inicializando tabla de notificaciones: {e}")
     
     def registrar_notificacion(self, item_name: str, liga: str, tipo_señal: str, precio: float):
-        """Registra una notificación enviada."""
+        """Register a sent notification."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
                     cursor = conn.cursor()
-                    liga_formateada = ''.join([word[0].upper() for word in liga.split()])
-                    fecha_envio = datetime.now().isoformat()
+                    formatted_league = ''.join([word[0].upper() for word in liga.split()])
+                    send_date = datetime.now().isoformat()
                     
                     cursor.execute('''
                         INSERT INTO notificaciones (item_name, liga, tipo_señal, precio, fecha_envio)
                         VALUES (?, ?, ?, ?, ?)
-                    ''', (item_name, liga_formateada, tipo_señal, precio, fecha_envio))
+                    ''', (item_name, formatted_league, tipo_señal, precio, send_date))
                     conn.commit()
-                    logger.info(f"✅ Notificación registrada: {item_name} - {tipo_señal} a {precio}")
+                    logger.info(f"✅ Notification registered: {item_name} - {tipo_señal} at {precio}")
         except Exception as e:
-            logger.exception(f"⚠️ Error registrando notificación: {e}")
+            logger.exception(f"⚠️ Error registering notification: {e}")
     
     def verificar_notificacion_reciente(self, item_name: str, liga: str, tipo_señal: str, precio_actual: float, horas: int = 6, umbral_similitud: float = 0.15):
-        """Verifica si hubo una notificación similar en las últimas N horas.
+        """Check if there was a similar notification in the last N hours.
         
         Args:
-            item_name: Nombre del item
-            liga: Liga actual
-            tipo_señal: Tipo de señal ('COMPRA' o 'VENTA')
-            precio_actual: Precio actual
-            horas: Ventana de tiempo en horas (default: 6)
-            umbral_similitud: Umbral de similitud de precios (default: 15% = 0.15)
+            item_name: Item name
+            liga: Current league
+            tipo_señal: Signal type ('COMPRA' or 'VENTA')
+            precio_actual: Current price
+            horas: Time window in hours (default: 6)
+            umbral_similitud: Price similarity threshold (default: 15% = 0.15)
         
         Returns:
-            bool: True si hay una notificación similar reciente, False si no
+            bool: True if there's a recent similar notification, False if not
         """
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
                     cursor = conn.cursor()
-                    liga_formateada = ''.join([word[0].upper() for word in liga.split()])
+                    formatted_league = ''.join([word[0].upper() for word in liga.split()])
                     
-                    # Calcular fecha límite
-                    fecha_limite = datetime.now() - timedelta(hours=horas)
-                    fecha_limite_iso = fecha_limite.isoformat()
+                    # Calculate deadline
+                    deadline = datetime.now() - timedelta(hours=horas)
+                    deadline_iso = deadline.isoformat()
                     
-                    # Buscar notificaciones recientes del mismo item y tipo
+                    # Search for recent notifications of same item and type
                     cursor.execute('''
                         SELECT precio, fecha_envio
                         FROM notificaciones
                         WHERE item_name = ? AND liga = ? AND tipo_señal = ? AND fecha_envio > ?
                         ORDER BY fecha_envio DESC
-                    ''', (item_name, liga_formateada, tipo_señal, fecha_limite_iso))
+                    ''', (item_name, formatted_league, tipo_señal, deadline_iso))
                     
-                    notificaciones = cursor.fetchall()
+                    notifications = cursor.fetchall()
                     
-                    for precio_anterior, fecha_envio in notificaciones:
-                        # Calcular diferencia porcentual
-                        if precio_anterior > 0:
-                            diferencia = abs(precio_actual - precio_anterior) / precio_anterior
-                            if diferencia <= umbral_similitud:
-                                logger.info(f"🚫 Notificación similar encontrada: {item_name} - {tipo_señal} a {precio_anterior} (hace {(datetime.now() - datetime.fromisoformat(fecha_envio)).total_seconds() / 3600:.1f}h)")
+                    for previous_price, send_date in notifications:
+                        # Calculate percentage difference
+                        if previous_price > 0:
+                            difference = abs(precio_actual - previous_price) / previous_price
+                            if difference <= umbral_similitud:
+                                logger.info(f"🚫 Similar notification found: {item_name} - {tipo_señal} at {previous_price} ({(datetime.now() - datetime.fromisoformat(send_date)).total_seconds() / 3600:.1f}h ago)")
                                 return True
                     
                     return False
         except Exception as e:
-            logger.exception(f"⚠️ Error verificando notificación reciente: {e}")
-            return False  # Si hay error, permitimos la notificación
+            logger.exception(f"⚠️ Error checking recent notification: {e}")
+            return False  # If there's an error, we allow the notification
 
 
-# Diccionario para mantener instancias por servidor y liga
+# Dictionary to maintain instances per server and league
 _db_poe_instances = {}
 
 def get_poe_db_instance(server_name: str = "default", liga: str = "Standard") -> DatabaseRolePoe:
-    """Obtiene o crea una instancia de base de datos POE para un servidor y liga específicos."""
+    """Get or create a POE database instance for a specific server and league."""
     key = f"{server_name}_{liga}"
     if key not in _db_poe_instances:
         _db_poe_instances[key] = DatabaseRolePoe(server_name, liga)

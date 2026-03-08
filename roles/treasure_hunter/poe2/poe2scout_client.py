@@ -51,14 +51,14 @@ class Poe2ScoutClient:
         self.timeout = timeout
 
     def _load_items_database(self, league: str = "Standard"):
-        """Carga la base de datos de items desde la API para una liga específica."""
+        """Load items database from the API for a specific league."""
         if league in Poe2ScoutClient._items_cache:
             return
         
         try:
-            logger.info(f"🔄 Descargando base de datos de items para liga: {league}")
+            logger.info(f"🔄 Downloading items database for league: {league}")
             
-            # Usar el endpoint /items?league={league}
+            # Use the endpoint /items?league={league}
             url = f"{self.BASE}/items"
             params = {'league': league}
             
@@ -67,13 +67,13 @@ class Poe2ScoutClient:
             
             items_data = response.json()
             
-            # Crear diccionario de búsqueda nombre -> ID
+            # Create search dictionary name -> ID
             items_dict = {}
             
             for item in items_data:
                 item_id = item.get('itemId')
                 
-                # Buscar en diferentes campos de nombre
+                # Search in different name fields
                 name_fields = [item.get('text', ''), item.get('name', '')]
                 api_id = item.get('apiId', '')
                 
@@ -83,18 +83,18 @@ class Poe2ScoutClient:
                         if name_lower not in items_dict:
                             items_dict[name_lower] = item_id
                 
-                # También agregar el apiId como clave
+                # Also add apiId as key
                 if api_id and item_id:
                     api_id_lower = api_id.lower().strip()
                     if api_id_lower not in items_dict:
                         items_dict[api_id_lower] = item_id
             
             Poe2ScoutClient._items_cache[league] = items_dict
-            logger.info(f"✅ Base de datos de items cargada para {league}: {len(items_dict)} items")
+            logger.info(f"✅ Items database loaded for {league}: {len(items_dict)} items")
             
         except Exception as e:
-            logger.error(f"❌ Error cargando base de datos de items para {league}: {e}")
-            # Fallback a diccionario básico
+            logger.error(f"❌ Error loading items database for {league}: {e}")
+            # Fallback to basic dictionary
             Poe2ScoutClient._items_cache[league] = {
                 'ancient rib': 4379,
                 'ancient jawbone': 4373,
@@ -103,35 +103,35 @@ class Poe2ScoutClient:
             }
 
     def _find_item_id(self, item_name: str, league: str = "Standard") -> Optional[int]:
-        """Busca el ID de un item por nombre para una liga específica."""
+        """Find the ID of an item by name for a specific league."""
         self._load_items_database(league)
         
         item_name_lower = item_name.lower().strip()
         items_cache = Poe2ScoutClient._items_cache.get(league, {})
         
-        # Búsqueda exacta primero
+        # Exact search first
         if item_name_lower in items_cache:
             return items_cache[item_name_lower]
         
-        # Búsqueda parcial (contiene)
+        # Partial search (contains)
         for name, item_id in items_cache.items():
             if item_name_lower in name or name in item_name_lower:
-                logger.info(f"🔍 Búsqueda parcial: '{item_name}' -> '{name}' (ID: {item_id})")
+                logger.info(f"🔍 Partial search: '{item_name}' -> '{name}' (ID: {item_id})")
                 return item_id
         
         return None
 
     def clear_items_cache(self, league: str = None):
-        """Limpia el cache de items. Si league es None, limpia todo."""
+        """Clear items cache. If league is None, clear everything."""
         if league:
             Poe2ScoutClient._items_cache.pop(league, None)
-            logger.info(f"🗑️ Cache de items limpiado para liga: {league}")
+            logger.info(f"🗑️ Items cache cleared for league: {league}")
         else:
             Poe2ScoutClient._items_cache.clear()
-            logger.info("🗑️ Todo el cache de items limpiado")
+            logger.info("🗑️ All items cache cleared")
 
     def get_cached_leagues(self) -> List[str]:
-        """Devuelve lista de ligas en cache."""
+        """Return list of cached leagues."""
         return list(Poe2ScoutClient._items_cache.keys())
 
     def _find_price_list(self, obj: Any) -> Optional[List[Any]]:
@@ -236,7 +236,7 @@ class Poe2ScoutClient:
         """
         if log_count is None:
             if days is not None:
-                log_count = days * 24  # 24 entradas por día para datos completos
+                log_count = days * 24  # 24 entries per day for complete data
             else:
                 log_count = 50
 
@@ -250,7 +250,7 @@ class Poe2ScoutClient:
         if adjusted_log_count != log_count:
             logger.debug(f"Adjusting log_count {log_count} -> {adjusted_log_count} (multiple of 4)")
 
-        # Añadir endTime con fecha actual para obtener los datos más recientes
+        # Add endTime with current date to get most recent data
         from datetime import datetime, timezone
         end_time = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         
@@ -325,16 +325,16 @@ class Poe2ScoutClient:
                     t = entry.get('time')
                     q = entry.get('quantity')
                     
-                    # Filtrar por últimos 30 días desde ahora (dinámico)
+                    # Filter by last 30 days from now (dynamic)
                     if t:
                         try:
                             entry_time = datetime.fromisoformat(t.replace('Z', '+00:00')).replace(tzinfo=None)
-                            fecha_fin = datetime.now()
-                            fecha_inicio = fecha_fin - timedelta(days=30)
-                            if not (fecha_inicio <= entry_time <= fecha_fin):
-                                continue  # Saltar entradas fuera del rango
+                            end_date = datetime.now()
+                            start_date = end_date - timedelta(days=30)
+                            if not (start_date <= entry_time <= end_date):
+                                continue  # Skip entries outside range
                         except (ValueError, TypeError):
-                            # Si no podemos parsear la fecha, incluimos la entrada
+                            # If we can't parse the date, include the entry
                             pass
                     
                     entries.append(PriceEntry(price=p, time=t,
@@ -348,13 +348,13 @@ class Poe2ScoutClient:
             if p is not None:
                 t = entry.get('time') if isinstance(entry, dict) else None
                 
-                # Filtrar por últimos 30 días desde ahora (dinámico)
+                # Filter by last 30 days from now (dynamic)
                 if t:
                     try:
                         entry_time = datetime.fromisoformat(t.replace('Z', '+00:00')).replace(tzinfo=None)
-                        fecha_fin = datetime.now()
-                        fecha_inicio = fecha_fin - timedelta(days=30)
-                        if not (fecha_inicio <= entry_time <= fecha_fin):
+                        end_date = datetime.now()
+                        start_date = end_date - timedelta(days=30)
+                        if not (start_date <= entry_time <= end_date):
                             continue
                     except (ValueError, TypeError):
                         pass
@@ -367,33 +367,33 @@ class Poe2ScoutClient:
         return entries
 
     def get_item_history(self, item_name: str, league: str = None, days: int = 30) -> List[PriceEntry]:
-        """Obtener historial de precios usando la API oficial de poe2scout.
+        """Get price history using the official poe2scout API.
         
         Args:
-            item_name: Nombre del item a buscar
-            league: Liga (si no se especifica, usa Standard)
-            days: Días de historial (default: 30)
+            item_name: Item name to search
+            league: League (if not specified, uses Standard)
+            days: History days (default: 30)
         """
         league = league or "Standard"
         
-        # Buscar el ID del item usando la base de datos de la liga específica
+        # Find the item ID using the specific league database
         item_id = self._find_item_id(item_name, league)
         
         if item_id:
             try:
-                # Usar parámetros correctos según la API: 720 entradas, endTime actual, divine currency
+                # Use correct parameters according to API: 720 entries, current endTime, divine currency
                 entries = self.get_item_history_old(
                     item_id, 
                     league=league, 
-                    log_count=720,  # 24h * 30d = 720 entradas
+                    log_count=720,  # 24h * 30d = 720 entries
                     reference_currency='divine'
                 )
-                logger.info(f"Historial obtenido para {item_name} (ID {item_id}) en {league}: {len(entries)} entradas")
+                logger.info(f"History obtained for {item_name} (ID {item_id}) in {league}: {len(entries)} entries")
                 return entries
             except Exception as e:
-                logger.error(f"Error obteniendo historial para {item_name} en {league}: {e}")
+                logger.error(f"Error getting history for {item_name} in {league}: {e}")
                 return []
         else:
-            logger.warning(f"No se encontró ID para el item: {item_name} en liga {league}")
+            logger.warning(f"ID not found for item: {item_name} in league {league}")
             return []
 

@@ -2,6 +2,7 @@ import discord
 import asyncio
 import sys
 import os
+import sqlite3
 from datetime import datetime
 from agent_logging import get_logger
 
@@ -21,157 +22,169 @@ class WatcherCommands:
     def _get_db(self, server_name: str = None):
         """Get (and cache) the watcher DB instance."""
         if not self.db_vigia:
-            from agent_db import get_active_server_name
-            server_name = server_name or get_active_server_name() or "default"
-            self.db_vigia = get_news_watcher_db_instance(server_name)
+            # Use provided server_name or fall back to active server
+            if server_name:
+                self.db_vigia = get_news_watcher_db_instance(server_name)
+            else:
+                from agent_db import get_active_server_name
+                server_name = get_active_server_name() or "default"
+                self.db_vigia = get_news_watcher_db_instance(server_name)
         return self.db_vigia
 
-    def _normalize_category(self, categoria: str | None) -> str | None:
-        if categoria is None:
+    def _normalize_category(self, category: str | None) -> str | None:
+        if category is None:
             return None
 
-        cat = str(categoria).strip().lower()
+        cat = str(category).strip().lower()
         if not cat:
             return cat
 
-        aliases = {
-            "international": "internacional",
-            "economy": "economia",
-            "technology": "tecnologia",
-            "society": "sociedad",
-            "politics": "politica",
-            "sports": "deportes",
-            "culture": "cultura",
-            "science": "ciencia",
-        }
-        return aliases.get(cat, cat)
+        return cat
     
     async def cmd_feeds(self, message, args):
         """Show all available feeds."""
         try:
             db = self._get_db()
-            feeds = db.obtener_feeds_activos()
+            feeds = db.get_active_feeds()
             
             if not feeds:
                 await message.channel.send(get_message('error_no_hay_feeds'))
                 return
             
             embed = discord.Embed(
-                title=get_message('feeds_disponibles_title'),
+                title=get_message('feeds_available_title'),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
-            feeds_por_categoria = {}
+            feeds_por_category = {}
             for feed in feeds:
-                feed_id, nombre, url, categoria, pais, idioma, prioridad, palabras_clave, tipo_feed = feed
-                if categoria not in feeds_por_categoria:
-                    feeds_por_categoria[categoria] = []
-                feeds_por_categoria[categoria].append({
-                    'id': feed_id, 'nombre': nombre, 'url': url,
-                    'pais': pais, 'idioma': idioma, 'prioridad': prioridad, 'tipo_feed': tipo_feed
+                feed_id, name, url, category, country, language, priority, keywords, feed_type = feed
+                if category not in feeds_por_category:
+                    feeds_por_category[category] = []
+                feeds_por_category[category].append({
+                    'id': feed_id, 'name': name, 'url': url,
+                    'country': country, 'language': language, 'priority': priority, 'feed_type': feed_type
                 })
             
-            for categoria, feeds_cat in feeds_por_categoria.items():
+            for category, feeds_cat in feeds_por_category.items():
                 valor = ""
                 for feed in feeds_cat:
-                    bandera = self._get_bandera_pais(feed['pais'])
-                    valor += f"**{feed['nombre']}** ({feed['id']}) {bandera}\n"
-                    valor += f"Prioridad: {feed['prioridad']} | Idioma: {feed['idioma'].upper()}\n\n"
+                    bandera = self._get_bandera_pais(feed['country'])
+                    valor += f"**{feed['name']}** ({feed['id']}) {bandera}\n"
+                    valor += f"Priority: {feed['priority']} | Language: {feed['language'].upper()}\n\n"
                 
+                # Direct mapping from Spanish to English
+                category_names = {
+                    'economy': 'Economy',
+                    'technology': 'Technology', 
+                    'general': 'General',
+                    'international': 'International',
+                    'crypto': 'Crypto'
+                }
+                name = category_names.get(category, category.title())
                 embed.add_field(
-                    name=f"📂 {categoria.title()} ({len(feeds_cat)} feeds)",
+                    name=f"📂 {name} ({len(feeds_cat)} feeds)",
                     value=valor,
                     inline=False
                 )
             
-            embed.set_footer(text=f"Usa !vigia suscribir <categoría> para recibir noticias")
+            embed.set_footer(text=f"Use !watcher subscribe <category> to receive news")
             await message.channel.send(embed=embed)
             
         except Exception as e:
-            logger.exception(f"Error en cmd_feeds: {e}")
-            await message.channel.send(get_message('error_general', error=e))
+            logger.exception(f"Error in cmd_feeds: {e}")
+            await message.channel.send(get_message('general_error', error=e))
     
     async def cmd_reset(self, message, args):
         """Completely clear all user subscriptions."""
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
-            # Verificar si tiene alguna suscripción
-            tipo_actual = db.verificar_tipo_suscripcion_usuario(usuario_id)
+            # Check if has any subscription
+            current_type = db.check_user_subscription_type(user_id)
             
-            if not tipo_actual:
-                await message.channel.send("📝 No tienes ninguna suscripción activa para limpiar.")
+            if not current_type:
+                await message.channel.send(get_message('error_no_suscripciones'))
                 return
             
-            # Verificar si es confirmación
-            if args and args[0].lower() == "confirmar":
-                # Ejecutar reset confirmado
-                canceladas = 0
+            # Check if confirmation
+            if args and args[0].lower() == "confirm":
+                # Execute confirmed reset
+                cancelled = 0
                 
-                if tipo_actual == 'plana':
-                    # Cancelar suscripciones planas
-                    suscripciones = db.obtener_suscripciones_usuario(usuario_id)
-                    for categoria, feed_id, _ in suscripciones:
-                        if db.cancelar_suscripcion_categoria(usuario_id, categoria, feed_id):
+                if current_type == 'plana':
+                    # Cancel flat subscriptions
+                    subscriptions = db.get_user_subscriptions(user_id)
+                    for category, feed_id, _ in subscriptions:
+                        if db.cancel_category_subscription(user_id, category, feed_id):
+                            cancelled += 1
+                            
+                elif current_type == 'palabras':
+                    # Cancel keyword subscriptions
+                    subscriptions = db.get_user_keyword_subscriptions(user_id)
+                    for category, _, _ in subscriptions:
+                        if db.cancel_user_keyword_subscription(user_id, category):
                             canceladas += 1
                             
-                elif tipo_actual == 'palabras':
-                    # Cancelar suscripciones con palabras clave
-                    suscripciones = db.obtener_suscripciones_palabras_usuario(usuario_id)
-                    for categoria, _, _ in suscripciones:
-                        if db.cancelar_suscripcion_palabras_usuario(usuario_id, categoria):
-                            canceladas += 1
-                            
-                elif tipo_actual == 'ia':
-                    # Cancelar suscripciones con IA
-                    suscripciones = db.obtener_suscripciones_ia_usuario(usuario_id)
-                    for categoria, feed_id, _ in suscripciones:
-                        if db.cancelar_suscripcion_categoria(usuario_id, categoria, feed_id):
-                            canceladas += 1
+                elif current_type == 'ia':
+                    # Cancel AI subscriptions
+                    subscriptions = db.get_user_ai_subscriptions(user_id)
+                    for category, feed_id, _ in subscriptions:
+                        if db.cancel_category_subscription(user_id, category, feed_id):
+                            cancelled += 1
                 
-                if canceladas > 0:
-                    await message.channel.send(f"✅ **RESET COMPLETADO**\n"
-                                             f"Se eliminaron {canceladas} suscripción(es) de tipo '{tipo_actual}'.\n"
-                                             f"Ahora puedes suscribirte a un nuevo tipo de alertas.")
+                if cancelled > 0:
+                    await message.channel.send(f"✅ **RESET COMPLETED**\n"
+                                             f"Removed {cancelled} subscription(s) of type '{current_type}'.\n"
+                                             f"You can now subscribe to a new type of alerts.")
                 else:
-                    await message.channel.send("❌ No se encontraron suscripciones activas para cancelar.")
+                    await message.channel.send(get_message('error_no_suscripciones'))
                 return
             
             # If not confirmed, show confirmation message
             await message.channel.send(
                 f"⚠️ **CONFIRMATION REQUIRED**\n"
-                f"You are about to delete ALL of your '{tipo_actual}' subscriptions.\n"
+                f"You are about to delete ALL of your '{current_type}' subscriptions.\n"
                 f"This action cannot be undone.\n"
                 f"To confirm, use: `!watcher reset confirm`"
             )
             
         except Exception as e:
-            logger.exception(f"Error en cmd_reset: {e}")
-            await message.channel.send("❌ Error processing reset request")
+            logger.exception(f"Error in cmd_reset: {e}")
+            await message.channel.send(get_message('general_error', error="processing reset request"))
 
     async def cmd_categories(self, message, args):
         """Show available categories."""
         try:
             db = self._get_db()
-            categorias = db.obtener_categorias_disponibles()
+            categorys = db.get_available_categories()
             
-            if not categorias:
-                await message.channel.send("📝 No hay categorías disponibles")
+            if not categorys:
+                await message.channel.send(get_message('error_no_hay_kategorias'))
                 return
             
             embed = discord.Embed(
-                title="📂 Categorías Disponibles",
-                description=f"Hay {len(categorias)} categorías con feeds activos:",
+                title="📂 Available Categories",
+                description=f"There are {len(categorys)} categories with active feeds:",
                 color=discord.Color.blue()
             )
             
-            for categoria, count in categorias:
-                icono = self._get_icono_categoria(categoria)
+            for category, count in categorys:
+                icono = self._get_icono_category(category)
+                # Direct mapping from Spanish to English
+                category_names = {
+                    'economy': 'Economy',
+                    'technology': 'Technology', 
+                    'general': 'General',
+                    'international': 'International',
+                    'crypto': 'Crypto'
+                }
+                name = category_names.get(category, category.title())
                 embed.add_field(
-                    name=f"{icono} {categoria.title()}",
-                    value=f"{count} feeds disponibles",
+                    name=f"{icono} {name}",
+                    value=f"{count} available feeds",
                     inline=True
                 )
             
@@ -180,46 +193,46 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_categories: {e}")
-            await message.channel.send(get_message('error_general', error=e))
+            await message.channel.send(get_message('general_error', error=e))
 
     async def cmd_subscribe(self, message, args):
         """Subscribe the user to a category or a specific feed (flat subscription)."""
         if not args:
-            await message.channel.send("📝 Usage: `!watcher subscribe <category> [feed_id]`")
+            await message.channel.send(get_message('uso_suscribir'))
             return
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
-            categoria = self._normalize_category(args[0])
+            user_id = str(message.author.id)
+            category = self._normalize_category(args[0])
             feed_id = None
             
-            # Verificar si es un feed_id específico
+            # Check if it's a specific feed_id
             if len(args) > 1:
                 try:
                     feed_id = int(args[1])
-                    # Verificar que el feed exista y pertenezca a la categoría
-                    feeds = db.obtener_feeds_activos(categoria)
+                    # Verify that the feed exists and belongs to the category
+                    feeds = db.get_active_feeds(category)
                     feed_existente = any(f[0] == feed_id for f in feeds)
                     if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{categoria}'")
+                        await message.channel.send(get_message('feed_not_found', feed_id=feed_id, category=category))
                         return
                 except ValueError:
-                    await message.channel.send("❌ feed_id must be a number")
+                    await message.channel.send(get_message('invalid_feed_id'))
                     return
             else:
                 # Verify category exists
-                categorias = db.obtener_categorias_disponibles()
-                if not any(cat[0] == categoria for cat in categorias):
-                    await message.channel.send(f"❌ Category '{categoria}' not found")
+                categorys = db.get_available_categories()
+                if not any(cat[0] == category for cat in categorys):
+                    await message.channel.send(get_message('error_kategori_no_encontrada', category=category))
                     return
             
             # Check current subscription type
-            tipo_actual = db.verificar_tipo_suscripcion_usuario(usuario_id)
+            tipo_actual = db.check_user_subscription_type(user_id)
             
             # If already has flat subscription, block
             if tipo_actual == 'plana':
-                await message.channel.send("ℹ️ You already have an active flat subscription. Use `!watcher unsubscribe <category>` first if you want to change.")
+                await message.channel.send(get_message('ya_tienes_suscripcion_plana'))
                 return
             
             # If has other subscription types, block
@@ -230,97 +243,201 @@ class WatcherCommands:
                 return
             
             # Create flat subscription
-            if db.suscribir_usuario_categoria(usuario_id, categoria, feed_id):
+            if db.subscribe_user_category(user_id, category, feed_id):
                 if feed_id:
-                    await message.channel.send(f"✅ Flat subscription created: Feed {feed_id} in category '{categoria}'")
+                    await message.channel.send(get_message('subscription_successful_feed', feed_id=feed_id, category=category))
                 else:
-                    await message.channel.send(f"✅ Flat subscription created: Category '{categoria}'")
+                    await message.channel.send(get_message('subscription_successful_category', category=category))
             else:
-                await message.channel.send("❌ Error creating flat subscription")
+                await message.channel.send(get_message('subscription_error'))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_subscribe: {e}")
-            await message.channel.send("❌ Error processing subscription")
+            await message.channel.send(get_message('error_processing_subscription'))
 
     async def cmd_unsubscribe(self, message, args):
-        """Cancel a flat subscription for a category or feed."""
+        """Cancel subscription by number (from list) or by category/feed (legacy)."""
         if not args:
-            await message.channel.send("📝 Usage: `!watcher unsubscribe <category> [feed_id]`")
+            await message.channel.send("📝 Usage: `!watcher unsubscribe <number>` or `!watcher unsubscribe <category> [feed_id]`")
+            await message.channel.send("💡 Use `!watcher subscriptions` to see numbered list")
             return
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
-            categoria = self._normalize_category(args[0])
-            feed_id = None
+            user_id = str(message.author.id)
             
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                except ValueError:
-                    await message.channel.send("❌ feed_id must be a number")
-                    return
-            
-            if db.cancelar_suscripcion_categoria(usuario_id, categoria, feed_id):
-                if feed_id:
-                    await message.channel.send(f"✅ Suscripción plana cancelada: Feed {feed_id} de '{categoria}'")
-                else:
-                    await message.channel.send(f"✅ Suscripción plana cancelada: Categoría '{categoria}'")
-            else:
-                await message.channel.send("❌ No tienes suscripción plana activa en esa categoría/feed")
+            # Check if first argument is a number (new method)
+            try:
+                list_number = int(args[0])
+                await self._unsubscribe_by_number(message, user_id, list_number)
+                return
+            except ValueError:
+                # Not a number, use legacy category-based method
+                await self._unsubscribe_by_category(message, user_id, args)
                 
         except Exception as e:
             logger.exception(f"Error in cmd_unsubscribe: {e}")
-            await message.channel.send("❌ Error canceling flat subscription")
+            await message.channel.send("❌ Error canceling subscription")
+
+    async def _unsubscribe_by_number(self, message, user_id: str, list_number: int):
+        """Unsubscribe by numbered list position."""
+        try:
+            db = self._get_db()
+            
+            # Get all subscriptions (same logic as cmd_subscriptions)
+            all_subscriptions = []
+            
+            # Get flat subscriptions
+            flat_subs = db.get_user_subscriptions(user_id)
+            for category, feed_id, fecha in flat_subs:
+                all_subscriptions.append({
+                    'category': category,
+                    'feed_id': feed_id,
+                    'method': 'flat',
+                    'date': fecha
+                })
+            
+            # Get keyword subscriptions
+            keyword_subs = db.get_user_keyword_subscriptions(user_id)
+            for category, feed_id, palabras in keyword_subs:
+                all_subscriptions.append({
+                    'category': category,
+                    'feed_id': feed_id,
+                    'method': 'keyword',
+                    'keywords': palabras
+                })
+            
+            # Get AI subscriptions
+            ai_subs = db.get_user_ai_subscriptions(user_id)
+            for category, feed_id, premisas in ai_subs:
+                all_subscriptions.append({
+                    'category': category,
+                    'feed_id': feed_id,
+                    'method': 'general',
+                    'premises': premisas
+                })
+            
+            # Validate list number
+            if list_number < 1 or list_number > len(all_subscriptions):
+                await message.channel.send(f"❌ Invalid number. Use 1-{len(all_subscriptions)} or see list with `!watcher subscriptions`")
+                return
+            
+            # Get subscription to cancel
+            sub_to_cancel = all_subscriptions[list_number - 1]
+            category = sub_to_cancel['category']
+            feed_id = sub_to_cancel['feed_id']
+            method = sub_to_cancel['method']
+            
+            # Cancel based on method type
+            success = False
+            if method == 'flat':
+                success = db.cancel_category_subscription(user_id, category, feed_id)
+            elif method == 'keyword':
+                success = db.cancel_user_keyword_subscription(user_id, category)
+            elif method == 'general':
+                success = db.cancel_category_subscription(user_id, category, feed_id)
+            
+            if success:
+                feed_info = f"Feed {feed_id}" if feed_id else "all feeds"
+                await message.channel.send(f"✅ Unsubscribed from #{list_number} - {category.title()} ({feed_info})")
+            else:
+                await message.channel.send("❌ Error canceling subscription")
+                
+        except Exception as e:
+            logger.exception(f"Error in _unsubscribe_by_number: {e}")
+            await message.channel.send("❌ Error canceling subscription by number")
+
+    async def _unsubscribe_by_category(self, message, user_id: str, args):
+        """Legacy unsubscribe by category/feed method."""
+        category = self._normalize_category(args[0])
+        feed_id = None
+        
+        if len(args) > 1:
+            try:
+                feed_id = int(args[1])
+            except ValueError:
+                await message.channel.send("❌ Invalid feed ID format")
+                return
+        
+        db = self._get_db()
+        
+        if db.cancel_category_subscription(user_id, category, feed_id):
+            if feed_id:
+                await message.channel.send(f"✅ Unsubscribed from {category} (Feed {feed_id})")
+            else:
+                await message.channel.send(f"✅ Unsubscribed from {category}")
+        else:
+            await message.channel.send("❌ No matching subscription found")
     
     async def cmd_general_unsubscribe(self, message, args):
         """Cancel an AI (premises-based) subscription for a category/feed."""
         if not args:
-            await message.channel.send("📝 Usage: `!watcher general unsubscribe <category> [feed_id]`")
+            await message.channel.send(get_message('uso_general_unsubscribe'))
             return
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
-            categoria = self._normalize_category(args[0])
+            user_id = str(message.author.id)
+            category = self._normalize_category(args[0])
             feed_id = None
             
             if len(args) > 1:
                 try:
                     feed_id = int(args[1])
                 except ValueError:
-                    await message.channel.send("❌ feed_id must be a number")
+                    await message.channel.send(get_message('invalid_feed_id'))
                     return
             
-            if db.cancelar_suscripcion_categoria(usuario_id, categoria, feed_id):
+            if db.cancel_category_subscription(user_id, category, feed_id):
                 if feed_id:
-                    await message.channel.send(f"✅ AI subscription canceled: Feed {feed_id} in '{categoria}'")
+                    await message.channel.send(f"✅ AI subscription canceled: Feed {feed_id} in '{category}'")
                 else:
-                    await message.channel.send(f"✅ AI subscription canceled: Category '{categoria}'")
+                    await message.channel.send(f"✅ AI subscription canceled: Category '{category}'")
             else:
-                await message.channel.send("❌ You don't have an active AI subscription for that category/feed")
+                await message.channel.send(get_message('no_tienes_suscripcion_ia'))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_general_unsubscribe: {e}")
-            await message.channel.send("❌ Error canceling AI subscription")
+            await message.channel.send(get_message('error_cancelando_suscripcion_ia'))
     
     async def cmd_status(self, message, args):
         """Show the user's active subscription type and details."""
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
-            # Verificar tipo de suscripción actual
-            tipo_actual = db.verificar_tipo_suscripcion_usuario(usuario_id)
-            logger.info(f"DEBUG: Subscription type for {usuario_id}: {tipo_actual}")
+            # Get subscription counts
+            user_count = db.count_user_subscriptions(user_id)
+            server_count = db.count_server_subscriptions()
+            can_user_sub, user_limit_msg = db.can_user_subscribe(user_id)
+            
+            # Check current subscription type
+            tipo_actual = db.check_user_subscription_type(user_id)
+            logger.info(f"DEBUG: Subscription type for {user_id}: {tipo_actual}")
             
             if not tipo_actual:
-                await message.channel.send("📝 You don't have any active subscriptions")
+                embed = discord.Embed(
+                    title="📊 **Subscription Status**",
+                    description="You have no active subscriptions",
+                    color=discord.Color.orange()
+                )
+                embed.add_field(
+                    name="📈 **Your Usage**",
+                    value=f"Subscriptions: {user_count}/3\n{user_limit_msg}",
+                    inline=False
+                )
+                embed.add_field(
+                    name="🌐 **Server Usage**",
+                    value=f"Total subscriptions: {server_count}/15",
+                    inline=False
+                )
+                embed.set_footer(text="Use !watcher subscribe <category> to subscribe")
+                await message.channel.send(embed=embed)
                 return
             
-            # Mostrar información según el tipo
+            # Show information according to type
             if tipo_actual == 'plana':
-                suscripciones = db.obtener_suscripciones_usuario(usuario_id)
+                suscripciones = db.get_user_subscriptions(user_id)
                 if suscripciones:
                     embed = discord.Embed(
                         title="📰 Active Flat Subscription",
@@ -328,27 +445,37 @@ class WatcherCommands:
                         color=discord.Color.blue()
                     )
                     
-                    for i, (categoria, feed_id, fecha) in enumerate(suscripciones, 1):
+                    for i, (category, feed_id, fecha) in enumerate(suscripciones, 1):
                         if feed_id:
                             embed.add_field(
-                                name=f"#{i} - {categoria}",
+                                name=f"#{i} - {category}",
                                 value=f"Feed ID: {feed_id}\nDesde: {fecha}",
                                 inline=False
                             )
                         else:
                             embed.add_field(
-                                name=f"#{i} - {categoria}",
+                                name=f"#{i} - {category}",
                                 value=f"Entire category\nSince: {fecha}",
                                 inline=False
                             )
                     
+                    embed.add_field(
+                        name="📈 **Your Usage**",
+                        value=f"Subscriptions: {user_count}/3\n{user_limit_msg}",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="🌐 **Server Usage**",
+                        value=f"Total subscriptions: {server_count}/15",
+                        inline=False
+                    )
                     embed.set_footer(text="Use !watcher unsubscribe <category> to cancel")
                     await message.channel.send(embed=embed)
                 else:
-                    await message.channel.send("📝 You don't have an active flat subscription")
+                    await message.channel.send(get_message('no_active_flat_subscription'))
                     
             elif tipo_actual == 'palabras':
-                suscripciones = db.obtener_suscripciones_palabras_usuario(usuario_id)
+                suscripciones = db.get_user_keyword_subscriptions(user_id)
                 if suscripciones:
                     embed = discord.Embed(
                         title="🔍 Active Keywords Subscription",
@@ -356,27 +483,37 @@ class WatcherCommands:
                         color=discord.Color.green()
                     )
                     
-                    for i, (categoria, feed_id, palabras) in enumerate(suscripciones, 1):
+                    for i, (category, feed_id, palabras) in enumerate(suscripciones, 1):
                         if feed_id:
                             embed.add_field(
-                                name=f"#{i} - {categoria} (Feed {feed_id})",
-                                value=f"Palabras: {palabras}",
+                                name=f"#{i} - {category} (Feed {feed_id})",
+                                value=f"Keywords: {palabras}",
                                 inline=False
                             )
                         else:
                             embed.add_field(
-                                name=f"#{i} - {categoria}",
+                                name=f"#{i} - {category}",
                                 value=f"Keywords: {palabras}",
                                 inline=False
                             )
                     
-                    embed.set_footer(text="Use !watcher keywords unsubscribe <category> to cancel")
+                    embed.add_field(
+                        name="📈 **Your Usage**",
+                        value=f"Subscriptions: {user_count}/3\n{user_limit_msg}",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="🌐 **Server Usage**",
+                        value=f"Total subscriptions: {server_count}/15",
+                        inline=False
+                    )
+                    embed.set_footer(text="Use !watcher unsubscribe <category> to cancel")
                     await message.channel.send(embed=embed)
                 else:
-                    await message.channel.send("📝 You don't have an active keywords subscription")
+                    await message.channel.send(get_message('no_active_keyword_subscription'))
                     
             elif tipo_actual == 'ia':
-                suscripciones = db.obtener_suscripciones_ia_usuario(usuario_id)
+                suscripciones = db.get_user_ai_subscriptions(user_id)
                 logger.info(f"DEBUG: Suscripciones IA encontradas: {suscripciones}")
                 if suscripciones:
                     embed = discord.Embed(
@@ -385,88 +522,107 @@ class WatcherCommands:
                         color=discord.Color.purple()
                     )
                     
-                    for i, (categoria, feed_id, premisas) in enumerate(suscripciones, 1):
+                    for i, (category, feed_id, premisas) in enumerate(suscripciones, 1):
                         if feed_id:
                             embed.add_field(
-                                name=f"#{i} - {categoria} (Feed {feed_id})",
-                                value=f"Premisas configuradas: {len(premisas.split(','))}",
+                                name=f"#{i} - {category} (Feed {feed_id})",
+                                value=f"Premises configured: {len(premisas.split(','))}",
                                 inline=False
                             )
                         else:
                             embed.add_field(
-                                name=f"#{i} - {categoria}",
-                                value=f"Premisas configuradas: {len(premisas.split(','))}",
+                                name=f"#{i} - {category}",
+                                value=f"Premises configured: {len(premisas.split(','))}",
                                 inline=False
                             )
                     
+                    embed.add_field(
+                        name="📈 **Your Usage**",
+                        value=f"Subscriptions: {user_count}/3\n{user_limit_msg}",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="🌐 **Server Usage**",
+                        value=f"Total subscriptions: {server_count}/15",
+                        inline=False
+                    )
                     embed.set_footer(text="Use !watcher general unsubscribe <category> to cancel")
                     await message.channel.send(embed=embed)
                 else:
-                    logger.warning(f"DEBUG: Inconsistencia detectada - tipo='ia' pero no hay suscripciones IA para usuario {usuario_id}")
-                    await message.channel.send("📝 You don't have an active AI subscription")
+                    logger.warning(f"DEBUG: Inconsistency detected - tipo='ia' pero no suscripciones IA para usuario {user_id}")
+                    await message.channel.send(get_message('no_active_ai_subscription'))
                     
         except Exception as e:
             logger.exception(f"Error in cmd_status: {e}")
-            await message.channel.send("❌ Error showing subscription status")
+            await message.channel.send(get_message('error_mostrando_estado'))
     
-    async def cmd_categorias(self, message, args):
-        """Muestra categorías disponibles con feeds activos."""
+    async def cmd_categories(self, message, args):
+        """Show available categories with active feeds."""
         try:
             db = self._get_db()
-            categorias = db.obtener_categorias_disponibles()
+            categorys = db.get_available_categories()
             
-            if not categorias:
-                await message.channel.send("📝 No hay categorías disponibles")
+            if not categorys:
+                await message.channel.send(get_message('error_no_hay_kategorias'))
                 return
             
             embed = discord.Embed(
-                title="📂 Categorías Disponibles",
-                description=f"Hay {len(categorias)} categorías con feeds activos:",
+                title="📂 Available Categories",
+                description=f"There are {len(categorys)} categories with active feeds:",
                 color=discord.Color.blue()
             )
             
-            for categoria, count in categorias:
-                icono = self._get_icono_categoria(categoria)
+            for category, count in categorys:
+                icono = self._get_icono_category(category)
+                # Direct mapping from Spanish to English
+                category_names = {
+                    'economy': 'Economy',
+                    'technology': 'Technology', 
+                    'general': 'General',
+                    'international': 'International',
+                    'crypto': 'Crypto'
+                }
+                name = category_names.get(category, category.title())
                 embed.add_field(
-                    name=f"{icono} {categoria.title()}",
-                    value=f"{count} feeds disponibles",
+                    name=f"{icono} {name}",
+                    value=f"{count} available feeds",
                     inline=True
                 )
             
-            embed.set_footer(text="Usa !vigia feeds para ver los feeds de cada categoría")
+            embed.set_footer(text="Use !watcher feeds to see feeds in each category")
             await message.channel.send(embed=embed)
             
         except Exception as e:
-            logger.exception(f"Error en cmd_categorias: {e}")
-            await message.channel.send("❌ Error al mostrar categorías")
+            logger.exception(f"Error in cmd_categories: {e}")
+            await message.channel.send(get_message('error_mostrando_categorys'))
     
-    async def cmd_agregar_feed(self, message, args):
+    async def cmd_add_feed(self, message, args):
         """Agrega nuevo feed (solo admins)."""
         if len(args) < 3:
-            await message.channel.send("📝 Uso: `!vigia agregar_feed <nombre> <url> <categoría> [país] [idioma]`")
+            await message.channel.send("📝 Uso: `!vigia add_feed <nombre> <url> <categoría> [país] [idioma]`")
             return
         
         # Verificar permisos de admin
         if not message.author.guild_permissions.administrator:
-            await message.channel.send("❌ Solo administradores pueden agregar feeds")
+            await message.channel.send("❌ Only administrators can add feeds")
             return
         
         try:
             db = self._get_db()
-            nombre = args[0]
+            name = args[0]
             url = args[1]
-            categoria = args[2].lower()
-            pais = args[3] if len(args) > 3 else None
-            idioma = args[4] if len(args) > 4 else 'es'
+            category = args[2].lower()
+            country = args[3] if len(args) > 3 else None
+            language = args[4] if len(args) > 4 else 'es'
             
-            if db.agregar_feed(nombre, url, categoria, pais, idioma):
-                await message.channel.send(f"✅ Feed '{nombre}' agregado a categoría '{categoria}'")
+            if db.add_feed(name, url, category, country, language):
+                await message.channel.send(f"✅ Feed '{name}' agregado a categoría '{category}'")
             else:
-                await message.channel.send(get_message('error_agregar_feed'))
+                await message.channel.send(get_message('error_add_feed'))
                 
         except Exception as e:
-            logger.exception(f"Error en cmd_agregar_feed: {e}")
-            await message.channel.send("❌ Error al agregar feed")
+            logger.exception(f"Error in cmd_add_feed: {e}")
+            await message.channel.send("❌ Error al add feed")
     
     async def cmd_general_subscribe(self, message, args):
         """Subscribe with AI (premises-based) to a category/feed."""
@@ -476,32 +632,32 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
-            categoria = self._normalize_category(args[0])
+            user_id = str(message.author.id)
+            category = self._normalize_category(args[0])
             feed_id = None
             
-            # Verificar si es un feed_id específico
+            # Check if it's a specific feed_id
             if len(args) > 1:
                 try:
                     feed_id = int(args[1])
-                    # Verificar que el feed exista y pertenezca a la categoría
-                    feeds = db.obtener_feeds_activos(categoria)
+                    # Verify that the feed exists and belongs to the category
+                    feeds = db.get_active_feeds(category)
                     feed_existente = any(f[0] == feed_id for f in feeds)
                     if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{categoria}'")
+                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'")
                         return
                 except ValueError:
-                    await message.channel.send("❌ feed_id must be a number")
+                    await message.channel.send(get_message('invalid_feed_id'))
                     return
             else:
                 # Verify category exists
-                categorias = db.obtener_categorias_disponibles()
-                if not any(cat[0] == categoria for cat in categorias):
-                    await message.channel.send(f"❌ Category '{categoria}' not found")
+                categorys = db.get_available_categories()
+                if not any(cat[0] == category for cat in categorys):
+                    await message.channel.send(get_message('error_kategori_no_encontrada', category=category))
                     return
             
             # Check current subscription type
-            tipo_actual = db.verificar_tipo_suscripcion_usuario(usuario_id)
+            tipo_actual = db.check_user_subscription_type(user_id)
             
             # If already has AI subscription, block
             if tipo_actual == 'ia':
@@ -516,18 +672,18 @@ class WatcherCommands:
                 return
             
             # Ensure the user has premises configured
-            premisas, contexto = db.obtener_premisas_con_contexto(usuario_id)
+            premisas, contexto = db.get_premises_with_context(user_id)
             if not premisas:
                 await message.channel.send("⚠️ You have no premises configured. Use `!watcher premises add <premise>` before subscribing with AI.")
                 return
             
             # Create AI subscription (store user premises)
             premisas_str = ",".join(premisas) if premisas else ""
-            if db.suscribir_usuario_categoria_ia(usuario_id, categoria, feed_id, premisas_str):
+            if db.subscribe_user_category_ai(user_id, category, feed_id, premisas_str):
                 if feed_id:
-                    await message.channel.send(f"🤖 **AI subscription** to feed {feed_id} in '{categoria}' - I will analyze critical news using your premises")
+                    await message.channel.send(f"🤖 **AI subscription** to feed {feed_id} in '{category}' - I will analyze critical news using your premises")
                 else:
-                    await message.channel.send(f"🤖 **AI subscription** to '{categoria}' - I will analyze critical news using your premises")
+                    await message.channel.send(f"🤖 **AI subscription** to '{category}' - I will analyze critical news using your premises")
             else:
                 await message.channel.send("❌ Error creating AI subscription")
                 
@@ -576,36 +732,36 @@ class WatcherCommands:
         # Default: treat first arg as "kw1,kw2" payload
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
 
             palabras_clave = args[0].strip('"\'')
-            categoria = None
+            category = None
             feed_id = None
 
             if len(args) > 1:
-                categoria = self._normalize_category(args[1])
+                category = self._normalize_category(args[1])
                 if len(args) > 2:
                     try:
                         feed_id = int(args[2])
-                        feeds = db.obtener_feeds_activos(categoria)
+                        feeds = db.get_active_feeds(category)
                         feed_existente = any(f[0] == feed_id for f in feeds)
                         if not feed_existente:
-                            await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{categoria}'")
+                            await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'")
                             return
                     except ValueError:
-                        await message.channel.send("❌ feed_id must be a number")
+                        await message.channel.send(get_message('invalid_feed_id'))
                         return
                 else:
-                    categorias = db.obtener_categorias_disponibles()
-                    if not any(cat[0] == categoria for cat in categorias):
-                        await message.channel.send(f"❌ Category '{categoria}' not found")
+                    categorys = db.get_available_categories()
+                    if not any(cat[0] == category for cat in categorys):
+                        await message.channel.send(get_message('error_kategori_no_encontrada', category=category))
                         return
 
             if not palabras_clave:
                 await message.channel.send("❌ You must provide keywords")
                 return
 
-            tipo_actual = db.verificar_tipo_suscripcion_usuario(usuario_id)
+            tipo_actual = db.check_user_subscription_type(user_id)
             if tipo_actual == 'palabras':
                 await message.channel.send(
                     "ℹ️ You already have an active keywords subscription. Use `!watcher keywords unsubscribe <category>` first if you want to change."
@@ -617,11 +773,11 @@ class WatcherCommands:
                 )
                 return
 
-            if db.suscribir_palabras_clave(usuario_id, palabras_clave, None, categoria, feed_id):
+            if db.subscribe_keywords(user_id, palabras_clave, None, category, feed_id):
                 if feed_id:
-                    await message.channel.send(f"🔍 **Keywords subscription** to feed {feed_id} in '{categoria}' - Searching: '{palabras_clave}'")
-                elif categoria:
-                    await message.channel.send(f"🔍 **Keywords subscription** to '{categoria}' - Searching: '{palabras_clave}'")
+                    await message.channel.send(f"🔍 **Keywords subscription** to feed {feed_id} in '{category}' - Searching: '{palabras_clave}'")
+                elif category:
+                    await message.channel.send(f"🔍 **Keywords subscription** to '{category}' - Searching: '{palabras_clave}'")
                 else:
                     await message.channel.send(f"🔍 **Global keywords subscription** - Searching: '{palabras_clave}'")
             else:
@@ -639,15 +795,15 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             palabra = args[0]
             
             # Obtener palabras actuales
-            palabras_actuales = db.obtener_palabras_usuario(usuario_id)
+            palabras_actuales = db.get_user_keywords(user_id)
             
             if not palabras_actuales:
                 # Si no tiene palabras, crear nueva lista
-                if db.suscribir_palabras_clave(usuario_id, palabra, None, None, None):
+                if db.subscribe_keywords(user_id, palabra, None, None, None):
                     await message.channel.send(f"✅ Palabra clave '{palabra}' añadida. Lista: {palabra}")
                 else:
                     await message.channel.send("❌ Error al añadir palabra clave")
@@ -661,7 +817,7 @@ class WatcherCommands:
                 lista_palabras.append(palabra)
                 nuevas_palabras = ','.join(lista_palabras)
                 
-                if db.actualizar_palabras_usuario(usuario_id, nuevas_palabras):
+                if db.update_user_keywords(user_id, nuevas_palabras):
                     await message.channel.send(f"✅ Palabra clave '{palabra}' añadida. Lista actual: {nuevas_palabras}")
                 else:
                     await message.channel.send("❌ Error al añadir palabra clave")
@@ -674,9 +830,9 @@ class WatcherCommands:
         """List the user's saved keywords."""
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
-            palabras = db.obtener_palabras_usuario(usuario_id)
+            palabras = db.get_user_keywords(user_id)
             
             if not palabras:
                 await message.channel.send("📝 No tienes palabras clave configuradas")
@@ -708,7 +864,7 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
             try:
                 num = int(args[0]) - 1  # Convertir a 0-based index
@@ -720,7 +876,7 @@ class WatcherCommands:
             
             nueva_palabra = args[1].strip('"\'')
             
-            palabras = db.obtener_palabras_usuario(usuario_id)
+            palabras = db.get_user_keywords(user_id)
             if not palabras:
                 await message.channel.send("❌ No tienes palabras clave configuradas")
                 return
@@ -735,7 +891,7 @@ class WatcherCommands:
             lista_palabras[num] = nueva_palabra
             palabras_actualizadas = ','.join(lista_palabras)
             
-            if db.actualizar_palabras_usuario(usuario_id, palabras_actualizadas):
+            if db.update_user_keywords(user_id, palabras_actualizadas):
                 await message.channel.send(f"✅ Palabra #{num + 1} modificada: '{palabra_antigua}' → '{nueva_palabra}'")
             else:
                 await message.channel.send("❌ Error al modificar palabra clave")
@@ -752,38 +908,38 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
-            categoria = self._normalize_category(args[0])
+            user_id = str(message.author.id)
+            category = self._normalize_category(args[0])
             feed_id = None
             
             # Ensure the user has saved keywords
-            palabras = db.obtener_palabras_usuario(usuario_id)
+            palabras = db.get_user_keywords(user_id)
             if not palabras:
                 await message.channel.send("❌ You have no saved keywords. Use `!watcher keywords add <keyword>` first")
                 return
             
-            # Verificar si es un feed_id específico
+            # Check if it's a specific feed_id
             if len(args) > 1:
                 try:
                     feed_id = int(args[1])
-                    # Verificar que el feed exista y pertenezca a la categoría
-                    feeds = db.obtener_feeds_activos(categoria)
+                    # Verify that the feed exists and belongs to the category
+                    feeds = db.get_active_feeds(category)
                     feed_existente = any(f[0] == feed_id for f in feeds)
                     if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{categoria}'")
+                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'")
                         return
                 except ValueError:
-                    await message.channel.send("❌ feed_id must be a number")
+                    await message.channel.send(get_message('invalid_feed_id'))
                     return
             else:
                 # Verify category exists
-                categorias = db.obtener_categorias_disponibles()
-                if not any(cat[0] == categoria for cat in categorias):
-                    await message.channel.send(f"❌ Category '{categoria}' not found")
+                categorys = db.get_available_categories()
+                if not any(cat[0] == category for cat in categorys):
+                    await message.channel.send(get_message('error_kategori_no_encontrada', category=category))
                     return
             
-            # Verificar tipo de suscripción actual del usuario
-            tipo_actual = db.verificar_tipo_suscripcion_usuario(usuario_id)
+            # Check current subscription type of the user
+            tipo_actual = db.check_user_subscription_type(user_id)
             
             # If already has keywords subscription, block
             if tipo_actual == 'palabras':
@@ -798,11 +954,11 @@ class WatcherCommands:
                 return
             
             # Create keywords subscription
-            if db.suscribir_palabras_clave(usuario_id, palabras, None, categoria, feed_id):
+            if db.subscribe_keywords(user_id, palabras, None, category, feed_id):
                 if feed_id:
-                    await message.channel.send(f"🔍 **Keywords subscription** to feed {feed_id} in '{categoria}' - Searching: '{palabras}'")
+                    await message.channel.send(f"🔍 **Keywords subscription** to feed {feed_id} in '{category}' - Searching: '{palabras}'")
                 else:
-                    await message.channel.send(f"🔍 **Keywords subscription** to '{categoria}' - Searching: '{palabras}'")
+                    await message.channel.send(f"🔍 **Keywords subscription** to '{category}' - Searching: '{palabras}'")
             else:
                 await message.channel.send("❌ Error subscribing to keywords")
                 
@@ -811,33 +967,33 @@ class WatcherCommands:
             await message.channel.send("❌ Error subscribing to keywords")
     
     async def cmd_palabras_suscripciones(self, message, args):
-        """Muestra las suscripciones activas con palabras clave."""
+        """Show active keyword subscriptions."""
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
-            suscripciones = db.obtener_suscripciones_palabras_usuario(usuario_id)
+            suscripciones = db.get_user_keyword_subscriptions(user_id)
             
             if not suscripciones:
-                await message.channel.send("📝 No tienes suscripciones con palabras clave activas")
+                await message.channel.send("📝 You have no active keyword subscriptions")
                 return
             
             embed = discord.Embed(
-                title="🔍 Suscripciones con Palabras Clave",
-                description=f"Tienes {len(suscripciones)} suscripciones activas:",
+                title="🔍 Keyword Subscriptions",
+                description=f"You have {len(suscripciones)} active subscriptions:",
                 color=discord.Color.blue()
             )
             
-            for i, (categoria, feed_id, palabras) in enumerate(suscripciones, 1):
+            for i, (category, feed_id, palabras) in enumerate(suscripciones, 1):
                 if feed_id:
                     embed.add_field(
-                        name=f"#{i} - {categoria} (Feed {feed_id})",
+                        name=f"#{i} - {category} (Feed {feed_id})",
                         value=f"Palabras: {palabras}",
                         inline=False
                     )
                 else:
                     embed.add_field(
-                        name=f"#{i} - {categoria}",
+                        name=f"#{i} - {category}",
                         value=f"Palabras: {palabras}",
                         inline=False
                     )
@@ -857,13 +1013,13 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
-            categoria = self._normalize_category(args[0])
+            user_id = str(message.author.id)
+            category = self._normalize_category(args[0])
             
-            if db.cancelar_suscripcion_palabras_usuario(usuario_id, categoria):
-                await message.channel.send(f"✅ Keywords subscription canceled for '{categoria}'")
+            if db.cancel_user_keyword_subscription(user_id, category):
+                await message.channel.send(f"✅ Keywords subscription canceled for '{category}'")
             else:
-                await message.channel.send(f"❌ You don't have a keywords subscription in '{categoria}'")
+                await message.channel.send(f"❌ You don't have a keywords subscription in '{category}'")
                 
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_unsubscribe: {e}")
@@ -879,7 +1035,7 @@ class WatcherCommands:
             db = self._get_db()
             palabras_clave = " ".join(args).strip('"\'')
             
-            if db.cancelar_suscripcion_palabras(str(message.author.id), palabras_clave):
+            if db.cancel_keyword_subscription(str(message.author.id), palabras_clave):
                 await message.channel.send(f"✅ Suscripción cancelada: '{palabras_clave}'")
             else:
                 await message.channel.send("❌ No se encontró esa suscripción de palabras clave")
@@ -896,27 +1052,27 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            categoria = self._normalize_category(args[0])
+            category = self._normalize_category(args[0])
             
-            # Verificar que la categoría exista
-            categorias = db.obtener_categorias_disponibles()
-            if not any(cat[0] == categoria for cat in categorias):
-                await message.channel.send(get_message('categoria_no_encontrada', categoria=categoria))
+            # Verify that the category exists
+            categorys = db.get_available_categories()
+            if not any(cat[0] == category for cat in categorys):
+                await message.channel.send(get_message('category_no_encontrada', category=category))
                 return
             
             # Suscribir a feeds especializados (sin feed_id)
-            if db.suscribir_usuario_categoria(str(message.author.id), categoria):
+            if db.subscribe_user_category(str(message.author.id), category):
                 # También suscribir a feeds generales si existen
-                feeds = db.obtener_feeds_activos(categoria)
+                feeds = db.get_active_feeds(category)
                 feeds_generales = [f for f in feeds if f[8] == 'general']
                 
                 for feed in feeds_generales:
-                    db.suscribir_usuario_categoria(str(message.author.id), categoria, feed[0])
+                    db.subscribe_user_category(str(message.author.id), category, feed[0])
                 
                 if feeds_generales:
-                    await message.channel.send(f"✅ Suscrito a cobertura mixta de '{categoria}' (especializado + general)")
+                    await message.channel.send(f"✅ Suscrito a cobertura mixta de '{category}' (especializado + general)")
                 else:
-                    await message.channel.send(f"✅ Suscrito a cobertura especializada de '{categoria}'")
+                    await message.channel.send(f"✅ Suscrito a cobertura especializada de '{category}'")
             else:
                 await message.channel.send("❌ Error al realizar suscripción mixta")
                 
@@ -928,7 +1084,7 @@ class WatcherCommands:
         """Muestra suscripciones de palabras clave del usuario."""
         try:
             db = self._get_db()
-            suscripciones = db.obtener_suscripciones_palabras(str(message.author.id))
+            suscripciones = db.get_keyword_subscriptions(str(message.author.id))
             
             if not suscripciones:
                 await message.channel.send(get_message('error_no_hay_palabras_clave'))
@@ -971,9 +1127,9 @@ class WatcherCommands:
         try:
             db = self._get_db()
             palabras_clave = " ".join(args).strip('"\'')
-            canal = message.channel
+            channel = message.channel
             
-            if db.suscribir_palabras_clave(str(message.author.id), palabras_clave, str(canal.id)):
+            if db.subscribe_keywords(str(message.author.id), palabras_clave, str(channel.id)):
                 await message.channel.send(f"✅ Channel subscribed to keywords: '{palabras_clave}'")
             else:
                 await message.channel.send("❌ Error subscribing channel to keywords")
@@ -995,10 +1151,10 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            canal = message.channel
+            channel = message.channel
             palabras_clave = " ".join(args).strip('"\'')
             
-            if db.cancelar_suscripcion_palabras_canal(str(canal.id), palabras_clave):
+            if db.cancel_keyword_subscription(str(channel.id), palabras_clave):
                 await message.channel.send(f"✅ Channel keywords subscription canceled: '{palabras_clave}'")
             else:
                 await message.channel.send("❌ Error canceling channel keywords subscription")
@@ -1012,7 +1168,7 @@ class WatcherCommands:
     async def cmd_channel_premises(self, message, args):
         """Channel premises management command."""
         if not args:
-            # Si no hay subcomando, mostrar lista por defecto
+            # Si no subcomando, mostrar lista por defecto
             await self.cmd_channel_premises_list(message, args)
             return
         
@@ -1026,31 +1182,31 @@ class WatcherCommands:
         elif subcomando == 'mod':
             await self.cmd_channel_premises_mod(message, subargs)
         else:
-            await message.channel.send(f"❌ Subcomando '{subcomando}' no reconocido. Usa: list, add, mod")
+            await message.channel.send(f"❌ Subcomando '{subcomando}' not recognized. Usa: list, add, mod")
     
     async def cmd_channel_premises_list(self, message, args):
         """List channel premises (custom or global)."""
-        # Verificar permisos de admin
+        # Check admin permissions
         if not message.author.guild_permissions.administrator:
-            await message.channel.send("❌ Solo administradores pueden ver las premisas del canal")
+            await message.channel.send("❌ Only administrators can view channel premises")
             return
         
         try:
             db = self._get_db()
-            canal = message.channel
-            canal_id = str(canal.id)
+            channel = message.channel
+            channel_id = str(channel.id)
             
-            # Obtener premisas con contexto
-            premisas, contexto = db.obtener_premisas_canal_con_contexto(canal_id)
+            # Get premises with context
+            premisas, contexto = db.get_channel_premises_with_context(channel_id)
             
             if not premisas:
-                await message.channel.send("📭 No hay premisas configuradas para este canal.")
+                await message.channel.send("📭 No premises configured for this channel.")
                 return
             
             embed = discord.Embed(
-                title=f"🎯 Premisas del Canal #{canal.name} ({contexto.title()})",
-                description="Estas son las condiciones que hacen una noticia **CRÍTICA** para este canal:",
-                color=discord.Color.blue() if contexto == "personalizadas" else discord.Color.red(),
+                title=f"🎯 Channel Premises #{channel.name} ({contexto.title()})",
+                description="These are the conditions that make news **CRITICAL** for this channel:",
+                color=discord.Color.blue() if contexto == "custom" else discord.Color.red(),
                 timestamp=datetime.now()
             )
             
@@ -1061,7 +1217,7 @@ class WatcherCommands:
                     inline=False
                 )
             
-            if contexto == "personalizadas":
+            if contexto == "custom":
                 embed.set_footer(text="Use !watcherchannel premises add/mod to manage channel premises")
             else:
                 embed.set_footer(text="Use !watcherchannel premises add to create custom channel premises")
@@ -1076,7 +1232,7 @@ class WatcherCommands:
         """Add a new premise to the channel (max 7)."""
         # Verificar permisos de admin
         if not message.author.guild_permissions.administrator:
-            await message.channel.send("❌ Solo administradores pueden gestionar premisas del canal")
+            await message.channel.send("❌ Only administrators can manage premisas del channel")
             return
         
         if not args:
@@ -1085,15 +1241,15 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            canal = message.channel
-            canal_id = str(canal.id)
+            channel = message.channel
+            channel_id = str(channel.id)
             nueva_premisa = " ".join(args).strip('"\'')
             
             if not nueva_premisa:
                 await message.channel.send("❌ Debes proporcionar el texto de la premisa.")
                 return
             
-            success, mensaje = db.add_premise_canal(canal_id, nueva_premisa)
+            success, mensaje = db.add_premise_channel(channel_id, nueva_premisa)
             
             if success:
                 await message.channel.send(f"✅ {mensaje}")
@@ -1108,7 +1264,7 @@ class WatcherCommands:
         """Modify a specific channel premise by index."""
         # Verificar permisos de admin
         if not message.author.guild_permissions.administrator:
-            await message.channel.send("❌ Solo administradores pueden gestionar premisas del canal")
+            await message.channel.send("❌ Only administrators can manage premisas del channel")
             return
         
         if len(args) < 2:
@@ -1117,10 +1273,10 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            canal = message.channel
-            canal_id = str(canal.id)
+            channel = message.channel
+            channel_id = str(channel.id)
             
-            # Parsear número
+            # Parse number
             try:
                 indice = int(args[0])
             except ValueError:
@@ -1133,7 +1289,7 @@ class WatcherCommands:
                 await message.channel.send("❌ Debes proporcionar el texto de la nueva premisa.")
                 return
             
-            success, mensaje = db.modificar_premisa_canal(canal_id, indice, nueva_premisa)
+            success, mensaje = db.modificar_premisa_channel(channel_id, indice, nueva_premisa)
             
             if success:
                 await message.channel.send(f"✅ {mensaje}")
@@ -1153,52 +1309,52 @@ class WatcherCommands:
         try:
             # Verificar permisos de admin
             if not message.author.guild_permissions.administrator:
-                await message.channel.send("❌ Solo administradores pueden suscribir canales")
+                await message.channel.send("❌ Only administrators can subscribe channels")
                 return
             
             db = self._get_db()
-            canal_id = str(message.channel.id)
-            canal_nombre = message.channel.name
-            servidor_id = str(message.guild.id)
-            servidor_nombre = message.guild.name
-            categoria = self._normalize_category(args[0])
+            channel_id = str(message.channel.id)
+            channel_name = message.channel.name
+            server_id = str(message.guild.id)
+            server_name = message.guild.name
+            category = self._normalize_category(args[0])
             feed_id = None
             
-            # Verificar si es un feed_id específico
+            # Check if it's a specific feed_id
             if len(args) > 1:
                 try:
                     feed_id = int(args[1])
-                    # Verificar que el feed exista y pertenezca a la categoría
-                    feeds = db.obtener_feeds_activos(categoria)
+                    # Verify that the feed exists and belongs to the category
+                    feeds = db.get_active_feeds(category)
                     feed_existente = any(f[0] == feed_id for f in feeds)
                     if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} no encontrado en categoría '{categoria}'")
+                        await message.channel.send(f"❌ Feed ID {feed_id} no encontrado en categoría '{category}'")
                         return
                 except ValueError:
                     await message.channel.send("❌ El feed_id debe ser un número")
                     return
             else:
-                # Verificar que la categoría exista
-                categorias = db.obtener_categorias_disponibles()
-                if not any(cat[0] == categoria for cat in categorias):
-                    await message.channel.send(f"❌ Categoría '{categoria}' no encontrada")
+                # Verify that the category exists
+                categorys = db.get_available_categories()
+                if not any(cat[0] == category for cat in categorys):
+                    await message.channel.send(f"❌ Categoría '{category}' no encontrada")
                     return
             
-            # Verificar si el canal tiene premisas configuradas
-            premisas, contexto = db.obtener_premisas_con_contexto(f"canal_{canal_id}")
+            # Verificar si el channel tiene premisas configuradas
+            premisas, contexto = db.get_premises_with_context(f"channel_{channel_id}")
             if not premisas:
                 await message.channel.send("⚠️ This channel has no premises configured. Use `!watcherchannel premises add \"premise\"` before subscribing with AI.")
                 return
             
-            # Realizar suscripción con IA (agregando premisas del canal)
+            # Realizar suscripción con IA (agregando premisas del channel)
             premisas_str = ",".join(premisas) if premisas else ""
-            if db.suscribir_canal_categoria_ia(canal_id, canal_nombre, servidor_id, servidor_nombre, categoria, feed_id, premisas_str):
+            if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed_id, premisas_str):
                 if feed_id:
-                    await message.channel.send(f"🤖 **Suscripción con IA del canal** al feed {feed_id} de '{categoria}' - Analizaré noticias críticas según las premisas del canal")
+                    await message.channel.send(f"🤖 **Suscripción con IA del channel** al feed {feed_id} de '{category}' - Analizaré noticias críticas según las premisas del channel")
                 else:
-                    await message.channel.send(f"🤖 **Suscripción con IA del canal** a '{categoria}' - Analizaré noticias críticas según las premisas del canal")
+                    await message.channel.send(f"🤖 **Suscripción con IA del channel** a '{category}' - Analizaré noticias críticas según las premisas del channel")
             else:
-                await message.channel.send("❌ Error al crear suscripción con IA del canal")
+                await message.channel.send("❌ Error al crear suscripción con IA del channel")
                 
         except Exception as e:
             logger.exception(f"Error in cmd_channel_general_subscribe: {e}")
@@ -1213,12 +1369,12 @@ class WatcherCommands:
         try:
             # Verificar permisos de admin
             if not message.author.guild_permissions.administrator:
-                await message.channel.send("❌ Solo administradores pueden cancelar suscripciones de canal")
+                await message.channel.send("❌ Only administrators can cancel channel subscriptions")
                 return
             
             db = self._get_db()
-            canal_id = str(message.channel.id)
-            categoria = self._normalize_category(args[0])
+            channel_id = str(message.channel.id)
+            category = self._normalize_category(args[0])
             feed_id = None
             
             # Si hay más argumentos después de la categoría, es el feed_id
@@ -1229,31 +1385,33 @@ class WatcherCommands:
                     await message.channel.send("❌ El feed_id debe ser un número")
                     return
             
-            if db.cancelar_suscripcion_categoria(f"canal_{canal_id}", categoria, feed_id):
+            if db.cancel_category_subscription(f"channel_{channel_id}", category, feed_id):
                 if feed_id:
-                    await message.channel.send(f"✅ Suscripción con IA del canal cancelada: Feed {feed_id} de '{categoria}'")
+                    await message.channel.send(f"✅ AI subscription for the channel canceled: Feed {feed_id} of '{category}'")
                 else:
-                    await message.channel.send(f"✅ Suscripción con IA del canal cancelada: Categoría '{categoria}'")
+                    await message.channel.send(f"✅ AI subscription for the channel canceled: Category '{category}'")
             else:
-                await message.channel.send("❌ El canal no tiene suscripción con IA activa en esa categoría/feed")
+                await message.channel.send("❌ This channel has no active AI subscription in that category/feed")
                 
         except Exception as e:
             logger.exception(f"Error in cmd_channel_general_unsubscribe: {e}")
             await message.channel.send("❌ Error canceling channel AI subscription")
     
-    def _get_icono_categoria(self, categoria: str) -> str:
-        """Obtiene icono para categoría."""
+    def _get_icono_category(self, category: str) -> str:
+        """Get icon for category."""
         iconos = {
-            'economia': '💰',
-            'internacional': '🌍',
-            'tecnologia': '💻',
-            'sociedad': '👥',
-            'politica': '🏛️',
-            'deportes': '⚽',
-            'cultura': '🎭',
-            'ciencia': '🔬'
+            'economy': '💰',
+            'international': '🌍',
+            'technology': '💻',
+            'general': '📰',
+            'crypto': '₿',
+            'society': '👥',
+            'politics': '🏛️',
+            'sports': '⚽',
+            'culture': '🎭',
+            'science': '🔬'
         }
-        return iconos.get(categoria, '📰')
+        return iconos.get(category, '📰')
     
     async def cmd_channel_subscribe(self, message, args):
         """Subscribe the current channel to a category or feed."""
@@ -1261,47 +1419,77 @@ class WatcherCommands:
             await message.channel.send("📝 Usage: `!watcherchannel subscribe <category> [feed_id]`")
             return
         
-        # Verificar permisos (requiere manage channel)
+        # Check permissions (requires manage channel)
         if not message.author.guild_permissions.manage_channels:
             await message.channel.send("❌ You need the 'Manage Channels' permission to subscribe the channel")
             return
         
         try:
-            db = self._get_db()
-            categoria = self._normalize_category(args[0])
+            db = self._get_db(str(message.guild.id))
+            category = self._normalize_category(args[0])
             feed_id = None
             
-            # Verificar si es un feed_id específico
+            # Check subscription limits
+            channel_id = str(message.channel.id)
+            can_channel_sub, channel_msg = db.can_channel_subscribe(channel_id)
+            if not can_channel_sub:
+                await message.channel.send(f"❌ {channel_msg}")
+                return
+            
+            can_server_sub, server_msg = db.can_server_accept_subscription()
+            if not can_server_sub:
+                await message.channel.send(f"❌ {server_msg}")
+                return
+            
+            # Check if it's a specific feed_id
             if len(args) > 1:
                 try:
                     feed_id = int(args[1])
-                    # Verificar que el feed exista y pertenezca a la categoría
-                    feeds = db.obtener_feeds_activos(categoria)
-                    feed_existente = any(f[0] == feed_id for f in feeds)
-                    if not feed_existente:
-                        await message.channel.send(get_message('feed_id_no_encontrado', feed_id=feed_id, categoria=categoria))
+                    # Verify that the feed exists and belongs to the category
+                    feeds = db.get_active_feeds(category)
+                    feed_exists = any(f[0] == feed_id for f in feeds)
+                    if not feed_exists:
+                        await message.channel.send(get_message('feed_id_not_found', feed_id=feed_id, category=category))
                         return
                 except ValueError:
-                    await message.channel.send(get_message('feed_id_numero'))
+                    await message.channel.send(get_message('feed_id_must_be_number'))
                     return
             else:
-                # Verificar que la categoría exista
-                categorias = db.obtener_categorias_disponibles()
-                if not any(cat[0] == categoria for cat in categorias):
-                    await message.channel.send(get_message('categoria_no_encontrada', categoria=categoria))
+                # Verify that the category exists
+                categories = db.get_available_categories()
+                if not any(cat[0] == category for cat in categories):
+                    await message.channel.send(get_message('category_no_encontrada', category=category))
                     return
             
-            # Realizar suscripción del canal
-            canal = message.channel
-            servidor = message.guild
+            # Perform AI channel subscription by default
+            channel = message.channel
+            server = message.guild
             
-            if db.suscribir_canal_categoria(
-                str(canal.id), canal.name, str(servidor.id), servidor.name, categoria, feed_id
+            # Use AI subscription with role-specific default premises
+            try:
+                import sys
+                import os
+                # Add path for premises_manager import
+                vigia_path = os.path.dirname(os.path.abspath(__file__))
+                if vigia_path not in sys.path:
+                    sys.path.insert(0, vigia_path)
+                
+                from premises_manager import get_premises_manager
+                from agent_db import get_active_server_name
+                server_name = get_active_server_name() or "default"
+                premises_manager = get_premises_manager(server_name)
+                default_premises = ", ".join(premises_manager.get_active_premises())
+            except:
+                # Fallback to generic premises if there's an error
+                default_premises = "critical news, important updates, breaking news"
+            
+            if db.subscribe_channel_category_ai(
+                str(channel.id), channel.name, str(server.id), server.name, category, feed_id, default_premises
             ):
                 if feed_id:
-                    await message.channel.send(get_message('suscripcion_canal_exitosa_feed', feed_id=feed_id, categoria=categoria))
+                    await message.channel.send(get_message('channel_subscription_successful_feed', feed_id=feed_id, category=category))
                 else:
-                    await message.channel.send(get_message('suscripcion_canal_exitosa_categoria', categoria=categoria))
+                    await message.channel.send(get_message('channel_subscription_successful_category', category=category))
             else:
                 await message.channel.send("❌ Error creating channel subscription")
                 
@@ -1322,23 +1510,23 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            categoria = self._normalize_category(args[0])
+            category = self._normalize_category(args[0])
             feed_id = None
             
             if len(args) > 1:
                 try:
                     feed_id = int(args[1])
                 except ValueError:
-                    await message.channel.send(get_message('feed_id_numero'))
+                    await message.channel.send(get_message('feed_id_must_be_number'))
                     return
             
-            canal = message.channel
+            channel = message.channel
             
-            if db.cancelar_suscripcion_canal(str(canal.id), categoria, feed_id):
+            if db.cancel_channel_subscription(str(channel.id), category, feed_id):
                 if feed_id:
-                    await message.channel.send(f"✅ Subscription canceled for feed {feed_id} in '{categoria}'")
+                    await message.channel.send(f"✅ Subscription canceled for feed {feed_id} in '{category}'")
                 else:
-                    await message.channel.send(f"✅ Subscription canceled for category '{categoria}'")
+                    await message.channel.send(f"✅ Subscription canceled for category '{category}'")
             else:
                 await message.channel.send("❌ No matching subscription found to cancel")
                 
@@ -1350,38 +1538,147 @@ class WatcherCommands:
         """Show current channel subscription status."""
         try:
             db = self._get_db()
-            canal = message.channel
-            suscripciones = db.obtener_suscripciones_canal(str(canal.id))
+            channel = message.channel
+            channel_id = str(channel.id)
             
-            if not suscripciones:
+            # Get all subscription details for this channel
+            all_subscription_details = []
+            
+            # 1. Get flat subscriptions from subscriptions_channels table
+            try:
+                with sqlite3.connect(str(db.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT category, feed_id, subscribed_at
+                        FROM subscriptions_channels 
+                        WHERE channel_id = ? AND is_active = 1
+                    ''', (channel_id,))
+                    flat_subs = cursor.fetchall()
+                    for sub in flat_subs:
+                        all_subscription_details.append({
+                            'type': 'flat',
+                            'category': sub[0],
+                            'feed_id': sub[1],
+                            'date': sub[2],
+                            'keywords': None,
+                            'premises': None
+                        })
+            except Exception as e:
+                logger.exception(f"Error getting flat channel subscriptions: {e}")
+            
+            # 2. Get keyword subscriptions from subscriptions_keywords table
+            try:
+                with sqlite3.connect(str(db.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT category, feed_id, keywords, subscribed_at
+                        FROM subscriptions_keywords 
+                        WHERE channel_id = ? AND is_active = 1
+                    ''', (channel_id,))
+                    keyword_subs = cursor.fetchall()
+                    for sub in keyword_subs:
+                        all_subscription_details.append({
+                            'type': 'keywords',
+                            'category': sub[0],
+                            'feed_id': sub[1],
+                            'keywords': sub[2],
+                            'date': sub[3],
+                            'premises': None
+                        })
+            except Exception as e:
+                logger.exception(f"Error getting keyword channel subscriptions: {e}")
+            
+            # 3. Get AI subscriptions from subscriptions_categories table
+            try:
+                with sqlite3.connect(str(db.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT category, feed_id, user_premises, subscribed_at
+                        FROM subscriptions_categories 
+                        WHERE user_id = ? AND is_active = 1
+                    ''', (f"channel_{channel_id}",))
+                    ai_subs = cursor.fetchall()
+                    for sub in ai_subs:
+                        all_subscription_details.append({
+                            'type': 'ai',
+                            'category': sub[0],
+                            'feed_id': sub[1],
+                            'premises': sub[2],
+                            'date': sub[3],
+                            'keywords': None
+                        })
+            except Exception as e:
+                logger.exception(f"Error getting AI channel subscriptions: {e}")
+            
+            if not all_subscription_details:
                 await message.channel.send("📭 This channel has no active subscriptions.")
                 return
             
             embed = discord.Embed(
-                title=f"📊 Channel Subscriptions - #{canal.name}",
+                title=f"📊 Channel Subscriptions - #{channel.name}",
                 color=discord.Color.orange(),
                 timestamp=datetime.now()
             )
             
-            suscripciones_por_categoria = {}
-            for categoria, feed_id, fecha in suscripciones:
-                if categoria not in suscripciones_por_categoria:
-                    suscripciones_por_categoria[categoria] = []
-                suscripciones_por_categoria[categoria].append(feed_id)
+            # Group subscriptions by category and type
+            subscriptions_by_category = {}
+            for sub in all_subscription_details:
+                category = sub['category']
+                if category not in subscriptions_by_category:
+                    subscriptions_by_category[category] = {
+                        'flat': [],
+                        'keywords': [],
+                        'ai': []
+                    }
+                subscriptions_by_category[category][sub['type']].append(sub)
             
-            for categoria, feeds in suscripciones_por_categoria.items():
-                icono = self._get_icono_categoria(categoria)
-                if any(f is not None for f in feeds):
-                    # Feeds específicos
-                    feeds_especificos = [f for f in feeds if f is not None]
-                    valor = f"Feeds específicos: {', '.join(map(str, feeds_especificos))}"
-                else:
-                    # Toda la categoría
-                    valor = "All feeds in this category"
+            for category, types in subscriptions_by_category.items():
+                icono = self._get_icono_category(category)
                 
+                # Build description for this category
+                category_parts = []
+                
+                # Flat subscriptions
+                if types['flat']:
+                    flat_feeds = [s['feed_id'] for s in types['flat'] if s['feed_id']]
+                    if flat_feeds:
+                        category_parts.append(f"📰 **Flat**: Specific feeds {', '.join(map(str, flat_feeds))}")
+                    else:
+                        category_parts.append(f"📰 **Flat**: All feeds")
+                
+                # Keyword subscriptions
+                if types['keywords']:
+                    keywords_list = []
+                    for s in types['keywords']:
+                        if s['feed_id']:
+                            keywords_list.append(f"Feed {s['feed_id']}: `{s['keywords']}`")
+                        else:
+                            keywords_list.append(f"All feeds: `{s['keywords']}`")
+                    category_parts.append(f"🔍 **Keywords**: {', '.join(keywords_list)}")
+                
+                # AI subscriptions
+                if types['ai']:
+                    ai_list = []
+                    for s in types['ai']:
+                        if s['feed_id']:
+                            ai_list.append(f"Feed {s['feed_id']} (AI)")
+                        else:
+                            ai_list.append(f"All feeds (AI)")
+                    category_parts.append(f"🤖 **AI**: {', '.join(ai_list)}")
+                
+                if category_parts:
+                    # Direct mapping from Spanish to English
+                    category_names = {
+                        'economy': 'Economy',
+                    'technology': 'Technology', 
+                    'general': 'General',
+                    'international': 'International',
+                    'crypto': 'Crypto'
+                }
+                name = category_names.get(category, category.title())
                 embed.add_field(
-                    name=f"{icono} {categoria.title()}",
-                    value=valor,
+                    name=f"{icono} {name}",
+                    value="\n".join(category_parts),
                     inline=False
                 )
             
@@ -1392,12 +1689,12 @@ class WatcherCommands:
             logger.exception(f"Error in cmd_channel_status: {e}")
             await message.channel.send("❌ Error getting channel status")
     
-    # ===== COMANDOS DE GESTIÓN DE PREMISAS (SUSCRIPCIONES CON IA) =====
+    # ===== PREMISES MANAGEMENT COMMANDS (AI SUBSCRIPTIONS) =====
     
     async def cmd_premises(self, message, args):
         """Premises management command for AI subscriptions."""
         if not args:
-            # Si no hay subcomando, mostrar lista por defecto
+            # Si no subcomando, mostrar lista por defecto
             await self.cmd_premises_list(message, args)
             return
         
@@ -1411,16 +1708,16 @@ class WatcherCommands:
         elif subcomando == 'mod':
             await self.cmd_premises_mod(message, subargs)
         else:
-            await message.channel.send(f"❌ Subcomando '{subcomando}' no reconocido. Usa: list, add, mod")
+            await message.channel.send(f"❌ Subcomando '{subcomando}' not recognized. Usa: list, add, mod")
     
     async def cmd_premises_list(self, message, args):
         """List all user premises (custom or global)."""
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
             # Obtener premisas con contexto
-            premisas, contexto = db.obtener_premisas_con_contexto(usuario_id)
+            premisas, contexto = db.get_premises_with_context(user_id)
             
             if not premisas:
                 await message.channel.send("📭 No hay premisas configuradas.")
@@ -1428,8 +1725,8 @@ class WatcherCommands:
             
             embed = discord.Embed(
                 title=f"🎯 Tus Premisas ({contexto.title()})",
-                description="Estas son las condiciones que hacen una noticia **CRÍTICA** para ti:",
-                color=discord.Color.blue() if contexto == "personalizadas" else discord.Color.red(),
+                description="Estas son las condiciones que hacen una noticia **CRÍTICA** for you:",
+                color=discord.Color.blue() if contexto == "custom" else discord.Color.red(),
                 timestamp=datetime.now()
             )
             
@@ -1440,10 +1737,10 @@ class WatcherCommands:
                     inline=False
                 )
             
-            if contexto == "personalizadas":
-                embed.set_footer(text="Usa !vigia premisas add/mod para gestionar tus premisas")
+            if contexto == "custom":
+                embed.set_footer(text="Usa !vigia premisas add/mod para manage tus premisas")
             else:
-                embed.set_footer(text="Usa !vigia premisas add para crear premisas personalizadas")
+                embed.set_footer(text="Usa !vigia premisas add para crear premisas custom")
             
             await message.channel.send(embed=embed)
             
@@ -1459,14 +1756,14 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             nueva_premisa = " ".join(args).strip('"\'')
             
             if not nueva_premisa:
                 await message.channel.send("❌ Debes proporcionar el texto de la premisa.")
                 return
             
-            success, mensaje = db.add_premise_usuario(usuario_id, nueva_premisa)
+            success, mensaje = db.add_premise_usuario(user_id, nueva_premisa)
             
             if success:
                 await message.channel.send(f"✅ {mensaje}")
@@ -1485,9 +1782,9 @@ class WatcherCommands:
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
-            # Parsear número
+            # Parse number
             try:
                 indice = int(args[0])
             except ValueError:
@@ -1500,7 +1797,7 @@ class WatcherCommands:
                 await message.channel.send("❌ Debes proporcionar el texto de la nueva premisa.")
                 return
             
-            success, mensaje = db.modificar_premisa_usuario(usuario_id, indice, nueva_premisa)
+            success, mensaje = db.modificar_premisa_usuario(user_id, indice, nueva_premisa)
             
             if success:
                 await message.channel.send(f"✅ {mensaje}")
@@ -1511,15 +1808,15 @@ class WatcherCommands:
             logger.exception(f"Error in cmd_premises_mod: {e}")
             await message.channel.send("❌ Error modifying premise")
     
-    async def cmd_premisas_añadir(self, message, args):
-        """Añade una nueva premisa global (solo admins)."""
+    async def cmd_premises_add(self, message, args):
+        """Add a new global premise (admins only)."""
         if not args:
-            await message.channel.send("📝 Uso: `!vigia premisas añadir \"texto de la premisa\"`")
+            await message.channel.send("📝 Usage: `!watcher premises add \"premise text\"`")
             return
         
         # Verificar permisos de admin
         if not message.author.guild_permissions.administrator:
-            await message.channel.send("❌ Solo administradores pueden gestionar premisas globales")
+            await message.channel.send("❌ Only administrators can manage premisas globales")
             return
         
         try:
@@ -1529,24 +1826,24 @@ class WatcherCommands:
             
             nueva_premisa = " ".join(args).strip('"\'')
             
-            if premises_manager.add_premise(nueva_premisa):
-                await message.channel.send(f"✅ Premisa global añadida: \"{nueva_premisa}\"")
+            if premises_manager.add_premise(new_premise):
+                await message.channel.send(f"✅ Global premise added: \"{new_premise}\"")
             else:
-                await message.channel.send("⚠️ Esa premisa global ya existe")
+                await message.channel.send("⚠️ That global premise already exists")
                 
         except Exception as e:
-            logger.exception(f"Error en cmd_premisas_añadir: {e}")
-            await message.channel.send("❌ Error añadiendo premisa global")
+            logger.exception(f"Error in cmd_premises_add: {e}")
+            await message.channel.send("❌ Error adding global premise")
     
-    async def cmd_premisas_eliminar(self, message, args):
-        """Elimina una premisa global existente (solo admins)."""
+    async def cmd_premises_delete(self, message, args):
+        """Delete an existing global premise (admins only)."""
         if not args:
-            await message.channel.send("📝 Uso: `!vigia premisas eliminar \"texto de la premisa\"`")
+            await message.channel.send("📝 Usage: `!watcher premises delete \"premise text\"`")
             return
         
-        # Verificar permisos de admin
+        # Check admin permissions
         if not message.author.guild_permissions.administrator:
-            await message.channel.send("❌ Solo administradores pueden gestionar premisas globales")
+            await message.channel.send("❌ Only administrators can manage global premises")
             return
         
         try:
@@ -1554,83 +1851,83 @@ class WatcherCommands:
             server_name = get_active_server_name() or "default"
             premises_manager = get_premises_manager(server_name)
             
-            premisa_a_eliminar = " ".join(args).strip('"\'')
+            premise_to_delete = " ".join(args).strip('"\'')
             
-            if premises_manager.remove_premise(premisa_a_eliminar):
-                await message.channel.send(f"🗑️ Premisa global eliminada: \"{premisa_a_eliminar}\"")
+            if premises_manager.remove_premise(premise_to_delete):
+                await message.channel.send(f"🗑️ Global premise deleted: \"{premise_to_delete}\"")
             else:
-                await message.channel.send("⚠️ No se encontró esa premisa global")
+                await message.channel.send("⚠️ That global premise was not found")
                 
         except Exception as e:
-            logger.exception(f"Error en cmd_premisas_eliminar: {e}")
-            await message.channel.send("❌ Error eliminando premisa global")
+            logger.exception(f"Error in cmd_premisas_eliminar: {e}")
+            await message.channel.send("❌ Error deleting global premise")
     
     async def cmd_mis_premisas(self, message, args):
-        """Muestra las premisas personalizadas del usuario."""
+        """Show user's custom premises."""
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
-            premisas_usuario = db.obtener_premisas_usuario(usuario_id)
+            user_premises = db.get_user_premises(user_id)
             
-            if not premisas_usuario:
-                await message.channel.send("📭 No tienes premisas personalizadas. Usarás las premisas globales.\nUsa `!vigia premisas configurar` para crear tus premisas personalizadas.")
+            if not user_premises:
+                await message.channel.send("📭 You have no custom premises. You will use global premises.\nUse `!watcher premises configure` to create your custom premises.")
                 return
             
             embed = discord.Embed(
-                title=f"🎯 Tus Premisas Personalizadas",
-                description="Estas son tus condiciones **personales** para noticias críticas:",
+                title=f"🎯 Your Custom Premises",
+                description="These are your **personal** conditions for critical news:",
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
             
-            for i, premisa in enumerate(premisas_usuario, 1):
+            for i, premisa in enumerate(user_premises, 1):
                 embed.add_field(
-                    name=f"Tu Premisa #{i}",
+                    name=f"Your Premise #{i}",
                     value=f"📍 {premisa}",
                     inline=False
                 )
             
-            embed.set_footer(text="Máximo 7 premisas personalizadas. Usa !vigia premisas configurar para modificarlas")
+            embed.set_footer(text="Maximum 7 custom premises. Use !watcher premises configure to modify them")
             await message.channel.send(embed=embed)
             
         except Exception as e:
-            logger.exception(f"Error en cmd_mis_premisas: {e}")
-            await message.channel.send("❌ Error obteniendo tus premisas")
+            logger.exception(f"Error in cmd_mis_premisas: {e}")
+            await message.channel.send("❌ Error getting your premises")
     
-    async def cmd_configurar_premisas(self, message, args):
-        """Configura las premisas personalizadas del usuario."""
+    async def cmd_configure_premises(self, message, args):
+        """Configure user's custom premises."""
         if not args:
-            await message.channel.send("📝 Uso: `!vigia premisas configurar \"premisa1,premisa2,premisa3\"`\nMáximo 7 premisas, separadas por comas.")
+            await message.channel.send("📝 Usage: `!watcher premises configure \"premise1,premise2,premise3\"`\nMaximum 7 premises, separated by commas.")
             return
         
         try:
             db = self._get_db()
-            usuario_id = str(message.author.id)
+            user_id = str(message.author.id)
             
-            # Extraer y limpiar premisas
-            texto_premisas = " ".join(args).strip('"\'')
-            premisas_lista = [p.strip() for p in texto_premisas.split(',') if p.strip()]
+            # Extract and clean premises
+            premises_text = " ".join(args).strip('"\'')
+            premises_list = [p.strip() for p in premises_text.split(',') if p.strip()]
             
-            if len(premisas_lista) > 7:
-                await message.channel.send("❌ Puedes tener máximo 7 premisas personalizadas.")
+            if len(premises_list) > 7:
+                await message.channel.send("❌ You can have maximum 7 custom premises.")
                 return
             
-            if not premisas_lista:
-                await message.channel.send("❌ Debes proporcionar al menos una premisa.")
+            if not premises_list:
+                await message.channel.send("❌ You must provide at least one premise.")
                 return
             
-            if db.actualizar_premisas_usuario(usuario_id, premisas_lista):
-                await message.channel.send(f"✅ Tus premisas personalizadas han sido configuradas ({len(premisas_lista)} premisas).\nUsa `!vigia premisas mis_premisas` para verlas.")
+            if db.update_user_premises(user_id, premises_list):
+                await message.channel.send(f"✅ Your custom premises have been configured ({len(premises_list)} premises).\nUse `!watcher premises my_premises` to see them.")
             else:
-                await message.channel.send("❌ Error al configurar tus premisas")
+                await message.channel.send("❌ Error configuring your premises")
                 
         except Exception as e:
-            logger.exception(f"Error en cmd_configurar_premisas: {e}")
-            await message.channel.send("❌ Error configurando tus premisas")
+            logger.exception(f"Error in cmd_configurar_premisas: {e}")
+            await message.channel.send("❌ Error configuring your premises")
     
     def _get_bandera_pais(self, pais: str) -> str:
-        """Obtiene bandera para país."""
+        """Get flag for country."""
         banderas = {
             'US': '🇺🇸',
             'ES': '🇪🇸',
@@ -1644,5 +1941,438 @@ class WatcherCommands:
             'CA': '🇨🇦'
         }
         return banderas.get(pais, '🌐')
+
+    async def cmd_method(self, message, args):
+        """Configure or show the current subscription method for the server."""
+        if not message.guild:
+            await message.channel.send("❌ This command can only be used on a server, not in direct messages.")
+            return
+        
+        if not message.author.guild_permissions.administrator:
+            await message.channel.send("❌ Only administrators can configure the method.")
+            return
+        
+        try:
+            db = self._get_db()
+            server_id = str(message.guild.id)
+            
+            if not args:
+                # Show current method
+                current_method = db.get_method_config(server_id)
+                method_names = {
+                    'flat': 'Flat (all news with opinion)',
+                    'keyword': 'Keywords (filtered news)',
+                    'general': 'AI (critical news analysis)'
+                }
+                
+                embed = discord.Embed(
+                    title="⚙️ **Current Method Configuration**",
+                    description=f"**Method:** {method_names.get(current_method, current_method)}",
+                    color=discord.Color.blue()
+                )
+                
+                embed.add_field(
+                    name="Available Methods:",
+                    value="• `flat` - All news with generated opinion\n"
+                          "• `keyword` - Filtered news by keywords\n"
+                          "• `general` - AI-analyzed critical news",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="Usage:",
+                    value="`!watcher method <method>` to change the method",
+                    inline=False
+                )
+                
+                embed.set_footer(text="Only administrators can change the method")
+                await message.channel.send(embed=embed)
+                return
+            
+            # Set new method
+            new_method = args[0].lower()
+            if new_method not in ['flat', 'keyword', 'general']:
+                await message.channel.send("❌ Invalid method. Use: `flat`, `keyword`, or `general`")
+                return
+            
+            if db.set_method_config(server_id, new_method):
+                method_names = {
+                    'flat': 'Flat (all news with opinion)',
+                    'keyword': 'Keywords (filtered news)',
+                    'general': 'AI (critical news analysis)'
+                }
+                
+                embed = discord.Embed(
+                    title="✅ **Method Configuration Updated**",
+                    description=f"**New Method:** {method_names.get(new_method, new_method)}",
+                    color=discord.Color.green()
+                )
+                
+                embed.add_field(
+                    name="What this means:",
+                    value=self._get_method_description(new_method),
+                    inline=False
+                )
+                
+                await message.channel.send(embed=embed)
+            else:
+                await message.channel.send("❌ Error updating method configuration")
+                
+        except Exception as e:
+            logger.exception(f"Error in cmd_method: {e}")
+            await message.channel.send("❌ Error processing method command")
+
+    def _get_method_description(self, method: str) -> str:
+        """Get description for a method type."""
+        descriptions = {
+            'flat': "Users receive ALL news from subscribed categories with AI-generated opinions. No filtering applied.",
+            'keyword': "Users receive news that matches their configured keywords. Highly personalized filtering.",
+            'general': "Users receive only critical news analyzed by AI according to their premises. Most selective filtering."
+        }
+        return descriptions.get(method, "Unknown method")
+
+    async def cmd_frequency(self, message, args):
+        """Manage news checking frequency (admin only)."""
+        if not message.guild:
+            await message.channel.send("❌ This command can only be used on servers, not in direct messages.")
+            return
+        
+        if not message.author.guild_permissions.administrator:
+            await message.channel.send("❌ Only administrators can manage frequency settings.")
+            return
+        
+        if not args:
+            await message.channel.send("📝 Usage: `!watcher frequency <hours>` or `!watcher frequency status`")
+            return
+        
+        try:
+            db = self._get_db()
+            
+            if args[0].lower() == 'status':
+                # Show current frequency
+                current_freq = db.get_frequency_setting()
+                embed = discord.Embed(
+                    title="⏰ **Frequency Settings**",
+                    description=f"Current check interval: **{current_freq} hours**",
+                    color=discord.Color.blue()
+                )
+                
+                embed.add_field(
+                    name="Next Check",
+                    value=f"Every {current_freq} hours",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="Usage",
+                    value="`!watcher frequency <hours>` to change (1-24 hours)",
+                    inline=False
+                )
+                
+                await message.channel.send(embed=embed)
+                return
+            
+            # Set new frequency
+            try:
+                new_hours = int(args[0])
+            except ValueError:
+                await message.channel.send("❌ Invalid format. Use a number between 1 and 24.")
+                return
+            
+            if not 1 <= new_hours <= 24:
+                await message.channel.send("❌ Frequency must be between 1 and 24 hours.")
+                return
+            
+            if db.set_frequency_setting(new_hours):
+                embed = discord.Embed(
+                    title="✅ **Frequency Updated**",
+                    description=f"News check interval set to **{new_hours} hours**",
+                    color=discord.Color.green()
+                )
+                
+                embed.add_field(
+                    name="What this means:",
+                    value=f"I will check for news every {new_hours} hours and send updates to all subscribers.",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="Note",
+                    value="The new frequency will take effect on the next check cycle.",
+                    inline=False
+                )
+                
+                await message.channel.send(embed=embed)
+            else:
+                await message.channel.send("❌ Error updating frequency setting")
+                
+        except Exception as e:
+            logger.exception(f"Error in cmd_frequency: {e}")
+            await message.channel.send("❌ Error processing frequency command")
+
+    async def cmd_subscriptions(self, message, args):
+        """Show numbered list of all user subscriptions with category, feed, and method."""
+        try:
+            db = self._get_db()
+            user_id = str(message.author.id)
+            
+            # Get all subscriptions across all methods
+            all_subscriptions = []
+            
+            # Get flat subscriptions
+            flat_subs = db.get_user_subscriptions(user_id)
+            for category, feed_id, fecha in flat_subs:
+                all_subscriptions.append({
+                    'category': category,
+                    'feed_id': feed_id,
+                    'method': 'flat',
+                    'date': fecha,
+                    'type': 'Flat (All News)'
+                })
+            
+            # Get keyword subscriptions
+            keyword_subs = db.get_user_keyword_subscriptions(user_id)
+            for category, feed_id, palabras in keyword_subs:
+                all_subscriptions.append({
+                    'category': category,
+                    'feed_id': feed_id,
+                    'method': 'keyword',
+                    'keywords': palabras,
+                    'type': 'Keywords (Filtered)'
+                })
+            
+            # Get AI subscriptions
+            ai_subs = db.get_user_ai_subscriptions(user_id)
+            for category, feed_id, premisas in ai_subs:
+                all_subscriptions.append({
+                    'category': category,
+                    'feed_id': feed_id,
+                    'method': 'general',
+                    'premises': premisas,
+                    'type': 'AI (Critical)'
+                })
+            
+            if not all_subscriptions:
+                await message.channel.send("📋 You have no active subscriptions. Use `!watcher subscribe <category>` to start.")
+                return
+            
+            # Create numbered list embed
+            embed = discord.Embed(
+                title="📋 **Your Subscriptions**",
+                description=f"Total: {len(all_subscriptions)} subscriptions",
+                color=discord.Color.blue()
+            )
+            
+            for i, sub in enumerate(all_subscriptions, 1):
+                feed_info = f"Feed {sub['feed_id']}" if sub['feed_id'] else "All feeds"
+                
+                if sub['method'] == 'keyword':
+                    details = f"Keywords: {sub.get('keywords', 'N/A')}"
+                elif sub['method'] == 'general':
+                    premise_count = len(sub.get('premises', '').split(',')) if sub.get('premises') else 0
+                    details = f"Premises: {premise_count}"
+                else:
+                    details = "All news with opinions"
+                
+                field_value = f"**Method:** {sub['type']}\n**Feed:** {feed_info}\n**Details:** {details}"
+                
+                embed.add_field(
+                    name=f"#{i} - {sub['category'].title()}",
+                    value=field_value,
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="🗑️ **How to Unsubscribe**",
+                value="Use `!watcher unsubscribe <number>` to remove a subscription\n"
+                     "Use `!watcher unsubscribe <category>` (old method still works)",
+                inline=False
+            )
+            
+            embed.set_footer(text="Use !watcher unsubscribe <number> to remove any subscription")
+            await message.channel.send(embed=embed)
+            
+        except Exception as e:
+            logger.exception(f"Error in cmd_subscriptions: {e}")
+            await message.channel.send("❌ Error retrieving subscriptions")
+
+    async def cmd_unified_subscribe(self, message, args):
+        """Unified subscribe command that adapts based on server method configuration."""
+        if not args:
+            await message.channel.send("📝 Usage: `!watcher subscribe <category> [feed_id]`")
+            return
+        
+        try:
+            db = self._get_db()
+            server_id = str(message.guild.id) if message.guild else "dm"
+            current_method = db.get_method_config(server_id)
+            
+            user_id = str(message.author.id)
+            category = self._normalize_category(args[0])
+            feed_id = None
+            
+            # Check subscription limits
+            can_user_sub, user_msg = db.can_user_subscribe(user_id)
+            if not can_user_sub:
+                await message.channel.send(f"❌ {user_msg}")
+                return
+            
+            can_server_sub, server_msg = db.can_server_accept_subscription()
+            if not can_server_sub:
+                await message.channel.send(f"❌ {server_msg}")
+                return
+            
+            # Handle optional feed_id
+            if len(args) > 1:
+                try:
+                    feed_id = int(args[1])
+                    # Verify feed exists
+                    feeds = db.get_active_feeds(category)
+                    feed_existente = any(f[0] == feed_id for f in feeds)
+                    if not feed_existente:
+                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'")
+                        return
+                except ValueError:
+                    await message.channel.send("❌ Invalid feed ID format")
+                    return
+            else:
+                # Use first feed if none specified
+                feeds = db.get_active_feeds(category)
+                if not feeds:
+                    await message.channel.send(f"❌ No feeds found for category '{category}'")
+                    return
+                feed_id = feeds[0][0]  # Use first feed's ID
+            
+            # Verify category exists
+            categorys = db.get_available_categories()
+            if not any(cat[0] == category for cat in categorys):
+                await message.channel.send(f"❌ Category '{category}' not found")
+                return
+            
+            # Route to appropriate method handler
+            if current_method == 'flat':
+                await self._handle_flat_subscribe(message, user_id, category, feed_id)
+            elif current_method == 'keyword':
+                await self._handle_keyword_subscribe(message, user_id, category, feed_id)
+            elif current_method == 'general':
+                await self._handle_general_subscribe(message, user_id, category, feed_id)
+            else:
+                await message.channel.send(f"❌ Unknown method configuration: {current_method}")
+                
+        except Exception as e:
+            logger.exception(f"Error in cmd_unified_subscribe: {e}")
+            await message.channel.send("❌ Error processing subscription")
+
+    async def _handle_flat_subscribe(self, message, user_id: str, category: str, feed_id: int):
+        """Handle flat subscription."""
+        try:
+            db = self._get_db()
+            
+            # Check current subscription type
+            tipo_actual = db.check_user_subscription_type(user_id)
+            
+            # If already has flat subscription, block
+            if tipo_actual == 'plana':
+                await message.channel.send("ℹ️ You already have a flat subscription. Use `!watcher unsubscribe <category>` first if you want to change.")
+                return
+            
+            # If has other subscription types, block
+            if tipo_actual in ['palabras', 'ia']:
+                await message.channel.send(
+                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
+                )
+                return
+            
+            # Create flat subscription
+            if db.subscribe_user_category(user_id, category, feed_id):
+                if feed_id:
+                    await message.channel.send(f"✅ **Flat subscription** to feed {feed_id} in '{category}' - You will receive ALL news with AI opinions")
+                else:
+                    await message.channel.send(f"✅ **Flat subscription** to '{category}' - You will receive ALL news with AI opinions")
+            else:
+                await message.channel.send("❌ Error creating flat subscription")
+                
+        except Exception as e:
+            logger.exception(f"Error in flat subscribe: {e}")
+            await message.channel.send("❌ Error processing flat subscription")
+
+    async def _handle_keyword_subscribe(self, message, user_id: str, category: str, feed_id: int):
+        """Handle keyword subscription."""
+        try:
+            db = self._get_db()
+            
+            # Check if user has keywords configured
+            palabras = db.get_user_keywords(user_id)
+            if not palabras:
+                await message.channel.send("⚠️ You have no keywords configured. Use `!watcher keywords add <keyword>` first.")
+                return
+            
+            # Check current subscription type
+            tipo_actual = db.check_user_subscription_type(user_id)
+            
+            # If already has keyword subscription, block
+            if tipo_actual == 'palabras':
+                await message.channel.send("ℹ️ You already have a keyword subscription. Use `!watcher unsubscribe <category>` first if you want to change.")
+                return
+            
+            # If has other subscription types, block
+            if tipo_actual in ['plana', 'ia']:
+                await message.channel.send(
+                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
+                )
+                return
+            
+            # Create keyword subscription
+            if db.subscribe_keywords(user_id, palabras, None, category, feed_id):
+                if feed_id:
+                    await message.channel.send(f"✅ **Keyword subscription** to feed {feed_id} in '{category}' - Filtering: '{palabras}'")
+                else:
+                    await message.channel.send(f"✅ **Keyword subscription** to '{category}' - Filtering: '{palabras}'")
+            else:
+                await message.channel.send("❌ Error creating keyword subscription")
+                
+        except Exception as e:
+            logger.exception(f"Error in keyword subscribe: {e}")
+            await message.channel.send("❌ Error processing keyword subscription")
+
+    async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id: int):
+        """Handle general (AI) subscription."""
+        try:
+            db = self._get_db()
+            
+            # Ensure the user has premises configured
+            premisas, contexto = db.get_premises_with_context(user_id)
+            if not premisas:
+                await message.channel.send("⚠️ You have no premises configured. Use `!watcher premises add <premise>` before subscribing.")
+                return
+            
+            # Check current subscription type
+            tipo_actual = db.check_user_subscription_type(user_id)
+            
+            # If already has AI subscription, block
+            if tipo_actual == 'ia':
+                await message.channel.send("ℹ️ You already have an AI subscription. Use `!watcher unsubscribe <category>` first if you want to change.")
+                return
+            
+            # If has other subscription types, block
+            if tipo_actual in ['plana', 'palabras']:
+                await message.channel.send(
+                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
+                )
+                return
+            
+            # Create AI subscription
+            premisas_str = ",".join(premisas) if premisas else ""
+            if db.subscribe_user_category_ai(user_id, category, feed_id, premisas_str):
+                if feed_id:
+                    await message.channel.send(f"🤖 **AI subscription** to feed {feed_id} in '{category}' - I'll analyze critical news using your premises")
+                else:
+                    await message.channel.send(f"🤖 **AI subscription** to '{category}' - I'll analyze critical news using your premises")
+            else:
+                await message.channel.send("❌ Error creating AI subscription")
+                
+        except Exception as e:
+            logger.exception(f"Error in general subscribe: {e}")
+            await message.channel.send("❌ Error processing AI subscription")
 
 

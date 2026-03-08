@@ -16,13 +16,13 @@ except Exception:
 from agent_db import get_server_db_path_fallback, get_personality_name
 
 def get_db_path(server_name: str = "default") -> Path:
-    """Genera ruta de BD para el banquero con nombre de personalidad."""
+    """Generate database path for banker with personality name."""
     personality_name = get_personality_name()
-    db_name = f"banquero_{personality_name}.db"
+    db_name = f"banker_{personality_name}"
     return get_server_db_path_fallback(server_name, db_name)
 
 
-class DatabaseRoleBanquero:
+class DatabaseRoleBanker:
     """Base de datos especializada para el Banquero.
     Gestiona carteras de oro, transacciones y distribución diaria.
     """
@@ -94,9 +94,9 @@ class DatabaseRoleBanquero:
                 self._init_transacciones_table()
                 self._init_config_table()
                 
-                logger.info(f"✅ Base de datos del Banquero lista en {self.db_path}")
+                logger.info(f"✅ Banker database ready at {self.db_path}")
         except Exception as e:
-            logger.exception(f"❌ Error en inicialización de DB Banquero: {e}")
+            logger.exception(f"❌ Error initializing banker database: {e}")
     
     def _init_carteras_table(self):
         """Inicializa tabla de carteras de los usuarios."""
@@ -171,136 +171,112 @@ class DatabaseRoleBanquero:
         except Exception as e:
             logger.exception(f"❌ Error creando tabla config: {e}")
     
-    def crear_cartera(self, usuario_id: str, usuario_nombre: str, 
-                      servidor_id: str, servidor_nombre: str) -> tuple[bool, int]:
-        """Crea una nueva cartera para un usuario y aplica bono de apertura.
+    def create_wallet(self, user_id: str, user_name: str, 
+                      server_id: str, server_name: str) -> tuple[bool, int]:
+        """Create a new wallet for a user and apply opening bonus.
         
         Returns:
-            tuple: (se_creo, saldo_inicial)
+            tuple: (was_created, initial_balance)
         """
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                     cursor = conn.cursor()
                     
-                    # Verificar si ya existe
+                    # Check if already exists
                     cursor.execute('''
                         SELECT saldo FROM carteras 
                         WHERE usuario_id = ? AND servidor_id = ?
-                    ''', (usuario_id, servidor_id))
+                    ''', (user_id, server_id))
                     existing = cursor.fetchone()
                     
                     if existing:
                         return False, existing[0]
                     
-                    # Obtener bono de apertura del servidor
+                    # Get opening bonus from server
                     cursor.execute('''
                         SELECT bono_apertura FROM config WHERE servidor_id = ?
-                    ''', (servidor_id,))
-                    bono_result = cursor.fetchone()
-                    bono_apertura = bono_result[0] if bono_result else 10
+                    ''', (server_id,))
+                    bonus_result = cursor.fetchone()
+                    opening_bonus = bonus_result[0] if bonus_result else 10
                     
-                    # Insertar nueva cartera con el bono
+                    # Insert new wallet with bonus
                     cursor.execute('''
                         INSERT INTO carteras 
                         (usuario_id, usuario_nombre, servidor_id, servidor_nombre, saldo, fecha_creacion)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (usuario_id, usuario_nombre, servidor_id, servidor_nombre, 
-                          bono_apertura, datetime.now().isoformat()))
+                    ''', (user_id, user_name, server_id, server_name, 
+                          opening_bonus, datetime.now().isoformat()))
                     
-                    # Registrar transacción de bono de apertura
+                    # Register opening bonus transaction
                     cursor.execute('''
                         INSERT INTO transacciones 
                         (usuario_id, usuario_nombre, servidor_id, servidor_nombre, 
                          tipo, cantidad, saldo_anterior, saldo_nuevo, descripcion, fecha)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (usuario_id, usuario_nombre, servidor_id, servidor_nombre,
-                          "bono_apertura", bono_apertura, 0, bono_apertura,
-                          f"Bono de apertura de cuenta ({bono_apertura} monedas)",
+                    ''', (user_id, user_name, server_id, server_name,
+                          "opening_bonus", opening_bonus, 0, opening_bonus,
+                          f"Account opening bonus ({opening_bonus} coins)",
                           datetime.now().isoformat()))
                     
                     conn.commit()
-                    return True, bono_apertura
+                    return True, opening_bonus
         except Exception as e:
             logger.exception(f"Error creando cartera: {e}")
             return False, 0
     
-    def obtener_saldo(self, usuario_id: str, servidor_id: str) -> int:
-        """Obtiene el saldo de un usuario."""
+    def get_balance(self, user_id: str, server_id: str) -> int:
+        """Get balance for a user."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT saldo FROM carteras 
-                    WHERE usuario_id = ? AND servidor_id = ?
-                ''', (usuario_id, servidor_id))
+                cursor.execute('SELECT saldo FROM carteras WHERE usuario_id = ? AND servidor_id = ?', (user_id, server_id))
                 result = cursor.fetchone()
                 return result[0] if result else 0
         except Exception as e:
-            logger.exception(f"Error obteniendo saldo: {e}")
+            logger.exception(f"Error getting balance: {e}")
             return 0
     
-    def actualizar_saldo(self, usuario_id: str, usuario_nombre: str,
-                        servidor_id: str, servidor_nombre: str,
-                        cantidad: int, tipo: str, descripcion: str = None,
-                        administrador_id: str = None, administrador_nombre: str = None) -> bool:
-        """Actualiza el saldo de un usuario y registra la transacción."""
+    def update_balance(self, user_id: str, user_name: str,
+                        server_id: str, server_name: str,
+                        amount: int, type: str, description: str = None,
+                        admin_id: str = None, admin_name: str = None) -> bool:
+        """Update user balance and register transaction."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                     cursor = conn.cursor()
                     
-                    # Crear cartera si no existe (con bono de apertura)
-                    se_creo, saldo_existente = self.crear_cartera(usuario_id, usuario_nombre, servidor_id, servidor_nombre)
+                    # Create wallet if it doesn't exist (with opening bonus)
+                    was_created, existing_balance = self.create_wallet(user_id, user_name, server_id, server_name)
                     
-                    # Obtener saldo actual (después de posible creación)
-                    cursor.execute('''
-                        SELECT saldo FROM carteras 
-                        WHERE usuario_id = ? AND servidor_id = ?
-                    ''', (usuario_id, servidor_id))
-                    saldo_anterior = cursor.fetchone()[0] or 0
+                    # Get current balance (after possible creation)
+                    cursor.execute('''SELECT saldo FROM carteras WHERE usuario_id = ? AND servidor_id = ?''', 
+                                 (user_id, server_id))
+                    current_balance = cursor.fetchone()[0]
                     
-                    # Calcular nuevo saldo
-                    saldo_nuevo = saldo_anterior + cantidad
+                    # Calculate new balance
+                    new_balance = current_balance + amount
                     
-                    # Actualizar saldo
-                    cursor.execute('''
-                        UPDATE carteras 
-                        SET saldo = ?, fecha_actualizacion = ?
-                        WHERE usuario_id = ? AND servidor_id = ?
-                    ''', (saldo_nuevo, datetime.now().isoformat(), usuario_id, servidor_id))
+                    # Update balance
+                    cursor.execute('''UPDATE carteras SET saldo = ?, usuario_nombre = ? 
+                                    WHERE usuario_id = ? AND servidor_id = ?''',
+                                 (new_balance, user_name, user_id, server_id))
                     
-                    # Registrar transacción
-                    cursor.execute('''
-                        INSERT INTO transacciones 
-                        (usuario_id, usuario_nombre, servidor_id, servidor_nombre, 
-                         tipo, cantidad, saldo_anterior, saldo_nuevo, descripcion, fecha,
-                         administrador_id, administrador_nombre)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (usuario_id, usuario_nombre, servidor_id, servidor_nombre,
-                          tipo, cantidad, saldo_anterior, saldo_nuevo, descripcion,
-                          datetime.now().isoformat(), administrador_id, administrador_nombre))
+                    # Register transaction
+                    cursor.execute('''INSERT INTO transacciones 
+                                    (usuario_id, servidor_id, tipo, cantidad, saldo_anterior, saldo_nuevo, 
+                                    descripcion, fecha, administrador_id, administrador_nombre)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                 (user_id, server_id, type, amount, current_balance, new_balance,
+                                  description or f"{type} {amount}", datetime.now().isoformat(),
+                                  admin_id, admin_name))
                     
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error actualizando saldo: {e}")
+            logger.exception(f"Error updating balance: {e}")
             return False
-    
-    def establecer_tae(self, servidor_id: str, tae_diaria: int, 
-                      administrador_id: str, administrador_nombre: str) -> bool:
-        """Establece la TAE (Tasa Anual Equivalente) diaria del servidor."""
-        try:
-            with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO config 
-                        (servidor_id, tae_diaria, fecha_actualizacion)
-                        VALUES (?, ?, ?)
-                    ''', (servidor_id, tae_diaria, datetime.now().isoformat()))
-                    conn.commit()
-                    return True
         except Exception as e:
             logger.exception(f"Error estableciendo TAE: {e}")
             return False
@@ -459,8 +435,8 @@ class DatabaseRoleBanquero:
             logger.exception(f"Error distribuyendo TAE diaria: {e}")
             return {"success": False, "message": f"Error: {str(e)}"}
     
-    def obtener_historial_transacciones(self, usuario_id: str, servidor_id: str, limite: int = 10) -> list:
-        """Obtiene el historial de transacciones de un usuario."""
+    def get_transaction_history(self, user_id: str, server_id: str, limit: int = 10) -> list:
+        """Get transaction history for a user."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
@@ -471,10 +447,10 @@ class DatabaseRoleBanquero:
                     WHERE usuario_id = ? AND servidor_id = ?
                     ORDER BY fecha DESC
                     LIMIT ?
-                ''', (usuario_id, servidor_id, limite))
+                ''', (user_id, server_id, limit))
                 return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"Error obteniendo historial de transacciones: {e}")
+            logger.exception(f"Error getting transaction history: {e}")
             return []
     
     def obtener_estadisticas(self, servidor_id: str = None) -> dict:
@@ -483,44 +459,65 @@ class DatabaseRoleBanquero:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 
-                # Estadísticas generales
-                cursor.execute('SELECT COUNT(*) FROM carteras')
-                carteras_total = cursor.fetchone()[0]
-                
-                cursor.execute('SELECT SUM(saldo) FROM carteras')
-                total_oro = cursor.fetchone()[0] or 0
-                
-                cursor.execute('SELECT COUNT(*) FROM transacciones')
-                transacciones_total = cursor.fetchone()[0]
-                
-                # Estadísticas por servidor si se especifica
                 if servidor_id:
-                    cursor.execute('SELECT COUNT(*) FROM carteras WHERE servidor_id = ?', (servidor_id,))
-                    carteras_servidor = cursor.fetchone()[0]
+                    # Estadísticas de un servidor específico
+                    cursor.execute("""
+                        SELECT COUNT(*) as total_carteras,
+                               COALESCE(SUM(saldo), 0) as total_oro
+                        FROM carteras
+                        WHERE servidor_id = ?
+                    """, (servidor_id,))
+                    stats = cursor.fetchone()
                     
-                    cursor.execute('SELECT SUM(saldo) FROM carteras WHERE servidor_id = ?', (servidor_id,))
-                    oro_servidor = cursor.fetchone()[0] or 0
+                    cursor.execute("""
+                        SELECT COUNT(*) as total_transacciones_hoy
+                        FROM transacciones
+                        WHERE servidor_id = ? 
+                        AND DATE(fecha) = DATE('now')
+                    """, (servidor_id,))
+                    transacciones_hoy = cursor.fetchone()[0]
                     
-                    cursor.execute('SELECT COUNT(*) FROM transacciones WHERE servidor_id = ?', (servidor_id,))
-                    transacciones_servidor = cursor.fetchone()[0]
+                    return {
+                        "total_carteras": stats[0],
+                        "total_oro": stats[1],
+                        "transacciones_hoy": transacciones_hoy
+                    }
                 else:
-                    carteras_servidor = 0
-                    oro_servidor = 0
-                    transacciones_servidor = 0
-                
-                return {
-                    'carteras_total': carteras_total,
-                    'total_oro': total_oro,
-                    'transacciones_total': transacciones_total,
-                    'carteras_servidor': carteras_servidor,
-                    'oro_servidor': oro_servidor,
-                    'transacciones_servidor': transacciones_servidor
-                }
+                    # Estadísticas globales
+                    cursor.execute("SELECT COUNT(*) FROM carteras")
+                    total_carteras = cursor.fetchone()[0]
+                    
+                    cursor.execute("SELECT COALESCE(SUM(saldo), 0) FROM carteras")
+                    total_oro = cursor.fetchone()[0]
+                    
+                    cursor.execute("SELECT COUNT(*) FROM transacciones")
+                    total_transacciones = cursor.fetchone()[0]
+                    
+                    return {
+                        "total_carteras": total_carteras,
+                        "total_oro": total_oro,
+                        "total_transacciones": total_transacciones
+                    }
         except Exception as e:
             logger.exception(f"Error obteniendo estadísticas: {e}")
             return {}
+    
+    def obtener_todas_carteras(self) -> list:
+        """Obtiene todas las carteras de todos los servidores."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT usuario_id, usuario_nombre, servidor_id, servidor_nombre
+                    FROM carteras
+                    ORDER BY servidor_nombre, usuario_nombre
+                """)
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error obteniendo todas las carteras: {e}")
+            return []
 
 
-def get_banquero_db_instance(server_name: str = "default") -> DatabaseRoleBanquero:
-    """Obtiene una instancia de la base de datos del Banquero."""
-    return DatabaseRoleBanquero(server_name)
+def get_banker_db_instance(server_name: str = "default") -> DatabaseRoleBanker:
+    """Get banker database instance."""
+    return DatabaseRoleBanker(server_name)

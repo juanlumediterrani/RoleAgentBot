@@ -1,5 +1,5 @@
 {
-  "personality": "personalities/kronk.json",
+  "personality": "personalities/putre/personality.json",
   "platform": "discord",
   "roles": {
     "news_watcher": {
