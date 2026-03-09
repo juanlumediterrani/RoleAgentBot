@@ -2752,8 +2752,10 @@ See #860 (https://github.com/yt-dlp/yt-dlp/pull/860) and
 .IP \[bu] 2
 \f[V]webpage_skip\f[R]: Skip extraction of embedded webpage data.
 One or both of \f[V]player_response\f[R], \f[V]initial_data\f[R].
-These options are for testing purposes and don\[aq]t skip any network
-requests
+Using these will not skip any network requests, and in some cases will
+result in additional network requests.
+Currently, the default is \f[V]player_response\f[R]; however, typically
+these are for testing purposes only
 .IP \[bu] 2
 \f[V]player_params\f[R]: YouTube player parameters to use for player
 requests.
@@ -2771,8 +2773,8 @@ You can use \f[V]actual\f[R] to go with what is prescribed by the site
 n/sig deciphering, in the format of
 \f[V]signature_timestamp\[at]hash\f[R] (e.g.
 \f[V]20348\[at]0004de42\f[R]).
-The default is to use what is prescribed by the site, and can be
-selected with \f[V]actual\f[R]
+Currently, the default is to force \f[V]20514\[at]9f4cc5e4\f[R].
+You can use \f[V]actual\f[R] to go with what is prescribed by the site
 .IP \[bu] 2
 \f[V]comment_sort\f[R]: \f[V]top\f[R] or \f[V]new\f[R] (default) -
 choose comment sorting mode (on YouTube\[aq]s side)

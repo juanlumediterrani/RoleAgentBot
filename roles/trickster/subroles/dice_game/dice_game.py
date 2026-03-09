@@ -196,6 +196,50 @@ def procesar_jugada(usuario_id: str, usuario_nombre: str, servidor_id: str,
         game = get_dice_game_instance(fixed_bet)
         result = game.play_game(usuario_id, usuario_nombre, servidor_id, servidor_nombre, bote_actual)
         
+        # Integrate with banker system for gold transactions
+        banker_success = True
+        banker_message = ""
+        
+        try:
+            # Import banker database
+            from roles.banker.db_role_banker import get_banker_db_instance
+            server_name = get_server_name_by_id(servidor_id) or servidor_nombre
+            banker_db = get_banker_db_instance(server_name)
+            
+            if banker_db and result['success']:
+                # Deduct the bet amount from player's wallet
+                bet_deducted = banker_db.update_balance(
+                    usuario_id, usuario_nombre, servidor_id, servidor_nombre,
+                    -result['bet'], "dice_game_bet", 
+                    f"Dice game bet: {result['dice']}", 
+                    "dice_game", "Dice Game System"
+                )
+                
+                if not bet_deducted:
+                    banker_success = False
+                    banker_message = "❌ Insufficient gold for bet!"
+                    result['success'] = False
+                    result['message'] = banker_message
+                else:
+                    # If player won, add the prize to their wallet
+                    if result['prize'] > 0:
+                        prize_added = banker_db.update_balance(
+                            usuario_id, usuario_nombre, servidor_id, servidor_nombre,
+                            result['prize'], "dice_game_win", 
+                            f"Dice game winnings: {result['combination']}", 
+                            "dice_game", "Dice Game System"
+                        )
+                        
+                        if not prize_added:
+                            banker_success = False
+                            banker_message = "⚠️ Won but couldn't add prize to wallet!"
+                        else:
+                            banker_message = f"💰 Gold transactions completed!"
+        except Exception as e:
+            # If banker integration fails, still allow the game but warn
+            banker_success = False
+            banker_message = f"⚠️ Banker integration failed: {str(e)}"
+        
         # Register the game in database if available
         if db_game and result['success']:
             db_game.registrar_jugada(
@@ -208,6 +252,8 @@ def procesar_jugada(usuario_id: str, usuario_nombre: str, servidor_id: str,
         if result['success']:
             result['mensaje'] = result['message']
             result['premio'] = result['prize']
+            if banker_message:
+                result['mensaje'] += f"\n{banker_message}"
         
         return result
         

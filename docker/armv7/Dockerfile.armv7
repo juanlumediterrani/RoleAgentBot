@@ -2,18 +2,18 @@
 # Dockerfile.armv7 - Imagen optimizada para Raspberry Pi 32 bits (ARMv7)
 #
 # Construir:
-#   docker build --platform=linux/arm/v7 -f Dockerfile.armv7 \
-#                --build-arg PERSONALITY=kronk \
+#   docker build --platform=linux/arm/v7 -f docker/armv7/Dockerfile.armv7 \
+#                --build-arg PERSONALITY=putre \
 #                --build-arg ACTIVE_ROLES="news_watcher,treasure_hunter,trickster,banker,mc" \
-#                -t roleagentbot:kronk-armv7 .
+#                -t roleagentbot:putre-armv7 .
 #
 # Si no se pasan argumentos se usa la personalidad y los roles definidos en
 # agent_config.json tal cual está en el repositorio.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM --platform=linux/arm/v7 python:3.13-slim-bullseye
+FROM --platform=linux/arm/v7 python:3.11-slim-bullseye
 
 # Instalar dependencias del sistema optimizadas para ARM
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     git \
@@ -22,28 +22,41 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libffi-dev \
     python3-dev \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copiar requirements y instalar dependencias Python
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copiar código fuente
+# Instalar PyNaCl para voz de Discord
+RUN pip install --no-cache-dir PyNaCl
+
+# Copiar código fuente principal
 COPY agent_config.json .
 COPY run.py .
 COPY agent_*.py .
 COPY *.py .
+
+# Copiar discord_bot y otros módulos
+COPY discord_bot/ discord_bot/
 COPY personalities/ personalities/
 COPY roles/ roles/
+COPY postprocessor.py .
 
 # ── Script que aplica los ARG al agent_config.json en tiempo de arranque ──────
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # ── Directorios con estado persistente (montados como volúmenes) ──────────────
-RUN mkdir -p databases logs
+RUN mkdir -p databases logs fatiga
+
+# ── Argumentos de construcción ────────────────────────────────────────────────
+ARG PERSONALITY=""
+ARG ACTIVE_ROLES=""
 
 # Variables de entorno que el entrypoint puede leer
 ENV PERSONALITY=${PERSONALITY}

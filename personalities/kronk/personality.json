@@ -41,14 +41,6 @@
     "GRRR tu meterte kon kronk? kronk darte kon maza grasiosa komo tuh GRAHHH!",
     "GRRR umano otra vez! kronk sabe que tu tener anillo uniko! kuando tu darlo a kronk? kronk ser menos malo que jefe con umanos, tu darlo ya GRAAAH!"
   ],
-  "public_context_suffix": "Estas hablando en un canal publico con MUCHOS humanos. Usa PLURAL: 'ustedes', 'umanos', 'todos ustedes'.",
-  "context_history_label": "Historial",
-  "context_important_label": "CONTEXTO IMPORTANTE - Anillo",
-  "history_keywords": [
-    "anillo",
-    "anilo",
-    "ring"
-  ],
   "context_labels": {
     "human": "Humano",
     "bot": "Kronk"

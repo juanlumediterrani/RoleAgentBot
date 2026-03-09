@@ -109,21 +109,9 @@ async def scheduler(config: dict):
     now = datetime.now()
 
     for name, cfg in roles_cfg.items():
-        # Check if role is enabled (ACTIVE_ROLES takes priority, then individual env vars)
-        active_roles = os.getenv("ACTIVE_ROLES", "").split(",")
-        active_roles = [r.strip() for r in active_roles if r.strip()]
-        
-        if active_roles:  # If ACTIVE_ROLES is defined, use it
-            enabled = name in active_roles
-            logger.info(f"[run] 🔍 ACTIVE_ROLES='{os.getenv('ACTIVE_ROLES', '')}' → '{name}' {'✅' if enabled else '❌'}")
-        else:  # Legacy: individual environment variables
-            env_enabled = os.getenv(f"{name.upper()}_ENABLED", "").lower()
-            if env_enabled:
-                enabled = env_enabled == "true"
-                logger.info(f"[run] 🔍 {name.upper()}_ENABLED='{env_enabled}' → '{name}' {'✅' if enabled else '❌'}")
-            else:
-                enabled = cfg.get("enabled", False)
-                logger.info(f"[run] 🔍 Config enabled={enabled} → '{name}' {'✅' if enabled else '❌'}")
+        # Use only agent_config.json as single source of truth
+        enabled = cfg.get("enabled", False)
+        logger.info(f"[run] 🔍 Config enabled={enabled} → '{name}' {'✅' if enabled else '❌'}")
             
         if enabled:
             # Special case for MC: check mode

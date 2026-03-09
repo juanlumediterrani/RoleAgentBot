@@ -24,7 +24,7 @@ def get_db_path(server_name: str = "default") -> Path:
 
 class DatabaseRoleBanker:
     """Base de datos especializada para el Banquero.
-    Gestiona carteras de oro, transacciones y distribución diaria.
+    Gestiona wallets de oro, transactions y distribución diaria.
     """
     
     def __init__(self, server_name: str = "default", db_path: Path = None):
@@ -90,66 +90,66 @@ class DatabaseRoleBanker:
                 conn.commit()
                 
                 # Inicializar tablas
-                self._init_carteras_table()
-                self._init_transacciones_table()
+                self._init_wallets_table()
+                self._init_transactions_table()
                 self._init_config_table()
                 
                 logger.info(f"✅ Banker database ready at {self.db_path}")
         except Exception as e:
             logger.exception(f"❌ Error initializing banker database: {e}")
     
-    def _init_carteras_table(self):
-        """Inicializa tabla de carteras de los usuarios."""
+    def _init_wallets_table(self):
+        """Inicializa tabla de wallets de los usuarios."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS carteras (
+                    CREATE TABLE IF NOT EXISTS wallets (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        usuario_id TEXT NOT NULL UNIQUE,
-                        usuario_nombre TEXT NOT NULL,
-                        servidor_id TEXT NOT NULL,
-                        servidor_nombre TEXT NOT NULL,
-                        saldo INTEGER DEFAULT 0,
-                        fecha_creacion TEXT NOT NULL,
-                        fecha_actualizacion TEXT DEFAULT NULL
+                        user_id TEXT NOT NULL UNIQUE,
+                        user_name TEXT NOT NULL,
+                        server_id TEXT NOT NULL,
+                        server_name TEXT NOT NULL,
+                        balance INTEGER DEFAULT 0,
+                        created_date TEXT NOT NULL,
+                        updated_date TEXT DEFAULT NULL
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_carteras_usuario ON carteras (usuario_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_carteras_servidor ON carteras (servidor_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets (user_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_wallets_server ON wallets (server_id)')
                 conn.commit()
         except Exception as e:
-            logger.exception(f"❌ Error creando tabla carteras: {e}")
+            logger.exception(f"❌ Error creando tabla wallets: {e}")
     
-    def _init_transacciones_table(self):
-        """Inicializa tabla de transacciones."""
+    def _init_transactions_table(self):
+        """Inicializa tabla de transactions."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS transacciones (
+                    CREATE TABLE IF NOT EXISTS transactions (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        usuario_id TEXT NOT NULL,
-                        usuario_nombre TEXT NOT NULL,
-                        servidor_id TEXT NOT NULL,
-                        servidor_nombre TEXT NOT NULL,
-                        tipo TEXT NOT NULL,
-                        cantidad INTEGER NOT NULL,
-                        saldo_anterior INTEGER NOT NULL,
-                        saldo_nuevo INTEGER NOT NULL,
-                        descripcion TEXT,
-                        fecha TEXT NOT NULL,
-                        administrador_id TEXT DEFAULT NULL,
-                        administrador_nombre TEXT DEFAULT NULL
+                        user_id TEXT NOT NULL,
+                        user_name TEXT NOT NULL,
+                        server_id TEXT NOT NULL,
+                        server_name TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        amount INTEGER NOT NULL,
+                        balance_before INTEGER NOT NULL,
+                        balance_after INTEGER NOT NULL,
+                        description TEXT,
+                        date TEXT NOT NULL,
+                        admin_id TEXT DEFAULT NULL,
+                        admin_name TEXT DEFAULT NULL
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transacciones_usuario ON transacciones (usuario_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transacciones_servidor ON transacciones (servidor_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transacciones_fecha ON transacciones (fecha)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transacciones_tipo ON transacciones (tipo)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions (user_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_server ON transactions (server_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions (date)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions (type)')
                 conn.commit()
         except Exception as e:
-            logger.exception(f"❌ Error creando tabla transacciones: {e}")
+            logger.exception(f"❌ Error creando tabla transactions: {e}")
     
     def _init_config_table(self):
         """Inicializa tabla de configuración del banquero."""
@@ -159,14 +159,14 @@ class DatabaseRoleBanker:
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS config (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        servidor_id TEXT NOT NULL UNIQUE,
-                        tae_diaria INTEGER DEFAULT 1,
-                        bono_apertura INTEGER DEFAULT 10,
-                        ultima_distribucion TEXT DEFAULT NULL,
-                        fecha_actualizacion TEXT DEFAULT NULL
+                        server_id TEXT NOT NULL UNIQUE,
+                        daily_rate INTEGER DEFAULT 1,
+                        opening_bonus INTEGER DEFAULT 10,
+                        last_distribution TEXT DEFAULT NULL,
+                        updated_date TEXT DEFAULT NULL
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_config_servidor ON config (servidor_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_config_servidor ON config (server_id)')
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creando tabla config: {e}")
@@ -185,8 +185,8 @@ class DatabaseRoleBanker:
                     
                     # Check if already exists
                     cursor.execute('''
-                        SELECT saldo FROM carteras 
-                        WHERE usuario_id = ? AND servidor_id = ?
+                        SELECT balance FROM wallets 
+                        WHERE user_id = ? AND server_id = ?
                     ''', (user_id, server_id))
                     existing = cursor.fetchone()
                     
@@ -195,29 +195,28 @@ class DatabaseRoleBanker:
                     
                     # Get opening bonus from server
                     cursor.execute('''
-                        SELECT bono_apertura FROM config WHERE servidor_id = ?
+                        SELECT opening_bonus FROM config WHERE server_id = ?
                     ''', (server_id,))
                     bonus_result = cursor.fetchone()
                     opening_bonus = bonus_result[0] if bonus_result else 10
                     
                     # Insert new wallet with bonus
                     cursor.execute('''
-                        INSERT INTO carteras 
-                        (usuario_id, usuario_nombre, servidor_id, servidor_nombre, saldo, fecha_creacion)
+                        INSERT INTO wallets 
+                        (user_id, user_name, server_id, server_name, balance, created_date)
                         VALUES (?, ?, ?, ?, ?, ?)
                     ''', (user_id, user_name, server_id, server_name, 
                           opening_bonus, datetime.now().isoformat()))
                     
                     # Register opening bonus transaction
                     cursor.execute('''
-                        INSERT INTO transacciones 
-                        (usuario_id, usuario_nombre, servidor_id, servidor_nombre, 
-                         tipo, cantidad, saldo_anterior, saldo_nuevo, descripcion, fecha)
+                        INSERT INTO transactions 
+                        (user_id, user_name, server_id, server_name, 
+                         type, amount, balance_before, balance_after, description, date)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (user_id, user_name, server_id, server_name,
                           "opening_bonus", opening_bonus, 0, opening_bonus,
-                          f"Account opening bonus ({opening_bonus} coins)",
-                          datetime.now().isoformat()))
+                          f"Opening bonus for new account", datetime.now().isoformat()))
                     
                     conn.commit()
                     return True, opening_bonus
@@ -230,7 +229,7 @@ class DatabaseRoleBanker:
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT saldo FROM carteras WHERE usuario_id = ? AND servidor_id = ?', (user_id, server_id))
+                cursor.execute('SELECT balance FROM wallets WHERE user_id = ? AND server_id = ?', (user_id, server_id))
                 result = cursor.fetchone()
                 return result[0] if result else 0
         except Exception as e:
@@ -251,7 +250,7 @@ class DatabaseRoleBanker:
                     was_created, existing_balance = self.create_wallet(user_id, user_name, server_id, server_name)
                     
                     # Get current balance (after possible creation)
-                    cursor.execute('''SELECT saldo FROM carteras WHERE usuario_id = ? AND servidor_id = ?''', 
+                    cursor.execute('''SELECT balance FROM wallets WHERE user_id = ? AND server_id = ?''', 
                                  (user_id, server_id))
                     current_balance = cursor.fetchone()[0]
                     
@@ -259,16 +258,16 @@ class DatabaseRoleBanker:
                     new_balance = current_balance + amount
                     
                     # Update balance
-                    cursor.execute('''UPDATE carteras SET saldo = ?, usuario_nombre = ? 
-                                    WHERE usuario_id = ? AND servidor_id = ?''',
+                    cursor.execute('''UPDATE wallets SET balance = ?, user_name = ? 
+                                    WHERE user_id = ? AND server_id = ?''',
                                  (new_balance, user_name, user_id, server_id))
                     
                     # Register transaction
-                    cursor.execute('''INSERT INTO transacciones 
-                                    (usuario_id, servidor_id, tipo, cantidad, saldo_anterior, saldo_nuevo, 
-                                    descripcion, fecha, administrador_id, administrador_nombre)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                                 (user_id, server_id, type, amount, current_balance, new_balance,
+                    cursor.execute('''INSERT INTO transactions 
+                                    (user_id, user_name, server_id, server_name, type, amount, balance_before, balance_after, 
+                                    description, date, admin_id, admin_name)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                 (user_id, user_name, server_id, server_name, type, amount, current_balance, new_balance,
                                   description or f"{type} {amount}", datetime.now().isoformat(),
                                   admin_id, admin_name))
                     
@@ -281,8 +280,8 @@ class DatabaseRoleBanker:
             logger.exception(f"Error estableciendo TAE: {e}")
             return False
     
-    def establecer_bono_apertura(self, servidor_id: str, bono_apertura: int,
-                                administrador_id: str, administrador_nombre: str) -> bool:
+    def establecer_opening_bonus(self, server_id: str, opening_bonus: int,
+                                admin_id: str, admin_name: str) -> bool:
         """Establece el bono de apertura del servidor."""
         try:
             with self._lock:
@@ -290,58 +289,58 @@ class DatabaseRoleBanker:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT OR REPLACE INTO config 
-                        (servidor_id, bono_apertura, fecha_actualizacion)
+                        (server_id, opening_bonus, updated_date)
                         VALUES (?, ?, ?)
-                    ''', (servidor_id, bono_apertura, datetime.now().isoformat()))
+                    ''', (server_id, opening_bonus, datetime.now().isoformat()))
                     conn.commit()
                     return True
         except Exception as e:
             logger.exception(f"Error estableciendo bono de apertura: {e}")
             return False
     
-    def obtener_bono_apertura(self, servidor_id: str) -> int:
+    def obtener_opening_bonus(self, server_id: str) -> int:
         """Obtiene el bono de apertura del servidor."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT bono_apertura FROM config WHERE servidor_id = ?
-                ''', (servidor_id,))
+                    SELECT opening_bonus FROM config WHERE server_id = ?
+                ''', (server_id,))
                 result = cursor.fetchone()
                 return result[0] if result else 10
         except Exception as e:
             logger.exception(f"Error obteniendo bono de apertura: {e}")
             return 10
     
-    def obtener_tae(self, servidor_id: str) -> int:
+    def obtener_tae(self, server_id: str) -> int:
         """Obtiene la TAE diaria del servidor."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT tae_diaria FROM config WHERE servidor_id = ?
-                ''', (servidor_id,))
+                    SELECT daily_rate FROM config WHERE server_id = ?
+                ''', (server_id,))
                 result = cursor.fetchone()
                 return result[0] if result else 1
         except Exception as e:
             logger.exception(f"Error obteniendo TAE: {e}")
             return 0
     
-    def obtener_ultima_distribucion(self, servidor_id: str) -> str:
-        """Obtiene la fecha de la última distribución."""
+    def obtener_last_distribution(self, server_id: str) -> str:
+        """Obtiene la date de la última distribución."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT ultima_distribucion FROM config WHERE servidor_id = ?
-                ''', (servidor_id,))
+                    SELECT last_distribution FROM config WHERE server_id = ?
+                ''', (server_id,))
                 result = cursor.fetchone()
                 return result[0] if result and result[0] else None
         except Exception as e:
             logger.exception(f"Error obteniendo última distribución: {e}")
             return None
     
-    def registrar_distribucion_diaria(self, servidor_id: str) -> bool:
+    def registrar_distribucion_diaria(self, server_id: str) -> bool:
         """Registra que se hizo una distribución diaria hoy."""
         try:
             with self._lock:
@@ -349,16 +348,16 @@ class DatabaseRoleBanker:
                     cursor = conn.cursor()
                     cursor.execute('''
                         UPDATE config 
-                        SET ultima_distribucion = ?
-                        WHERE servidor_id = ?
-                    ''', (datetime.now().isoformat(), servidor_id))
+                        SET last_distribution = ?
+                        WHERE server_id = ?
+                    ''', (datetime.now().isoformat(), server_id))
                     conn.commit()
                     return True
         except Exception as e:
             logger.exception(f"Error registrando distribución diaria: {e}")
             return False
     
-    def distribuir_tae_diaria(self, servidor_id: str, servidor_nombre: str) -> dict:
+    def distribuir_daily_rate(self, server_id: str, server_name: str) -> dict:
         """Distribuye la TAE diaria a todos los usuarios del servidor."""
         try:
             with self._lock:
@@ -367,19 +366,19 @@ class DatabaseRoleBanker:
                     
                     # Obtener TAE diaria
                     cursor.execute('''
-                        SELECT tae_diaria FROM config WHERE servidor_id = ?
-                    ''', (servidor_id,))
+                        SELECT daily_rate FROM config WHERE server_id = ?
+                    ''', (server_id,))
                     result = cursor.fetchone()
-                    tae_diaria = result[0] if result else 0
+                    daily_rate = result[0] if result else 0
                     
-                    if tae_diaria <= 0:
+                    if daily_rate <= 0:
                         return {"success": False, "message": "No hay TAE configurada"}
                     
                     # Obtener todos los usuarios del servidor
                     cursor.execute('''
-                        SELECT usuario_id, usuario_nombre, saldo FROM carteras 
-                        WHERE servidor_id = ?
-                    ''', (servidor_id,))
+                        SELECT user_id, user_name, balance FROM wallets 
+                        WHERE server_id = ?
+                    ''', (server_id,))
                     usuarios = cursor.fetchall()
                     
                     if not usuarios:
@@ -387,47 +386,46 @@ class DatabaseRoleBanker:
                     
                     # Distribuir a cada usuario
                     distribuciones = []
-                    for usuario_id, usuario_nombre, saldo_actual in usuarios:
-                        nuevo_saldo = saldo_actual + tae_diaria
+                    for user_id, user_name, balance_actual in usuarios:
+                        nuevo_balance = balance_actual + daily_rate
                         
-                        # Actualizar saldo
+                        # Actualizar balance
                         cursor.execute('''
-                            UPDATE carteras 
-                            SET saldo = ?, fecha_actualizacion = ?
-                            WHERE usuario_id = ? AND servidor_id = ?
-                        ''', (nuevo_saldo, datetime.now().isoformat(), usuario_id, servidor_id))
+                            UPDATE wallets 
+                            SET balance = ?, updated_date = ?
+                            WHERE user_id = ? AND server_id = ?
+                        ''', (nuevo_balance, datetime.now().isoformat(), user_id, server_id))
                         
                         # Registrar transacción
                         cursor.execute('''
-                            INSERT INTO transacciones 
-                            (usuario_id, usuario_nombre, servidor_id, servidor_nombre, 
-                             tipo, cantidad, saldo_anterior, saldo_nuevo, descripcion, fecha)
+                            INSERT INTO transactions 
+                            (user_id, user_name, server_id, server_name, 
+                             type, amount, balance_before, balance_after, description, date)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (usuario_id, usuario_nombre, servidor_id, servidor_nombre,
-                              "tae_diaria", tae_diaria, saldo_actual, nuevo_saldo,
-                              f"Distribución diaria de TAE ({tae_diaria} monedas)",
-                              datetime.now().isoformat()))
+                        ''', (user_id, user_name, server_id, server_name,
+                              "daily_rate", daily_rate, balance_actual, nuevo_balance,
+                              f"Daily rate distribution", datetime.now().isoformat()))
                         
                         distribuciones.append({
-                            "usuario_id": usuario_id,
-                            "usuario_nombre": usuario_nombre,
-                            "cantidad": tae_diaria,
-                            "saldo_anterior": saldo_actual,
-                            "saldo_nuevo": nuevo_saldo
+                            "user_id": user_id,
+                            "user_name": user_name,
+                            "amount": daily_rate,
+                            "balance_before": balance_actual,
+                            "balance_after": nuevo_balance
                         })
                     
                     # Registrar distribución
                     cursor.execute('''
                         UPDATE config 
-                        SET ultima_distribucion = ?
-                        WHERE servidor_id = ?
-                    ''', (datetime.now().isoformat(), servidor_id))
+                        SET last_distribution = ?
+                        WHERE server_id = ?
+                    ''', (datetime.now().isoformat(), server_id))
                     
                     conn.commit()
                     
                     return {
                         "success": True,
-                        "tae_diaria": tae_diaria,
+                        "daily_rate": daily_rate,
                         "usuarios_distribuidos": len(distribuciones),
                         "distribuciones": distribuciones
                     }
@@ -441,11 +439,11 @@ class DatabaseRoleBanker:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT tipo, cantidad, saldo_anterior, saldo_nuevo, descripcion, fecha,
-                           administrador_nombre
-                    FROM transacciones 
-                    WHERE usuario_id = ? AND servidor_id = ?
-                    ORDER BY fecha DESC
+                    SELECT type, amount, balance_before, balance_after, description, date,
+                           admin_name
+                    FROM transactions 
+                    WHERE user_id = ? AND server_id = ?
+                    ORDER BY date DESC
                     LIMIT ?
                 ''', (user_id, server_id, limit))
                 return cursor.fetchall()
@@ -453,68 +451,68 @@ class DatabaseRoleBanker:
             logger.exception(f"Error getting transaction history: {e}")
             return []
     
-    def obtener_estadisticas(self, servidor_id: str = None) -> dict:
+    def obtener_estadisticas(self, server_id: str = None) -> dict:
         """Obtiene estadísticas básicas del banquero."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 
-                if servidor_id:
+                if server_id:
                     # Estadísticas de un servidor específico
                     cursor.execute("""
-                        SELECT COUNT(*) as total_carteras,
-                               COALESCE(SUM(saldo), 0) as total_oro
-                        FROM carteras
-                        WHERE servidor_id = ?
-                    """, (servidor_id,))
+                        SELECT COUNT(*) as total_wallets,
+                               COALESCE(SUM(balance), 0) as total_oro
+                        FROM wallets
+                        WHERE server_id = ?
+                    """, (server_id,))
                     stats = cursor.fetchone()
                     
                     cursor.execute("""
-                        SELECT COUNT(*) as total_transacciones_hoy
-                        FROM transacciones
-                        WHERE servidor_id = ? 
-                        AND DATE(fecha) = DATE('now')
-                    """, (servidor_id,))
-                    transacciones_hoy = cursor.fetchone()[0]
+                        SELECT COUNT(*) as total_transactions_hoy
+                        FROM transactions
+                        WHERE server_id = ? 
+                        AND DATE(date) = DATE('now')
+                    """, (server_id,))
+                    transactions_hoy = cursor.fetchone()[0]
                     
                     return {
-                        "total_carteras": stats[0],
+                        "total_wallets": stats[0],
                         "total_oro": stats[1],
-                        "transacciones_hoy": transacciones_hoy
+                        "transactions_hoy": transactions_hoy
                     }
                 else:
                     # Estadísticas globales
-                    cursor.execute("SELECT COUNT(*) FROM carteras")
-                    total_carteras = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM wallets")
+                    total_wallets = cursor.fetchone()[0]
                     
-                    cursor.execute("SELECT COALESCE(SUM(saldo), 0) FROM carteras")
+                    cursor.execute("SELECT COALESCE(SUM(balance), 0) FROM wallets")
                     total_oro = cursor.fetchone()[0]
                     
-                    cursor.execute("SELECT COUNT(*) FROM transacciones")
-                    total_transacciones = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM transactions")
+                    total_transactions = cursor.fetchone()[0]
                     
                     return {
-                        "total_carteras": total_carteras,
+                        "total_wallets": total_wallets,
                         "total_oro": total_oro,
-                        "total_transacciones": total_transacciones
+                        "total_transactions": total_transactions
                     }
         except Exception as e:
             logger.exception(f"Error obteniendo estadísticas: {e}")
             return {}
     
-    def obtener_todas_carteras(self) -> list:
-        """Obtiene todas las carteras de todos los servidores."""
+    def obtener_todas_wallets(self) -> list:
+        """Obtiene todas las wallets de todos los servidores."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT usuario_id, usuario_nombre, servidor_id, servidor_nombre
-                    FROM carteras
-                    ORDER BY servidor_nombre, usuario_nombre
+                    SELECT user_id, user_name, server_id, server_name
+                    FROM wallets
+                    ORDER BY server_name, user_name
                 """)
                 return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"Error obteniendo todas las carteras: {e}")
+            logger.exception(f"Error obteniendo todas las wallets: {e}")
             return []
 
 

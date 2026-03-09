@@ -39,5 +39,28 @@
       "Pandemia global con alta mortalidad",
       "Crisis energética mundial"
     ]
-  }
+  },
+  "prompt_greet": {
+    "instructions": [
+      "Saluda como {name}. Sigue las REGLAS DE ORO.",
+      "Hace tiempo que no le ves, incordialo un poco"
+    ],
+    "closing": "El saludo de Kronk:"
+  },
+  "prompt_welcome": {
+    "instructions": [
+      "Da una bienvenida especial como {name}. Sigue las REGLAS DE ORO.",
+      "Haz sentir especial al usuario que se une al servidor."
+    ],
+    "closing": "La bienvenida de Kronk:"
+  },
+  "public_context_suffix": "Estas ablando en un kampamento publiko kon MUXOS umanos. Uza PLURAL: 'uztedes', 'umanos', 'karnaza'.",
+  "context_history_label": "Istorial",
+  "context_important_label": "KOSA IMPORTANTE - Aniyo",
+  "history_keywords": [
+    "anillo",
+    "anilo",
+    "ring",
+    "tesoro"
+  ]
 }

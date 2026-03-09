@@ -2339,8 +2339,10 @@ youtube
     they could cause issues such as missing formats or metadata. See
     #860 and #12826 for more details
 -   webpage_skip: Skip extraction of embedded webpage data. One or both
-    of player_response, initial_data. These options are for testing
-    purposes and don't skip any network requests
+    of player_response, initial_data. Using these will not skip any
+    network requests, and in some cases will result in additional
+    network requests. Currently, the default is player_response;
+    however, typically these are for testing purposes only
 -   player_params: YouTube player parameters to use for player requests.
     Will overwrite any default ones set by yt-dlp.
 -   player_js_variant: The player javascript variant to use for n/sig
@@ -2350,8 +2352,8 @@ youtube
     what is prescribed by the site
 -   player_js_version: The player javascript version to use for n/sig
     deciphering, in the format of signature_timestamp@hash (e.g.
-    20348@0004de42). The default is to use what is prescribed by the
-    site, and can be selected with actual
+    20348@0004de42). Currently, the default is to force 20514@9f4cc5e4.
+    You can use actual to go with what is prescribed by the site
 -   comment_sort: top or new (default) - choose comment sorting mode (on
     YouTube's side)
 -   max_comments: Limit the amount of comments to gather.

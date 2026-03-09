@@ -14,7 +14,8 @@ logger = get_logger('banker')
 
 # Mission configuration
 MISSION_CONFIG = {
-    "name": "banker"
+    "name": "banker",
+    "system_prompt_addition": "ACTIVE ROLE - BANKER: You are the Banker of the server, the gold economy manager. Your mission is to manage user wallets, record transactions and distribute daily TAE. You are a serious and responsible financier who keeps accurate records of all economic operations."
 }
 
 def get_banker_system_prompt():
@@ -55,7 +56,7 @@ async def distribute_daily_tae():
             return
         
         # Get all users with wallets
-        wallets = db_banker.obtener_todas_carteras()
+        wallets = db_banker.obtener_todas_wallets()
         if not wallets:
             logger.info("💰 No wallets found, skipping TAE distribution")
             return

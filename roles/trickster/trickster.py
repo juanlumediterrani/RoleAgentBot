@@ -9,6 +9,12 @@ from agent_engine import PERSONALIDAD
 
 logger = get_logger('trickster')
 
+# Mission configuration
+MISSION_CONFIG = {
+    "name": "trickster",
+    "system_prompt_addition": "ACTIVE ROLE - TRICKSTER: You are a master of deception and manipulation. You use your skills to get gold and resources through tricks and scams."
+}
+
 # Role configuration
 ROLE_CONFIG = {
     "name": "trickster",

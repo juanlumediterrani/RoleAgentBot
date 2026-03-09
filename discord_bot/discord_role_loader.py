@@ -45,6 +45,7 @@ def _try_register_role(bot, module_path, func_name, personality, agent_config):
 async def register_all_role_commands(bot, agent_config, personality):
     """Register commands for all enabled roles in agent_config.json."""
     logger.info("Checking enabled roles for command registration")
+    logger.info(f"Agent config roles: {list(agent_config.get('roles', {}).keys())}")
 
     # MC is always registered first
     mc_module, mc_func = MC_REGISTRY
@@ -56,10 +57,12 @@ async def register_all_role_commands(bot, agent_config, personality):
     # Register enabled roles
     registered = []
     for role_name, (module_path, func_name) in ROLE_REGISTRY.items():
+        logger.info(f"Checking role {role_name}...")
         if is_role_enabled_check(role_name, agent_config):
             logger.info(f"🎭 Role {role_name} enabled, registering commands...")
             if _try_register_role(bot, module_path, func_name, personality, agent_config):
                 registered.append(role_name)
+                logger.info(f"✅ {role_name} registered successfully")
             else:
                 logger.warning(f"🎭 Role {role_name} enabled but commands could not be registered")
         else:

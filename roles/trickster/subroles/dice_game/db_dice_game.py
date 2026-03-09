@@ -30,17 +30,17 @@ class DatabaseRoleDiceGame:
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS dice_games (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        usuario_id TEXT NOT NULL,
-                        usuario_nombre TEXT NOT NULL,
-                        servidor_id TEXT NOT NULL,
-                        servidor_nombre TEXT NOT NULL,
-                        apuesta INTEGER NOT NULL,
-                        dados TEXT NOT NULL,
-                        combinacion TEXT NOT NULL,
-                        premio INTEGER NOT NULL,
-                        bote_antes INTEGER NOT NULL,
-                        bote_despues INTEGER NOT NULL,
-                        fecha TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        user_name TEXT NOT NULL,
+                        server_id TEXT NOT NULL,
+                        server_name TEXT NOT NULL,
+                        bet INTEGER NOT NULL,
+                        dice TEXT NOT NULL,
+                        combination TEXT NOT NULL,
+                        prize INTEGER NOT NULL,
+                        pot_before INTEGER NOT NULL,
+                        pot_after INTEGER NOT NULL,
+                        date TEXT NOT NULL,
                         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
                 ''')
@@ -48,9 +48,9 @@ class DatabaseRoleDiceGame:
                 # Server configuration table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS server_config (
-                        servidor_id TEXT PRIMARY KEY,
-                        apuesta_fija INTEGER DEFAULT 1,
-                        anuncios_activos BOOLEAN DEFAULT 1,
+                        server_id TEXT PRIMARY KEY,
+                        bet_fija INTEGER DEFAULT 1,
+                        announcements_active BOOLEAN DEFAULT 1,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
@@ -59,19 +59,27 @@ class DatabaseRoleDiceGame:
                 # Player statistics table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS player_stats (
-                        usuario_id TEXT NOT NULL,
-                        servidor_id TEXT NOT NULL,
-                        total_jugadas INTEGER DEFAULT 0,
-                        total_apostado INTEGER DEFAULT 0,
-                        total_ganado INTEGER DEFAULT 0,
-                        botes_ganados INTEGER DEFAULT 0,
-                        mayor_premio INTEGER DEFAULT 0,
-                        ultima_jugada DATETIME,
+                        user_id TEXT NOT NULL,
+                        server_id TEXT NOT NULL,
+                        total_plays INTEGER DEFAULT 0,
+                        total_bet INTEGER DEFAULT 0,
+                        total_won INTEGER DEFAULT 0,
+                        pots_won INTEGER DEFAULT 0,
+                        mayor_prize INTEGER DEFAULT 0,
+                        last_play DATETIME,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (usuario_id, servidor_id)
+                        PRIMARY KEY (user_id, server_id)
                     )
                 ''')
+                
+                # Migration: Check if biggest_prize column exists and rename it to mayor_prize
+                cursor.execute("PRAGMA table_info(player_stats)")
+                columns = [column[1] for column in cursor.fetchall()]
+                
+                if 'biggest_prize' in columns and 'mayor_prize' not in columns:
+                    logger.info("🔄 Migrating database: renaming biggest_prize to mayor_prize")
+                    cursor.execute("ALTER TABLE player_stats RENAME COLUMN biggest_prize TO mayor_prize")
                 
                 conn.commit()
                 logger.info(f"✅ Dice game database initialized at {self.db_path}")
@@ -80,9 +88,9 @@ class DatabaseRoleDiceGame:
             logger.error(f"❌ Error initializing dice game database: {e}")
             raise
     
-    def registrar_jugada(self, usuario_id: str, usuario_nombre: str, servidor_id: str, 
-                       servidor_nombre: str, apuesta: int, dados: str, combinacion: str, 
-                       premio: int, bote_antes: int, bote_despues: int) -> bool:
+    def registrar_jugada(self, user_id: str, user_name: str, server_id: str, 
+                       server_name: str, bet: int, dice: str, combination: str, 
+                       prize: int, pot_before: int, pot_after: int) -> bool:
         """Register a dice game play."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -91,72 +99,71 @@ class DatabaseRoleDiceGame:
                 # Insert game record
                 cursor.execute('''
                     INSERT INTO dice_games 
-                    (usuario_id, usuario_nombre, servidor_id, servidor_nombre, 
-                     apuesta, dados, combinacion, premio, bote_antes, bote_despues, fecha)
+                    (user_id, user_name, server_id, server_name, 
+                     bet, dice, combination, prize, pot_before, pot_after, date)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (usuario_id, usuario_nombre, servidor_id, servidor_nombre,
-                      apuesta, dados, combinacion, premio, bote_antes, bote_despues,
+                ''', (user_id, user_name, server_id, server_name,
+                      bet, dice, combination, prize, pot_before, pot_after,
                       datetime.now().isoformat()))
                 
                 # Update player statistics
                 cursor.execute('''
                     INSERT OR REPLACE INTO player_stats 
-                    (usuario_id, servidor_id, total_jugadas, total_apostado, total_ganado, 
-                     botes_ganados, mayor_premio, ultima_jugada, updated_at)
+                    (user_id, server_id, total_plays, total_bet, total_won, 
+                     pots_won, mayor_prize, last_play, updated_at)
                     VALUES (?, ?, 
-                           COALESCE((SELECT total_jugadas FROM player_stats WHERE usuario_id=? AND servidor_id=?), 0) + 1,
-                           COALESCE((SELECT total_apostado FROM player_stats WHERE usuario_id=? AND servidor_id=?), 0) + ?,
-                           COALESCE((SELECT total_ganado FROM player_stats WHERE usuario_id=? AND servidor_id=?), 0) + ?,
-                           COALESCE((SELECT botes_ganados FROM player_stats WHERE usuario_id=? AND servidor_id=?), 0) + ?,
-                           CASE WHEN ? > COALESCE((SELECT mayor_premio FROM player_stats WHERE usuario_id=? AND servidor_id=?), 0) THEN ? ELSE COALESCE((SELECT mayor_premio FROM player_stats WHERE usuario_id=? AND servidor_id=?), 0) END,
+                           COALESCE((SELECT total_plays FROM player_stats WHERE user_id=? AND server_id=?), 0) + 1,
+                           COALESCE((SELECT total_bet FROM player_stats WHERE user_id=? AND server_id=?), 0) + ?,
+                           COALESCE((SELECT total_won FROM player_stats WHERE user_id=? AND server_id=?), 0) + ?,
+                           COALESCE((SELECT pots_won FROM player_stats WHERE user_id=? AND server_id=?), 0) + ?,
+                           CASE WHEN ? > COALESCE((SELECT mayor_prize FROM player_stats WHERE user_id=? AND server_id=?), 0) THEN ? ELSE COALESCE((SELECT mayor_prize FROM player_stats WHERE user_id=? AND server_id=?), 0) END,
                            ?, CURRENT_TIMESTAMP)
-                ''', (usuario_id, servidor_id, usuario_id, servidor_id,
-                      usuario_id, servidor_id, apuesta,
-                      usuario_id, servidor_id, premio,
-                      usuario_id, servidor_id, 1 if premio > 0 else 0,
-                      premio, usuario_id, servidor_id, premio,
-                      usuario_id, servidor_id, premio,
+                ''', (user_id, server_id, user_id, server_id,
+                      user_id, server_id, bet,
+                      user_id, server_id, prize,
+                      user_id, server_id, 1 if prize > 0 else 0,
+                      prize, user_id, server_id,
                       datetime.now().isoformat()))
                 
                 conn.commit()
-                logger.info(f"🎲 Game registered: {usuario_nombre} - {dados} → {combinacion} - Prize: {premio}")
+                logger.info(f"🎲 Game registered: {user_name} - {dice} → {combination} - Prize: {prize}")
                 return True
                 
         except Exception as e:
             logger.error(f"❌ Error registering game: {e}")
             return False
     
-    def obtener_configuracion_servidor(self, servidor_id: str) -> Dict[str, Any]:
+    def obtener_configuracion_servidor(self, server_id: str) -> Dict[str, Any]:
         """Get server configuration."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT apuesta_fija, anuncios_activos 
+                    SELECT bet_fija, announcements_active 
                     FROM server_config 
-                    WHERE servidor_id = ?
-                ''', (servidor_id,))
+                    WHERE server_id = ?
+                ''', (server_id,))
                 
                 result = cursor.fetchone()
                 if result:
                     return {
-                        'apuesta_fija': result[0],
-                        'anuncios_activos': bool(result[1])
+                        'bet_fija': result[0],
+                        'announcements_active': bool(result[1])
                     }
                 else:
                     # Create default config
                     cursor.execute('''
-                        INSERT INTO server_config (servidor_id, apuesta_fija, anuncios_activos)
+                        INSERT INTO server_config (server_id, bet_fija, announcements_active)
                         VALUES (?, ?, ?)
-                    ''', (servidor_id, 1, True))
+                    ''', (server_id, 1, True))
                     conn.commit()
-                    return {'apuesta_fija': 1, 'anuncios_activos': True}
+                    return {'bet_fija': 1, 'announcements_active': True}
                     
         except Exception as e:
             logger.error(f"❌ Error getting server config: {e}")
-            return {'apuesta_fija': 1, 'anuncios_activos': True}
+            return {'bet_fija': 1, 'announcements_active': True}
     
-    def configurar_servidor(self, servidor_id: str, **kwargs) -> bool:
+    def configurar_servidor(self, server_id: str, **kwargs) -> bool:
         """Configure server settings."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -165,96 +172,96 @@ class DatabaseRoleDiceGame:
                 set_clauses = []
                 values = []
                 
-                if 'apuesta_fija' in kwargs:
-                    set_clauses.append('apuesta_fija = ?')
-                    values.append(kwargs['apuesta_fija'])
+                if 'bet_fija' in kwargs:
+                    set_clauses.append('bet_fija = ?')
+                    values.append(kwargs['bet_fija'])
                 
-                if 'anuncios_activos' in kwargs:
-                    set_clauses.append('anuncios_activos = ?')
-                    values.append(int(kwargs['anuncios_activos']))
+                if 'announcements_active' in kwargs:
+                    set_clauses.append('announcements_active = ?')
+                    values.append(int(kwargs['announcements_active']))
                 
                 if set_clauses:
                     set_clauses.append('updated_at = CURRENT_TIMESTAMP')
-                    values.append(servidor_id)
+                    values.append(server_id)
                     
                     cursor.execute(f'''
                         UPDATE server_config 
                         SET {', '.join(set_clauses)}
-                        WHERE servidor_id = ?
+                        WHERE server_id = ?
                     ''', values)
                     
                     if cursor.rowcount == 0:
                         # Insert if not exists
                         cursor.execute('''
-                            INSERT INTO server_config (servidor_id, apuesta_fija, anuncios_activos)
+                            INSERT INTO server_config (server_id, bet_fija, announcements_active)
                             VALUES (?, ?, ?)
-                        ''', (servidor_id, 
-                              kwargs.get('apuesta_fija', 1),
-                              kwargs.get('anuncios_activos', True)))
+                        ''', (server_id, 
+                              kwargs.get('bet_fija', 1),
+                              kwargs.get('announcements_active', True)))
                     
                     conn.commit()
-                    logger.info(f"🎲 Server {servidor_id} configured: {kwargs}")
+                    logger.info(f"🎲 Server {server_id} configured: {kwargs}")
                     return True
                     
         except Exception as e:
             logger.error(f"❌ Error configuring server: {e}")
             return False
     
-    def obtener_estadisticas_jugador(self, usuario_id: str, servidor_id: str) -> Dict[str, Any]:
+    def obtener_estadisticas_jugador(self, user_id: str, server_id: str) -> Dict[str, Any]:
         """Get player statistics."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT total_jugadas, total_apostado, total_ganado, botes_ganados, mayor_premio
+                    SELECT total_plays, total_bet, total_won, pots_won, mayor_prize
                     FROM player_stats 
-                    WHERE usuario_id = ? AND servidor_id = ?
-                ''', (usuario_id, servidor_id))
+                    WHERE user_id = ? AND server_id = ?
+                ''', (user_id, server_id))
                 
                 result = cursor.fetchone()
                 if result:
                     return {
-                        'total_jugadas': result[0],
-                        'total_apostado': result[1],
-                        'total_ganado': result[2],
-                        'botes_ganados': result[3],
-                        'mayor_premio': result[4]
+                        'total_plays': result[0],
+                        'total_bet': result[1],
+                        'total_won': result[2],
+                        'pots_won': result[3],
+                        'mayor_prize': result[4]
                     }
                 else:
                     return {
-                        'total_jugadas': 0,
-                        'total_apostado': 0,
-                        'total_ganado': 0,
-                        'botes_ganados': 0,
-                        'mayor_premio': 0
+                        'total_plays': 0,
+                        'total_bet': 0,
+                        'total_won': 0,
+                        'pots_won': 0,
+                        'mayor_prize': 0
                     }
                     
         except Exception as e:
             logger.error(f"❌ Error getting player stats: {e}")
             return {
-                'total_jugadas': 0,
-                'total_apostado': 0,
-                'total_ganado': 0,
-                'botes_ganados': 0,
-                'mayor_premio': 0
+                'total_plays': 0,
+                'total_bet': 0,
+                'total_won': 0,
+                'pots_won': 0,
+                'mayor_prize': 0
             }
     
-    def obtener_ranking_jugadores(self, servidor_id: str, metric: str = 'total_ganado', limit: int = 10) -> List[Tuple]:
+    def obtener_ranking_jugadores(self, server_id: str, metric: str = 'total_won', limit: int = 10) -> List[Tuple]:
         """Get player ranking."""
-        valid_metrics = ['total_ganado', 'total_jugadas', 'botes_ganados', 'mayor_premio']
+        valid_metrics = ['total_won', 'total_plays', 'pots_won', 'mayor_prize']
         if metric not in valid_metrics:
-            metric = 'total_ganado'
+            metric = 'total_won'
         
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute(f'''
-                    SELECT ps.usuario_id, ps.{metric}, ps.total_jugadas, ps.total_ganado, ps.total_apostado
+                    SELECT ps.user_id, ps.{metric}, ps.total_plays, ps.total_won, ps.total_bet
                     FROM player_stats ps
-                    WHERE ps.servidor_id = ? AND ps.total_jugadas > 0
+                    WHERE ps.server_id = ? AND ps.total_plays > 0
                     ORDER BY ps.{metric} DESC
                     LIMIT ?
-                ''', (servidor_id, limit))
+                ''', (server_id, limit))
                 
                 return cursor.fetchall()
                 
@@ -262,19 +269,19 @@ class DatabaseRoleDiceGame:
             logger.error(f"❌ Error getting ranking: {e}")
             return []
     
-    def obtener_historial_partidas(self, servidor_id: str, limit: int = 15) -> List[Tuple]:
+    def obtener_historial_partidas(self, server_id: str, limit: int = 15) -> List[Tuple]:
         """Get game history."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT id, usuario_id, usuario_nombre, servidor_id, servidor_nombre,
-                           apuesta, dados, combinacion, premio, bote_antes, bote_despues, fecha
+                    SELECT id, user_id, user_name, server_id, server_name,
+                           bet, dice, combination, prize, pot_before, pot_after, date
                     FROM dice_games
-                    WHERE servidor_id = ?
+                    WHERE server_id = ?
                     ORDER BY timestamp DESC
                     LIMIT ?
-                ''', (servidor_id, limit))
+                ''', (server_id, limit))
                 
                 return cursor.fetchall()
                 

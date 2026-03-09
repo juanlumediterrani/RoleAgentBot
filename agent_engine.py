@@ -7,7 +7,7 @@ from google.genai import types
 from groq import Groq
 from dotenv import load_dotenv
 from agent_logging import get_logger
-from postprocessor import postprocesar_respuesta, consolidar_contexto, is_blocked_response
+from postprocessor import postprocess_response, consolidate_context, is_blocked_response
 from agent_db import get_active_server_name
 
 load_dotenv()
@@ -121,15 +121,15 @@ def get_discord_token():
 
 
 # Cache to avoid multiple role verifications
-_roles_verificados = False
-_tareas_vigentes_cache = []
+_roles_verified = False
+_active_tasks_cache = []
 
-def _cargar_tareas_vigentes_system_additions() -> list[str]:
-    global _roles_verificados, _tareas_vigentes_cache
+def _load_active_tasks_system_additions() -> list[str]:
+    global _roles_verified, _active_tasks_cache
     
     # If already verified, return cache
-    if _roles_verificados:
-        return _tareas_vigentes_cache
+    if _roles_verified:
+        return _active_tasks_cache
 
     is_role_process = os.getenv('ROLE_AGENT_PROCESS') == '1'
     
@@ -152,8 +152,19 @@ def _cargar_tareas_vigentes_system_additions() -> list[str]:
         if not is_role_process:
             logger.info(f"   ✅ [Role] '{role_name}' - active (every {role_cfg.get('interval_hours', '?')}h)")
 
+        # Skip subroles (beggar, ring) - they will be loaded from JSON
+        if role_name in ["beggar", "ring"]:
+            continue
+
         # Search for mission configuration directly in Python file
-        role_script_path = os.path.join(_BASE_DIR, role_cfg.get("script", ""))
+        script_path = role_cfg.get("script", "")
+        if not script_path:
+            # Skip roles without script (e.g., integrated roles like mc)
+            if not is_role_process:
+                logger.info(f"   📋 [ROL] '{role_name}' - integrated mode (no script)")
+            continue
+            
+        role_script_path = os.path.join(_BASE_DIR, script_path)
         if not os.path.exists(role_script_path):
             if not is_role_process:
                 logger.warning(f"   ⚠️ [Role] Script not found: {role_script_path}")
@@ -176,9 +187,9 @@ def _cargar_tareas_vigentes_system_additions() -> list[str]:
                     # Unescape quotes and backslashes
                     addition = addition.replace('\\"', '"').replace('\\\\', '\\')
                     if addition:
-                        # Only add contexts from roles that are not of type "pedir_oro" 
-                        # to avoid contaminating all conversations
-                        if role_name not in ["beggar", "ring", "treasure_hunter"]:
+                        # Only inject beggar and ring subroles for gold/ring detection
+                        # All other roles should not contaminate global conversations
+                        if role_name in ["beggar", "ring"]:
                             additions.append(addition)
                             if not is_role_process:
                                 logger.info(f"   📋 [ROL] '{role_name}' - mission loaded: {addition[:50]}...")
@@ -192,6 +203,51 @@ def _cargar_tareas_vigentes_system_additions() -> list[str]:
         except Exception as e:
             if not is_role_process:
                 logger.warning(f"⚠️ Could not load MISSION_CONFIG from {role_name}: {e}")
+        
+        # Process enabled subroles (except beggar and ring which are loaded from JSON)
+        subroles = role_cfg.get("subroles", {})
+        if isinstance(subroles, dict):
+            for subrole_name, subrole_cfg in subroles.items():
+                if not isinstance(subrole_cfg, dict):
+                    continue
+                if not subrole_cfg.get("enabled", False):
+                    continue
+                
+                # Skip beggar and ring - loaded from JSON
+                if subrole_name in ["beggar", "ring"]:
+                    continue
+                
+                subrole_script_path = subrole_cfg.get("script", "")
+                if not subrole_script_path:
+                    continue
+                
+                full_subrole_path = os.path.join(_BASE_DIR, subrole_script_path)
+                if not os.path.exists(full_subrole_path):
+                    if not is_role_process:
+                        logger.warning(f"   ⚠️ [Subrole] Script not found: {full_subrole_path}")
+                    continue
+                
+                try:
+                    with open(full_subrole_path, encoding="utf-8") as f:
+                        subrole_content = f.read()
+                    
+                    import re
+                    subrole_mission_match = re.search(r'MISSION_CONFIG\s*=\s*{([^}]+)}', subrole_content, re.DOTALL)
+                    if subrole_mission_match:
+                        addition_match = re.search(r'"system_prompt_addition"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', subrole_mission_match.group(1))
+                        if addition_match:
+                            addition = addition_match.group(1).strip()
+                            addition = addition.replace('\\"', '"').replace('\\\\', '\\')
+                            if addition:
+                                if not is_role_process:
+                                    logger.info(f"   🔄 [Subrole] '{subrole_name}' - contextual context (not global): {addition[:50]}...")
+                except Exception as e:
+                    if not is_role_process:
+                        logger.warning(f"⚠️ Could not load MISSION_CONFIG from subrole {subrole_name}: {e}")
+
+    # Load beggar and ring prompts from JSON
+    json_additions = _load_subrole_prompts_from_json()
+    additions.extend(json_additions)
 
     if not is_role_process:
         if enabled_roles:
@@ -200,8 +256,102 @@ def _cargar_tareas_vigentes_system_additions() -> list[str]:
             logger.info("🎭 [ROLES] No active roles configured")
     
     # Mark as verified and save cache
-    _roles_verificados = True
-    _tareas_vigentes_cache = additions
+    _roles_verified = True
+    _active_tasks_cache = additions
+    
+    return additions
+
+def _load_subrole_prompts_from_json() -> list[str]:
+    """Load subrole prompts from prompts.json with fallback to Python files."""
+    is_role_process = os.getenv('ROLE_AGENT_PROCESS') == '1'
+    
+    # Get subrole prompts from personality JSON
+    subrole_prompts = PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {})
+    additions = []
+    
+    if not is_role_process:
+        logger.info("🎭 [SUBROLES] Loading prompts from JSON...")
+    
+    # Only inject beggar and ring subroles for gold/ring detection
+    for subrole_name in ["beggar", "ring"]:
+        # Check if subrole is enabled in agent config
+        roles_config = AGENT_CFG.get("roles", {})
+        if not roles_config.get(subrole_name, {}).get("enabled", False):
+            if not is_role_process:
+                logger.info(f"   💤 [Subrole] '{subrole_name}' - disabled")
+            continue
+        
+        # Try to load from JSON first
+        json_prompt = subrole_prompts.get(subrole_name)
+        if json_prompt:
+            additions.append(json_prompt)
+            if not is_role_process:
+                logger.info(f"   📋 [Subrole] '{subrole_name}' - mission loaded from JSON: {json_prompt[:50]}...")
+            
+            # Add beggar reasons after the beggar prompt
+            if subrole_name == "beggar":
+                beggar_reasons = PERSONALIDAD.get("role_system_prompts", {}).get("beggar_reasons", [])
+                if beggar_reasons:
+                    reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
+                    additions.append(reasons_text)
+                    if not is_role_process:
+                        logger.info(f"   💰 [Beggar] Added {len(beggar_reasons)} reasons: {reasons_text[:60]}...")
+        else:
+            # Fallback to Python file
+            if not is_role_process:
+                logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' not found in JSON, trying Python fallback...")
+            
+            try:
+                # Get script path from config
+                subrole_script_path = roles_config.get(subrole_name, {}).get("script", "")
+                if not subrole_script_path:
+                    if not is_role_process:
+                        logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no script path in config")
+                    continue
+                
+                full_subrole_path = os.path.join(_BASE_DIR, subrole_script_path)
+                if not os.path.exists(full_subrole_path):
+                    if not is_role_process:
+                        logger.warning(f"   ⚠️ [Subrole] Script not found: {full_subrole_path}")
+                    continue
+                
+                # Load from Python file
+                with open(full_subrole_path, encoding="utf-8") as f:
+                    subrole_content = f.read()
+                
+                import re
+                subrole_mission_match = re.search(r'MISSION_CONFIG\s*=\s*{([^}]+)}', subrole_content, re.DOTALL)
+                if subrole_mission_match:
+                    addition_match = re.search(r'"system_prompt_addition"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', subrole_mission_match.group(1))
+                    if addition_match:
+                        addition = addition_match.group(1).strip()
+                        addition = addition.replace('\\"', '"').replace('\\\\', '\\')
+                        if addition:
+                            additions.append(addition)
+                            if not is_role_process:
+                                logger.info(f"   📋 [Subrole] '{subrole_name}' - mission loaded from Python fallback: {addition[:50]}...")
+                            
+                            # Add beggar reasons after the beggar prompt even in fallback
+                            if subrole_name == "beggar":
+                                beggar_reasons = PERSONALIDAD.get("role_system_prompts", {}).get("beggar_reasons", [])
+                                if beggar_reasons:
+                                    reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
+                                    additions.append(reasons_text)
+                                    if not is_role_process:
+                                        logger.info(f"   💰 [Beggar] Added {len(beggar_reasons)} reasons from JSON: {reasons_text[:60]}...")
+                        else:
+                            if not is_role_process:
+                                logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no system_prompt_addition found")
+                    else:
+                        if not is_role_process:
+                            logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no system_prompt_addition in MISSION_CONFIG")
+                else:
+                    if not is_role_process:
+                        logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no MISSION_CONFIG found")
+                        
+            except Exception as e:
+                if not is_role_process:
+                    logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - fallback failed: {e}")
     
     return additions
 
@@ -249,10 +399,10 @@ def obtener_uso_diario():
         if os.path.getsize(path_contador) == 0:
             return 0
         with open(path_contador, 'r') as f:
-            contenido = f.read().strip()
-            if not contenido:
+            file_content = f.read().strip()
+            if not file_content:
                 return 0
-            data = json.loads(contenido)
+            data = json.loads(file_content)
             return data.get("peticiones", 0) if data.get("ultima_fecha") == hoy else 0
     except (json.JSONDecodeError, ValueError, KeyError, OSError, IOError) as e:
         print(f"⚠️ Error leyendo {path_contador}: {e}. Reiniciando contador.")
@@ -264,7 +414,7 @@ def obtener_uso_diario():
         return 0
 
 
-def incrementar_uso():
+def increment_usage():
     if SIMULACION:
         return 1
     path_contador = _get_fatiga_path()
@@ -285,7 +435,7 @@ def _fallback_response():
     return PERSONALIDAD.get("emergency_fallback", "...")
 
 
-def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=False, logger=None):
+def think(role_context, user_content="", history_list=[], is_public=False, logger=None):
     """
     Unified engine with gemini-3-flash-preview and Fallback to Groq.
     Loads personality from active JSON file.
@@ -298,33 +448,33 @@ def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=F
         from agent_logging import get_logger
         logger = get_logger('agent_engine')
     
-    uso_actual = incrementar_uso()
-    logger.info(f"🚀 [THINK] Iniciando proceso - Uso diario: {uso_actual}/20")
+    current_usage = increment_usage()
+    logger.info(f"🚀 [THINK] Iniciando proceso - Uso diario: {current_usage}/20")
 
-    contenido = (contenido_usuario or "").strip()
-    es_mision = not bool(contenido)
-    system_instruction, prompt_final = construir_prompt(
-        rol_contextual, contenido, historial_lista, es_publico=es_publico
+    content = (user_content or "").strip()
+    is_mission = not bool(content)
+    system_instruction, prompt_final = build_prompt(
+        role_context, content, history_list, is_public=is_public
     )
     
     prep_time = time.time()
     logger.info(f"⚡ [THINK] Preparation completed in {(prep_time - start_time):.2f}s")
     
-    logger.info(f"🧠 [KRONK] RESPONSE GENERATION - Daily usage: {uso_actual}/20")
+    logger.info(f"🧠 [KRONK] RESPONSE GENERATION - Daily usage: {current_usage}/20")
     logger.info(f"📝 Context: {len(system_instruction)} chars system | {len(prompt_final)} chars prompt")
-    logger.info(f"💬 History: {len(historial_lista)} interactions | Public: {es_publico}")
-    logger.info(f"🎯 Type: {'MISSION' if es_mision else 'CHAT'}")
-    logger.info(f"🎯 Role: {rol_contextual[:80]}..." if len(rol_contextual) > 80 else f"🎯 Role: {rol_contextual}")
-    if es_mision:
+    logger.info(f"💬 History: {len(history_list)} interactions | Public: {is_public}")
+    logger.info(f"🎯 Type: {'MISSION' if is_mission else 'CHAT'}")
+    logger.info(f"🎯 Role: {role_context[:80]}..." if len(role_context) > 80 else f"🎯 Role: {role_context}")
+    if is_mission:
         logger.info(f"📋 Full prompt: {prompt_final[:200]}..." if len(prompt_final) > 200 else f"📋 Full prompt: {prompt_final}")
     logger.info("=" * 60)
 
     # 1. Try with Gemini. In simulation use only Groq.
-    if not SIMULACION and uso_actual <= 20:
+    if not SIMULACION and current_usage <= 20:
         try:
             gemini_start = time.time()
             logger.info("🤖 [GEMINI] Starting call to gemini-3-flash-preview")
-            logger.info(f"   └─ Temp: {0.9 if es_mision else 0.95} | Max tokens: 1024")
+            logger.info(f"   └─ Temp: {0.9 if is_mission else 0.95} | Max tokens: 1024")
             logger.info("   └─ Top-p: 0.95")
 
             client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -345,7 +495,7 @@ def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=F
                         contents=prompt_final,
                         config=types.GenerateContentConfig(
                             system_instruction=system_instruction,
-                            temperature=0.9 if es_mision else 0.95,  # Increased for variability
+                            temperature=0.9 if is_mission else 0.95,  # Increased for variability
                             max_output_tokens=1024,
                             top_p=0.95,  # Increased for creativity
                             safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
@@ -393,14 +543,14 @@ def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=F
                         logger.warning(f"⚠️ [GEMINI] Very short response ({len(text)} chars), fallback to Groq")
                     else:
                         postprocess_start = time.time()
-                        respuesta_final = postprocesar_respuesta(text)
+                        final_response = postprocess_response(text)
                         postprocess_end = time.time()
-                        logger.info(f"✨ [GEMINI] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(respuesta_final)} chars")
+                        logger.info(f"✨ [GEMINI] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(final_response)} chars")
                         
                         total_time = time.time()
                         logger.info(f"🏁 [GEMINI] Process completed in {(total_time - start_time):.2f}s total")
                         logger.info("=" * 60)
-                        return respuesta_final
+                        return final_response
         except Exception as e:
             error_time = time.time()
             error_msg = str(e).lower()
@@ -413,10 +563,10 @@ def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=F
     # 2. Groq (always in simulation; if not, fallback after Gemini or after 20 uses)
     try:
         groq_start = time.time()
-        if uso_actual > 20:
-            logger.info(f"🤖 [GROQ] Gemini daily limit reached ({uso_actual}/20)")
+        if current_usage > 20:
+            logger.info(f"🤖 [GROQ] Gemini daily limit reached ({current_usage}/20)")
         logger.info("🤖 [GROQ] Starting call to llama-3.3-70b-versatile")
-        logger.info(f"   └─ Temp: {0.95 if es_mision else 1.0} | Max tokens: 600")
+        logger.info(f"   └─ Temp: {0.95 if is_mission else 1.0} | Max tokens: 600")
         logger.info("   └─ Top-p: 1.0 | Presence: 1.0 | Frequency: 1.0")
 
         api_call_start = time.time()
@@ -426,7 +576,7 @@ def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=F
                 {"role": "system", "content": system_instruction},
                 {"role": "user", "content": prompt_final}
             ],
-            temperature=0.95 if es_mision else 1.0,  # Maximum variability
+            temperature=0.95 if is_mission else 1.0,  # Maximum variability
             top_p=1.0,  # Maximum creativity
             max_tokens=600,  # Longer and more varied responses
             presence_penalty=1.0,  # Maximum penalty against repetition
@@ -445,14 +595,14 @@ def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=F
             return _fallback_response()
 
         postprocess_start = time.time()
-        respuesta_final = postprocesar_respuesta(text)
+        final_response = postprocess_response(text)
         postprocess_end = time.time()
-        logger.info(f"✨ [GROQ] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(respuesta_final)} chars")
+        logger.info(f"✨ [GROQ] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(final_response)} chars")
         
         total_time = time.time()
         logger.info(f"🏁 [GROQ] Process completed in {(total_time - start_time):.2f}s total")
         logger.info("=" * 60)
-        return respuesta_final
+        return final_response
     except Exception as e:
         error_time = time.time()
         logger.error(f"❌ [GROQ] Critical error in {(error_time - start_time):.2f}s: {e}")
@@ -461,7 +611,7 @@ def think(rol_contextual, contenido_usuario="", historial_lista=[], es_publico=F
         return _fallback_response()
 
 
-def _construir_system_prompt(personalidad: dict) -> str:
+def _build_system_prompt(personalidad: dict) -> str:
     """Assemble system prompt from structured personality sections."""
     sections = []
 
@@ -522,39 +672,42 @@ def _construir_system_prompt(personalidad: dict) -> str:
     return system_prompt
 
 
-def construir_prompt(rol_contextual, contenido_usuario="", historial_lista=[], max_interacciones=5, es_publico=False):
+def build_prompt(role_context, user_content="", history_list=[], max_interactions=5, is_public=False):
     """Build and return `(system_instruction, prompt_final)` without calling APIs."""
-    contexto_historial = consolidar_contexto(historial_lista, max_interacciones=max_interacciones, personalidad=PERSONALIDAD)
+    history_context = consolidate_context(history_list, max_interactions=max_interactions, personality=PERSONALIDAD)
 
     bot_name = PERSONALIDAD.get("name", "Bot")
     public_suffix = PERSONALIDAD.get("public_context_suffix", "")
     history_label = PERSONALIDAD.get("context_history_label", "History")
 
-    system_instruction = _construir_system_prompt(PERSONALIDAD)
-    if es_publico and public_suffix:
+    system_instruction = _build_system_prompt(PERSONALIDAD)
+    if is_public and public_suffix:
         system_instruction = f"{system_instruction}\n\nCONTEXT: {public_suffix}"
 
-    contenido = (contenido_usuario or "").strip()
+    content = (user_content or "").strip()
     # Only add active tasks in CHAT mode.
     # If building a MISSION prompt (empty content), don't add tasks
     # to avoid interference between missions.
-    if contenido:
-        tareas = _cargar_tareas_vigentes_system_additions()
-        if tareas:
-            system_instruction = f"{system_instruction}\n\nACTIVE TASKS:\n" + "\n".join(tareas)
+    if content:
+        tasks = _load_active_tasks_system_additions()
+        if tasks:
+            logger.info(f"📋 [TASKS] Injecting {len(tasks)} active tasks:")
+            for i, task in enumerate(tasks):
+                logger.info(f"   📋 Task {i+1}: {task}")
+            system_instruction = f"{system_instruction}\n\nACTIVE TASKS:\n" + "\n".join(tasks)
 
-    if contexto_historial:
-        system_instruction = f"{system_instruction}\n\n{history_label}:\n{contexto_historial}"
-    if contenido:
+    if history_context:
+        system_instruction = f"{system_instruction}\n\n{history_label}:\n{history_context}"
+    if content:
         cfg = PERSONALIDAD.get("prompt_chat", {})
         ctx_prefix = cfg.get("context_prefix", "CONTEXT")
         msg_prefix = cfg.get("message_prefix", "MESSAGE")
         instructions = cfg.get("instructions", [])
         closing = cfg.get("closing", "Tu respuesta:")
 
-        partes_user = [
-            f"{ctx_prefix}: {rol_contextual}",
-            f"{msg_prefix}: {contenido}",
+        user_parts = [
+            f"{ctx_prefix}: {role_context}",
+            f"{msg_prefix}: {content}",
             "",
         ] + instructions + ["", closing]
     else:
@@ -563,12 +716,12 @@ def construir_prompt(rol_contextual, contenido_usuario="", historial_lista=[], m
         instructions = cfg.get("instructions", [])
         closing = cfg.get("closing", "Respond ONLY in character:")
 
-        partes_user = [
-            f"{sit_prefix}: {rol_contextual}",
+        user_parts = [
+            f"{sit_prefix}: {role_context}",
             "",
         ] + instructions + ["", closing]
 
-    prompt_final = "\n".join(partes_user)
+    prompt_final = "\n".join(user_parts)
 
     prompt_final = prompt_final.replace("{name}", bot_name)
 

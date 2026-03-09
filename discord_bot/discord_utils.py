@@ -54,10 +54,7 @@ def is_admin(ctx) -> bool:
 
 
 def is_role_enabled_check(role_name, agent_config):
-    """Check if a role is enabled (env var > config JSON)."""
-    env_var = os.getenv(f"{role_name.upper()}_ENABLED", "").lower()
-    if env_var:
-        return env_var == "true"
+    """Check if a role is enabled using agent_config.json as single source of truth."""
     return agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
 
 

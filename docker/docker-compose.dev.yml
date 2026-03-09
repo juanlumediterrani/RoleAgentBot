@@ -16,26 +16,19 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        PERSONALITY: putre
+        PERSONALITY: agumon
         HOST_UID: ${HOST_UID:-1001}
         HOST_GID: ${HOST_GID:-1001}
     image: roleagentbot:dev
     container_name: roleagentbot-dev
     env_file: ../.env
     environment:
-      - PERSONALITY=putre
+      - PERSONALITY=agumon
       - ROLE_AGENT_PROCESS=false
-      - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
+      - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
       - GROQ_API_KEY=${GROQ_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - COHERE_API_KEY=${COHERE_API_KEY}
-      # ACTIVAR TODOS LOS ROLES (versión ingles)
-      - ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc
-      - NEWS_WATCHER_ENABLED=true
-      - TREASURE_HUNTER_ENABLED=true
-      - TRICKSTER_ENABLED=true
-      - BANKER_ENABLED=true
-      - MC_ENABLED=true
     volumes:
       - ../databases:/app/databases
       - ../logs:/app/logs

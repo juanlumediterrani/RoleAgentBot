@@ -31,7 +31,8 @@ logger = get_logger('treasure_hunter')
 
 # Configuration
 MISSION_CONFIG = {
-    "name": "treasure_hunter"
+    "name": "treasure_hunter",
+    "system_prompt_addition": "ACTIVE ROLE - TREASURE HUNTER: You are a skilled treasure hunter who searches for valuable items and resources. Your mission is to find and report treasures, artifacts, and valuable discoveries."
 }
 
 def get_treasure_hunter_system_prompt():

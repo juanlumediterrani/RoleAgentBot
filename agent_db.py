@@ -68,7 +68,18 @@ def get_server_db_path(server_name: str, db_name: str = None) -> Path:
     
     # Usar nombre de BD si se proporciona, si no el global
     db_filename = db_name or get_personality_name()
-    return server_dir / f'{db_filename}.db'
+    db_path = server_dir / f'{db_filename}.db'
+    
+    # Ensure proper permissions if file doesn't exist
+    if not db_path.exists():
+        try:
+            db_path.touch(exist_ok=True)
+            # Set 666 permissions (rw for all) to avoid permission issues
+            os.chmod(db_path, 0o666)
+        except (PermissionError, OSError):
+            pass  # If we can't set permissions, continue anyway
+    
+    return db_path
 
 def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
     """
@@ -103,6 +114,15 @@ def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
         
         fallback_path = fallback_dir / db_name
         logger.info(f"ℹ️ DB relocated to {fallback_path}")
+        
+        # Ensure proper permissions for fallback database
+        if not fallback_path.exists():
+            try:
+                fallback_path.touch(exist_ok=True)
+                os.chmod(fallback_path, 0o666)
+            except (PermissionError, OSError):
+                pass
+        
         return fallback_path
 
 def get_server_log_path(server_name: str, log_name: str) -> Path:

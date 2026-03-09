@@ -10,6 +10,12 @@ from agent_logging import get_logger
 
 logger = get_logger('beggar')
 
+# Mission configuration (fallback if JSON is not available)
+MISSION_CONFIG = {
+    "name": "beggar",
+    "system_prompt_addition": "ACTIVE SUBROLE - BEGGAR: You are always looking for gold and donations. When users mention money, gold, or wealth, you immediately ask for donations. You invent creative reasons why you need the gold and use intimidation or guilt to get donations."
+}
+
 # Load personality messages
 try:
     from agent_engine import PERSONALIDAD

@@ -1,9 +1,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.armv7.yml - Single bot para Raspberry Pi 32 bits
+# docker-compose.armv7.yml - Configuración para Raspberry Pi 32 bits
 # 
-# Configuración para un solo bot en arquitectura ARM 32 bits
+# Optimizado para despliegue en producción con personalidad PUTRE
 #
 # Uso:
+#   export PERSONALITY=putre
 #   docker compose -f docker-compose.armv7.yml up --build -d
 # ─────────────────────────────────────────────────────────────────────────────
 services:
@@ -13,19 +14,33 @@ services:
       context: ../..
       dockerfile: docker/armv7/Dockerfile.armv7
       args:
-        PERSONALITY: ${PERSONALITY:-kronk}
+        PERSONALITY: ${PERSONALITY:-putre}
+        ACTIVE_ROLES: ${ACTIVE_ROLES:-news_watcher,treasure_hunter,trickster,banker,mc}
         HOST_UID: ${HOST_UID:-1001}
         HOST_GID: ${HOST_GID:-1001}
-    image: roleagentbot:armv7
-    container_name: roleagentbot
+    image: roleagentbot:putre-armv7
+    container_name: putrebot
     env_file: ../../.env
     environment:
-      - PERSONALITY=${PERSONALITY:-kronk}
+      - PERSONALITY=${PERSONALITY:-putre}
+      - ACTIVE_ROLES=${ACTIVE_ROLES:-news_watcher,treasure_hunter,trickster,banker,mc}
       - ROLE_AGENT_PROCESS=false
       - DISCORD_TOKEN=${DISCORD_TOKEN}
-      # Sin variables de rol específicas -> usa agent_config.json
+      - DISCORD_ACTIVE_GUILD=${DISCORD_ACTIVE_GUILD:-}
     volumes:
       - ../../databases:/app/databases
       - ../../logs:/app/logs
       - ../../fatiga.json:/app/fatiga.json
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import discord; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
