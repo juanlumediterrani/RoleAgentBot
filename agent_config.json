@@ -19,8 +19,7 @@
       "subroles": {
         "beggar": {
           "enabled": true,
-          "frequency_hours": 12,
-          "script": "roles/trickster/subroles/beggar/beggar.py"
+          "frequency_hours": 12
         },
         "dice_game": {
           "enabled": true,
@@ -28,8 +27,7 @@
         },
         "ring": {
           "enabled": true,
-          "frequency_hours": 24,
-          "script": "roles/trickster/subroles/ring/ring.py"
+          "frequency_hours": 24
         }
       }
     },

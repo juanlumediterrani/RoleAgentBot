@@ -29,18 +29,28 @@ def get_server_name(guild) -> str:
     return guild.name.lower().replace(' ', '_').replace('-', '_')
 
 
+def get_server_key(guild) -> str:
+    """Get a stable unique server key (Discord guild id) for per-server resources."""
+    if guild is None:
+        active = get_active_server_name()
+        if active:
+            return active
+        return "default"
+    return str(guild.id)
+
+
 def get_db_for_server(guild):
     """Get DB instance for a specific server."""
-    server_name = get_server_name(guild)
-    return get_db_instance(server_name)
+    server_key = get_server_key(guild)
+    return get_db_instance(server_key)
 
 
 def get_role_db_for_server(guild, get_db_func, available_flag):
     """Generic helper to get a role's DB for a server."""
     if not available_flag:
         return None
-    server_name = get_server_name(guild)
-    return get_db_func(server_name)
+    server_key = get_server_key(guild)
+    return get_db_func(server_key)
 
 
 # --- PERMISSION HELPERS ---

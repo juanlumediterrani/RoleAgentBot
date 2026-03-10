@@ -132,6 +132,26 @@ class DatabaseRoleDiceGame:
         except Exception as e:
             logger.error(f"❌ Error registering game: {e}")
             return False
+
+    def ensure_player_stats(self, user_id: str, server_id: str) -> bool:
+        """Ensure player stats row exists for a user/server (creates an empty row if missing)."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    '''
+                    INSERT OR IGNORE INTO player_stats (
+                        user_id, server_id, total_plays, total_bet, total_won,
+                        pots_won, mayor_prize, last_play, updated_at
+                    ) VALUES (?, ?, 0, 0, 0, 0, 0, NULL, CURRENT_TIMESTAMP)
+                    ''',
+                    (user_id, server_id),
+                )
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"❌ Error ensuring player stats: {e}")
+            return False
     
     def obtener_configuracion_servidor(self, server_id: str) -> Dict[str, Any]:
         """Get server configuration."""

@@ -32,16 +32,11 @@ if [ "$(id -u)" = "0" ]; then
         chown -R ${TARGET_UID}:${TARGET_GID} /app/fatiga 2>/dev/null || true
     fi
     
-    # Pre-create server directories that the program will need
-    # This prevents permission errors when the program tries to create them at runtime
-    mkdir -p /app/logs/dev_server 2>/dev/null || true
-    mkdir -p /app/databases/dev_server 2>/dev/null || true
-    
     chown -R ${TARGET_UID}:${TARGET_GID} /app/logs /app/databases 2>/dev/null || true
     
     # Also fix any existing log directories that might have wrong permissions
     find /app/logs -type d -exec chown ${TARGET_UID}:${TARGET_GID} {} \; 2>/dev/null || true
-    
+
     # Fix permissions for any existing database files
     find /app/databases -type f -exec chown ${TARGET_UID}:${TARGET_GID} {} \; 2>/dev/null || true
 fi

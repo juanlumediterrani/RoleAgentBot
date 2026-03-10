@@ -26,7 +26,48 @@ def _get_banker_db(guild):
     """Get banker database instance for a server."""
     if not BANKER_DB_AVAILABLE or get_banker_db_instance is None:
         return None
-    return get_banker_db_instance(guild.name)
+    try:
+        id_key = str(guild.id)
+        return get_banker_db_instance(id_key)
+    except Exception:
+        return get_banker_db_instance(str(guild.id))
+
+
+def _get_dice_game_db(guild):
+    """Get dice game database instance for a server."""
+    try:
+        from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
+        id_key = str(guild.id)
+        return get_dice_game_db_instance(id_key)
+    except ImportError:
+        return None
+
+
+def _initialize_dice_game_account(user_id: str, user_name: str, server_id: str, server_key: str, legacy_server_name: str):
+    try:
+        db_dice_game = _get_dice_game_db_by_key(server_key, legacy_server_name)
+        if db_dice_game:
+            if hasattr(db_dice_game, "ensure_player_stats"):
+                ok = db_dice_game.ensure_player_stats(user_id, server_id)
+                if ok:
+                    logger.info(f"🎲 Dice game account initialized for {user_name}")
+                return bool(ok)
+            stats = db_dice_game.obtener_estadisticas_jugador(user_id, server_id)
+            if stats.get('total_plays', 0) == 0:
+                logger.info(f"🎲 Dice game account ready for {user_name} (will be created on first play)")
+                return True
+    except Exception as e:
+        logger.warning(f"Could not initialize dice game account for {user_name}: {e}")
+    return False
+
+
+def _get_dice_game_db_by_key(server_key: str, legacy_server_name: str):
+    """Get dice game database instance by server key, with legacy name fallback."""
+    try:
+        from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
+        return get_dice_game_db_instance(server_key)
+    except ImportError:
+        return None
 
 
 def _build_banker_help_embed():
@@ -121,9 +162,31 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
     """Show user's gold balance."""
     user_id = str(ctx.author.id)
     user_name = ctx.author.display_name
+    server_key = str(ctx.guild.id)
+
+    try:
+        for member in getattr(ctx.guild, "members", []) or []:
+            if getattr(member, "bot", False):
+                continue
+            member_id = str(member.id)
+            member_name = member.display_name
+            db_banker.create_wallet(member_id, member_name, server_id, server_name)
+
+        db_dice_game = _get_dice_game_db(ctx.guild)
+        if db_dice_game is not None:
+            db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name)
+            for member in getattr(ctx.guild, "members", []) or []:
+                if getattr(member, "bot", False):
+                    continue
+                _initialize_dice_game_account(str(member.id), member.display_name, server_id, server_key, server_name)
+    except Exception as e:
+        logger.warning(f"Bulk initialization failed: {e}")
     
     # Create wallet if it doesn't exist (with opening bonus)
     was_created, initial_balance = db_banker.create_wallet(user_id, user_name, server_id, server_name)
+    
+    # Initialize dice game account for new and existing users
+    dice_game_initialized = _initialize_dice_game_account(user_id, user_name, server_id, server_key, server_name)
     
     balance = db_banker.get_balance(user_id, server_id)
     history = db_banker.get_transaction_history(user_id, server_id, limit=5)
@@ -136,6 +199,10 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
     embed.add_field(name=get_message("saldo_actual"), value=f"{balance:,} gold coins", inline=False)
     embed.add_field(name=get_message("titular"), value=user_name, inline=True)
     embed.add_field(name=get_message("banco"), value=server_name, inline=True)
+
+    # Add dice game status information
+    if dice_game_initialized:
+        embed.add_field(name="🎲 Dice Game", value="Account ready for play!", inline=False)
 
     if history:
         history_text = ""

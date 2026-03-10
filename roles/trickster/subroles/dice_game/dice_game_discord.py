@@ -103,13 +103,19 @@ async def cmd_dice_play(ctx):
         await ctx.send(get_message("error_solo_servidores"))
         return
     try:
-        from discord_utils import get_server_name
-        server_name = get_server_name(ctx.guild)
+        from discord_utils import get_server_key
+        server_name = get_server_key(ctx.guild)
         db_banker = _get_banker_db_instance(server_name) if _get_banker_db_instance else None
         db_dice_game = _get_dice_game_db_instance(server_name) if _get_dice_game_db_instance else None
         if not db_banker or not db_dice_game:
             await ctx.send(get_message("error_acceso_bd"))
             return
+
+        try:
+            if hasattr(db_dice_game, "ensure_player_stats"):
+                db_dice_game.ensure_player_stats(str(ctx.author.id), str(ctx.guild.id))
+        except Exception as e:
+            logger.warning(f"Could not ensure player stats: {e}")
 
         # Get current pot balance from banker database
         pot_balance = 0
@@ -117,6 +123,10 @@ async def cmd_dice_play(ctx):
             try:
                 db_banker = _get_banker_db_instance(server_name)
                 if db_banker:
+                    try:
+                        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", str(ctx.guild.id), server_name)
+                    except Exception:
+                        pass
                     pot_balance = db_banker.get_balance("dice_game_pot", str(ctx.guild.id))
             except Exception as e:
                 logger.warning(f"Could not get pot balance: {e}")
@@ -132,23 +142,14 @@ async def cmd_dice_play(ctx):
         )
 
         if result.get("success"):
-            # Update pot balance in banker database
+            # Update pot balance in banker database (pot should already exist)
             if _BANKER_DB_AVAILABLE and _get_banker_db_instance and result.get('pot_after') is not None:
                 try:
                     db_banker = _get_banker_db_instance(server_name)
                     if db_banker:
-                        # Update pot balance
+                        # Get current pot balance
                         current_balance = db_banker.get_balance("dice_game_pot", str(ctx.guild.id))
                         new_balance = result.get('pot_after', current_balance)
-                        
-                        # Create or update pot wallet
-                        if current_balance == 0:
-                            # Create pot wallet if it doesn't exist (gets opening bonus automatically)
-                            was_created, initial_balance = db_banker.create_wallet("dice_game_pot", "Dice Game Pot", str(ctx.guild.id), server_name)
-                            if was_created and initial_balance > 0:
-                                # Pot was created with opening bonus, update our balance tracking
-                                current_balance = initial_balance
-                                new_balance = current_balance + result.get('bet', 1)  # Add the current bet
                         
                         # Update pot balance
                         balance_diff = new_balance - current_balance
@@ -215,12 +216,22 @@ async def cmd_dice_balance(ctx, personality):
         return
 
     try:
-        from discord_utils import get_server_name
-        server_name = get_server_name(ctx.guild)
+        from discord_utils import get_server_key
+        server_name = get_server_key(ctx.guild)
         db_banker = _get_banker_db_instance(server_name) if _get_banker_db_instance else None
         db_dice_game = _get_dice_game_db_instance(server_name) if _get_dice_game_db_instance else None
 
+        try:
+            if db_dice_game is not None and hasattr(db_dice_game, "ensure_player_stats"):
+                db_dice_game.ensure_player_stats(str(ctx.author.id), str(ctx.guild.id))
+        except Exception as e:
+            logger.warning(f"Could not ensure player stats: {e}")
+
         # In dice game implementation, the pot is a special banker wallet
+        try:
+            db_banker.create_wallet("dice_game_pot", "Dice Game Pot", str(ctx.guild.id), server_name)
+        except Exception:
+            pass
         pot_balance = db_banker.get_balance("dice_game_pot", str(ctx.guild.id))
         config = db_dice_game.obtener_configuracion_servidor(str(ctx.guild.id))
         fixed_bet = config.get("apuesta_fija", 1)
@@ -252,8 +263,8 @@ async def cmd_dice_stats(ctx):
         await ctx.send(get_message("error_solo_servidores"))
         return
     try:
-        from discord_utils import get_server_name
-        server_name = get_server_name(ctx.guild)
+        from discord_utils import get_server_key
+        server_name = get_server_key(ctx.guild)
         db_dice_game = _get_dice_game_db_instance(server_name) if _get_dice_game_db_instance else None
         if not db_dice_game:
             await ctx.send(get_message("error_acceso_bd_juego"))
@@ -290,8 +301,8 @@ async def cmd_dice_ranking(ctx):
         await ctx.send("❌ This command only works on servers.")
         return
     try:
-        from discord_utils import get_server_name
-        server_name = get_server_name(ctx.guild)
+        from discord_utils import get_server_key
+        server_name = get_server_key(ctx.guild)
         db_dice_game = _get_dice_game_db_instance(server_name) if _get_dice_game_db_instance else None
         if not db_dice_game:
             await ctx.send("❌ Error accessing dice game database.")
@@ -324,8 +335,8 @@ async def cmd_dice_history(ctx):
         await ctx.send("❌ This command only works on servers.")
         return
     try:
-        from discord_utils import get_server_name
-        server_name = get_server_name(ctx.guild)
+        from discord_utils import get_server_key
+        server_name = get_server_key(ctx.guild)
         db_dice_game = _get_dice_game_db_instance(server_name) if _get_dice_game_db_instance else None
         if not db_dice_game:
             await ctx.send("❌ Error accessing dice game database.")
@@ -367,8 +378,8 @@ async def cmd_dice_config(ctx, personality):
         return
 
     try:
-        from discord_utils import get_server_name
-        server_name = get_server_name(ctx.guild)
+        from discord_utils import get_server_key
+        server_name = get_server_key(ctx.guild)
         db_dice_game = _get_dice_game_db_instance(server_name) if _get_dice_game_db_instance else None
         if not db_dice_game:
             await ctx.send("❌ Error accessing dice game database.")

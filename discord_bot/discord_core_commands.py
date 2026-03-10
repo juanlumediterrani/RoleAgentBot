@@ -32,7 +32,7 @@ logger = get_logger('discord_core')
 _discord_cfg = PERSONALIDAD.get("discord", {})
 _personality_name = PERSONALIDAD.get("name", "bot").lower()
 _bot_display_name = PERSONALIDAD.get("bot_display_name", PERSONALIDAD.get("name", "Bot"))
-_insult_cfg = _discord_cfg.get("insult_command", {})
+_insult_cfg = PERSONALIDAD.get("insult_command", {})  # Moved from discord.insult_command to prompts.json
 
 
 _talk_state_by_guild_id: dict[int, dict] = {}
@@ -142,6 +142,12 @@ def register_core_commands(bot, agent_config):
             return
 
         set_greeting_enabled(ctx.guild, enabled)
+
+        presence_cfg = _discord_cfg.get("member_presence")
+        if not isinstance(presence_cfg, dict):
+            _discord_cfg["member_presence"] = {}
+            presence_cfg = _discord_cfg["member_presence"]
+        presence_cfg["enabled"] = enabled
 
         greeting_cfg = PERSONALIDAD.get("discord", {}).get("member_greeting", {})
         mensaje_activado = greeting_cfg.get("greetings_enabled", "GRRR {_bot_name} will watch for humans! {_bot_name} will greet when humans appear!")
@@ -535,7 +541,8 @@ def register_core_commands(bot, agent_config):
         help_msg += f"• `!{nowelcome_name}` - Disable new member welcome\n"
         help_msg += f"• `!{insult_name}` - Send orc insult\n"
         help_msg += f"• `!{role_cmd_name} <role> <on/off>` - Enable/disable roles dynamically\n"
-        help_msg += f"• `!agenthelp {display_name}` - Show help for this personality\n\n"
+        help_msg += f"• `!agenthelp {display_name}` - Show help for this personality\n"
+        help_msg += "• `!readme` - Get complete command reference by private message\n\n"
 
         # DYNAMIC PART - Role commands
         help_msg += "🎭 **ROLE COMMANDS**\n"
@@ -552,10 +559,10 @@ def register_core_commands(bot, agent_config):
         if is_role_enabled_check("treasure_hunter", agent_config):
             interval = roles_config.get("treasure_hunter", {}).get("interval_hours", 1)
             help_msg += f"💎 **Treasure Hunter** - POE2 item alerts (every {interval}h)\n"
-            help_msg += "  • **Main:** `!hunter poe2` | `!nohunter poe2`\n"
-            help_msg += "  • **League:** `!hunterpoe2` | `!hunterpoe2 Standard` | `!hunterpoe2 Fate of the Vaal`\n"
-            help_msg += "  • **Items:** `!hunteradd \"item\"` | `!hunterdel \"item\"` | `!hunterdel <number>` | `!hunterlist`\n"
-            help_msg += "  • **Help:** `!hunterhelp` | `!hunterfrequency <h>`\n\n"
+            help_msg += "  • **Admin:** `!hunter poe2 on//off`, `!hunterfrequency <h>` In a Channel for admins\n"
+            help_msg += "  • **League:**`!hunter poe2 league \"Standard\"` | `!hunter poe2 \"Fate of the Vaal\"`\n"
+            help_msg += "  • **Items:** `!hunteradd/ \"item\"` | `!hunterdel \"item\"` | `!hunterdel <number>` | `!hunterlist`\n"
+            help_msg += "  • **Help:** `!hunterhelp` | `!hunter poe2 help` \n\n"
         # Trickster - 
         if is_role_enabled_check("trickster", agent_config):
             trickster_config = roles_config.get("trickster", {})
@@ -578,14 +585,15 @@ def register_core_commands(bot, agent_config):
         if is_role_enabled_check("banker", agent_config):
             help_msg += f"💰 **Banker** - Economic management\n"
             help_msg += "  • **Main:** `!banker help`\n"
-            help_msg += "  • **Balance:** `!banker balance` (DM)\n"
-            help_msg += "  • **Config:** `!banker tae <amount>` | `!banker tae` | `!banker bonus <amount>` | `!banker bonus` (admins)\n\n"
+            help_msg += "  • **Balance:** `!banker balance` (On a channel, he will DM you)\n"
+            help_msg += "  • **Config:**  | `!banker bonus <amount>`(admins)\n\n"
         # Music - Always available 
-        music_help_msg = PERSONALIDAD.get("discord", {}).get("role_messages", {}).get("music_help", "🎵 **Music** - `!mc play <song>` / `!mc queue` | `!mc help` for complete help (always available)")
-        help_msg += f"{music_help_msg}\n\n"
+        help_msg += f"🎵  **MC** - Music Bot request a song in a voice channel\n"
+        help_msg += "  • **Common use** `!mc play \"ADCD TNT\"`,`!mc add \"Queen Bycicle\"`,`!mc queue`\n"
+        help_msg += "  • **Main:** `!mc help`\n    \n" # Jumpline for max characters in discord fix
 
         # Multiple agents info (only when no specific personality requested)
-        if not requested_personality:
+        if not requested_personality: 
             help_msg += "🔀 **MULTIPLE AGENTS**\n"
             help_msg += f"• Use `!agenthelp {display_name}` for help specific to this agent\n"
             help_msg += "• Each agent has its own personality and commands\n\n"
@@ -621,5 +629,76 @@ def register_core_commands(bot, agent_config):
         await send_dm_or_channel(ctx, help_msg, help_sent_msg)
 
 
+    # --- README COMMAND ---
+    try:
+        @bot.command(name="readme")
+        async def cmd_readme(ctx):
+            """Send user-friendly README content privately to user."""
+            try:
+                # Read the README_USER.md file
+                readme_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README_USER.md")
+                with open(readme_path, 'r', encoding='utf-8') as f:
+                    readme_content = f.read()
+                
+                # Discord has a 2000 character limit, so we need to split long content
+                max_length = 1900  # Leave some buffer for formatting
+                
+                if len(readme_content) <= max_length:
+                    # Send as single message if short enough
+                    await ctx.author.send(f"📖 **RoleAgentBot - Complete User Guide**\n\n{readme_content}")
+                else:
+                    # Split into multiple messages
+                    await ctx.author.send("📖 **RoleAgentBot - Complete User Guide**")
+                    
+                    # Split content into chunks
+                    chunks = []
+                    current_chunk = ""
+                    
+                    for line in readme_content.split('\n'):
+                        # If adding this line would exceed limit, start new chunk
+                        if len(current_chunk) + len(line) + 1 > max_length:
+                            if current_chunk:
+                                chunks.append(current_chunk.strip())
+                                current_chunk = line
+                            else:
+                                # Line itself is too long, force split
+                                while len(line) > max_length:
+                                    chunks.append(line[:max_length])
+                                    line = line[max_length:]
+                                current_chunk = line
+                        else:
+                            if current_chunk:
+                                current_chunk += '\n' + line
+                            else:
+                                current_chunk = line
+                    
+                    # Add the last chunk
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                    
+                    # Send chunks with part numbers
+                    for i, chunk in enumerate(chunks, 1):
+                        header = f"**Part {i}/{len(chunks)}**\n\n" if len(chunks) > 1 else ""
+                        await ctx.author.send(f"{header}```md\n{chunk}\n```")
+                
+                # Confirm in channel (use personality message with fallback)
+                readme_sent_msg = PERSONALIDAD.get("discord", {}).get("general_messages", {}).get("readme_sent_private", "📩 Complete user guide sent by private message.")
+                await ctx.send(readme_sent_msg)
+                
+                logger.info(f"README command executed by {ctx.author.name} in {ctx.guild.name if ctx.guild else 'DM'}")
+                
+            except FileNotFoundError:
+                await ctx.send("❌ User guide file not found.")
+                logger.error("README_USER.md file not found")
+            except Exception as e:
+                await ctx.send("❌ Error sending user guide.")
+                logger.error(f"Error in README command: {e}")
+                
+    except Exception as e:
+        if "already an existing command" in str(e):
+            logger.info("Command readme already registered, skipping...")
+        else:
+            logger.error(f"Error registering readme: {e}")
+
     # --- Log registered commands ---
-    logger.info(f"Core commands registered: {greet_name}, {nogreet_name}, {welcome_name}, {nowelcome_name}, {insult_name}, agenthelp, {role_cmd_name}, test")
+    logger.info(f"Core commands registered: {greet_name}, {nogreet_name}, {welcome_name}, {nowelcome_name}, {insult_name}, agenthelp, {role_cmd_name}, test, readme")

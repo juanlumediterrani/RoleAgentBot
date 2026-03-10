@@ -124,8 +124,8 @@ def postprocess_response(text, max_chars=280):
     
     return s
 
-def consolidate_context(history_list, max_interactions=5, personality=None):
-    """Consolidates conversation history in a simplified way."""
+def consolidate_context(history_list, max_interactions=5, personality=None, role=None, server=None):
+    """Consolidates conversation history with subrole prompt injection for keyword matches."""
     if not history_list:
         return ""
 
@@ -139,57 +139,38 @@ def consolidate_context(history_list, max_interactions=5, personality=None):
     if personality is None:
         personality = {}
     
-    keywords = personality.get("history_keywords", [])
-    important_label = personality.get("context_important_label", "CONTEXTO IMPORTANTE")
     human_label = personality.get("context_labels", {}).get("human", "Humano")
     bot_label = personality.get("context_labels", {}).get("bot", "Bot")
 
-    important_interactions = []
-    normal_interactions = []
+    # Putre/template history format: match the prompt layout used in logs/examples.
+    # Keep oro/beggar injection out of history (handled in build_prompt bottom context block).
+    history_label = (personality.get("context_history_label") or "").strip().lower()
+    use_template_format = history_label in {"istorial", "historial"}
 
-    for h in history_list:
-        bot_text = (h.get("bot", "") or "").lower()
-        human_text = (h.get("humano", "") or "").lower()
+    recent = history_list[-max_interactions:]
+    entries: list[str] = []
 
-        is_important = any(kw in bot_text or kw in human_text for kw in keywords)
+    if use_template_format:
+        header_tpl = personality.get("history_header_template")
+        if not isinstance(header_tpl, str) or not header_tpl.strip():
+            header_tpl = "[{n} LAST INTERACTIONS WITH THE HUMAN]"
+        entries.append(header_tpl.format(n=max_interactions))
 
-        if is_important:
-            important_interactions.append(h)
-        else:
-            normal_interactions.append(h)
-
-    entries = []
-
-    if important_interactions:
-        h = important_interactions[-1]
+    for h in recent:
         human = _sanitize(h.get("humano", ""), limit=240)
         bot = _sanitize(h.get("bot", ""), limit=240)
-        if human or bot:
-            parts = [f"[{important_label}]"]
-            if human:
-                parts.append(f"{human_label}: {human}")
-            if bot:
-                parts.append(f"{bot_label}: {bot}")
-            entries.append("\n".join(parts))
+        if human:
+            entries.append(f"{human_label}: {human}")
+        if bot:
+            entries.append(f"{bot_label}: {bot}")
+        if use_template_format:
+            entries.append("")
 
-    latest_normal = (
-        normal_interactions[-(max_interactions - 1):]
-        if important_interactions
-        else normal_interactions[-max_interactions:]
-    )
+    if use_template_format:
+        while entries and entries[-1] == "":
+            entries.pop()
 
-    for h in latest_normal:
-        human = _sanitize(h.get("humano", ""), limit=240)
-        bot = _sanitize(h.get("bot", ""), limit=240)
-        if human or bot:
-            parts = []
-            if human:
-                parts.append(f"{human_label}: {human}")
-            if bot:
-                parts.append(f"{bot_label}: {bot}")
-            entries.append("\n".join(parts))
-
-    return "\n\n".join(entries) if entries else ""
+    return "\n".join(entries).strip()
 
 def is_internal_thinking(text):
     """Detects if text is internal LLM thinking rather than an in-character response."""
@@ -260,3 +241,82 @@ def is_blocked_response(text):
     ]
     
     return any(phrase in s for phrase in blocked_phrases)
+
+def is_readme_response(text):
+    """Detects if the LLM responded with 'README' following the golden rule - more relaxed detection."""
+    if not text:
+        return False
+    
+    s = _sanitize_text(text).upper()
+    
+    # Check if README appears as a standalone word
+    import re
+    if not re.search(r'\bREADME\b', s):
+        return False
+    
+    # Relaxed detection: accept any response containing README
+    # Remove strict length and character requirements to catch subtle mentions
+    # The old logic was too restrictive and missed cases like "README!" in character responses
+    
+    # Only exclude obvious false positives: very long, formal responses that don't look like character responses
+    if len(s) > 200:  # Increased from 60 to 200
+        return False
+    
+    # Check if it looks like a formal/helpful response (likely false positive)
+    formal_patterns = [
+        "here is the readme",
+        "this is the readme", 
+        "the readme contains",
+        "please read the readme",
+        "you can find the readme",
+        "below is the readme"
+    ]
+    
+    s_lower = s.lower()
+    is_formal = any(pattern in s_lower for pattern in formal_patterns)
+    
+    # Accept if it's not a formal response
+    return not is_formal
+
+def is_help_request(user_content):
+    """Detects if user is asking for help about functions, commands, or usage."""
+    if not user_content:
+        return False
+    
+    s = _sanitize_text(user_content.lower())
+    
+    # Help-related keywords
+    help_patterns = [
+        "ayuda",
+        "help",
+        "comando",
+        "command",
+        "función",
+        "funcion",
+        "function",
+        "usar",
+        "use",
+        "cómo",
+        "como",
+        "how to",
+        "tutorial",
+        "guía",
+        "guia",
+        "manual",
+        "instrucciones",
+        "instructions",
+        "qué hace",
+        "que hace",
+        "what does",
+        "para qué sirve",
+        "para que sirve",
+        "what is",
+        "explain",
+        "explica",
+        "explicar",
+        "ayudame",
+        "help me"
+    ]
+    
+    # Check if any help pattern is present
+    return any(pattern in s for pattern in help_patterns)

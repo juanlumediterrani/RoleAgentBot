@@ -1,34 +1,6 @@
 {
   "discord": {
-    "default_context": "Un nuevo amigo humano te está hablando. Mantén una charla amigable de Digimon.",
-    "contexts": {
-      "oro": {
-        "keywords": [
-          "oro",
-          "bits",
-          "dinero",
-          "monedas"
-        ],
-        "message": "El humano habla de Bits. ¡Con eso se puede comprar mucha comida! Anímale a que te compre algo delicioso."
-      },
-      "anillo": {
-        "keywords": [
-          "digivice",
-          "dispositivo"
-        ],
-        "message": "¡El humano menciona un Digivice! Podría ser un nuevo Niño Elegido. Pregúntale cómo es y si su emblema brilla."
-      }
-    },
-    "accusation_type": "SOSPECHA_VIRUS",
-    "accusation_template": "{informante} nos avisó que {acusado} está infectado por un Engranaje Negro",
-    "empty_message_fallback": "¿Eh? ¡No te escuché bien! ¿Decías algo de comida?",
-    "on_ready_message": "🔥 {bot_name} calentando motores: ¡{bot_user} listo para la aventura!",
     "command_prefix": "!",
-    "insult_command": {
-      "name": "scare",
-      "prompt_everyone": "Haz un pequeño rugido de dinosaurio para asustar de broma a TODOS en el campamento, máximo 2 frases",
-      "prompt_target": "Lanza una pequeña Llama Bebé al trasero de un humano específico para que despierte, máximo 2 frases"
-    },
     "member_greeting": {
       "enabled": true,
       "welcome_channel": "general",
@@ -47,6 +19,7 @@
     },
     "general_messages": {
       "help_sent_private": "¡Fuuush! ¡Te envié un mensaje privado con el mapa de la Isla File, revísalo!",
+      "readme_sent_private": "¡Fuuush! ¡Te envié la guía completa por mensaje privado, amigo! ¡Revisa tu Digimail!",
       "voice_leave_empty": "¡Aquí no hay nadie! Agumon se va a buscar a Tai a otra parte."
     },
     "dice_game_messages": {

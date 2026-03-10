@@ -64,24 +64,32 @@ def _register_mc_integrated(bot, personality):
 
     if not MC_COMMANDS_AVAILABLE:
         logger.warning("🎵 MC integrated requires yt-dlp and PyNaCl")
-
-        @bot.command(name="mc")
-        async def mc_unavailable(ctx):
-            await ctx.send("🎵 MC is not available (requires `yt-dlp` and `PyNaCl`).")
+        
+        # Check if mc command already exists before registering
+        if bot.get_command("mc") is None:
+            @bot.command(name="mc")
+            async def mc_unavailable(ctx):
+                await ctx.send("🎵 MC is not available (requires `yt-dlp` and `PyNaCl`).")
         return
 
     mc_commands_instance = MCCommands(bot)
 
-    @bot.group(name="mc")
-    async def mc_group(ctx):
-        """MC commands (music)."""
-        if is_duplicate_command(ctx, "mc"):
-            return
-        if ctx.invoked_subcommand is None:
-            music_help = personality.get("discord", {}).get("role_messages", {}).get(
-                "music_help", "🎵 Usa `!mc help` para ver los comandos disponibles"
-            )
-            await ctx.send(music_help)
+    # Get or create mc group
+    mc_group = bot.get_command("mc")
+    if mc_group is None:
+        @bot.group(name="mc")
+        async def mc_group(ctx):
+            """MC commands (music)."""
+            if is_duplicate_command(ctx, "mc"):
+                return
+            if ctx.invoked_subcommand is None:
+                music_help = personality.get("discord", {}).get("role_messages", {}).get(
+                    "music_help", "🎵 Usa `!mc help` para ver los comandos disponibles"
+                )
+                await ctx.send(music_help)
+        logger.info("🎵 MC group command registered")
+    else:
+        logger.info("🎵 MC group command already exists, using existing group")
 
     def make_mc_command(name, func):
         async def command(ctx, *args):
@@ -97,16 +105,29 @@ def _register_mc_integrated(bot, personality):
         for cmd_name in voice_cmds:
             if cmd_name in COMANDOS_MC:
                 try:
-                    mc_group.command(name=cmd_name)(make_mc_command(cmd_name, COMANDOS_MC[cmd_name]))
-                    logger.info(f"🎵 MC command {cmd_name} registered")
+                    # Check if subcommand already exists
+                    if mc_group.get_command(cmd_name) is None:
+                        mc_group.command(name=cmd_name)(make_mc_command(cmd_name, COMANDOS_MC[cmd_name]))
+                        logger.info(f"🎵 MC command {cmd_name} registered")
+                    else:
+                        logger.info(f"🎵 MC command {cmd_name} already exists, skipping")
                 except Exception as e:
                     logger.error(f"Error registering MC command {cmd_name}: {e}")
 
     # Register help (always available)
     try:
-        mc_group.command(name="help")(make_mc_command("help", MCCommands.cmd_help))
-        mc_group.command(name="commands")(make_mc_command("commands", MCCommands.cmd_help))
-        logger.info("🎵 MC help command registered")
+        # Check if help subcommands already exist
+        if mc_group.get_command("help") is None:
+            mc_group.command(name="help")(make_mc_command("help", MCCommands.cmd_help))
+            logger.info("🎵 MC help command registered")
+        else:
+            logger.info("🎵 MC help command already exists, skipping")
+            
+        if mc_group.get_command("commands") is None:
+            mc_group.command(name="commands")(make_mc_command("commands", MCCommands.cmd_help))
+            logger.info("🎵 MC commands command registered")
+        else:
+            logger.info("🎵 MC commands command already exists, skipping")
     except Exception as e:
         logger.error(f"Error registering MC help command: {e}")
 
@@ -116,8 +137,12 @@ def _register_mc_integrated(bot, personality):
         for cmd_name in queue_cmds:
             if cmd_name in COMANDOS_MC:
                 try:
-                    mc_group.command(name=cmd_name)(make_mc_command(cmd_name, COMANDOS_MC[cmd_name]))
-                    logger.info(f"🎵 MC command {cmd_name} registered")
+                    # Check if subcommand already exists
+                    if mc_group.get_command(cmd_name) is None:
+                        mc_group.command(name=cmd_name)(make_mc_command(cmd_name, COMANDOS_MC[cmd_name]))
+                        logger.info(f"🎵 MC command {cmd_name} registered")
+                    else:
+                        logger.info(f"🎵 MC command {cmd_name} already exists, skipping")
                 except Exception as e:
                     logger.error(f"Error registering MC command {cmd_name}: {e}")
 

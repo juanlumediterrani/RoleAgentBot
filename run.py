@@ -15,6 +15,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from agent_logging import get_logger
 
+# Import subrole system
+from agent_engine import get_active_subroles, execute_subrole_internal_task
+
 logger = get_logger('run')
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -94,12 +97,80 @@ async def launch_role(name: str, script_rel: str, persistent: bool = False):
     except Exception as e:
         logger.error(f"[run] ❌ Error launching '{name}': {e}")
 
+# ── Subrole tasks system ─────────────────────────────────────────────────────
+
+async def execute_subrole_tasks():
+    """
+    Execute internal tasks for active subroles (beggar, ring).
+    This runs independently of the main role scheduler but only checks frequency.
+    """
+    try:
+        active_subroles = get_active_subroles()
+        
+        if not active_subroles:
+            return
+        
+        # Check which tasks actually need to run based on frequency from agent_config.json
+        tasks_to_execute = []
+        for subrole_name, subrole_config in active_subroles.items():
+            # Get frequency from agent_config.json
+            frequency = _get_subrole_frequency_from_config(subrole_name)
+            
+            # Import the frequency check function
+            from agent_engine import should_execute_subrole_task
+            if should_execute_subrole_task(subrole_name, frequency):
+                tasks_to_execute.append((subrole_name, subrole_config))
+        
+        if not tasks_to_execute:
+            # Don't log anything if no tasks need to run (avoid spam)
+            return
+        
+        logger.info(f"[run] 🎭 Executing {len(tasks_to_execute)} subrole tasks: {[name for name, _ in tasks_to_execute]}")
+        
+        # Execute tasks in parallel
+        await asyncio.gather(*[
+            execute_subrole_internal_task(subrole_name, subrole_config)
+            for subrole_name, subrole_config in tasks_to_execute
+        ])
+        
+    except Exception as e:
+        logger.error(f"[run] 🎭 Error in subrole tasks: {e}")
+
+
+def _get_subrole_frequency_from_config(subrole_name: str) -> int:
+    """Get subrole frequency from agent_config.json."""
+    try:
+        # Import BASE_DIR for path construction
+        import os
+        from pathlib import Path
+        
+        # Get the directory where run.py is located
+        BASE_DIR = Path(__file__).parent
+        
+        # Load agent_config.json
+        config_path = BASE_DIR / "agent_config.json"
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        # Navigate to subrole frequency
+        roles_cfg = config.get("roles", {})
+        trickster_cfg = roles_cfg.get("trickster", {})
+        subroles_cfg = trickster_cfg.get("subroles", {})
+        subrole_cfg = subroles_cfg.get(subrole_name, {})
+        
+        return subrole_cfg.get("frequency_hours", 12)  # Default to 12 hours
+        
+    except Exception as e:
+        logger.warning(f"Could not get frequency for {subrole_name} from config: {e}")
+        return 12  # Default fallback
+
 # ── Role scheduler ────────────────────────────────────────────────────────────
 
 async def scheduler(config: dict):
     """
     Main loop that launches each active role according to its interval.
     Runs all enabled roles immediately on startup, then respects the interval.
+    Also handles subrole internal tasks.
     """
     roles_cfg = config.get("roles", {})
     logger.info(f"[run] 📋 Starting scheduler with {len(roles_cfg)} configured roles")
@@ -167,6 +238,9 @@ async def scheduler(config: dict):
                 hours = roles_cfg[name]["interval_hours"]
                 next_run[name] = datetime.now() + timedelta(hours=hours)
                 logger.info(f"[run] ⏳ '{name}' next execution: {next_run[name]:%H:%M:%S}")
+
+        # Execute subrole tasks
+        await execute_subrole_tasks()
 
         await asyncio.sleep(30)   # check every 30s
 

@@ -17,15 +17,12 @@ from discord.ext import commands, tasks
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent_engine import PERSONALIDAD, think, get_discord_token, AGENT_CFG
-from agent_db import get_db_instance, set_current_server, get_active_server_name
+from agent_db import set_current_server, get_active_server_name
 from agent_logging import get_logger, update_log_file_path
 from discord_bot.discord_utils import (
-    get_server_name, get_db_for_server,
+    get_db_for_server,
     get_greeting_enabled, check_chat_rate_limit,
-    is_already_initialized, mark_as_initialized,
-    acquire_connection_lock, acquire_process_lock,
-    get_connection_lock, get_is_connected, set_is_connected,
-    is_role_enabled_check,
+    set_is_connected, is_role_enabled_check,
 )
 
 logger = get_logger('discord')
@@ -78,11 +75,15 @@ def _is_poe2_available():
 
 @tasks.loop(hours=24)
 async def database_cleanup():
-    active_name = (get_active_server_name() or "").strip().lower()
+    active_server_key = (get_active_server_name() or "").strip()
     target_guild = None
-    if active_name:
+    if active_server_key:
+        active_key_lower = active_server_key.lower()
         for g in bot.guilds:
-            if g.name.lower() == active_name:
+            if str(getattr(g, "id", "")) == active_server_key:
+                target_guild = g
+                break
+            if getattr(g, "name", "").lower() == active_key_lower:
                 target_guild = g
                 break
     if target_guild is None and bot.guilds:
@@ -91,7 +92,9 @@ async def database_cleanup():
         return
     db_instance = get_db_for_server(target_guild)
     rows = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
-    logger.info(f"🧹 Cleanup in {target_guild.name}: {rows} records deleted.")
+    from discord_utils import get_server_key
+    server_key = get_server_key(target_guild)
+    logger.info(f"🧹 Cleanup in {target_guild.name} ({server_key}): {rows} records deleted.")
 
 
 @tasks.loop(hours=1)
@@ -107,7 +110,8 @@ async def treasure_hunter_task():
     logger.info("💎 Starting automatic treasure search...")
     for guild in bot.guilds:
         try:
-            server_name = get_server_name(guild)
+            from discord_utils import get_server_key
+            server_name = get_server_key(guild)
             db_poe2 = _get_poe2_db(server_name) if _get_poe2_db else None
             if not db_poe2 or not db_poe2.is_activo():
                 continue
@@ -122,7 +126,8 @@ async def _ejecutar_buscador_para_servidor(guild):
     try:
         from roles.treasure_hunter.treasure_hunter import main as treasure_hunter_main
         original_server = get_active_server_name()
-        set_current_server(guild.name)
+        from discord_utils import get_server_key
+        set_current_server(get_server_key(guild))
         await treasure_hunter_main()
         if original_server:
             set_current_server(original_server)
@@ -145,64 +150,57 @@ async def set_mc_presence_if_enabled():
         logger.error(f"Error setting MC status: {e}")
 
 
-# Reset connection state at startup
-from discord_bot.discord_utils import set_is_connected
 set_is_connected(False)
 
 # --- EVENTS ---
 
 _commands_registered = False
-_initialization_complete = False
+
+
+async def _register_bot_commands():
+    """Register core and role commands once during startup."""
+    from discord_bot.discord_core_commands import register_core_commands
+    from discord_bot.discord_role_loader import register_all_role_commands
+
+    logger.info("� Importing core commands...")
+    register_core_commands(bot, agent_config)
+    logger.info(f"✅ Core commands registered: {len(bot.commands)}")
+
+    logger.info("📦 Importing role commands...")
+    await register_all_role_commands(bot, agent_config, PERSONALIDAD)
+    logger.info(f"✅ Role commands registered: {len(bot.commands)}")
 
 
 @bot.event
 async def on_ready():
     """Runs when the bot is ready."""
-    global _initialization_complete, _commands_registered, logger
+    global _commands_registered, logger
 
-    logger.info(f"🔍 on_ready called - Current commands: {len(bot.commands)}")
+    logger.info(f"� on_ready called - Current commands: {len(bot.commands)}")
     if bot.commands:
         logger.info(f"🔍 Existing commands: {[cmd.name for cmd in bot.commands]}")
 
-    # DISABLE ALL CHECKS - FORCE INITIALIZATION
-    logger.info("🚀 Forcing bot initialization...")
+    logger.info("🚀 Initializing bot...")
 
-    # Check if commands are already registered using global flag
     if _commands_registered:
-        logger.info(f"📋 Commands already registered via flag - skipping...")
+        logger.info("� Commands already registered via flag - skipping...")
         return
 
     logger.info("🚀 Starting command registration...")
 
-    # Register core commands (help, greetings, insult, test, role toggle)
-    from discord_bot.discord_core_commands import register_core_commands
-    logger.info("📦 Importing core commands...")
     try:
-        register_core_commands(bot, agent_config)
-        logger.info(f"✅ Core commands registered: {len(bot.commands)}")
+        await _register_bot_commands()
     except Exception as e:
         if "already an existing command" in str(e):
-            logger.info("📋 Core commands already registered, skipping...")
+            logger.info("📋 Commands already registered, skipping...")
         else:
-            logger.error(f"❌ Error registering core commands: {e}")
-
-    # Register commands for enabled roles (MC, watcher, trickster, banker, etc.)
-    from discord_bot.discord_role_loader import register_all_role_commands
-    logger.info("📦 Importing role commands...")
-    try:
-        await register_all_role_commands(bot, agent_config, PERSONALIDAD)
-        logger.info(f"✅ Role commands registered: {len(bot.commands)}")
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info("📋 Role commands already registered, skipping...")
-        else:
-            logger.error(f"❌ Error registering role commands: {e}")
+            logger.error(f"❌ Error registering commands: {e}")
+            return
 
     logger.info(f"🤖 Total commands registered: {len(bot.commands)}")
     for cmd in bot.commands:
         logger.info(f"  → {cmd.name}")
 
-    # Mark as registered
     _commands_registered = True
 
     # Choose active server
@@ -217,29 +215,15 @@ async def on_ready():
         active_guild = bot.guilds[0]
 
     if active_guild is not None:
-        set_current_server(active_guild.name)
-        update_log_file_path(active_guild.name, _personality_name)
+        from discord_utils import get_server_key
+        server_key = get_server_key(active_guild)
+        set_current_server(server_key)
+        update_log_file_path(server_key, _personality_name)
         logger = get_logger('discord')
-        logger.info(f"📁 Servidor activo: '{active_guild.name}'")
+        logger.info(f"📁 Active server: '{active_guild.name}' ({server_key})")
 
     logger.info(f"🤖 Bot {_bot_display_name} conectado como {bot.user}")
     logger.info(f"🤖 Prefijo: {_cmd_prefix} | Intents: members={bot.intents.members}, presences={bot.intents.presences}")
-
-    # Register core commands (help, greetings, insult, test, role toggle)
-    from discord_bot.discord_core_commands import register_core_commands
-    logger.info("📦 Importing core commands...")
-    register_core_commands(bot, agent_config)
-    logger.info(f"✅ Core commands registered: {len(bot.commands)}")
-
-    # Register commands for enabled roles (MC, watcher, trickster, banker, etc.)
-    from discord_bot.discord_role_loader import register_all_role_commands
-    logger.info("📦 Importing role commands...")
-    await register_all_role_commands(bot, agent_config, PERSONALIDAD)
-    logger.info(f"✅ Role commands registered: {len(bot.commands)}")
-
-    logger.info(f"🤖 Total commands registered: {len(bot.commands)}")
-    for cmd in bot.commands:
-        logger.info(f"  → {cmd.name}")
 
     # Automatic tasks
     if not database_cleanup.is_running():
@@ -255,8 +239,10 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     """Runs when the bot joins a new server."""
-    update_log_file_path(guild.name, _personality_name)
-    logger.info(f"📁 New server: '{guild.name}'")
+    from discord_utils import get_server_key
+    server_key = get_server_key(guild)
+    update_log_file_path(server_key, _personality_name)
+    logger.info(f"📁 New server: '{guild.name}' ({server_key})")
 
     if is_role_enabled_check("mc", agent_config):
         for channel in guild.text_channels:
@@ -295,11 +281,11 @@ async def on_member_join(member):
         return
 
     greeting_prompt = greeting_cfg.get("prompt",
-        "Saluda brevemente al nuevo miembro {member_name} en el servidor {server_name}. Sé amigable.")
+        "")
     greeting_context = greeting_prompt.format(member_name=member.display_name, server_name=member.guild.name)
 
     try:
-        saludo = await asyncio.to_thread(think, greeting_context)
+        saludo = await asyncio.to_thread(think, member.display_name, mission_prompt_key="prompt_welcome")
         await welcome_channel.send(f"🎉 {member.mention} {saludo}")
         logger.info(f"👋 New user {member.name} greeted in {member.guild.name}")
         db_instance = get_db_for_server(member.guild)
@@ -326,6 +312,7 @@ async def on_presence_update(before, after):
 
     presence_cfg = _discord_cfg.get("member_presence", {})
     if not presence_cfg.get("enabled", False):
+        logger.info(f"Presence greetings disabled by config for guild={after.guild.name}")
         return
 
     before_status = before.status if before.status else discord.Status.offline
@@ -338,14 +325,15 @@ async def on_presence_update(before, after):
     if not hasattr(on_presence_update, '_last_greetings'):
         on_presence_update._last_greetings = {}
     if current_time - on_presence_update._last_greetings.get(last_greeting_key, 0) < 300:
+        logger.info(f"Presence greeting skipped due to cooldown for user={after.name} guild={after.guild.name}")
         return
 
     presence_prompt = presence_cfg.get("prompt",
-        "Saluda brevemente a {member_name} que se acaba de conectar. Sé orco pero breve.")
+        "")
     presence_context = presence_prompt.format(member_name=after.display_name)
 
     try:
-        saludo = await asyncio.to_thread(think, presence_context)
+        saludo = await asyncio.to_thread(think, after.display_name, mission_prompt_key="prompt_greet")
         await after.send(f"👋 {saludo}")
         logger.info(f"🔄 Presence DM sent to {after.name}")
         on_presence_update._last_greetings[last_greeting_key] = current_time
@@ -357,6 +345,14 @@ async def on_presence_update(before, after):
             None, after.guild.id,
             metadata={"saludo": saludo}
         )
+    except discord.errors.Forbidden as e:
+        logger.warning(f"Cannot DM presence greeting to {after.name} (Forbidden): {e}")
+        fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
+        try:
+            await after.send(f"👋 {fallback_msg}")
+        except Exception:
+            pass
+
     except Exception as e:
         logger.error(f"Error greeting presence of {after.name}: {e}")
         fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
@@ -438,7 +434,8 @@ async def _process_chat_message(message):
         server_context = ""
         server_name = "default"
         if message.guild:
-            server_name = get_server_name(message.guild)
+            from discord_utils import get_server_key
+            server_name = get_server_key(message.guild)
             server_context = f"Server: {message.guild.name} ({server_name})"
 
         active_roles = []
@@ -469,27 +466,6 @@ async def _process_chat_message(message):
                 logger.info(f"📚 Loaded {len(history_list)} interactions from history for {message.author.name}")
         except Exception as e:
             logger.warning(f"Could not load history for {message.author.name}: {e}")
-
-        # Check for keyword-based context injection from messages.json
-        contextual_prompt = None
-        try:
-            discord_cfg = PERSONALIDAD.get("discord", {})
-            contexts = discord_cfg.get("contexts", {})
-            
-            # Check if message contains keywords for any context
-            message_lower = message.content.lower()
-            for context_name, context_data in contexts.items():
-                keywords = context_data.get("keywords", [])
-                if any(keyword.lower() in message_lower for keyword in keywords):
-                    contextual_prompt = context_data.get("message", "")
-                    logger.info(f"🎯 Context '{context_name}' triggered by keywords: {keywords}")
-                    break
-        except Exception as e:
-            logger.warning(f"Error checking contexts: {e}")
-
-        # Add context to role if found
-        if contextual_prompt:
-            contextual_role += f" - {contextual_prompt}"
 
         response = think(
             role_context=contextual_role,

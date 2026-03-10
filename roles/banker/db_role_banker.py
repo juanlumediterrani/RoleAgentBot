@@ -106,17 +106,60 @@ class DatabaseRoleBanker:
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS wallets (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL UNIQUE,
+                        user_id TEXT NOT NULL,
                         user_name TEXT NOT NULL,
                         server_id TEXT NOT NULL,
                         server_name TEXT NOT NULL,
                         balance INTEGER DEFAULT 0,
                         created_date TEXT NOT NULL,
-                        updated_date TEXT DEFAULT NULL
+                        updated_date TEXT DEFAULT NULL,
+                        UNIQUE(user_id, server_id)
                     )
                 ''')
+
+                cursor.execute("PRAGMA table_info(wallets)")
+                columns = [row[1] for row in cursor.fetchall()]
+
+                cursor.execute("PRAGMA index_list(wallets)")
+                indexes = cursor.fetchall()
+                has_unique_user_id_only = False
+                for _seq, idx_name, is_unique, *_rest in indexes:
+                    if not is_unique:
+                        continue
+                    cursor.execute(f"PRAGMA index_info({idx_name})")
+                    idx_cols = [r[2] for r in cursor.fetchall()]
+                    if idx_cols == ["user_id"]:
+                        has_unique_user_id_only = True
+                        break
+
+                if "server_id" in columns and has_unique_user_id_only:
+                    logger.info("🔄 Migrating wallets table: UNIQUE(user_id) -> UNIQUE(user_id, server_id)")
+
+                    cursor.execute('''
+                        CREATE TABLE wallets_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id TEXT NOT NULL,
+                            user_name TEXT NOT NULL,
+                            server_id TEXT NOT NULL,
+                            server_name TEXT NOT NULL,
+                            balance INTEGER DEFAULT 0,
+                            created_date TEXT NOT NULL,
+                            updated_date TEXT DEFAULT NULL,
+                            UNIQUE(user_id, server_id)
+                        )
+                    ''')
+                    cursor.execute('''
+                        INSERT OR IGNORE INTO wallets_new
+                        (id, user_id, user_name, server_id, server_name, balance, created_date, updated_date)
+                        SELECT id, user_id, user_name, server_id, server_name, balance, created_date, updated_date
+                        FROM wallets
+                    ''')
+                    cursor.execute('DROP TABLE wallets')
+                    cursor.execute('ALTER TABLE wallets_new RENAME TO wallets')
+
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets (user_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_wallets_server ON wallets (server_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_wallets_user_server ON wallets (user_id, server_id)')
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creando tabla wallets: {e}")

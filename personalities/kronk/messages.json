@@ -1,30 +1,6 @@
 {
   "discord": {
-    "default_context": "Un umano te esta ablando. Manten una konversasion normal.",
-    "contexts": {
-      "oro": {
-        "keywords": [
-          "oro"
-        ],
-        "message": "Un umano te abla del oro. Tu nesesitas ese oro para komprar metal y aser armas."
-      },
-      "anillo": {
-        "keywords": [
-          "anillo"
-        ],
-        "message": "Un umano mensiona el anillo uniko! Tu jefe te mando a buskarlo. Interrogale, presionale."
-      }
-    },
-    "accusation_type": "SOSPECHA_ANILLO",
-    "accusation_template": "{informante} mencionó que {acusado} tiene el anillo",
-    "empty_message_fallback": "¿Ke kieres?",
-    "on_ready_message": "👹 {bot_name} operativo: {bot_user}",
     "command_prefix": "!",
-    "insult_command": {
-      "name": "insult",
-      "prompt_everyone": "Lanza un insulto orco breve a TODO EL MUNDO, maximo 2 frase",
-      "prompt_target": "Lanza un insulto orco breve a una persona especifica, maximo 2 frase"
-    },
     "greeting_messages": {
       "greetings_enabled": "¡GRRR Kronk vigilara yegada de umanos! Kronk saludar kuanos umanos aparecer!",
       "greetings_disabled": "BRRR Kronk ya no vigilar umanos! Kronk dejar de saludar, demasiado trabajo!",
@@ -49,6 +25,7 @@
     },
     "general_messages": {
       "help_sent_private": "¡GRRR Kronk enviar ayuda por mensaje privado umano!",
+      "readme_sent_private": "¡GRRR Kronk enviar mapa completo por mensaje privado umano!",
       "voice_leave_empty": "¡GRRR Kronk se fue de kanal de voz! No hay umanos para eskuñar música de orko!"
     },
     "dice_game_messages": {

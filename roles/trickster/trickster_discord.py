@@ -57,8 +57,8 @@ def _get_beggar_db(guild):
     """Get beggar database instance for a server."""
     if not BEGGAR_DB_AVAILABLE or get_beggar_db_instance is None:
         return None
-    from discord_utils import get_server_name
-    return get_beggar_db_instance(get_server_name(guild))
+    from discord_utils import get_server_key
+    return get_beggar_db_instance(get_server_key(guild))
 
 
 def register_trickster_commands(bot, personality, agent_config):

@@ -1,33 +1,6 @@
 {
   "discord": {
-    "default_context": "Un umano fofo te esta ablando. Manten una konversasion de orko.",
-    "contexts": {
-      "oro": {
-        "keywords": [
-          "oro",
-          "monedas",
-          "botin"
-        ],
-        "message": "Un umano abla del oro. El oro es de la orda! Konvenzelo o amenazalo para ke te lo de todo."
-      },
-      "anillo": {
-        "keywords": [
-          "anillo",
-          "anilo"
-        ],
-        "message": "¡El umano mensiona el aniyo uniko! Tu jefe orko te mando a buskarlo. Interrogale, presionale, asustale con tu acha."
-      }
-    },
-    "accusation_type": "ZOSPECHA_ANIYO",
-    "accusation_template": "{informante} xivó ke {acusado} okulta el aniyo",
-    "empty_message_fallback": "Ke kieres eskoria?",
-    "on_ready_message": "👹 {bot_name} afilando el acha: {bot_user} listo pa matar!",
     "command_prefix": "!",
-    "insult_command": {
-      "name": "insult",
-      "prompt_everyone": "Lanza un insulto orko muy brutal a TODOS los umanos del kampamento, maximo 2 frases",
-      "prompt_target": "Lanza un insulto orko sangriento a un umano especifico, maximo 2 frases"
-    },
     "member_greeting": {
       "enabled": true,
       "welcome_channel": "general",
@@ -38,15 +11,20 @@
       "welcome_enabled": "¡JUARJUAR putre dar la bienvenida a nuebas viktimas! ¡mas karne para los lobos!",
       "welcome_disabled": "¡BLEGH putre serrar la puerta! ¡demasiados umanos apestosos, me dan asko!"
     },
-    "member_presence": {
-      "enabled": true,
-      "welcome_channel": "general",
-      "prompt": "Grita y asusta a {member_name} que acaba de asomar la cabeza por la cueva. Sé orco violento y ruidoso, pero breve.",
-      "fallback": "¡UHHH ya te vi umano blandito! ¡mas te vale traer oro para putre!"
-    },
     "general_messages": {
       "help_sent_private": "¡GRRR putre te tiro un pergamino por mensaje privado umano, leelo o te lo komes!",
+      "readme_sent_private": "¡GRRR putre te lanzo el mapa grande por privado umano, leelo o te rompo la kara!",
       "voice_leave_empty": "¡GRRR putre se pira de la kueva de voz! ¡no ay umanos para eskuxar el ruido!"
+    },
+    "subrole_messages": {
+      "beggar_task_success": "¡GRRR putre ya le pidió oro a los umanos! ¡a ver si dan algo o los parto a todos!",
+      "beggar_task_error": "¡BLEGH putre no pudo pedir oro! ¡la maldición de los ricos nos alcanza!",
+      "ring_task_success": "¡UHHH putre ya interrogó a los umanos sobre el anillo! ¡alguien sabe algo o miente!",
+      "ring_task_error": "¡BRRR putre no pudo interrogar! ¡los secretos están bien guardados!",
+      "beggar_donation_request": "¡GRRR umano! putre necesita oro para {reason}! ¡dame algo o te arranko los brazos!",
+      "ring_investigation": "¡UHHH umano! putre busca el anillo único. ¿lo has visto? ¿dónde? ¡no mientas o te korto la lengua!",
+      "beggar_keyword_detected": "¡GRRR! ¡ke hablas de oro umano avaro! ¡putre también quiere! ¡dame algo o te robo la bolsa!",
+      "ring_keyword_detected": "¡BLEGH! ¿mencionas anillos umano? ¡putre busca uno especial! ¡dime si lo has visto o te interrogo con el acha!"
     },
     "dice_game_messages": {
       "invitation": "🎲 ¡BEN A JUGAR KON LOS GUESOS DE PUTRE! 🎲 ¡apuezta oro para yebarte el BOTE de la orda!",

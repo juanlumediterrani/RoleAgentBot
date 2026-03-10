@@ -7,8 +7,9 @@ from google.genai import types
 from groq import Groq
 from dotenv import load_dotenv
 from agent_logging import get_logger
-from postprocessor import postprocess_response, consolidate_context, is_blocked_response
+from postprocessor import postprocess_response, consolidate_context, is_blocked_response, is_readme_response, is_help_request
 from agent_db import get_active_server_name
+from prompts_logger import log_system_prompt, log_user_prompt, log_agent_response, log_readme_enhanced_prompt
 
 load_dotenv()
 logger = get_logger('agent_engine')
@@ -434,8 +435,308 @@ def _fallback_response():
         return random.choice(fallbacks)
     return PERSONALIDAD.get("emergency_fallback", "...")
 
+def generate_readme():
+    """Generate comprehensive README documentation for all bot functions."""
+    readme_path = os.path.join(_BASE_DIR, "README_LLM.md")
+    
+    try:
+        if os.path.exists(readme_path):
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                readme_content = f.read()
+            logger.info(f"📖 [README] Loaded structured README from {readme_path}")
+            return readme_content
+        else:
+            logger.warning(f"⚠️ [README] Structured file not found: {readme_path}")
+            # Fallback to basic generated content
+            return _generate_fallback_readme()
+    except Exception as e:
+        logger.error(f"❌ [README] Error reading structured file: {e}")
+        return _generate_fallback_readme()
 
-def think(role_context, user_content="", history_list=[], is_public=False, logger=None):
+def _generate_fallback_readme():
+    """Fallback README generation when structured file is not available."""
+    readme_content = """# ROLEAGENTBOT - COMMAND REFERENCE
+
+## CORE COMMANDS
+- !agenthelp - Show comprehensive help
+- !ping - Check bot latency  
+- !hello - Greet the bot
+- !insult @user - Playful insult
+- !test - Test bot functionality
+
+## ROLES
+- News Watcher: !watchnews, !stopnews, !newsfrequency
+- Treasure Hunter: !hunteradd, !hunterdel, !hunterlist
+- Trickster: !trickster help, !dice play, !accuse
+- Banker: !banker balance, !banker bonus
+- Music: !mc play, !mc add, !mc queue
+
+## USAGE
+- Mention bot for conversation
+- Commands start with !
+- Admin permissions required for some functions"""
+    
+    return readme_content
+
+def build_readme_enhanced_prompt(original_user_content, readme_content):
+    """Build enhanced prompt with README content for LLM to explain in character."""
+    try:
+        # Try to load task from personality-specific prompts.json
+        personality_name = PERSONALIDAD.get("name", "").lower()
+        prompts_path = os.path.join(_BASE_DIR, "personalities", personality_name, "prompts.json")
+        
+        if os.path.exists(prompts_path):
+            with open(prompts_path, 'r', encoding='utf-8') as f:
+                prompts_config = json.load(f)
+            
+            task_instruction = prompts_config.get("readme_enhanced_prompt", {}).get("task")
+            if task_instruction:
+                logger.info(f"📖 [README] Loaded task instruction from {personality_name}/prompts.json")
+                enhanced_prompt = f"""ORIGINAL USER QUESTION: {original_user_content}
+
+HERE IS THE COMPLETE DOCUMENTATION YOU NEED TO EXPLAIN:
+
+{readme_content}
+
+{task_instruction}"""
+                return enhanced_prompt
+    except Exception as e:
+        logger.warning(f"⚠️ [README] Could not load personality prompts.json: {e}")
+    
+    # Fallback to hardcoded task
+    logger.info("📖 [README] Using fallback task instruction")
+    enhanced_prompt = f"""ORIGINAL USER QUESTION: {original_user_content}
+
+HERE IS THE COMPLETE DOCUMENTATION YOU NEED TO EXPLAIN:
+
+{readme_content}
+
+TASK: Explain the relevant parts of this documentation to answer the user's question. Keep your response SHORT, IN CHARACTER, and focused on what they specifically asked about. Do NOT copy-paste the entire documentation. Instead, explain it naturally as if you're teaching them how to use the bot.
+
+Remember to maintain your personality and use your characteristic speech patterns."""
+    
+    return enhanced_prompt
+
+def _call_llm_with_readme(system_instruction, enhanced_prompt, is_mission=False):
+    """Helper function to call LLM with README-enhanced prompt."""
+    import time
+    logger.info("🤖 [README] Calling LLM with enhanced documentation prompt")
+    
+    # Try Gemini first
+    if not SIMULACION:
+        try:
+            logger.info("🤖 [README-GEMINI] Starting call to gemini-3-flash-preview")
+            client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+            
+            import threading
+            import queue
+            
+            result_queue = queue.Queue()
+            exception_queue = queue.Queue()
+            
+            def call_gemini():
+                try:
+                    res = client_gemini.models.generate_content(
+                        model='gemini-3.1-flash-lite-preview',
+                        contents=enhanced_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=0.8,  # Slightly lower for more focused explanations
+                            max_output_tokens=800,
+                            top_p=0.9,
+                            safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
+                        )
+                    )
+                    result_queue.put(res)
+                except Exception as e:
+                    exception_queue.put(e)
+            
+            thread = threading.Thread(target=call_gemini)
+            thread.start()
+            thread.join(timeout=8.0)  # Longer timeout for README processing
+            
+            if thread.is_alive():
+                logger.warning("⚠️ [README-GEMINI] Timeout, fallback to Groq")
+            elif not exception_queue.empty():
+                raise exception_queue.get()
+            else:
+                res = result_queue.get()
+                if res.text:
+                    text = res.text.strip()
+                    if not is_blocked_response(text):
+                        final_response = postprocess_response(text)
+                        logger.info(f"✅ [README-GEMINI] Enhanced response: {len(final_response)} chars")
+                        return final_response
+        except Exception as e:
+            logger.warning(f"⚠️ [README-GEMINI] Error: {e}, fallback to Groq")
+    
+    # Fallback to Groq
+    try:
+        logger.info("🤖 [README-GROQ] Starting call to llama-3.3-70b-versatile")
+        completion = client_groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": enhanced_prompt}
+            ],
+            temperature=0.8,
+            top_p=0.9,
+            max_tokens=800,
+            presence_penalty=0.8,
+            frequency_penalty=0.8
+        )
+        
+        text = completion.choices[0].message.content.strip()
+        if not is_blocked_response(text):
+            final_response = postprocess_response(text)
+            logger.info(f"✅ [README-GROQ] Enhanced response: {len(final_response)} chars")
+            return final_response
+    except Exception as e:
+        logger.error(f"❌ [README-GROQ] Critical error: {e}")
+    
+    # Emergency fallback
+    logger.warning("🚫 [README] All LLM attempts failed, using basic README")
+    return generate_readme()
+
+
+def _process_readme_response(final_response, content, role_context, server, start_time, is_mission=False):
+    """Centralized README response processing for both Gemini and Groq paths."""
+    import time
+    if is_readme_response(final_response) and is_help_request(content):
+        logger.info("📖 [README] Help request detected, generating enhanced documentation response")
+        
+        # Generate README content
+        readme_content = generate_readme()
+        
+        # Build enhanced prompt with README
+        enhanced_prompt = build_readme_enhanced_prompt(content, readme_content)
+        
+        # Log the README-enhanced prompt with special header
+        log_readme_enhanced_prompt(content, readme_content, enhanced_prompt, role=role_context, server=server)
+        
+        # Get system instruction
+        system_instruction = _build_system_prompt(PERSONALIDAD)
+        
+        # Call LLM with enhanced prompt
+        enhanced_response = _call_llm_with_readme(system_instruction, enhanced_prompt, is_mission)
+        
+        log_agent_response(enhanced_response, role=role_context, server=server, response_length=len(enhanced_response))
+        total_time = time.time()
+        logger.info(f"🏁 [README-ENHANCED] Process completed in {(total_time - start_time):.2f}s total")
+        logger.info("=" * 60)
+        return enhanced_response
+    
+    return None  # Not a README response, continue normal processing
+
+def _matches_subrole_keywords(subrole_name: str, text: str) -> bool:
+    """Check if text contains keywords for a specific subrole."""
+    if not text:
+        return False
+    role_system_prompts = (PERSONALIDAD or {}).get("role_system_prompts", {})
+    subroles_cfg = (role_system_prompts or {}).get("subroles", {})
+    subrole_cfg = subroles_cfg.get(subrole_name, {})
+    if not isinstance(subrole_cfg, dict):
+        return False
+    keywords = subrole_cfg.get("keywords", [])
+    if not isinstance(keywords, list):
+        return False
+    text_l = text.lower()
+    return any((kw or "").lower() in text_l for kw in keywords)
+
+
+def _call_llm_async(system_instruction: str, prompt: str) -> str:
+    """
+    Async-compatible LLM call for subrole tasks.
+    Uses the same logic as think() but simplified for internal tasks.
+    """
+    import time
+    import threading
+    import queue
+    from datetime import datetime
+    
+    start_time = time.time()
+    
+    # Use the same LLM logic as think()
+    try:
+        # Try Gemini first (like in think)
+        if not SIMULACION:
+            logger.info("🤖 [SUBROLE] Starting call to gemini-3-flash-preview")
+            
+            client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+            
+            result_queue = queue.Queue()
+            exception_queue = queue.Queue()
+            
+            def call_gemini():
+                try:
+                    res = client_gemini.models.generate_content(
+                        model='gemini-3.1-flash-lite-preview',
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            temperature=0.9,
+                            max_output_tokens=1024,
+                            top_p=0.95,
+                            safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
+                        )
+                    )
+                    result_queue.put(res)
+                except Exception as e:
+                    exception_queue.put(e)
+            
+            # Start call in separate thread with timeout
+            gemini_thread = threading.Thread(target=call_gemini)
+            gemini_thread.start()
+            gemini_thread.join(timeout=5.0)
+            
+            if not gemini_thread.is_alive() and exception_queue.empty():
+                # Got result from Gemini
+                res = result_queue.get()
+                text = res.text
+                
+                if text and len(text.strip()) > 5:
+                    postprocessed = postprocess_response(text)
+                    total_time = time.time()
+                    logger.info(f"🏁 [SUBROLE] Gemini completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+                    return postprocessed
+            else:
+                logger.info("🤖 [SUBROLE] Gemini timeout/error, fallback to Groq")
+        else:
+            logger.info("🤖 [SUBROLE] Simulation mode, using Groq")
+            
+    except Exception as e:
+        logger.info(f"🤖 [SUBROLE] Gemini failed, fallback to Groq: {e}")
+    
+    # Fallback to Groq (like in think)
+    try:
+        logger.info("🤖 [SUBROLE] Starting call to llama-3.3-70b-versatile")
+        
+        completion = client_groq.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=1.0,
+            max_tokens=600,
+            top_p=1.0,
+            presence_penalty=1.0,
+            frequency_penalty=1.0,
+        )
+        
+        response = completion.choices[0].message.content
+        postprocessed = postprocess_response(response)
+        
+        total_time = time.time()
+        logger.info(f"🏁 [SUBROLE] Groq completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+        return postprocessed
+        
+    except Exception as e:
+        logger.error(f"🤖 [SUBROLE] Both LLMs failed: {e}")
+        return f"[Error en tarea interna de {subrole_name if 'subrole_name' in locals() else 'subrole'}]"
+
+
+def think(role_context, user_content="", history_list=[], is_public=False, logger=None, mission_prompt_key: str | None = None):
     """
     Unified engine with gemini-3-flash-preview and Fallback to Groq.
     Loads personality from active JSON file.
@@ -453,8 +754,43 @@ def think(role_context, user_content="", history_list=[], is_public=False, logge
 
     content = (user_content or "").strip()
     is_mission = not bool(content)
+    server = get_active_server_name()
+    
+    # Check for subrole keyword detection in user message using existing function
+    if content and not is_mission:
+        # Use existing _matches_subrole_keywords function
+        for subrole_name in ["beggar", "ring"]:
+            if _matches_subrole_keywords(subrole_name, content):
+                logger.info(f"🎭 [SUBROLE] Detected {subrole_name} keywords, using contextual response")
+                
+                # Get subrole config for contextual response
+                subrole_config = get_active_subroles().get(subrole_name, {})
+                chat_detection = subrole_config.get("chat_detection", {})
+                
+                if chat_detection:
+                    # Build contextual prompt
+                    system_instruction = _build_system_prompt(PERSONALIDAD)
+                    mission_prompt = subrole_config.get("mission_active", "")
+                    detection_prompt = chat_detection.get("prompt", "").replace("{username}", "user")
+                    
+                    contextual_prompt = f"{mission_prompt}\n\n{detection_prompt}\n\nResponde únicamente con lo que diría Putre, sin explicaciones adicionales."
+                    
+                    # Call LLM with contextual prompt
+                    try:
+                        response = _call_llm_async(system_instruction, contextual_prompt)
+                        if response and len(response.strip()) > 5:
+                            logger.info(f"🎭 [SUBROLE] Contextual response generated for {subrole_name}")
+                            return response
+                    except Exception as e:
+                        logger.error(f"🎭 [SUBROLE] Error generating contextual response: {e}")
+                        # Fall through to normal processing
     system_instruction, prompt_final = build_prompt(
-        role_context, content, history_list, is_public=is_public
+        role_context,
+        content,
+        history_list,
+        is_public=is_public,
+        server=server,
+        mission_prompt_key=mission_prompt_key,
     )
     
     prep_time = time.time()
@@ -491,7 +827,7 @@ def think(role_context, user_content="", history_list=[], is_public=False, logge
                     thread_start = time.time()
                     logger.info(f"🧵 [GEMINI] Thread started")
                     res = client_gemini.models.generate_content(
-                        model='gemini-3-flash-preview',
+                        model='gemini-3.1-flash-lite-preview',
                         contents=prompt_final,
                         config=types.GenerateContentConfig(
                             system_instruction=system_instruction,
@@ -547,6 +883,14 @@ def think(role_context, user_content="", history_list=[], is_public=False, logge
                         postprocess_end = time.time()
                         logger.info(f"✨ [GEMINI] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(final_response)} chars")
                         
+                        # Check for README response using centralized function
+                        readme_result = _process_readme_response(final_response, content, role_context, server, start_time, is_mission)
+                        if readme_result is not None:
+                            return readme_result
+                        
+                        # Log agent response
+                        log_agent_response(final_response, role=role_context, server=server, response_length=len(final_response))
+                        
                         total_time = time.time()
                         logger.info(f"🏁 [GEMINI] Process completed in {(total_time - start_time):.2f}s total")
                         logger.info("=" * 60)
@@ -599,6 +943,14 @@ def think(role_context, user_content="", history_list=[], is_public=False, logge
         postprocess_end = time.time()
         logger.info(f"✨ [GROQ] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(final_response)} chars")
         
+        # Check for README response using centralized function
+        readme_result = _process_readme_response(final_response, content, role_context, server, start_time, is_mission)
+        if readme_result is not None:
+            return readme_result
+        
+        # Log agent response
+        log_agent_response(final_response, role=role_context, server=server, response_length=len(final_response))
+        
         total_time = time.time()
         logger.info(f"🏁 [GROQ] Process completed in {(total_time - start_time):.2f}s total")
         logger.info("=" * 60)
@@ -615,49 +967,71 @@ def _build_system_prompt(personalidad: dict) -> str:
     """Assemble system prompt from structured personality sections."""
     sections = []
 
+    section_titles = personalidad.get("system_prompt_section_titles", {})
+    if not isinstance(section_titles, dict):
+        section_titles = {}
+
+    title_absolute_identity = section_titles.get("absolute_identity", "ABSOLUTE IDENTITY (NON-NEGOTIABLE)")
+    title_character = section_titles.get("character", "CHARACTER")
+    title_golden_rules = section_titles.get("golden_rules", "GOLDEN RULES (NEVER BREAK)")
+    title_orca_orthography = section_titles.get("orca_orthography", "ORCA ORTHOGRAPHY")
+    title_style = section_titles.get("style", "STYLE")
+    title_examples = section_titles.get("examples", "EXAMPLES (learn from these)")
+
     # 1. ABSOLUTE IDENTITY (never_break) — always first
     never_break = personalidad.get("never_break", [])
     if never_break:
         never_break_text = "\n".join([f"- {r}" for r in never_break])
-        sections.append(f"## ABSOLUTE IDENTITY (NON-NEGOTIABLE)\n{never_break_text}")
+        sections.append(f"## {title_absolute_identity}\n{never_break_text}")
 
     # 2. IDENTIDAD del personaje
     identity = personalidad.get("identity", "")
     if identity:
-        sections.append(f"## CHARACTER\n{identity}")
+        sections.append(f"## {title_character}\n{identity}")
 
-    # 3. GOLDEN RULES (auto-generated from format_rules)
-    format_rules = personalidad.get("format_rules", {})
-    if format_rules:
-        reglas = []
-        if format_rules.get("length"):
-            reglas.append(f"- ALWAYS write {format_rules['length']}")
-        if format_rules.get("no_tildes"):
-            reglas.append("- NEVER use tildes (a e i o u, without accent)")
-        if format_rules.get("no_dangling"):
-            reglas.append("- NEVER end in single words: \"ke\", \"a\", \"de\", \"por\", \"para\"")
-        if format_rules.get("end_punctuation"):
-            reglas.append(f"- {format_rules['end_punctuation']}")
-        if reglas:
-            sections.append("## GOLDEN RULES (NEVER BREAK)\n" + "\n".join(reglas))
+    # 3. GOLDEN RULES
+    # Prefer plain-text rules if provided by personality; fallback to legacy format_rules.
+    golden_rules = personalidad.get("golden_rules")
+    reglas = []
+    if isinstance(golden_rules, list):
+        reglas = [str(r).strip() for r in golden_rules if str(r).strip()]
+    elif isinstance(golden_rules, str) and golden_rules.strip():
+        reglas = [line.strip() for line in golden_rules.splitlines() if line.strip()]
+
+    if not reglas:
+        # Legacy format_rules (kept for other personalities)
+        format_rules = personalidad.get("format_rules", {})
+        if isinstance(format_rules, dict) and format_rules:
+            if format_rules.get("length"):
+                reglas.append(f"ALWAYS write {format_rules['length']}")
+            if format_rules.get("no_tildes"):
+                reglas.append("NEVER use tildes (a e i o u, without accent)")
+            if format_rules.get("no_dangling"):
+                reglas.append("NEVER end in single words: \"ke\", \"a\", \"de\", \"por\", \"para\"")
+            if format_rules.get("end_punctuation"):
+                reglas.append(f"{format_rules['end_punctuation']}")
+
+    if reglas:
+        reglas_text = "\n".join([f"- {r}" for r in reglas])
+        sections.append(f"## {title_golden_rules}\n" + reglas_text)
 
     # 4. ORCA ORTHOGRAPHY
     orthography = personalidad.get("orthography", [])
     if orthography:
         ortho_text = "\n".join(orthography)
-        sections.append(f"## ORCA ORTHOGRAPHY\n{ortho_text}")
+        sections.append(f"## {title_orca_orthography}\n{ortho_text}")
 
     # 5. STYLE
     style = personalidad.get("style", [])
     if style:
         style_text = "\n".join([f"- {s}" for s in style])
-        sections.append(f"## STYLE\n{style_text}")
+        sections.append(f"## {title_style}\n{style_text}")
 
     # 6. EXAMPLES
     examples = personalidad.get("examples", [])
     if examples:
         examples_text = "\n".join([f'"{e}"' for e in examples])
-        sections.append(f"## EXAMPLES (learn from these)\n{examples_text}")
+        sections.append(f"## {title_examples}\n{examples_text}")
 
     # If there are structured sections, use them; if not, fallback to old system_prompt
     if sections:
@@ -668,13 +1042,13 @@ def _build_system_prompt(personalidad: dict) -> str:
         system_prompt = "\n".join([str(x) for x in system_prompt])
     if never_break:
         never_break_text = "\n".join([f"- {r}" for r in never_break])
-        return f"## ABSOLUTE IDENTITY (NON-NEGOTIABLE)\n{never_break_text}\n\n{system_prompt}"
+        return f"## {title_absolute_identity}\n{never_break_text}\n\n{system_prompt}"
     return system_prompt
 
 
-def build_prompt(role_context, user_content="", history_list=[], max_interactions=5, is_public=False):
+def build_prompt(role_context, user_content="", history_list=[], max_interactions=5, is_public=False, server=None, mission_prompt_key: str | None = None):
     """Build and return `(system_instruction, prompt_final)` without calling APIs."""
-    history_context = consolidate_context(history_list, max_interactions=max_interactions, personality=PERSONALIDAD)
+    history_context = consolidate_context(history_list, max_interactions=max_interactions, personality=PERSONALIDAD, role=role_context, server=server)
 
     bot_name = PERSONALIDAD.get("name", "Bot")
     public_suffix = PERSONALIDAD.get("public_context_suffix", "")
@@ -685,11 +1059,13 @@ def build_prompt(role_context, user_content="", history_list=[], max_interaction
         system_instruction = f"{system_instruction}\n\nCONTEXT: {public_suffix}"
 
     content = (user_content or "").strip()
+
     # Only add active tasks in CHAT mode.
     # If building a MISSION prompt (empty content), don't add tasks
     # to avoid interference between missions.
     if content:
         tasks = _load_active_tasks_system_additions()
+        tasks = [t.strip() for t in (tasks or []) if isinstance(t, str) and t.strip()]
         if tasks:
             logger.info(f"📋 [TASKS] Injecting {len(tasks)} active tasks:")
             for i, task in enumerate(tasks):
@@ -697,32 +1073,142 @@ def build_prompt(role_context, user_content="", history_list=[], max_interaction
             system_instruction = f"{system_instruction}\n\nACTIVE TASKS:\n" + "\n".join(tasks)
 
     if history_context:
-        system_instruction = f"{system_instruction}\n\n{history_label}:\n{history_context}"
+        system_instruction = f"{system_instruction}\n\n##{history_label}:\n{history_context}"
+
     if content:
         cfg = PERSONALIDAD.get("prompt_chat", {})
         ctx_prefix = cfg.get("context_prefix", "CONTEXT")
         msg_prefix = cfg.get("message_prefix", "MESSAGE")
-        instructions = cfg.get("instructions", [])
+        instructions = list(cfg.get("instructions", []) or [])
         closing = cfg.get("closing", "Tu respuesta:")
 
-        user_parts = [
-            f"{ctx_prefix}: {role_context}",
-            f"{msg_prefix}: {content}",
-            "",
-        ] + instructions + ["", closing]
+        # Gold/beggar injection: only append a bottom line when keywords are present.
+        # This keeps the general system prompt intact.
+        if _matches_subrole_keywords("beggar", content):
+            beggar_cfg = ((PERSONALIDAD or {}).get("role_system_prompts", {}) or {}).get("subroles", {}).get("beggar", {})
+            if isinstance(beggar_cfg, dict):
+                beggar_injection = (beggar_cfg.get("chat_injection") or "").strip()
+                if beggar_injection:
+                    instructions.append(beggar_injection)
+
+        context_block = [f"##{ctx_prefix}:", str(role_context).strip()] + instructions
+        user_parts = (
+            context_block
+            + ["", f"##{msg_prefix}: {content}", "", closing]
+        )
     else:
-        cfg = PERSONALIDAD.get("prompt_mission", {})
-        sit_prefix = cfg.get("situation_prefix", "SITUATION")
+        cfg_key = mission_prompt_key or "prompt_mission"
+        cfg = PERSONALIDAD.get(cfg_key, {})
         instructions = cfg.get("instructions", [])
         closing = cfg.get("closing", "Respond ONLY in character:")
 
-        user_parts = [
-            f"{sit_prefix}: {role_context}",
-            "",
-        ] + instructions + ["", closing]
+        # Replace placeholders in instructions
+        processed_instructions = [inst.replace("{name}", role_context) for inst in instructions]
+
+        user_parts = (
+            processed_instructions + ["", closing]
+        )
 
     prompt_final = "\n".join(user_parts)
-
     prompt_final = prompt_final.replace("{name}", bot_name)
+    
+    # Build the complete prompt for logging
+    complete_prompt = f"{system_instruction}\n\n{prompt_final}"
+    
+    # Log the complete prompt as one entry
+    log_user_prompt(complete_prompt, role=role_context, server=server)
 
     return system_instruction, prompt_final
+
+
+# ============================================================================
+# SUBROLE INTERNAL TASKS SYSTEM
+# ============================================================================
+
+import random
+from datetime import datetime, timedelta
+
+_subrole_task_cache = {}
+
+def get_active_subroles():
+    """Get active subroles from personality prompts.json."""
+    try:
+        # Use same path logic as _cargar_personalidad
+        personality_rel = AGENT_CFG.get("personality", "personalities/default.json")
+        personality_path = os.path.join(_BASE_DIR, personality_rel)
+        personality_dir = os.path.dirname(personality_path)
+        prompts_path = os.path.join(personality_dir, "prompts.json")
+        
+        with open(prompts_path, 'r', encoding='utf-8') as f:
+            prompts_data = json.load(f)
+        
+        subroles = prompts_data.get("role_system_prompts", {}).get("subroles", {})
+        active_subroles = {}
+        
+        for subrole_name, subrole_config in subroles.items():
+            if "internal_task" in subrole_config:
+                active_subroles[subrole_name] = subrole_config
+                
+        return active_subroles
+    except Exception as e:
+        logger.error(f"Error loading subroles: {e}")
+        return {}
+
+def should_execute_subrole_task(subrole_name, frequency_hours):
+    """Check if subrole task should execute based on frequency."""
+    global _subrole_task_cache
+    
+    now = datetime.now()
+    last_run = _subrole_task_cache.get(subrole_name)
+    
+    if not last_run or (now - last_run) >= timedelta(hours=frequency_hours):
+        _subrole_task_cache[subrole_name] = now
+        return True
+    
+    return False
+
+async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instance=None):
+    """Execute internal task for a subrole."""
+    try:
+        # Get frequency from agent_config.json instead of prompts.json
+        frequency = _get_subrole_frequency_from_config(subrole_name)
+        
+        if not should_execute_subrole_task(subrole_name, frequency):
+            return
+        
+        logger.info(f"🎭 [SUBROLE] Executing internal task: {subrole_name} (frequency: {frequency}h)")
+        
+        # Get system prompt and base mission prompt
+        system_instruction = _build_system_prompt(PERSONALIDAD)
+        mission_prompt = subrole_config.get("mission_active", "")
+        
+        # Build the complete prompt with task and reasons at the end
+        base_task_prompt = subrole_config.get("internal_task", {}).get("prompt", "")
+        
+        # Add specific reasons/methods at the end
+        task_details = ""
+        if subrole_name == "beggar":
+            reasons = subrole_config.get("internal_task", {}).get("reasons", [])
+            if reasons:
+                selected_reason = random.choice(reasons)
+                task_details = f"\n\nRAZÓN ESPECÍFICA: {selected_reason}"
+        elif subrole_name == "ring":
+            methods = subrole_config.get("internal_task", {}).get("investigation_methods", [])
+            if methods:
+                selected_method = random.choice(methods)
+                task_details = f"\n\nMÉTODO DE INVESTIGACIÓN: {selected_method}"
+        
+        # Construct complete prompt: mission + task + details
+        complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nResponde únicamente con lo que diría Putre, sin explicaciones adicionales."
+        
+        # Call LLM
+        response = await _call_llm_async(system_instruction, complete_prompt)
+        
+        if response and len(response.strip()) > 5:
+            # For now, just log the response - we'll integrate with Discord later
+            logger.info(f"🎭 [{subrole_name.upper()}] Generated message: {response[:100]}...")
+        else:
+            logger.warning(f"🎭 [{subrole_name.upper()}] Empty or short response: {response}")
+        
+    except Exception as e:
+        logger.error(f"🎭 [SUBROLE] Error executing task {subrole_name}: {e}")

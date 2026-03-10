@@ -33,9 +33,9 @@ def _get_news_watcher_db(guild):
     """Get news watcher database instance for a server."""
     if not WATCHER_COMMANDS_AVAILABLE or get_news_watcher_db_instance is None:
         return None
-    from discord_utils import get_server_name
-    server_name = get_server_name(guild)
-    return get_news_watcher_db_instance(server_name)
+    from discord_utils import get_server_key
+    server_key = get_server_key(guild)
+    return get_news_watcher_db_instance(server_key)
 
 
 def register_news_watcher_commands(bot, personality, agent_config):
