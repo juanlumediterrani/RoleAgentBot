@@ -161,6 +161,8 @@ async def _process_feed_flat_subscription(http, db_watcher, feed_data, user_id, 
         entries = await get_latest_news(url, name, 5)
         for i, news_item in enumerate(entries[:5], 1):
             title = news_item.get('title', '') if isinstance(news_item, dict) else news_item
+            description = news_item.get('description', '') if isinstance(news_item, dict) else ''
+            link = news_item.get('link', '') if isinstance(news_item, dict) else ''
             title = title or ''
             if not title:
                 continue
@@ -171,8 +173,7 @@ async def _process_feed_flat_subscription(http, db_watcher, feed_data, user_id, 
                 logger.info(f"ℹ️ News already read: {title}")
                 continue
 
-            # For flat subscriptions, generate personality opinion about the title
-            opinion = await _generate_personality_opinion(title, user_id)
+            opinion = await _generate_personality_opinion(title, description, user_id)
             
             if opinion:
                 await _send_flat_notification(http, db_watcher, [user_id], title, opinion, name, link)
@@ -192,6 +193,8 @@ async def _process_feed_keyword_subscription(http, db_watcher, feed_data, user_i
         entries = await get_latest_news(url, name, 5)
         for i, news_item in enumerate(entries[:5], 1):
             title = news_item.get('title', '') if isinstance(news_item, dict) else news_item
+            description = news_item.get('description', '') if isinstance(news_item, dict) else ''
+            link = news_item.get('link', '') if isinstance(news_item, dict) else ''
             title = title or ''
             if not title:
                 continue
@@ -205,9 +208,8 @@ async def _process_feed_keyword_subscription(http, db_watcher, feed_data, user_i
             # Check keyword match using regex
             if check_keywords_regex(title, keywords):
                 logger.info(f"🎯 Keyword match: {title[:60]}...")
-                
-                # Generate personality opinion about the title
-                opinion = await _generate_personality_opinion(title, user_id)
+
+                opinion = await _generate_personality_opinion(title, description, user_id)
                 
                 if opinion:
                     await _send_keyword_notification(http, db_watcher, [user_id], title, opinion, name, keywords, link)
@@ -253,7 +255,7 @@ async def _process_feed_ai_subscription(http, db_watcher, feed_data, user_id, ch
                 premisas_texto = ", ".join(premisas[:3])  # Show first 3 premises
                 
                 # Generate personality opinion about the news and premises
-                opinion = await _generate_premise_opinion(title, premisas_texto, user_id, server_id)
+                opinion = await _generate_premise_opinion(title, description, premisas_texto, user_id, server_id)
                 
                 if opinion:
                     await _send_ai_notification(http, db_watcher, [user_id], title, opinion, name, premisas_texto, link)
@@ -335,7 +337,51 @@ Respond only: TRUE or FALSE"""
         return False
 
 
-async def _generate_personality_opinion(title: str, user_id: str) -> str:
+def _build_news_watcher_prompt(
+    system_prompt: str,
+    title: str,
+    description: str = "",
+    premise: str | None = None,
+    prompt_config: dict | None = None,
+) -> str:
+    """Build the injected mission prompt for News Watcher opinions."""
+    config = prompt_config or {}
+    golden_rules = config.get("golden_rules") or [
+        "1. LONGITUD: 2-4 frases (100-250 caracteres).",
+        "2. GRAMATICA: Sin tildes. Termina afirmaciones con '!' y preguntas con '?'.",
+        "3. No termines frases con palabras sueltas como \"ke\", \"a\", \"de\".",
+        "4. EXPRESATE en la LENGUA del personaje, no cambies de registro ni lenguaje.",
+    ]
+    title_label = config.get("title_label", "Title")
+    description_label = config.get("description_label", "Description")
+    premise_label = config.get("premise_label", "This news matches the premise")
+    opinion_request = config.get("opinion_request", "What is your opinion about this situation?")
+
+    description_text = description.strip() if description else ""
+    description_text = description_text[:1000] if description_text else ""
+
+    prompt_sections = [
+        "## REGLAS DE ORO VIGIA",
+        *golden_rules,
+        "",
+        system_prompt,
+    ]
+
+    if premise:
+        prompt_sections.extend([
+            f'{premise_label}: "{premise}"',
+        ])
+
+    prompt_sections.extend([
+        f'{title_label}: "{title}"',
+        f'{description_label}: "{description_text}"',
+        opinion_request,
+    ])
+
+    return "\n".join(prompt_sections)
+
+
+async def _generate_personality_opinion(title: str, description: str, user_id: str) -> str:
     """Generate personality opinion about a news headline."""
     try:
         from agent_engine import think
@@ -348,14 +394,25 @@ async def _generate_personality_opinion(title: str, user_id: str) -> str:
             from agent_engine import PERSONALIDAD
             role_prompts = PERSONALIDAD.get("role_system_prompts", {})
             system_prompt = role_prompts.get("news_watcher", ROL_VIGIA_PERSONALIDAD)
+            prompt_config = PERSONALIDAD.get("news_watcher_prompt", {})
         except Exception:
             system_prompt = ROL_VIGIA_PERSONALIDAD
-        
-        # Create prompt for the personality about the news
-        prompt = f"{system_prompt}\n\nWhat do you think about this news? \"{title}\""
+            prompt_config = {}
+
+        prompt = _build_news_watcher_prompt(
+            system_prompt=system_prompt,
+            title=title,
+            description=description,
+            prompt_config=prompt_config,
+        )
         
         # Get personality opinion
-        opinion = think(prompt, server_name)
+        opinion = think(
+            role_context="news_watcher",
+            user_content=prompt,
+            server_name=server_name,
+            interaction_type="mission",
+        )
         
         if opinion and len(opinion.strip()) > 0:
             logger.info(f"💭 Opinion generated: {opinion[:50]}...")
@@ -369,7 +426,7 @@ async def _generate_personality_opinion(title: str, user_id: str) -> str:
         return None
 
 
-async def _generate_premise_opinion(title: str, premisa: str, user_id: str, server_id: str = None) -> str | None:
+async def _generate_premise_opinion(title: str, description: str, premisa: str, user_id: str, server_id: str = None) -> str | None:
     """Generate personality opinion about news that matches a premise."""
     try:
         from agent_engine import think
@@ -386,14 +443,26 @@ async def _generate_premise_opinion(title: str, premisa: str, user_id: str, serv
             from agent_engine import PERSONALIDAD
             role_prompts = PERSONALIDAD.get("role_system_prompts", {})
             system_prompt = role_prompts.get("news_watcher", ROL_VIGIA_PERSONALIDAD)
+            prompt_config = PERSONALIDAD.get("news_watcher_prompt", {})
         except Exception:
             system_prompt = ROL_VIGIA_PERSONALIDAD
-        
-        # Create specific prompt for the premise
-        prompt = f"{system_prompt}\n\nThis news matches the premise: \"{premisa}\"\nNews: \"{title}\"\nWhat is your opinion about this situation?"
+            prompt_config = {}
+
+        prompt = _build_news_watcher_prompt(
+            system_prompt=system_prompt,
+            title=title,
+            description=description,
+            premise=premisa,
+            prompt_config=prompt_config,
+        )
         
         # Get personality opinion
-        opinion = think(prompt, server_to_use)
+        opinion = think(
+            role_context="news_watcher",
+            user_content=prompt,
+            server_name=server_to_use,
+            interaction_type="mission",
+        )
         
         if opinion and len(opinion.strip()) > 0:
             logger.info(f"💭 Opinion about premise: {opinion[:50]}...")

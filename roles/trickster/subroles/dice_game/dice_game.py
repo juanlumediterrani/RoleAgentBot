@@ -187,7 +187,7 @@ def procesar_jugada(usuario_id: str, usuario_nombre: str, servidor_id: str,
         db_game = get_dice_game_db_instance(server_name)
         
         if db_game:
-            config = db_game.obtener_configuracion_servidor(servidor_id)
+            config = db_game.get_server_config(servidor_id)
             fixed_bet = config.get('apuesta_fija', 1)
         else:
             fixed_bet = 1
@@ -242,7 +242,7 @@ def procesar_jugada(usuario_id: str, usuario_nombre: str, servidor_id: str,
         
         # Register the game in database if available
         if db_game and result['success']:
-            db_game.registrar_jugada(
+            db_game.register_game(
                 usuario_id, usuario_nombre, servidor_id, servidor_nombre,
                 result['bet'], result['dice'], result['combination'],
                 result['prize'], result['pot_before'], result['pot_after']

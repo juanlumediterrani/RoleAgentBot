@@ -8,6 +8,52 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
 import json
+import os
+
+# Base directory for personality loading
+_BASE_DIR = Path(__file__).parent
+
+# Fallback messages (English)
+_FALLBACK_LOGGING_MESSAGES = {
+    "readme_enhanced_header": "📖 README ENHANCED PROMPT",
+    "original_question_label": "📝 ORIGINAL USER QUESTION:",
+    "enhanced_prompt_label": "🤖 ENHANCED PROMPT SENT TO LLM:",
+    "complete_prompt_label": "🔧 COMPLETE PROMPT SENT TO LLM:",
+    "readme_separator": "🔖=============================================================================="
+}
+
+def _get_logging_messages():
+    """Load logging messages from personality or return fallbacks."""
+    try:
+        # Try to get personality from agent_engine
+        try:
+            from agent_engine import PERSONALIDAD
+            personality_name = PERSONALIDAD.get("name", "").lower()
+        except ImportError:
+            # Fallback: try to determine personality from config
+            import json
+            config_path = _BASE_DIR / "agent_config.json"
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    personality_rel = config.get("personality", "personalities/default.json")
+                    personality_name = Path(personality_rel).stem
+            else:
+                personality_name = "default"
+        
+        # Load prompts.json from personality directory
+        prompts_path = _BASE_DIR / "personalities" / personality_name / "prompts.json"
+        if prompts_path.exists():
+            with open(prompts_path, 'r', encoding='utf-8') as f:
+                prompts_data = json.load(f)
+                logging_messages = prompts_data.get("logging_messages", {})
+                # Merge with fallbacks for any missing keys
+                return {**_FALLBACK_LOGGING_MESSAGES, **logging_messages}
+    except Exception as e:
+        # If anything fails, return fallbacks
+        pass
+    
+    return _FALLBACK_LOGGING_MESSAGES
 
 LOG_DIR = Path(__file__).parent / 'logs'
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -29,7 +75,7 @@ def get_prompts_logger():
     logger.setLevel(logging.INFO)
     
     # Create prompts log file
-    prompts_log_file = LOG_DIR / 'prompts.log'
+    prompts_log_file = LOG_DIR / 'prompt.log'
     
     # Custom formatter for clear separation
     formatter = logging.Formatter(
@@ -114,6 +160,44 @@ def log_user_prompt(content, user_id=None, server=None, role=None):
     
     log_prompt('user', content, metadata)
 
+def log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, role=None, server=None, metadata=None):
+    logger = get_prompts_logger()
+    separator = "=" * 80
+
+    final_metadata = {
+        "provider": provider,
+        "call_type": call_type,
+    }
+    if role:
+        final_metadata["role"] = role
+    if server:
+        final_metadata["server"] = server
+    if metadata:
+        final_metadata.update(metadata)
+
+    log_lines = [
+        separator,
+        f"FINAL PROMPT SENT TO LLM [{str(provider).upper()} | {str(call_type).upper()}]",
+        f"TIMESTAMP: {datetime.now().isoformat()}",
+        "METADATA:",
+    ]
+
+    for key, value in final_metadata.items():
+        log_lines.append(f"  {key}: {value}")
+
+    log_lines.extend([
+        separator,
+        "SYSTEM INSTRUCTION:",
+        system_instruction or "",
+        "",
+        "USER PROMPT:",
+        user_prompt or "",
+        separator,
+        "",
+    ])
+
+    logger.info("\n".join(log_lines))
+
 def log_consolidated_context(content, role=None, server=None, interaction_count=None):
     """Convenience function to log consolidated context prompts."""
     metadata = {}
@@ -126,49 +210,20 @@ def log_consolidated_context(content, role=None, server=None, interaction_count=
     
     log_prompt('consolidated', content, metadata)
 
-def log_readme_enhanced_prompt(original_question, readme_content, enhanced_prompt, role=None, server=None):
-    """Convenience function to log README-enhanced prompts with special header."""
-    metadata = {}
-    if role:
-        metadata['role'] = role
-    if server:
-        metadata['server'] = server
-    
-    # Create special README prompt log with multiple sections
-    logger = get_prompts_logger()
-    
-    separator = "=" * 80
-    readme_separator = "🔖" + "=" * 78
-    
-    log_lines = [
-        readme_separator,
-        "📖 README ENHANCED PROMPT",
-        f"TIMESTAMP: {datetime.now().isoformat()}"
-    ]
-    
-    # Add metadata if provided
-    if metadata:
-        log_lines.append("METADATA:")
-        for key, value in metadata.items():
-            log_lines.append(f"  {key}: {value}")
-    
-    log_lines.extend([
-        readme_separator,
-        "📝 ORIGINAL USER QUESTION:",
-        original_question,
-        readme_separator,
-        "📋 README DOCUMENTATION:",
-        readme_content,
-        readme_separator,
-        "🤖 ENHANCED PROMPT SENT TO LLM:",
-        enhanced_prompt,
-        readme_separator,
-        ""  # Empty line for spacing
-    ])
-    
-    # Join and log
-    log_entry = "\n".join(log_lines)
-    logger.info(log_entry)
+def log_readme_enhanced_prompt(original_question, readme_content, enhanced_prompt, system_instruction=None, role=None, server=None):
+    metadata = {
+        "readme_length": len(readme_content or ""),
+        "original_question": original_question or "",
+    }
+    log_final_llm_prompt(
+        provider="readme",
+        call_type="documentation_second_pass",
+        system_instruction=system_instruction or "",
+        user_prompt=enhanced_prompt,
+        role=role,
+        server=server,
+        metadata=metadata,
+    )
 
 def log_subrole_prompt(subrole_name, content, role=None, server=None):
     """Convenience function to log subrole prompts."""

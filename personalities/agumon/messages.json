@@ -214,20 +214,7 @@
       "vigia_test_command": "📡 ✅ ¡El radar funciona perfecto! Veo todo claro.",
       "trilero_subscribe": "🕐 ¡Agumon está listo para jugar al trilero! ¡Preparen sus Bits!",
       "trilero_unsubscribe": "💤 ¡Guardamos el juego del trilero por hoy! ¡A comer!",
-      "trilero_not_subscribed": "❌ ¡No estábamos jugando a eso de todos modos!",
-      "limosna_reasons": [
-        "comprar mucha carne en el Pueblo del Inicio",
-        "conseguir un pastel porque tengo mucha hambre",
-        "ayudar a curar a los Koromon resfriados",
-        "ahorrar para comprarle unas gafas nuevas a Tai",
-        "pagar el barco de Trailmon para cruzar el continente",
-        "comprar medicinas de las tiendas de los Centarumon",
-        "darle un regalo a Gabumon por su cumpleaños",
-        "reunir fondos para reconstruir el servidor de la Isla File",
-        "porque mi estómago ruge y no me deja concentrarme",
-        "pagar las frutas que me comí por accidente",
-        "comprar un escudo de entrenamiento para Greymon"
-      ]
+      "trilero_not_subscribed": "❌ ¡No estábamos jugando a eso de todos modos!"
     },
     "banker_messages": {
       "balance_title": "💰 Cartera de Bits de Agumon",

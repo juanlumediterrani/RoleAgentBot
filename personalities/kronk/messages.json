@@ -218,23 +218,8 @@
       "vigia_test_command": "📡 ✅ Komando vigia de orko funciona!",
       "trilero_subscribe": "¡GRRR Kronk activar trilero! Orco listo para engañar humanos y robar limosna!",
       "trilero_unsubscribe": "¡BRRR Kronk desactivar trilero! Orco ya no robar limosna!",
-      "trilero_not_subscribed": "¡UHHH Kronk no estar suscrito a trilero! Orco no puede robar zin permiso!",
-      "limosna_reasons": [
-        "para traer a tu familia orca contigo",
-        "para comprar armas nuevas y hacer la guerra",
-        "para pagar tributo al jefe orco y que no te mate",
-        "porque tienes hambre y no quieres comer carne humana otra vez",
-        "para comprar armadura nueva porque la tuya está rota",
-        "porque perdiste todo tu oro jugando con otros orcos",
-        "para comprar un lobo gigante que te ayude en batallas",
-        "porque quieres hacer una fiesta orca con comida y bebida",
-        "para arreglar tu casa que se está cayendo",
-        "porque otros orcos te robaron y necesitas recuperar",
-        "para comprar veneno para tus flechas",
-        "porque quieres impresionar a una orca que te gusta",
-        "para pagar deudas con orcos peligrosos",
-        "porque quieres comprar un jabalí de guerra"
-      ]
+      "trilero_not_subscribed": "¡UHHH Kronk no estar suscrito a trilero! Orco no puede robar zin permiso!"
+      
     },
     "banquero_messages": {
       "balance_title": "💰 Oro de Kronk",

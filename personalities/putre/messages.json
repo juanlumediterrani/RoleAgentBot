@@ -218,22 +218,8 @@
       "vigia_test_command": "📡 ✅ ¡el ojo de putre vio lejos y klro! vigia lito!",
       "trilero_subscribe": "🕐 ¡putre afilo las garraz para el trilero! ¡preparen sus bolsiyos umamos porke les voy a kitar los kalzones!",
       "trilero_unsubscribe": "💀 ¡putre guarda el kuxillo del trilero! ¡oy no ay sankeos pekeños!",
-      "trilero_not_subscribed": "🖕 ¡putre no esta asiendo de ladron oidia baboso! ¡guardate tus monedas!",
-      "limosna_reasons": [
-        "para komprar un acha mas grande y kortar kabezas de elfos",
-        "porke la ultima taberna no me kizo fiar la zerbesa de ongo",
-        "para pagar tributo al jefe orko o el me arranka las tripaz",
-        "porke putre pizo una trampa de ratero y okupamos komida para el lobo",
-        "para azerle un kollar nuebo de orejas umanas a mi orka preferida",
-        "porke perdi el kofre de oro apostando kon un ziklope de mierda",
-        "para komprar una kotamacha ke no uela a ogro muerto",
-        "para llenar mi kopón hecho de un kraneo enano con zangre freska",
-        "porke eztoy juntando para mi propio jabalí acorazao gigante",
-        "para aser una gran fiesta orka asando una baka entera e irnos de juerga",
-        "para pagar la fianza al gremio de ashezinos ke kiere mi kabeza",
-        "porke si no me das oro te lo voy a kitar junto kon tuz dedos",
-        "para komprar beneno de viuda negra y untarlo en mis flechas"
-      ]
+      "trilero_not_subscribed": "🖕 ¡putre no esta asiendo de ladron oidia baboso! ¡guardate tus monedas!"
+      
     },
     "banker_messages": {
       "balance_title": "💰 El Gran Kofre de Putre",

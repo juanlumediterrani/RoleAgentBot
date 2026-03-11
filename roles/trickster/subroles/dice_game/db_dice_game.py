@@ -88,7 +88,7 @@ class DatabaseRoleDiceGame:
             logger.error(f"❌ Error initializing dice game database: {e}")
             raise
     
-    def registrar_jugada(self, user_id: str, user_name: str, server_id: str, 
+    def register_game(self, user_id: str, user_name: str, server_id: str, 
                        server_name: str, bet: int, dice: str, combination: str, 
                        prize: int, pot_before: int, pot_after: int) -> bool:
         """Register a dice game play."""
@@ -122,7 +122,8 @@ class DatabaseRoleDiceGame:
                       user_id, server_id, bet,
                       user_id, server_id, prize,
                       user_id, server_id, 1 if prize > 0 else 0,
-                      prize, user_id, server_id,
+                      prize, user_id, server_id, prize,
+                      user_id, server_id,
                       datetime.now().isoformat()))
                 
                 conn.commit()
@@ -153,7 +154,7 @@ class DatabaseRoleDiceGame:
             logger.error(f"❌ Error ensuring player stats: {e}")
             return False
     
-    def obtener_configuracion_servidor(self, server_id: str) -> Dict[str, Any]:
+    def get_server_config(self, server_id: str) -> Dict[str, Any]:
         """Get server configuration."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -183,7 +184,7 @@ class DatabaseRoleDiceGame:
             logger.error(f"❌ Error getting server config: {e}")
             return {'bet_fija': 1, 'announcements_active': True}
     
-    def configurar_servidor(self, server_id: str, **kwargs) -> bool:
+    def configure_server(self, server_id: str, **kwargs) -> bool:
         """Configure server settings."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -227,7 +228,7 @@ class DatabaseRoleDiceGame:
             logger.error(f"❌ Error configuring server: {e}")
             return False
     
-    def obtener_estadisticas_jugador(self, user_id: str, server_id: str) -> Dict[str, Any]:
+    def get_player_stats(self, user_id: str, server_id: str) -> Dict[str, Any]:
         """Get player statistics."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -266,7 +267,7 @@ class DatabaseRoleDiceGame:
                 'mayor_prize': 0
             }
     
-    def obtener_ranking_jugadores(self, server_id: str, metric: str = 'total_won', limit: int = 10) -> List[Tuple]:
+    def get_player_ranking(self, server_id: str, metric: str = 'total_won', limit: int = 10) -> List[Tuple]:
         """Get player ranking."""
         valid_metrics = ['total_won', 'total_plays', 'pots_won', 'mayor_prize']
         if metric not in valid_metrics:
@@ -289,7 +290,7 @@ class DatabaseRoleDiceGame:
             logger.error(f"❌ Error getting ranking: {e}")
             return []
     
-    def obtener_historial_partidas(self, server_id: str, limit: int = 15) -> List[Tuple]:
+    def get_game_history(self, server_id: str, limit: int = 15) -> List[Tuple]:
         """Get game history."""
         try:
             with sqlite3.connect(self.db_path) as conn:

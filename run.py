@@ -9,14 +9,21 @@ import asyncio
 import json
 import os
 import re
-import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from agent_logging import get_logger
 
-# Import subrole system
-from agent_engine import get_active_subroles, execute_subrole_internal_task
+from agent_engine import (
+    _get_subrole_frequency_from_config,
+    get_active_subroles,
+    get_mc_mode,
+    should_execute_subrole_task,
+    execute_subrole_internal_task,
+    generate_daily_memory_summary,
+    generate_recent_memory_summary,
+    refresh_due_relationship_memories,
+)
 
 logger = get_logger('run')
 
@@ -41,6 +48,12 @@ def load_config() -> dict:
 # ── Subprocess launcher ───────────────────────────────────────────────────────
 
 _persistent_processes: dict = {}
+
+
+def _get_active_server_name() -> str | None:
+    if not ACTIVE_SERVER_FILE.exists():
+        return None
+    return ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip() or None
 
 async def launch_role(name: str, script_rel: str, persistent: bool = False):
     """Run the role script as a subprocess. Persistent roles are launched once and don't block."""
@@ -97,152 +110,159 @@ async def launch_role(name: str, script_rel: str, persistent: bool = False):
     except Exception as e:
         logger.error(f"[run] ❌ Error launching '{name}': {e}")
 
-# ── Subrole tasks system ─────────────────────────────────────────────────────
-
-async def execute_subrole_tasks():
-    """
-    Execute internal tasks for active subroles (beggar, ring).
-    This runs independently of the main role scheduler but only checks frequency.
-    """
+async def _run_server_bound_task(task_name: str, task_func):
     try:
-        active_subroles = get_active_subroles()
-        
-        if not active_subroles:
+        server_name = _get_active_server_name()
+        if not server_name:
             return
-        
-        # Check which tasks actually need to run based on frequency from agent_config.json
-        tasks_to_execute = []
-        for subrole_name, subrole_config in active_subroles.items():
-            # Get frequency from agent_config.json
-            frequency = _get_subrole_frequency_from_config(subrole_name)
-            
-            # Import the frequency check function
-            from agent_engine import should_execute_subrole_task
-            if should_execute_subrole_task(subrole_name, frequency):
-                tasks_to_execute.append((subrole_name, subrole_config))
-        
-        if not tasks_to_execute:
-            # Don't log anything if no tasks need to run (avoid spam)
-            return
-        
-        logger.info(f"[run] 🎭 Executing {len(tasks_to_execute)} subrole tasks: {[name for name, _ in tasks_to_execute]}")
-        
-        # Execute tasks in parallel
-        await asyncio.gather(*[
-            execute_subrole_internal_task(subrole_name, subrole_config)
-            for subrole_name, subrole_config in tasks_to_execute
-        ])
-        
+        result = await asyncio.to_thread(task_func, server_name)
+        return server_name, result
     except Exception as e:
-        logger.error(f"[run] 🎭 Error in subrole tasks: {e}")
+        logger.error(f"[run] ❌ Error running server-bound task '{task_name}': {e}")
+        return None, None
 
 
-def _get_subrole_frequency_from_config(subrole_name: str) -> int:
-    """Get subrole frequency from agent_config.json."""
-    try:
-        # Import BASE_DIR for path construction
-        import os
-        from pathlib import Path
-        
-        # Get the directory where run.py is located
-        BASE_DIR = Path(__file__).parent
-        
-        # Load agent_config.json
-        config_path = BASE_DIR / "agent_config.json"
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        
-        # Navigate to subrole frequency
-        roles_cfg = config.get("roles", {})
-        trickster_cfg = roles_cfg.get("trickster", {})
-        subroles_cfg = trickster_cfg.get("subroles", {})
-        subrole_cfg = subroles_cfg.get(subrole_name, {})
-        
-        return subrole_cfg.get("frequency_hours", 12)  # Default to 12 hours
-        
-    except Exception as e:
-        logger.warning(f"Could not get frequency for {subrole_name} from config: {e}")
-        return 12  # Default fallback
+async def execute_recent_memory_summary():
+    server_name, summary = await _run_server_bound_task("recent_memory_summary", generate_recent_memory_summary)
+    if server_name and summary:
+        logger.info(f"[run] 🧠 Recent memory summary refreshed for '{server_name}'")
 
-# ── Role scheduler ────────────────────────────────────────────────────────────
 
-async def scheduler(config: dict):
-    """
-    Main loop that launches each active role according to its interval.
-    Runs all enabled roles immediately on startup, then respects the interval.
-    Also handles subrole internal tasks.
-    """
+async def execute_daily_memory_summary():
+    server_name, summary = await _run_server_bound_task("daily_memory_summary", generate_daily_memory_summary)
+    if server_name and summary:
+        logger.info(f"[run] 🧠 Daily memory summary refreshed for '{server_name}'")
+
+
+async def execute_relationship_memory_refresh():
+    server_name, refreshed = await _run_server_bound_task("relationship_memory_refresh", refresh_due_relationship_memories)
+    if server_name and refreshed:
+        logger.info(f"[run] 🧠 Relationship memories refreshed for '{server_name}': {refreshed}")
+
+
+def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
     roles_cfg = config.get("roles", {})
-    logger.info(f"[run] 📋 Starting scheduler with {len(roles_cfg)} configured roles")
-
-    # State: next execution time per role
     next_run: dict[str, datetime] = {}
     now = datetime.now()
 
     for name, cfg in roles_cfg.items():
-        # Use only agent_config.json as single source of truth
         enabled = cfg.get("enabled", False)
         logger.info(f"[run] 🔍 Config enabled={enabled} → '{name}' {'✅' if enabled else '❌'}")
-            
-        if enabled:
-            # Special case for MC: check mode
-            if name == "mc":
-                from agent_engine import get_mc_mode
-                mc_mode = get_mc_mode()
-                logger.info(f"[run] 🎵 MC mode: '{mc_mode}'")
-                
-                if mc_mode == "integrated":
-                    logger.info(f"[run] 🎵 MC integrated mode, skipping separate launch")
-                    continue  # Don't launch as separate process
-                elif mc_mode == "standalone":
-                    logger.info(f"[run] 🎵 MC standalone mode, launching as process")
-                else:
-                    logger.info(f"[run] 🎵 MC mode '{mc_mode}' not recognized, skipping")
-                    continue
-            
-            # First execution immediately on startup
-            next_run[name] = now
-            logger.info(f"[run] 📋 Role '{name}' enabled — every {cfg['interval_hours']}h")
-        else:
+        if not enabled:
             logger.info(f"[run] 💤 Role '{name}' disabled")
+            continue
+
+        if name == "mc":
+            mc_mode = get_mc_mode()
+            logger.info(f"[run] 🎵 MC mode: '{mc_mode}'")
+            if mc_mode == "integrated":
+                logger.info("[run] 🎵 MC integrated mode, skipping separate launch")
+                continue
+            if mc_mode != "standalone":
+                logger.info(f"[run] 🎵 MC mode '{mc_mode}' not recognized, skipping")
+                continue
+            logger.info("[run] 🎵 MC standalone mode, launching as process")
+
+        next_run[name] = now
+        logger.info(f"[run] 📋 Role '{name}' enabled — every {cfg['interval_hours']}h")
+
+    return next_run
+
+
+def _get_due_role_tasks(next_run: dict[str, datetime], now: datetime) -> list[str]:
+    return [name for name, scheduled_for in next_run.items() if now >= scheduled_for]
+
+
+async def _execute_optional_role_tasks(roles_cfg: dict, next_run: dict[str, datetime], now: datetime):
+    pending_roles = _get_due_role_tasks(next_run, now)
+    if not pending_roles:
+        return
+
+    await asyncio.gather(*[
+        launch_role(
+            name,
+            roles_cfg[name]["script"],
+            persistent=roles_cfg[name].get("persistent", False),
+        )
+        for name in pending_roles
+    ])
+
+    for name in pending_roles:
+        hours = roles_cfg[name]["interval_hours"]
+        next_run[name] = datetime.now() + timedelta(hours=hours)
+        logger.info(f"[run] ⏳ '{name}' next execution: {next_run[name]:%H:%M:%S}")
+
+
+def _get_due_subrole_tasks() -> list[tuple[str, dict]]:
+    tasks_to_execute = []
+    for subrole_name, subrole_config in get_active_subroles().items():
+        frequency = _get_subrole_frequency_from_config(subrole_name)
+        if should_execute_subrole_task(subrole_name, frequency):
+            tasks_to_execute.append((subrole_name, subrole_config))
+    return tasks_to_execute
+
+
+async def _execute_optional_subrole_tasks():
+    try:
+        tasks_to_execute = _get_due_subrole_tasks()
+        if not tasks_to_execute:
+            return
+        logger.info(f"[run] 🎭 Executing {len(tasks_to_execute)} subrole tasks: {[name for name, _ in tasks_to_execute]}")
+        await asyncio.gather(*[
+            execute_subrole_internal_task(subrole_name, subrole_config)
+            for subrole_name, subrole_config in tasks_to_execute
+        ])
+    except Exception as e:
+        logger.error(f"[run] 🎭 Error in subrole tasks: {e}")
+
+
+async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dict[str, datetime]):
+    task_specs = [
+        ("recent_memory", execute_recent_memory_summary, timedelta(hours=4), "Next recent memory summary"),
+        ("daily_memory", execute_daily_memory_summary, timedelta(days=1), "Next daily memory summary"),
+        ("relationship_memory", execute_relationship_memory_refresh, timedelta(hours=1), "Next relationship memory refresh"),
+    ]
+    for task_key, task_func, interval, log_label in task_specs:
+        if now < next_non_role_run[task_key]:
+            continue
+        await task_func()
+        next_non_role_run[task_key] = datetime.now() + interval
+        logger.info(f"[run] 🧠 {log_label}: {next_non_role_run[task_key]:%Y-%m-%d %H:%M:%S}")
+
+
+async def _wait_for_active_server_publish(next_run: dict[str, datetime]):
+    if not next_run:
+        return
+    for _ in range(60):
+        if ACTIVE_SERVER_FILE.exists() and ACTIVE_SERVER_FILE.stat().st_size > 0:
+            break
+        await asyncio.sleep(1)
+
+
+# ── Role scheduler ────────────────────────────────────────────────────────────
+
+async def scheduler(config: dict):
+    roles_cfg = config.get("roles", {})
+    logger.info(f"[run] 📋 Starting scheduler with {len(roles_cfg)} configured roles")
+    next_run = _build_optional_role_schedule(config)
 
     if not next_run:
         logger.info("[run] ℹ️  No active roles. Only the main bot is running.")
 
-    # Wait for the main bot to publish the active server, so roles
-    # write to databases/<server>/... and logs/<server>/...
-    if next_run:
-        for _ in range(60):  # ~60s
-            if ACTIVE_SERVER_FILE.exists() and ACTIVE_SERVER_FILE.stat().st_size > 0:
-                break
-            await asyncio.sleep(1)
+    await _wait_for_active_server_publish(next_run)
+
+    next_non_role_run = {
+        "recent_memory": datetime.now(),
+        "daily_memory": datetime.now(),
+        "relationship_memory": datetime.now(),
+    }
 
     while True:
         now = datetime.now()
-        pending = [
-            name for name, t in next_run.items() if now >= t
-        ]
-
-        # Launch pending roles in parallel
-        if pending:
-            await asyncio.gather(*[
-                launch_role(
-                    name,
-                    roles_cfg[name]["script"],
-                    persistent=roles_cfg[name].get("persistent", False)
-                )
-                for name in pending
-            ])
-            # Reschedule after execution
-            for name in pending:
-                hours = roles_cfg[name]["interval_hours"]
-                next_run[name] = datetime.now() + timedelta(hours=hours)
-                logger.info(f"[run] ⏳ '{name}' next execution: {next_run[name]:%H:%M:%S}")
-
-        # Execute subrole tasks
-        await execute_subrole_tasks()
-
-        await asyncio.sleep(30)   # check every 30s
+        await _execute_optional_role_tasks(roles_cfg, next_run, now)
+        await _execute_optional_subrole_tasks()
+        await _execute_optional_non_role_tasks(now, next_non_role_run)
+        await asyncio.sleep(30)
 
 # ── Main Discord bot ─────────────────────────────────────────────────────────
 
@@ -276,19 +296,16 @@ async def main():
     logger.info(f"[run] 📋 Configuration loaded from: {CONFIG_FILE}")
     logger.info(f"[run] 🤖 Base directory: {BASE_DIR}")
 
-    tasks = []
-
     if platform == "discord":
-        tasks.append(discord_bot())
-        tasks.append(scheduler(config))
+        always_on_tasks = [discord_bot(), scheduler(config)]
     elif platform == "telegram":
-        # TODO: add bot_telegram() when implemented
         logger.info("[run] ℹ️  Telegram selected — main bot pending implementation")
+        always_on_tasks = []
     else:
         logger.error(f"[run] ❌ Unknown platform: {platform}")
         sys.exit(1)
 
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*always_on_tasks)
 
 if __name__ == "__main__":
     try:

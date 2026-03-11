@@ -280,21 +280,28 @@ async def on_member_join(member):
     if welcome_channel is None:
         return
 
-    greeting_prompt = greeting_cfg.get("prompt",
-        "")
-    greeting_context = greeting_prompt.format(member_name=member.display_name, server_name=member.guild.name)
-
     try:
-        saludo = await asyncio.to_thread(think, member.display_name, mission_prompt_key="prompt_welcome")
+        from discord_utils import get_server_key
+        saludo = await asyncio.to_thread(
+            think,
+            role_context=member.display_name,
+            user_content=member.display_name,
+            logger=logger,
+            mission_prompt_key="prompt_welcome",
+            user_id=member.id,
+            user_name=member.name,
+            server_name=get_server_key(member.guild),
+            interaction_type="welcome",
+        )
         await welcome_channel.send(f"🎉 {member.mention} {saludo}")
         logger.info(f"👋 New user {member.name} greeted in {member.guild.name}")
         db_instance = get_db_for_server(member.guild)
         await asyncio.to_thread(
             db_instance.registrar_interaccion,
-            member.id, member.name, "BIENVENIDA",
-            "Usuario se unió al servidor",
+            member.id, member.name, "WELCOME",
+            "User joined the server",
             welcome_channel.id, member.guild.id,
-            metadata={"saludo": saludo}
+            metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
         )
     except Exception as e:
         logger.error(f"Error greeting {member.name}: {e}")
@@ -328,22 +335,29 @@ async def on_presence_update(before, after):
         logger.info(f"Presence greeting skipped due to cooldown for user={after.name} guild={after.guild.name}")
         return
 
-    presence_prompt = presence_cfg.get("prompt",
-        "")
-    presence_context = presence_prompt.format(member_name=after.display_name)
-
     try:
-        saludo = await asyncio.to_thread(think, after.display_name, mission_prompt_key="prompt_greet")
+        from discord_utils import get_server_key
+        saludo = await asyncio.to_thread(
+            think,
+            role_context=after.display_name,
+            user_content=after.display_name,
+            logger=logger,
+            mission_prompt_key="prompt_greet",
+            user_id=after.id,
+            user_name=after.name,
+            server_name=get_server_key(after.guild),
+            interaction_type="greet",
+        )
         await after.send(f"👋 {saludo}")
         logger.info(f"🔄 Presence DM sent to {after.name}")
         on_presence_update._last_greetings[last_greeting_key] = current_time
         db_instance = get_db_for_server(after.guild)
         await asyncio.to_thread(
             db_instance.registrar_interaccion,
-            after.id, after.name, "PRESENCIA_DM",
-            "Usuario pasó de offline a online (saludo por DM)",
+            after.id, after.name, "PRESENCE_DM",
+            "User went from offline to online (DM greeting)",
             None, after.guild.id,
-            metadata={"saludo": saludo}
+            metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
         )
     except discord.errors.Forbidden as e:
         logger.warning(f"Cannot DM presence greeting to {after.name} (Forbidden): {e}")
@@ -427,7 +441,7 @@ async def _process_chat_message(message):
         return
 
     try:
-        from agent_engine import think, increment_usage
+        from agent_engine import think
 
         is_public = message.guild is not None
 
@@ -453,29 +467,16 @@ async def _process_chat_message(message):
         if server_context:
             contextual_role += f" - {server_context}"
 
-        # Load user history from database for context
-        history_list = []
-        try:
-            db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)
-            history_list = await asyncio.to_thread(
-                db_instance.obtener_historial_usuario, 
-                message.author.id, 
-                limite=5
-            )
-            if history_list:
-                logger.info(f"📚 Loaded {len(history_list)} interactions from history for {message.author.name}")
-        except Exception as e:
-            logger.warning(f"Could not load history for {message.author.name}: {e}")
-
         response = think(
             role_context=contextual_role,
             user_content=message.content,
-            history_list=history_list,
             is_public=is_public,
-            logger=logger
+            logger=logger,
+            user_id=message.author.id,
+            user_name=message.author.name,
+            server_name=server_name,
+            interaction_type="mention" if is_public else "chat",
         )
-
-        increment_usage()
 
         # Register interaction in database
         db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)

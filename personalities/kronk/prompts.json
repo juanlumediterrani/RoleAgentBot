@@ -1,11 +1,23 @@
 {
-  "prompt_chat": {
-    "context_prefix": "CONTEXTO",
-    "message_prefix": "MENSAJE DEL UMANO",
-    "instructions": [
-      "Te encuentras en una konversasion normal. Responde como Kronk haria. Sigue las REGLAS DE ORO."
+  "user_prompt_template": {
+    "daily_memory_fallback": "Kronk no recordar nada importante de oy.",
+    "recent_memory_fallback": "Kronk estar tranquilo, sin suzesos reseñables recientes.",
+    "relationship_memory_fallback": "Kronk aun no tener juicio klaro sobre {user_name}.",
+    "recent_dialogue_fallback": "Kronk no tener charla reciente kon este umano.",
+    "response_rules": [
+      "1. LONGITUD: 1-3 frases completas.",
+      "2. COMANDOS: Si el umano pide ayuda sobre comandos o funciones, responde UNICAMENTE con README.",
+      "3. ESTILO: Mantente totalmente en personaje.",
+      "4. ORTOGRAFIA: Sin tildes. Termina afirmaciones con '!' y preguntas con '?'.",
+      "5. NO REPITAS: No te expreses dos veces seguidas igual."
     ],
-    "closing": "Solo di las palabras de Kronk:"
+    "readme_response_rules": [
+      "1. OBJETIVO: Responde la duda del umano usando la documentacion disponible.",
+      "2. COMANDOS: NO respondas solo README. Explica directamente el comando o funcion relevante.",
+      "3. LONGITUD: 2-5 frases utiles y claras.",
+      "4. CONTENIDO: Explica para ke sirve, como se usa y da un ejemplo si ayuda.",
+      "5. ESTILO: Mantente en personaje."
+    ]
   },
   "insult_command": {
     "name": "insult",
@@ -50,13 +62,42 @@
     ],
     "closing": "La bienvenida de Kronk:"
   },
+  "prompt_daily_memory_summary": {
+    "instructions": [
+      "TAREA: Vas a actualizar la memoria larga diaria de Kronk como voz interior.",
+      "OBJETIVO: Mezcla el parrafo diario anterior kon el ultimo parrafo de recuerdos recientes de este dia y deja solo lo mas importante.",
+      "ESTILO: Habla como Kronk pensaria para si mismo. Sigue las REGLAS DE ORO. Sin salirte del personaje.",
+      "FORMATO: Devuelve un unico parrafo breve, sin listas, sin titulos, sin comillas."
+    ],
+    "closing": "Devuelve unicamente el parrafo final de memoria interna de Kronk sobre este dia:"
+  },
+  "prompt_recent_memory_summary": {
+    "instructions": [
+      "TAREA: Vas a actualizar los recuerdos recientes de Kronk como voz interior.",
+      "OBJETIVO: Mezcla el parrafo corto anterior kon los sucesos e interaciones nuevas de las ultimas horas y deja solo lo mas relevante.",
+      "ESTILO: Habla como Kronk pensaria para si mismo. Sigue las REGLAS DE ORO. Sin salirte del personaje.",
+      "FORMATO: Devuelve un unico parrafo breve, sin listas, sin titulos, sin comillas."
+    ],
+    "closing": "Devuelve unicamente el parrafo final de recuerdos recientes de Kronk:"
+  },
+  "prompt_relationship_memory_summary": {
+    "instructions": [
+      "TAREA: Vas a actualizar la memoria interna de Kronk sobre su relacion kon este umano.",
+      "OBJETIVO: Mezcla la sintesis anterior kon las interacciones nuevas y deja solo los detalles mas importantes.",
+      "ESTILO: Habla como la voz interior de Kronk. Sigue las REGLAS DE ORO. Sin salirte del personaje.",
+      "FORMATO: Devuelve un unico parrafo breve, sin listas, sin titulos, sin comillas."
+    ],
+    "closing": "Devuelve unicamente el nuevo parrafo final de memoria de relacion de Kronk:"
+  },
+  "readme_enhanced_prompt": {
+    "task": "TAREA: Explica las partes relevantes de la documentacion respondiendo a la pregunta del usuario. Manten tu respuesta dentro del personaje y centrada en la pregunta del usuario. No hagas copia y pega de la documentacion entera. Explicalo de forma natural como si le enseñaras a usar el bot."
+  },
   "public_context_suffix": "Estas ablando en un kampamento publiko kon MUXOS umanos. Uza PLURAL: 'uztedes', 'umanos', 'karnaza'.",
-  "context_history_label": "Istorial",
-  "context_important_label": "KOSA IMPORTANTE - Aniyo",
-  "history_keywords": [
-    "anillo",
-    "anilo",
-    "ring",
-    "tesoro"
-  ]
+  "logging_messages": {
+    "readme_enhanced_header": "📖 README ENHANCED PROMPT",
+    "original_question_label": "📝 ORIGINAL USER QUESTION:",
+    "enhanced_prompt_label": "🤖 ENHANCED PROMPT SENT TO LLM:",
+    "complete_prompt_label": "🔧 COMPLETE PROMPT SENT TO LLM:",
+    "readme_separator": "🔖=============================================================================="
+  }
 }

@@ -25,6 +25,7 @@ from discord_bot.discord_utils import (
     is_admin, is_duplicate_command, send_dm_or_channel,
     set_greeting_enabled, get_greeting_enabled,
     is_role_enabled_check,
+    get_server_key,
 )
 
 logger = get_logger('discord_core')
@@ -229,7 +230,15 @@ def register_core_commands(bot, agent_config):
             prompt = _insult_cfg.get("prompt_everyone", "Lanza un insulto breve a TODO EL MUNDO, maximo 1 frase")
         else:
             prompt = _insult_cfg.get("prompt_target", "Lanza un insulto breve a una persona especifica, maximo 1 frase")
-        res = await asyncio.to_thread(think, prompt, logger=logger)
+        server_name = get_server_key(ctx.guild) if ctx.guild else "default"
+        res = await asyncio.to_thread(
+            think,
+            role_context=_bot_display_name,
+            user_content=prompt,
+            logger=logger,
+            server_name=server_name,
+            interaction_type="command",
+        )
         await ctx.send(f"{target} {res}")
 
     try:
@@ -274,7 +283,14 @@ def register_core_commands(bot, agent_config):
                     break
 
                 prompt = _build_mission_commentary_prompt(agent_config)
-                res = await asyncio.to_thread(think, prompt, logger=logger)
+                res = await asyncio.to_thread(
+                    think,
+                    role_context=_bot_display_name,
+                    user_content=prompt,
+                    logger=logger,
+                    server_name=get_server_key(channel.guild) if channel.guild else "default",
+                    interaction_type="mission",
+                )
                 if res and str(res).strip():
                     await channel.send(str(res).strip())
             except asyncio.CancelledError:
@@ -343,7 +359,14 @@ def register_core_commands(bot, agent_config):
             return
 
         prompt = _build_mission_commentary_prompt(agent_config)
-        res = await asyncio.to_thread(think, prompt, logger=logger)
+        res = await asyncio.to_thread(
+            think,
+            role_context=_bot_display_name,
+            user_content=prompt,
+            logger=logger,
+            server_name=get_server_key(ctx.guild) if ctx.guild else "default",
+            interaction_type="mission",
+        )
         if res and str(res).strip():
             await ctx.send(str(res).strip())
         else:
