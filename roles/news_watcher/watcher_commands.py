@@ -2284,7 +2284,7 @@ class WatcherCommands:
             logger.exception(f"Error in keyword subscribe: {e}")
             await message.channel.send("❌ Error processing keyword subscription")
 
-    async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id: int):
+    async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id: int, return_result: bool = False):
         """Handle general (AI) subscription."""
         try:
             db = self._get_db()
@@ -2292,27 +2292,45 @@ class WatcherCommands:
             # Ensure the user has premises configured
             premisas, contexto = db.get_premises_with_context(user_id)
             if not premisas:
-                await message.channel.send("⚠️ You have no premises configured. Use `!watcher premises add <premise>` before subscribing.")
-                return
+                error_msg = "⚠️ You have no premises configured. Use `!watcher premises add <premise>` before subscribing."
+                if return_result:
+                    return False, error_msg
+                await message.channel.send(error_msg)
+                return None if return_result else None
             
             # Check subscription limits
             can_user_sub, user_msg = db.can_user_subscribe(user_id)
             if not can_user_sub:
-                await message.channel.send(f"❌ {user_msg}")
-                return
+                error_msg = f"❌ {user_msg}"
+                if return_result:
+                    return False, error_msg
+                await message.channel.send(error_msg)
+                return None if return_result else None
             
             # Create AI subscription
             premisas_str = ",".join(premisas) if premisas else ""
             if db.subscribe_user_category_ai(user_id, category, feed_id, premisas_str):
+                success_msg = f"🤖 **AI subscription** to '{category}' - I'll analyze critical news using your premises"
                 if feed_id:
-                    await message.channel.send(f"🤖 **AI subscription** to feed {feed_id} in '{category}' - I'll analyze critical news using your premises")
-                else:
-                    await message.channel.send(f"🤖 **AI subscription** to '{category}' - I'll analyze critical news using your premises")
+                    success_msg = f"🤖 **AI subscription** to feed {feed_id} in '{category}' - I'll analyze critical news using your premises"
+                
+                if return_result:
+                    return True, success_msg
+                await message.channel.send(success_msg)
+                return None if return_result else None
             else:
-                await message.channel.send("❌ Error creating AI subscription")
+                error_msg = "❌ Error creating AI subscription"
+                if return_result:
+                    return False, error_msg
+                await message.channel.send(error_msg)
+                return None if return_result else None
                 
         except Exception as e:
             logger.exception(f"Error in general subscribe: {e}")
-            await message.channel.send("❌ Error processing AI subscription")
+            error_msg = "❌ Error processing AI subscription"
+            if return_result:
+                return False, error_msg
+            await message.channel.send(error_msg)
+            return None if return_result else None
 
 
