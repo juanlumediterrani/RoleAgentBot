@@ -57,44 +57,7 @@
       "sent_private": "📩 Zaldo del bote enviado por mensaje privado.",
       "balance_error": "❌ Erro al obtener el zaldo del bote."
     },
-    "dice_game_combinations": {
-      "triple_ones": {
-        "dice": [1, 1, 1],
-        "prize": "bote",
-        "multiplier": 0,
-        "name": "¡¡¡TRIPLE UNOZ!!!",
-        "description": "¡Premio mazimo!"
-      },
-      "three_of_a_kind": {
-        "dice": "triple",
-        "prize": "multiplicador",
-        "multiplier": 3,
-        "name": "TRIPLEZ",
-        "description": "Tres dados iguales"
-      },
-      "straight": {
-        "dice": [4, 5, 6],
-        "prize": "multiplicador",
-        "multiplier": 5,
-        "name": "ESCALERA 4-5-6",
-        "description": "Secuencia perfecta"
-      },
-      "pair": {
-        "dice": "par",
-        "prize": "multiplicador",
-        "multiplier": 1,
-        "name": "PAR",
-        "description": "Dos dados iguales"
-      },
-      "nothing": {
-        "dice": "otro",
-        "premio": 0,
-        "multiplier": 0,
-        "name": "NAH!",
-        "description": "Zin kombinacion"
-      }
-    },
-    "mc_messages": {
+    "music_messages": {
       "voice_join_empty": "¡GRRR Kronk entrar al kanal de voz! Kronk poner música para umanos!",
       "voice_leave_empty": "¡GRRR Kronk se fue de kanal de voz! No hay umanos para eskuñar música de orko!",
       "queue_empty": "¡BRRR No hay más kansiones en lista! Kronk nesesita música para martillear!",

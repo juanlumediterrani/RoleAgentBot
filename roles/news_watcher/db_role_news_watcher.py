@@ -100,6 +100,7 @@ class DatabaseRoleNewsWatcher:
                 self._init_subscriptions_channels_table()
                 self._init_subscriptions_keywords_table()
                 self._init_method_config_table()
+                self._init_configuracion_table()
                 self.insert_default_feeds()
                 
                 logger.info(f"✅ News watcher database ready at {self.db_path}")
@@ -149,15 +150,15 @@ class DatabaseRoleNewsWatcher:
         except Exception as e:
             logger.exception(f"❌ Error creating sent_notifications table: {e}")
     
-    def _generar_title_hash(self, titulo: str) -> str:
+    def _generate_title_hash(self, title: str) -> str:
         """Generate simple hash of title to avoid duplicates."""
         import hashlib
-        return hashlib.md5(titulo.lower().strip().encode('utf-8')).hexdigest()
+        return hashlib.md5(title.lower().strip().encode('utf-8')).hexdigest()
     
-    def noticia_esta_leida(self, titulo: str) -> bool:
+    def is_news_read(self, title: str) -> bool:
         """Check if news was already read."""
         try:
-            title_hash = self._generar_title_hash(titulo)
+            title_hash = self._generate_title_hash(title)
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                     cursor = conn.cursor()
@@ -167,10 +168,10 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error checking if news was read: {e}")
             return False
     
-    def mark_news_as_read(self, titulo: str, source: str = None) -> bool:
+    def mark_news_as_read(self, title: str, source: str = None) -> bool:
         """Mark a news as read."""
         try:
-            title_hash = self._generar_title_hash(titulo)
+            title_hash = self._generate_title_hash(title)
             current_date = datetime.now().isoformat()
             
             with self._lock:
@@ -179,17 +180,17 @@ class DatabaseRoleNewsWatcher:
                     cursor.execute('''
                         INSERT OR IGNORE INTO read_news (titulo, title_hash, read_date, source)
                         VALUES (?, ?, ?, ?)
-                    ''', (titulo, title_hash, current_date, source))
+                    ''', (title, title_hash, current_date, source))
                     conn.commit()
                     return cursor.rowcount > 0
         except Exception as e:
             logger.exception(f"Error marking news as read: {e}")
             return False
     
-    def record_sent_notification(self, titulo: str, analisis: str, notification_type: str = "critical", source: str = None) -> bool:
+    def mark_notification_sent(self, title: str, notification_type: str, analysis: str, source: str = None) -> bool:
         """Record a sent notification."""
         try:
-            title_hash = self._generar_title_hash(titulo)
+            title_hash = self._generate_title_hash(title)
             current_date = datetime.now().isoformat()
             
             with self._lock:
@@ -199,7 +200,7 @@ class DatabaseRoleNewsWatcher:
                         INSERT INTO sent_notifications 
                         (titulo, title_hash, notification_type, analisis, sent_date, source)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (titulo, title_hash, notification_type, analisis, current_date, source))
+                    ''', (title, title_hash, notification_type, analysis, current_date, source))
                     conn.commit()
                     return True
         except Exception as e:
@@ -1208,7 +1209,10 @@ class DatabaseRoleNewsWatcher:
                 
                 from premises_manager import get_premises_manager
                 from agent_db import get_active_server_name
-                server_name = get_active_server_name() or "default"
+                server_name = get_active_server_name()
+                if not server_name:
+                    logger.warning("No active server configured for global premises lookup")
+                    return [], "error"
                 premises_manager = get_premises_manager(server_name)
                 return premises_manager.get_active_premises(), "globales"
             except ImportError as e:
@@ -1377,7 +1381,10 @@ class DatabaseRoleNewsWatcher:
             
             from premises_manager import get_premises_manager
             from agent_db import get_active_server_name
-            server_name = get_active_server_name() or "default"
+            server_name = get_active_server_name()
+            if not server_name:
+                logger.warning("No active server configured for global premises lookup")
+                return [], "error"
             premises_manager = get_premises_manager(server_name)
             return premises_manager.get_active_premises(), "globales"
 
@@ -1665,6 +1672,23 @@ class DatabaseRoleNewsWatcher:
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creating method_config table: {e}")
+
+    def _init_configuracion_table(self):
+        """Initialize configuration table."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS configuracion (
+                        clave TEXT PRIMARY KEY,
+                        valor TEXT NOT NULL,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_configuracion_clave ON configuracion (clave)')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creating configuracion table: {e}")
 
     def set_method_config(self, server_id: str, method_type: str) -> bool:
         """Set the method configuration for a server."""

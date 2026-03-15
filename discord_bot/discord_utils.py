@@ -53,19 +53,139 @@ def get_role_db_for_server(guild, get_db_func, available_flag):
     return get_db_func(server_key)
 
 
+def _get_behavior_db_for_guild(guild):
+    if guild is None or get_behaviors_db_instance is None:
+        return None
+    try:
+        return get_behaviors_db_instance(get_server_key(guild))
+    except Exception as e:
+        logger.warning(f"Error getting behavior DB for guild: {e}")
+        return None
+
+
 # --- PERMISSION HELPERS ---
 
 def is_admin(ctx) -> bool:
     """Check if the user is an administrator or has manage_guild."""
     if not ctx.guild:
         return False
-    perms = ctx.author.guild_permissions
+    # Handle both Context and Interaction objects
+    user = ctx.author if hasattr(ctx, 'author') else ctx.user
+    perms = user.guild_permissions
     return perms.administrator or perms.manage_guild
 
 
-def is_role_enabled_check(role_name, agent_config):
-    """Check if a role is enabled using agent_config.json as single source of truth."""
-    return agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
+def is_role_enabled_check(role_name, agent_config=None, guild=None):
+    """Check if a role is enabled using persisted server state with config fallback."""
+    default_enabled = False
+    if agent_config is not None:
+        default_enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
+    db = _get_behavior_db_for_guild(guild)
+    if db is not None:
+        try:
+            return db.get_role_enabled(role_name, default_enabled)
+        except Exception as e:
+            logger.warning(f"Error getting persisted role enabled state for {role_name}: {e}")
+    return default_enabled
+
+
+def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, updated_by: str = None):
+    """Persist role enabled state and keep the in-memory config aligned."""
+    if agent_config is not None:
+        agent_config.setdefault("roles", {}).setdefault(role_name, {})["enabled"] = enabled
+    db = _get_behavior_db_for_guild(guild)
+    if db is None:
+        return False
+    try:
+        db.set_role_enabled(role_name, enabled, updated_by)
+        return True
+    except Exception as e:
+        logger.error(f"Error persisting role enabled state for {role_name}: {e}")
+        return False
+
+
+def get_role_interval_hours(role_name: str, agent_config=None, guild=None, default_value: int = 1) -> int:
+    """Get persisted role interval with config fallback."""
+    fallback = default_value
+    if agent_config is not None:
+        fallback = agent_config.get("roles", {}).get(role_name, {}).get("interval_hours", default_value)
+    db = _get_behavior_db_for_guild(guild)
+    if db is not None:
+        try:
+            return db.get_role_interval_hours(role_name, fallback)
+        except Exception as e:
+            logger.warning(f"Error getting persisted interval for {role_name}: {e}")
+    return fallback
+
+
+def set_role_interval_hours(guild, role_name: str, hours: int, agent_config=None, updated_by: str = None):
+    """Persist role interval and keep the in-memory config aligned."""
+    if agent_config is not None:
+        agent_config.setdefault("roles", {}).setdefault(role_name, {})["interval_hours"] = hours
+    db = _get_behavior_db_for_guild(guild)
+    if db is None:
+        return False
+    try:
+        db.set_role_interval_hours(role_name, hours, updated_by)
+        return True
+    except Exception as e:
+        logger.error(f"Error persisting interval for {role_name}: {e}")
+        return False
+
+
+def get_feature_state(guild, feature_name: str, default_enabled: bool = False, default_config: dict | None = None) -> dict:
+    """Get persisted feature state with fallback defaults."""
+    db = _get_behavior_db_for_guild(guild)
+    default_config = dict(default_config or {})
+    if db is None:
+        return {"enabled": default_enabled, "config": default_config}
+    try:
+        state = db.get_feature_state(feature_name)
+        enabled = bool(state.get("enabled", default_enabled))
+        config = dict(default_config)
+        config.update(state.get("config") or {})
+        return {"enabled": enabled, "config": config}
+    except Exception as e:
+        logger.warning(f"Error getting feature state for {feature_name}: {e}")
+        return {"enabled": default_enabled, "config": default_config}
+
+
+def set_feature_state(guild, feature_name: str, enabled: bool, config: dict | None = None, updated_by: str = None):
+    """Persist feature state."""
+    db = _get_behavior_db_for_guild(guild)
+    if db is None:
+        return False
+    try:
+        db.set_feature_state(feature_name, enabled, config or {}, updated_by)
+        return True
+    except Exception as e:
+        logger.error(f"Error persisting feature state for {feature_name}: {e}")
+        return False
+
+
+def get_feature_setting(guild, feature_name: str, setting_key: str, default_value=None):
+    """Get a persisted feature setting."""
+    db = _get_behavior_db_for_guild(guild)
+    if db is None:
+        return default_value
+    try:
+        return db.get_feature_setting(feature_name, setting_key, default_value)
+    except Exception as e:
+        logger.warning(f"Error getting feature setting {feature_name}.{setting_key}: {e}")
+        return default_value
+
+
+def set_feature_setting(guild, feature_name: str, setting_key: str, value, updated_by: str = None):
+    """Persist a feature setting."""
+    db = _get_behavior_db_for_guild(guild)
+    if db is None:
+        return False
+    try:
+        db.set_feature_setting(feature_name, setting_key, value, updated_by)
+        return True
+    except Exception as e:
+        logger.error(f"Error persisting feature setting {feature_name}.{setting_key}: {e}")
+        return False
 
 
 # --- SEND HELPERS ---
@@ -172,37 +292,77 @@ def check_chat_rate_limit(user_id):
 
 # --- DYNAMIC GREETING CONFIGURATION ---
 
+try:
+    from behavior.db_behavior import get_behavior_db_instance as get_behaviors_db_instance
+except Exception:
+    get_behaviors_db_instance = None
+
 _greeting_config = {}
 
 
 def should_enable_greetings(guild) -> bool:
-    """Determine if greetings should be enabled based on server size."""
+    """Determine if greetings should be enabled, checking database first."""
     guild_id = str(guild.id)
+    
+    # Check cache first
     if guild_id in _greeting_config:
         return _greeting_config[guild_id].get('enabled', False)
-
+    
+    # Try to get from behaviors database
+    if get_behaviors_db_instance is not None:
+        try:
+            db = get_behaviors_db_instance(guild_id)
+            enabled = db.get_greetings_enabled()
+            
+            # Cache the result
+            _greeting_config[guild_id] = {
+                'enabled': enabled,
+                'auto_detected': False,
+                'manual_override': True,
+                'from_db': True
+            }
+            
+            logger.info(f"Server {guild.name}: greetings {'enabled' if enabled else 'disabled'} from behaviors database")
+            return enabled
+        except Exception as e:
+            logger.warning(f"Error loading greetings from behaviors database for {guild.name}: {e}")
+    
+    # Default to enabled - let runtime control decide
     member_count = len([m for m in guild.members if not m.bot])
-    auto_enable = member_count <= 30
+    auto_enable = True  # Enabled by default
 
     _greeting_config[guild_id] = {
         'enabled': auto_enable,
         'auto_detected': True,
-        'member_count': member_count
+        'member_count': member_count,
+        'from_db': False
     }
 
-    logger.info(f"Server {guild.name}: {member_count} members, greetings {'enabled' if auto_enable else 'disabled'} by size")
+    logger.info(f"Server {guild.name}: {member_count} members, greetings {'enabled' if auto_enable else 'disabled'} by default")
     return auto_enable
 
 
 def set_greeting_enabled(guild, enabled: bool):
-    """Manually set greeting state for a server."""
+    """Manually set greeting state for a server and persist to database."""
     guild_id = str(guild.id)
     if guild_id not in _greeting_config:
         _greeting_config[guild_id] = {}
 
+    # Update cache
     _greeting_config[guild_id]['enabled'] = enabled
     _greeting_config[guild_id]['auto_detected'] = False
     _greeting_config[guild_id]['manual_override'] = True
+
+    # Save to behaviors database
+    if get_behaviors_db_instance is not None:
+        try:
+            db = get_behaviors_db_instance(guild_id)
+            db.set_greetings_enabled(enabled, "admin_command")
+            logger.info(f"Greetings {'enabled' if enabled else 'disabled'} and saved to behaviors database for {guild.name}")
+        except Exception as e:
+            logger.error(f"Failed to save greetings state to behaviors database for {guild.name}: {e}")
+    else:
+        logger.warning(f"Behaviors database not available, greetings state not persisted for {guild.name}")
 
     logger.info(f"Greetings {'enabled' if enabled else 'disabled'} manually in {guild.name}")
 

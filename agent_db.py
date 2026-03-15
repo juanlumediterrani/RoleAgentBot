@@ -40,6 +40,21 @@ def persist_active_server_name(server_name: str) -> None:
     except Exception:
         pass
 
+
+def get_data_dir() -> Path:
+    """Return the shared data directory used by runtime databases."""
+    DB_DIR.mkdir(parents=True, exist_ok=True)
+    return DB_DIR
+
+
+def get_shared_data_path(file_name: str, subdir: str = None) -> Path:
+    """Return a path inside the shared runtime data directory."""
+    base_dir = get_data_dir()
+    if subdir:
+        base_dir = base_dir / subdir
+        base_dir.mkdir(parents=True, exist_ok=True)
+    return base_dir / file_name
+
 # --- UTILITIES FOR SERVER-SPECIFIC DATABASE MANAGEMENT ---
 
 def get_server_db_path(server_name: str, db_name: str = None) -> Path:
@@ -292,6 +307,20 @@ class AgentDatabase:
                         PRIMARY KEY (usuario_id, server_name)
                     )
                 ''')
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS notable_memories (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        server_name TEXT NOT NULL,
+                        memory_date TEXT NOT NULL,
+                        memory_text TEXT NOT NULL,
+                        source_paragraph TEXT,
+                        extracted_at DATETIME NOT NULL,
+                        used_count INTEGER DEFAULT 0,
+                        last_used_at DATETIME
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_memories_server ON notable_memories (server_name)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_memories_date ON notable_memories (memory_date)')
                 conn.commit()
                 logger.info(f"✅ Database ready at {self.db_path}")
         except Exception as e:
@@ -1009,6 +1038,122 @@ class AgentDatabase:
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error verificando interacciones recientes: {e}")
             return False
+
+    def add_notable_memory(self, memory_text: str, memory_date: str = None, source_paragraph: str = None) -> int:
+        """Add a new notable memory extracted from daily synthesis."""
+        target_date = memory_date or date.today().isoformat()
+        extracted_at = datetime.datetime.now().isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO notable_memories
+                    (server_name, memory_date, memory_text, source_paragraph, extracted_at)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (self.server_name, target_date, memory_text, source_paragraph, extracted_at))
+                memory_id = cursor.lastrowid
+                conn.commit()
+                conn.close()
+                logger.info(f"🧠 [MEMORY] Added notable memory id={memory_id} for server={self.server_name}")
+                return memory_id
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error adding notable memory: {e}")
+            return 0
+
+    def get_random_notable_memory(self) -> dict | None:
+        """Get a random notable memory for injection into synthesis."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, memory_text, memory_date, used_count
+                    FROM notable_memories
+                    WHERE server_name = ?
+                    ORDER BY RANDOM()
+                    LIMIT 1
+                ''', (self.server_name,))
+                row = cursor.fetchone()
+                conn.close()
+                if row:
+                    return {
+                        "id": row["id"],
+                        "memory_text": row["memory_text"],
+                        "memory_date": row["memory_date"],
+                        "used_count": row["used_count"],
+                    }
+                return None
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving random notable memory: {e}")
+            return None
+
+    def increment_memory_usage(self, memory_id: int) -> bool:
+        """Increment the usage counter for a memory when it's injected."""
+        used_at = datetime.datetime.now().isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE notable_memories
+                    SET used_count = used_count + 1,
+                        last_used_at = ?
+                    WHERE id = ? AND server_name = ?
+                ''', (used_at, memory_id, self.server_name))
+                conn.commit()
+                updated = cursor.rowcount > 0
+                conn.close()
+                return updated
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error incrementing memory usage: {e}")
+            return False
+
+    def count_notable_memories(self) -> int:
+        """Count total notable memories for this server."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT COUNT(*) FROM notable_memories
+                    WHERE server_name = ?
+                ''', (self.server_name,))
+                count = cursor.fetchone()[0]
+                conn.close()
+                return count
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error counting notable memories: {e}")
+            return 0
+
+    def get_notable_memories_for_date(self, memory_date: str = None) -> list:
+        """Get all notable memories extracted on a specific date."""
+        target_date = memory_date or date.today().isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, memory_text, source_paragraph, extracted_at
+                    FROM notable_memories
+                    WHERE server_name = ? AND memory_date = ?
+                ''', (self.server_name, target_date))
+                rows = cursor.fetchall()
+                conn.close()
+                return [
+                    {
+                        "id": row["id"],
+                        "memory_text": row["memory_text"],
+                        "source_paragraph": row["source_paragraph"],
+                        "extracted_at": row["extracted_at"],
+                    }
+                    for row in rows
+                ]
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving notable memories for date: {e}")
+            return []
     
     def get_active_servers(self) -> list:
         """Get list of all active servers."""

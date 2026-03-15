@@ -4,30 +4,34 @@ from agent_logging import get_logger
 
 logger = get_logger('dice_game_messages')
 
+
 def get_dice_game_messages():
     """Load custom Dice Game messages from personality file."""
     try:
-        # Use the centralized personality loading function
-        from agent_engine import PERSONALIDAD
-        
-        # Get specific dice game messages (dice_game_messages for dice game)
-        dice_game_messages = PERSONALIDAD.get("discord", {}).get("dice_game_messages", {})
-        dice_game_balance_messages = PERSONALIDAD.get("discord", {}).get("dice_game_balance_messages", {})
-        dice_game_combinations = PERSONALIDAD.get("discord", {}).get("dice_game_combinations", {})
-        
-        # Merge dice_game_messages and dice_game_balance_messages
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+        config_path = os.path.join(project_root, "agent_config.json")
+        with open(config_path, encoding="utf-8") as f:
+            agent_cfg = json.load(f)
+        personality_rel = agent_cfg.get("personality", "")
+        answers_path = os.path.join(project_root, os.path.dirname(personality_rel), "answers.json")
+        with open(answers_path, encoding="utf-8") as f:
+            answers_cfg = json.load(f).get("discord", {})
+
+        dice_game_messages = answers_cfg.get("dice_game_messages", {})
+        dice_game_balance_messages = answers_cfg.get("dice_game_balance_messages", {})
         dice_game_messages = {**dice_game_messages, **dice_game_balance_messages}
-        
+
         if not dice_game_messages:
             logger.warning("⚠️ No custom dice game messages found in personality")
             return get_default_messages()
-        
+
         logger.info("🎲 Custom dice game messages loaded from personality")
         return dice_game_messages
-        
+
     except Exception as e:
         logger.error(f"❌ Error loading dice game messages: {e}")
         return get_default_messages()
+
 
 def get_default_messages():
     """Default messages if no customization available."""
@@ -98,22 +102,21 @@ def get_default_messages():
         "help_triple_ones": "• **1-1-1** - Wins the entire pot! 🎰\n",
         "help_three_of_a_kind": "• **Three of a kind** - 3x bet\n",
         "help_straight": "• **4-5-6** - 5x bet\n",
-        "help_par": "• **Pair** - 2x bet\n",
+        "help_par": "• **Pair** - 1x bet\n",
         "help_info_adicional": "**Additional Info:**\n",
         "help_info_parcial": "• Partial prizes are paid by the bank\n",
         "help_info_bote": "• 1-1-1 empties the entire accumulated pot!\n"
     }
 
+
 def get_message(key, **kwargs):
     """Get a custom message with variable formatting."""
     messages = get_dice_game_messages()
     message = messages.get(key)
-    
-    # If personality doesn't have the message, use English fallback
+
     if message is None:
         message = get_english_fallback(key)
-    
-    # Replace variables in message
+
     try:
         return message.format(**kwargs)
     except KeyError as e:
@@ -122,6 +125,7 @@ def get_message(key, **kwargs):
     except Exception as e:
         logger.error(f"❌ Error formatting message '{key}': {e}")
         return message
+
 
 def get_english_fallback(key):
     """Get English fallback message for when personality doesn't have custom message."""
@@ -141,7 +145,6 @@ def get_english_fallback(key):
         "prize_title": "💰 **PRIZE:**",
         "current_pot_title": "💎 **CURRENT POT:**",
         "anuncio_bote_grande": "🤑 **MASSIVE POT ALERT!** 🤑 The pot is burning with **{balance:,} gold coins**! Use `!dice play` to win it! 🎲",
-        # Balance messages
         "title": "💰 **THE POT - {servidor}** 💰\n",
         "current_balance": "🎲 **Gold accumulated:** {saldo:,} coins!\n",
         "fixed_bet": "💎 **Price to roll:** {apuesta:,} coins!\n",
@@ -202,10 +205,10 @@ def get_english_fallback(key):
         "help_triple_ones": "• **1-1-1** - Wins the entire pot! 🎰\n",
         "help_three_of_a_kind": "• **Three of a kind** - 3x bet\n",
         "help_straight": "• **4-5-6** - 5x bet\n",
-        "help_par": "• **Pair** - 2x bet\n",
+        "help_par": "• **Pair** - 1x bet\n",
         "help_info_adicional": "**Additional Info:**\n",
         "help_info_parcial": "• Partial prizes are paid by the bank\n",
         "help_info_bote": "• 1-1-1 empties the entire accumulated pot!\n"
     }
-    
+
     return fallbacks.get(key, f"❌ Message not found: {key}")

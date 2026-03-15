@@ -20,6 +20,7 @@ except Exception:
     logger = logging.getLogger('poe2_subrole_manager')
 
 from .poe2scout_client import Poe2ScoutClient
+from agent_db import get_data_dir
 
 
 class POE2SubroleManager:
@@ -33,9 +34,9 @@ class POE2SubroleManager:
         self._user_preferences = {}  # {user_id: {league: str, objectives: []}} - User preferences
         self._lock = threading.Lock()
         
-        # Ensure databases directory exists
-        self.databases_dir = Path("databases")
-        self.databases_dir.mkdir(exist_ok=True)
+        # Ensure shared market data directory exists
+        self.databases_dir = get_data_dir() / "shared_poe2"
+        self.databases_dir.mkdir(parents=True, exist_ok=True)
         
         # Default objectives for each league
         self._default_objectives = {

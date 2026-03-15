@@ -51,44 +51,7 @@
       "sent_private": "📩 ¡Agumon te mandó el estado del premio por privado!",
       "balance_error": "❌ ¡Ouch, mis ojos de reptil no pueden ver la pantalla! Hay un error."
     },
-    "dice_game_combinations": {
-      "triple_ones": {
-        "dice": [1, 1, 1],
-        "prize": "bote",
-        "multiplier": 0,
-        "name": "¡¡¡TRES EMBLEMAS DEL VALOR!!!",
-        "description": "¡Te llevas todo el cofre, eres increíble!"
-      },
-      "three_of_a_kind": {
-        "dice": "triple",
-        "prize": "multiplicador",
-        "multiplier": 3,
-        "name": "TRES DIGIVICES",
-        "description": "¡Tres figuras iguales, muy bien!"
-      },
-      "straight": {
-        "dice": [4, 5, 6],
-        "prize": "multiplicador",
-        "multiplier": 5,
-        "name": "EVOLUCIÓN COMPLETA",
-        "description": "¡Sucesión perfecta, como digievolucionar a Mega!"
-      },
-      "pair": {
-        "dice": "par",
-        "prize": "multiplicador",
-        "multiplier": 1,
-        "name": "DOS KOROMON",
-        "description": "¡Dos figuras iguales, al menos recuperas energía!"
-      },
-      "nothing": {
-        "dice": "otro",
-        "prize": 0,
-        "multiplier": 0,
-        "name": "¡FALLO DE CONEXIÓN!",
-        "description": "¡No ganaste nada esta vez, sigue intentándolo!"
-      }
-    },
-    "mc_messages": {
+    "music_messages": {
       "voice_join_empty": "¡Holaaa! Agumon ya está en el canal de voz. ¡Vamos a poner buena música!",
       "voice_leave_empty": "¡Qué aburrido, me quedé solito! Me voy a buscar comida.",
       "queue_empty": "¡La música se detuvo! Pon otra canción o me quedaré dormido.",

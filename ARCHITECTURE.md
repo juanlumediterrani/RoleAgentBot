@@ -115,7 +115,7 @@ def register_banker_commands(bot, personality, agent_config):
 }
 ```
 
-**messages.json** - User-facing messages:
+**answers.json / descriptions.json** - User-facing responses and descriptions:
 ```json
 {
   "discord": {
@@ -166,11 +166,13 @@ RoleAgentBot/
 │   ├── putre/                  # Personality: Putre (Spanish)
 │   │   ├── personality.json    # Core personality settings
 │   │   ├── prompts.json        # System prompts & roles
-│   │   └── messages.json       # Discord messages
+│   │   ├── answers.json        # Discord answers and operational messages
+│   │   └── descriptions.json   # Canvas and UI descriptions
 │   └── kronk/                  # Personality: Kronk (Spanish)
 │       ├── personality.json    # Core personality settings
 │       ├── prompts.json        # System prompts & roles
-│       └── messages.json       # Discord messages
+│       ├── answers.json        # Discord answers and operational messages
+│       └── descriptions.json   # Canvas and UI descriptions
 │
 └── roles/
     ├── __init__.py
@@ -252,6 +254,15 @@ All major refactoring tasks have been completed:
 - **Per-Server Databases**: Isolated data per Discord server
 - **Rate Limiting & Security**: Proper bot security measures implemented
 - **Comprehensive Logging**: Structured logging with server-specific files
+- **Robust UI Interaction Handling**: Canvas UI components gracefully handle Discord interaction errors
+
+### 🔧 **Recent Fixes (2026-03-15)**
+- **Discord UI Error Handling**: Fixed interaction failures in Canvas UI components
+  - Added comprehensive exception handling for `interaction.response.edit_message()`
+  - Handles `InteractionResponded`, `NotFound`, and other Discord exceptions
+  - Provides fallback to `interaction.followup` when primary interaction fails
+  - Applied to all Canvas role handlers: news_watcher, trickster, treasure_hunter, MC
+  - Users now see helpful error messages instead of raw exceptions
 
 
 

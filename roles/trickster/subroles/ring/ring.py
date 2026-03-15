@@ -18,14 +18,23 @@ MISSION_CONFIG = {
 
 # Load personality messages
 try:
-    from agent_engine import PERSONALIDAD
-    RING_MESSAGES = PERSONALIDAD.get("discord", {}).get("role_messages", {}).get("ring_accusations", [
+    import json
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    config_path = os.path.join(project_root, "agent_config.json")
+    with open(config_path, encoding="utf-8") as f:
+        agent_cfg = json.load(f)
+    personality_rel = agent_cfg.get("personality", "")
+    answers_path = os.path.join(project_root, os.path.dirname(personality_rel), "answers.json")
+    with open(answers_path, encoding="utf-8") as f:
+        answers_cfg = json.load(f).get("discord", {})
+    RING_MESSAGES = answers_cfg.get("role_messages", {}).get("ring_accusations", [
         "¡Tienes mi anillo! ¡Dámelo ahora!",
         "¿Dónde está mi anillo? ¡Sé que lo tienes!",
         "Devuélveme mi anillo o te cortaré las manos",
         "Ese anillo que ves... ¡es mío! ¡Devuélvemelo!"
     ])
-except ImportError:
+except Exception:
     RING_MESSAGES = [
         "¡Tienes mi anillo! ¡Dámelo ahora!",
         "¿Dónde está mi anillo? ¡Sé que lo tienes!",

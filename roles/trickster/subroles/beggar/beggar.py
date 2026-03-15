@@ -18,14 +18,23 @@ MISSION_CONFIG = {
 
 # Load personality messages
 try:
-    from agent_engine import PERSONALIDAD
-    BEGGAR_MESSAGES = PERSONALIDAD.get("discord", {}).get("role_messages", {}).get("limosna_reasons", [
+    import json
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    config_path = os.path.join(project_root, "agent_config.json")
+    with open(config_path, encoding="utf-8") as f:
+        agent_cfg = json.load(f)
+    personality_rel = agent_cfg.get("personality", "")
+    answers_path = os.path.join(project_root, os.path.dirname(personality_rel), "answers.json")
+    with open(answers_path, encoding="utf-8") as f:
+        answers_cfg = json.load(f).get("discord", {})
+    BEGGAR_MESSAGES = answers_cfg.get("role_messages", {}).get("limosna_reasons", [
         "para traer a tu familia orca contigo",
         "para comprar armas nuevas y hacer la guerra", 
         "para pagar tributo al jefe orco y que no te mate",
         "porque tienes hambre y no quieres comer carne humana otra vez"
     ])
-except ImportError:
+except Exception:
     BEGGAR_MESSAGES = [
         "para traer a tu familia contigo",
         "para comprar armas nuevas",

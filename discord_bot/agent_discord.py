@@ -23,13 +23,27 @@ from discord_bot.discord_utils import (
     get_db_for_server,
     get_greeting_enabled, check_chat_rate_limit,
     set_is_connected, is_role_enabled_check,
+    get_server_key,
 )
 
 logger = get_logger('discord')
 
 # --- CONFIGURATION ---
 
-_discord_cfg = PERSONALIDAD.get("discord", {})
+def _load_personality_answers() -> dict:
+    try:
+        personality_rel = AGENT_CFG.get("personality", "")
+        personality_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), personality_rel)
+        answers_path = os.path.join(os.path.dirname(personality_path), "answers.json")
+        if os.path.exists(answers_path):
+            with open(answers_path, encoding="utf-8") as f:
+                return json.load(f).get("discord", {})
+    except Exception as e:
+        logger.warning(f"Could not load personality answers.json: {e}")
+    return {}
+
+
+_discord_cfg = _load_personality_answers()
 _cmd_prefix = _discord_cfg.get("command_prefix", "!")
 _bot_display_name = PERSONALIDAD.get("bot_display_name", PERSONALIDAD.get("name", "Bot"))
 _personality_name = PERSONALIDAD.get("name", "bot").lower()
@@ -140,7 +154,7 @@ async def set_mc_presence_if_enabled():
     """Set bot presence status if MC role is active."""
     try:
         if is_role_enabled_check("mc", agent_config):
-            mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+            mc_cfg = _discord_cfg.get("mc_messages", {})
             presence_message = mc_cfg.get("presence_status", "🎵 ¡MC disponible! Usa !mc play")
             await bot.change_presence(
                 activity=discord.Activity(type=discord.ActivityType.listening, name=presence_message)
@@ -247,7 +261,7 @@ async def on_guild_join(guild):
     if is_role_enabled_check("mc", agent_config):
         for channel in guild.text_channels:
             if channel.permissions_for(guild.me).send_messages:
-                mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
+                mc_cfg = _discord_cfg.get("mc_messages", {})
                 msg = mc_cfg.get("welcome_message",
                     "🎵 **¡MC ha llegado!** 🎵\n"
                     "• `!mc play <canción>` - Reproduce música\n"
@@ -260,120 +274,15 @@ async def on_guild_join(guild):
 @bot.event
 async def on_member_join(member):
     """Runs when a new user joins the server."""
-    if member.bot:
-        return
-    if not get_greeting_enabled(member.guild):
-        return
-
-    greeting_cfg = _discord_cfg.get("member_greeting", {})
-    if not greeting_cfg.get("enabled", True):
-        return
-
-    welcome_channel_name = greeting_cfg.get("welcome_channel", "general")
-    welcome_channel = None
-    for channel in member.guild.text_channels:
-        if channel.name.lower() == welcome_channel_name.lower():
-            welcome_channel = channel
-            break
-    if welcome_channel is None and member.guild.text_channels:
-        welcome_channel = member.guild.text_channels[0]
-    if welcome_channel is None:
-        return
-
-    try:
-        from discord_utils import get_server_key
-        saludo = await asyncio.to_thread(
-            think,
-            role_context=member.display_name,
-            user_content=member.display_name,
-            logger=logger,
-            mission_prompt_key="prompt_welcome",
-            user_id=member.id,
-            user_name=member.name,
-            server_name=get_server_key(member.guild),
-            interaction_type="welcome",
-        )
-        await welcome_channel.send(f"🎉 {member.mention} {saludo}")
-        logger.info(f"👋 New user {member.name} greeted in {member.guild.name}")
-        db_instance = get_db_for_server(member.guild)
-        await asyncio.to_thread(
-            db_instance.registrar_interaccion,
-            member.id, member.name, "WELCOME",
-            "User joined the server",
-            welcome_channel.id, member.guild.id,
-            metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
-        )
-    except Exception as e:
-        logger.error(f"Error greeting {member.name}: {e}")
-        fallback_msg = greeting_cfg.get("fallback", "¡Bienvenido al servidor!")
-        await welcome_channel.send(f"🎉 {member.mention} {fallback_msg}")
+    from behavior.welcome import handle_member_join
+    await handle_member_join(member, _discord_cfg)
 
 
 @bot.event
 async def on_presence_update(before, after):
     """Runs when a member goes from offline to online."""
-    if after.bot:
-        return
-    if not get_greeting_enabled(after.guild):
-        return
-
-    presence_cfg = _discord_cfg.get("member_presence", {})
-    if not presence_cfg.get("enabled", False):
-        logger.info(f"Presence greetings disabled by config for guild={after.guild.name}")
-        return
-
-    before_status = before.status if before.status else discord.Status.offline
-    after_status = after.status if after.status else discord.Status.offline
-    if before_status != discord.Status.offline or after_status != discord.Status.online:
-        return
-
-    current_time = time.time()
-    last_greeting_key = f"presence_greeting_{after.id}"
-    if not hasattr(on_presence_update, '_last_greetings'):
-        on_presence_update._last_greetings = {}
-    if current_time - on_presence_update._last_greetings.get(last_greeting_key, 0) < 300:
-        logger.info(f"Presence greeting skipped due to cooldown for user={after.name} guild={after.guild.name}")
-        return
-
-    try:
-        from discord_utils import get_server_key
-        saludo = await asyncio.to_thread(
-            think,
-            role_context=after.display_name,
-            user_content=after.display_name,
-            logger=logger,
-            mission_prompt_key="prompt_greet",
-            user_id=after.id,
-            user_name=after.name,
-            server_name=get_server_key(after.guild),
-            interaction_type="greet",
-        )
-        await after.send(f"👋 {saludo}")
-        logger.info(f"🔄 Presence DM sent to {after.name}")
-        on_presence_update._last_greetings[last_greeting_key] = current_time
-        db_instance = get_db_for_server(after.guild)
-        await asyncio.to_thread(
-            db_instance.registrar_interaccion,
-            after.id, after.name, "PRESENCE_DM",
-            "User went from offline to online (DM greeting)",
-            None, after.guild.id,
-            metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
-        )
-    except discord.errors.Forbidden as e:
-        logger.warning(f"Cannot DM presence greeting to {after.name} (Forbidden): {e}")
-        fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
-        try:
-            await after.send(f"👋 {fallback_msg}")
-        except Exception:
-            pass
-
-    except Exception as e:
-        logger.error(f"Error greeting presence of {after.name}: {e}")
-        fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
-        try:
-            await after.send(f"👋 {fallback_msg}")
-        except Exception:
-            pass
+    from behavior.greet import handle_presence_update
+    await handle_presence_update(before, after, _discord_cfg, _bot_display_name)
 
 
 @bot.event
@@ -392,15 +301,31 @@ async def on_voice_state_update(member, before, after):
                 if len(current_users) == 0:
                     guild = vc.guild
                     await vc.disconnect()
+                    
+                    # Try to get MC instance to send message through callback system
                     try:
-                        mc_cfg = PERSONALIDAD.get("discord", {}).get("mc_messages", {})
-                        msg = mc_cfg.get("voice_leave_empty", "👋 Canal vacío, me voy!")
-                        canal = next(
-                            (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages),
-                            None
-                        )
-                        if canal:
-                            await canal.send(msg)
+                        from roles.mc.mc_discord import get_mc_commands_instance
+                        mc_commands = get_mc_commands_instance()
+                        if mc_commands:
+                            # Use MC message system to support Canvas callbacks
+                            mc_cfg = _discord_cfg.get("mc_messages", {})
+                            msg = mc_cfg.get("voice_leave_empty", "👋 Canal vacío, me voy!")
+                            canal = next(
+                                (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages),
+                                None
+                            )
+                            if canal:
+                                await mc_commands._send_message(canal, msg)
+                        else:
+                            # Fallback to direct message if MC instance not available
+                            mc_cfg = _discord_cfg.get("mc_messages", {})
+                            msg = mc_cfg.get("voice_leave_empty", "👋 Canal vacío, me voy!")
+                            canal = next(
+                                (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages),
+                                None
+                            )
+                            if canal:
+                                await canal.send(msg)
                     except Exception:
                         pass
 
@@ -429,6 +354,43 @@ async def on_message(message):
         await bot.process_commands(message)
         return
 
+    if message.guild is not None:
+        try:
+            from discord_bot.discord_core_commands import is_taboo_triggered
+            taboo_hit, taboo_keyword = is_taboo_triggered(int(message.guild.id), message.content)
+            if taboo_hit:
+                server_name = get_server_key(message.guild)
+                
+                # Get taboo response from prompts.json
+                taboo_prompt_cfg = (PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {}) or {}).get("taboo", {})
+                taboo_response_msg = taboo_prompt_cfg.get("response", "ADVERTENCIA DE TABOO: Cuidado umano, esa palabra no es apropiada para este kampamento!")
+                
+                # Build the complete taboo prompt following the standard structure
+                taboo_user_message = f"TABOO DETECTION: The user {message.author.display_name} said the forbidden keyword '{taboo_keyword}'. Respond in character, briefly, and call it out."
+                
+                # Use the same think function as normal chat to get full memory context
+                taboo_response = await asyncio.to_thread(
+                    think,
+                    role_context=f"{_bot_display_name} - taboo",
+                    user_content=taboo_user_message,
+                    is_public=True,
+                    logger=logger,
+                    user_id=message.author.id,
+                    user_name=message.author.name,
+                    server_name=server_name,
+                    interaction_type="taboo",
+                )
+                
+                # If LLM response is good, use it, otherwise fallback to prompts.json response
+                if taboo_response and str(taboo_response).strip():
+                    await message.channel.send(str(taboo_response).strip())
+                else:
+                    # Fallback to direct response from prompts.json
+                    await message.channel.send(taboo_response_msg)
+                return
+        except Exception as e:
+            logger.exception(f"Error processing taboo trigger: {e}")
+
     # Only process if DM or direct mention
     if message.guild is None or bot.user.mentioned_in(message):
         await _process_chat_message(message)
@@ -446,7 +408,7 @@ async def _process_chat_message(message):
         is_public = message.guild is not None
 
         server_context = ""
-        server_name = "default"
+        server_name = None
         if message.guild:
             from discord_utils import get_server_key
             server_name = get_server_key(message.guild)

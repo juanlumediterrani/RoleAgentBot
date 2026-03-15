@@ -611,7 +611,8 @@ El RoleAgentBot tiene los siguientes roles, cada uno con sus propios tipos de me
 mkdir personalities/mi_personaje
 cp personalities/putre/personality.json personalities/mi_personaje/
 cp personalities/putre/prompts.json personalities/mi_personaje/
-cp personalities/putre/messages.json personalities/mi_personaje/
+cp personalities/putre/answers.json personalities/mi_personaje/
+cp personalities/putre/descriptions.json personalities/mi_personaje/
 
 # Opción B: Usar estructura legacy (solo para compatibilidad)
 # Nota: kronk.json ahora también usa estructura split

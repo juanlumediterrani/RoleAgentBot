@@ -234,7 +234,7 @@ async def cmd_dice_balance(ctx, personality):
             pass
         pot_balance = db_banker.get_balance("dice_game_pot", str(ctx.guild.id))
         config = db_dice_game.get_server_config(str(ctx.guild.id))
-        fixed_bet = config.get("apuesta_fija", 1)
+        fixed_bet = config.get("bet_fija", config.get("apuesta_fija", 1))
 
         # Use dice_game_balance_messages from personality
         balance_msg = get_message("title", servidor=ctx.guild.name.upper())
@@ -395,7 +395,7 @@ async def cmd_dice_config(ctx, personality):
                 if amount < 1 or amount > 1000:
                     await ctx.send("❌ The bet must be between 1 and 1000 coins.")
                     return
-                if db_dice_game.configure_server(str(ctx.guild.id), apuesta_fija=amount):
+                if db_dice_game.configure_server(str(ctx.guild.id), bet_fija=amount):
                     await ctx.send(f"✅ **Fixed bet configured** - All games will now cost {amount:,} coins.")
                     logger.info(f"🎲 {ctx.author.name} configured bet to {amount} in {ctx.guild.name}")
                 else:
@@ -412,7 +412,7 @@ async def cmd_dice_config(ctx, personality):
                 await ctx.send("❌ Use 'on' or 'off'. Example: `!dice config announcements on`.")
                 return
             announcements_enabled = state == "on"
-            if db_dice_game.configure_server(str(ctx.guild.id), anuncios_activos=announcements_enabled):
+            if db_dice_game.configure_server(str(ctx.guild.id), announcements_active=announcements_enabled):
                 state_msg = "enabled" if announcements_enabled else "disabled"
                 await ctx.send(f"✅ **Announcements {state_msg}** - Dice game auto announcements have been {state_msg}.")
                 logger.info(f"🎲 {ctx.author.name} {state_msg} announcements in {ctx.guild.name}")

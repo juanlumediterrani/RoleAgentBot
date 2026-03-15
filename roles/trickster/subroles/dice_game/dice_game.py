@@ -188,7 +188,7 @@ def procesar_jugada(usuario_id: str, usuario_nombre: str, servidor_id: str,
         
         if db_game:
             config = db_game.get_server_config(servidor_id)
-            fixed_bet = config.get('apuesta_fija', 1)
+            fixed_bet = config.get('bet_fija', config.get('apuesta_fija', 1))
         else:
             fixed_bet = 1
         

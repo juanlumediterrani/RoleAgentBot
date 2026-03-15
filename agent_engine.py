@@ -74,10 +74,9 @@ def _cargar_personalidad() -> dict:
     personality_path = os.path.join(_BASE_DIR, personality_rel)
     
     # Check if personality is a directory (new split structure)
-    personality_dir = os.path.dirname(personality_path)  # Get directory containing the personality file
+    personality_dir = os.path.dirname(personality_path)
     if os.path.exists(os.path.join(personality_dir, 'personality.json')) and \
-       os.path.exists(os.path.join(personality_dir, 'prompts.json')) and \
-       os.path.exists(os.path.join(personality_dir, 'messages.json')):
+       os.path.exists(os.path.join(personality_dir, 'prompts.json')):
         # Load split files
         merged_personality = {}
         
@@ -92,21 +91,6 @@ def _cargar_personalidad() -> dict:
         if os.path.exists(prompts_file):
             with open(prompts_file, encoding="utf-8") as f:
                 merged_personality.update(json.load(f))
-        
-        # Load messages.json
-        messages_file = os.path.join(personality_dir, 'messages.json')
-        if os.path.exists(messages_file):
-            with open(messages_file, encoding="utf-8") as f:
-                messages_data = json.load(f)
-                # Merge messages with existing structure
-                for key, value in messages_data.items():
-                    if key in merged_personality:
-                        if isinstance(merged_personality[key], dict) and isinstance(value, dict):
-                            merged_personality[key].update(value)
-                        else:
-                            merged_personality[key] = value
-                    else:
-                        merged_personality[key] = value
         
         return merged_personality
     else:

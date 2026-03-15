@@ -319,10 +319,40 @@ class DatabaseRoleBanker:
         except Exception as e:
             logger.exception(f"Error updating balance: {e}")
             return False
-        except Exception as e:
-            logger.exception(f"Error estableciendo TAE: {e}")
-            return False
     
+    def configurar_tae(self, server_id: str, server_name: str, daily_rate: int, admin_id: str) -> bool:
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('SELECT opening_bonus, last_distribution FROM config WHERE server_id = ?', (server_id,))
+                    current = cursor.fetchone()
+                    opening_bonus = current[0] if current else 10
+                    last_distribution = current[1] if current else None
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO config
+                        (server_id, daily_rate, opening_bonus, last_distribution, updated_date)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (server_id, daily_rate, opening_bonus, last_distribution, datetime.now().isoformat()))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.exception(f"Error configuring TAE: {e}")
+            return False
+
+    def configurar_bono(self, server_id: str, server_name: str, opening_bonus: int, admin_id: str) -> bool:
+        try:
+            return self.establecer_opening_bonus(server_id, opening_bonus, admin_id, admin_id)
+        except Exception as e:
+            logger.exception(f"Error configuring opening bonus: {e}")
+            return False
+
+    def obtener_bono(self, server_id: str) -> int:
+        return self.obtener_opening_bonus(server_id)
+
+    def obtener_ultima_distribucion(self, server_id: str) -> str:
+        return self.obtener_last_distribution(server_id)
+
     def establecer_opening_bonus(self, server_id: str, opening_bonus: int,
                                 admin_id: str, admin_name: str) -> bool:
         """Establece el bono de apertura del servidor."""

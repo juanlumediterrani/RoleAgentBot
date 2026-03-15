@@ -45,7 +45,13 @@ def _get_daily_summary_task_lines() -> list[str]:
     return [
         "TASK: Update the long daily memory paragraph as the character's inner voice.",
         "OBJECTIVE: Merge the previous daily memory with the latest recent-memory paragraph from this day.",
-        "FORMAT: Return only one short paragraph, with no headings, no lists, and no quotes.",
+        "NOTABLE MEMORY: Read the 'NOTABLE MEMORY' section (if provided) and subtly weave it into the new daily memory.",
+        "EXTRACTION: From the previous daily memory (PREVIOUS DAILY MEMORY), extract ONE short phrase (max 15 words) that is the most notable or funny. If nothing notable, respond 'NO_MEMORY'.",
+        "FORMAT: Return EXACTLY in this format:",
+        "---NEW_MEMORY---",
+        "[new daily memory paragraph here]",
+        "---EXTRACTED_MEMORY---",
+        "[extracted notable phrase or NO_MEMORY]",
         "STYLE: Stay fully in character and never speak as an assistant.",
     ]
 
@@ -175,19 +181,27 @@ def _build_recent_memory_summary_prompt(previous_summary: str, interactions: lis
     )
 
 
-def _build_daily_summary_prompt(previous_summary: str, recent_memory: str, target_date: str) -> str:
+def _build_daily_summary_prompt(
+    previous_summary: str,
+    recent_memory: str,
+    target_date: str,
+    injected_memory: str | None = None,
+) -> str:
     previous_block = previous_summary.strip() or _get_daily_memory_fallback()
     recent_block = recent_memory.strip() or _get_recent_memory_fallback()
+    sections: list[tuple[str, str]] = [
+        ("TARGET DATE:", target_date),
+        ("PREVIOUS DAILY MEMORY:", previous_block),
+        ("LATEST RECENT MEMORY OF THE DAY:", recent_block),
+    ]
+    if injected_memory and injected_memory.strip():
+        sections.append(("NOTABLE MEMORY TO WEAVE IN:", injected_memory.strip()))
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_daily_memory_summary",
         fallback_instructions=_get_daily_summary_task_lines(),
         replacements={"target_date": target_date},
-        sections=[
-            ("TARGET DATE:", target_date),
-            ("PREVIOUS DAILY MEMORY:", previous_block),
-            ("LATEST RECENT MEMORY OF THE DAY:", recent_block),
-        ],
-        fallback_closing="Return only the final daily-memory paragraph.",
+        sections=sections,
+        fallback_closing="Return exactly in the specified format with both sections.",
     )
 
 
@@ -228,7 +242,10 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
 
 def generate_recent_memory_summary(server_name: str | None = None, target_date: str | None = None, force: bool = False) -> str:
     engine = _engine()
-    resolved_server = server_name or get_active_server_name() or "default"
+    resolved_server = server_name or get_active_server_name()
+    if not resolved_server:
+        logger.warning("🧠 [RECENT_MEMORY] No server context available, skipping summary generation")
+        return ""
     resolved_date = target_date or date.today().isoformat()
     db_instance = get_global_db(server_name=resolved_server)
     existing_record = db_instance.get_recent_memory_record(memory_date=resolved_date)
@@ -270,9 +287,86 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
     return summary_text
 
 
+def _should_inject_random_memory(db_instance, memory_count: int) -> bool:
+    """Determine if a random memory should be injected based on count and probability.
+    
+    - If fewer than 10 memories: 10% chance
+    - If 10 or more memories: 33% chance
+    """
+    import random
+    if memory_count == 0:
+        return False
+    if memory_count < 10:
+        return random.random() < 0.10  # 10% chance
+    return random.random() < 0.33  # 33% chance
+
+
+def _get_random_memory_for_injection(db_instance) -> tuple[str | None, int | None]:
+    """Get a random notable memory for injection and increment its usage count.
+    
+    Returns:
+        Tuple of (memory_text, memory_id) or (None, None) if no memories exist
+    """
+    memory = db_instance.get_random_notable_memory()
+    if not memory:
+        return None, None
+    memory_id = memory.get("id")
+    memory_text = memory.get("memory_text")
+    if memory_id:
+        db_instance.increment_memory_usage(memory_id)
+    return memory_text, memory_id
+
+
+def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None]:
+    """Extract the new memory paragraph and notable memory from LLM response.
+    
+    Expected format:
+    ---NUEVA_MEMORIA---
+    [new memory paragraph]
+    ---RECUERDO_EXTRAIDO---
+    [extracted memory or NO_MEMORY]
+    
+    Or fallback format:
+    ---NEW_MEMORY---
+    [new memory paragraph]
+    ---EXTRACTED_MEMORY---
+    [extracted memory or NO_MEMORY]
+    
+    Returns:
+        Tuple of (new_memory_text, extracted_memory or None)
+    """
+    import re
+    
+    if not summary_response:
+        return "", None
+    
+    # Try Spanish format first
+    spanish_pattern = r"---NUEVA_MEMORIA---\s*(.*?)\s*---RECUERDO_EXTRAIDO---\s*(.*?)\s*(?:\n|$)"
+    english_pattern = r"---NEW_MEMORY---\s*(.*?)\s*---EXTRACTED_MEMORY---\s*(.*?)\s*(?:\n|$)"
+    
+    match = re.search(spanish_pattern, summary_response, re.DOTALL | re.IGNORECASE)
+    if not match:
+        match = re.search(english_pattern, summary_response, re.DOTALL | re.IGNORECASE)
+    
+    if match:
+        new_memory = match.group(1).strip()
+        extracted = match.group(2).strip()
+        
+        # Check if extracted is NO_MEMORY or empty
+        if extracted.upper() in ["NO_MEMORY", "NO MEMORY", "NONE", "", "NO_MEMORIA", "NO MEMORIA"]:
+            return new_memory, None
+        return new_memory, extracted
+    
+    # If no structured format found, return the whole response as new memory
+    return summary_response.strip(), None
+
+
 def generate_daily_memory_summary(server_name: str | None = None, target_date: str | None = None, force: bool = False) -> str:
     engine = _engine()
-    resolved_server = server_name or get_active_server_name() or "default"
+    resolved_server = server_name or get_active_server_name()
+    if not resolved_server:
+        logger.warning("🧠 [DAILY_MEMORY] No server context available, skipping summary generation")
+        return ""
     resolved_date = target_date or date.today().isoformat()
     db_instance = get_global_db(server_name=resolved_server)
     existing_record = db_instance.get_daily_memory_record(memory_date=resolved_date)
@@ -295,10 +389,35 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
             metadata={"source": "daily_memory_fallback", "interaction_count": 0},
         )
         return fallback
+    
+    # Determine if we should inject a random memory
+    memory_count = db_instance.count_notable_memories()
+    injected_memory = None
+    if _should_inject_random_memory(db_instance, memory_count):
+        injected_memory, _ = _get_random_memory_for_injection(db_instance)
+        if injected_memory:
+            logger.info(f"🧠 [DAILY_MEMORY] Injecting random notable memory ({memory_count} total memories)")
+    
     system_instruction = engine._build_system_prompt(engine.PERSONALIDAD)
-    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date)
+    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, injected_memory)
     summary_response = _call_llm_async(system_instruction, summary_prompt)
-    summary_text = (summary_response or "").strip() or previous_summary or _get_daily_memory_fallback()
+    
+    # Extract new memory and notable memory from response
+    new_memory_text, extracted_memory = _extract_memory_from_summary(summary_response or "")
+    
+    # Use extracted memory, or fallback to previous or default
+    summary_text = new_memory_text.strip() if new_memory_text else (previous_summary or _get_daily_memory_fallback())
+    
+    # Store extracted memory if present
+    if extracted_memory:
+        memory_id = db_instance.add_notable_memory(
+            memory_text=extracted_memory,
+            memory_date=resolved_date,
+            source_paragraph=previous_summary[:500] if previous_summary else None,  # Store first 500 chars as context
+        )
+        if memory_id:
+            logger.info(f"🧠 [DAILY_MEMORY] Extracted and stored notable memory: '{extracted_memory[:60]}...'")
+    
     db_instance.upsert_daily_memory(
         summary_text,
         memory_date=resolved_date,
@@ -306,9 +425,11 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
             "source": "llm_daily_summary",
             "recent_memory_used": bool(recent_summary),
             "generated_at": datetime.now().isoformat(),
+            "memory_injected": bool(injected_memory),
+            "memory_extracted": bool(extracted_memory),
         },
     )
-    logger.info(f"🧠 [DAILY_MEMORY] Stored summary for {resolved_server} on {resolved_date}")
+    logger.info(f"🧠 [DAILY_MEMORY] Stored summary for {resolved_server} on {resolved_date} (memories: {memory_count}, injected: {bool(injected_memory)}, extracted: {bool(extracted_memory)})")
     return summary_text
 
 
@@ -332,7 +453,10 @@ def generate_user_relationship_memory_summary(
     force: bool = False,
 ) -> str:
     engine = _engine()
-    resolved_server = server_name or get_active_server_name() or "default"
+    resolved_server = server_name or get_active_server_name()
+    if not resolved_server:
+        logger.warning(f"🧠 [RELATIONSHIP_MEMORY] No server context available for user={user_id}")
+        return ""
     resolved_date = target_date or date.today().isoformat()
     db_instance = get_global_db(server_name=resolved_server)
     temporary_state = db_instance.get_user_relationship_memory(user_id)
@@ -395,7 +519,10 @@ def generate_user_relationship_memory_summary(
 
 
 def refresh_due_relationship_memories(server_name: str | None = None) -> int:
-    resolved_server = server_name or get_active_server_name() or "default"
+    resolved_server = server_name or get_active_server_name()
+    if not resolved_server:
+        logger.warning("🧠 [RELATIONSHIP_MEMORY] No server context available, skipping refresh")
+        return 0
     db_instance = get_global_db(server_name=resolved_server)
     due_refreshes = db_instance.get_due_pending_relationship_refreshes()
     processed = 0
@@ -511,14 +638,17 @@ def _build_prompt_context(
     engine = _engine()
     bot_name = engine.PERSONALIDAD.get("name", "Bot")
     content = (user_content or "").strip()
-    server_name = server or get_active_server_name() or "default"
-    db_instance = get_global_db(server_name=server_name)
+    server_name = server or get_active_server_name()
+    if not server_name:
+        logger.warning("🧠 [MIND] No server context available, skipping memory-backed prompt enrichment")
+        server_name = None
+    db_instance = get_global_db(server_name=server_name) if server_name else None
     include_user_memory = interaction_type in {"chat", "mention", "greet"} and user_id is not None
-    recent_dialogue = db_instance.get_recent_dialogue_window(user_id, within_minutes=60, max_pairs=15) if include_user_memory else []
-    daily_memory = _build_daily_memory_text(db_instance)
-    recent_memory = _build_recent_memory_text(db_instance)
+    recent_dialogue = db_instance.get_recent_dialogue_window(user_id, within_minutes=60, max_pairs=15) if include_user_memory and db_instance else []
+    daily_memory = _build_daily_memory_text(db_instance) if db_instance else ""
+    recent_memory = _build_recent_memory_text(db_instance) if db_instance else ""
     relationship_memory = ""
-    if include_user_memory:
+    if include_user_memory and db_instance:
         relationship_memory = _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_dialogue)
         db_instance.schedule_relationship_refresh(user_id, delay_minutes=60)
     keyword_injection = engine._get_keyword_injection(content)

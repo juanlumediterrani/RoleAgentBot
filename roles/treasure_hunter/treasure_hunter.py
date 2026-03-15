@@ -84,7 +84,11 @@ async def ejecutar_mision_treasure_hunter(config, server_name=None):
         discord_http = DiscordHTTP(token)
         
         # Get active servers from database
-        db_global = get_global_db()
+        active_server_name = get_active_server_name()
+        if not active_server_name:
+            logger.warning("No active server configured for treasure hunter execution")
+            return
+        db_global = get_global_db(server_name=active_server_name)
         servidores_activos = db_global.get_active_servers()
         
         if not servidores_activos:
@@ -232,7 +236,7 @@ async def enviar_senal_discord(discord_http, server_id, mensaje, item_name, prec
     """Send trading signal to Discord."""
     try:
         # Get server channel for treasure hunter notifications
-        db_global = get_global_db()
+        db_global = get_global_db(server_name=server_id)
         canal_id = db_global.get_role_channel(server_id, "treasure_hunter")
         
         if not canal_id:

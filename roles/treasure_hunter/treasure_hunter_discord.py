@@ -5,8 +5,10 @@ Enhanced POE2 subrole management with admin controls and shared databases.
 
 import asyncio
 import discord
+import json
+import os
 from agent_logging import get_logger
-from discord_bot.discord_utils import get_server_name, send_dm_or_channel
+from discord_bot.discord_utils import get_server_name, send_dm_or_channel, set_role_interval_hours
 
 # Import get_message for personality support
 try:
@@ -17,6 +19,25 @@ except ImportError:
         return personality.get("discord", {}).get("treasure_hunter_messages", {}).get(key, default)
 
 logger = get_logger('treasure_hunter_discord')
+
+
+def _get_treasure_description(key: str, default: str) -> str:
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
+        with open(config_path, encoding="utf-8") as f:
+            agent_cfg = json.load(f)
+        personality_rel = agent_cfg.get("personality", "")
+        descriptions_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            os.path.dirname(personality_rel),
+            "descriptions.json",
+        )
+        with open(descriptions_path, encoding="utf-8") as f:
+            descriptions = json.load(f).get("discord", {}).get("treasure_hunter_messages", {})
+        value = descriptions.get(key)
+        return str(value) if value else default
+    except Exception:
+        return default
 
 # Availability flags
 try:
@@ -155,7 +176,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                     
                     if not league:
                         current_league = poe2_manager.get_user_league(user_id, server_id)
-                        await ctx.send(get_message(personality, "current_league", "🏆 **Current POE2 League**: {league}").format(league=current_league))
+                        await ctx.send(_get_treasure_description("current_league", "🏆 **Current POE2 League**: {league}").format(league=current_league))
                         return
                     
                     # Validate league
@@ -377,11 +398,19 @@ async def _cmd_role_frequency(ctx, role_name: str, hours: str, personality, agen
         await ctx.send(role_cfg.get("frequency_invalid", "❌ You must specify a valid number of hours."))
         return
 
-    if "roles" not in agent_config:
-        agent_config["roles"] = {}
-    if role_name not in agent_config["roles"]:
-        agent_config["roles"][role_name] = {}
-    agent_config["roles"][role_name]["interval_hours"] = hours_int
+    persisted = set_role_interval_hours(
+        ctx.guild,
+        role_name,
+        hours_int,
+        agent_config,
+        getattr(ctx.author, "name", "admin_command"),
+    )
+    if not persisted:
+        if "roles" not in agent_config:
+            agent_config["roles"] = {}
+        if role_name not in agent_config["roles"]:
+            agent_config["roles"][role_name] = {}
+        agent_config["roles"][role_name]["interval_hours"] = hours_int
 
     role_cfg = personality.get("discord", {}).get("role_messages", {})
     await ctx.send(role_cfg.get("frequency_updated", "✅ Frequency of '{role}' updated to {hours} hours.").format(role=role_name, hours=hours_int))

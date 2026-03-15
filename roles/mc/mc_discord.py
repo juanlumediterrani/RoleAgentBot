@@ -3,6 +3,9 @@ Discord commands for the MC (Master of Ceremonies / Music).
 Registers: !mc (group with subcommands play, skip, stop, etc.)
 """
 
+import json
+import os
+
 from agent_logging import get_logger
 from discord_bot.discord_utils import is_duplicate_command
 
@@ -38,9 +41,35 @@ try:
 except ImportError as e:
     logger.warning(f"MC commands not available: {e}")
 
+# Global instance accessor
+_mc_commands_instance = None
+
+
+def _get_mc_description_text(key: str, fallback: str) -> str:
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
+        with open(config_path, encoding="utf-8") as f:
+            agent_cfg = json.load(f)
+        personality_rel = agent_cfg.get("personality", "")
+        descriptions_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            os.path.dirname(personality_rel),
+            "descriptions.json",
+        )
+        with open(descriptions_path, encoding="utf-8") as f:
+            descriptions = json.load(f).get("discord", {}).get("role_messages", {})
+        value = descriptions.get(key)
+        return str(value) if value else fallback
+    except Exception:
+        return fallback
+
+def get_mc_commands_instance():
+    """Get the global MC commands instance."""
+    return _mc_commands_instance
+
 
 def register_mc_commands(bot, personality, agent_config):
-    """Register MC commands according to configured mode."""
+    """Register MC commands with the bot."""
     from agent_engine import is_mc_enabled, get_mc_mode, get_mc_feature
 
     if not is_mc_enabled():
@@ -73,6 +102,10 @@ def _register_mc_integrated(bot, personality):
         return
 
     mc_commands_instance = MCCommands(bot)
+    
+    # Store global instance for Canvas access
+    global _mc_commands_instance
+    _mc_commands_instance = mc_commands_instance
 
     # Get or create mc group
     mc_group = bot.get_command("mc")
@@ -83,9 +116,7 @@ def _register_mc_integrated(bot, personality):
             if is_duplicate_command(ctx, "mc"):
                 return
             if ctx.invoked_subcommand is None:
-                music_help = personality.get("discord", {}).get("role_messages", {}).get(
-                    "music_help", "🎵 Usa `!mc help` para ver los comandos disponibles"
-                )
+                music_help = _get_mc_description_text("music_help", "🎵 Usa `!mc help` para ver los comandos disponibles")
                 await ctx.send(music_help)
         logger.info("🎵 MC group command registered")
     else:

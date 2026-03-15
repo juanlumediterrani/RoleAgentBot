@@ -312,7 +312,11 @@ class Poe2SubroleBot(discord.Client):
             user = await self.fetch_user(MI_ID)
             
             # Obtener instancia de BD para el servidor activo
-            server_name = get_active_server_name() or "default"
+            server_name = get_active_server_name()
+            if not server_name:
+                logger.warning("⚠️ No active server configured for POE2 subrole startup")
+                await self.close()
+                return
             self.db_poe2 = get_poe2_db_instance(server_name)
             
             # Verificar si el subrol está activo

@@ -1,0 +1,155 @@
+{
+  "discord": {
+    "canvas_home_messages": {
+      "title": "🧭 Putre Hub",
+      "description": "Interactua con todas las funciones disponibles para Putre desde aquí."
+    },
+    "roles_view_messages": {
+      "title": "🎭 Roles de Putre 🎭",
+      "description": "🌟 Navega a traves de los diferentes roles disponibles para Putre",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "active",
+      "interval_info": "//⏰ Every {interval}h",
+      "subroles_info": "🎪 **Subroles activos:** {subroles}",
+      "admin_note": "🔧 **CONFIGURACIÓN ADMIN:**",
+      "user_note": "👤 **FUNCIONES DE USUARIO:**",
+      "help_commands": "💡 **COMANDOS DE AYUDA:**",
+      "canvas_details": "🎨 **DETALLES EN CANVAS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **NINGÚN ROL ACTIVO**\n\nNo hay roles especializados activos actualmente. Pide a un administrador que active algunos roles usando `!canvas setup`.\n\n**Roles disponibles para activar:**\n• 📡 News Watcher - Vigía de noticias\n• 💎 Treasure Hunter - Cazador de tesoros\n• 🎭 Trickster - Trilero y juegos\n• 💰 Banker - Economía del clan\n• 🎵 MC - Música y entretenimiento",
+      "role_descriptions": {
+        "news_watcher": {
+          "title": "Watcher",
+          "description": "Suscribete a categorias de noticias y recibe alertas segun el análisis escogido."
+        },
+        "treasure_hunter": {
+          "title": "Treasure Hunter",
+          "description": "Haz que Putre monitorice precios y te envie alertas"
+        },
+        "trickster": {
+          "title": "Trickster",
+          "description": "Ven y dejate embaucar por el orco trilero, juega y diviertete."
+        },
+        "banker": {
+          "title": "Banker",
+          "description": "El orco tesorero te administra tus cuentas y transacciones de oro."
+        },
+        "mc": {
+          "title": "MC",
+          "description": "MC Putre, invitalo a un canal de voz para que reproduzca musica por ti."
+        }
+      },
+      "inactive_status": "❌ INATIVO"
+    },
+    "dice_game_messages": {
+      "roll_title": "🎲 **TUS GUESOS DIZEN:**",
+      "combination_title": "📊 **RESULTAO:**",
+      "prize_title": "💰 **BOTÍN GANADO:**",
+      "current_pot_title": "💎 **EL BOTE:**"
+    },
+    "dice_game_balance_messages": {
+      "title": "💰 **EL PUTRE BOTE - {servidor}** 💰\n",
+      "current_balance": "🎲 **Oro amontonao:** {saldo:,} monedas!\n",
+      "fixed_bet": "💎 **Precio pa tira:** {apuesta:,} monedas!\n",
+      "possible_plays": "🎯 **Apuesta reztante:** {jugadas}\n",
+      "use_command": "\n💡 ¡Usa `!dice play` para tirar los kraneos, umano baboso!"
+    },
+    "ring_view_messages": {
+      "title": "👁️ **PUTRE CAZADOR DEL ANILLO - {servidor}** 👁️\n",
+      "description": "🔍 Putre el cazador del anillo unico busca el artefacto perdido. Tu jefe te encargó encontrar esa joya maldita y no volverás hasta que la tengas. Interroga a los sospechosos y haz que hablen.",
+      "status_active": "✅ **CAZA ACTIVA** - Putre está buscando el anillo",
+      "status_inactive": "❌ **CAZA INACTIVA** - Putre está descansando",
+      "current_target": "🎯 **OBJETIVO ACTUAL:**",
+      "target_unknown": "👤 Ningun sospechoso selecionao",
+      "investigation_title": "🔍 **HASER UNA ACUSACIÓN:**",
+      "investigation_instructions": "• Usa **Ring: Accuse** del menú desplegable\n• Ingresa: @nombredeusuario, ID o nombre visible\n• La IA generará una acusación amenazante\n• La acusación se publicará en el canal",
+      "investigation_warning": "⚠️ **IMPORTANTE:**\n• No puedes acusarte a ti mismo\n• No puedes acusar bots\n• El ring debe estar activado por un admin",
+      "inactive_title": "⚠️ **LA CAZA ESTÁ INACTIVA**",
+      "inactive_instructions": "Para activar la funcionalidad del ring:\n• Un admin debe ir a **Ring Admin**\n• Hacer clic en **Ring: On** para activar\n• Configurar la frecuencia para investigaciones automáticas\n\nUna vez activado, puedes acusar usuarios de llevar el Anillo Único!",
+      "navigation_info": "📍 **NAVEGACIÓN:**\n• Estás en `trickster / ring / personal`\n• Usa `Admin` para controles de on/off y frecuencia\n• Selecciona **Ring: Accuse** del menú para hacer acusaciones",
+      "canvas_trickster_overview_title": "**🎭Trilero Putre**",
+      "canvas_trickster_overview_description": "El texto anterior se debe de estar cargando desde descriptions.json, ademas ponlo como title de esta view.",
+      "canvas_trickster_overview_separator": "──────────────────────────────",
+      "canvas_trickster_subrole_descriptions": {
+        "beggar": "🙏 **Limosnero** - Pide donaciones para proyectos del clan con excusas creativas",
+        "dice_game": "🎲 **Juego de Dados** - Juega contra el banco, sube en el ranking y gana oro",
+        "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único"
+      },
+      "canvas_dice_title": "**🎭  El Bote de {_bot}**",
+      "canvas_ring_title": "**🎭 {_bot} Cazador del Anillo Uniko!**",
+      "canvas_ring_description": "🔍 Putre el cazador del anillo unico busca el artefacto perdido. Tu jefe te encargó encontrar esa joya maldita y no volverás hasta que la tengas. Interroga a los sospechosos y haz que hablen.",
+      "canvas_beggar_title": "**🎭 {_bot} Proyectos - Recaudaciones**",
+      "canvas_beggar_description": "Donar oro a Putre pa zus proiectos"
+    },
+    "watcher_messages": {
+      "critical_alert_title": "Vigia",
+      "canvas_personal_title": "Vigia de Noticias",
+      "canvas_personal_description": "Suscribete a categorias de noticias y recibe alertas segun el análisis escogido.",
+      "canvas_admin_title": "📡 Vigia de Noticias",
+      "canvas_admin_description": "Suscribete a categorias de noticias y recibe alertas segun el análisis escogido.",
+      "feeds_available_title": "📡 Perros Rastreadores de Putre",
+      "categories_available_title": "📂 Terrenos de Kaza",
+      "usage_subscribe": "📝 Uza mi acha: `!watcher subscribe <terreno> [numero_de_nido]`",
+      "usage_unsubscribe": "📝 Uza mi acha: `!watcher unsubscribe <terreno> [numero_de_nido]`",
+      "uso_general": "📝 Uza mi acha: `!watcher general <terreno>`",
+      "uso_palabras": "📝 Uza mi acha: `!watcher keywords \"palabra1,palabra2\"`",
+      "usage_cancelar_palabras": "📝 Uza mi acha: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
+      "usage_mixto": "📝 Uza mi acha: `!watcher mixed <terreno>`",
+      "usage_agregar_feed": "📝 Solo jefes: `!watcher add_feed <nombre> <url> <terreno> [pais] [idioma]`",
+      "usage_canal_suscribir": "📝 Solo jefes: `!watcherchannel subscribe <terreno> [numero_de_nido]`",
+      "usage_canal_cancelar": "📝 Solo jefes: `!watcherchannel unsubscribe <terreno> [numero_de_nido]`",
+      "usage_canal_palabras": "📝 Solo jefes: `!watcherchannel keywords \"palabra1,palabra2\"`"
+    },
+    "role_messages": {
+      "role_list_title": "☠️ Kargos y Trabajos de la Orda",
+      "role_available": "✅ {role} - RUGIENDO Y ZANGRIENTO",
+      "role_unavailable": "❌ {role} - PUDRIENDOSE EN LA TIERRA",
+      "frequency_help": "📝 Uza el acha azi: `!{role}frequency <oras>` (de 1 a 168 oras)\nEjemplo: `!watcherfrequency 2` ¡para ke aulle kada 2 putas oras!",
+      "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!"
+    },
+    "banker_messages": {
+      "balance_title": "💰 El Gran Kofre de Putre",
+      "current_balance": "💎 Botin Zakeado Aora",
+      "account_holder": "👤 Umano Zakeador",
+      "bank": "🏦 Kueva del Tesoro de la Orda",
+      "recent_transactions": "📊 Ultimos Zakeos",
+      "daily_allowance_config_title": "🏦 Botin Diario Asignado por Putre",
+      "current_daily_allowance": "💰 Rasion Diaria de Oro",
+      "last_distribution": "📅 Ultima Vez q el Jefe Pagó",
+      "daily_allowance_footer": "💼 Uza `!banker tae <numero>` para obligar a pagar a putre",
+      "new_daily_allowance": "💰 Nueba Rasion de Oro",
+      "administrator": "👤 Kaurdillo q manda",
+      "server": "🏦 Zekton de Kaza de Putre",
+      "next_distribution": "ℹ️ putre dara el pago kuando kaiga el zol",
+      "bonus_config_title": "🎁 Monedas de Bautizo de Sangre",
+      "current_bonus": "💰 Monedas pa Novatos",
+      "bonus_info": "ℹ️ Info: putre tira {bono} monedas a las rratas nuebas",
+      "bonus_footer": "💼 Uza `!banker bono <numero>` para kanviar el trago",
+      "new_bonus": "💰 Nueba limozna pa novato",
+      "banquero_help": " **El Kofre Orko** - `!banker balance` | `!banker tae <numero>` (solo jefes) | `!banker help` pa ke putre te enseñe o te mate",
+      "canvas_banker_overview_title": "💰 {_bot} Kofre de Putre",
+      "canvas_title": "💰 El Gran Kofre de Putre"
+    },
+    "treasure_hunter_messages": {
+      "current_league": "🏆 **Liga Aktual**: {league}",
+      "canvas_th_overview_title": "**💎 {_bot} Cazador de Tesoros**",
+      "canvas_th_poe2_title": "**💎 {_bot} Tesoros en Path of Exile 2**"
+    },
+    "mc_messages": {
+      "canvas_mc_title": "**🎵 MC Putre a los tambores!**",
+      "canvas_mc_subtitle": "Klavijas de kontrol",
+      "canvas_mc_separator": "──────────────────────────────",
+      "canvas_mc_description": "Uza el menu dezplegabe para pedime kanciones, pa ve la kola, o pa anyadi ma kanciones umano.",
+      "canvas_mc_voice_required": "Rekiere ke eztes konectao a un kanal de voh",
+      "canvas_mc_admin_title": "🎵 MC Putre • admin view"
+    },
+    "behavior_messages": {
+      "canvas_conversation_title": "**💬 {_bot} Comportamiento General**",
+      "canvas_greetings_title": "**👋 {_bot} Saludos**",
+      "canvas_welcome_title": "**👋 {_bot} Bienvenida**",
+      "canvas_commentary_title": "**🗣️ {_bot} Comentarios de Mision**",
+      "canvas_taboo_title": "**🚫 {_bot} Palabras Tabu**",
+      "canvas_role_control_title": "**🎛️ {_bot} Control de Roles**"
+    }
+  }
+}

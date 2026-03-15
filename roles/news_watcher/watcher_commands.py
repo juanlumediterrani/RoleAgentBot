@@ -3,6 +3,7 @@ import asyncio
 import sys
 import os
 import sqlite3
+import json
 from datetime import datetime
 from agent_logging import get_logger
 
@@ -11,6 +12,25 @@ from .watcher_messages import get_message
 from .premises_manager import get_premises_manager
 
 logger = get_logger('vigia_commands')
+
+
+def _get_watcher_description_text(key: str, fallback: str) -> str:
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
+        with open(config_path, encoding="utf-8") as f:
+            agent_cfg = json.load(f)
+        personality_rel = agent_cfg.get("personality", "")
+        descriptions_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            os.path.dirname(personality_rel),
+            "descriptions.json",
+        )
+        with open(descriptions_path, encoding="utf-8") as f:
+            descriptions = json.load(f).get("discord", {}).get("watcher_messages", {})
+        value = descriptions.get(key)
+        return str(value) if value else fallback
+    except Exception:
+        return fallback
 
 class WatcherCommands:
     """Discord commands to manage the News Watcher role."""
@@ -27,7 +47,9 @@ class WatcherCommands:
                 self.db_vigia = get_news_watcher_db_instance(server_name)
             else:
                 from agent_db import get_active_server_name
-                server_name = get_active_server_name() or "default"
+                server_name = get_active_server_name()
+                if not server_name:
+                    raise RuntimeError("No active server configured for watcher commands")
                 self.db_vigia = get_news_watcher_db_instance(server_name)
         return self.db_vigia
 
@@ -52,7 +74,7 @@ class WatcherCommands:
                 return
             
             embed = discord.Embed(
-                title=get_message('feeds_available_title'),
+                title=_get_watcher_description_text('feeds_available_title', get_message('feeds_available_title')),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
@@ -207,53 +229,41 @@ class WatcherCommands:
             category = self._normalize_category(args[0])
             feed_id = None
             
-            # Check if it's a specific feed_id
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                    # Verify that the feed exists and belongs to the category
-                    feeds = db.get_active_feeds(category)
-                    feed_existente = any(f[0] == feed_id for f in feeds)
-                    if not feed_existente:
-                        await message.channel.send(get_message('feed_not_found', feed_id=feed_id, category=category))
-                        return
-                except ValueError:
-                    await message.channel.send(get_message('invalid_feed_id'))
-                    return
-            else:
-                # Verify category exists
-                categorys = db.get_available_categories()
-                if not any(cat[0] == category for cat in categorys):
-                    await message.channel.send(get_message('error_kategori_no_encontrada', category=category))
-                    return
-            
-            # Check current subscription type
-            tipo_actual = db.check_user_subscription_type(user_id)
-            
-            # If already has flat subscription, block
-            if tipo_actual == 'plana':
-                await message.channel.send(get_message('ya_tienes_suscripcion_plana'))
+            # Validate category and feed
+            feed_id = await self._validate_category_and_feed(message, category, args, db)
+            if feed_id is None and len(args) > 1:  # Validation failed
                 return
             
-            # If has other subscription types, block
-            if tipo_actual in ['palabras', 'ia']:
-                await message.channel.send(
-                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
-                )
-                return
-            
-            # Create flat subscription
-            if db.subscribe_user_category(user_id, category, feed_id):
-                if feed_id:
-                    await message.channel.send(get_message('subscription_successful_feed', feed_id=feed_id, category=category))
-                else:
-                    await message.channel.send(get_message('subscription_successful_category', category=category))
-            else:
-                await message.channel.send(get_message('subscription_error'))
+            # Handle flat subscription using unified handler
+            await self._handle_flat_subscribe(message, user_id, category, feed_id)
                 
         except Exception as e:
             logger.exception(f"Error in cmd_subscribe: {e}")
             await message.channel.send(get_message('error_processing_subscription'))
+
+    async def _validate_category_and_feed(self, message, category: str, args: list, db) -> int | None:
+        """Validate category and optional feed_id, returns feed_id or None."""
+        # Check if it's a specific feed_id
+        if len(args) > 1:
+            try:
+                feed_id = int(args[1])
+                # Verify that the feed exists and belongs to the category
+                feeds = db.get_active_feeds(category)
+                feed_existente = any(f[0] == feed_id for f in feeds)
+                if not feed_existente:
+                    await message.channel.send(get_message('feed_not_found', feed_id=feed_id, category=category))
+                    return None
+                return feed_id
+            except ValueError:
+                await message.channel.send(get_message('invalid_feed_id'))
+                return None
+        else:
+            # Verify category exists
+            categorys = db.get_available_categories()
+            if not any(cat[0] == category for cat in categorys):
+                await message.channel.send(get_message('error_kategori_no_encontrada', category=category))
+                return None
+            return None  # No feed_id specified, which is valid
 
     async def cmd_unsubscribe(self, message, args):
         """Cancel subscription by number (from list) or by category/feed (legacy)."""
@@ -634,58 +644,14 @@ class WatcherCommands:
             db = self._get_db()
             user_id = str(message.author.id)
             category = self._normalize_category(args[0])
-            feed_id = None
             
-            # Check if it's a specific feed_id
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                    # Verify that the feed exists and belongs to the category
-                    feeds = db.get_active_feeds(category)
-                    feed_existente = any(f[0] == feed_id for f in feeds)
-                    if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'")
-                        return
-                except ValueError:
-                    await message.channel.send(get_message('invalid_feed_id'))
-                    return
-            else:
-                # Verify category exists
-                categorys = db.get_available_categories()
-                if not any(cat[0] == category for cat in categorys):
-                    await message.channel.send(get_message('error_kategori_no_encontrada', category=category))
-                    return
-            
-            # Check current subscription type
-            tipo_actual = db.check_user_subscription_type(user_id)
-            
-            # If already has AI subscription, block
-            if tipo_actual == 'ia':
-                await message.channel.send("ℹ️ You already have an active AI subscription. Use `!watcher general unsubscribe <category>` first if you want to change.")
+            # Validate category and feed
+            feed_id = await self._validate_category_and_feed(message, category, args, db)
+            if feed_id is None and len(args) > 1:  # Validation failed
                 return
             
-            # If has other subscription types, block
-            if tipo_actual in ['plana', 'palabras']:
-                await message.channel.send(
-                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
-                )
-                return
-            
-            # Ensure the user has premises configured
-            premisas, contexto = db.get_premises_with_context(user_id)
-            if not premisas:
-                await message.channel.send("⚠️ You have no premises configured. Use `!watcher premises add <premise>` before subscribing with AI.")
-                return
-            
-            # Create AI subscription (store user premises)
-            premisas_str = ",".join(premisas) if premisas else ""
-            if db.subscribe_user_category_ai(user_id, category, feed_id, premisas_str):
-                if feed_id:
-                    await message.channel.send(f"🤖 **AI subscription** to feed {feed_id} in '{category}' - I will analyze critical news using your premises")
-                else:
-                    await message.channel.send(f"🤖 **AI subscription** to '{category}' - I will analyze critical news using your premises")
-            else:
-                await message.channel.send("❌ Error creating AI subscription")
+            # Handle AI subscription using unified handler
+            await self._handle_general_subscribe(message, user_id, category, feed_id)
                 
         except Exception as e:
             logger.exception(f"Error in cmd_general_subscribe: {e}")
@@ -1476,7 +1442,9 @@ class WatcherCommands:
                 
                 from premises_manager import get_premises_manager
                 from agent_db import get_active_server_name
-                server_name = get_active_server_name() or "default"
+                server_name = get_active_server_name()
+                if not server_name:
+                    raise RuntimeError("No active server configured for premises manager")
                 premises_manager = get_premises_manager(server_name)
                 default_premises = ", ".join(premises_manager.get_active_premises())
             except:
@@ -1497,6 +1465,30 @@ class WatcherCommands:
             logger.exception(f"Error in cmd_channel_subscribe: {e}")
             await message.channel.send("❌ Error subscribing the channel")
     
+    async def _validate_channel_category_and_feed(self, message, category: str, args: list, db) -> int | None:
+        """Validate category and optional feed_id for channel commands, returns feed_id or None."""
+        # Check if it's a specific feed_id
+        if len(args) > 1:
+            try:
+                feed_id = int(args[1])
+                # Verify that the feed exists and belongs to the category
+                feeds = db.get_active_feeds(category)
+                feed_exists = any(f[0] == feed_id for f in feeds)
+                if not feed_exists:
+                    await message.channel.send(get_message('feed_id_not_found', feed_id=feed_id, category=category))
+                    return None
+                return feed_id
+            except ValueError:
+                await message.channel.send(get_message('feed_id_must_be_number'))
+                return None
+        else:
+            # Verify category exists
+            categories = db.get_available_categories()
+            if not any(cat[0] == category for cat in categories):
+                await message.channel.send(get_message('category_no_encontrada', category=category))
+                return None
+            return None  # No feed_id specified, which is valid
+
     async def cmd_channel_unsubscribe(self, message, args):
         """Cancel the current channel subscription for a category/feed."""
         if not args:
@@ -1511,14 +1503,11 @@ class WatcherCommands:
         try:
             db = self._get_db()
             category = self._normalize_category(args[0])
-            feed_id = None
             
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                except ValueError:
-                    await message.channel.send(get_message('feed_id_must_be_number'))
-                    return
+            # Validate category and feed
+            feed_id = await self._validate_channel_category_and_feed(message, category, args, db)
+            if feed_id is None and len(args) > 1:  # Validation failed
+                return
             
             channel = message.channel
             
@@ -1821,7 +1810,9 @@ class WatcherCommands:
         
         try:
             from agent_db import get_active_server_name
-            server_name = get_active_server_name() or "default"
+            server_name = get_active_server_name()
+            if not server_name:
+                raise RuntimeError("No active server configured for premises manager")
             premises_manager = get_premises_manager(server_name)
             
             nueva_premisa = " ".join(args).strip('"\'')
@@ -1848,7 +1839,9 @@ class WatcherCommands:
         
         try:
             from agent_db import get_active_server_name
-            server_name = get_active_server_name() or "default"
+            server_name = get_active_server_name()
+            if not server_name:
+                raise RuntimeError("No active server configured for premises manager")
             premises_manager = get_premises_manager(server_name)
             
             premise_to_delete = " ".join(args).strip('"\'')
@@ -2197,67 +2190,41 @@ class WatcherCommands:
             await message.channel.send("❌ Error retrieving subscriptions")
 
     async def cmd_unified_subscribe(self, message, args):
-        """Unified subscribe command that adapts based on server method configuration."""
+        """Unified subscribe command with method selection."""
         if not args:
-            await message.channel.send("📝 Usage: `!watcher subscribe <category> [feed_id]`")
+            await message.channel.send("📝 Usage: `!watcher subscribe <method> <category> [feed_id]`")
+            await message.channel.send("Methods: `flat`, `keyword`, `general`")
             return
         
         try:
             db = self._get_db()
-            server_id = str(message.guild.id) if message.guild else "dm"
-            current_method = db.get_method_config(server_id)
-            
             user_id = str(message.author.id)
-            category = self._normalize_category(args[0])
+            
+            # Parse method, category, and optional feed_id
+            method = args[0].lower()
+            if method not in ['flat', 'keyword', 'general']:
+                await message.channel.send("❌ Invalid method. Use: `flat`, `keyword`, or `general`")
+                return
+            
+            if len(args) < 2:
+                await message.channel.send("❌ Missing category. Usage: `!watcher subscribe <method> <category> [feed_id]`")
+                return
+                
+            category = self._normalize_category(args[1])
             feed_id = None
             
-            # Check subscription limits
-            can_user_sub, user_msg = db.can_user_subscribe(user_id)
-            if not can_user_sub:
-                await message.channel.send(f"❌ {user_msg}")
-                return
-            
-            can_server_sub, server_msg = db.can_server_accept_subscription()
-            if not can_server_sub:
-                await message.channel.send(f"❌ {server_msg}")
-                return
-            
-            # Handle optional feed_id
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                    # Verify feed exists
-                    feeds = db.get_active_feeds(category)
-                    feed_existente = any(f[0] == feed_id for f in feeds)
-                    if not feed_existente:
-                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'")
-                        return
-                except ValueError:
-                    await message.channel.send("❌ Invalid feed ID format")
-                    return
-            else:
-                # Use first feed if none specified
-                feeds = db.get_active_feeds(category)
-                if not feeds:
-                    await message.channel.send(f"❌ No feeds found for category '{category}'")
-                    return
-                feed_id = feeds[0][0]  # Use first feed's ID
-            
-            # Verify category exists
-            categorys = db.get_available_categories()
-            if not any(cat[0] == category for cat in categorys):
-                await message.channel.send(f"❌ Category '{category}' not found")
+            # Validate category and feed
+            feed_id = await self._validate_category_and_feed(message, category, args[1:], db)
+            if feed_id is None and len(args) > 2:  # Validation failed
                 return
             
             # Route to appropriate method handler
-            if current_method == 'flat':
+            if method == 'flat':
                 await self._handle_flat_subscribe(message, user_id, category, feed_id)
-            elif current_method == 'keyword':
+            elif method == 'keyword':
                 await self._handle_keyword_subscribe(message, user_id, category, feed_id)
-            elif current_method == 'general':
+            elif method == 'general':
                 await self._handle_general_subscribe(message, user_id, category, feed_id)
-            else:
-                await message.channel.send(f"❌ Unknown method configuration: {current_method}")
                 
         except Exception as e:
             logger.exception(f"Error in cmd_unified_subscribe: {e}")
@@ -2268,19 +2235,10 @@ class WatcherCommands:
         try:
             db = self._get_db()
             
-            # Check current subscription type
-            tipo_actual = db.check_user_subscription_type(user_id)
-            
-            # If already has flat subscription, block
-            if tipo_actual == 'plana':
-                await message.channel.send("ℹ️ You already have a flat subscription. Use `!watcher unsubscribe <category>` first if you want to change.")
-                return
-            
-            # If has other subscription types, block
-            if tipo_actual in ['palabras', 'ia']:
-                await message.channel.send(
-                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
-                )
+            # Check subscription limits
+            can_user_sub, user_msg = db.can_user_subscribe(user_id)
+            if not can_user_sub:
+                await message.channel.send(f"❌ {user_msg}")
                 return
             
             # Create flat subscription
@@ -2307,19 +2265,10 @@ class WatcherCommands:
                 await message.channel.send("⚠️ You have no keywords configured. Use `!watcher keywords add <keyword>` first.")
                 return
             
-            # Check current subscription type
-            tipo_actual = db.check_user_subscription_type(user_id)
-            
-            # If already has keyword subscription, block
-            if tipo_actual == 'palabras':
-                await message.channel.send("ℹ️ You already have a keyword subscription. Use `!watcher unsubscribe <category>` first if you want to change.")
-                return
-            
-            # If has other subscription types, block
-            if tipo_actual in ['plana', 'ia']:
-                await message.channel.send(
-                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
-                )
+            # Check subscription limits
+            can_user_sub, user_msg = db.can_user_subscribe(user_id)
+            if not can_user_sub:
+                await message.channel.send(f"❌ {user_msg}")
                 return
             
             # Create keyword subscription
@@ -2346,19 +2295,10 @@ class WatcherCommands:
                 await message.channel.send("⚠️ You have no premises configured. Use `!watcher premises add <premise>` before subscribing.")
                 return
             
-            # Check current subscription type
-            tipo_actual = db.check_user_subscription_type(user_id)
-            
-            # If already has AI subscription, block
-            if tipo_actual == 'ia':
-                await message.channel.send("ℹ️ You already have an AI subscription. Use `!watcher unsubscribe <category>` first if you want to change.")
-                return
-            
-            # If has other subscription types, block
-            if tipo_actual in ['plana', 'palabras']:
-                await message.channel.send(
-                    f"⚠️ You have an active '{tipo_actual}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
-                )
+            # Check subscription limits
+            can_user_sub, user_msg = db.can_user_subscribe(user_id)
+            if not can_user_sub:
+                await message.channel.send(f"❌ {user_msg}")
                 return
             
             # Create AI subscription

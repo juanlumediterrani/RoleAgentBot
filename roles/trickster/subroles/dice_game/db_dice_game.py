@@ -73,7 +73,7 @@ class DatabaseRoleDiceGame:
                     )
                 ''')
                 
-                # Migration: Check if biggest_prize column exists and rename it to mayor_prize
+                # Migration: Check if biggest_prize column exists and rename it to mayor_prize . posible legacy function
                 cursor.execute("PRAGMA table_info(player_stats)")
                 columns = [column[1] for column in cursor.fetchall()]
                 
@@ -169,7 +169,9 @@ class DatabaseRoleDiceGame:
                 if result:
                     return {
                         'bet_fija': result[0],
-                        'announcements_active': bool(result[1])
+                        'apuesta_fija': result[0],
+                        'announcements_active': bool(result[1]),
+                        'anuncios_activos': bool(result[1])
                     }
                 else:
                     # Create default config
@@ -178,11 +180,11 @@ class DatabaseRoleDiceGame:
                         VALUES (?, ?, ?)
                     ''', (server_id, 1, True))
                     conn.commit()
-                    return {'bet_fija': 1, 'announcements_active': True}
+                    return {'bet_fija': 1, 'apuesta_fija': 1, 'announcements_active': True, 'anuncios_activos': True}
                     
         except Exception as e:
             logger.error(f"❌ Error getting server config: {e}")
-            return {'bet_fija': 1, 'announcements_active': True}
+            return {'bet_fija': 1, 'apuesta_fija': 1, 'announcements_active': True, 'anuncios_activos': True}
     
     def configure_server(self, server_id: str, **kwargs) -> bool:
         """Configure server settings."""
@@ -193,13 +195,16 @@ class DatabaseRoleDiceGame:
                 set_clauses = []
                 values = []
                 
-                if 'bet_fija' in kwargs:
+                bet_value = kwargs.get('bet_fija', kwargs.get('apuesta_fija'))
+                announcements_value = kwargs.get('announcements_active', kwargs.get('anuncios_activos'))
+
+                if bet_value is not None:
                     set_clauses.append('bet_fija = ?')
-                    values.append(kwargs['bet_fija'])
+                    values.append(bet_value)
                 
-                if 'announcements_active' in kwargs:
+                if announcements_value is not None:
                     set_clauses.append('announcements_active = ?')
-                    values.append(int(kwargs['announcements_active']))
+                    values.append(int(announcements_value))
                 
                 if set_clauses:
                     set_clauses.append('updated_at = CURRENT_TIMESTAMP')
@@ -217,8 +222,8 @@ class DatabaseRoleDiceGame:
                             INSERT INTO server_config (server_id, bet_fija, announcements_active)
                             VALUES (?, ?, ?)
                         ''', (server_id, 
-                              kwargs.get('bet_fija', 1),
-                              kwargs.get('announcements_active', True)))
+                              bet_value if bet_value is not None else 1,
+                              announcements_value if announcements_value is not None else True))
                     
                     conn.commit()
                     logger.info(f"🎲 Server {server_id} configured: {kwargs}")

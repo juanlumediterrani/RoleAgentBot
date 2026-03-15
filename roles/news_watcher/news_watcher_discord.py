@@ -60,7 +60,7 @@ def register_news_watcher_commands(bot, personality, agent_config):
             if not args:
                 await ctx.author.send("📡 **News Watcher** - Use `!watcherhelp` to see all available commands.")
                 if ctx.guild:
-                    help_sent_msg = PERSONALIDAD.get("discord", {}).get("watcher_messages", {}).get("help_sent_private", "📩 Help sent by private message.")
+                    help_sent_msg = get_message("help_sent_private")
                     await ctx.send(help_sent_msg)
                 return
 
@@ -95,12 +95,12 @@ def register_news_watcher_commands(bot, personality, agent_config):
                     logger.error(f"Error in watcher command {subcommand}: {e}")
                     await ctx.author.send("❌ Error executing command. Please try again.")
                     if ctx.guild:
-                        error_msg = PERSONALIDAD.get("discord", {}).get("mc_messages", {}).get("dm_help_error", "📩 Error sent by private message.")
+                        error_msg = "📩 Error sent by private message."
                         await ctx.send(error_msg)
             else:
                 await ctx.author.send(f"❌ Subcommand `{subcommand}` not recognized. Use `!watcherhelp` to see help.")
                 if ctx.guild:
-                    help_sent_msg = PERSONALIDAD.get("discord", {}).get("watcher_messages", {}).get("help_sent_private", "📩 Help sent by private message.")
+                    help_sent_msg = get_message("help_sent_private")
                     await ctx.send(help_sent_msg)
 
         logger.info("📡 Watcher command registered")
@@ -219,7 +219,7 @@ def register_news_watcher_commands(bot, personality, agent_config):
                 watcher_help = _build_watcher_help_text()
 
             # Use personality-specific message with fallback
-            help_sent_msg = PERSONALIDAD.get("discord", {}).get("watcher_messages", {}).get("help_sent_private", "📩 Help sent by private message.")
+            help_sent_msg = get_message("help_sent_private")
             await send_dm_or_channel(ctx, watcher_help, help_sent_msg)
 
         logger.info("📡 Watcher help command registered")
@@ -295,8 +295,8 @@ def register_news_watcher_commands(bot, personality, agent_config):
         @commands.has_permissions(administrator=True)
         async def cmd_force_watcher(ctx):
             """Force news watcher to check subscriptions (Admin only)."""
-            import asyncio
             from roles.news_watcher.news_watcher import process_channel_subscriptions
+            from roles.news_watcher.global_news_db import get_global_news_db
             from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
             
             try:
@@ -304,6 +304,7 @@ def register_news_watcher_commands(bot, personality, agent_config):
                 
                 # Get database instance
                 db = get_news_watcher_db_instance(str(ctx.guild.id))
+                global_db = get_global_news_db()
                 
                 # Use our custom DiscordHTTP client for notifications
                 from discord_bot.discord_http import DiscordHTTP
@@ -311,7 +312,7 @@ def register_news_watcher_commands(bot, personality, agent_config):
                 http = DiscordHTTP(get_discord_token())
                 
                 # Force the watcher to process all channel subscriptions
-                await process_channel_subscriptions(http, db, str(ctx.guild.id))
+                await process_channel_subscriptions(http, db, global_db, str(ctx.guild.id))
                 
                 await ctx.send("✅ **News watcher iteration completed!**\n"
                               "📊 Checked all channel subscriptions for new articles.\n"
@@ -328,37 +329,35 @@ def register_news_watcher_commands(bot, personality, agent_config):
 def _build_watcher_help_text():
     """Build News Watcher help text for users."""
     help_text = "📡 **News Watcher Help - Users** 📡\n\n"
-    help_text += "⚠️ **IMPORTANT:** You can only have **ONE TYPE** of active subscription at a time\n"
-    help_text += "• If you subscribe to a new type, the previous one will be automatically cancelled\n\n"
+    help_text += "⚠️ **IMPORTANT:** Each subscription can have its own method (flat, keyword, or general)\n"
+    help_text += "• You can have up to 3 subscriptions with different methods\n"
+    help_text += "• Each subscription is independent and has its own configuration\n\n"
     help_text += "📊 **Subscription Limits:**\n"
     help_text += "• **Users:** Maximum 3 subscriptions per person\n"
     help_text += "• **Channels:** Maximum 3 subscriptions per channel\n"
     help_text += "• **Server:** Maximum 15 total subscriptions\n\n"
     help_text += "🎯 **Main Commands:**\n"
-    help_text += "• `!watcher subscribe <category> [feed_id]` - Subscribe to news (behavior depends on server method)\n"
+    help_text += "• `!watcher subscribe <method> <category> [feed_id]` - Subscribe with specific method\n"
     help_text += "• `!watcher unsubscribe <number>` - Cancel subscription by list number\n"
-    help_text += "• `!watcher unsubscribe <category> [feed_id]` - Cancel subscription (legacy method)\n"
     help_text += "• `!watcher subscriptions` - Show numbered list of all subscriptions\n"
-    help_text += "• `!watcher status` - Your active subscription type and usage\n"
+    help_text += "• `!watcher status` - Your subscription count and limits\n"
     help_text += "• `!watcher feeds` - List available RSS feeds\n"
-    help_text += "• `!watcher categories` - Show active categories\n"
-    help_text += "• `!watcher method` - Show current server method (admins only)\n\n"
-    help_text += "⚙️ **Method Configuration (Admins only):**\n"
-    help_text += "• `!watcher method flat` - All news with opinions\n"
-    help_text += "• `!watcher method keyword` - Filtered news by keywords\n"
-    help_text += "• `!watcher method general` - AI-analyzed critical news (default)\n\n"
-    help_text += "🔧 **Configuration Commands:**\n"
-    help_text += "• `!watcher premises add \"text\"` - Add premise (for AI method)\n"
+    help_text += "• `!watcher categories` - Show active categories\n\n"
+    help_text += "🔧 **Method Selection:**\n"
+    help_text += "• `!watcher subscribe flat <category>` - All news with AI opinions\n"
+    help_text += "• `!watcher subscribe keyword <category>` - Filtered by your keywords\n"
+    help_text += "• `!watcher subscribe general <category>` - AI critical analysis\n\n"
+    help_text += "⚙️ **Configuration Commands:**\n"
+    help_text += "• `!watcher premises add \"text\"` - Add premise (for general method)\n"
     help_text += "• `!watcher premises list` - See your premises\n"
     help_text += "• `!watcher keywords add <word>` - Add keyword (for keyword method)\n"
     help_text += "• `!watcher keywords list` - See your keywords\n\n"
     help_text += "🔄 **Subscription Management:**\n"
-    help_text += "• `!watcher reset` - See what subscription type you have active\n"
     help_text += "• `!watcher reset confirm` - Delete ALL your subscriptions\n"
-    help_text += "• **Use it to change subscription type**\n\n"
+    help_text += "• **Use unsubscribe to remove individual subscriptions**\n\n"
     help_text += "📂 **Categories:** economy, international, technology, general, crypto\n\n"
     help_text += "💡 **Quick Examples:**\n"
-    help_text += "```\n!watcher subscribe economy           # Subscribe to economy news\n!watcher subscribe economy 5          # Subscribe to specific feed\n!watcher subscriptions               # See all your subscriptions numbered\n!watcher unsubscribe 2               # Cancel subscription #2 from list\n!watcher unsubscribe economy         # Cancel by category (legacy)\n!watcher status                       # See your subscriptions and limits\n!watcher reset                        # See active type\n!watcher reset confirm                # Clean everything\n!watcher premises add \"I care about tech\"  # Add premise for AI\n!watcher keywords add bitcoin         # Add keyword for filtering\n```\n\n"
+    help_text += "```\n!watcher subscribe flat economy           # All economy news with opinions\n!watcher subscribe keyword tech 5          # Tech feed filtered by keywords\n!watcher subscribe general international   # AI-analyzed critical international news\n!watcher subscriptions                    # See all your subscriptions numbered\n!watcher unsubscribe 2                    # Cancel subscription #2 from list\n!watcher status                           # See your subscription count\n!watcher premises add \"I care about AI\"  # Add premise for general method\n!watcher keywords add blockchain          # Add keyword for keyword method\n```\n\n"
     help_text += "📢 **For Admins:** Use `!watcherchannelhelp` for channel commands"
     return help_text
 

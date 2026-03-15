@@ -7,11 +7,17 @@ logger = get_logger('banker_messages')
 def get_banker_messages():
     """Load custom Banker messages from personality file."""
     try:
-        # Use the centralized personality loading function
-        from agent_engine import PERSONALIDAD
-        
-        # Get specific banker messages
-        banker_messages = PERSONALIDAD.get("discord", {}).get("banker_messages", {})
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
+        with open(config_path, encoding="utf-8") as f:
+            agent_cfg = json.load(f)
+        personality_rel = agent_cfg.get("personality", "")
+        answers_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            os.path.dirname(personality_rel),
+            "answers.json",
+        )
+        with open(answers_path, encoding="utf-8") as f:
+            banker_messages = json.load(f).get("discord", {}).get("banker_messages", {})
         
         if not banker_messages:
             logger.warning("⚠️ No custom banker messages found in personality")

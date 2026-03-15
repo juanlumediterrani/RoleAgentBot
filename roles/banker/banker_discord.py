@@ -4,11 +4,32 @@ Registers: !banker (balance, tae, bonus, help)
 """
 
 import discord
+import json
+import os
 from agent_logging import get_logger
 from .banker_messages import get_message
 from discord_bot.discord_utils import is_admin, send_embed_dm_or_channel
 
 logger = get_logger('banker_discord')
+
+
+def _get_banker_description_text(key: str, fallback: str) -> str:
+    try:
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
+        with open(config_path, encoding="utf-8") as f:
+            agent_cfg = json.load(f)
+        personality_rel = agent_cfg.get("personality", "")
+        descriptions_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            os.path.dirname(personality_rel),
+            "descriptions.json",
+        )
+        with open(descriptions_path, encoding="utf-8") as f:
+            descriptions = json.load(f).get("discord", {}).get("banker_messages", {})
+        value = descriptions.get(key)
+        return str(value) if value else fallback
+    except Exception:
+        return fallback
 
 # Availability flags
 try:
@@ -192,13 +213,13 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
     history = db_banker.get_transaction_history(user_id, server_id, limit=5)
     
     embed = discord.Embed(
-        title=get_message("balance_title"),
+        title=_get_banker_description_text("balance_title", get_message("balance_title")),
         description=get_message("saldo_description"),
         color=discord.Color.gold()
     )
-    embed.add_field(name=get_message("saldo_actual"), value=f"{balance:,} gold coins", inline=False)
-    embed.add_field(name=get_message("titular"), value=user_name, inline=True)
-    embed.add_field(name=get_message("banco"), value=server_name, inline=True)
+    embed.add_field(name=_get_banker_description_text("current_balance", get_message("saldo_actual")), value=f"{balance:,} gold coins", inline=False)
+    embed.add_field(name=_get_banker_description_text("account_holder", get_message("titular")), value=user_name, inline=True)
+    embed.add_field(name=_get_banker_description_text("bank", get_message("banco")), value=server_name, inline=True)
 
     # Add dice game status information
     if dice_game_initialized:
@@ -211,7 +232,7 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
             emoji = "📥" if amount > 0 else "📤"
             history_text += f"{emoji} {amount:,} ({trans_type})\n"
         if history_text:
-            embed.add_field(name=get_message("transacciones_recientes"), value=history_text[:1024], inline=False)
+            embed.add_field(name=_get_banker_description_text("recent_transactions", get_message("transacciones_recientes")), value=history_text[:1024], inline=False)
 
     embed.set_footer(text=get_message("help_footer"))
     embed.set_thumbnail(url=ctx.author.display_avatar.url if ctx.author.display_avatar else None)
@@ -232,12 +253,12 @@ async def _cmd_banker_tae(ctx, db_banker, server_id, server_name, subargs):
         last_distribution = db_banker.obtener_ultima_distribucion(server_id)
 
         embed = discord.Embed(
-            title=get_message("daily_allowance_config_title"),
+            title=_get_banker_description_text("daily_allowance_config_title", get_message("daily_allowance_config_title")),
             description=get_message("tae_description"),
             color=discord.Color.blue()
         )
         embed.add_field(name=get_message("tae_actual"), value=f"{current_tae:,} coins", inline=True)
-        embed.add_field(name=get_message("ultima_distribucion"), value=last_distribution[:10] if last_distribution else "Never", inline=True)
+        embed.add_field(name=_get_banker_description_text("last_distribution", get_message("ultima_distribucion")), value=last_distribution[:10] if last_distribution else "Never", inline=True)
 
         if current_tae == 0:
             embed.add_field(name=get_message("tae_no_configurada"), value="Use !banker tae <amount> to configure", inline=False)
@@ -261,12 +282,12 @@ async def _cmd_banker_tae(ctx, db_banker, server_id, server_name, subargs):
                     description=get_message("tae_actualizada"),
                     color=discord.Color.green()
                 )
-                embed.add_field(name=get_message("nueva_tae"), value=f"{amount:,} coins per day", inline=True)
-                embed.add_field(name=get_message("administrador"), value=ctx.author.display_name, inline=True)
-                embed.add_field(name=get_message("servidor"), value=server_name, inline=True)
+                embed.add_field(name=_get_banker_description_text("new_daily_allowance", get_message("nueva_tae")), value=f"{amount:,} coins per day", inline=True)
+                embed.add_field(name=_get_banker_description_text("administrator", get_message("administrador")), value=ctx.author.display_name, inline=True)
+                embed.add_field(name=_get_banker_description_text("server", get_message("servidor")), value=server_name, inline=True)
                 
                 if amount > 0:
-                    embed.add_field(name=get_message("proxima_distribucion"), value="Will be distributed automatically every day", inline=False)
+                    embed.add_field(name=_get_banker_description_text("next_distribution", get_message("proxima_distribucion")), value="Will be distributed automatically every day", inline=False)
                 embed.set_footer(text=get_message("help_footer"))
                 await ctx.send(embed=embed)
             else:
@@ -286,14 +307,14 @@ async def _cmd_banker_bonus(ctx, db_banker, server_id, server_name, subargs):
         current_bonus = db_banker.obtener_bono(server_id)
 
         embed = discord.Embed(
-            title=get_message("bonus_config_title"),
+            title=_get_banker_description_text("bonus_config_title", get_message("bonus_config_title")),
             description=get_message("bono_description"),
             color=discord.Color.green()
         )
-        embed.add_field(name=get_message("bono_actual"), value=f"{current_bonus:,} coins", inline=True)
-        embed.add_field(name=get_message("servidor"), value=server_name, inline=True)
-        embed.add_field(name=get_message("bono_info"), value=f"Each new account will receive {current_bonus:,} coins automatically", inline=False)
-        embed.set_footer(text=get_message("bono_footer"))
+        embed.add_field(name=_get_banker_description_text("current_bonus", get_message("bono_actual")), value=f"{current_bonus:,} coins", inline=True)
+        embed.add_field(name=_get_banker_description_text("server", get_message("servidor")), value=server_name, inline=True)
+        embed.add_field(name=_get_banker_description_text("bonus_info", get_message("bono_info")), value=f"Each new account will receive {current_bonus:,} coins automatically", inline=False)
+        embed.set_footer(text=_get_banker_description_text("bonus_footer", get_message("bono_footer")))
         await ctx.send(embed=embed)
     else:
         # Set new bonus
@@ -310,9 +331,9 @@ async def _cmd_banker_bonus(ctx, db_banker, server_id, server_name, subargs):
                     description=get_message("bono_actualizado"),
                     color=discord.Color.green()
                 )
-                embed.add_field(name=get_message("nuevo_bono"), value=f"{amount:,} coins", inline=True)
-                embed.add_field(name=get_message("administrador"), value=ctx.author.display_name, inline=True)
-                embed.add_field(name=get_message("servidor"), value=server_name, inline=True)
+                embed.add_field(name=_get_banker_description_text("new_bonus", get_message("nuevo_bono")), value=f"{amount:,} coins", inline=True)
+                embed.add_field(name=_get_banker_description_text("administrator", get_message("administrador")), value=ctx.author.display_name, inline=True)
+                embed.add_field(name=_get_banker_description_text("server", get_message("servidor")), value=server_name, inline=True)
                 embed.add_field(name=get_message("aplicacion"), value="Next new accounts will receive this bonus", inline=False)
                 embed.set_footer(text=get_message("help_footer"))
                 await ctx.send(embed=embed)

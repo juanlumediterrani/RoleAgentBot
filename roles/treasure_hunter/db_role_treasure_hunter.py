@@ -13,7 +13,7 @@ except Exception:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger('db_role_treasure_hunter')
 
-from agent_db import get_server_db_path_fallback, get_personality_name
+from agent_db import get_shared_data_path
 
 def get_db_path(server_name: str = "default", liga: str = "Standard") -> Path:
     """Genera ruta de BD basada en el nombre de la liga."""
@@ -24,8 +24,8 @@ def get_db_path(server_name: str = "default", liga: str = "Standard") -> Path:
     else:
         liga_sanitized = liga.lower().replace(' ', '_').replace('-', '_')
         db_name = f"PoE2{liga_sanitized}.db"
-    
-    return get_server_db_path_fallback(server_name, db_name)
+
+    return get_shared_data_path(db_name, "shared_poe2")
 
 
 class DatabaseRolePoe:
@@ -409,7 +409,7 @@ _db_poe_instances = {}
 
 def get_poe_db_instance(server_name: str = "default", liga: str = "Standard") -> DatabaseRolePoe:
     """Get or create a POE database instance for a specific server and league."""
-    key = f"{server_name}_{liga}"
+    key = liga
     if key not in _db_poe_instances:
         _db_poe_instances[key] = DatabaseRolePoe(server_name, liga)
     return _db_poe_instances[key]
