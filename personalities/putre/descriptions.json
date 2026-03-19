@@ -19,40 +19,53 @@
       "no_roles_active": "🌫️ **NINGÚN ROL ACTIVO**\n\nNo hay roles especializados activos actualmente. Pide a un administrador que active algunos roles usando `!canvas setup`.\n\n**Roles disponibles para activar:**\n• 📡 News Watcher - Vigía de noticias\n• 💎 Treasure Hunter - Cazador de tesoros\n• 🎭 Trickster - Trilero y juegos\n• 💰 Banker - Economía del clan\n• 🎵 MC - Música y entretenimiento",
       "role_descriptions": {
         "news_watcher": {
-          "title": "Watcher",
+          "title": "Watcher (alpha)",
           "description": "Suscribete a categorias de noticias y recibe alertas segun el análisis escogido."
         },
         "treasure_hunter": {
-          "title": "Treasure Hunter",
+          "title": "Treasure Hunter (alpha)",
           "description": "Haz que Putre monitorice precios y te envie alertas"
         },
         "trickster": {
-          "title": "Trickster",
+          "title": "Trickster (beta)",
           "description": "Ven y dejate embaucar por el orco trilero, juega y diviertete."
         },
         "banker": {
-          "title": "Banker",
+          "title": "Banker (beta)",
           "description": "El orco tesorero te administra tus cuentas y transacciones de oro."
         },
         "mc": {
-          "title": "MC",
+          "title": "MC (beta)",
           "description": "MC Putre, invitalo a un canal de voz para que reproduzca musica por ti."
         }
       },
       "inactive_status": "❌ INATIVO"
     },
     "dice_game_messages": {
-      "roll_title": "🎲 **TUS GUESOS DIZEN:**",
-      "combination_title": "📊 **RESULTAO:**",
-      "prize_title": "💰 **BOTÍN GANADO:**",
-      "current_pot_title": "💎 **EL BOTE:**"
+      "roll_title": "TUS GUESOS DIZEN:\n",
+      "combination_title": "RESULTAO:",
+      "prize_title": "BOTIN GANAO:",
+      "current_pot_title": " **💰 EL BOTE 💰**",
+      "ranking": " **:trophy:  PUNTUASIONE BOTE **",
+      "rankingvoid": " No a nadie en tabla umano!",
+      "historyvoid": " No a jugao nadie todavia umano!",
+      "history": " **📜  Istorial de jugas **",
+      "help":" **Aiuda del BOTE**\n Juega al BOTE de Putre, apuezta oro y tira dados pa ganar! Uza 'dice play' pa juga.\n Si el umano tira tres unos gana el BOTE!"
+
     },
     "dice_game_balance_messages": {
       "title": "💰 **EL PUTRE BOTE - {servidor}** 💰\n",
-      "current_balance": "🎲 **Oro amontonao:** {saldo:,} monedas!\n",
-      "fixed_bet": "💎 **Precio pa tira:** {apuesta:,} monedas!\n",
+      "current_balance": "Oro amontonao:",
+      "fixed_bet": "Precio pa tira:",
       "possible_plays": "🎯 **Apuesta reztante:** {jugadas}\n",
       "use_command": "\n💡 ¡Usa `!dice play` para tirar los kraneos, umano baboso!"
+    },
+    "dice_game_combinations": {
+      "triple_ones": "¡¡¡TRES OJOS DE GRUUMSH!!!",
+      "three_of_a_kind": "TRES KRANEOS ROTOS",
+      "straight": "KORRIDA SANGRIENTA",
+      "pair": "DOS COLMIYOS",
+      "nothing": "¡BASURAH!"
     },
     "ring_view_messages": {
       "title": "👁️ **PUTRE CAZADOR DEL ANILLO - {servidor}** 👁️\n",
@@ -75,7 +88,6 @@
         "dice_game": "🎲 **Juego de Dados** - Juega contra el banco, sube en el ranking y gana oro",
         "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único"
       },
-      "canvas_dice_title": "**🎭  El Bote de {_bot}**",
       "canvas_ring_title": "**🎭 {_bot} Cazador del Anillo Uniko!**",
       "canvas_ring_description": "🔍 Putre el cazador del anillo unico busca el artefacto perdido. Tu jefe te encargó encontrar esa joya maldita y no volverás hasta que la tengas. Interroga a los sospechosos y haz que hablen.",
       "canvas_beggar_title": "**🎭 {_bot} Proyectos - Recaudaciones**",
@@ -150,6 +162,18 @@
       "canvas_commentary_title": "**🗣️ {_bot} Comentarios de Mision**",
       "canvas_taboo_title": "**🚫 {_bot} Palabras Tabu**",
       "canvas_role_control_title": "**🎛️ {_bot} Control de Roles**"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "te acuerdas de", "recuerdas", "haz memoria", "acuerdate",
+        "te acuerdas que", "recuerda cuando", "acuerdese",
+        "¿te acuerdas", "¿recuerdas", "haz memoria de",
+        "acuerdate de", "recuerda algo", "te suena",
+        "te acuerdas", "acuerdate", "recuerda", "haz memoria",
+        "¿te acuerdas?", "¿recuerdas?", "acuerdate de",
+        "recuerda cuando", "te suena algo", "acuerdate que",
+        "recuerdas cuando", "no te acuerdas", "kien te acuerdas"
+      ]
     }
   }
 }

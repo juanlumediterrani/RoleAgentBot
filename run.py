@@ -272,11 +272,10 @@ async def discord_bot():
     If it dies, relaunches automatically after 10s.
     Only used when platform == "discord".
     """
-    script = BASE_DIR / "discord_bot" / "agent_discord.py"
     while True:
         logger.info("[run] 🤖 Starting main Discord bot...")
         proc = await asyncio.create_subprocess_exec(
-            PYTHON, str(script),
+            PYTHON, "-m", "discord_bot.agent_discord",
             cwd=str(BASE_DIR),
         )
         exit_code = await proc.wait()

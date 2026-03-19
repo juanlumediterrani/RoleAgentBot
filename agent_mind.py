@@ -105,21 +105,44 @@ def _build_configured_synthesis_prompt(
     sections: list[tuple[str, str]],
     fallback_closing: str,
 ) -> str:
-    personality = _engine().PERSONALIDAD
+    personality = _engine().PERSONALITY
     cfg = personality.get(prompt_key, {})
     instructions = cfg.get("instructions", []) if isinstance(cfg, dict) else []
     if not isinstance(instructions, list) or not instructions:
         instructions = fallback_instructions
 
+    # Add sections FIRST (context content)
     processed = []
-    for inst in instructions:
-        line = str(inst)
-        for key, value in replacements.items():
-            line = line.replace(f"{{{key}}}", str(value))
-        processed.append(line.strip())
-
     for section_title, section_content in sections:
         processed.extend(["", section_title, section_content.strip()])
+    
+    # THEN add instructions (task) with dynamic format injection
+    for i, inst in enumerate(instructions):
+        line = str(inst)
+        
+        # Apply other replacements first
+        for key, value in replacements.items():
+            line = line.replace(f"{{{key}}}", str(value))
+        
+        # Inject format titles and placeholders after FORMATO line for recent memory summary
+        if prompt_key == "prompt_recent_memory_summary" and line.strip().endswith("en este formato:"):
+            # Get format components from JSON with English fallbacks
+            memory_title = cfg.get("memorytitles", "---NEW_MEMORY---")
+            memory_placeholder = cfg.get("memoryplaceholder", "[new memory paragraph here]")
+            recollection_title = cfg.get("recollectiontitle", "---EXTRACTED_MEMORY---")
+            recollection_placeholder = cfg.get("recollectionplaceholder", "[extracted notable phrase or NO_MEMORY]")
+            
+            processed.append(line.strip())
+            # Insert format components after the complete FORMATO line
+            processed.extend([
+                memory_title,
+                memory_placeholder,
+                recollection_title,
+                recollection_placeholder
+            ])
+            continue  # Skip adding this line again
+        
+        processed.append(line.strip())
 
     closing = str(cfg.get("closing", "")).strip() if isinstance(cfg, dict) else ""
     if not closing:
@@ -187,15 +210,20 @@ def _build_daily_summary_prompt(
     target_date: str,
     injected_memory: str | None = None,
 ) -> str:
+    # Get synthesis paragraph labels from personality JSON with English fallback
+    synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    notable_memory_label = synthesis_labels.get("notable_recollection_to_weave_in", "NOTABLE RECOLLECTION TO WEAVE IN:")
+    previous_daily_label = synthesis_labels.get("previous_daily_memory", "PREVIOUS DAILY MEMORY:")
+    latest_recent_label = synthesis_labels.get("latest_recent_memory_of_the_day", "LATEST RECENT MEMORY OF THE DAY:")
+    
     previous_block = previous_summary.strip() or _get_daily_memory_fallback()
     recent_block = recent_memory.strip() or _get_recent_memory_fallback()
-    sections: list[tuple[str, str]] = [
-        ("TARGET DATE:", target_date),
-        ("PREVIOUS DAILY MEMORY:", previous_block),
-        ("LATEST RECENT MEMORY OF THE DAY:", recent_block),
+    sections = [
+        (previous_daily_label, previous_block),
+        (latest_recent_label, recent_block),
     ]
     if injected_memory and injected_memory.strip():
-        sections.append(("NOTABLE MEMORY TO WEAVE IN:", injected_memory.strip()))
+        sections.append((notable_memory_label, injected_memory.strip()))
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_daily_memory_summary",
         fallback_instructions=_get_daily_summary_task_lines(),
@@ -224,18 +252,26 @@ def _format_relationship_interactions_for_summary(interactions: list[dict]) -> s
 
 
 def _build_relationship_summary_prompt(previous_summary: str, new_interactions: list[dict], user_name: str | None, target_date: str) -> str:
+    # Get synthesis paragraph labels from personality JSON with English fallback
+    synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    target_user_label = synthesis_labels.get("target_user", "TARGET USER:")
+    target_date_label = synthesis_labels.get("target_date", "TARGET DATE:")
+    previous_relationship_label = synthesis_labels.get("previous_relationship_summary", "PREVIOUS RELATIONSHIP SUMMARY:")
+    recent_interactions_label = synthesis_labels.get("recent_interactions", "RECENT INTERACTIONS:")
+    
     previous_block = previous_summary.strip() or "No previous synthesis."
     interactions_block = _format_relationship_interactions_for_summary(new_interactions)
+    sections = [
+        (target_user_label, user_name or "human"),
+        (target_date_label, target_date),
+        (previous_relationship_label, previous_block),
+        (recent_interactions_label, interactions_block),
+    ]
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_relationship_memory_summary",
         fallback_instructions=_get_relationship_summary_task_lines(),
         replacements={"user_name": user_name or "human", "target_date": target_date},
-        sections=[
-            ("TARGET USER:", user_name or "human"),
-            ("TARGET DATE:", target_date),
-            ("PREVIOUS SYNTHESIS:", previous_block),
-            ("NEW INTERACTIONS SINCE THE LAST SYNTHESIS:", interactions_block),
-        ],
+        sections=sections,
         fallback_closing="Return only the new final relationship-memory paragraph.",
     )
 
@@ -268,10 +304,26 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
         )
         return fallback
 
-    system_instruction = engine._build_system_prompt(engine.PERSONALIDAD)
+    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
     summary_prompt = _build_recent_memory_summary_prompt(previous_summary, interactions, resolved_date)
     summary_response = _call_llm_async(system_instruction, summary_prompt)
-    summary_text = (summary_response or "").strip() or previous_summary or _get_recent_memory_fallback()
+    
+    # Extract new memory and notable recollection from response
+    new_memory_text, extracted_recollection = _extract_memory_from_summary(summary_response or "")
+    
+    # Use extracted recollection, or fallback to previous or default
+    summary_text = new_memory_text.strip() if new_memory_text else (previous_summary or _get_recent_memory_fallback())
+    
+    # Store extracted recollection if present
+    if extracted_recollection and extracted_recollection != "NO_MEMORY":
+        recollection_id = db_instance.add_notable_recollection(
+            recollection_text=extracted_recollection,
+            memory_date=resolved_date,
+            source_paragraph=previous_summary[:500] if previous_summary else None,  # Store first 500 chars as context
+        )
+        if recollection_id:
+            logger.info(f"🧠 [RECENT_MEMORY] Extracted and stored notable recollection: '{extracted_recollection[:60]}...'")
+    
     latest_interaction_at = interactions[-1].get("fecha") or last_interaction_at
     db_instance.upsert_recent_memory(
         summary_text,
@@ -281,72 +333,77 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
             "source": "llm_recent_memory_summary",
             "interaction_count": len(interactions),
             "generated_at": datetime.now().isoformat(),
+            "recollection_extracted": bool(extracted_recollection and extracted_recollection != "NO_MEMORY"),
         },
     )
-    logger.info(f"🧠 [RECENT_MEMORY] Stored summary for {resolved_server} on {resolved_date} ({len(interactions)} interactions)")
+    logger.info(f"🧠 [RECENT_MEMORY] Stored summary for {resolved_server} on {resolved_date} ({len(interactions)} interactions, extracted: {bool(extracted_recollection and extracted_recollection != 'NO_MEMORY')})")
     return summary_text
 
 
-def _should_inject_random_memory(db_instance, memory_count: int) -> bool:
-    """Determine if a random memory should be injected based on count and probability.
+def _should_inject_random_memory(db_instance, recollection_count: int) -> bool:
+    """Determine if a random recollection should be injected based on count and probability.
     
-    - If fewer than 10 memories: 10% chance
-    - If 10 or more memories: 33% chance
+    - If fewer than 10 recollections: 10% chance
+    - If 10 or more recollections: 33% chance
     """
     import random
-    if memory_count == 0:
+    if recollection_count == 0:
         return False
-    if memory_count < 10:
+    if recollection_count < 10:
         return random.random() < 0.10  # 10% chance
     return random.random() < 0.33  # 33% chance
 
 
-def _get_random_memory_for_injection(db_instance) -> tuple[str | None, int | None]:
-    """Get a random notable memory for injection and increment its usage count.
+def _get_random_recollection_for_injection(db_instance) -> tuple[str | None, int | None]:
+    """Get a random notable recollection for injection and increment its usage count.
     
     Returns:
-        Tuple of (memory_text, memory_id) or (None, None) if no memories exist
+        Tuple of (recollection_text, recollection_id) or (None, None) if no recollections exist
     """
-    memory = db_instance.get_random_notable_memory()
-    if not memory:
+    recollection = db_instance.get_random_notable_recollection()
+    if not recollection:
         return None, None
-    memory_id = memory.get("id")
-    memory_text = memory.get("memory_text")
-    if memory_id:
-        db_instance.increment_memory_usage(memory_id)
-    return memory_text, memory_id
+    recollection_id = recollection.get("id")
+    recollection_text = recollection.get("recollection_text")
+    if recollection_id:
+        db_instance.increment_recollection_usage(recollection_id)
+    return recollection_text, recollection_id
 
 
 def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None]:
-    """Extract the new memory paragraph and notable memory from LLM response.
+    """Extract the new memory paragraph and notable recollection from LLM response.
     
-    Expected format:
-    ---NUEVA_MEMORIA---
-    [new memory paragraph]
-    ---RECUERDO_EXTRAIDO---
-    [extracted memory or NO_MEMORY]
-    
-    Or fallback format:
-    ---NEW_MEMORY---
-    [new memory paragraph]
-    ---EXTRACTED_MEMORY---
-    [extracted memory or NO_MEMORY]
+    Uses titles from personality JSON with English fallbacks.
+    Captures content AFTER each marker, not the markers themselves.
     
     Returns:
-        Tuple of (new_memory_text, extracted_memory or None)
+        Tuple of (new_memory_text, extracted_recollection or None)
     """
     import re
     
     if not summary_response:
         return "", None
     
-    # Try Spanish format first
-    spanish_pattern = r"---NUEVA_MEMORIA---\s*(.*?)\s*---RECUERDO_EXTRAIDO---\s*(.*?)\s*(?:\n|$)"
-    english_pattern = r"---NEW_MEMORY---\s*(.*?)\s*---EXTRACTED_MEMORY---\s*(.*?)\s*(?:\n|$)"
+    # Get titles from personality JSON with English fallbacks
+    personality = _engine().PERSONALITY
+    recent_cfg = personality.get("prompt_recent_memory_summary", {})
     
-    match = re.search(spanish_pattern, summary_response, re.DOTALL | re.IGNORECASE)
+    # Get titles from JSON or use English fallbacks
+    memory_title = recent_cfg.get("memorytitles", "---NUEVA_MEMORIA---")
+    recollection_title = recent_cfg.get("recollectiontitle", "---RECUERDO_EXTRAIDO---")
+    
+    # English fallbacks
+    memory_title_en = "---NEW_MEMORY---"
+    recollection_title_en = "---EXTRACTED_MEMORY---"
+    
+    # Try personality format first - capture content AFTER markers
+    pattern = rf"{re.escape(memory_title)}\s*(.*?)\s*{re.escape(recollection_title)}\s*(.*?)\s*(?:\n|$)"
+    match = re.search(pattern, summary_response, re.DOTALL | re.IGNORECASE)
+    
     if not match:
-        match = re.search(english_pattern, summary_response, re.DOTALL | re.IGNORECASE)
+        # Try English fallback
+        pattern = rf"{re.escape(memory_title_en)}\s*(.*?)\s*{re.escape(recollection_title_en)}\s*(.*?)\s*(?:\n|$)"
+        match = re.search(pattern, summary_response, re.DOTALL | re.IGNORECASE)
     
     if match:
         new_memory = match.group(1).strip()
@@ -357,8 +414,26 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
             return new_memory, None
         return new_memory, extracted
     
-    # If no structured format found, return the whole response as new memory
-    return summary_response.strip(), None
+    # If no structured format found, try to extract content after memory title only
+    fallback_patterns = [
+        rf"{re.escape(memory_title)}\s*(.*?)(?:\n---|\Z)",
+        rf"{re.escape(memory_title_en)}\s*(.*?)(?:\n---|\Z)"
+    ]
+    
+    for pattern in fallback_patterns:
+        match = re.search(pattern, summary_response, re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip(), None
+    
+    # Last resort: return cleaned response (remove any markers and get content)
+    # Split by markers and get the first substantial content
+    content_parts = re.split(r"---[A-Z_]+---\s*", summary_response)
+    for part in content_parts:
+        cleaned = part.strip()
+        if cleaned and len(cleaned) > 10:  # Only return if substantial content
+            return cleaned, None
+    
+    return "", None
 
 
 def generate_daily_memory_summary(server_name: str | None = None, target_date: str | None = None, force: bool = False) -> str:
@@ -390,33 +465,20 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
         )
         return fallback
     
-    # Determine if we should inject a random memory
-    memory_count = db_instance.count_notable_memories()
-    injected_memory = None
-    if _should_inject_random_memory(db_instance, memory_count):
-        injected_memory, _ = _get_random_memory_for_injection(db_instance)
-        if injected_memory:
-            logger.info(f"🧠 [DAILY_MEMORY] Injecting random notable memory ({memory_count} total memories)")
+    # Determine if we should inject a random recollection
+    recollection_count = db_instance.count_notable_recollections()
+    injected_recollection = None
+    if _should_inject_random_memory(db_instance, recollection_count):
+        injected_recollection, _ = _get_random_recollection_for_injection(db_instance)
+        if injected_recollection:
+            logger.info(f"🧠 [DAILY_MEMORY] Injecting random notable recollection ({recollection_count} total recollections)")
     
-    system_instruction = engine._build_system_prompt(engine.PERSONALIDAD)
-    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, injected_memory)
+    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
+    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, injected_recollection)
     summary_response = _call_llm_async(system_instruction, summary_prompt)
     
-    # Extract new memory and notable memory from response
-    new_memory_text, extracted_memory = _extract_memory_from_summary(summary_response or "")
-    
-    # Use extracted memory, or fallback to previous or default
-    summary_text = new_memory_text.strip() if new_memory_text else (previous_summary or _get_daily_memory_fallback())
-    
-    # Store extracted memory if present
-    if extracted_memory:
-        memory_id = db_instance.add_notable_memory(
-            memory_text=extracted_memory,
-            memory_date=resolved_date,
-            source_paragraph=previous_summary[:500] if previous_summary else None,  # Store first 500 chars as context
-        )
-        if memory_id:
-            logger.info(f"🧠 [DAILY_MEMORY] Extracted and stored notable memory: '{extracted_memory[:60]}...'")
+    # Extract new memory (no extraction for daily memory now)
+    summary_text = (summary_response or "").strip() or previous_summary or _get_daily_memory_fallback()
     
     db_instance.upsert_daily_memory(
         summary_text,
@@ -425,13 +487,14 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
             "source": "llm_daily_summary",
             "recent_memory_used": bool(recent_summary),
             "generated_at": datetime.now().isoformat(),
-            "memory_injected": bool(injected_memory),
-            "memory_extracted": bool(extracted_memory),
+            "recollection_injected": bool(injected_recollection),
+            "memory_extracted": False,  # Daily memory no longer extracts memories
         },
     )
-    logger.info(f"🧠 [DAILY_MEMORY] Stored summary for {resolved_server} on {resolved_date} (memories: {memory_count}, injected: {bool(injected_memory)}, extracted: {bool(extracted_memory)})")
+    logger.info(f"🧠 [DAILY_MEMORY] Stored summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, injected: {bool(injected_recollection)})")
     return summary_text
-
+    
+    
 
 def _build_daily_memory_text(db_instance) -> str:
     stored = db_instance.get_daily_memory().strip()
@@ -486,7 +549,7 @@ def generate_user_relationship_memory_summary(
     if force and not new_interactions:
         new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=None, limit=25)
 
-    system_instruction = engine._build_system_prompt(engine.PERSONALIDAD)
+    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
     summary_prompt = _build_relationship_summary_prompt(previous_summary, new_interactions, user_name, resolved_date)
     summary_response = _call_llm_async(system_instruction, summary_prompt)
     summary_text = (summary_response or "").strip() or previous_summary or _get_relationship_memory_fallback(user_name)
@@ -595,32 +658,121 @@ def _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_
     return fallback
 
 
+def _apply_role_specific_content_overrides(prompt_final: str, user_message: str) -> str:
+    """Apply role-specific content overrides. If role has its own rules, skip general ones.
+    
+    Logic:
+    - If role has its own golden rules → keep role's rules, skip general ones
+    - If role has no golden rules → use general rules with custom title
+    - Extensible for future roles
+    """
+    lines = prompt_final.split('\n')
+    cleaned_lines = []
+    skip_section = False
+    
+    # Define role-specific content patterns
+    role_content_config = {
+        # News Watcher specific patterns
+        "## NEWS WATCHER GOLDEN RULES": {
+            "skip_patterns": [
+                "## REGLAS DE ORO DE ESTA RESPUESTA:",
+                "MISION ACTIVA - BEGGAR",
+                "DETECCIÓN EN CHARLA - BEGGAR"
+            ],
+            "description": "News Watcher has its own golden rules"
+        },
+        # Add more roles here as needed
+        # "## BANKER RULES": {
+        #     "skip_patterns": ["## REGLAS DE ORO DE ESTA RESPUESTA:", "OTHER_MISSION"],
+        #     "description": "Banker has its own rules"
+        # }
+    }
+    
+    # Check if any role-specific pattern is present
+    active_role_pattern = None
+    for pattern in role_content_config.keys():
+        if pattern in user_message:
+            active_role_pattern = pattern
+            break
+    
+    # If no role-specific pattern, add general response rules
+    if not active_role_pattern:
+        # Get custom title for general rules
+        try:
+            from agent_engine import PERSONALITY
+            prompt_labels = PERSONALITY.get("prompt_labels", {})
+            response_rules_title = prompt_labels.get("response_rules_title", "## RESPONSE RULES:")
+            
+            # Add general response rules at the end
+            # Note: We can't access _get_response_rules_lines without the engine instance
+            # This is a fallback - the rules will be added by the engine itself
+        except ImportError:
+            response_rules_title = "## RESPONSE RULES:"
+    
+    # Get the actual response rules title from JSON for dynamic matching
+    try:
+        from agent_engine import PERSONALITY
+        prompt_labels = PERSONALITY.get("prompt_labels", {})
+        actual_response_rules_title = prompt_labels.get("response_rules_title", "## RESPONSE RULES:")
+    except ImportError:
+        actual_response_rules_title = "## RESPONSE RULES:"
+    
+    for line in lines:
+        should_skip = False
+        
+        if active_role_pattern:
+            config = role_content_config[active_role_pattern]
+            
+            # Skip patterns defined for this role
+            for skip_pattern in config["skip_patterns"]:
+                if skip_pattern in line:
+                    should_skip = True
+                    if actual_response_rules_title in line:
+                        skip_section = True
+                    break
+            
+            # Skip response rule items when in rules section
+            if skip_section and line.strip().startswith('- '):
+                should_skip = True
+            elif skip_section and not line.strip().startswith('- ') and line.strip():
+                skip_section = False
+        
+        if not should_skip:
+            cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines)
+
+
 def _render_user_prompt(context: dict) -> str:
     lines = [
-        "## MEMORIA DE PUTRE (Lo que recuerdas):",
-        "[RECUERDOS]",
+        context.get("memory_title", "## MEMORY:"),
+        context.get("memories_label", "[MEMORIES]"),
         context["daily_memory"],
-        "[RECUERDOS RECIENTES]",
+        context.get("recent_memories_label", "[RECENT MEMORIES]"),
         context["recent_memory"],
     ]
     if context.get("include_user_memory", False):
         lines.extend([
-            "[SOBRE TU RELACION CON EL USUARIO]",
+            context.get("relationship_title", "[RELATIONSHIP]"),
             context["relationship_memory"],
-            "[ULTIMOS SUCCESOS/INTERACIONES DE HACE MENOS DE 1H]",
+            context.get("recent_interactions_label", "[RECENT INTERACTIONS]"),
             context["recent_dialogue_text"],
         ])
-    for injected_block in [context.get("keyword_injection", ""), context.get("mission_injection", "")]:
+    for injected_block in [context.get("keyword_injection", ""), context.get("mission_injection", ""), context.get("memory_context", "")]:
         if injected_block:
-            lines.extend(["", injected_block])
-    lines.extend(["", "## REGLAS DE ORO DE ESTA RESPUESTA:"])
-    lines.extend(_engine()._get_response_rules_lines())
+            lines.extend(["", "## RELEVANT MEMORY:", injected_block])
+    
+    # Apply role-specific content overrides (general logic)
+    prompt_final = '\n'.join(lines)
+    prompt_final = _apply_role_specific_content_overrides(prompt_final, context.get("user_message", ""))
+    lines = prompt_final.split('\n')
+    
     lines.extend([
         "",
-        "## MENSAJE DEL UMANO:",
+        context.get("message_title", "## MESSAGE:"),
         f'"{context["user_message"]}"',
         "",
-        "## RESPUESTA DE PUTRE:",
+        context.get("response_title", "## RESPONSE:"),
     ])
     return "\n".join(lines)
 
@@ -636,7 +788,7 @@ def _build_prompt_context(
     interaction_type="chat",
 ):
     engine = _engine()
-    bot_name = engine.PERSONALIDAD.get("name", "Bot")
+    bot_name = engine.PERSONALITY.get("name", "Bot")
     content = (user_content or "").strip()
     server_name = server or get_active_server_name()
     if not server_name:
@@ -651,8 +803,25 @@ def _build_prompt_context(
     if include_user_memory and db_instance:
         relationship_memory = _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_dialogue)
         db_instance.schedule_relationship_refresh(user_id, delay_minutes=60)
-    keyword_injection = engine._get_keyword_injection(content)
+    keyword_injection = _get_keyword_injection(content)
     mission_injection = engine._get_mission_injection(role_context, mission_prompt_key, content)
+    
+    # Memory question detection and retrieval
+    memory_context = ""
+    if include_user_memory and db_instance:
+        memory_context = _detect_and_retrieve_memory(content, db_instance, user_id)
+    
+    # Get custom prompt labels from personality JSON
+    prompt_labels = engine.PERSONALITY.get("prompt_labels", {})
+    memory_title = prompt_labels.get("memory_title", "MEMORY:")
+    memories_label = prompt_labels.get("memories_label", "[MEMORIES]")
+    recent_memories_label = prompt_labels.get("recent_memories_label", "[RECENT MEMORIES]")
+    relationship_title = prompt_labels.get("relationship_title", "[RELATIONSHIP]")
+    recent_interactions_label = prompt_labels.get("recent_interactions_label", "[RECENT INTERACTIONS]")
+    message_title = prompt_labels.get("message_title", "## MESSAGE:")
+    response_title = prompt_labels.get("response_title", "## RESPONSE:")
+    response_rules_title = prompt_labels.get("response_rules_title", "## RESPONSE RULES:")
+    
     if not content and mission_injection:
         content = mission_injection.splitlines()[0]
     if not content:
@@ -668,8 +837,129 @@ def _build_prompt_context(
         "recent_dialogue_text": _build_recent_dialogue_section(recent_dialogue),
         "keyword_injection": keyword_injection,
         "mission_injection": mission_injection,
+        "memory_context": memory_context,
         "user_message": content,
+        "memory_title": memory_title,
+        "memories_label": memories_label,
+        "recent_memories_label": recent_memories_label,
+        "relationship_title": relationship_title,
+        "recent_interactions_label": recent_interactions_label,
+        "message_title": message_title,
+        "response_title": response_title,
+        "response_rules_title": response_rules_title,
     }
+
+
+def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str) -> str:
+    """Detect memory questions and retrieve relevant memories from database."""
+    engine = _engine()
+    
+    # Get memory trigger words from personality descriptions.json
+    memory_triggers = engine.PERSONALITY.get("discord", {}).get("memory_detection", {}).get("memory_trigger_words", [])
+    
+    # English fallback if no triggers found
+    if not memory_triggers:
+        memory_triggers = [
+            "do you remember", "remember", "recall", "do you recall",
+            "do you remember that", "remember when", "do you recall",
+            "do you remember", "do you recall", "recall", "remember",
+            "do you remember?", "do you recall?", "remember that",
+            "remember when", "does that sound familiar", "remember that"
+        ]
+    
+    # Check if user content contains memory trigger words
+    content_lower = user_content.lower()
+    is_memory_question = any(trigger in content_lower for trigger in memory_triggers)
+    
+    if not is_memory_question:
+        return ""
+    
+    # Search for relevant recollections in database
+    try:
+        # Get notable recollections for search
+        notable_recollections = db_instance.get_notable_recollections_for_date()
+        
+        if not notable_recollections:
+            return ""
+        
+        # Extract keywords from user content (excluding trigger words)
+        content_words = set(content_lower.split())
+        trigger_words_lower = set(trigger.lower() for trigger in memory_triggers)
+        keywords = content_words - trigger_words_lower
+        
+        # Add debug logging
+        logger.info(f"🧠 [MEMORY_DETECTION] User content: '{user_content}'")
+        logger.info(f"🧠 [MEMORY_DETECTION] Keywords after removing triggers: {keywords}")
+        logger.info(f"🧠 [MEMORY_DETECTION] Found {len(notable_recollections)} recollections in database")
+        
+        # Find best matching recollection with 50% similarity threshold
+        best_match = ""
+        best_score = 0
+        
+        for i, recollection in enumerate(notable_recollections):
+            recollection_text = recollection.get("recollection_text", "").lower()
+            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1}: '{recollection_text}'")
+            
+            # Calculate similarity score with case-insensitive matching
+            recollection_words = set(recollection_text.split())
+            if not keywords or not recollection_words:
+                logger.info(f"🧠 [MEMORY_DETECTION] Skipping recollection {i+1}: no keywords or recollection words")
+                continue
+                
+            intersection = keywords & recollection_words
+            score = len(intersection) / len(keywords) if keywords else 0
+            
+            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1} score: {score:.2f} (intersection: {intersection})")
+            
+            if score > best_score and score >= 0.5:  # 50% threshold
+                best_score = score
+                best_match = recollection.get("recollection_text", "")
+                logger.info(f"🧠 [MEMORY_DETECTION] New best match found with score {best_score:.2f}")
+        
+        if best_match:
+            logger.info(f"🧠 [MEMORY_DETECTION] Final best match: '{best_match}' with {best_score:.2f} similarity")
+            return best_match
+        
+    except Exception as e:
+        logger.warning(f"🧠 [MEMORY_DETECTION] Error retrieving recollection: {e}")
+    
+    return ""
+
+
+def _get_keyword_injection(content: str) -> str:
+    """Detect keywords from subroles and inject relevant prompts."""
+    if not content:
+        return ""
+    engine = _engine()
+    role_system_prompts = (engine.PERSONALITY or {}).get("role_system_prompts", {})
+    subroles_cfg = (role_system_prompts or {}).get("subroles", {})
+    for subrole_name, subrole_cfg in subroles_cfg.items():
+        if not isinstance(subrole_cfg, dict):
+            continue
+        if not _matches_subrole_keywords(subrole_name, content):
+            continue
+        mission_active = (subrole_cfg.get("mission_active") or "").strip()
+        chat_detection = (subrole_cfg.get("chat_detection") or {}).get("prompt", "")
+        detection_prompt = str(chat_detection).replace("{username}", "user").strip()
+        parts = [part for part in [mission_active, detection_prompt] if part]
+        if parts:
+            return "\n".join(parts)
+    return ""
+
+
+def _matches_subrole_keywords(subrole_name: str, content: str) -> bool:
+    """Check if content matches keywords for a specific subrole."""
+    engine = _engine()
+    role_system_prompts = (engine.PERSONALITY or {}).get("role_system_prompts", {})
+    subroles_cfg = (role_system_prompts or {}).get("subroles", {})
+    subrole_cfg = subroles_cfg.get(subrole_name, {})
+    if not isinstance(subrole_cfg, dict):
+        return False
+    keywords = subrole_cfg.get("keywords", [])
+    if not isinstance(keywords, list) or not keywords:
+        return False
+    content_lower = content.lower()
+    return any(keyword.lower() in content_lower for keyword in keywords)
 
 
 def _call_llm_async(system_instruction: str, prompt: str) -> str:
@@ -718,6 +1008,15 @@ def _call_llm_async(system_instruction: str, prompt: str) -> str:
                     postprocessed = postprocess_response(text)
                     total_time = time.time()
                     logger.info(f"🏁 [SUBROLE] Gemini completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+                    
+                    # Log the LLM response
+                    try:
+                        from agent_db import get_active_server_name
+                        server_name = get_active_server_name()
+                        log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
+                    except Exception as log_error:
+                        logger.warning(f"Failed to log subrole response: {log_error}")
+                    
                     return postprocessed
             else:
                 logger.info("🤖 [SUBROLE] Gemini timeout/error, fallback to Groq")
@@ -752,6 +1051,15 @@ def _call_llm_async(system_instruction: str, prompt: str) -> str:
         postprocessed = postprocess_response(response)
         total_time = time.time()
         logger.info(f"🏁 [SUBROLE] Groq completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+        
+        # Log the LLM response
+        try:
+            from agent_db import get_active_server_name
+            server_name = get_active_server_name()
+            log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
+        except Exception as log_error:
+            logger.warning(f"Failed to log subrole response: {log_error}")
+        
         return postprocessed
     except Exception as e:
         logger.error(f"🤖 [SUBROLE] Both LLMs failed: {e}")
@@ -804,7 +1112,7 @@ def build_readme_enhanced_prompt(original_user_content: str, readme_content: str
     """Build the second-pass README prompt used to answer help requests in character."""
     engine = _engine()
     try:
-        personality_name = engine.PERSONALIDAD.get("name", "").lower()
+        personality_name = engine.PERSONALITY.get("name", "").lower()
         prompts_path = os.path.join(engine._BASE_DIR, "personalities", personality_name, "prompts.json")
         if os.path.exists(prompts_path):
             with open(prompts_path, "r", encoding="utf-8") as file_handle:
@@ -837,7 +1145,7 @@ Remember to maintain your personality and use your characteristic speech pattern
 def _build_readme_system_prompt(personalidad: dict) -> str:
     """Build the README-specific system prompt with second-pass response rules."""
     engine = _engine()
-    base_system_prompt = engine._build_system_prompt(personalidad)
+    base_system_prompt = engine._build_system_prompt(personality)
     readme_rules = engine._get_readme_response_rules_lines()
     if not readme_rules:
         return base_system_prompt
@@ -944,7 +1252,7 @@ def _process_readme_response(final_response, content, role_context, server, star
         logger.info("📖 [README] Help request detected, generating enhanced documentation response")
         readme_content = generate_readme()
         enhanced_prompt = build_readme_enhanced_prompt(content, readme_content)
-        system_instruction = _build_readme_system_prompt(engine.PERSONALIDAD)
+        system_instruction = _build_readme_system_prompt(engine.PERSONALITY)
         log_readme_enhanced_prompt(
             content,
             readme_content,
@@ -981,7 +1289,7 @@ def think(
         from agent_logging import get_logger as _get_logger
         logger = _get_logger('agent_engine')
 
-    current_usage = runtime_increment_usage(engine.PERSONALIDAD.get("name", "unknown"))
+    current_usage = runtime_increment_usage(engine.PERSONALITY.get("name", "unknown"))
     logger.info(f"🚀 [THINK] Iniciando proceso - Uso diario: {current_usage}/20")
 
     content = (user_content or "").strip()
@@ -997,6 +1305,9 @@ def think(
         user_name=user_name,
         interaction_type=interaction_type,
     )
+
+    # Apply role-specific content overrides (general logic)
+    prompt_final = _apply_role_specific_content_overrides(prompt_final, content)
 
     prep_time = time.time()
     logger.info(f"⚡ [THINK] Preparation completed in {(prep_time - start_time):.2f}s")

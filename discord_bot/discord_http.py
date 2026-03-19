@@ -1,17 +1,12 @@
 """
-Módulo de comunicación con Discord via REST API.
-Permite enviar mensajes, DMs y obtener datos de servidores
-SIN establecer una conexión WebSocket, evitando conflictos de token
-con el bot principal (agent_discord.py).
+Discord REST API communication module.
+Allows sending messages, DMs, and reading guild data
+without establishing a WebSocket connection, avoiding token conflicts
+with the main bot (`agent_discord.py`).
 """
 
-import os
-import sys
 import asyncio
 import aiohttp
-
-# Add parent directory to Python path to import root modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent_logging import get_logger
 
@@ -21,7 +16,7 @@ BASE = "https://discord.com/api/v10"
 
 
 class DiscordHTTP:
-    """Cliente REST de Discord que no requiere WebSocket."""
+    """Discord REST client that does not require a WebSocket connection."""
 
     def __init__(self, token: str):
         self._token = token
@@ -32,7 +27,7 @@ class DiscordHTTP:
         }
 
     async def get_guilds(self) -> list[dict]:
-        """Obtiene la lista de servidores donde está el bot."""
+        """Return the list of guilds where the bot is present."""
         async with aiohttp.ClientSession() as s:
             async with s.get(f"{BASE}/users/@me/guilds", headers=self._headers) as r:
                 if r.status >= 400:
@@ -41,7 +36,7 @@ class DiscordHTTP:
                 return await r.json()
 
     async def get_guild_members(self, guild_id: int, limit: int = 1000) -> list[dict]:
-        """Obtiene los miembros de un servidor (requiere GUILD_MEMBERS intent habilitado)."""
+        """Return guild members (requires the GUILD_MEMBERS intent to be enabled)."""
         async with aiohttp.ClientSession() as s:
             async with s.get(
                 f"{BASE}/guilds/{guild_id}/members?limit={limit}",
@@ -53,7 +48,7 @@ class DiscordHTTP:
                 return await r.json()
 
     async def get_guild_channels(self, guild_id: int) -> list[dict]:
-        """Obtiene los canales de un servidor."""
+        """Return the channels of a guild."""
         async with aiohttp.ClientSession() as s:
             async with s.get(
                 f"{BASE}/guilds/{guild_id}/channels",
@@ -65,7 +60,7 @@ class DiscordHTTP:
                 return await r.json()
 
     async def fetch_user(self, user_id: int) -> dict | None:
-        """Obtiene información de un usuario por ID."""
+        """Return user information by ID."""
         async with aiohttp.ClientSession() as s:
             async with s.get(f"{BASE}/users/{user_id}", headers=self._headers) as r:
                 if r.status >= 400:
@@ -73,7 +68,7 @@ class DiscordHTTP:
                 return await r.json()
 
     async def send_dm(self, user_id: int, content: str) -> bool:
-        """Crea un canal DM y envía un mensaje privado a un usuario."""
+        """Create a DM channel and send a private message to a user."""
         async with aiohttp.ClientSession() as s:
             async with s.post(
                 f"{BASE}/users/@me/channels",
@@ -81,7 +76,7 @@ class DiscordHTTP:
                 json={"recipient_id": str(user_id)},
             ) as r:
                 if r.status >= 400:
-                    logger.warning(f"send_dm: no se pudo crear canal DM para {user_id} ({r.status})")
+                    logger.warning(f"send_dm: could not create DM channel for {user_id} ({r.status})")
                     return False
                 dm_data = await r.json()
                 channel_id = dm_data.get("id")
@@ -95,12 +90,12 @@ class DiscordHTTP:
                 json={"content": content},
             ) as r:
                 if r.status >= 400:
-                    logger.warning(f"send_dm: error enviando mensaje a {user_id} ({r.status})")
+                    logger.warning(f"send_dm: error sending message to {user_id} ({r.status})")
                     return False
                 return True
 
     async def send_channel_message(self, channel_id: int, content: str) -> bool:
-        """Envía un mensaje a un canal de texto."""
+        """Send a message to a text channel."""
         async with aiohttp.ClientSession() as s:
             async with s.post(
                 f"{BASE}/channels/{channel_id}/messages",

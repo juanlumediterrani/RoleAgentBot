@@ -1,7 +1,7 @@
 """
 Discord commands for the Trickster role (English version).
 Standardized command structure: !trickster <action> <target>
-Registers: !trickster, !dice (legacy alias), !accuse (legacy alias)
+Registers: !trickster, !dice
 """
 
 import asyncio
@@ -10,7 +10,7 @@ import os
 import discord
 from datetime import datetime
 from agent_logging import get_logger
-from agent_engine import PERSONALIDAD
+from agent_engine import PERSONALITY
 from discord_bot.discord_utils import is_admin, send_dm_or_channel, get_server_key
 
 logger = get_logger('trickster_discord')
@@ -51,11 +51,11 @@ except ImportError:
     get_dice_game_db_instance = None
 
 try:
-    from roles.trickster.subroles.dice_game.dice_game import procesar_jugada
+    from roles.trickster.subroles.dice_game.dice_game import process_play
     DICE_GAME_AVAILABLE = True
 except ImportError:
     DICE_GAME_AVAILABLE = False
-    procesar_jugada = None
+    process_play = None
 
 try:
     from roles.banker.db_role_banker import get_banker_db_instance
@@ -117,7 +117,7 @@ def register_trickster_commands(bot, personality, agent_config):
             await ctx.send("❌ This command only works on servers, not in private messages.")
             return
         if not is_admin(ctx):
-            await ctx.send("❌ Only administrators can enable/disable beggar on the server.")
+            await ctx.send("❌ Only administrators can enable or disable beggar on this server.")
             return
 
         db_beggar = _get_beggar_db(ctx.guild)
@@ -154,7 +154,7 @@ def register_trickster_commands(bot, personality, agent_config):
             await ctx.send("❌ Only administrators can adjust beggar frequency.")
             return
         if not args:
-            await ctx.send("❌ You must specify a number of hours. Example: `!trickster beggar frequency 6`")
+            await ctx.send("❌ You must specify a number of hours. Example: `!trickster beggar frequency 6`.")
             return
 
         try:
@@ -207,7 +207,7 @@ def register_trickster_commands(bot, personality, agent_config):
 
         status_msg = f"📊 **Beggar Status in {ctx.guild.name}**\n\n"
         status_msg += f"{status_emoji} **Status:** {status_text}\n"
-        status_msg += f"⏰ **Frequency:** every {frequency_hours}h\n"
+        status_msg += f"⏰ **Frequency:** every {frequency_hours} hours\n"
         status_msg += f"🎯 **Current target:** {target_gold:,} gold\n"
         status_msg += f"🪙 **Last reason:** {last_reason}\n"
         status_msg += f"📈 **Requests today (last 24h):**\n"
@@ -276,20 +276,20 @@ def register_trickster_commands(bot, personality, agent_config):
         """Show specific help for the beggar subrole."""
         help_msg = "🙏 **BEGGAR SUBROLE - HELP** 🙏\n\n"
         help_msg += "**What is Beggar?**\n"
-        help_msg += "It's a trickster subrole that sends donation requests and deceptions to server members.\n\n"
+        help_msg += "It's a trickster subrole that sends donation requests and trickery to server members.\n\n"
         help_msg += "📋 **COMMANDS:** (administrators only)\n"
-        help_msg += "• `!trickster beggar enable` - Enable beggar for the entire server\n"
-        help_msg += "• `!trickster beggar disable` - Disable beggar for the server\n"
-        help_msg += "• `!trickster beggar frequency <hours>` - Adjust frequency (1-168h)\n"
+        help_msg += "• `!trickster beggar enable` - Enable beggar on this server\n"
+        help_msg += "• `!trickster beggar disable` - Disable beggar on this server\n"
+        help_msg += "• `!trickster beggar frequency <hours>` - Adjust frequency (1-168 hours)\n"
         help_msg += "• `!trickster beggar status` - Show current status\n\n"
         help_msg += "📋 **USER COMMANDS:**\n"
         help_msg += "• `!trickster beggar donate <gold>` - Donate gold to the current beggar fund\n\n"
         
         help_msg += "💡 **EXAMPLES:**\n"
-        help_msg += "• `!trickster beggar enable` → Enable for entire server\n"
+        help_msg += "• `!trickster beggar enable` → Enable on this server\n"
         help_msg += "• `!trickster beggar frequency 6` → Every 6 hours\n"
         help_msg += "• `!trickster beggar status` → View status and statistics\n"
-        help_msg += "• `!trickster beggar disable` → Disable from server\n\n"
+        help_msg += "• `!trickster beggar disable` → Disable on this server\n\n"
         
         help_msg += "⚠️ **REQUIREMENTS:**\n"
         help_msg += "• Only administrators can use beggar commands\n"
@@ -298,7 +298,7 @@ def register_trickster_commands(bot, personality, agent_config):
         help_msg += "⚠️ **LIMITS:**\n"
         help_msg += "• Maximum 2 private messages per server per day\n"
         help_msg += "• Maximum 4 public messages per server per day\n"
-        help_msg += "• Don't harass the same user for 12 hours"
+        help_msg += "• Avoid targeting the same user for 12 hours"
 
         await send_dm_or_channel(ctx, help_msg, "📩 Beggar help sent by private message.")
 
@@ -352,7 +352,7 @@ def register_trickster_commands(bot, personality, agent_config):
         register_dice_commands(
             bot, personality, send_dm_or_channel, is_admin,
             get_banker_db_instance, get_dice_game_db_instance,
-            procesar_jugada, DICE_GAME_AVAILABLE, DICE_GAME_DB_AVAILABLE,
+            process_play, DICE_GAME_AVAILABLE, DICE_GAME_DB_AVAILABLE,
             BANKER_DB_AVAILABLE
         )
         logger.info("🎲 Dice game commands imported and registered")
@@ -361,35 +361,27 @@ def register_trickster_commands(bot, personality, agent_config):
 
     logger.info("🎭 Trickster commands registered successfully")
 
-    # --- !accuse (legacy alias for ring accusations) ---
-    if RING_AVAILABLE and bot.get_command("accuse") is None:
-        @bot.command(name="accuse")
-        async def cmd_accuse_wrapper(ctx, target: str = ""):
-            """Accuse someone of having the unique ring."""
-            await cmd_accuse_ring(ctx, target)
-
-        logger.info("👁️ Accuse command registered")
-
     # --- MAIN TRICKSTER HELP ---
 
 async def cmd_trickster_help(ctx):
     """Show trickster-specific help."""
     help_msg = "🎭 **TRICKSTER - HELP** 🎭\n\n"
-    help_msg += "**Beggar Subrole** - Donation requests and deceptions\n\n"
+    help_msg += "**Beggar Subrole** - Donation requests and trickery\n\n"
     help_msg += "📋 **BEGGAR COMMANDS:** (administrators only)\n"
-    help_msg += "• `!trickster beggar enable` - Enable beggar for entire server\n"
-    help_msg += "• `!trickster beggar disable` - Disable beggar from server\n"
-    help_msg += "• `!trickster beggar frequency <hours>` - Adjust frequency (1-168h)\n"
+    help_msg += "• `!trickster beggar enable` - Enable beggar on this server\n"
+    help_msg += "• `!trickster beggar disable` - Disable beggar on this server\n"
+    help_msg += "• `!trickster beggar frequency <hours>` - Adjust frequency (1-168 hours)\n"
     help_msg += "• `!trickster beggar status` - Show current status\n\n"
     
     if RING_AVAILABLE:
         help_msg += "**Ring Subrole** - Ring accusations\n\n"
         help_msg += "📋 **RING COMMANDS:**\n"
-        help_msg += "• `!trickster ring enable` - Enable ring for entire server (admins only)\n"
-        help_msg += "• `!trickster ring disable` - Disable ring from server (admins only)\n"
-        help_msg += "• `!trickster ring frequency <hours>` - Adjust frequency (1-168h) (admins only)\n"
+        help_msg += "• `!trickster ring enable` - Enable ring on this server (admins only)\n"
+        help_msg += "• `!trickster ring disable` - Disable ring on this server (admins only)\n"
+        help_msg += "• `!trickster ring frequency <hours>` - Adjust frequency (1-168 hours) (admins only)\n"
+        help_msg += "• `!trickster ring target @user` - Set the current ring investigation target (admins only)\n"
         help_msg += "• `!trickster ring help` - Show ring subrole help\n"
-        help_msg += "• `!accuse @user` - Accuse a user of having the ring\n\n"
+        help_msg += "• Ring investigations act on the current configured target\n\n"
     
     help_msg += "**Dice Game Subrole** - Dice game against the bank\n\n"
     help_msg += "📋 **DICE GAME COMMANDS:**\n"
@@ -403,15 +395,15 @@ async def cmd_trickster_help(ctx):
     help_msg += "• `!dice config announcements on/off` - Enable/disable announcements (admins only)\n\n"
     
     help_msg += "💡 **EXAMPLES:**\n"
-    help_msg += "• `!trickster beggar enable` → Enable for entire server\n"
+    help_msg += "• `!trickster beggar enable` → Enable on this server\n"
     help_msg += "• `!trickster beggar frequency 6` → Every 6 hours\n"
     help_msg += "• `!trickster beggar status` → View status and statistics\n"
-    help_msg += "• `!trickster beggar disable` → Disable from server\n"
+    help_msg += "• `!trickster beggar disable` → Disable on this server\n"
     help_msg += "• `!trickster beggar donate 25` → Donate gold to the beggar fund\n"
     
     if RING_AVAILABLE:
-        help_msg += "• `!trickster ring enable` → Enable ring for entire server\n"
-        help_msg += "• `!accuse @user` → Accuse someone\n"
+        help_msg += "• `!trickster ring enable` → Enable ring on this server\n"
+        help_msg += "• `!trickster ring target @user` → Change the current investigation target\n"
     
     help_msg += "• `!dice play` → Play the dice game\n"
     help_msg += "• `!dice config bet 15` → Configure bet to 15 coins\n\n"
@@ -427,7 +419,7 @@ async def cmd_trickster_help(ctx):
     help_msg += "⚠️ **LIMITS:**\n"
     help_msg += "• Maximum 2 private messages per server per day (beggar)\n"
     help_msg += "• Maximum 4 public messages per server per day (beggar)\n"
-    help_msg += "• Don't harass the same user for 12 hours (beggar)\n"
+    help_msg += "• Avoid targeting the same user for 12 hours (beggar)\n"
     help_msg += "• Fixed single bet for all players (dice game)"
 
     await send_dm_or_channel(ctx, help_msg, "📩 Trickster help sent by private message.")

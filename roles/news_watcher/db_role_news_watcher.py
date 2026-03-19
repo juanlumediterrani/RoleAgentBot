@@ -5,7 +5,8 @@ import os
 import stat
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
+from urllib import request as urllib_request, error as urllib_error
 from agent_logging import get_logger
 
 try:
@@ -99,9 +100,12 @@ class DatabaseRoleNewsWatcher:
                 self._init_subscriptions_categories_table()
                 self._init_subscriptions_channels_table()
                 self._init_subscriptions_keywords_table()
+                self._init_user_premises_table()
+                self._init_channel_premises_table()
                 self._init_method_config_table()
                 self._init_configuracion_table()
                 self.insert_default_feeds()
+                self._ensure_feed_health()
                 
                 logger.info(f"✅ News watcher database ready at {self.db_path}")
         except Exception as e:
@@ -301,19 +305,99 @@ class DatabaseRoleNewsWatcher:
                         keywords TEXT DEFAULT NULL,
                         feed_type TEXT DEFAULT 'especializado',
                         created_at TEXT NOT NULL,
-                        updated_at TEXT DEFAULT NULL
+                        updated_at TEXT DEFAULT NULL,
+                        last_checked_at TEXT DEFAULT NULL,
+                        last_error TEXT DEFAULT NULL
                     )
                 ''')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_category ON feeds_config (category)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_is_active ON feeds_config (is_active)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_priority ON feeds_config (priority)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_feed_type ON feeds_config (feed_type)')
+                # Ensure new columns exist for health tracking
+                cursor.execute('PRAGMA table_info(feeds_config)')
+                columns = cursor.fetchall()
+                column_names = {col[1] for col in columns}
+                if 'last_checked_at' not in column_names:
+                    cursor.execute('ALTER TABLE feeds_config ADD COLUMN last_checked_at TEXT DEFAULT NULL')
+                if 'last_error' not in column_names:
+                    cursor.execute('ALTER TABLE feeds_config ADD COLUMN last_error TEXT DEFAULT NULL')
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creating feeds_config table: {e}")
+
+    def _ensure_feed_health(self):
+        """Check feed health and keep only working feeds active."""
+        try:
+            feeds = self._fetch_feeds_for_health()
+            if not feeds:
+                logger.info("📡 No feeds configured to validate")
+                return
+            logger.info("🔍 Checking health for %d configured feeds...", len(feeds))
+            healthy = 0
+            broken = 0
+            for feed in feeds:
+                feed_id, name, url = feed
+                ok, error_message = self._probe_feed_url(url)
+                self._update_feed_status(feed_id, ok, error_message)
+                if ok:
+                    healthy += 1
+                else:
+                    broken += 1
+                    logger.warning("⚠️ Feed disabled due to errors: %s (%s)", name, error_message)
+            logger.info("✅ Feed health check completed: %d healthy, %d disabled", healthy, broken)
+        except Exception as e:
+            logger.exception(f"❌ Error checking feed health: {e}")
+
+    def _fetch_feeds_for_health(self) -> list:
+        """Return list of (id, name, url) for configured feeds."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT id, name, url FROM feeds_config')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error fetching feeds for health check: {e}")
+            return []
+
+    def _probe_feed_url(self, url: str, timeout: int = 10) -> Tuple[bool, Optional[str]]:
+        """Probe a feed URL and return (is_working, error_message)."""
+        try:
+            request = urllib_request.Request(url, headers={"User-Agent": "RoleAgentBot/1.0"})
+            with urllib_request.urlopen(request, timeout=timeout) as response:
+                status = getattr(response, 'status', None) or response.getcode()
+                if 200 <= status < 300:
+                    # Read a small chunk to ensure stream works
+                    response.read(1024)
+                    return True, None
+                return False, f"HTTP {status}"
+        except urllib_error.HTTPError as e:
+            return False, f"HTTP {e.code}"
+        except Exception as e:
+            return False, str(e)
+
+    def _update_feed_status(self, feed_id: int, is_active: bool, error_message: Optional[str]):
+        """Persist feed status after health check."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        UPDATE feeds_config
+                        SET is_active = ?, last_checked_at = ?, last_error = ?
+                        WHERE id = ?
+                    ''', (
+                        1 if is_active else 0,
+                        datetime.now().isoformat(),
+                        None if is_active else (error_message or 'Unknown error'),
+                        feed_id,
+                    ))
+                    conn.commit()
+        except Exception as e:
+            logger.exception(f"Error updating feed status: {e}")
     
     def _init_subscriptions_categories_table(self):
-        """Initialize category subscriptions table (para suscripciones con IA)."""
+        """Initialize category subscriptions table (for AI-based subscriptions)."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
@@ -392,13 +476,62 @@ class DatabaseRoleNewsWatcher:
                     )
                 ''')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_user ON subscriptions_keywords (user_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_canal ON subscriptions_keywords (channel_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_channel ON subscriptions_keywords (channel_id)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_is_active ON subscriptions_keywords (is_active)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_category ON subscriptions_keywords (category)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_feed ON subscriptions_keywords (feed_id)')
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creating subscriptions_keywords table: {e}")
+    
+    def _init_user_premises_table(self):
+        """Initialize user premises table for standalone premise storage."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS user_premises (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT NOT NULL,
+                        premise_text TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        UNIQUE(user_id, premise_text)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_premises_user_id ON user_premises (user_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_premises_created_at ON user_premises (created_at)')
+                
+                # Table to track user initializations
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS user_initializations (
+                        user_id TEXT PRIMARY KEY,
+                        initialized_at TEXT NOT NULL,
+                        guild_id TEXT NOT NULL
+                    )
+                ''')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creating user_premises table: {e}")
+
+    def _init_channel_premises_table(self):
+        """Initialize channel premises table for standalone premise storage."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS channel_premises (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        channel_id TEXT NOT NULL,
+                        premise_text TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        UNIQUE(channel_id, premise_text)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_channel_premises_channel_id ON channel_premises (channel_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_channel_premises_created_at ON channel_premises (created_at)')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creating channel_premises table: {e}")
     
     def insert_default_feeds(self):
         """Insert default feeds if they don't exist."""
@@ -407,7 +540,7 @@ class DatabaseRoleNewsWatcher:
                 # Economy/Finance Feeds
                 {
                     'name': 'Reuters Business',
-                    'url': 'https://www.reuters.com/rssFeed/businessNews',
+                    'url': 'https://feeds.bloomberg.com/markets/news.rss',
                     'category': 'economy',
                     'country': 'US',
                     'language': 'en',
@@ -416,16 +549,16 @@ class DatabaseRoleNewsWatcher:
                 },
                 {
                     'name': 'Financial Times',
-                    'url': 'https://www.ft.com/rss/home/economy',
+                    'url': 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
                     'category': 'economy',
-                    'country': 'UK',
+                    'country': 'US',
                     'language': 'en',
                     'keywords': 'economy,finance,markets,trade',
                     'feed_type': 'especializado'
                 },
                 {
                     'name': 'Bloomberg Markets',
-                    'url': 'https://www.bloomberg.com/markets.rss',
+                    'url': 'https://feeds.macrumors.com/public',
                     'category': 'economy',
                     'country': 'US',
                     'language': 'en',
@@ -436,7 +569,7 @@ class DatabaseRoleNewsWatcher:
                 # International News Feeds
                 {
                     'name': 'Reuters World',
-                    'url': 'https://www.reuters.com/rssFeed/worldNews',
+                    'url': 'http://rss.cnn.com/rss/edition_world.rss',
                     'category': 'international',
                     'country': 'US',
                     'language': 'en',
@@ -494,7 +627,7 @@ class DatabaseRoleNewsWatcher:
                 # General News Feeds
                 {
                     'name': 'Reuters Top News',
-                    'url': 'https://www.reuters.com/rssFeed/topNews',
+                    'url': 'https://feeds.feedburner.com/TechCrunch',
                     'category': 'general',
                     'country': 'US',
                     'language': 'en',
@@ -503,7 +636,7 @@ class DatabaseRoleNewsWatcher:
                 },
                 {
                     'name': 'Associated Press News',
-                    'url': 'https://feeds.apnews.com/rss/apnews-topnews',
+                    'url': 'https://www.wired.com/feed/rss',
                     'category': 'general',
                     'country': 'US',
                     'language': 'en',
@@ -532,7 +665,7 @@ class DatabaseRoleNewsWatcher:
                 },
                 {
                     'name': 'CoinDesk',
-                    'url': 'https://www.coindesk.com/arc/outboundfeeds/rss/',
+                    'url': 'https://www.zdnet.com/news/rss.xml',
                     'category': 'crypto',
                     'country': 'US',
                     'language': 'en',
@@ -547,6 +680,109 @@ class DatabaseRoleNewsWatcher:
                     'language': 'en',
                     'keywords': 'cryptocurrency,blockchain,web3,defi',
                     'feed_type': 'general'
+                },
+                
+                # Gaming Feeds
+                {
+                    'name': 'IGN Games',
+                    'url': 'http://feeds.feedburner.com/ign/games-all',
+                    'category': 'gaming',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'gaming,video-games,game-reviews,game-news',
+                    'feed_type': 'especializado'
+                },
+                {
+                    'name': 'GameSpot',
+                    'url': 'https://www.gamespot.com/feeds/mashup',
+                    'category': 'gaming',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'gaming,video-games,reviews,news',
+                    'feed_type': 'especializado'
+                },
+                {
+                    'name': 'Kotaku',
+                    'url': 'https://kotaku.com/rss',
+                    'category': 'gaming',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'gaming,video-games,culture,reviews',
+                    'feed_type': 'general'
+                },
+                {
+                    'name': 'PC Gamer',
+                    'url': 'https://www.pcgamer.com/rss/',
+                    'category': 'gaming',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'pc-gaming,gaming,hardware,reviews',
+                    'feed_type': 'especializado'
+                },
+                {
+                    'name': 'Polygon',
+                    'url': 'https://www.polygon.com/rss/index.xml',
+                    'category': 'gaming',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'gaming,video-games,culture,reviews',
+                    'feed_type': 'general'
+                },
+                {
+                    'name': 'Eurogamer',
+                    'url': 'https://www.eurogamer.net/feed',
+                    'category': 'gaming',
+                    'country': 'UK',
+                    'language': 'en',
+                    'keywords': 'gaming,video-games,reviews,news',
+                    'feed_type': 'especializado'
+                },
+                {
+                    'name': 'Rock Paper Shotgun',
+                    'url': 'https://www.rockpapershotgun.com/feed',
+                    'category': 'gaming',
+                    'country': 'UK',
+                    'language': 'en',
+                    'keywords': 'pc-gaming,gaming,reviews,indie',
+                    'feed_type': 'general'
+                },
+                {
+                    'name': 'Game Informer',
+                    'url': 'https://gameinformer.com/rss.xml',
+                    'category': 'gaming',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'gaming,video-games,reviews,previews',
+                    'feed_type': 'especializado'
+                },
+                {
+                    'name': 'The Verge Games',
+                    'url': 'https://www.theverge.com/rss/games/index.xml',
+                    'category': 'gaming',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'gaming,video-games,tech,culture',
+                    'feed_type': 'general'
+                },
+                
+                # Patch Notes Feeds
+                {
+                    'name': 'Steam News',
+                    'url': 'https://store.steampowered.com/feeds/news.xml',
+                    'category': 'patch_notes',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'steam,patch,updates,pc-gaming,valve',
+                    'feed_type': 'especializado'
+                },
+                {
+                    'name': 'PlayStation Blog',
+                    'url': 'https://blog.playstation.com/feed',
+                    'category': 'patch_notes',
+                    'country': 'US',
+                    'language': 'en',
+                    'keywords': 'playstation,ps5,ps4,updates,patch-notes',
+                    'feed_type': 'especializado'
                 }
             ]
             
@@ -563,9 +799,9 @@ class DatabaseRoleNewsWatcher:
                         feed['feed_type'], datetime.now().isoformat()
                     ))
                 conn.commit()
-                logger.info("✅ Default feeds insertados")
+                logger.info("✅ Default feeds inserted")
         except Exception as e:
-            logger.exception(f"❌ Error insertando feeds por defecto: {e}")
+            logger.exception(f"❌ Error inserting default feeds: {e}")
     
     def add_feed(self, name: str, url: str, category: str, country: str = None, 
                    language: str = 'es', keywords: str = None, feed_type: str = 'especializado') -> bool:
@@ -645,7 +881,7 @@ class DatabaseRoleNewsWatcher:
             return []
     
     def subscribe_user_category(self, user_id: str, category: str, feed_id: int = None) -> bool:
-        """Suscribe usuario a una categoría o feed específico."""
+        """Subscribe a user to a category or a specific feed."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
@@ -654,15 +890,15 @@ class DatabaseRoleNewsWatcher:
                         INSERT OR REPLACE INTO subscriptions_categories 
                         (user_id, category, feed_id, subscribed_at, is_active)
                         VALUES (?, ?, ?, ?, 1)
-                    ''', (user_id, category, feed_id, datetime.now().isoformat()))
+                    ''', (user_id, category.lower(), feed_id, datetime.now().isoformat()))
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error suscribiendo usuario a categoría: {e}")
+            logger.exception(f"Error subscribing user to category: {e}")
             return False
     
-    def subscribe_user_category_ai(self, user_id: str, category: str, feed_id: int = None, premisas: str = None) -> bool:
-        """Suscribe usuario a una categoría con análisis IA."""
+    def subscribe_user_category_ai(self, user_id: str, category: str, feed_id: int = None, premises: str = None) -> bool:
+        """Subscribe a user to a category with AI analysis."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
@@ -671,11 +907,11 @@ class DatabaseRoleNewsWatcher:
                         INSERT OR REPLACE INTO subscriptions_categories 
                         (user_id, category, feed_id, subscribed_at, is_active, user_premises)
                         VALUES (?, ?, ?, ?, 1, ?)
-                    ''', (user_id, category, feed_id, datetime.now().isoformat(), premisas))
+                    ''', (user_id, category.lower(), feed_id, datetime.now().isoformat(), premises))
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error suscribiendo usuario a categoría con IA: {e}")
+            logger.exception(f"Error subscribing user to category with AI analysis: {e}")
             return False
     
     def cancel_category_subscription(self, user_id: str, category: str, feed_id: int = None) -> bool:
@@ -708,7 +944,7 @@ class DatabaseRoleNewsWatcher:
                 cursor.execute('''
                     SELECT category, feed_id, subscribed_at
                     FROM subscriptions_categories 
-                    WHERE user_id = ? AND is_active = 1
+                    WHERE user_id = ? AND is_active = 1 AND (user_premises IS NULL OR user_premises = '')
                 ''', (user_id,))
                 return cursor.fetchall()
         except Exception as e:
@@ -759,7 +995,7 @@ class DatabaseRoleNewsWatcher:
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error suscribiendo palabras clave: {e}")
+            logger.exception(f"Error subscribing keywords: {e}")
             return False
     
     def cancel_keyword_subscription(self, user_id: str, keywords: str, channel_id: str = None) -> bool:
@@ -811,22 +1047,22 @@ class DatabaseRoleNewsWatcher:
     def check_news_keywords_match(self, titulo: str) -> list:
         """Check if a news headline matches keyword subscriptions."""
         try:
-            suscriptores_palabras = self.get_keyword_subscribers()
-            coincidencias = []
-            
-            titulo_lower = titulo.lower()
-            
-            for user_id, channel_id, palabras in suscriptores_palabras:
-                palabras_lista = [p.strip().lower() for p in palabras.split(',')]
+            keyword_subscribers = self.get_keyword_subscribers()
+            matches = []
+
+            title_lower = titulo.lower()
+
+            for user_id, channel_id, keywords in keyword_subscribers:
+                keyword_list = [p.strip().lower() for p in keywords.split(',')]
                 
                 # Check if any keyword is in the title
-                if any(palabra in titulo_lower for palabra in palabras_lista):
+                if any(keyword in title_lower for keyword in keyword_list):
                     if channel_id:
-                        coincidencias.append(f"channel_{channel_id}")
+                        matches.append(f"channel_{channel_id}")
                     else:
-                        coincidencias.append(user_id)
-            
-            return coincidencias
+                        matches.append(user_id)
+
+            return matches
         except Exception as e:
             logger.exception(f"Error checking keywords: {e}")
             return []
@@ -847,7 +1083,7 @@ class DatabaseRoleNewsWatcher:
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error suscribiendo canal a categoría: {e}")
+            logger.exception(f"Error subscribing channel to category: {e}")
             return False
     
     def cancel_channel_subscription(self, channel_id: str, category: str, feed_id: int = None) -> bool:
@@ -873,8 +1109,8 @@ class DatabaseRoleNewsWatcher:
             return False
     
     def subscribe_channel_category_ai(self, channel_id: str, channel_name: str, server_id: str, 
-                                   server_name: str, category: str, feed_id: int = None, premisas: str = None) -> bool:
-        """Suscribe un canal a una categoría con análisis IA."""
+                                   server_name: str, category: str, feed_id: int = None, premises: str = None) -> bool:
+        """Subscribe a channel to a category with AI analysis."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
@@ -883,22 +1119,44 @@ class DatabaseRoleNewsWatcher:
                     # Add channel to subscriptions_channels table
                     cursor.execute('''
                         INSERT OR REPLACE INTO subscriptions_channels 
-                        (channel_id, channel_name, server_id, server_name, category, feed_id, subscribed_at, is_active)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-                    ''', (channel_id, channel_name, server_id, server_name, category, feed_id, datetime.now().isoformat()))
+                        (channel_id, channel_name, server_id, server_name, category, feed_id, subscribed_at, is_active, channel_premises)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    ''', (channel_id, channel_name, server_id, server_name, category, feed_id, datetime.now().isoformat(), premises))
                     
                     # Add subscription to subscriptions_categories table
                     cursor.execute('''
                         INSERT OR REPLACE INTO subscriptions_categories 
                         (user_id, category, feed_id, subscribed_at, is_active, user_premises)
                         VALUES (?, ?, ?, ?, 1, ?)
-                    ''', (f"channel_{channel_id}", category, feed_id, datetime.now().isoformat(), premisas))
+                    ''', (f"channel_{channel_id}", category, feed_id, datetime.now().isoformat(), premises))
                     
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error suscribiendo canal a categoría con IA: {e}")
+            logger.exception(f"Error subscribing channel to category with AI analysis: {e}")
             return False
+    
+    def get_user_with_premises_for_server(self, guild_id: str) -> str:
+        """Get a user ID that has premises for this server."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                
+                # Try to find users with premises in user_premises table
+                cursor.execute('''
+                    SELECT DISTINCT user_id 
+                    FROM user_premises 
+                    LIMIT 1
+                ''')
+                result = cursor.fetchone()
+                
+                if result:
+                    return result[0]
+                
+                return None
+        except Exception as e:
+            logger.exception(f"Error getting user with premises: {e}")
+            return None
     
     def get_channel_subscriptions(self, channel_id: str) -> list:
         """Get active subscriptions for a channel."""
@@ -912,20 +1170,7 @@ class DatabaseRoleNewsWatcher:
                     FROM subscriptions_channels 
                     WHERE channel_id = ? AND is_active = 1
                 ''', (channel_id,))
-                subscriptions_from_channels_table = cursor.fetchall()
-                
-                # Get subscriptions from subscriptions_categories table (channel subscriptions)
-                cursor.execute('''
-                    SELECT category, feed_id, subscribed_at
-                    FROM subscriptions_categories 
-                    WHERE user_id = ? AND is_active = 1
-                ''', (f"channel_{channel_id}",))
-                subscriptions_from_categories_table = cursor.fetchall()
-                
-                # Combine both results
-                all_subscriptions = subscriptions_from_channels_table + subscriptions_from_categories_table
-                
-                return all_subscriptions
+                return cursor.fetchall()
         except Exception as e:
             logger.exception(f"Error getting channel subscriptions: {e}")
             return []
@@ -942,31 +1187,7 @@ class DatabaseRoleNewsWatcher:
                     FROM subscriptions_channels 
                     WHERE is_active = 1
                 ''')
-                channels_from_channels_table = cursor.fetchall()
-                
-                # Get channels from subscriptions_categories table (channel subscriptions)
-                cursor.execute('''
-                    SELECT DISTINCT 
-                        substr(user_id, 9) as channel_id,  -- Remove 'channel_' prefix
-                        substr(user_id, 9) as channel_name,  -- Use channel_id as name
-                        '' as server_id
-                    FROM subscriptions_categories 
-                    WHERE is_active = 1 AND user_id LIKE 'channel_%'
-                ''')
-                channels_from_categories_table = cursor.fetchall()
-                
-                # Combine both results
-                all_channels = channels_from_channels_table + channels_from_categories_table
-                
-                # Remove duplicates based on channel_id
-                seen_channels = set()
-                unique_channels = []
-                for channel in all_channels:
-                    if channel[0] not in seen_channels:
-                        seen_channels.add(channel[0])
-                        unique_channels.append(channel)
-                
-                return unique_channels
+                return cursor.fetchall()
         except Exception as e:
             logger.exception(f"Error getting all channels with subscriptions: {e}")
             return []
@@ -999,8 +1220,8 @@ class DatabaseRoleNewsWatcher:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 
-                # Obtener suscriptores individuales
-                suscriptores_individuales = []
+                # Get individual subscribers
+                individual_subscribers = []
                 if feed_id:
                     cursor.execute('''
                         SELECT DISTINCT sc.user_id
@@ -1021,10 +1242,10 @@ class DatabaseRoleNewsWatcher:
                         FROM subscriptions_watcher sv
                         WHERE sv.is_active = 1
                     ''', (category,))
-                suscriptores_individuales = [row[0] for row in cursor.fetchall()]
+                individual_subscribers = [row[0] for row in cursor.fetchall()]
                 
-                # Obtener canales (marcados con prefijo especial para identificarlos)
-                canales = []
+                # Get channels (marked with a special prefix for identification)
+                channels = []
                 if feed_id:
                     cursor.execute('''
                         SELECT DISTINCT channel_id
@@ -1037,9 +1258,9 @@ class DatabaseRoleNewsWatcher:
                         FROM subscriptions_channels
                         WHERE category = ? AND feed_id IS NULL AND is_active = 1
                     ''', (category,))
-                canales = [f"channel_{row[0]}" for row in cursor.fetchall()]
+                channels = [f"channel_{row[0]}" for row in cursor.fetchall()]
                 
-                return suscriptores_individuales + canales
+                return individual_subscribers + channels
         except Exception as e:
             logger.exception(f"Error getting subscribers by category: {e}")
             return []
@@ -1143,127 +1364,270 @@ class DatabaseRoleNewsWatcher:
     def get_user_premises(self, user_id: str) -> list:
         """Get customized premises for a user."""
         try:
+            # Only get from the new dedicated table - skip old subscription premises
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT DISTINCT user_premises
-                    FROM subscriptions_categories 
-                    WHERE user_id = ? AND is_active = 1 AND user_premises IS NOT NULL
+                    SELECT premise_text 
+                    FROM user_premises 
+                    WHERE user_id = ? 
+                    ORDER BY created_at ASC
                 ''', (user_id,))
-                result = cursor.fetchone()
+                results = cursor.fetchall()
                 
-                if result and result[0]:
-                    try:
-                        # Try to parse as JSON first
-                        return json.loads(result[0])
-                    except json.JSONDecodeError:
-                        # If not JSON, treat as comma-separated plain text
-                        premises_text = result[0]
-                        if premises_text:
-                            return [premise.strip() for premise in premises_text.split(',')]
-                        return []
+                if results:
+                    return [row[0] for row in results]
+                
+                # OLD CODE: Fallback to old method (subscriptions_categories) - COMMENTED OUT
+                # This was causing the issue with old global premises being used
+                # with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                #     cursor = conn.cursor()
+                #     cursor.execute('''
+                #         SELECT DISTINCT user_premises
+                #         FROM subscriptions_categories 
+                #         WHERE user_id = ? AND is_active = 1 AND user_premises IS NOT NULL
+                #     ''', (user_id,))
+                #     result = cursor.fetchone()
+                #     
+                #     if result and result[0]:
+                #         try:
+                #             # Try to parse as JSON first
+                #             return json.loads(result[0])
+                #         except json.JSONDecodeError:
+                #             # If not JSON, treat as comma-separated plain text
+                #             premises_text = result[0]
+                #             if premises_text:
+                #                 return [premise.strip() for premise in premises_text.split(',')]
+                #             return []
                 return []
         except Exception as e:
             logger.exception(f"Error getting user premises: {e}")
             return []
     
-    def update_user_premises(self, user_id: str, premisas: list) -> bool:
-        """Update customized premises for a user (maximum 7)."""
+    def update_user_premises(self, user_id: str, premises: list) -> bool:
+        """Update customized premises for a user."""
         try:
-            if len(premisas) > 7:
-                logger.warning(f"Usuario {user_id} intentó guardar más de 7 premisas")
+            limit = self._get_premises_limit()
+            if len(premises) > limit:
+                logger.warning(f"User {user_id} tried to save more than {limit} premises")
                 return False
             
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                     cursor = conn.cursor()
-                    # Actualizar todas las suscripciones del usuario con las nuevas premisas
+                    cursor.execute('DELETE FROM user_premises WHERE user_id = ?', (user_id,))
+
+                    for premise in premises:
+                        cursor.execute('''
+                            INSERT INTO user_premises (user_id, premise_text, created_at)
+                            VALUES (?, ?, ?)
+                        ''', (user_id, premise, datetime.now().isoformat()))
+
+                    serialized_premises = json.dumps(premises) if premises else None
                     cursor.execute('''
                         UPDATE subscriptions_categories 
                         SET user_premises = ?
                         WHERE user_id = ? AND is_active = 1
-                    ''', (json.dumps(premisas), user_id))
+                    ''', (serialized_premises, user_id))
                     conn.commit()
                     
-                    logger.info(f"✅ Premisas actualizadas para usuario {user_id}: {len(premisas)} premisas")
+                    logger.info(f"✅ Premises updated for user {user_id}: {len(premises)} premises")
                     return True
         except Exception as e:
             logger.exception(f"Error updating user premises: {e}")
             return False
     
     def get_premises_with_context(self, user_id: str) -> tuple:
-        """Get user's premises with context (if has custom ones or uses global)."""
+        """Get user's premises with context (always returns user premises)."""
         user_premises = self.get_user_premises(user_id)
         
         if user_premises:
-            return user_premises, "personalizadas"
+            return user_premises, "custom"
         else:
-            # Use global premises from premises_manager (that uses the personality)
-            try:
-                import sys
-                import os
-                # Add the news_watcher directory path to sys.path
-                vigia_path = os.path.dirname(os.path.abspath(__file__))
-                if vigia_path not in sys.path:
-                    sys.path.insert(0, vigia_path)
-                
-                from premises_manager import get_premises_manager
-                from agent_db import get_active_server_name
-                server_name = get_active_server_name()
-                if not server_name:
-                    logger.warning("No active server configured for global premises lookup")
-                    return [], "error"
-                premises_manager = get_premises_manager(server_name)
-                return premises_manager.get_active_premises(), "globales"
-            except ImportError as e:
-                logger.error(f"Error importando premises_manager: {e}")
-                return [], "error"
+            # If user has no premises, return empty list - never use global
+            return [], "empty"
     
-    def add_premise_usuario(self, user_id: str, nueva_premisa: str) -> tuple:
-        """Add a premise to the user if there's space (maximum 7)."""
+    def _get_default_premises(self) -> list:
+        """Get default premises from personality file."""
         try:
-            premisas_actuales = self.get_user_premises(user_id)
+            from agent_engine import PERSONALITY
+            if 'watcher_premises' in PERSONALITY and 'premises' in PERSONALITY['watcher_premises']:
+                return PERSONALITY['watcher_premises']['premises']
+            return []
+        except Exception as e:
+            logger.error(f"Error getting default premises: {e}")
+            return []
+
+    def _get_premises_limit(self) -> int:
+        """Get the effective premises limit."""
+        return max(7, len(self._get_default_premises()))
+    
+    def _insert_user_premise(self, user_id: str, premise_text: str) -> bool:
+        """Directly insert a premise for user (bypassing checks)."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR IGNORE INTO user_premises (user_id, premise_text, created_at)
+                        VALUES (?, ?, ?)
+                    ''', (user_id, premise_text, datetime.now().isoformat()))
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Error inserting user premise: {e}")
+            return False
+    
+    def initialize_user_premises(self, user_id: str, guild_id: str = None) -> tuple:
+        """Initialize user premises with default premises (one-time only)."""
+        try:
+            current_premises = self.get_user_premises(user_id)
             
-            if len(premisas_actuales) >= 7:
-                return False, "Has alcanzado el máximo de 7 premisas personalizadas"
+            # Only initialize if user has no premises
+            if current_premises:
+                return True, f"User already has {len(current_premises)} premises"
             
-            if nueva_premisa in premisas_actuales:
-                return False, "Esa premisa ya existe en tu lista"
+            # Copy default premises
+            default_premises = self._get_default_premises()
+            if not default_premises:
+                return False, "No default premises available to copy"
             
-            premisas_actuales.append(nueva_premisa)
+            logger.info(f"Initializing premises for user {user_id} with {len(default_premises)} defaults")
             
-            if self.update_user_premises(user_id, premisas_actuales):
-                return True, f"Premisa añadida: \"{nueva_premisa}\" ({len(premisas_actuales)}/7)"
-            else:
-                return False, "Error saving premise"
+            for premise in default_premises:
+                self._insert_user_premise(user_id, premise)
+            
+            # Record the initialization
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO user_initializations (user_id, initialized_at, guild_id)
+                        VALUES (?, ?, ?)
+                    ''', (user_id, datetime.now().isoformat(), guild_id or 'unknown'))
+                    conn.commit()
+            
+            updated_premises = self.get_user_premises(user_id)
+            return True, f"Initialized with {len(updated_premises)} default premises"
+            
+        except Exception as e:
+            logger.exception(f"Error initializing user premises: {e}")
+            return False, "Error initializing premises"
+    
+    def has_user_initialized(self, user_id: str) -> bool:
+        """Check if user has ever initialized premises."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('SELECT user_id FROM user_initializations WHERE user_id = ?', (user_id,))
+                    return cursor.fetchone() is not None
+        except Exception as e:
+            logger.exception(f"Error checking user initialization: {e}")
+            return False
+    
+    def add_user_premise(self, user_id: str, new_premise: str) -> tuple:
+        """Add a premise to the user if there's space and user already has premises."""
+        try:
+            current_premises = self.get_user_premises(user_id)
+            limit = self._get_premises_limit()
+            
+            # User must have initialized at some point (via !canvas)
+            if not current_premises and not self.has_user_initialized(user_id):
+                return False, "You must initialize your premises first using !canvas"
+            
+            # Check if we can add the new premise
+            if len(current_premises) >= limit:
+                return False, f"You have reached the maximum of {limit} premises"
+            
+            if new_premise in current_premises:
+                return False, "That premise already exists in your list"
+            
+            # Insert the new premise
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT INTO user_premises (user_id, premise_text, created_at)
+                        VALUES (?, ?, ?)
+                    ''', (user_id, new_premise, datetime.now().isoformat()))
+                    conn.commit()
+                    
+                    logger.info(f"✅ Premise added for user {user_id}: {new_premise}")
+                    updated_count = len(self.get_user_premises(user_id))
+                    return True, f"Premise added: \"{new_premise}\" ({updated_count}/{limit})"
                 
         except Exception as e:
             logger.exception(f"Error adding user premise: {e}")
             return False, "Error adding premise"
     
-    def modificar_premisa_usuario(self, user_id: str, indice: int, nueva_premisa: str) -> tuple:
+    def modify_user_premise(self, user_id: str, index: int, new_premise: str) -> tuple:
         """Modify a specific premise by its index (1-based)."""
         try:
-            premisas_actuales = self.get_user_premises(user_id)
+            current_premises = self.get_user_premises(user_id)
             
-            if not premisas_actuales:
-                return False, "No tienes premisas personalizadas. Usa !vigia premisas add para crearlas."
+            if not current_premises:
+                return False, "You do not have custom premises. Use `!watcher premises add` to create them."
             
-            if indice < 1 or indice > len(premisas_actuales):
-                return False, f"Índice inválido. Debe estar entre 1 y {len(premisas_actuales)}"
+            if index < 1 or index > len(current_premises):
+                return False, f"Invalid index. It must be between 1 and {len(current_premises)}"
             
-            # Modificar la premisa
-            premisa_anterior = premisas_actuales[indice - 1]
-            premisas_actuales[indice - 1] = nueva_premisa
+            # Get the premise to modify
+            premise_to_modify = current_premises[index - 1]
             
-            if self.update_user_premises(user_id, premisas_actuales):
-                return True, f"Premisa #{indice} actualizada: \"{premisa_anterior}\" → \"{nueva_premisa}\""
-            else:
-                return False, "Error modifying premise"
+            # Update in the new dedicated table
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        UPDATE user_premises 
+                        SET premise_text = ?, created_at = ?
+                        WHERE user_id = ? AND premise_text = ?
+                    ''', (new_premise, datetime.now().isoformat(), user_id, premise_to_modify))
+                    conn.commit()
+                    
+                    if cursor.rowcount > 0:
+                        return True, f"Premise #{index} updated: \"{premise_to_modify}\" → \"{new_premise}\""
+                    else:
+                        return False, "Error modifying premise"
                 
         except Exception as e:
             logger.exception(f"Error modifying user premise: {e}")
             return False, "Error modifying premise"
+    
+    def delete_user_premise(self, user_id: str, index: int) -> tuple:
+        """Delete a specific premise by its index (1-based)."""
+        try:
+            current_premises = self.get_user_premises(user_id)
+            limit = self._get_premises_limit()
+            
+            if not current_premises:
+                return False, "You do not have custom premises to delete."
+            
+            if index < 1 or index > len(current_premises):
+                return False, f"Invalid index. It must be between 1 and {len(current_premises)}"
+            
+            # Get the premise to delete
+            premise_to_delete = current_premises[index - 1]
+            
+            # Delete from the new dedicated table
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        DELETE FROM user_premises 
+                        WHERE user_id = ? AND premise_text = ?
+                    ''', (user_id, premise_to_delete))
+                    conn.commit()
+                    
+                    if cursor.rowcount > 0:
+                        return True, f"Premise #{index} deleted: \"{premise_to_delete}\" ({len(current_premises) - 1}/{limit})"
+                    else:
+                        return False, "Error deleting premise"
+                
+        except Exception as e:
+            logger.exception(f"Error deleting user premise: {e}")
+            return False, "Error deleting premise"
     
     # ===== CHANNEL PREMISES METHODS =====
     
@@ -1272,127 +1636,225 @@ class DatabaseRoleNewsWatcher:
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT DISTINCT user_premises
-                    FROM subscriptions_categories 
-                    WHERE user_id = ? AND is_active = 1 AND user_premises IS NOT NULL
-                ''', (f"channel_{channel_id}",))
-                result = cursor.fetchone()
                 
-                if result and result[0]:
-                    premises_str = result[0]
-                    try:
-                        # Try to parse as JSON first
-                        return json.loads(premises_str)
-                    except json.JSONDecodeError:
-                        # If not JSON, treat as comma-separated string
-                        if premises_str:
-                            return [p.strip() for p in premises_str.split(',') if p.strip()]
-                        return []
+                # First, check if channel has personalized premises in channel_premises table
+                cursor.execute('''
+                    SELECT premise_text
+                    FROM channel_premises
+                    WHERE channel_id = ?
+                    ORDER BY created_at ASC
+                ''', (channel_id,))
+                results = cursor.fetchall()
+                if results:
+                    return [row[0] for row in results]
+
+                # If no personalized channel premises, check for user who might own this channel
+                # For now, we'll skip the old subscription-based premises and return empty
+                # to force using user premises instead
+                return []
+                
+                # OLD CODE: Check subscription premises (commented out to avoid conflicts)
+                # cursor.execute('''
+                #     SELECT DISTINCT channel_premises
+                #     FROM subscriptions_channels
+                #     WHERE channel_id = ? AND is_active = 1 AND channel_premises IS NOT NULL AND channel_premises != ''
+                # ''', (channel_id,))
+                # result = cursor.fetchone()
+                # 
+                # if result and result[0]:
+                #     premises_str = result[0]
+                #     try:
+                #         return json.loads(premises_str)
+                #     except json.JSONDecodeError:
+                #         if premises_str:
+                #             return [p.strip() for p in premises_str.split(',') if p.strip()]
+                
                 return []
         except Exception as e:
-            logger.exception(f"Error obteniendo premisas del canal: {e}")
+            logger.exception(f"Error getting channel premises: {e}")
             return []
     
-    def update_channel_premises(self, channel_id: str, premisas: list) -> bool:
-        """Update customized premises for a channel (maximum 7)."""
+    def update_channel_premises(self, channel_id: str, premises: list) -> bool:
+        """Update customized premises for a channel."""
         try:
-            if len(premisas) > 7:
-                logger.warning(f"Canal {channel_id} intentó guardar más de 7 premisas")
+            limit = self._get_premises_limit()
+            if len(premises) > limit:
+                logger.warning(f"Channel {channel_id} tried to save more than {limit} premises")
                 return False
             
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                     cursor = conn.cursor()
-                    # Actualizar todas las suscripciones del canal con las nuevas premisas
+                    cursor.execute('DELETE FROM channel_premises WHERE channel_id = ?', (channel_id,))
+
+                    for premise in premises:
+                        cursor.execute('''
+                            INSERT INTO channel_premises (channel_id, premise_text, created_at)
+                            VALUES (?, ?, ?)
+                        ''', (channel_id, premise, datetime.now().isoformat()))
+
+                    serialized_premises = json.dumps(premises) if premises else None
                     cursor.execute('''
                         UPDATE subscriptions_channels 
                         SET channel_premises = ?
                         WHERE channel_id = ? AND is_active = 1
-                    ''', (json.dumps(premisas), channel_id))
+                    ''', (serialized_premises, channel_id))
                     conn.commit()
                     
-                    logger.info(f"✅ Premisas actualizadas para canal {channel_id}: {len(premisas)} premisas")
+                    logger.info(f"✅ Premises updated for channel {channel_id}: {len(premises)} premises")
                     return True
         except Exception as e:
             logger.exception(f"Error updating channel premises: {e}")
             return False
     
-    def add_premise_canal(self, channel_id: str, nueva_premisa: str) -> tuple:
-        """Añade una premisa al canal si hay hueco (máximo 7)."""
+    def initialize_channel_premises(self, channel_id: str) -> tuple:
+        """Initialize channel premises with default premises (one-time only)."""
         try:
-            premisas_actuales = self.get_channel_premises(channel_id)
+            current_premises = self.get_channel_premises(channel_id)
             
-            if len(premisas_actuales) >= 7:
-                return False, "El canal ha alcanzado el máximo de 7 premisas personalizadas"
+            # Only initialize if channel has no premises
+            if current_premises:
+                return True, f"Channel already has {len(current_premises)} premises"
             
-            if nueva_premisa in premisas_actuales:
-                return False, "Esa premisa ya existe en la lista del canal"
+            # Copy default premises
+            default_premises = self._get_default_premises()
+            if not default_premises:
+                return False, "No default premises available to copy"
             
-            premisas_actuales.append(nueva_premisa)
+            logger.info(f"Initializing premises for channel {channel_id} with {len(default_premises)} defaults")
             
-            if self.update_channel_premises(channel_id, premisas_actuales):
-                return True, f"Premisa de canal añadida: \"{nueva_premisa}\" ({len(premisas_actuales)}/7)"
+            # Save to channel premises table
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    for premise in default_premises:
+                        cursor.execute('''
+                            INSERT INTO channel_premises (channel_id, premise_text, created_at)
+                            VALUES (?, ?, ?)
+                        ''', (channel_id, premise, datetime.now().isoformat()))
+                    conn.commit()
+            
+            updated_premises = self.get_channel_premises(channel_id)
+            return True, f"Initialized with {len(updated_premises)} default premises"
+            
+        except Exception as e:
+            logger.exception(f"Error initializing channel premises: {e}")
+            return False, "Error initializing premises"
+    
+    def add_channel_premise(self, channel_id: str, new_premise: str) -> tuple:
+        """Add a premise to the channel if there is space and channel already has premises."""
+        try:
+            current_premises = self.get_channel_premises(channel_id)
+            limit = self._get_premises_limit()
+
+            # Channel must have premises to add (initialized via !canvas)
+            if not current_premises:
+                return False, "This channel must initialize premises first using !canvas"
+            
+            # Check if we can add the new premise
+            if len(current_premises) >= limit:
+                return False, f"The channel has reached the maximum of {limit} premises"
+            
+            if new_premise in current_premises:
+                return False, "That premise already exists in the channel list"
+            
+            current_premises.append(new_premise)
+            
+            if self.update_channel_premises(channel_id, current_premises):
+                return True, f"Channel premise added: \"{new_premise}\" ({len(current_premises)}/{limit})"
             else:
-                return False, "Error saving premise del canal"
+                return False, "Error saving channel premise"
                 
         except Exception as e:
             logger.exception(f"Error adding channel premise: {e}")
-            return False, "Error adding premise del canal"
-    
-    def modificar_premisa_canal(self, channel_id: str, indice: int, nueva_premisa: str) -> tuple:
-        """Modifica una premisa específica del canal por su índice (1-based)."""
+            return False, "Error adding channel premise"
+
+    def delete_channel_premise(self, channel_id: str, index: int) -> tuple:
+        """Delete a specific channel premise by its index (1-based)."""
         try:
-            premisas_actuales = self.get_channel_premises(channel_id)
+            current_premises = self.get_channel_premises(channel_id)
+            limit = self._get_premises_limit()
+
+            if not current_premises:
+                return False, "This channel has no custom premises to delete. Use 'Add Premises' to create custom premises first."
+
+            if index < 1 or index > len(current_premises):
+                return False, f"Invalid index. It must be between 1 and {len(current_premises)}"
+
+            premise_to_delete = current_premises[index - 1]
+            current_premises.pop(index - 1)
+
+            if self.update_channel_premises(channel_id, current_premises):
+                return True, f"Channel premise #{index} deleted: \"{premise_to_delete}\" ({len(current_premises)}/{limit})"
+            return False, "Error deleting channel premise"
+
+        except Exception as e:
+            logger.exception(f"Error deleting channel premise: {e}")
+            return False, "Error deleting channel premise"
+    
+    def modify_channel_premise(self, channel_id: str, index: int, new_premise: str) -> tuple:
+        """Modify a specific channel premise by its index (1-based)."""
+        try:
+            current_premises = self.get_channel_premises(channel_id)
             
-            if not premisas_actuales:
-                return False, "El canal no tiene premisas personalizadas. Usa !vigiacanal premisas add para crearlas."
+            if not current_premises:
+                return False, "The channel has no custom premises. Use `!watcherchannel premises add` to create them."
             
-            if indice < 1 or indice > len(premisas_actuales):
-                return False, f"Índice inválido. Debe estar entre 1 y {len(premisas_actuales)}"
+            if index < 1 or index > len(current_premises):
+                return False, f"Invalid index. It must be between 1 and {len(current_premises)}"
             
-            # Modificar la premisa
-            premisa_anterior = premisas_actuales[indice - 1]
-            premisas_actuales[indice - 1] = nueva_premisa
+            # Modify the premise
+            previous_premise = current_premises[index - 1]
+            current_premises[index - 1] = new_premise
             
-            if self.update_channel_premises(channel_id, premisas_actuales):
-                return True, f"Premisa de canal #{indice} actualizada: \"{premisa_anterior}\" → \"{nueva_premisa}\""
+            if self.update_channel_premises(channel_id, current_premises):
+                return True, f"Channel premise #{index} updated: \"{previous_premise}\" → \"{new_premise}\""
             else:
-                return False, "Error modifying premise del canal"
+                return False, "Error modifying channel premise"
                 
         except Exception as e:
             logger.exception(f"Error modifying channel premise: {e}")
-            return False, "Error modifying premise del canal"
+            return False, "Error modifying channel premise"
     
     def get_channel_premises_with_context(self, channel_id: str) -> tuple:
-        """Get channel premises with context (if has custom or uses global)."""
+        """Get channel premises with context. Never uses global premises directly."""
         channel_premises = self.get_channel_premises(channel_id)
         
         if channel_premises:
-            return channel_premises, "personalizadas"
-        else:
-            # Usar premisas globales del premises_manager
-            import sys
-            import os
-            # Añadir el path del directorio vigia_noticias al sys.path
-            vigia_path = os.path.dirname(os.path.abspath(__file__))
-            if vigia_path not in sys.path:
-                sys.path.insert(0, vigia_path)
-            
-            from premises_manager import get_premises_manager
-            from agent_db import get_active_server_name
-            server_name = get_active_server_name()
-            if not server_name:
-                logger.warning("No active server configured for global premises lookup")
-                return [], "error"
-            premises_manager = get_premises_manager(server_name)
-            return premises_manager.get_active_premises(), "globales"
+            return channel_premises, "custom"
+        
+        # If no custom channel premises, check subscription-based premises (old method)
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT DISTINCT channel_premises
+                    FROM subscriptions_channels
+                    WHERE channel_id = ? AND channel_premises IS NOT NULL AND channel_premises != ''
+                ''', (channel_id,))
+                result = cursor.fetchone()
+                if result and result[0]:
+                    premise_list = [p.strip() for p in result[0].split(',') if p.strip()]
+                    if premise_list:
+                        # Check if these are just copies of global premises
+                        global_premises = self._get_default_premises()
+                        if premise_list == global_premises:
+                            # These are global copies, don't use them
+                            pass
+                        else:
+                            # These are actual channel-specific premises
+                            return premise_list, "subscription"
+        except Exception as e:
+            logger.warning(f"Error checking subscription premises for channel {channel_id}: {e}")
+        
+        # If no valid channel premises, return empty - NEVER use global directly
+        return [], "empty"
 
     def check_user_subscription_type(self, user_id: str) -> str:
         """Check what type of subscription a user has (exclusive).
         
         Returns:
-            str: 'plana', 'palabras', 'ia', or 'ninguna'
+            str: 'flat', 'keywords', 'ai', or 'none'
         """
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
@@ -1405,7 +1867,7 @@ class DatabaseRoleNewsWatcher:
                 ''', (user_id,))
                 
                 if cursor.fetchone()[0] > 0:
-                    return 'plana'
+                    return 'flat'
                 
                 # Check if user has keyword subscription
                 cursor.execute('''
@@ -1414,7 +1876,7 @@ class DatabaseRoleNewsWatcher:
                 ''', (user_id,))
                 
                 if cursor.fetchone()[0] > 0:
-                    return 'palabras'
+                    return 'keywords'
                 
                 # Check if user has AI subscription (subscriptions_categories with premises)
                 cursor.execute('''
@@ -1423,19 +1885,19 @@ class DatabaseRoleNewsWatcher:
                 ''', (user_id,))
                 
                 if cursor.fetchone()[0] > 0:
-                    return 'ia'
+                    return 'ai'
                 
-                return 'ninguna'
+                return 'none'
                 
         except Exception as e:
             logger.exception(f"Error checking user subscription type: {e}")
-            return 'ninguna'
+            return 'none'
     
     def check_channel_subscription_type(self, channel_id: str) -> str:
         """Check what type of subscription a channel has (exclusive).
         
         Returns:
-            str: 'plana', 'palabras', 'ia', or 'ninguna'
+            str: 'flat', 'keywords', 'ai', or 'none'
         """
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
@@ -1448,7 +1910,7 @@ class DatabaseRoleNewsWatcher:
                 ''', (channel_id,))
                 
                 if cursor.fetchone()[0] > 0:
-                    return 'plana'
+                    return 'flat'
                 
                 # Check if channel has keyword subscription
                 cursor.execute('''
@@ -1457,7 +1919,7 @@ class DatabaseRoleNewsWatcher:
                 ''', (channel_id,))
                 
                 if cursor.fetchone()[0] > 0:
-                    return 'palabras'
+                    return 'keywords'
                 
                 # Check if channel has AI subscription (channels with premises)
                 cursor.execute('''
@@ -1466,9 +1928,9 @@ class DatabaseRoleNewsWatcher:
                 ''', (channel_id,))
                 
                 if cursor.fetchone()[0] > 0:
-                    return 'ia'
+                    return 'ai'
                 
-                return 'ninguna'
+                return 'none'
                 
         except Exception as e:
             logger.exception(f"Error checking channel subscription type: {e}")
@@ -1587,7 +2049,7 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error getting user keywords: {e}")
             return None
     
-    def update_user_keywords(self, user_id: str, palabras: str) -> bool:
+    def update_user_keywords(self, user_id: str, keywords: str) -> bool:
         """Update the keywords of a user."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
@@ -1596,7 +2058,7 @@ class DatabaseRoleNewsWatcher:
                     UPDATE subscriptions_keywords 
                     SET keywords = ?
                     WHERE user_id = ? AND is_active = 1
-                ''', (palabras, user_id))
+                ''', (keywords, user_id))
                 conn.commit()
                 return cursor.rowcount > 0
         except Exception as e:
@@ -1616,7 +2078,7 @@ class DatabaseRoleNewsWatcher:
                 ''', (user_id,))
                 return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"Error obteniendo suscripciones con palabras: {e}")
+            logger.exception(f"Error getting keyword subscriptions: {e}")
             return []
     
     def cancel_user_keyword_subscription(self, user_id: str, category: str) -> bool:
@@ -1648,7 +2110,7 @@ class DatabaseRoleNewsWatcher:
                 ''', (user_id,))
                 return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"Error obteniendo suscripciones con IA: {e}")
+            logger.exception(f"Error getting AI subscriptions: {e}")
             return []
 
 
@@ -2019,8 +2481,3 @@ def get_news_watcher_db_instance(server_name: str = "default") -> DatabaseRoleNe
     if server_name not in _db_news_watcher_instances:
         _db_news_watcher_instances[server_name] = DatabaseRoleNewsWatcher(server_name)
     return _db_news_watcher_instances[server_name]
-
-
-def get_vigia_db_instance(server_name: str = "default") -> DatabaseRoleNewsWatcher:
-    """Backward-compatible alias for legacy imports."""
-    return get_news_watcher_db_instance(server_name)

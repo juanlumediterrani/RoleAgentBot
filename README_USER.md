@@ -52,7 +52,7 @@ Welcome! RoleAgentBot is a multi-personality Discord bot that provides various e
 **Main Help**: `!trickster help`
 **Dice Game**: `!dice play/help/balance/stats/ranking/history`
 **Dice Config**: `!dice config bet <amount>` | `!dice config announcements on/off`
-**Ring Accusation**: `!accuse @user`
+**Ring Target Selection**: `!trickster ring target @user`
 **Subroles**: `!trickster beggar/ring enable/disable/frequency/help`
 
 ### 💰 Banker

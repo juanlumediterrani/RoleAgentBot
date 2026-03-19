@@ -16,7 +16,7 @@ except Exception:
 from agent_db import get_shared_data_path
 
 def get_db_path(server_name: str = "default", liga: str = "Standard") -> Path:
-    """Genera ruta de BD basada en el nombre de la liga."""
+    """Generate the database path based on the league name."""
     if liga.lower() == "fate of the vaal":
         db_name = "PoE2FOTV.db"
     elif liga.lower() == "standard":
@@ -29,8 +29,8 @@ def get_db_path(server_name: str = "default", liga: str = "Standard") -> Path:
 
 
 class DatabaseRolePoe:
-    """Base de datos especializada para el Buscador de Tesoros.
-    Gestiona el historial de precios con retención de 720 entradas (30 días).
+    """Specialized database for Treasure Hunter.
+    Manages price history with retention of 720 entries (30 days).
     """
     
     def __init__(self, server_name: str = "default", liga: str = "Standard", db_path: Path = None):
@@ -43,19 +43,16 @@ class DatabaseRolePoe:
         self._init_db()
     
     def _ensure_writable_db(self):
-        """Verifica que la BD sea accesible y force permisos correctos."""
+        """Ensure the database is accessible and enforce valid permissions."""
         try:
-            # Asegurar que el directorio exista con permisos correctos
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             self._fix_permissions(self.db_path.parent)
-            
-            # Conectar y forzar permisos del archivo
+
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
             cursor.execute('PRAGMA journal_mode=DELETE;')
             conn.close()
-            
-            # Forzar permisos del archivo de BD
+
             self._fix_permissions(self.db_path)
             
         except Exception as e:
@@ -63,17 +60,13 @@ class DatabaseRolePoe:
             raise
     
     def _fix_permissions(self, path: Path):
-        """Fuerza permisos de usuario/grupo actual en archivo/directorio."""
+        """Enforce current user/group permissions on a file or directory."""
         try:
             if path.exists():
-                # Obtener uid/gid actual
                 uid = os.getuid()
                 gid = os.getgid()
-                
-                # Cambiar owner
                 os.chown(path, uid, gid)
-                
-                # Permisos: 664 para archivos, 775 para directorios
+
                 if path.is_file():
                     current_mode = path.stat().st_mode
                     new_mode = (current_mode & 0o777) | stat.S_IWUSR | stat.S_IWGRP
@@ -88,29 +81,28 @@ class DatabaseRolePoe:
             logger.warning(f"Could not fix permissions for {path}: {e}")
     
     def _init_db(self):
-        """Inicializa la base de datos con configuración DELETE."""
+        """Initialize the database with DELETE journal mode."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=DELETE;")  # Changed from WAL to DELETE
+                cursor.execute("PRAGMA journal_mode=DELETE;")
                 conn.commit()
-                
-                # Inicializar tabla de notificaciones
+
                 self._init_notifications_table()
-                
-                logger.info(f"✅ Base de datos PutrePoe lista en {self.db_path}")
+
+                logger.info(f"✅ Treasure Hunter database ready at {self.db_path}")
         except Exception as e:
-            logger.exception(f"❌ Error en inicialización de DB PutrePoe: {e}")
+            logger.exception(f"❌ Error initializing Treasure Hunter database: {e}")
     
     def _sanitize_table_name(self, item_name: str) -> str:
-        """Convierte nombre de item en nombre de tabla SQL válido."""
+        """Convert an item name into a valid SQL table name."""
         sanitized = item_name.lower()
         sanitized = sanitized.replace(' ', '_').replace('-', '_')
         sanitized = ''.join(c for c in sanitized if c.isalnum() or c == '_')
         return f"precio_{sanitized}"
     
     def _ensure_table_exists(self, item_name: str, conn: sqlite3.Connection):
-        """Crea tabla para el item si no existe."""
+        """Create the item table if it does not exist."""
         table_name = self._sanitize_table_name(item_name)
         cursor = conn.cursor()
         cursor.execute(f'''
@@ -126,11 +118,11 @@ class DatabaseRolePoe:
         cursor.execute(f'CREATE INDEX IF NOT EXISTS idx_{table_name}_liga ON {table_name} (liga)')
         conn.commit()
     
-    def insertar_precios_bulk(self, item_name: str, entradas: list, liga: str):
-        """Inserta múltiples entradas de precio y mantiene máximo 720 entradas.
-        Evita duplicados por fecha y liga.
+    def insert_prices_bulk(self, item_name: str, entries: list, league: str):
+        """Insert multiple price entries and keep at most 720 entries.
+        Avoid duplicates by date and league.
         """
-        insertados = 0
+        inserted_count = 0
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
@@ -138,41 +130,41 @@ class DatabaseRolePoe:
                     table_name = self._sanitize_table_name(item_name)
                     cursor = conn.cursor()
                     
-                    # Formatear liga
-                    liga_formateada = ''.join([word[0].upper() for word in liga.split()])
+                    # Format league
+                    formatted_league = ''.join([word[0].upper() for word in league.split()])
                     
-                    # Insertar nuevas entradas evitando duplicados
-                    for entry in entradas:
+                    # Insert new entries while avoiding duplicates
+                    for entry in entries:
                         if not entry.time:
                             continue
                             
-                        # Parsear fecha y formatear
+                        # Parse and format date
                         try:
-                            fecha_iso = datetime.fromisoformat(entry.time.replace('Z', '+00:00')).replace(tzinfo=None)
-                            fecha_formateada = fecha_iso.strftime('%m-%d %H:%M')
+                            parsed_date = datetime.fromisoformat(entry.time.replace('Z', '+00:00')).replace(tzinfo=None)
+                            formatted_date = parsed_date.strftime('%m-%d %H:%M')
                         except:
                             continue
                         
-                        # Verificar duplicado
+                        # Check for duplicates
                         cursor.execute(f'''
                             SELECT COUNT(*) FROM {table_name}
                             WHERE fecha = ? AND liga = ?
-                        ''', (fecha_formateada, liga_formateada))
+                        ''', (formatted_date, formatted_league))
                         if cursor.fetchone()[0] > 0:
                             continue
                         
-                        # Insertar
+                        # Insert row
                         cursor.execute(f'''
                             INSERT INTO {table_name} 
                             (precio, cantidad, liga, fecha)
                             VALUES (?, ?, ?, ?)
                         ''', (round(entry.price, 2),
                               entry.quantity if entry.quantity is not None else None,
-                              liga_formateada,
-                              fecha_formateada))
-                        insertados += 1
+                              formatted_league,
+                              formatted_date))
+                        inserted_count += 1
                     
-                    # Mantener máximo 720 entradas por item/liga
+                    # Keep at most 720 entries per item/league
                     cursor.execute(f'''
                         DELETE FROM {table_name}
                         WHERE liga = ? AND id NOT IN (
@@ -181,19 +173,19 @@ class DatabaseRolePoe:
                             ORDER BY fecha DESC
                             LIMIT 720
                         )
-                    ''', (liga_formateada, liga_formateada))
+                    ''', (formatted_league, formatted_league))
                     
-                    eliminados = cursor.rowcount
+                    removed_count = cursor.rowcount
                     conn.commit()
                     
-                    logger.info(f"✅ {insertados} nuevos, {eliminados} eliminados para {item_name} ({liga_formateada})")
-                    return insertados
+                    logger.info(f"✅ {inserted_count} new, {removed_count} removed for {item_name} ({formatted_league})")
+                    return inserted_count
         except Exception as e:
-            logger.exception(f"⚠️ Error en bulk insert para {item_name}: {e}")
-            return insertados
+            logger.exception(f"⚠️ Error during bulk insert for {item_name}: {e}")
+            return inserted_count
     
-    def obtener_estadisticas(self, item_name: str, liga: str):
-        """Obtiene MIN y MAX de precios históricos para un item."""
+    def get_statistics(self, item_name: str, liga: str):
+        """Get the minimum and maximum historical prices for an item."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -209,11 +201,11 @@ class DatabaseRolePoe:
                     result = cursor.fetchone()
                     return result if result else (None, None)
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo estadísticas para {item_name}: {e}")
+            logger.exception(f"⚠️ Error getting statistics for {item_name}: {e}")
             return (None, None)
     
-    def obtener_historial_precios(self, item_name: str, liga: str):
-        """Obtiene todos los precios históricos ordenados por fecha para análisis de zonas."""
+    def get_price_history(self, item_name: str, liga: str):
+        """Get all historical prices ordered by date for zone analysis."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -229,11 +221,11 @@ class DatabaseRolePoe:
                     ''', (liga_formateada,))
                     return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo historial para {item_name}: {e}")
+            logger.exception(f"⚠️ Error getting history for {item_name}: {e}")
             return []
     
-    def obtener_conteo(self, item_name: str, liga: str):
-        """Obtiene el número de entradas para un item."""
+    def get_count(self, item_name: str, liga: str):
+        """Get the number of entries for an item."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -244,81 +236,81 @@ class DatabaseRolePoe:
                     cursor.execute(f'SELECT COUNT(*) FROM {table_name} WHERE liga = ?', (liga_formateada,))
                     return cursor.fetchone()[0]
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo conteo para {item_name}: {e}")
+            logger.exception(f"⚠️ Error getting count for {item_name}: {e}")
             return 0
     
-    def obtener_precio_actual(self, item_name: str, liga: str):
-        """Obtiene el precio más reciente para un item."""
+    def get_current_price(self, item_name: str, league: str):
+        """Get the most recent price for an item."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
                     self._ensure_table_exists(item_name, conn)
                     table_name = self._sanitize_table_name(item_name)
                     cursor = conn.cursor()
-                    liga_formateada = ''.join([word[0].upper() for word in liga.split()])
+                    formatted_league = ''.join([word[0].upper() for word in league.split()])
                     cursor.execute(f'''
                         SELECT precio 
                         FROM {table_name}
                         WHERE liga = ?
                         ORDER BY fecha DESC
                         LIMIT 1
-                    ''', (liga_formateada,))
+                    ''', (formatted_league,))
                     result = cursor.fetchone()
                     return result[0] if result else None
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo precio actual para {item_name}: {e}")
+            logger.exception(f"⚠️ Error getting current price for {item_name}: {e}")
             return None
     
-    def obtener_ultima_fecha(self, item_name: str, liga: str):
-        """Obtiene la fecha de la última entrada para un item."""
+    def get_latest_date(self, item_name: str, league: str):
+        """Get the date of the latest entry for an item."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
                     self._ensure_table_exists(item_name, conn)
                     table_name = self._sanitize_table_name(item_name)
                     cursor = conn.cursor()
-                    liga_formateada = ''.join([word[0].upper() for word in liga.split()])
+                    formatted_league = ''.join([word[0].upper() for word in league.split()])
                     cursor.execute(f'''
                         SELECT MAX(fecha) 
                         FROM {table_name} 
                         WHERE liga = ?
-                    ''', (liga_formateada,))
+                    ''', (formatted_league,))
                     result = cursor.fetchone()
                     return result[0] if result and result[0] else None
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo última fecha para {item_name}: {e}")
+            logger.exception(f"⚠️ Error getting latest date for {item_name}: {e}")
             return None
     
-    def verificar_datos_antiguos(self, item_name: str, liga: str, horas: int = 24):
-        """Verifica si los datos son más antiguos que N horas."""
+    def has_stale_data(self, item_name: str, league: str, hours: int = 24):
+        """Check whether the data is older than N hours."""
         try:
-            ultima_fecha_str = self.obtener_ultima_fecha(item_name, liga)
-            if not ultima_fecha_str:
-                return True  # No hay datos, se consideran "antiguos"
+            latest_date_str = self.get_latest_date(item_name, league)
+            if not latest_date_str:
+                return True
             
-            # Convertir fecha formateada (MM-DD HH:mm) a datetime
+            # Convert formatted date (MM-DD HH:mm) to datetime
             try:
-                # Asumir año actual para la fecha formateada
-                año_actual = datetime.now().year
-                fecha_completa = f"{año_actual}-{ultima_fecha_str}"
-                ultima_fecha = datetime.strptime(fecha_completa, '%Y-%m-%d %H:%M')
+                # Assume the current year for the formatted date
+                current_year = datetime.now().year
+                full_date = f"{current_year}-{latest_date_str}"
+                latest_date = datetime.strptime(full_date, '%Y-%m-%d %H:%M')
                 
-                # Si la fecha es futura, asumir año anterior
-                if ultima_fecha > datetime.now():
-                    año_anterior = año_actual - 1
-                    fecha_completa = f"{año_anterior}-{ultima_fecha_str}"
-                    ultima_fecha = datetime.strptime(fecha_completa, '%Y-%m-%d %H:%M')
+                # If the date is in the future, assume the previous year
+                if latest_date > datetime.now():
+                    previous_year = current_year - 1
+                    full_date = f"{previous_year}-{latest_date_str}"
+                    latest_date = datetime.strptime(full_date, '%Y-%m-%d %H:%M')
             except ValueError:
-                return True  # Si no puede parsear, asumir que necesita actualización
+                return True
             
-            fecha_limite = datetime.now() - timedelta(hours=horas)
-            return ultima_fecha < fecha_limite
+            cutoff_date = datetime.now() - timedelta(hours=hours)
+            return latest_date < cutoff_date
         except Exception as e:
-            logger.exception(f"⚠️ Error verificando datos antiguos para {item_name}: {e}")
-            return True  # Si hay error, asumimos que necesita actualización
+            logger.exception(f"⚠️ Error checking stale data for {item_name}: {e}")
+            return True
     
     def _init_notifications_table(self):
-        """Inicializa la tabla de notificaciones."""
+        """Initialize the notifications table."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
@@ -327,45 +319,45 @@ class DatabaseRolePoe:
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         item_name TEXT NOT NULL,
                         liga TEXT NOT NULL,
-                        tipo_señal TEXT NOT NULL,  -- 'COMPRA' o 'VENTA'
+                        tipo_señal TEXT NOT NULL,  -- 'COMPRA' or 'VENTA'
                         precio REAL NOT NULL,
                         fecha_envio TEXT NOT NULL  -- timestamp ISO
                     )
                 ''')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_notificaciones_item_fecha ON notificaciones (item_name, liga, fecha_envio)')
                 conn.commit()
-                logger.info("✅ Tabla de notificaciones inicializada")
+                logger.info("✅ Notifications table initialized")
         except Exception as e:
-            logger.exception(f"❌ Error inicializando tabla de notificaciones: {e}")
+            logger.exception(f"❌ Error initializing notifications table: {e}")
     
-    def registrar_notificacion(self, item_name: str, liga: str, tipo_señal: str, precio: float):
+    def register_notification(self, item_name: str, league: str, signal_type: str, price: float):
         """Register a sent notification."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
                     cursor = conn.cursor()
-                    formatted_league = ''.join([word[0].upper() for word in liga.split()])
+                    formatted_league = ''.join([word[0].upper() for word in league.split()])
                     send_date = datetime.now().isoformat()
                     
                     cursor.execute('''
                         INSERT INTO notificaciones (item_name, liga, tipo_señal, precio, fecha_envio)
                         VALUES (?, ?, ?, ?, ?)
-                    ''', (item_name, formatted_league, tipo_señal, precio, send_date))
+                    ''', (item_name, formatted_league, signal_type, price, send_date))
                     conn.commit()
-                    logger.info(f"✅ Notification registered: {item_name} - {tipo_señal} at {precio}")
+                    logger.info(f"✅ Notification registered: {item_name} - {signal_type} at {price}")
         except Exception as e:
             logger.exception(f"⚠️ Error registering notification: {e}")
     
-    def verificar_notificacion_reciente(self, item_name: str, liga: str, tipo_señal: str, precio_actual: float, horas: int = 6, umbral_similitud: float = 0.15):
+    def has_recent_similar_notification(self, item_name: str, league: str, signal_type: str, current_price: float, hours: int = 6, similarity_threshold: float = 0.15):
         """Check if there was a similar notification in the last N hours.
         
         Args:
             item_name: Item name
-            liga: Current league
-            tipo_señal: Signal type ('COMPRA' or 'VENTA')
-            precio_actual: Current price
-            horas: Time window in hours (default: 6)
-            umbral_similitud: Price similarity threshold (default: 15% = 0.15)
+            league: Current league
+            signal_type: Signal type ('COMPRA' or 'VENTA')
+            current_price: Current price
+            hours: Time window in hours (default: 6)
+            similarity_threshold: Price similarity threshold (default: 15% = 0.15)
         
         Returns:
             bool: True if there's a recent similar notification, False if not
@@ -374,10 +366,10 @@ class DatabaseRolePoe:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
                     cursor = conn.cursor()
-                    formatted_league = ''.join([word[0].upper() for word in liga.split()])
+                    formatted_league = ''.join([word[0].upper() for word in league.split()])
                     
                     # Calculate deadline
-                    deadline = datetime.now() - timedelta(hours=horas)
+                    deadline = datetime.now() - timedelta(hours=hours)
                     deadline_iso = deadline.isoformat()
                     
                     # Search for recent notifications of same item and type
@@ -386,22 +378,22 @@ class DatabaseRolePoe:
                         FROM notificaciones
                         WHERE item_name = ? AND liga = ? AND tipo_señal = ? AND fecha_envio > ?
                         ORDER BY fecha_envio DESC
-                    ''', (item_name, formatted_league, tipo_señal, deadline_iso))
+                    ''', (item_name, formatted_league, signal_type, deadline_iso))
                     
                     notifications = cursor.fetchall()
                     
                     for previous_price, send_date in notifications:
                         # Calculate percentage difference
                         if previous_price > 0:
-                            difference = abs(precio_actual - previous_price) / previous_price
-                            if difference <= umbral_similitud:
-                                logger.info(f"🚫 Similar notification found: {item_name} - {tipo_señal} at {previous_price} ({(datetime.now() - datetime.fromisoformat(send_date)).total_seconds() / 3600:.1f}h ago)")
+                            difference = abs(current_price - previous_price) / previous_price
+                            if difference <= similarity_threshold:
+                                logger.info(f"🚫 Similar notification found: {item_name} - {signal_type} at {previous_price} ({(datetime.now() - datetime.fromisoformat(send_date)).total_seconds() / 3600:.1f}h ago)")
                                 return True
                     
                     return False
         except Exception as e:
             logger.exception(f"⚠️ Error checking recent notification: {e}")
-            return False  # If there's an error, we allow the notification
+            return False
 
 
 # Dictionary to maintain instances per server and league

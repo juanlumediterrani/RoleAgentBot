@@ -53,7 +53,27 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         return
     
     try:
+        # Check if the user has replied to the bot or if the last message was from the bot
         server_name = get_server_key(after.guild)
+        db_instance = get_db_for_server(after.guild)
+        last_interaction = await asyncio.to_thread(db_instance.get_last_interaction, after.id)
+        
+        # Skip greeting if the last interaction was from the bot (greeting, response, etc.)
+        # and the user hasn't replied yet
+        if last_interaction:
+            # Check if the last interaction was a bot-initiated message
+            # Bot-initiated messages have: empty user context OR specific bot-only types
+            is_bot_initiated = (
+                (not last_interaction["context"] or 
+                 last_interaction["context"].startswith("User went from offline to online") or
+                 last_interaction["context"].startswith("User joined the server")) or
+                last_interaction["type"] in ["PRESENCE_DM", "WELCOME"]
+            )
+            
+            if is_bot_initiated:
+                logger.info(f"Presence greeting skipped for {after.name} - last message was from bot and user hasn't replied")
+                return
+        
         saludo = await asyncio.to_thread(
             think,
             role_context=after.display_name,
@@ -82,7 +102,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         
     except discord.errors.Forbidden as e:
         logger.warning(f"Cannot DM presence greeting to {after.name} (Forbidden): {e}")
-        fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
+        fallback_msg = presence_cfg.get("fallback", "Welcome back!")
         try:
             await after.send(f"👋 {fallback_msg}")
         except Exception:
@@ -90,7 +110,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
     
     except Exception as e:
         logger.error(f"Error greeting presence of {after.name}: {e}")
-        fallback_msg = presence_cfg.get("fallback", "¡Bienvenido de vuelta!")
+        fallback_msg = presence_cfg.get("fallback", "Welcome back!")
         try:
             await after.send(f"👋 {fallback_msg}")
         except Exception:

@@ -1,6 +1,6 @@
 """Canvas state helpers."""
 
-from agent_engine import PERSONALIDAD
+from agent_engine import PERSONALITY
 from agent_logging import get_logger
 from discord_bot.discord_core_commands import (
     _personality_answers,
@@ -199,7 +199,7 @@ def _get_canvas_ring_state(guild) -> dict:
             state["frequency_hours"] = int(current.get("frequency_hours", 24))
             state["target_user_name"] = current.get("target_user_name", "Unknown bearer")
         # Load description from personality
-        subrole_cfg = (PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {}) or {}).get("ring", {})
+        subrole_cfg = (PERSONALITY.get("role_system_prompts", {}).get("subroles", {}) or {}).get("ring", {})
         state["description"] = str(subrole_cfg.get("description", "")).strip()
     except Exception as e:
         logger.warning(f"Could not load ring state for Canvas: {e}")
@@ -246,7 +246,7 @@ def _get_enabled_roles(agent_config: dict) -> list[str]:
 
 def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
     prompts: list[str] = []
-    role_prompts_cfg = PERSONALIDAD.get("role_system_prompts", {})
+    role_prompts_cfg = PERSONALITY.get("role_system_prompts", {})
 
     for role_name in role_names:
         try:
@@ -304,7 +304,7 @@ def _build_mission_commentary_prompt(agent_config: dict, server_name: str = "def
         logger.warning(f"Could not load memories for commentary: {e}")
         memories_section = "MEMORIAS: No disponibles temporalmente.\n\n"
 
-    custom_cfg = PERSONALIDAD.get("prompts", {}).get("mission_commentary", {})
+    custom_cfg = PERSONALITY.get("prompts", {}).get("mission_commentary", {})
     if custom_cfg and isinstance(custom_cfg, dict):
         instructions = custom_cfg.get("instructions", [])
         closing = custom_cfg.get("closing", "")

@@ -4,13 +4,9 @@ Per-server DB access, permission helpers, and message sending functions.
 """
 
 import os
-import sys
 import time
 import hashlib
 from datetime import datetime, timedelta
-
-# Add parent directory to Python path to import root modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent_logging import get_logger
 from agent_db import get_db_instance, set_current_server, get_active_server_name
@@ -190,29 +186,29 @@ def set_feature_setting(guild, feature_name: str, setting_key: str, value, updat
 
 # --- SEND HELPERS ---
 
-async def send_dm_or_channel(ctx, content, confirm_msg="📩 Info sent by private message."):
-    """Send content via DM if possible, otherwise to channel. Handles messages >2000 chars."""
+async def send_dm_or_channel(ctx, content, confirm_msg="📩 Message sent by direct message."):
+    """Send content by direct message when possible, otherwise send it to the channel. Handles messages longer than 2000 characters."""
     import discord
     try:
         if len(content) > 2000:
-            partes = [content[i:i+1900] for i in range(0, len(content), 1900)]
-            for parte in partes:
-                await ctx.author.send(parte)
+            dm_chunks = [content[i:i+1900] for i in range(0, len(content), 1900)]
+            for chunk in dm_chunks:
+                await ctx.author.send(chunk)
         else:
             await ctx.author.send(content)
         if ctx.guild:
             await ctx.send(confirm_msg)
     except discord.errors.Forbidden:
         if len(content) > 2000:
-            partes = [content[i:i+1900] for i in range(0, len(content), 1900)]
-            for parte in partes:
-                await ctx.send(parte)
+            channel_chunks = [content[i:i+1900] for i in range(0, len(content), 1900)]
+            for chunk in channel_chunks:
+                await ctx.send(chunk)
         else:
             await ctx.send(content[:2000])
 
 
-async def send_embed_dm_or_channel(ctx, embed, confirm_msg="📩 Info sent by private message."):
-    """Send an embed via DM if possible, otherwise to channel."""
+async def send_embed_dm_or_channel(ctx, embed, confirm_msg="📩 Message sent by direct message."):
+    """Send an embed by direct message when possible, otherwise send it to the channel."""
     import discord
     try:
         await ctx.author.send(embed=embed)
@@ -301,7 +297,7 @@ _greeting_config = {}
 
 
 def should_enable_greetings(guild) -> bool:
-    """Determine if greetings should be enabled, checking database first."""
+    """Determine whether greetings should be enabled by checking the database first."""
     guild_id = str(guild.id)
     
     # Check cache first
@@ -322,10 +318,10 @@ def should_enable_greetings(guild) -> bool:
                 'from_db': True
             }
             
-            logger.info(f"Server {guild.name}: greetings {'enabled' if enabled else 'disabled'} from behaviors database")
+            logger.info(f"Server {guild.name}: greetings {'enabled' if enabled else 'disabled'} loaded from the behavior database")
             return enabled
         except Exception as e:
-            logger.warning(f"Error loading greetings from behaviors database for {guild.name}: {e}")
+            logger.warning(f"Error loading greetings from the behavior database for server {guild.name}: {e}")
     
     # Default to enabled - let runtime control decide
     member_count = len([m for m in guild.members if not m.bot])
@@ -343,7 +339,7 @@ def should_enable_greetings(guild) -> bool:
 
 
 def set_greeting_enabled(guild, enabled: bool):
-    """Manually set greeting state for a server and persist to database."""
+    """Manually set the greeting state for a server and persist it to the database."""
     guild_id = str(guild.id)
     if guild_id not in _greeting_config:
         _greeting_config[guild_id] = {}
@@ -358,17 +354,17 @@ def set_greeting_enabled(guild, enabled: bool):
         try:
             db = get_behaviors_db_instance(guild_id)
             db.set_greetings_enabled(enabled, "admin_command")
-            logger.info(f"Greetings {'enabled' if enabled else 'disabled'} and saved to behaviors database for {guild.name}")
+            logger.info(f"Greetings {'enabled' if enabled else 'disabled'} and persisted to the behavior database for server {guild.name}")
         except Exception as e:
-            logger.error(f"Failed to save greetings state to behaviors database for {guild.name}: {e}")
+            logger.error(f"Failed to save greetings state to the behavior database for server {guild.name}: {e}")
     else:
-        logger.warning(f"Behaviors database not available, greetings state not persisted for {guild.name}")
+        logger.warning(f"Behavior database not available; greeting state was not persisted for server {guild.name}")
 
-    logger.info(f"Greetings {'enabled' if enabled else 'disabled'} manually in {guild.name}")
+    logger.info(f"Greetings {'enabled' if enabled else 'disabled'} manually for server {guild.name}")
 
 
 def get_greeting_enabled(guild) -> bool:
-    """Get current greeting state for a server."""
+    """Return whether greetings are currently enabled for a server."""
     return should_enable_greetings(guild)
 
 

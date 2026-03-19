@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import asyncio
 from agent_logging import get_logger
-from agent_engine import PERSONALIDAD
+from agent_engine import PERSONALITY
 from db_role_mc import get_mc_db_instance
 from agent_db import get_active_server_name
 
@@ -18,7 +18,7 @@ MISSION_CONFIG = {
 def get_mc_system_prompt():
     """Get system prompt from personality or fallback to English."""
     try:
-        role_prompts = PERSONALIDAD.get("role_system_prompts", {})
+        role_prompts = PERSONALITY.get("role_system_prompts", {})
         return role_prompts.get("mc", "ACTIVE MISSION - MC (MASTER OF CEREMONIES): You are the MC, the Master of Ceremonies for music. Your mission is to control music on Discord servers. You are an expert DJ who knows all genres and always keeps the party active with the best songs.")
     except Exception:
         return "ACTIVE MISSION - MC (MASTER OF CEREMONIES): You are the MC, the Master of Ceremonies for music. Your mission is to control music on Discord servers. You are an expert DJ who knows all genres and always keeps the party active with the best songs."

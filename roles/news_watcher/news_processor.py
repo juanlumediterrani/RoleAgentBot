@@ -311,7 +311,7 @@ class NewsProcessor:
                         published=entry.get('published', ''),
                         content=content,
                         feed_id=feed_id,
-                        category=feed_info['categoria'],
+                        category=feed_info['category'],
                         guid=entry.get('id', entry.get('link', ''))
                     )
                     
@@ -343,10 +343,51 @@ class NewsProcessor:
         
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
-            return soup.get_text(strip=True)
+            
+            # Remove all script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            # Remove all img tags completely
+            for img in soup.find_all('img'):
+                img.decompose()
+            
+            # Remove all link tags but keep their text
+            for a in soup.find_all('a'):
+                a.replace_with(a.get_text())
+            
+            # Remove all other HTML tags
+            for tag in soup.find_all():
+                if tag.name not in ['p', 'br', 'span']:
+                    tag.replace_with(tag.get_text())
+            
+            # Get clean text with proper spacing
+            text = soup.get_text(separator=' ', strip=True)
+            
+            # Remove extra whitespace and normalize
+            text = ' '.join(text.split())
+            
+            # Remove any remaining HTML entities
+            import html
+            text = html.unescape(text)
+            
+            return text
         except Exception as e:
             logger.warning(f"Error cleaning HTML: {e}")
-            return html_content
+            # Fallback: remove basic HTML tags manually
+            import re
+            import html
+            # Remove img tags completely
+            text = re.sub(r'<img[^>]*>', '', html_content, flags=re.IGNORECASE)
+            # Remove script and style tags
+            text = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', text, flags=re.IGNORECASE | re.DOTALL)
+            # Remove all other HTML tags
+            text = re.sub(r'<[^>]+>', '', text)
+            # Clean up whitespace
+            text = ' '.join(text.split())
+            # Unescape HTML entities
+            text = html.unescape(text)
+            return text
     
     async def _process_subscription(self, subscription: Dict, news_items: List[NewsItem]) -> List[Tuple[str, str, str]]:
         """
@@ -517,41 +558,9 @@ class NewsProcessor:
     
     async def _process_general(self, news_item: NewsItem, premises: str) -> str:
         """Process general subscription - AI analysis based on premises with hash-based caching."""
-        if not premises:
-            return ""
-        
-        # Check if we have cached premises analysis
-        cache_key = self._get_premises_cache_key(news_item, premises)
-        if cache_key in self.premises_cache:
-            cached = self.premises_cache[cache_key]
-            if cached.analysis_result:
-                title = news_item.title
-                content = news_item.content[:500]
-                
-                message = f"🤖 **Critical News Analysis**\n\n📰 **{title}**\n\n{content}\n\n🎯 {cached.analysis_result}\n\n🔗 [Read more]({news_item.link})"
-                return message
-            else:
-                return ""  # Filtered out
-        
-        # TODO: Implement actual AI analysis based on premises
-        # For now, generate placeholder analysis
-        premise_list = [p.strip() for p in premises.split(',') if p.strip()]
-        analysis = f"[AI Analysis: Based on your premises about {', '.join(premise_list[:2])}, this news is rated as HIGHLY RELEVANT for your interests.]"
-        
-        # Cache the analysis result
-        cache_entry = PremisesCache(
-            premises_hash=generate_premises_hash(premises),
-            news_hash=news_item.get_hash(),
-            analysis_result=analysis,
-            timestamp=datetime.now()
-        )
-        self.premises_cache[cache_key] = cache_entry
-        
-        title = news_item.title
-        content = news_item.content[:500]
-        
-        message = f"🤖 **Critical News Analysis**\n\n📰 **{title}**\n\n{content}\n\n🎯 {analysis}\n\n🔗 [Read more]({news_item.link})"
-        return message
+        # This function is deprecated - use news_watcher.py _analyze_critical_news_batch instead
+        logger.warning("_process_general is deprecated. Use news_watcher.py implementation.")
+        return ""
     
     def _cleanup_old_cache(self):
         """Remove old cache entries to prevent memory leaks."""

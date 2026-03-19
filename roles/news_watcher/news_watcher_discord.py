@@ -6,10 +6,20 @@ Registers: !watcher, !nowatcher, !watchernotify, !nowatchernotify, !watcherhelp,
 import discord
 from discord.ext import commands
 from agent_logging import get_logger
-from agent_engine import PERSONALIDAD
+from agent_engine import PERSONALITY
 from discord_bot.discord_utils import send_dm_or_channel
 
 logger = get_logger('news_watcher_discord')
+
+# Import forcewatcher dependencies
+try:
+    from roles.news_watcher.news_watcher import process_channel_subscriptions
+    from roles.news_watcher.global_news_db import get_global_news_db
+    from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+    FORCEWATCHER_AVAILABLE = True
+except ImportError as e:
+    FORCEWATCHER_AVAILABLE = False
+    logger.warning(f"Force watcher dependencies not available: {e}")
 
 # Availability flags (evaluated on import)
 try:
@@ -33,7 +43,7 @@ def _get_news_watcher_db(guild):
     """Get news watcher database instance for a server."""
     if not WATCHER_COMMANDS_AVAILABLE or get_news_watcher_db_instance is None:
         return None
-    from discord_utils import get_server_key
+    from discord_bot.discord_utils import get_server_key
     server_key = get_server_key(guild)
     return get_news_watcher_db_instance(server_key)
 
@@ -84,7 +94,6 @@ def register_news_watcher_commands(bot, personality, agent_config):
                 # Additional commands that should be available
                 "add_feed": watcher_commands.cmd_add_feed,
                 "categories": watcher_commands.cmd_categories,  # English command for categories
-                "categorias": watcher_commands.cmd_categories,  # Spanish alias for backward compatibility
             }
 
             handler = dispatch.get(subcommand)
@@ -290,38 +299,137 @@ def register_news_watcher_commands(bot, personality, agent_config):
         logger.info("📡 Watcher channel command registered")
 
     # --- !forcewatcher ---
-    if bot.get_command("forcewatcher") is None:
+    if bot.get_command("forcewatcher") is None and FORCEWATCHER_AVAILABLE:
         @bot.command(name="forcewatcher")
         @commands.has_permissions(administrator=True)
         async def cmd_force_watcher(ctx):
             """Force news watcher to check subscriptions (Admin only)."""
-            from roles.news_watcher.news_watcher import process_channel_subscriptions
-            from roles.news_watcher.global_news_db import get_global_news_db
-            from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
-            
             try:
+                # Check permissions first
+                if not ctx.author.guild_permissions.administrator:
+                    await ctx.send("❌ **Permission denied:** This command requires administrator permissions.")
+                    return
+                
+                logger.info(f"🔄 Force watcher initiated by {ctx.author.name} ({ctx.author.id})")
                 await ctx.send("🔄 **Forcing news watcher iteration...**")
                 
                 # Get database instance
                 db = get_news_watcher_db_instance(str(ctx.guild.id))
                 global_db = get_global_news_db()
                 
+                logger.info(f"✅ Database instances ready for server {ctx.guild.id}")
+                
                 # Use our custom DiscordHTTP client for notifications
                 from discord_bot.discord_http import DiscordHTTP
                 from agent_engine import get_discord_token
                 http = DiscordHTTP(get_discord_token())
                 
-                # Force the watcher to process all channel subscriptions
-                await process_channel_subscriptions(http, db, global_db, str(ctx.guild.id))
+                logger.info("✅ DiscordHTTP client created")
                 
+                # Force the watcher to process all subscriptions for this channel
+                from roles.news_watcher.news_watcher import process_channel_all_subscriptions
+                await process_channel_all_subscriptions(http, db, global_db, str(ctx.guild.id), str(ctx.channel.id))
+                
+                logger.info("✅ Channel subscriptions processing completed")
                 await ctx.send("✅ **News watcher iteration completed!**\n"
-                              "📊 Checked all channel subscriptions for new articles.\n"
+                              "📊 Checked all subscriptions (keywords, flat, AI) for this channel.\n"
                               "📰 Any new articles will be processed and notifications sent.")
                 
+            except commands.MissingPermissions:
+                await ctx.send("❌ **Permission denied:** This command requires administrator permissions.")
             except Exception as e:
+                logger.error(f"❌ Error in forcewatcher command: {e}")
                 await ctx.send(f"❌ **Error running news watcher:** `{str(e)}`")
                 import traceback
                 traceback.print_exc()
+        
+        logger.info("📡 Force watcher command registered")
+    elif not FORCEWATCHER_AVAILABLE:
+        logger.warning("📡 Force watcher command not available - dependencies missing")
+    else:
+        logger.info("📡 Force watcher command already registered")
+    
+    # --- !forcewatcherpersonal ---
+    if bot.get_command("forcewatcherpersonal") is None and FORCEWATCHER_AVAILABLE:
+        @bot.command(name="forcewatcherpersonal")
+        async def cmd_force_watcher_personal(ctx):
+            """Force news watcher to check your personal subscriptions."""
+            try:
+                logger.info(f"🔄 Personal force watcher initiated by {ctx.author.name} ({ctx.author.id})")
+                await ctx.send("🔄 **Forcing personal news watcher iteration...**")
+                
+                # Get database instance
+                db = get_news_watcher_db_instance(str(ctx.guild.id))
+                global_db = get_global_news_db()
+                
+                logger.info(f"✅ Database instances ready for user {ctx.author.id}")
+                
+                # Use our custom DiscordHTTP client for notifications
+                from discord_bot.discord_http import DiscordHTTP
+                from agent_engine import get_discord_token
+                http = DiscordHTTP(get_discord_token())
+                
+                logger.info("✅ DiscordHTTP client created")
+                
+                # Force the watcher to process all subscriptions for this user
+                from roles.news_watcher.news_watcher import process_user_all_subscriptions
+                await process_user_all_subscriptions(http, db, global_db, str(ctx.guild.id), str(ctx.author.id))
+                
+                logger.info("✅ Personal subscriptions processing completed")
+                await ctx.send("✅ **Personal news watcher iteration completed!**\n"
+                              "📊 Checked all your personal subscriptions (keywords, flat, AI).\n"
+                              "📰 Any new articles will be processed and notifications sent to your DMs.")
+                
+            except Exception as e:
+                logger.error(f"❌ Error in forcewatcherpersonal command: {e}")
+                await ctx.send(f"❌ **Error running personal news watcher:** `{str(e)}`")
+                import traceback
+                traceback.print_exc()
+        
+        logger.info("📡 Personal force watcher command registered")
+    elif not FORCEWATCHER_AVAILABLE:
+        logger.warning("📡 Personal force watcher command not available - dependencies missing")
+    else:
+        logger.info("📡 Personal force watcher command already registered")
+    
+    # --- !testwatcher (for debugging without admin permissions) ---
+    if bot.get_command("testwatcher") is None and FORCEWATCHER_AVAILABLE:
+        @bot.command(name="testwatcher")
+        async def cmd_test_watcher(ctx):
+            """Test news watcher without admin permissions (for debugging)."""
+            try:
+                logger.info(f"🔄 Test watcher initiated by {ctx.author.name} ({ctx.author.id})")
+                await ctx.send("🔄 **Testing news watcher iteration...**")
+                
+                # Get database instance
+                db = get_news_watcher_db_instance(str(ctx.guild.id))
+                global_db = get_global_news_db()
+                
+                logger.info(f"✅ Database instances ready for server {ctx.guild.id}")
+                
+                # Use our custom DiscordHTTP client for notifications
+                from discord_bot.discord_http import DiscordHTTP
+                from agent_engine import get_discord_token
+                http = DiscordHTTP(get_discord_token())
+                
+                logger.info("✅ DiscordHTTP client created")
+                
+                # Force the watcher to process all subscriptions for this channel
+                from roles.news_watcher.news_watcher import process_channel_all_subscriptions
+                await process_channel_all_subscriptions(http, db, global_db, str(ctx.guild.id), str(ctx.channel.id))
+                
+                logger.info("✅ Channel subscriptions processing completed")
+                await ctx.send("✅ **Test watcher iteration completed!**\n"
+                              "📊 Checked all subscriptions (keywords, flat, AI) for this channel.\n"
+                              "📰 Any new articles will be processed and notifications sent.")
+                
+            except Exception as e:
+                logger.error(f"❌ Error in testwatcher command: {e}")
+                await ctx.send(f"❌ **Error running test watcher:** `{str(e)}`")
+                import traceback
+                traceback.print_exc()
+        
+        logger.info("📡 Test watcher command registered")
     
     logger.info("📡 All News Watcher commands registered")
 

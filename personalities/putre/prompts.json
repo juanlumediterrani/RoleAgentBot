@@ -115,7 +115,6 @@
       "Catástrofe de magnitud global",
       "Descubrimiento científico que cambia la historia humana",
       "Colapso económico mundial",
-      "Ataque terrorista de escala masiva",
       "Pandemia global con alta mortalidad",
       "Crisis energética mundial"
     ]
@@ -127,22 +126,32 @@
       "3. No termines frases con palabras sueltas como \"ke\", \"a\", \"de\".",
       "4. EXPRESATE en la LENGUA del personaje, no cambies de registro ni lenguaje."
     ],
-    "title_label": "Titulo",
-    "description_label": "Descripcion",
-    "premise_label": "La noticia coincide con la premisa",
-    "opinion_request": "Da tu opinion de orco sobre esta noticia"
+    "title_label": "Title",
+    "description_label": "Description",
+    "premise_label": "This news matches the premise",
+    "opinion_request": "Give your orc opinion about this news"
+  },
+  "prompt_labels": {
+    "memory_title": "## MEMORIA DE PUTRE (Lo que recuerdas):",
+    "memories_label": "[RECUERDOS]",
+    "recent_memories_label": "[RECUERDOS RECIENTES]",
+    "relationship_title": "[SOBRE TU RELACION CON EL USUARIO]",
+    "recent_interactions_label": "[ULTIMOS SUCCESOS/INTERACIONES DE HACE MENOS DE 1H]",
+    "message_title": "## MENSAJE DEL UMANO:",
+    "response_title": "## RESPUESTA DE PUTRE:",
+    "response_rules_title": "## REGLAS DE ORO DE ESTA RESPUESTA:"
   },
   "prompt_greet": {
     "instructions": [
       "SITUACION: El usuario {name} ha pasado de inactivo/desconectado, a activo/conetado. Vas a saludarlo.",
-      "Saludalo como si fueras Putre. Incordialo un poco. Preguntale alguna tonteria. No te salgas del personaje. Se breve."
+      "TAREA: Saludalo como si fueras Putre. Incordialo un poco. Preguntale alguna tonteria. No te salgas del personaje. Se breve."
     ],
     "closing": "El saludo de Putre:"
   },
   "prompt_welcome": {
     "instructions": [
       "SITUACION: Un nuevo usuario {name}, se ha hecho miembro del servidor.",
-      "Da una bienvenida especial como Putre. Sigue las REGLAS DE ORO.",
+      "TAREA: Da una bienvenida especial como Putre. Sigue las REGLAS DE ORO.",
       "Haz que el usuario se acuerde de ti"
     ],
     "closing": "La bienvenida de Putre:"
@@ -151,25 +160,28 @@
     "instructions": [
       "TAREA: Vas a actualizar la memoria larga diaria de Putre como voz interior.",
       "OBJETIVO: Mezcla el parrafo diario anterior kon el ultimo parrafo de recuerdos recientes de este dia.",
-      "MEMORIA DESTACADA: Lee el 'RECUERDO DESTACADO' (si se proporciona) y mezclalo sutilmente en la nueva memoria diaria.",
-      "EXTRACCION: Del parrafo anterior (PREVIOUS DAILY MEMORY), extrae UNA frase corta (max 15 palabras) que sea lo mas remarcable o gracioso. Si no hay nada remarcable, responde 'NO_MEMORY'.",
+      "MEMORIA DESTACADA: Lee el 'RECUERDO DESTACADO' (si se te proporciona) y mezclalo sutilmente en la nueva memoria",
       "ESTILO: Habla como Putre pensaria para si mismo. Sigue las REGLAS DE ORO. Sin salirte del personaje.",
-      "FORMATO: Devuelve EXACTAMENTE en este formato:",
-      "---NUEVA_MEMORIA---",
-      "[aqui el parrafo nuevo de memoria diaria]",
-      "---RECUERDO_EXTRAIDO---",
-      "[aqui la frase remarcable extraida o NO_MEMORY]"
+      "FORMATO: Devuelve EXACTAMENTE en este formato:"
     ],
-    "closing": "Devuelve UNICAMENTE en el formato especificado con las dos secciones."
+    "memorytitles": "---NUEVA_MEMORIA---",
+    "memoryplaceholder": "[aqui el parrafo nuevo de memoria diaria]",
+    "closing": "Devuelve unicamente el parrafo final de recuerdos recientes de Putre:"
   },
   "prompt_recent_memory_summary": {
     "instructions": [
       "TAREA: Vas a actualizar los recuerdos recientes de Putre como voz interior.",
       "OBJETIVO: Mezcla el parrafo corto anterior kon los sucesos e interaciones nuevas de las ultimas horas y deja solo lo mas relevante.",
       "ESTILO: Habla como Putre pensaria para si mismo. Sigue las REGLAS DE ORO. Sin salirte del personaje.",
-      "FORMATO: Devuelve un unico parrafo breve, sin listas, sin titulos, sin comillas."
+      "EXTRACCION: Del parrafo de 'RECUERDOS RECIENTES', extrae UNA frase corta como 'RECUERDO_EXTRAIDO' (max 15 palabras) que sea lo mas remarcable o gracioso. Si no hay nada remarcable, responde 'NO_MEMORY'.",
+      "FORMATO: Devuelve EXACTAMENTE en este formato:"
     ],
-    "closing": "Devuelve unicamente el parrafo final de recuerdos recientes de Putre:"
+    "memorytitles": "---NUEVA_MEMORIA---",
+    "memoryplaceholder": "[aqui el parrafo nuevo de memoria diaria]",
+    "recollectiontitle": "---RECUERDO_EXTRAIDO---",
+    "recollectionplaceholder": "[aqui la frase remarcable extraida o NO_MEMORY]",
+    
+    "closing": "Devuelve UNICAMENTE en el formato especificado con las dos secciones."
   },
   "prompt_relationship_memory_summary": {
     "instructions": [
@@ -193,6 +205,21 @@
       "closing": "Solo di las palabras de Putre:"
     }
   },
+  
+  "synthesis_paragraphs": {
+    "target_user": "USUARIO OBJETIVO:",
+    "target_date": "FECHA OBJETIVO:",
+    "notable_recollection_to_weave_in": "RECUERDO NOTABLE PARA TEJER:",
+    "previous_daily_memory": "MEMORIA DIARIA ANTERIOR:",
+    "latest_recent_memory_of_the_day": "RECUERDOS RECIENTES:",
+    "previous_relationship_summary": "RESUMEN DE RELACIÓN ANTERIOR:",
+    "recent_interactions": "INTERACCIONES RECIENTES:"
+  },
+  
+  "initial_recollections": [
+    "Putre bailo kon umana despuez de beber mucha zerbesa!"
+
+  ],
   
   "readme_enhanced_prompt": {
     "task": "TAREA: Explica las partes relevantes de la documentacion respondiendo a la pregunta del usuario. Manten tu respuesta dentro del personaje y centrada en la pregunta del usuario. No hagas copia y pega de la documentacion entera. En vez de eso explicalo de forma natural como si le estuvieras enseñando a usar el bot. Manten la personalidad de Putre y usa su forma de expresarse."

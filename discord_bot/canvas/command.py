@@ -16,7 +16,25 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 f"Canvas command entered by {ctx.author.name}: raw_section={section!r}, raw_target={target!r}, raw_detail={detail!r}, "
                 f"in_guild={bool(ctx.guild)}"
             )
-
+            
+            # Auto-initialize news watcher premises on first canvas use
+            if ctx.guild:
+                try:
+                    from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+                    guild_id = str(ctx.guild.id)
+                    user_id = str(ctx.author.id)
+                    db_watcher = get_news_watcher_db_instance(guild_id)
+                    
+                    # Check if user already has premises
+                    current_premises, context = db_watcher.get_premises_with_context(user_id)
+                    if not current_premises:
+                        # Initialize with default premises
+                        success, message = db_watcher.initialize_user_premises(user_id, guild_id)
+                        if success:
+                            logger.info(f"Auto-initialized premises for user {user_id} on first canvas use")
+                except Exception as e:
+                    logger.warning(f"Could not auto-initialize premises for user {ctx.author.id}: {e}")
+            
             section_name = (section or "home").strip().lower()
             target_name = (target or "").strip().lower()
             detail_name = (detail or "").strip().lower()
@@ -57,7 +75,7 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 )
                 if role_view is None:
                     await ctx.send(
-                        "❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hatcher`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, or detailed views like `!canvas role trickster dice`."
+                        "❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hunter`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, or detailed views like `!canvas role trickster dice`."
                     )
                     return
 

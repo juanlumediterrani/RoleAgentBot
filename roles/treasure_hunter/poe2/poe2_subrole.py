@@ -29,10 +29,10 @@ from .poe2scout_client import Poe2ScoutClient, ResponseFormatError, APIError
 
 load_dotenv()
 
-# Configuración del subrol
+# Subrole configuration
 SUBROLE_CONFIG = {
     "name": "poe2_subrole",
-    # "system_prompt_addition": "SUBROL ACTIVO - POE2 TESORO HUNTER: Buscas tesoros en Path of Exile 2. Monitorizas precios de items específicos y alertas sobre oportunidades de compra/venta."
+    # "system_prompt_addition": "ACTIVE SUBROLE - POE2 TREASURE HUNTER: Search for treasures in Path of Exile 2. Monitor specific item prices and alert on buying and selling opportunities."
 }
 
 MI_ID = 235796491988369408
@@ -40,15 +40,15 @@ ENTRADAS_POR_DIA = 24
 UMBRAL_COMPRA = 0.15
 UMBRAL_VENTA = 0.15
 
-# --- BASE DE DATOS POE2 ---
+# --- POE2 DATABASE ---
 
 def get_db_path(server_name: str = "default") -> Path:
-    """Genera ruta de BD para el subrol POE2."""
+    """Generate the database path for the POE2 subrole."""
     return get_server_db_path_fallback(server_name, "PoE2Subrole.db")
 
 class DatabaseRolePoe2:
-    """Base de datos para el subrol POE2 del Buscador de Tesoros.
-    Gestiona configuración de liga, objetivos y preferencias.
+    """Database for the Treasure Hunter POE2 subrole.
+    Manages league configuration, targets, and preferences.
     """
     
     def __init__(self, server_name: str = "default", db_path: Path = None):
@@ -61,7 +61,7 @@ class DatabaseRolePoe2:
         self._init_db()
     
     def _ensure_writable_db(self):
-        """Verifica que la BD sea accesible y force permisos correctos."""
+        """Ensure the database is accessible and enforce valid permissions."""
         try:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             self._fix_permissions(self.db_path.parent)
@@ -78,7 +78,7 @@ class DatabaseRolePoe2:
             raise
     
     def _fix_permissions(self, path: Path):
-        """Fuerza permisos de usuario/grupo actual en archivo/directorio."""
+        """Enforce current user/group permissions on a file or directory."""
         try:
             if path.exists():
                 uid = os_module.getuid()
@@ -100,14 +100,14 @@ class DatabaseRolePoe2:
             logger.warning(f"Could not fix permissions for {path}: {e}")
     
     def _init_db(self):
-        """Inicializa la base de datos."""
+        """Initialize the database."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute("PRAGMA journal_mode=DELETE;")
                 conn.commit()
                 
-                # Tabla de configuración
+                # Configuration table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS configuracion (
                         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -117,7 +117,7 @@ class DatabaseRolePoe2:
                     )
                 ''')
                 
-                # Tabla de objetivos
+                # Targets table
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS objetivos (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,7 +128,7 @@ class DatabaseRolePoe2:
                     )
                 ''')
                 
-                # Insertar configuración inicial si no existe
+                # Insert initial configuration if it does not exist
                 cursor.execute('SELECT COUNT(*) FROM configuracion')
                 if cursor.fetchone()[0] == 0:
                     cursor.execute('''
@@ -137,15 +137,15 @@ class DatabaseRolePoe2:
                     ''', (datetime.now().isoformat(),))
                 
                 conn.commit()
-                logger.info(f"✅ Base de datos POE2 lista en {self.db_path}")
-                
-                # Inicializar items por defecto si no hay ninguno
-                inicializar_items_por_defecto(self)
+                logger.info(f"✅ POE2 database ready at {self.db_path}")
+
+                # Initialize default items if none exist yet
+                initialize_default_items(self)
         except Exception as e:
-            logger.exception(f"❌ Error en inicialización de DB POE2: {e}")
+            logger.exception(f"❌ Error initializing POE2 database: {e}")
     
-    def set_liga(self, liga: str) -> bool:
-        """Establece la liga actual."""
+    def set_league(self, league: str) -> bool:
+        """Set the current league."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -154,23 +154,23 @@ class DatabaseRolePoe2:
                         UPDATE configuracion 
                         SET liga_actual = ?, fecha_actualizacion = ?
                         WHERE id = 1
-                    ''', (liga, datetime.now().isoformat()))
+                    ''', (league, datetime.now().isoformat()))
                     conn.commit()
                     
-                    # Limpiar cache de items de la liga anterior
+                    # Clear the item cache from the previous league
                     from .poe2scout_client import Poe2ScoutClient
                     scout = Poe2ScoutClient()
-                    scout.clear_items_cache()  # Limpiar todo el cache para forzar recarga
-                    logger.info(f"🗑️ Cache de items limpiado al cambiar de liga")
-                    
-                    logger.info(f"✅ Liga actualizada a: {liga}")
+                    scout.clear_items_cache()
+                    logger.info("🗑️ Item cache cleared after league change")
+
+                    logger.info(f"✅ League updated to: {league}")
                     return True
         except Exception as e:
-            logger.exception(f"⚠️ Error actualizando liga: {e}")
+            logger.exception(f"⚠️ Error updating league: {e}")
             return False
     
-    def get_liga(self) -> str:
-        """Obtiene la liga actual."""
+    def get_league(self) -> str:
+        """Get the current league."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -179,11 +179,11 @@ class DatabaseRolePoe2:
                     result = cursor.fetchone()
                     return result[0] if result else "Standard"
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo liga: {e}")
+            logger.exception(f"⚠️ Error getting league: {e}")
             return "Standard"
     
-    def set_activo(self, activo: bool) -> bool:
-        """Activa o desactiva el subrol."""
+    def set_active(self, is_active: bool) -> bool:
+        """Enable or disable the subrole."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -192,17 +192,17 @@ class DatabaseRolePoe2:
                         UPDATE configuracion 
                         SET activo = ?, fecha_actualizacion = ?
                         WHERE id = 1
-                    ''', (1 if activo else 0, datetime.now().isoformat()))
+                    ''', (1 if is_active else 0, datetime.now().isoformat()))
                     conn.commit()
-                    estado = "activado" if activo else "desactivado"
-                    logger.info(f"✅ Subrol POE2 {estado}")
+                    status = "enabled" if is_active else "disabled"
+                    logger.info(f"✅ POE2 subrole {status}")
                     return True
         except Exception as e:
-            logger.exception(f"⚠️ Error cambiando estado del subrol: {e}")
+            logger.exception(f"⚠️ Error changing subrole state: {e}")
             return False
     
-    def is_activo(self) -> bool:
-        """Verifica si el subrol está activo."""
+    def is_active(self) -> bool:
+        """Check whether the subrole is active."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -211,11 +211,11 @@ class DatabaseRolePoe2:
                     result = cursor.fetchone()
                     return bool(result[0]) if result else False
         except Exception as e:
-            logger.exception(f"⚠️ Error verificando estado del subrol: {e}")
+            logger.exception(f"⚠️ Error checking subrole state: {e}")
             return False
     
-    def add_objetivo(self, nombre_item: str, item_id: int = None) -> bool:
-        """Añade un item a la lista de objetivos."""
+    def add_target(self, item_name: str, item_id: int = None) -> bool:
+        """Add an item to the target list."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -223,34 +223,34 @@ class DatabaseRolePoe2:
                     cursor.execute('''
                         INSERT OR REPLACE INTO objetivos (nombre_item, item_id, activo, fecha_agregado)
                         VALUES (?, ?, 1, ?)
-                    ''', (nombre_item.strip(), item_id, datetime.now().isoformat()))
+                    ''', (item_name.strip(), item_id, datetime.now().isoformat()))
                     conn.commit()
-                    logger.info(f"✅ Objetivo añadido: {nombre_item}")
+                    logger.info(f"✅ Target added: {item_name}")
                     return True
         except Exception as e:
-            logger.exception(f"⚠️ Error añadiendo objetivo {nombre_item}: {e}")
+            logger.exception(f"⚠️ Error adding target {item_name}: {e}")
             return False
     
-    def remove_objetivo(self, nombre_item: str) -> bool:
-        """Elimina un item de la lista de objetivos."""
+    def remove_target(self, item_name: str) -> bool:
+        """Remove an item from the target list."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
                     cursor = conn.cursor()
-                    cursor.execute('DELETE FROM objetivos WHERE nombre_item = ?', (nombre_item.strip(),))
+                    cursor.execute('DELETE FROM objetivos WHERE nombre_item = ?', (item_name.strip(),))
                     conn.commit()
                     if cursor.rowcount > 0:
-                        logger.info(f"✅ Objetivo eliminado: {nombre_item}")
+                        logger.info(f"✅ Target removed: {item_name}")
                         return True
                     else:
-                        logger.warning(f"⚠️ Objetivo no encontrado: {nombre_item}")
+                        logger.warning(f"⚠️ Target not found: {item_name}")
                         return False
         except Exception as e:
-            logger.exception(f"⚠️ Error eliminando objetivo {nombre_item}: {e}")
+            logger.exception(f"⚠️ Error removing target {item_name}: {e}")
             return False
     
-    def get_objetivos(self) -> list:
-        """Obtiene la lista de objetivos activos."""
+    def get_targets(self) -> list:
+        """Get the configured targets."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -262,11 +262,11 @@ class DatabaseRolePoe2:
                     ''')
                     return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo objetivos: {e}")
+            logger.exception(f"⚠️ Error getting targets: {e}")
             return []
     
-    def get_objetivos_activos(self) -> list:
-        """Obtiene la lista de objetivos activos."""
+    def get_active_targets(self) -> list:
+        """Get the active targets."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path)) as conn:
@@ -279,14 +279,14 @@ class DatabaseRolePoe2:
                     ''')
                     return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"⚠️ Error obteniendo objetivos activos: {e}")
+            logger.exception(f"⚠️ Error getting active targets: {e}")
             return []
 
-# Diccionario para mantener instancias por servidor
+# Dictionary to keep instances per server
 _db_poe2_instances = {}
 
 def get_poe2_db_instance(server_name: str = "default") -> DatabaseRolePoe2:
-    """Obtiene o crea una instancia de base de datos POE2 para un servidor específico."""
+    """Get or create a POE2 database instance for a specific server."""
     if server_name not in _db_poe2_instances:
         _db_poe2_instances[server_name] = DatabaseRolePoe2(server_name)
     return _db_poe2_instances[server_name]
@@ -296,7 +296,7 @@ def get_treasure_hunter_db_instance(server_name: str = "default") -> DatabaseRol
     """Get or create a POE2 database instance for a specific server."""
     return get_poe2_db_instance(server_name)
 
-# --- LÓGICA DEL SUBROL POE2 ---
+# --- POE2 SUBROLE LOGIC ---
 
 class Poe2SubroleBot(discord.Client):
     def __init__(self):
@@ -306,12 +306,12 @@ class Poe2SubroleBot(discord.Client):
         self.client = Poe2ScoutClient()
     
     async def on_ready(self):
-        logger.info("🔮 Iniciando subrol POE2...")
+        logger.info("🔮 Starting POE2 subrole...")
         
         try:
             user = await self.fetch_user(MI_ID)
             
-            # Obtener instancia de BD para el servidor activo
+            # Get DB instance for the active server
             server_name = get_active_server_name()
             if not server_name:
                 logger.warning("⚠️ No active server configured for POE2 subrole startup")
@@ -319,114 +319,114 @@ class Poe2SubroleBot(discord.Client):
                 return
             self.db_poe2 = get_poe2_db_instance(server_name)
             
-            # Verificar si el subrol está activo
-            if not self.db_poe2.is_activo():
-                logger.info("💤 Subrol POE2 inactivo, finalizando...")
+            # Check whether the subrole is active
+            if not self.db_poe2.is_active():
+                logger.info("💤 POE2 subrole is inactive, shutting down...")
                 await self.close()
                 return
             
-            # Obtener configuración actual
-            liga_actual = self.db_poe2.get_liga()
-            objetivos = self.db_poe2.get_objetivos_activos()
+            # Get current configuration
+            current_league = self.db_poe2.get_league()
+            targets = self.db_poe2.get_active_targets()
             
-            if not objetivos:
-                logger.info("📝 No hay objetivos configurados para POE2")
-                await user.send("⚠️ **POE2**: No tienes items objetivos configurados. Usa `!poe2add \"nombre item\"` para añadirlos.")
+            if not targets:
+                logger.info("📝 No POE2 targets configured")
+                await user.send("⚠️ **POE2**: No target items are configured. Use `!poe2add \"item name\"` to add them.")
                 await self.close()
                 return
             
-            logger.info(f"🎯 POE2 activo en liga '{liga_actual}' con {len(objetivos)} objetivos")
+            logger.info(f"🎯 POE2 active in league '{current_league}' with {len(targets)} targets")
             
-            # Procesar cada objetivo
-            for nombre_item, item_id in objetivos:
+            # Process each target
+            for item_name, item_id in targets:
                 try:
-                    await self._procesar_item(nombre_item, item_id, liga_actual, user)
+                    await self._process_item(item_name, item_id, current_league, user)
                 except Exception as e:
-                    logger.exception(f"Error procesando item {nombre_item}: {e}")
+                    logger.exception(f"Error processing item {item_name}: {e}")
                     continue
             
-            logger.info("✅ Proceso POE2 completado")
+            logger.info("✅ POE2 process completed")
             
         except Exception as e:
-            logger.exception(f"Error en on_ready de POE2: {e}")
+            logger.exception(f"Error in POE2 on_ready: {e}")
         
         await self.close()
     
-    async def _procesar_item(self, nombre_item: str, item_id: int, liga: str, user):
-        """Procesa un item específico: obtiene datos y analiza oportunidades."""
+    async def _process_item(self, item_name: str, item_id: int, league: str, user):
+        """Process a specific item: fetch data and analyze opportunities."""
         try:
-            logger.info(f"🔍 Analizando {nombre_item} en liga {liga}")
+            logger.info(f"🔍 Analyzing {item_name} in league {league}")
             
-            # Obtener historial de precios
-            entries = self.client.get_item_history(nombre_item, league=liga)
+            # Get price history
+            entries = self.client.get_item_history(item_name, league=league)
             
             if not entries:
-                logger.warning(f"No hay datos para {nombre_item}")
+                logger.warning(f"No data available for {item_name}")
                 return
             
-            # Obtener precio actual
-            precio_actual = entries[0].price if entries else None
-            if not precio_actual:
-                logger.warning(f"No se pudo obtener precio actual para {nombre_item}")
+            # Get current price
+            current_price = entries[0].price if entries else None
+            if not current_price:
+                logger.warning(f"Could not get current price for {item_name}")
                 return
             
-            # Analizar oportunidad
-            señal = self._analizar_oportunidad(entries, precio_actual)
+            # Analyze opportunity
+            signal = self._analyze_opportunity(entries, current_price)
             
-            if señal:
-                logger.info(f"🚨 SEÑAL DETECTADA: {nombre_item} - {señal} a {precio_actual:.2f} Div")
+            if signal:
+                logger.info(f"🚨 SIGNAL DETECTED: {item_name} - {signal} at {current_price:.2f} Div")
                 
-                # Enviar notificación
-                await self._enviar_notificacion(nombre_item, señal, precio_actual, user)
+                # Send notification
+                await self._send_notification(item_name, signal, current_price, user)
             else:
-                logger.info(f"📊 {nombre_item}: Precio actual {precio_actual:.2f} Div - sin señal")
+                logger.info(f"📊 {item_name}: Current price {current_price:.2f} Div - no signal")
                 
         except Exception as e:
-            logger.exception(f"Error procesando {nombre_item}: {e}")
+            logger.exception(f"Error processing {item_name}: {e}")
     
-    def _analizar_oportunidad(self, entries: list, precio_actual: float) -> str:
-        """Analiza si hay oportunidad de compra/venta basada en historial."""
+    def _analyze_opportunity(self, entries: list, current_price: float) -> str:
+        """Analyze whether there is a buy/sell opportunity based on history."""
         if len(entries) < 10:
             return None
         
-        precios = [entry.price for entry in entries]
-        precio_min = min(precios)
-        precio_max = max(precios)
+        prices = [entry.price for entry in entries]
+        min_price = min(prices)
+        max_price = max(prices)
         
-        logger.info(f"{entries[0].time if entries[0].time else 'N/A'}: Precio={precio_actual:.2f}, Mín={precio_min:.2f}, Máx={precio_max:.2f}")
+        logger.info(f"{entries[0].time if entries[0].time else 'N/A'}: Price={current_price:.2f}, Min={min_price:.2f}, Max={max_price:.2f}")
         
-        # Regla de compra: precio <= mínimo histórico * 1.15
-        if precio_actual <= precio_min * (1 + UMBRAL_COMPRA):
+        # Buy rule: price <= historical minimum * 1.15
+        if current_price <= min_price * (1 + UMBRAL_COMPRA):
             return "COMPRA"
         
-        # Regla de venta: precio >= máximo histórico * 0.85
-        if precio_actual >= precio_max * (1 - UMBRAL_VENTA):
+        # Sell rule: price >= historical maximum * 0.85
+        if current_price >= max_price * (1 - UMBRAL_VENTA):
             return "VENTA"
         
         return None
     
-    async def _enviar_notificacion(self, nombre_item: str, señal: str, precio: float, user):
+    async def _send_notification(self, item_name: str, signal: str, price: float, user):
         """Send notification about detected opportunity."""
         try:
-            if señal == "COMPRA":
-                mensaje = f"POE2 Mission: Purchase opportunity detected. The item {nombre_item} is cheap ({precio:.2f} Div). Time to buy!"
-            else:  # VENTA
-                mensaje = f"POE2 Mission: Sale opportunity detected. The item {nombre_item} is expensive ({precio:.2f} Div). Time to sell!"
+            if signal == "COMPRA":
+                message_text = f"POE2 Mission: Purchase opportunity detected. The item {item_name} is cheap ({price:.2f} Div). Time to buy!"
+            else:
+                message_text = f"POE2 Mission: Sale opportunity detected. The item {item_name} is expensive ({price:.2f} Div). Time to sell!"
             
-            res = await asyncio.to_thread(think, mensaje)
+            res = await asyncio.to_thread(think, message_text)
             await user.send(f"🔮 **POE2 TREASURE**: {res}")
-            logger.info(f"✅ POE2 notification sent for {nombre_item} - {señal}")
+            logger.info(f"✅ POE2 notification sent for {item_name} - {signal}")
             
         except Exception as e:
             logger.exception(f"Error sending POE2 notification: {e}")
 
-def inicializar_items_por_defecto(db_instance: DatabaseRolePoe2) -> bool:
+def initialize_default_items(db_instance: DatabaseRolePoe2) -> bool:
     """Initialize default items if none are configured and download their data."""
     try:
         from .poe2scout_client import Poe2ScoutClient
         from ..db_role_treasure_hunter import DatabaseRolePoe
         
-        current_objectives = db_instance.get_objetivos()
+        current_objectives = db_instance.get_targets()
         
         # If there are already items, do nothing
         if current_objectives:
@@ -443,7 +443,7 @@ def inicializar_items_por_defecto(db_instance: DatabaseRolePoe2) -> bool:
         logger.info("📋 Initializing default items for POE2...")
         
         # Get necessary configuration to download data
-        current_league = db_instance.get_liga()
+        current_league = db_instance.get_league()
         server_name = db_instance.server_name if hasattr(db_instance, 'server_name') else "default"
         
         # Create DatabaseRolePoe instance to download data
@@ -452,33 +452,33 @@ def inicializar_items_por_defecto(db_instance: DatabaseRolePoe2) -> bool:
         
         items_added = []
         
-        for nombre_item, item_id in default_items.items():
-            if db_instance.add_objetivo(nombre_item, item_id):
-                logger.info(f"✅ Default item added: {nombre_item}")
-                items_added.append(nombre_item)
+        for item_name, item_id in default_items.items():
+            if db_instance.add_target(item_name, item_id):
+                logger.info(f"✅ Default item added: {item_name}")
+                items_added.append(item_name)
                 
                 # Download history and current price
                 try:
-                    logger.info(f"📥 Downloading history for {nombre_item}...")
-                    entries = scout.get_item_history(nombre_item, league=current_league)
+                    logger.info(f"📥 Downloading history for {item_name}...")
+                    entries = scout.get_item_history(item_name, league=current_league)
                     
                     if entries:
-                        inserted = db_role_treasure_hunter.insertar_precios_bulk(nombre_item, entries, current_league)
-                        logger.info(f"📊 {nombre_item}: {len(entries)} data received, {inserted} new inserted")
+                        inserted = db_role_treasure_hunter.insert_prices_bulk(item_name, entries, current_league)
+                        logger.info(f"📊 {item_name}: {len(entries)} data points received, {inserted} newly inserted")
                         
                         # Get current price
-                        current_price = db_role_treasure_hunter.obtener_precio_actual(nombre_item, current_league)
+                        current_price = db_role_treasure_hunter.get_current_price(item_name, current_league)
                         if current_price:
-                            logger.info(f"💰 Current price of {nombre_item}: {current_price} Div")
+                            logger.info(f"💰 Current price of {item_name}: {current_price} Div")
                         else:
-                            logger.warning(f"⚠️ Could not get current price for {nombre_item}")
+                            logger.warning(f"⚠️ Could not get current price for {item_name}")
                     else:
-                        logger.warning(f"⚠️ No data available for {nombre_item}")
+                        logger.warning(f"⚠️ No data available for {item_name}")
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ Error downloading data for {nombre_item}: {e}")
+                    logger.warning(f"⚠️ Error downloading data for {item_name}: {e}")
             else:
-                logger.warning(f"⚠️ Could not add default item: {nombre_item}")
+                logger.warning(f"⚠️ Could not add default item: {item_name}")
         
         if items_added:
             logger.info(f"✅ Initialization completed. Items added and data downloaded: {', '.join(items_added)}")

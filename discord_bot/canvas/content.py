@@ -8,7 +8,7 @@ discord = core.discord
 Path = core.Path
 AgentDatabase = core.AgentDatabase
 logger = core.logger
-PERSONALIDAD = core.PERSONALIDAD
+PERSONALITY = core.PERSONALITY
 think = core.think
 AGENT_CFG = core.AGENT_CFG
 is_admin = core.is_admin
@@ -23,9 +23,12 @@ get_role_interval_hours = core.get_role_interval_hours
 set_role_enabled = core.set_role_enabled
 get_banker_db_instance = core.get_banker_db_instance
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
+
+try:
+    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
+except Exception:
+    get_dice_game_db_instance = None
 get_watcher_messages = core.get_watcher_messages
-get_dice_game_db_instance = core.get_dice_game_db_instance
-DiceGame = core.DiceGame
 get_poe2_manager = core.get_poe2_manager
 get_beggar_db_instance = core.get_beggar_db_instance
 get_behaviors_db_instance = core.get_behaviors_db_instance
@@ -361,6 +364,7 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "channel_unsubscribe": "The bot will ask for the subscription number to remove from this channel.",
             "watcher_frequency": "The bot will ask for the watcher frequency in hours and apply it server-wide.",
             "watcher_run_now": "The watcher will run immediately and publish any matching notifications.",
+            "watcher_run_personal": "The watcher will run immediately for personal subscriptions and send notifications to users.",
         },
         "treasure_hunter": {
             "poe2_item_add": "The bot will ask for an item name and add it to your tracked POE2 objectives.",
@@ -820,7 +824,7 @@ def _build_canvas_role_action_view(role_name: str, action_name: str, admin_visib
             "ring_on": ("Ring", "On", "`!trickster ring enable`", "Boolean toggle"),
             "ring_off": ("Ring", "Off", "`!trickster ring disable`", "Boolean toggle"),
             "ring_frequency": ("Ring", "Frequency", "`!trickster ring frequency <hours>`", "Number input"),
-            "ring_accuse": ("Ring", "Accuse", "`!accuse @user`", "User input"),
+            "ring_target": ("Ring", "Target", "`!trickster ring target @user`", "User input"),
             "beggar_on": ("Beggar", "On", "`!trickster beggar enable`", "Boolean toggle"),
             "beggar_off": ("Beggar", "Off", "`!trickster beggar disable`", "Boolean toggle"),
             "beggar_frequency": ("Beggar", "Frequency", "`!trickster beggar frequency <hours>`", "Number input"),
@@ -1530,7 +1534,7 @@ def _build_canvas_help() -> str:
         "- `!readme` - Complete guide by private message\n"
         "- `!watcherhelp` - News Watcher user guide\n"
         "- `!watcherchannelhelp` - News Watcher channel/admin guide\n"
-        "- `!hunter help` / `!hunter poe2 help`\n"
+        "- `!hunterhelp` / `!hunter poe2 help`\n"
         "- `!trickster help`\n"
         "- `!banker help`\n"
         "- `!mc help`\n\n"
@@ -1559,7 +1563,7 @@ def _build_canvas_help() -> str:
 def _build_canvas_role_news_watcher(agent_config: dict, admin_visible: bool, guild=None) -> str:
     """Build the News Watcher role view (same as personal view)."""
     # Use the personal view content directly
-    return _build_canvas_role_news_watcher_detail("personal", admin_visible, guild, 0)
+    return _build_canvas_role_news_watcher_detail("personal", admin_visible, guild, 0, None, None, None)
 
 
 def _get_canvas_channel_subscriptions_info(guild) -> str:
@@ -1569,24 +1573,52 @@ def _get_canvas_channel_subscriptions_info(guild) -> str:
             return "**Channel subscriptions**\n- Unable to load channel subscription data"
         
         db = get_news_watcher_db_instance(str(guild.id))
-        channel_id = str(guild.id)  # Using guild ID as channel ID for server-wide subscriptions
         
-        # Get channel subscription count
-        current_count = db.count_channel_subscriptions(channel_id)
-        max_subs = 5  # Channel subscriptions limit
-        usage_info = f"**Channel subscriptions** ({current_count}/{max_subs})\n"
+        # Get all channel subscriptions for this server
+        all_channel_subs = db.get_all_channels_with_subscriptions()
         
-        if current_count == 0:
+        # Count total subscriptions across all channels
+        total_count = 0
+        subscriptions_list = []
+        
+        # Count regular channel subscriptions
+        for channel_id, channel_name, server_id in all_channel_subs:
+            if str(server_id) == str(guild.id):  # Only show subscriptions for this server
+                channel_subs = db.get_channel_subscriptions(channel_id)
+                total_count += len(channel_subs)
+                
+                for category, feed_id, _ in channel_subs:
+                    if feed_id:
+                        subscriptions_list.append(f"  📡 {category} (feed #{feed_id}) - #{channel_name}")
+                    else:
+                        subscriptions_list.append(f"  📡 {category} (all feeds) - #{channel_name}")
+        
+        # Count keyword subscriptions
+        keyword_subs = db.get_all_active_keyword_subscriptions()
+        for user_id, channel_id, keywords, category, feed_id in keyword_subs:
+            if channel_id:  # Only count channel subscriptions (not user-only)
+                # Get channel name from Discord channel cache or use ID
+                try:
+                    # Try to get channel name from the guild
+                    channel = guild.get_channel(int(channel_id))
+                    channel_name = channel.name if channel else f"Channel-{channel_id}"
+                except:
+                    channel_name = f"Channel-{channel_id}"
+                
+                total_count += 1
+                if feed_id:
+                    subscriptions_list.append(f"  🔍 {category} (keywords: {keywords}, feed #{feed_id}) - #{channel_name}")
+                else:
+                    subscriptions_list.append(f"  🔍 {category} (keywords: {keywords}, all feeds) - #{channel_name}")
+        
+        max_subs = 5  # Channel subscriptions limit per channel
+        usage_info = f"**Channel subscriptions** ({total_count}/{max_subs})\n"
+        
+        if total_count == 0:
             usage_info += "- No active channel subscriptions\n"
         else:
-            subscriptions_info = "- **Channel subscriptions:**\n"
-            channel_subs = db.get_channel_subscriptions(channel_id)
-            for i, (category, feed_id, _) in enumerate(channel_subs, 1):
-                if feed_id:
-                    subscriptions_info += f"  {i}. 📡 {category} (feed #{feed_id})\n"
-                else:
-                    subscriptions_info += f"  {i}. 📡 {category} (all feeds)\n"
-            usage_info += subscriptions_info
+            for sub in subscriptions_list:
+                usage_info += f"{sub}\n"
         
         # Add server configuration info
         config_info = "\n──────────────────────────────\n\n**Server configuration**\n"
@@ -1606,7 +1638,6 @@ def _get_canvas_channel_subscriptions_info(guild) -> str:
             "general": "General (AI-critical)"
         }
         config_info += f"- 🔧 **Default method**: {method_labels.get(method, 'Unknown')}\n"
-        config_info += "──────────────────────────────\n"
         
         return usage_info + config_info
         
@@ -1696,6 +1727,7 @@ def _build_canvas_role_news_watcher_detail(
     author_id: int = 0,
     selected_method: str | None = None,
     last_action: str | None = None,
+    selected_category: str = None,
 ) -> str | None:
     """Build a detailed News Watcher view with 3-block structure."""
     watcher_messages = get_watcher_messages() if get_watcher_messages else {}
@@ -1708,7 +1740,7 @@ def _build_canvas_role_news_watcher_detail(
     def _get_watcher_personal_intro_block() -> str:
         """Get the standard watcher personal introduction block."""
         return "\n".join([
-            f"**{_watcher_text('canvas_personal_title', 'News Watcher Personal')}**",
+            f"**📡 {_watcher_text('canvas_personal_title', 'News Watcher Personal')}**",
             _watcher_text('canvas_personal_description', 'Build and maintain your personal news subscriptions. Choose a method first, then subscribe to categories or feeds, or review your keywords and premises.'),
             "──────────────────────────────",
         ])
@@ -1738,30 +1770,50 @@ def _build_canvas_role_news_watcher_detail(
             logger.warning(f"Could not load watcher categories for Canvas: {e}")
             return "- Error loading categories"
 
-    def _format_feeds() -> str:
+    def _format_feeds(category: str = None) -> str:
         if not guild or get_news_watcher_db_instance is None:
             return "- No feed data available"
         try:
             db = get_news_watcher_db_instance(str(guild.id))
-            feeds = db.get_active_feeds()
-            if not feeds:
-                return "- No feeds available"
-            lines = []
-            for feed_id, name, _url, category, country, language, _priority, _keywords, feed_type in feeds[:12]:
-                meta = []
-                if category:
-                    meta.append(str(category).title())
-                if feed_type:
-                    meta.append(str(feed_type))
-                if country:
-                    meta.append(str(country).upper())
-                if language:
-                    meta.append(str(language))
-                meta_text = " | ".join(meta) if meta else "Feed"
-                lines.append(f"- #{feed_id} {name} ({meta_text})")
-            if len(feeds) > 12:
-                lines.append(f"- ... and {len(feeds) - 12} more feeds")
-            return "\n".join(lines)
+            
+            if category:
+                # Show feeds for specific category
+                feeds = db.get_active_feeds(category)
+                if not feeds:
+                    return f"- No feeds found for category '{category}'"
+                lines = [f"**{category.title()} Feeds ({len(feeds)} total):**"]
+                for i, (feed_id, name, _url, feed_category, country, language, _priority, _keywords, feed_type) in enumerate(feeds, 1):
+                    meta = []
+                    if country:
+                        meta.append(str(country).upper())
+                    if language:
+                        meta.append(str(language))
+                    if feed_type:
+                        meta.append(str(feed_type))
+                    meta_text = " | ".join(meta) if meta else "Feed"
+                    lines.append(f"- Feed {i}: {name} ({meta_text})")
+                return "\n".join(lines)
+            else:
+                # Show all feeds (original behavior)
+                feeds = db.get_active_feeds()
+                if not feeds:
+                    return "- No feeds available"
+                lines = []
+                for feed_id, name, _url, category, country, language, _priority, _keywords, feed_type in feeds[:12]:
+                    meta = []
+                    if category:
+                        meta.append(str(category).title())
+                    if feed_type:
+                        meta.append(str(feed_type))
+                    if country:
+                        meta.append(str(country).upper())
+                    if language:
+                        meta.append(str(language))
+                    meta_text = " | ".join(meta) if meta else "Feed"
+                    lines.append(f"- #{feed_id} {name} ({meta_text})")
+                if len(feeds) > 12:
+                    lines.append(f"- ... and {len(feeds) - 12} more feeds")
+                return "\n".join(lines)
         except Exception as e:
             logger.warning(f"Could not load watcher feeds for Canvas: {e}")
             return "- Error loading feeds"
@@ -1785,11 +1837,37 @@ def _build_canvas_role_news_watcher_detail(
             return "- No premises configured"
         try:
             db = get_news_watcher_db_instance(str(guild.id))
-            premises, scope = db.get_premises_with_context(str(author_id))
+            # For admin view, check if we're showing channel premises or user premises
+            if detail_name == "admin":
+                # For admin view, try to get channel premises first
+                try:
+                    # Try to get channel premises (this would need channel_id which we don't have here)
+                    # For now, show user premises in admin view too
+                    premises, scope = db.get_premises_with_context(str(author_id))
+                except:
+                    premises, scope = [], "none"
+            else:
+                # Personal view - get user premises
+                premises, scope = db.get_premises_with_context(str(author_id))
+            
             if not premises:
-                return "- No premises configured"
+                # Check if user has ever initialized (by checking if they had premises before)
+                # For now, if user has no premises, assume they need to initialize or add
+                # We'll show a cleaner message without global references to avoid confusion
+                lines = ["- Scope: No custom premises"]
+                lines.append("")
+                lines.append("- 💡 **No custom premises configured**")
+                lines.append("- 💡 Use 'Add Premises' to create custom premises")
+                lines.append("- 💡 Or use !canvas to auto-initialize with defaults")
+                return "\n".join(lines)
+            
             lines = [f"- Scope: {scope}"]
-            lines.extend([f"- {premise}" for premise in premises[:8]])
+            for i, premise in enumerate(premises[:8], 1):
+                lines.append(f"- {i}. {premise}")
+            
+            if len(premises) > 8:
+                lines.append(f"- ... and {len(premises) - 8} more premises")
+            
             return "\n".join(lines)
         except Exception as e:
             logger.warning(f"Could not load watcher premises for Canvas: {e}")
@@ -1819,6 +1897,9 @@ def _build_canvas_role_news_watcher_detail(
         if last_action == "list_feeds":
             block3_title = "**Available Feeds**"
             block3_body = _format_feeds()
+        elif last_action == "list_feeds_by_category":
+            block3_title = f"**{selected_category.title()} Feeds**"
+            block3_body = _format_feeds(selected_category)
         elif last_action == "list_keywords":
             block3_title = "**Configured Keywords**"
             block3_body = _format_keywords()
@@ -1854,6 +1935,9 @@ def _build_canvas_role_news_watcher_detail(
         if last_action == "list_feeds":
             block3_title = "**Available Feeds**"
             block3_body = _format_feeds()
+        elif last_action == "list_feeds_by_category":
+            block3_title = f"**{selected_category.title()} Feeds**"
+            block3_body = _format_feeds(selected_category)
         elif last_action == "channel_view_subscriptions":
             block3_title = "**Current Channel Subscriptions**"
             block3_body = channel_subscriptions
@@ -1878,12 +1962,29 @@ def _build_canvas_role_news_watcher_detail(
                 "- Useful after adding or changing channel subscriptions",
                 "- May generate notifications in subscribed channels",
             ])
+        elif last_action == "watcher_run_personal":
+            block3_title = "**Force Personal Subscriptions**"
+            block3_body = "\n".join([
+                "- Runs personal subscriptions immediately",
+                "- Processes flat, keyword, and AI subscriptions",
+                "- Sends notifications to users via DMs",
+                "- Useful for testing personal subscription setup",
+            ])
+        elif last_action == "list_premises":
+            block3_title = "**Configured Premises**"
+            block3_body = _format_premises()
+        elif last_action == "list_keywords":
+            block3_title = "**Configured Keywords**"
+            block3_body = _format_keywords()
         elif last_action == "list_categories":
             block3_title = "**Available Categories**"
             block3_body = _format_categories()
         elif last_action == "list_feeds":
             block3_title = "**Available Feeds**"
             block3_body = _format_feeds()
+        elif last_action == "list_feeds_by_category":
+            block3_title = f"**{selected_category.title()} Feeds**"
+            block3_body = _format_feeds(selected_category)
         else:
             block3_title = "**Available Categories**"
             block3_body = _format_categories()
@@ -1997,7 +2098,7 @@ def _build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, 
         f"**Status:** enabled | every {interval}h\n",
         f"**POE2 state:** {'On' if state.get('activated', False) else 'Off'} | league {state.get('league', 'Standard')} | {objective_count} tracked item(s)\n",
         "**User flows**",
-        "- `!hunter help` - General role help",
+        "- `!hunterhelp` - General role help",
         "- `!hunter poe2 help` - POE2 help",
         "- `!hunter poe2 list` - Show tracked objectives",
         "- `!hunter poe2 add \"Item Name\"` - Add an objective",
@@ -2205,10 +2306,6 @@ def _build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, g
             value = str(value).replace("{_bot}", _bot_display_name)
         return str(value).strip() if value else fallback
     
-    def _get_dice_intro_block() -> str:
-        return "\n".join([
-            _trickster_text("canvas_dice_title", f"🎭 {_bot_display_name} Canvas - Trickster Dice Game"),
-        ])
     
     def _get_ring_intro_block() -> str:
         return "\n".join([
@@ -2222,65 +2319,60 @@ def _build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, g
     
     if detail_name in {"dice", "game"}:
         dice_state = _get_canvas_dice_state(guild)
-        personality = _personality_answers.get("dice_game_messages", {})
-        balance_messages = _personality_answers.get("dice_game_balance_messages", {})
-        
-        # Use personality messages for title
-        title = personality.get("invitation", "🎲 **DICE GAME** 🎲")
-        pot_title = balance_messages.get("current_pot_title", "💎 **CURRENT POT:**")
-        
+        balance_messages = _personality_descriptions.get("dice_game_balance_messages", {})
+        descriptions = _personality_descriptions.get("dice_game_messages", {})
+        # Build the base content with personality title and pot balance
+        title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
+        pot_title = balance_messages.get("current_balance", "💎 **CURRENT POT:**")
+        fixed_bet = balance_messages.get("fixed_bet", "💎 **FIXED BET:**")
         parts = [
-            _get_dice_intro_block(),
-            f"{pot_title} {dice_state['pot_balance']:,} gold",
-            f"💰 **Fixed bet:** {dice_state['bet']:,} gold",
-            "",
-            "─" * 30,
-            "",
-            "**🎲 Choose an action below:**",
-            "",
-            "**Available Actions:**",
-            "• **Dice: Play** - Roll the dice and try your luck!",
-            "• **Dice: Ranking** - View top players and their winnings",
-            "• **Dice: History** - See recent game results",
-            "• **Dice: Help** - Learn how to play and win",
-            "",
-            "─" * 30,
-            "",
-            "**📊 Quick Stats:**",
+            title,
+            f"{pot_title} **{dice_state['pot_balance']:,}** :coin: ",
+            f"{fixed_bet} {dice_state.get('bet', 1):,} :coin:",
+            "─" * 45,
+            ""
         ]
         
         # Add some quick stats
-        ranking_rows = _get_canvas_dice_ranking(guild, 3)
-        if ranking_rows:
-            parts.append("🏆 **Top Players:**")
-            for row in ranking_rows[:3]:
-                medal = "🥇" if row['position'] == 1 else "🥈" if row['position'] == 2 else "🥉"
-                parts.append(f"{medal} #{row['position']} {row['player_name']} - {row['total_won']:,} gold")
+        ranking_data = _get_canvas_dice_ranking(guild, 10)
+            
+        rankingtitle = descriptions.get("ranking", "**🏆 DICE RANKING**")
+        parts.append(rankingtitle)
+        if ranking_data:
+            for player in ranking_data:
+                medal = "🥇" if player["position"] == 1 else "🥈" if player["position"] == 2 else "🥉" if player["position"] == 3 else "🏅"
+                parts.append(
+                    f"{medal} **#{player['position']}** {player['player_name']} | Won: {player['total_won']:,} | Games: {player['total_plays']}"
+                )
         else:
-            parts.append("🏆 No ranked players yet. Be the first!")
-        
-        parts.extend([
-            "",
-            "**📜 Recent Activity:**",
-        ])
-        
-        history_rows = _get_canvas_dice_history(guild, 3)
-        if history_rows:
-            for row in history_rows[:3]:
-                dice_str = row.get("dice", "")
-                dice_display = "🎲".join(dice_str.split('-')) if dice_str else "???"
-                prize_emoji = "💰" if row.get("prize", 0) > 0 else "💸"
-                parts.append(f"👤 {row['user_name']} | {dice_display} → {row['combination']} | {prize_emoji} {row['prize']:,}")
+            rankingvoid = descriptions.get("rankingvoid", "📊 No ranked players yet. Be the first to play!")
+            parts.append(rankingvoid)
+            
+        parts.append("─" * 45)       
+        server_key = get_server_key(guild)
+        server_id = str(guild.id)
+        db_dice = get_dice_game_db_instance(server_key)
+        history = db_dice.get_game_history(server_id, 10)
+        historytitle = descriptions.get("history", "**📜 DICE HISTORY**")
+        parts.append(historytitle)
+            
+        if history:
+            for record in history:
+                # Parse tuple: (id, user_id, user_name, server_id, server_name, bet, dice, combination, prize, pot_before, pot_after, date)
+                user_name = record[2] if len(record) > 2 else "Unknown"
+                dice = record[6] if len(record) > 6 else ""
+                combination = record[7] if len(record) > 7 else ""
+                prize = record[8] if len(record) > 8 else 0
+                    
+                dice_display = "🎲".join(dice.split('-')) if dice else "???"
+                prize_emoji = "💰" if prize > 0 else "💸"
+                    
+                parts.append(
+                    f"👤 {user_name} | {dice_display} → {combination} | {prize_emoji} {prize:,}"
+                )
         else:
-            parts.append("📜 No recent games. Start playing to see history here!")
-        
-        parts.extend([
-            "",
-            "**📍 Navigation:**",
-            "• This is `trickster / dice / personal`",
-            "• Use `Admin` for bet, pot and announcement controls",
-            "• Select actions from the dropdown menu below",
-        ])
+            historyvoid = descriptions.get("historyvoid", "📊 Any play in the game. Be the first!")
+            parts.append(historyvoid)
         
         return "\n".join(parts)
     if detail_name in {"dice_admin"}:
@@ -2601,7 +2693,7 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
 def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str | None:
     """Build a role detail Canvas view."""
     if role_name == "news_watcher" and is_role_enabled_check("news_watcher", agent_config, guild):
-        return _build_canvas_role_news_watcher_detail(detail_name, admin_visible, guild, author_id or 0)
+        return _build_canvas_role_news_watcher_detail(detail_name, admin_visible, guild, author_id or 0, None, None, None)
     if role_name == "treasure_hunter" and is_role_enabled_check("treasure_hunter", agent_config, guild):
         return _build_canvas_role_treasure_hunter_detail(detail_name, admin_visible, guild, author_id)
     if role_name == "trickster" and is_role_enabled_check("trickster", agent_config, guild):

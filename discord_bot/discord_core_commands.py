@@ -13,17 +13,13 @@ COMMON ERROR: NameError from using wrong variable after modifying roles.
 """
 
 import os
-import sys
 import asyncio
 import discord
 from pathlib import Path
 
-# Add parent directory to Python path to import root modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from agent_db import AgentDatabase
 from agent_logging import get_logger
-from agent_engine import PERSONALIDAD, think, AGENT_CFG
+from agent_engine import PERSONALITY, think, AGENT_CFG
 from discord_bot.discord_utils import (
     is_admin, is_duplicate_command, send_dm_or_channel, send_embed_dm_or_channel,
     set_greeting_enabled, get_greeting_enabled,
@@ -47,16 +43,6 @@ try:
     from roles.news_watcher.watcher_messages import get_watcher_messages
 except Exception:
     get_watcher_messages = None
-
-try:
-    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
-except Exception:
-    get_dice_game_db_instance = None
-
-try:
-    from roles.trickster.subroles.dice_game.dice_game import DiceGame
-except Exception:
-    DiceGame = None
 
 try:
     from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
@@ -109,9 +95,9 @@ def _load_personality_descriptions() -> dict:
 
 
 _discord_cfg = _load_personality_answers()
-_personality_name = PERSONALIDAD.get("name", "bot").lower()
-_bot_display_name = PERSONALIDAD.get("bot_display_name", PERSONALIDAD.get("name", "Bot"))
-_insult_cfg = PERSONALIDAD.get("insult_command", {})  # Moved from discord.insult_command to prompts.json
+_personality_name = PERSONALITY.get("name", "bot").lower()
+_bot_display_name = PERSONALITY.get("bot_display_name", PERSONALITY.get("name", "Bot"))
+_insult_cfg = PERSONALITY.get("insult_command", {})  # Moved from discord.insult_command to prompts.json
 _personality_answers = _load_personality_answers()
 _personality_descriptions = _load_personality_descriptions()
 
@@ -131,7 +117,7 @@ def get_taboo_state(guild_id: int) -> dict:
                 db_taboo = get_taboo_db_instance(server_key)
                 
                 # Get default keywords from prompts.json
-                role_cfg = PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {})
+                role_cfg = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
                 taboo_defaults = role_cfg.get("taboo", {}) if isinstance(role_cfg, dict) else {}
                 default_keywords = list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else []
                 
@@ -142,27 +128,27 @@ def get_taboo_state(guild_id: int) -> dict:
                 state = {
                     "enabled": db_taboo.is_enabled(),
                     "keywords": db_taboo.get_keywords(),
-                    "response": taboo_defaults.get("response", "ADVERTENCIA: Esa palabra no es apropiada para este kampamento!")
+                    "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
                 }
                 
             except Exception as e:
                 logger.warning(f"Error accessing taboo database for guild {guild_id}: {e}")
                 # Fallback to in-memory state
-                role_cfg = PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {})
+                role_cfg = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
                 taboo_defaults = role_cfg.get("taboo", {}) if isinstance(role_cfg, dict) else {}
                 state = {
                     "enabled": False,
                     "keywords": list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else [],
-                    "response": taboo_defaults.get("response", "ADVERTENCIA: Esa palabra no es apropiada para este kampamento!")
+                    "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
                 }
         else:
             # Fallback to prompts.json only
-            role_cfg = PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {})
+            role_cfg = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
             taboo_defaults = role_cfg.get("taboo", {}) if isinstance(role_cfg, dict) else {}
             state = {
                 "enabled": False,
                 "keywords": list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else [],
-                "response": taboo_defaults.get("response", "ADVERTENCIA: Esa palabra no es apropiada para este kampamento!")
+                "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
             }
         
         _taboo_state_by_guild_id[guild_id] = state
@@ -313,7 +299,7 @@ def register_core_commands(bot, agent_config):
 
     # --- PRESENCE GREETINGS ---
 
-    async def _cmd_saluda_toggle(ctx, enabled: bool):
+    async def _cmd_greet_toggle(ctx, enabled: bool):
         """Generic command to enable/disable presence greetings."""
         role_cfg = _personality_answers.get("role_messages", {})
         if not is_admin(ctx):
@@ -329,39 +315,26 @@ def register_core_commands(bot, agent_config):
         presence_cfg["enabled"] = enabled
 
         greeting_cfg = _personality_answers.get("member_greeting", {})
-        mensaje_activado = greeting_cfg.get("greetings_enabled", "GRRR {_bot_name} will watch for humans! {_bot_name} will greet when humans appear!")
-        mensaje_desactivado = greeting_cfg.get("greetings_disabled", "BRRR {_bot_name} will no longer watch humans! {_bot_name} will stop greeting, too much work!")
+        enabled_message = greeting_cfg.get("greetings_enabled", "GRRR {_bot_name} will watch for humans! {_bot_name} will greet when humans appear!")
+        disabled_message = greeting_cfg.get("greetings_disabled", "BRRR {_bot_name} will no longer watch humans! {_bot_name} will stop greeting, too much work!")
 
-        mensaje = mensaje_activado.format(_bot_name=_bot_display_name) if enabled else mensaje_desactivado.format(_bot_name=_bot_display_name)
-        await ctx.send(mensaje)
+        message_text = enabled_message.format(_bot_name=_bot_display_name) if enabled else disabled_message.format(_bot_name=_bot_display_name)
+        await ctx.send(message_text)
 
         action = "enabled" if enabled else "disabled"
         logger.info(f"{ctx.author.name} {action} presence greetings in {ctx.guild.name}")
 
     # --- GREETING CONTROL COMMANDS ---
-    try:
+    if bot.get_command(greet_name) is None:
         @bot.command(name=greet_name)
         async def cmd_greet_enable(ctx):
-            await _cmd_saluda_toggle(ctx, True)
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info(f"Command {greet_name} already registered, skipping...")
-        else:
-            logger.error(f"Error registering {greet_name}: {e}")
-
-    try:
-        @bot.command(name=nogreet_name)
-        async def cmd_greet_disable(ctx):
-            await _cmd_saluda_toggle(ctx, False)
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info(f"Command {nogreet_name} already registered, skipping...")
-        else:
-            logger.error(f"Error registering {nogreet_name}: {e}")
+            await _cmd_greet_toggle(ctx, True)
+    else:
+        logger.info(f"Command {greet_name} already registered, skipping...")
 
     # --- WELCOME ---
 
-    async def _cmd_bienvenida_toggle(ctx, enabled: bool):
+    async def _cmd_welcome_toggle(ctx, enabled: bool):
         """Generic command to enable/disable welcome greetings with persistence."""
         role_cfg = _personality_answers.get("role_messages", {})
         if not is_admin(ctx):
@@ -386,41 +359,42 @@ def register_core_commands(bot, agent_config):
 
         greeting_messages_cfg = _personality_answers.get("member_greeting", {})
         if enabled:
-            mensaje = greeting_messages_cfg.get("greetings_enabled", "✅ Welcome greetings enabled on this server.")
+            message_text = greeting_messages_cfg.get("greetings_enabled", "✅ Welcome greetings enabled on this server.")
         else:
-            mensaje = greeting_messages_cfg.get("greetings_disabled", "✅ Welcome greetings disabled on this server.")
+            message_text = greeting_messages_cfg.get("greetings_disabled", "✅ Welcome greetings disabled on this server.")
 
         logger.info(f"{ctx.author.name} {'enabled' if enabled else 'disabled'} welcome greetings in {ctx.guild.name}")
-        await ctx.send(mensaje)
+        await ctx.send(message_text)
 
-    try:
+    if bot.get_command(nogreet_name) is None:
+        @bot.command(name=nogreet_name)
+        async def cmd_greet_disable(ctx):
+            await _cmd_greet_toggle(ctx, False)
+    else:
+        logger.info(f"Command {nogreet_name} already registered, skipping...")
+
+    if bot.get_command(welcome_name) is None:
         @bot.command(name=welcome_name)
         async def cmd_welcome_enable(ctx):
-            await _cmd_bienvenida_toggle(ctx, True)
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info(f"Command {welcome_name} already registered, skipping...")
-        else:
-            logger.error(f"Error registering {welcome_name}: {e}")
+            await _cmd_welcome_toggle(ctx, True)
+    else:
+        logger.info(f"Command {welcome_name} already registered, skipping...")
 
-    try:
+    if bot.get_command(nowelcome_name) is None:
         @bot.command(name=nowelcome_name)
         async def cmd_welcome_disable(ctx):
-            await _cmd_bienvenida_toggle(ctx, False)
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info(f"Command {nowelcome_name} already registered, skipping...")
-        else:
-            logger.error(f"Error registering {nowelcome_name}: {e}")
+            await _cmd_welcome_toggle(ctx, False)
+    else:
+        logger.info(f"Command {nowelcome_name} already registered, skipping...")
 
     # --- INSULT ---
 
     async def _cmd_insult(ctx, obj=""):
         target = obj if obj else ctx.author.mention
         if "@everyone" in target or "@here" in target:
-            prompt = _insult_cfg.get("prompt_everyone", "Lanza un insulto breve a TODO EL MUNDO, maximo 1 frase")
+            prompt = _insult_cfg.get("prompt_everyone", "Write a brief insult aimed at EVERYONE, maximum one sentence.")
         else:
-            prompt = _insult_cfg.get("prompt_target", "Lanza un insulto breve a una persona especifica, maximo 1 frase")
+            prompt = _insult_cfg.get("prompt_target", "Write a brief insult aimed at a specific person, maximum one sentence.")
         server_name = get_server_key(ctx.guild) if ctx.guild else "default"
         res = await asyncio.to_thread(
             think,
@@ -432,28 +406,22 @@ def register_core_commands(bot, agent_config):
         )
         await ctx.send(f"{target} {res}")
 
-    try:
+    if bot.get_command(insult_name) is None:
         bot.command(name=insult_name)(_cmd_insult)
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info(f"Command {insult_name} already registered, skipping...")
-        else:
-            logger.error(f"Error registering {insult_name}: {e}")
+    else:
+        logger.info(f"Command {insult_name} already registered, skipping...")
 
     # --- TEST ---
 
-    try:
+    if bot.get_command("test") is None:
         @bot.command(name="test")
         async def cmd_test(ctx):
             """Test command to verify the bot works."""
             role_cfg = _personality_answers.get("role_messages", {})
             logger.info(f"Test command executed by {ctx.author.name}")
-            await ctx.send(role_cfg.get("test_command", "✅ Test command works!"))
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info("Command test already registered, skipping...")
-        else:
-            logger.error(f"Error registering test: {e}")
+            await ctx.send(role_cfg.get("test_command", "✅ Test command is working."))
+    else:
+        logger.info("Command test already registered, skipping...")
 
     async def _start_talk_loop_for_guild(guild_id: int):
         state = _talk_state_by_guild_id.get(guild_id)
@@ -492,13 +460,15 @@ def register_core_commands(bot, agent_config):
 
             await asyncio.sleep(interval_minutes * 60)
 
+    server_only_message = "❌ This command only works in servers, not in direct messages."
+
     async def _talk_enable(ctx, interval_minutes: int | None = None):
         role_cfg = _personality_answers.get("role_messages", {})
         if not ctx.guild:
-            await ctx.send("❌ This command only works on servers, not in private messages.")
+            await ctx.send(server_only_message)
             return
         if not is_admin(ctx):
-            await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can modify this feature."))
+            await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can modify mission commentary."))
             return
 
         guild_id = int(ctx.guild.id)
@@ -520,34 +490,32 @@ def register_core_commands(bot, agent_config):
         state["task"] = asyncio.create_task(_start_talk_loop_for_guild(guild_id))
         _talk_state_by_guild_id[guild_id] = state
 
-        await ctx.send(
-            f"✅ Mission commentary enabled in this channel (every {state['interval_minutes']} minutes)."
-        )
+        await ctx.send(f"✅ Mission commentary enabled in this channel every {state['interval_minutes']} minutes.")
 
     async def _talk_disable(ctx):
         role_cfg = _personality_answers.get("role_messages", {})
         if not ctx.guild:
-            await ctx.send("❌ This command only works on servers, not in private messages.")
+            await ctx.send(server_only_message)
             return
         if not is_admin(ctx):
-            await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can modify this feature."))
+            await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can modify mission commentary."))
             return
 
         guild_id = int(ctx.guild.id)
         state = _talk_state_by_guild_id.get(guild_id)
         if not state or not state.get("enabled", False):
-            await ctx.send("ℹ️ Mission commentary is already disabled for this server.")
+            await ctx.send("ℹ️ Mission commentary is already disabled on this server.")
             return
 
         state["enabled"] = False
         task = state.get("task")
         if task and not task.done():
             task.cancel()
-        await ctx.send("✅ Mission commentary disabled for this server.")
+        await ctx.send("✅ Mission commentary disabled on this server.")
 
     async def _talk_now(ctx):
         if not ctx.guild:
-            await ctx.send("❌ This command only works on servers, not in private messages.")
+            await ctx.send(server_only_message)
             return
 
         server_name = get_server_key(ctx.guild) if ctx.guild else "default"
@@ -563,11 +531,11 @@ def register_core_commands(bot, agent_config):
         if res and str(res).strip():
             await ctx.send(str(res).strip())
         else:
-            await ctx.send("⚠️ Could not generate a commentary right now.")
+            await ctx.send("⚠️ Could not generate mission commentary right now.")
 
     async def _talk_status(ctx):
         if not ctx.guild:
-            await ctx.send("❌ This command only works on servers, not in private messages.")
+            await ctx.send(server_only_message)
             return
 
         guild_id = int(ctx.guild.id)
@@ -576,17 +544,15 @@ def register_core_commands(bot, agent_config):
         channel_id = state.get("channel_id")
         interval_minutes = state.get("interval_minutes", 180)
         channel_mention = f"<#{channel_id}>" if channel_id else "(not set)"
-        await ctx.send(
-            f"Mission commentary: {'ON' if enabled else 'OFF'} | channel={channel_mention} | interval={interval_minutes} minutes"
-        )
+        await ctx.send(f"Mission commentary: {'ON' if enabled else 'OFF'} | channel: {channel_mention} | every {interval_minutes} minutes")
 
     async def _talk_frequency(ctx, minutes: int):
         role_cfg = _personality_answers.get("role_messages", {})
         if not ctx.guild:
-            await ctx.send("❌ This command only works on servers, not in private messages.")
+            await ctx.send(server_only_message)
             return
         if not is_admin(ctx):
-            await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can modify this feature."))
+            await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can modify mission commentary."))
             return
 
         guild_id = int(ctx.guild.id)
@@ -600,15 +566,16 @@ def register_core_commands(bot, agent_config):
                 task.cancel()
             state["task"] = asyncio.create_task(_start_talk_loop_for_guild(guild_id))
 
-        await ctx.send(f"✅ Mission commentary interval set to {state['interval_minutes']} minutes.")
+        await ctx.send(f"✅ Mission commentary interval set to every {state['interval_minutes']} minutes.")
 
-    try:
+    if bot.get_command(talk_cmd_name) is None:
         @bot.command(name=talk_cmd_name)
         async def cmd_talk(ctx, action: str = "", value: str = ""):
+            usage_message = f"❌ Usage: `!{talk_cmd_name} <on/off/now/status/frequency> [minutes]`"
+            frequency_usage_message = f"❌ Usage: `!{talk_cmd_name} frequency <minutes>`"
+            invalid_action_message = f"❌ Unknown action `{action}`. Use `on`, `off`, `now`, `status`, or `frequency`."
             if not action:
-                await ctx.send(
-                    f"❌ Usage: `!{talk_cmd_name} on/off/now/status/frequency <minutes>`"
-                )
+                await ctx.send(usage_message)
                 return
 
             action_lower = action.lower()
@@ -632,45 +599,46 @@ def register_core_commands(bot, agent_config):
                 return
             if action_lower in ["frequency", "interval"]:
                 if not value:
-                    await ctx.send(f"❌ Usage: `!{talk_cmd_name} frequency <minutes>`")
+                    await ctx.send(frequency_usage_message)
                     return
                 try:
                     minutes = int(value)
                 except Exception:
-                    await ctx.send("❌ Minutes must be an integer.")
+                    await ctx.send("❌ Minutes must be a whole number.")
                     return
                 await _talk_frequency(ctx, minutes)
                 return
 
-            await ctx.send(
-                f"❌ Unknown action `{action}`. Use: on/off/now/status/frequency."
-            )
-
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info(f"Command {talk_cmd_name} already registered, skipping...")
-        else:
-            logger.error(f"Error registering {talk_cmd_name}: {e}")
+            await ctx.send(invalid_action_message)
+    else:
+        logger.info(f"Command {talk_cmd_name} already registered, skipping...")
 
     async def _taboo_status(ctx):
         if not ctx.guild:
-            await ctx.send("❌ This command only works on servers, not in private messages.")
+            await ctx.send(server_only_message)
             return
         state = get_taboo_state(int(ctx.guild.id))
-        keywords = ", ".join(state.get("keywords", [])) or "(none)"
-        await ctx.send(f"🚫 Taboo: {'ON' if state.get('enabled', False) else 'OFF'} | keywords: {keywords}")
+        keywords = ", ".join(state.get("keywords", [])) or "none"
+        await ctx.send(f"🚫 Taboo: {'Enabled' if state.get('enabled', False) else 'Disabled'} | Keywords: {keywords}")
 
-    try:
+    if bot.get_command("taboo") is None:
         @bot.command(name="taboo")
         async def cmd_taboo(ctx, action: str = "", *, value: str = ""):
+            taboo_permission_message = "❌ Only administrators can change the taboo behavior."
+            taboo_add_usage = "❌ Usage: `!taboo add <keyword>`"
+            taboo_remove_usage = "❌ Usage: `!taboo del <keyword>`"
+
+            def taboo_failure_message(action_name: str) -> str:
+                return f"❌ Failed to {action_name} taboo. Check the logs for details."
+
             if not ctx.guild:
-                await ctx.send("❌ This command only works on servers, not in private messages.")
+                await ctx.send(server_only_message)
                 return
             if not action:
                 await _taboo_status(ctx)
                 return
             if not is_admin(ctx):
-                await ctx.send("❌ Only administrators can modify taboo behavior.")
+                await ctx.send(taboo_permission_message)
                 return
             
             guild_id = int(ctx.guild.id)
@@ -679,74 +647,69 @@ def register_core_commands(bot, agent_config):
 
             if action_lower in {"on", "enable"}:
                 if update_taboo_state(guild_id, enabled=True):
-                    await ctx.send("✅ Taboo enabled for this server.")
+                    await ctx.send("✅ Taboo enabled on this server.")
                 else:
-                    await ctx.send("❌ Failed to enable taboo. Check logs for details.")
+                    await ctx.send(taboo_failure_message("enable"))
                 return
             if action_lower in {"off", "disable"}:
                 if update_taboo_state(guild_id, enabled=False):
-                    await ctx.send("✅ Taboo disabled for this server.")
+                    await ctx.send("✅ Taboo disabled on this server.")
                 else:
-                    await ctx.send("❌ Failed to disable taboo. Check logs for details.")
+                    await ctx.send(taboo_failure_message("disable"))
                 return
             if action_lower == "list":
                 await _taboo_status(ctx)
                 return
             if action_lower == "add":
                 if not keyword:
-                    await ctx.send("❌ Usage: `!taboo add <keyword>`")
+                    await ctx.send(taboo_add_usage)
                     return
                 
-                # Get current state and add keyword
                 state = get_taboo_state(guild_id)
                 current_keywords = state.get("keywords", [])
                 
                 if keyword not in current_keywords:
                     if update_taboo_state(guild_id, keywords=current_keywords + [keyword]):
-                        await ctx.send(f"✅ Added taboo keyword `{keyword}`.")
+                        await ctx.send(f"✅ Added taboo keyword: `{keyword}`.")
                     else:
-                        await ctx.send("❌ Failed to add keyword. Check logs for details.")
+                        await ctx.send(taboo_failure_message("add"))
                 else:
-                    await ctx.send(f"⚠️ Keyword `{keyword}` already exists.")
+                    await ctx.send(f"⚠️ The keyword `{keyword}` already exists.")
                 return
             if action_lower in {"del", "remove"}:
                 if not keyword:
-                    await ctx.send("❌ Usage: `!taboo del <keyword>`")
+                    await ctx.send(taboo_remove_usage)
                     return
                 
-                # Get current state and remove keyword
                 state = get_taboo_state(guild_id)
                 current_keywords = state.get("keywords", [])
                 
                 if keyword in current_keywords:
                     new_keywords = [kw for kw in current_keywords if kw != keyword]
                     if update_taboo_state(guild_id, keywords=new_keywords):
-                        await ctx.send(f"✅ Removed taboo keyword `{keyword}`.")
+                        await ctx.send(f"✅ Removed taboo keyword: `{keyword}`.")
                     else:
-                        await ctx.send("❌ Failed to remove keyword. Check logs for details.")
+                        await ctx.send(taboo_failure_message("remove"))
                 else:
-                    await ctx.send(f"❌ Keyword `{keyword}` is not configured.")
+                    await ctx.send(f"❌ The keyword `{keyword}` is not configured for taboo.")
                 return
 
-            await ctx.send("❌ Unknown taboo action. Use: `on`, `off`, `add`, `del`, or `list`.")
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info("Command taboo already registered, skipping...")
-        else:
-            logger.error(f"Error registering taboo: {e}")
+            await ctx.send("❌ Unknown taboo action. Use `on`, `off`, `add`, `del`, `remove`, or `list`.")
+    else:
+        logger.info("Command taboo already registered, skipping...")
 
     # --- ROLE CONTROL ---
 
     async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
-        """Generic command to enable/disable roles dynamically."""
+        """Enable or disable roles dynamically."""
         role_cfg = _personality_answers.get("role_messages", {})
         if not is_admin(ctx):
-            await ctx.send(role_cfg.get("role_no_permission", "❌ Only administrators can modify roles."))
+            await ctx.send(role_cfg.get("role_no_permission", "❌ Only administrators can enable or disable roles."))
             return
 
         valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
         if role_name not in valid_roles:
-            await ctx.send(role_cfg.get("role_not_found", "❌ Role '{role}' not valid.").format(role=role_name))
+            await ctx.send(role_cfg.get("role_not_found", "❌ Unknown role `{role}`.").format(role=role_name))
             return
 
         env_var_name = f"{role_name.upper()}_ENABLED"
@@ -758,25 +721,26 @@ def register_core_commands(bot, agent_config):
         # Register role commands if activating
         if enabled:
             from discord_bot.discord_role_loader import register_single_role
-            await register_single_role(bot, role_name, agent_config, PERSONALIDAD)
+            await register_single_role(bot, role_name, agent_config, PERSONALITY)
 
         if enabled:
-            await ctx.send(role_cfg.get("role_activated", "✅ Role '{role}' activated successfully.").format(role=role_name))
+            await ctx.send(role_cfg.get("role_activated", "✅ Role '{role}' enabled.").format(role=role_name))
             logger.info(f"{ctx.author.name} activated role {role_name} in {ctx.guild.name}")
         else:
-            await ctx.send(role_cfg.get("role_deactivated", "✅ Role '{role}' deactivated successfully.").format(role=role_name))
+            await ctx.send(role_cfg.get("role_deactivated", "✅ Role '{role}' disabled.").format(role=role_name))
             logger.info(f"{ctx.author.name} deactivated role {role_name} in {ctx.guild.name}")
 
-    try:
+    if bot.get_command(role_cmd_name) is None:
         @bot.command(name=role_cmd_name)
         async def cmd_role_control(ctx, role_name: str = "", action: str = ""):
-            """Role control. Usage: !role<name> <role> <on/off>"""
+            """Toggle a role with `!role<personality> <role> <action>`."""
+            usage_message = f"❌ Usage: `!{role_cmd_name} <role> <action>`. Use `on/off`, `true/false`, `1/0`, or `enable/disable` for `<action>`."
             if not role_name:
-                await ctx.send("❌ Usage: `!{}<role> <action>` where <action> is on/off, true/false, 1/0, enable/disable".format(_personality_name))
+                await ctx.send(usage_message)
                 return
 
             if not action:
-                await ctx.send("❌ Usage: `!{}<role> <action>` where <action> is on/off, true/false, 1/0, enable/disable".format(_personality_name))
+                await ctx.send(usage_message)
                 return
 
             action_lower = action.lower()
@@ -785,142 +749,129 @@ def register_core_commands(bot, agent_config):
             elif action_lower in ["off", "false", "0", "disable"]:
                 await _cmd_role_toggle(ctx, role_name, False)
             else:
-                await ctx.send("❌ Invalid action. Use: on/off, true/false, 1/0, enable/disable")
-
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info(f"Command {role_cmd_name} already registered, skipping...")
-        else:
-            logger.error(f"Error registering {role_cmd_name}: {e}")
+                await ctx.send(usage_message)
+    else:
+        logger.info(f"Command {role_cmd_name} already registered, skipping...")
 
     # --- ENGLISH HELP COMMAND WITH PERSONALITY SUPPORT ---
-    try:
+    if bot.get_command("agenthelp") is None:
         @bot.command(name="agenthelp")
         async def cmd_help(ctx, personality_name: str = ""):
-            """Show all available commands for this agent (English)."""
+            """Show all available commands for this agent."""
             if is_duplicate_command(ctx, "agenthelp"):
                 return
 
-            # If personality name provided, check if it matches this agent
             if personality_name:
                 if personality_name.lower() != _personality_name:
-                    return  # Don't respond to help for other personalities
-                
-                # Show help for this specific personality
+                    return
                 await _show_agent_help(ctx, personality_name)
                 return
-            
-            # No personality specified: always show help.
-            # NOTE: ctx.guild can be None (DMs, some edge cases). Avoid accessing ctx.guild.members.
-            await _show_agent_help(ctx, personality_name)
 
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info("Command agenthelp already registered, skipping...")
-        else:
-            logger.error(f"Error registering agenthelp: {e}")
+            await _show_agent_help(ctx, personality_name)
+    else:
+        logger.info("Command agenthelp already registered, skipping...")
 
     async def _show_agent_help(ctx, requested_personality):
-        """Internal function to show agent help - replicates Spanish help behavior with English commands."""
+        """Show agent help using the English command surface."""
         roles_config = AGENT_CFG.get("roles", {})
         
         # Use requested personality name or current personality
         display_name = requested_personality or _personality_name
         help_msg = f"🤖 **Available Commands for {bot.user.name} ({display_name})** 🤖\n\n"
 
-        # STATIC PART - Control commands 
+        # Control commands
         help_msg += "🎛️ **CONTROL COMMANDS**\n"
-        help_msg += f"• `!{greet_name}` - Enable presence greetings (DM)\n"
+        help_msg += f"• `!{greet_name}` - Enable presence greetings by direct message\n"
         help_msg += f"• `!{nogreet_name}` - Disable presence greetings\n"
         help_msg += f"• `!{welcome_name}` - Enable new member welcome\n"
         help_msg += f"• `!{nowelcome_name}` - Disable new member welcome\n"
-        help_msg += f"• `!{insult_name}` - Send orc insult\n"
-        help_msg += f"• `!{role_cmd_name} <role> <on/off>` - Enable/disable roles dynamically\n"
+        help_msg += f"• `!{insult_name}` - Send an orc insult\n"
+        help_msg += f"• `!{role_cmd_name} <role> <on/off>` - Enable or disable roles dynamically\n"
         help_msg += f"• `!agenthelp {display_name}` - Show help for this personality\n"
-        help_msg += "• `!readme` - Get complete command reference by private message\n\n"
+        help_msg += "• `!readme` - Receive the full user guide by direct message\n\n"
 
-        # DYNAMIC PART - Role commands
+        # Role commands
         help_msg += "🎭 **ROLE COMMANDS**\n"
 
-        # News Watcher - 
+        # News Watcher
         if is_role_enabled_check("news_watcher", agent_config, ctx.guild):
             interval = get_role_interval_hours("news_watcher", agent_config, ctx.guild, 1)
-            help_msg += f"📡 **News Watcher** - Smart alerts (every {interval}h)\n"
+            help_msg += f"📡 **News Watcher** - Important alerts every {interval}h\n"
             help_msg += "  • **Main:** `!watcher` | `!nowatcher` | `!watchernotify`\n"
             help_msg += "  • **Help:** `!watcherhelp` (users) | `!watcherchannelhelp` (admins)\n"
             help_msg += "  • **Channel:** `!watcherchannel` group (subscribe, unsubscribe, status, keywords, premises)\n"
             help_msg += "  • **Subscription:** `!watcher feeds/categories/status/subscribe/unsubscribe/keywords/general/reset`\n\n"
-        # Treasure Hunter - 
+        # Treasure Hunter
         if is_role_enabled_check("treasure_hunter", agent_config, ctx.guild):
             interval = get_role_interval_hours("treasure_hunter", agent_config, ctx.guild, 1)
-            help_msg += f"💎 **Treasure Hunter** - POE2 item alerts (every {interval}h)\n"
-            help_msg += "  • **Admin:** `!hunter poe2 on//off`, `!hunterfrequency <h>` In a Channel for admins\n"
-            help_msg += "  • **League:**`!hunter poe2 league \"Standard\"` | `!hunter poe2 \"Fate of the Vaal\"`\n"
-            help_msg += "  • **Items:** `!hunteradd/ \"item\"` | `!hunterdel \"item\"` | `!hunterdel <number>` | `!hunterlist`\n"
-            help_msg += "  • **Help:** `!hunterhelp` | `!hunter poe2 help` \n\n"
-        # Trickster - 
+            help_msg += f"💎 **Treasure Hunter** - POE2 item alerts every {interval}h\n"
+            help_msg += "  • **Admin:** `!hunter poe2 on/off`, `!hunterfrequency <h>` (admins only, from a server channel)\n"
+            help_msg += "  • **League:** `!hunter poe2 league \"Standard\"` | `!hunter poe2 \"Fate of the Vaal\"`\n"
+            help_msg += "  • **Items:** `!hunteradd \"item\"` | `!hunterdel \"item\"` | `!hunterdel <number>` | `!hunterlist`\n"
+            help_msg += "  • **Help:** `!hunterhelp` | `!hunter poe2 help`\n\n"
+        # Trickster
         if is_role_enabled_check("trickster", agent_config, ctx.guild):
             trickster_config = roles_config.get("trickster", {})
             interval = trickster_config.get("interval_hours", 12)
             subroles = trickster_config.get("subroles", {})
             
-            help_msg += f"🎭 **Trickster** - Multiple subroles:\n"
+            help_msg += "🎭 **Trickster** - Multiple subroles:\n"
             
             if subroles.get("beggar", {}).get("enabled", False):
                 help_msg += "  • 🙏 **Beggar:** `!trickster beggar enable/disable/frequency <h>/status/help`\n"
             
             if subroles.get("ring", {}).get("enabled", False):
-                help_msg += "  • 👁️ **Ring:** `!accuse @user` | `!trickster ring enable/disable/frequency <h>/help`\n"
+                help_msg += "  • 👁️ **Ring:** `!trickster ring enable/disable/frequency <h>/target @user/help`\n"
             
             if subroles.get("dice_game", {}).get("enabled", False):
                 help_msg += "  • 🎲 **Dice Game:** `!dice play/help/balance/stats/ranking/history` | `!dice config bet <amount>` | `!dice config announcements on/off`\n"
             
             help_msg += "  • **Main:** `!trickster help`\n\n"
-        # Banker - 
+        # Banker
         if is_role_enabled_check("banker", agent_config, ctx.guild):
-            help_msg += f"💰 **Banker** - Economic management\n"
+            help_msg += "💰 **Banker** - Economy and daily rewards\n"
             help_msg += "  • **Main:** `!banker help`\n"
-            help_msg += "  • **Balance:** `!banker balance` (unified in Canvas)\n"
-            help_msg += "  • **Config:**  | `!banker bonus <amount>`(admins)\n\n"
-        # Music - Always available 
-        help_msg += f"🎵  **MC** - Music Bot request a song in a voice channel\n"
-        help_msg += "  • **Common use** `!mc play \"ADCD TNT\"`,`!mc add \"Queen Bycicle\"`,`!mc queue`\n"
-        help_msg += "  • **Main:** `!mc help`\n    \n" # Jumpline for max characters in discord fix
+            help_msg += "  • **Balance:** `!banker balance` (also available in Canvas)\n"
+            help_msg += "  • **Config:** `!banker bonus <amount>` (admins)\n\n"
+        # Music
+        help_msg += "🎵 **MC** - Request a song while connected to a voice channel\n"
+        help_msg += "  • **Common use:** `!mc play \"ACDC TNT\"` | `!mc add \"Queen Bicycle\"` | `!mc queue`\n"
+        help_msg += "  • **Main:** `!mc help`\n\n"
 
         # Multiple agents info (only when no specific personality requested)
         if not requested_personality: 
-            help_msg += "🔀 **MULTIPLE AGENTS**\n"
-            help_msg += f"• Use `!agenthelp {display_name}` for help specific to this agent\n"
+            help_msg += "🔀 **MULTI-AGENT SETUP**\n"
+            help_msg += f"• Use `!agenthelp {display_name}` for personality-specific help\n"
             help_msg += "• Each agent has its own personality and commands\n\n"
 
-        # Basic conversation 
+        # Basic conversation
         help_msg += "💬 **BASIC CONVERSATION**\n"
-        help_msg += "• Mention the bot to talk\n"
-        help_msg += "• Responds using the agent's personality\n"
-        help_msg += f"• Bot will respond as its character ({_bot_display_name})\n\n"
+        help_msg += "• Mention the bot to start a conversation\n"
+        help_msg += "• It responds in character, following the agent's personality\n"
+        help_msg += f"• It replies as {_bot_display_name}\n\n"
         
-        # Active and inactive roles (exact same logic as Spanish help)
-        help_msg += "🎭 **ACTIVE AND INACTIVE ROLES**\n"
+        # Active and inactive roles
+        help_msg += "🎭 **ROLE STATUS**\n"
         role_descriptions = {
             "mc": "🎵 **Music** - Always available (no activation required)",
-            "news_watcher": "📡 **News Watcher** - Critical news alerts",
-            "treasure_hunter": "💎 **Treasure Hunter** - Purchase opportunity alerts",
+            "news_watcher": "📡 **News Watcher** - Important alerts",
+            "treasure_hunter": "💎 **Treasure Hunter** - Item alerts",
             "trickster": "🎭 **Trickster** - Beggar, ring, and dice game subroles",
-            "banker": "💰 **Banker** - Economic management and daily TAE",
+            "banker": "💰 **Banker** - Economy and daily rewards",
         }
 
-        for role_name_key, role_cfg_val in roles_config.items():
+        for role_name_key in roles_config:
             enabled = is_role_enabled_check(role_name_key, agent_config, ctx.guild)
             if role_name_key == "mc":
                 status_emoji = "✅"
             else:
                 status_emoji = "✅" if enabled else "❌"
-            # Same logic as Spanish help - use role_descriptions
+            # Reuse the same role description mapping
             display = role_descriptions.get(role_name_key, f"**{role_name_key.replace('_', ' ').title()}**")
             help_msg += f"• {status_emoji} {display}\n"
 
-        # Send help (use personality message with fallback)
-        help_sent_msg = _personality_answers.get("general_messages", {}).get("help_sent_private", "📩 Help sent by private message.")
+        # Send help
+        help_sent_msg = _personality_answers.get("general_messages", {}).get("help_sent_private", "📩 Help sent by direct message.")
         await send_dm_or_channel(ctx, help_msg, help_sent_msg)
 
 
@@ -937,38 +888,31 @@ def register_core_commands(bot, agent_config):
     )
 
     # --- README COMMAND ---
-    try:
+    if bot.get_command("readme") is None:
         @bot.command(name="readme")
         async def cmd_readme(ctx):
-            """Send user-friendly README content privately to user."""
+            """Send the user guide privately to the user."""
             try:
-                # Read the README_USER.md file
                 readme_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README_USER.md")
                 with open(readme_path, 'r', encoding='utf-8') as f:
                     readme_content = f.read()
-                
-                # Discord has a 2000 character limit, so we need to split long content
-                max_length = 1900  # Leave some buffer for formatting
-                
+
+                max_length = 1900
+
                 if len(readme_content) <= max_length:
-                    # Send as single message if short enough
-                    await ctx.author.send(f"📖 **RoleAgentBot - Complete User Guide**\n\n{readme_content}")
+                    await ctx.author.send(f"📖 **RoleAgentBot - Full User Guide**\n\n{readme_content}")
                 else:
-                    # Split into multiple messages
-                    await ctx.author.send("📖 **RoleAgentBot - Complete User Guide**")
-                    
-                    # Split content into chunks
+                    await ctx.author.send("📖 **RoleAgentBot - Full User Guide**")
+
                     chunks = []
                     current_chunk = ""
-                    
+
                     for line in readme_content.split('\n'):
-                        # If adding this line would exceed limit, start new chunk
                         if len(current_chunk) + len(line) + 1 > max_length:
                             if current_chunk:
                                 chunks.append(current_chunk.strip())
                                 current_chunk = line
                             else:
-                                # Line itself is too long, force split
                                 while len(line) > max_length:
                                     chunks.append(line[:max_length])
                                     line = line[max_length:]
@@ -978,34 +922,27 @@ def register_core_commands(bot, agent_config):
                                 current_chunk += '\n' + line
                             else:
                                 current_chunk = line
-                    
-                    # Add the last chunk
+
                     if current_chunk:
                         chunks.append(current_chunk.strip())
-                    
-                    # Send chunks with part numbers
+
                     for i, chunk in enumerate(chunks, 1):
                         header = f"**Part {i}/{len(chunks)}**\n\n" if len(chunks) > 1 else ""
                         await ctx.author.send(f"{header}```md\n{chunk}\n```")
-                
-                # Confirm in channel (use personality message with fallback)
-                readme_sent_msg = _personality_answers.get("general_messages", {}).get("readme_sent_private", "📩 Complete user guide sent by private message.")
+
+                readme_sent_msg = _personality_answers.get("general_messages", {}).get("readme_sent_private", "📩 Full user guide sent by direct message.")
                 await ctx.send(readme_sent_msg)
-                
+
                 logger.info(f"README command executed by {ctx.author.name} in {ctx.guild.name if ctx.guild else 'DM'}")
-                
+
             except FileNotFoundError:
-                await ctx.send("❌ User guide file not found.")
+                await ctx.send("❌ The full user guide file could not be found.")
                 logger.error("README_USER.md file not found")
             except Exception as e:
-                await ctx.send("❌ Error sending user guide.")
+                await ctx.send("❌ The full user guide could not be sent.")
                 logger.error(f"Error in README command: {e}")
-                
-    except Exception as e:
-        if "already an existing command" in str(e):
-            logger.info("Command readme already registered, skipping...")
-        else:
-            logger.error(f"Error registering readme: {e}")
+    else:
+        logger.info("Command readme already registered, skipping...")
 
     # --- Log registered commands ---
     logger.info(f"Core commands registered: {greet_name}, {nogreet_name}, {welcome_name}, {nowelcome_name}, {insult_name}, agenthelp, canvas, {role_cmd_name}, test, readme")

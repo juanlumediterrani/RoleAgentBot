@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import asyncio
 from agent_logging import get_logger
-from agent_engine import PERSONALIDAD
+from agent_engine import PERSONALITY
 
 logger = get_logger('trickster')
 
@@ -29,7 +29,7 @@ _TRICKSTER_DIR = os.path.dirname(os.path.abspath(__file__))
 def get_trickster_system_prompt():
     """Get system prompt from personality or fallback to English."""
     try:
-        role_prompts = PERSONALIDAD.get("role_system_prompts", {})
+        role_prompts = PERSONALITY.get("role_system_prompts", {})
         return role_prompts.get("trickster", "ACTIVE ROLE - TRICKSTER: You are a master of deception and manipulation. You use your skills to get gold and resources through tricks and scams.")
     except Exception:
         return "ACTIVE ROLE - TRICKSTER: You are a master of deception and manipulation. You use your skills to get gold and resources through tricks and scams."

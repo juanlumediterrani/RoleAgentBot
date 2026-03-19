@@ -29,17 +29,17 @@ try:
     with open(answers_path, encoding="utf-8") as f:
         answers_cfg = json.load(f).get("discord", {})
     RING_MESSAGES = answers_cfg.get("role_messages", {}).get("ring_accusations", [
-        "¡Tienes mi anillo! ¡Dámelo ahora!",
-        "¿Dónde está mi anillo? ¡Sé que lo tienes!",
-        "Devuélveme mi anillo o te cortaré las manos",
-        "Ese anillo que ves... ¡es mío! ¡Devuélvemelo!"
+        "You have my ring! Give it to me now!",
+        "Where is my ring? I know you have it!",
+        "Give me back my ring or I'll cut off your hands",
+        "That ring you're looking at... it's mine! Give it back!"
     ])
 except Exception:
     RING_MESSAGES = [
-        "¡Tienes mi anillo! ¡Dámelo ahora!",
-        "¿Dónde está mi anillo? ¡Sé que lo tienes!",
-        "Devuélveme mi anillo o te cortaré las manos",
-        "Ese anillo que ves... ¡es mío! ¡Devuélvemelo!"
+        "You have my ring! Give it to me now!",
+        "Where is my ring? I know you have it!",
+        "Give me back my ring or I'll cut off your hands",
+        "That ring you're looking at... it's mine! Give it back!"
     ]
 
 # Track last accusation time per server to avoid spam
@@ -69,7 +69,7 @@ async def process_ring_mention(server_id: str, user_name: str) -> str:
     mark_accusation(server_id)
     accusation = get_ring_accusation()
     
-    return f"GRRR {user_name}! {accusation} ¡Ese anillo es de la Horda y yo lo perdí en batalla! ¡Devuélvemelo o te arranco los dedos GRAAAH!"
+    return f"GRRR {user_name}! {accusation} That ring belongs to the Horde and I lost it in battle! Give it back or I'll rip your fingers off, GRAAAH!"
 
 def is_ring_related(text: str) -> bool:
     """Check if text mentions rings or related items."""

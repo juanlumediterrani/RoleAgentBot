@@ -65,7 +65,7 @@ class DatabaseRoleDiceGame:
                         total_bet INTEGER DEFAULT 0,
                         total_won INTEGER DEFAULT 0,
                         pots_won INTEGER DEFAULT 0,
-                        mayor_prize INTEGER DEFAULT 0,
+                        biggest_prize INTEGER DEFAULT 0,
                         last_play DATETIME,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -73,13 +73,13 @@ class DatabaseRoleDiceGame:
                     )
                 ''')
                 
-                # Migration: Check if biggest_prize column exists and rename it to mayor_prize . posible legacy function
+                # Migration: rename legacy `mayor_prize` column to `biggest_prize` if needed
                 cursor.execute("PRAGMA table_info(player_stats)")
                 columns = [column[1] for column in cursor.fetchall()]
                 
-                if 'biggest_prize' in columns and 'mayor_prize' not in columns:
-                    logger.info("🔄 Migrating database: renaming biggest_prize to mayor_prize")
-                    cursor.execute("ALTER TABLE player_stats RENAME COLUMN biggest_prize TO mayor_prize")
+                if 'mayor_prize' in columns and 'biggest_prize' not in columns:
+                    logger.info("🔄 Migrating database: renaming mayor_prize to biggest_prize")
+                    cursor.execute("ALTER TABLE player_stats RENAME COLUMN mayor_prize TO biggest_prize")
                 
                 conn.commit()
                 logger.info(f"✅ Dice game database initialized at {self.db_path}")
@@ -110,13 +110,13 @@ class DatabaseRoleDiceGame:
                 cursor.execute('''
                     INSERT OR REPLACE INTO player_stats 
                     (user_id, server_id, total_plays, total_bet, total_won, 
-                     pots_won, mayor_prize, last_play, updated_at)
+                     pots_won, biggest_prize, last_play, updated_at)
                     VALUES (?, ?, 
                            COALESCE((SELECT total_plays FROM player_stats WHERE user_id=? AND server_id=?), 0) + 1,
                            COALESCE((SELECT total_bet FROM player_stats WHERE user_id=? AND server_id=?), 0) + ?,
                            COALESCE((SELECT total_won FROM player_stats WHERE user_id=? AND server_id=?), 0) + ?,
                            COALESCE((SELECT pots_won FROM player_stats WHERE user_id=? AND server_id=?), 0) + ?,
-                           CASE WHEN ? > COALESCE((SELECT mayor_prize FROM player_stats WHERE user_id=? AND server_id=?), 0) THEN ? ELSE COALESCE((SELECT mayor_prize FROM player_stats WHERE user_id=? AND server_id=?), 0) END,
+                           CASE WHEN ? > COALESCE((SELECT biggest_prize FROM player_stats WHERE user_id=? AND server_id=?), 0) THEN ? ELSE COALESCE((SELECT biggest_prize FROM player_stats WHERE user_id=? AND server_id=?), 0) END,
                            ?, CURRENT_TIMESTAMP)
                 ''', (user_id, server_id, user_id, server_id,
                       user_id, server_id, bet,
@@ -127,7 +127,7 @@ class DatabaseRoleDiceGame:
                       datetime.now().isoformat()))
                 
                 conn.commit()
-                logger.info(f"🎲 Game registered: {user_name} - {dice} → {combination} - Prize: {prize}")
+                logger.info(f"🎲 Dice game recorded: {user_name} - {dice} → {combination} - Prize: {prize}")
                 return True
                 
         except Exception as e:
@@ -143,7 +143,7 @@ class DatabaseRoleDiceGame:
                     '''
                     INSERT OR IGNORE INTO player_stats (
                         user_id, server_id, total_plays, total_bet, total_won,
-                        pots_won, mayor_prize, last_play, updated_at
+                        pots_won, biggest_prize, last_play, updated_at
                     ) VALUES (?, ?, 0, 0, 0, 0, 0, NULL, CURRENT_TIMESTAMP)
                     ''',
                     (user_id, server_id),
@@ -168,10 +168,8 @@ class DatabaseRoleDiceGame:
                 result = cursor.fetchone()
                 if result:
                     return {
-                        'bet_fija': result[0],
-                        'apuesta_fija': result[0],
+                        'fixed_bet': result[0],
                         'announcements_active': bool(result[1]),
-                        'anuncios_activos': bool(result[1])
                     }
                 else:
                     # Create default config
@@ -180,11 +178,11 @@ class DatabaseRoleDiceGame:
                         VALUES (?, ?, ?)
                     ''', (server_id, 1, True))
                     conn.commit()
-                    return {'bet_fija': 1, 'apuesta_fija': 1, 'announcements_active': True, 'anuncios_activos': True}
+                    return {'fixed_bet': 1, 'announcements_active': True}
                     
         except Exception as e:
             logger.error(f"❌ Error getting server config: {e}")
-            return {'bet_fija': 1, 'apuesta_fija': 1, 'announcements_active': True, 'anuncios_activos': True}
+            return {'fixed_bet': 1, 'announcements_active': True}
     
     def configure_server(self, server_id: str, **kwargs) -> bool:
         """Configure server settings."""
@@ -195,8 +193,8 @@ class DatabaseRoleDiceGame:
                 set_clauses = []
                 values = []
                 
-                bet_value = kwargs.get('bet_fija', kwargs.get('apuesta_fija'))
-                announcements_value = kwargs.get('announcements_active', kwargs.get('anuncios_activos'))
+                bet_value = kwargs.get('fixed_bet')
+                announcements_value = kwargs.get('announcements_active')
 
                 if bet_value is not None:
                     set_clauses.append('bet_fija = ?')
@@ -226,11 +224,11 @@ class DatabaseRoleDiceGame:
                               announcements_value if announcements_value is not None else True))
                     
                     conn.commit()
-                    logger.info(f"🎲 Server {server_id} configured: {kwargs}")
+                    logger.info(f"🎲 Dice game server config updated for {server_id}: {kwargs}")
                     return True
                     
         except Exception as e:
-            logger.error(f"❌ Error configuring server: {e}")
+            logger.error(f"❌ Error configuring dice game server settings: {e}")
             return False
     
     def get_player_stats(self, user_id: str, server_id: str) -> Dict[str, Any]:
@@ -239,7 +237,7 @@ class DatabaseRoleDiceGame:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT total_plays, total_bet, total_won, pots_won, mayor_prize
+                    SELECT total_plays, total_bet, total_won, pots_won, biggest_prize
                     FROM player_stats 
                     WHERE user_id = ? AND server_id = ?
                 ''', (user_id, server_id))
@@ -251,7 +249,7 @@ class DatabaseRoleDiceGame:
                         'total_bet': result[1],
                         'total_won': result[2],
                         'pots_won': result[3],
-                        'mayor_prize': result[4]
+                        'biggest_prize': result[4],
                     }
                 else:
                     return {
@@ -259,7 +257,7 @@ class DatabaseRoleDiceGame:
                         'total_bet': 0,
                         'total_won': 0,
                         'pots_won': 0,
-                        'mayor_prize': 0
+                        'biggest_prize': 0,
                     }
                     
         except Exception as e:
@@ -269,12 +267,12 @@ class DatabaseRoleDiceGame:
                 'total_bet': 0,
                 'total_won': 0,
                 'pots_won': 0,
-                'mayor_prize': 0
+                'biggest_prize': 0,
             }
     
     def get_player_ranking(self, server_id: str, metric: str = 'total_won', limit: int = 10) -> List[Tuple]:
         """Get player ranking."""
-        valid_metrics = ['total_won', 'total_plays', 'pots_won', 'mayor_prize']
+        valid_metrics = ['total_won', 'total_plays', 'pots_won', 'biggest_prize']
         if metric not in valid_metrics:
             metric = 'total_won'
         
@@ -282,9 +280,15 @@ class DatabaseRoleDiceGame:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute(f'''
-                    SELECT ps.user_id, ps.{metric}, ps.total_plays, ps.total_won, ps.total_bet
+                    SELECT dg.user_name, ps.{metric}, ps.total_plays, ps.total_won, ps.total_bet
                     FROM player_stats ps
+                    INNER JOIN dice_games dg ON ps.user_id = dg.user_id AND ps.server_id = dg.server_id
                     WHERE ps.server_id = ? AND ps.total_plays > 0
+                    AND dg.timestamp = (
+                        SELECT MAX(timestamp) 
+                        FROM dice_games dg2 
+                        WHERE dg2.user_id = ps.user_id AND dg2.server_id = ps.server_id
+                    )
                     ORDER BY ps.{metric} DESC
                     LIMIT ?
                 ''', (server_id, limit))

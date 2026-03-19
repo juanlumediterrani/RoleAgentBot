@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_engine import think, PERSONALIDAD
+from agent_engine import think, PERSONALITY
 from agent_logging import get_logger
 from agent_db import AgentDatabase
 from behavior.db_behavior import get_behavior_db_instance
@@ -70,7 +70,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
     """Execute a ring accusation using the new prompt system."""
     try:
         # Build the accusation prompt
-        prompts_config = PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {}).get("ring", {})
+        prompts_config = PERSONALITY.get("role_system_prompts", {}).get("subroles", {}).get("ring", {})
         accusation_config = prompts_config.get("accusation", {})
         
         if channel_id:  # Public channel
@@ -140,7 +140,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         
     except Exception as e:
         logger.exception(f"Error executing ring accusation: {e}")
-        return f"GRRR! {target_user_name} TU TENER EL ANILLO! ENTREGALO O TE KASO LA KABEZA!"
+        return f"GRRR! {target_user_name} YOU HAVE THE RING! HAND IT OVER OR I'LL CRUSH YOUR SKULL!"
 
 
 async def cmd_trickster_ring(ctx, *args):
@@ -221,9 +221,10 @@ async def _cmd_ring_help(ctx):
         '**Admin commands**\n'
         '- `!trickster ring enable`\n'
         '- `!trickster ring disable`\n'
-        '- `!trickster ring frequency <hours>`\n\n'
+        '- `!trickster ring frequency <hours>`\n'
+        '- `!trickster ring target @user`\n\n'
         '**User command**\n'
-        '- `!accuse @user`\n'
+        '- Ask an administrator to update the current target with `!trickster ring target @user`\n'
     )
     await ctx.send(help_text)
 
@@ -245,7 +246,7 @@ async def cmd_accuse_ring(ctx, target: str = ''):
             break
 
     if mentioned_user is None:
-        await ctx.send('❌ Mention a valid user to accuse. Example: `!accuse @user`')
+        await ctx.send('❌ Mention a valid user to target. Example: `!trickster ring target @user`')
         return
 
     # Update the target in state (no immediate accusation)

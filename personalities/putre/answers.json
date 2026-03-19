@@ -28,19 +28,19 @@
     },
     "dice_game_messages": {
       "invitation": "🎲 ¡BEN A JUGAR KON LOS GUESOS DE PUTRE! 🎲 ¡apuezta oro para yebarte el BOTE de la orda!",
-      "winner": "¡¡¡UHHH LEXUGO UMANO KON ZUERTE GANO EL BOTIN!!! 🎉",
+      "winner": "¡¡¡UHHH LEXUGO UMANO KON ZUERTE!!!",
       "loser": "¡JUARJUAR umano tener zuerte de rata muerta! 🎲 ¡tu oro es de putre!",
       "big_pot": "🔥 ¡EL BOTE ARDE KOMO ALDEA ELFIKA! 🔥",
       "animation": "🎲🎲🎲 ¡TIRA LOS KRANEOS JODIO UMANO! 🎲🎲🎲",
-      "insufficient_balance": "¡GRRR tu no tener oro suficiente, ezcoria! Necesitas {apuesta:,} oro para jugar. Tu zako solo tiene: {saldo:,} monedas!",
-      "pot_won": "🎉🎉🎉 ¡¡¡GANASTE EL GRAN BOTE, UMANO BASTARDO!!! 🎉🎉🎉 ¡Toma {premio:,} monedas de sangre!",
-      "prize_multiplier": "🎊 ¡GANASTE, JODIO UMANO! Tiraste {combinacion} - Botín: {premio:,} monedas!",
-      "sin_premio": "{combinacion} - ¡NAH! ¡Sin premio! ¡Más oro para la orda, largate perdedor!",
+      "insufficient_balance": "¡GRRR tu no tener oro suficiente, ezcoria! Necesitas {bet:,} oro para jugar. Tu zako solo tiene: {balance:,} monedas!",
+      "pot_won": "🎉🎉🎉 ¡¡¡GANASTE EL GRAN BOTE, UMANO BASTARDO!!! 🎉🎉🎉",
+      "prize_multiplier": "🎊 ¡GANASTE, JODIO UMANO! Tiraste {combination} - Botín: {prize:,} monedas!",
+      "sin_premio": "{combination} - ¡NAH! ¡Sin premio! ¡Más oro para la orda, largate perdedor!",
       "error_jugada": "¡GRRR la magia negra rompió el juego! La caja ruidosa dice: {error}",
-      "big_pot_announcement": "🔥 ¡EL BOTE ES GIGANTE COMO UN OGRO! 🔥 ¡Hay **{saldo:,}** monedas de oro! ¡Usa `!dice play` para robarlo o putre te pisa! 🎲"
+      "big_pot_announcement": "🔥 ¡EL BOTE ES GIGANTE COMO UN OGRO! 🔥 ¡Hay **{balance:,}** monedas de oro! ¡Usa `!dice play` para robarlo o putre te pisa! 🎲"
     },
     "dice_game_balance_messages": {
-      "big_pot": "🔥 **¡EL BOTE ESTÁ REBOSANDO DE ORO!** 🔥\n¡Un buen orco robaría estas {saldo:,} monedas ahora mismo!\n",
+      "big_pot": "🔥 **¡EL BOTE ESTÁ REBOSANDO DE ORO!** 🔥\n¡Un buen orco robaría estas {balance:,} monedas ahora mismo!\n",
       "medium_pot": "📈 **bote mediano** - Ya vale la pena el riesgo, umano!\n",
       "small_pot": "📉 **bote pequeño** - Pocos muertos hoy, sigue creciendo!\n",
       "sent_private": "📩 ¡Putre ta mandao el estao del bote!",

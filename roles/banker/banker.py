@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import asyncio
 from agent_logging import get_logger
-from agent_engine import PERSONALIDAD
+from agent_engine import PERSONALITY
 from roles.banker.db_role_banker import get_banker_db_instance
 from agent_db import get_active_server_name, set_current_server
 
@@ -21,7 +21,7 @@ MISSION_CONFIG = {
 def get_banker_system_prompt():
     """Get system prompt from personality or fallback to English."""
     try:
-        role_prompts = PERSONALIDAD.get("role_system_prompts", {})
+        role_prompts = PERSONALITY.get("role_system_prompts", {})
         return role_prompts.get("banker", "ACTIVE MISSION - BANKER: You are the Banker of the server, the gold economy manager. Your mission is to manage user wallets, record transactions and distribute daily TAE. You are a serious and responsible financier who keeps accurate records of all economic operations.")
     except Exception:
         return "ACTIVE MISSION - BANKER: You are the Banker of the server, the gold economy manager. Your mission is to manage user wallets, record transactions and distribute daily TAE. You are a serious and responsible financier who keeps accurate records of all economic operations."

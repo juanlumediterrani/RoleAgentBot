@@ -78,4 +78,4 @@ def update_last_beg_time(server_id: str):
 def get_random_beg_message() -> str:
     """Get a random beg message with reason."""
     reason = random.choice(BEGGAR_MESSAGES)
-    return f"🥺 Necesito limosna {reason}! ¡Por favor ayuda a un pobre orco!"
+    return f"🥺 I need alms {reason}! Please help a poor orc!"

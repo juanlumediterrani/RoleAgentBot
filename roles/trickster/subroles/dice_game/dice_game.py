@@ -4,8 +4,7 @@ Handles the core dice game mechanics and prize calculations.
 """
 
 import random
-import logging
-from typing import Dict, Tuple, Optional
+from typing import Any, Dict, Tuple, Optional
 from agent_logging import get_logger
 
 try:
@@ -20,6 +19,13 @@ except ImportError:
         from dice_game_messages import get_message
     finally:
         sys.path.remove(dice_game_dir)
+
+# Import personality descriptions for dice game combinations
+try:
+    from discord_bot.discord_core_commands import _personality_descriptions
+except ImportError:
+    # Fallback if not available - use empty dict
+    _personality_descriptions = {}
 
 logger = get_logger('dice_game')
 
@@ -48,25 +54,31 @@ class DiceGame:
         """Analyze dice roll and return combination type, description, and prize multiplier."""
         sorted_dice = sorted(dice)
         dice_str = '-'.join(map(str, dice))
-        
+        rolenamecombinations = _personality_descriptions.get("dice_game_combinations", {})
+        triple_ones = rolenamecombinations.get("triple_ones", "(JACKPOT!)")
+        triple = rolenamecombinations.get("three_of_a_kind", "(Triple)")
+        straight = rolenamecombinations.get("straight", "(Straight)")
+        pair = rolenamecombinations.get("pair", "(Pair)")
+        nothing = rolenamecombinations.get("nothing", "(No prize)")
+
         # Check for triple ones (jackpot)
         if dice == (1, 1, 1):
-            return 'triple_one', '1-1-1 (JACKPOT!)', 0
+            return 'triple_one', {triple_ones}, 0
         
         # Check for any triple
         if dice[0] == dice[1] == dice[2]:
-            return 'any_triple', f'{dice_str} (Triple)', self.PRIZE_TABLE['any_triple']
+            return 'any_triple', f'{dice_str} {triple}', self.PRIZE_TABLE['any_triple']
         
         # Check for straight 4-5-6
         if sorted_dice == [4, 5, 6]:
-            return 'straight_456', '4-5-6 (Straight)', self.PRIZE_TABLE['straight_456']
+            return 'straight_456', {straight}, self.PRIZE_TABLE['straight_456']
         
         # Check for any pair
         if len(set(dice)) == 2:
-            return 'pair', f'{dice_str} (Pair)', self.PRIZE_TABLE['pair']
+            return 'pair', f'{dice_str} {pair}', self.PRIZE_TABLE['pair']
         
         # No prize
-        return 'nothing', f'{dice_str} (No prize)', self.PRIZE_TABLE['nothing']
+        return 'nothing', f'{dice_str} {nothing}', self.PRIZE_TABLE['nothing']
     
     def calculate_prize(self, combination_type: str, pot_balance: int) -> int:
         """Calculate prize based on combination and current pot."""
@@ -128,7 +140,7 @@ class DiceGame:
             logger.error(f"❌ Error playing dice game: {e}")
             return {
                 'success': False,
-                'message': f"Error playing dice game: {str(e)}"
+                'message': f"Error while playing the dice game: {str(e)}"
             }
     
     def _format_result_message(self, dice: str, combination: str, prize: int, new_pot: int) -> str:
@@ -142,11 +154,11 @@ class DiceGame:
         message += f"{get_message('prize_title')} "
         
         if prize == 0:
-            message += get_message("sin_premio", combinacion=dice, apuesta=self.fixed_bet)
+            message += get_message("no_prize", combination=dice)
         elif "JACKPOT" in combination:
-            message += get_message("pot_won", premio=prize)
+            message += get_message("pot_won", prize=prize)
         else:
-            message += get_message("prize_multiplier", combinacion=combination, premio=prize)
+            message += get_message("prize_multiplier", combination=combination, prize=prize)
         
         message += f"\n{get_message('current_pot_title')} {new_pot:,} coins"
         
@@ -164,115 +176,95 @@ def get_dice_game_instance(fixed_bet: int = 1) -> DiceGame:
     return _game_instance
 
 
-def procesar_jugada(usuario_id: str, usuario_nombre: str, servidor_id: str, 
-                   servidor_nombre: str, bote_actual: int) -> Dict[str, any]:
-    """
-    Process a dice game play (legacy function name for compatibility).
-    
-    Args:
-        usuario_id: Player ID
-        usuario_nombre: Player name
-        servidor_id: Server ID
-        servidor_nombre: Server name
-        bote_actual: Current pot balance
-    
-    Returns:
-        Dictionary with game result
-    """
+def process_play(player_id: str, player_name: str, server_id: str,
+                 server_display_name: str, current_pot: int) -> Dict[str, Any]:
     try:
         # Get server config to determine fixed bet
         from .db_dice_game import get_dice_game_db_instance
         
-        server_name = get_server_name_by_id(servidor_id) or servidor_nombre
+        server_name = get_server_name_by_id(server_id) or server_display_name
         db_game = get_dice_game_db_instance(server_name)
         
         if db_game:
-            config = db_game.get_server_config(servidor_id)
-            fixed_bet = config.get('bet_fija', config.get('apuesta_fija', 1))
+            config = db_game.get_server_config(server_id)
+            fixed_bet = config.get('fixed_bet', 1)
         else:
             fixed_bet = 1
         
         # Play the game
         game = get_dice_game_instance(fixed_bet)
-        result = game.play_game(usuario_id, usuario_nombre, servidor_id, servidor_nombre, bote_actual)
+        result = game.play_game(player_id, player_name, server_id, server_display_name, current_pot)
         
         # Integrate with banker system for gold transactions
-        banker_success = True
         banker_message = ""
         
         try:
             # Import banker database
             from roles.banker.db_role_banker import get_banker_db_instance
-            server_name = get_server_name_by_id(servidor_id) or servidor_nombre
+            server_name = get_server_name_by_id(server_id) or server_display_name
             banker_db = get_banker_db_instance(server_name)
             
             if banker_db and result['success']:
                 # Deduct the bet amount from player's wallet
                 bet_deducted = banker_db.update_balance(
-                    usuario_id, usuario_nombre, servidor_id, servidor_nombre,
+                    player_id, player_name, server_id, server_display_name,
                     -result['bet'], "dice_game_bet", 
                     f"Dice game bet: {result['dice']}", 
                     "dice_game", "Dice Game System"
                 )
                 
                 if not bet_deducted:
-                    banker_success = False
-                    banker_message = "❌ Insufficient gold for bet!"
+                    banker_message = "❌ Not enough gold to place the bet."
                     result['success'] = False
                     result['message'] = banker_message
                 else:
                     # If player won, add the prize to their wallet
                     if result['prize'] > 0:
                         prize_added = banker_db.update_balance(
-                            usuario_id, usuario_nombre, servidor_id, servidor_nombre,
+                            player_id, player_name, server_id, server_display_name,
                             result['prize'], "dice_game_win", 
                             f"Dice game winnings: {result['combination']}", 
                             "dice_game", "Dice Game System"
                         )
                         
                         if not prize_added:
-                            banker_success = False
-                            banker_message = "⚠️ Won but couldn't add prize to wallet!"
+                            banker_message = "⚠️ You won, but the prize could not be added to the wallet."
                         else:
-                            banker_message = f"💰 Gold transactions completed!"
+                            banker_message = "💰 Gold transactions completed."
         except Exception as e:
             # If banker integration fails, still allow the game but warn
-            banker_success = False
             banker_message = f"⚠️ Banker integration failed: {str(e)}"
         
         # Register the game in database if available
         if db_game and result['success']:
             db_game.register_game(
-                usuario_id, usuario_nombre, servidor_id, servidor_nombre,
+                player_id, player_name, server_id, server_display_name,
                 result['bet'], result['dice'], result['combination'],
                 result['prize'], result['pot_before'], result['pot_after']
             )
         
-        # Format message for legacy compatibility
         if result['success']:
-            result['mensaje'] = result['message']
-            result['premio'] = result['prize']
             if banker_message:
-                result['mensaje'] += f"\n{banker_message}"
+                result['message'] += f"\n{banker_message}"
         
         return result
         
     except Exception as e:
-        logger.error(f"❌ Error processing dice game play: {e}")
+        logger.error(f"❌ Error processing dice game play request: {e}")
         return {
             'success': False,
-            'message': f"Error processing dice game: {str(e)}"
+            'message': f"Error processing the dice game: {str(e)}"
         }
 
 
 def get_server_name_by_id(server_id: str) -> Optional[str]:
     """Get server name by ID (helper function)."""
     try:
-        from discord_utils import get_server_name
+        from discord_bot.discord_utils import get_server_name
         # This would need to be implemented properly in discord_utils
         # For now, return None
         return None
-    except:
+    except Exception:
         return None
 
 
@@ -283,9 +275,7 @@ async def dice_game_task():
     try:
         # This would handle periodic dice game maintenance
         # For now, just log that the task ran
-        logger.info("🎲 Dice game task completed - Game is ready for players")
+        logger.info("🎲 Dice game task completed - the game is ready for players")
         
     except Exception as e:
         logger.error(f"🎲 Error in dice game task: {e}")
-    
-    logger.info("🎲 Dice game task completed")

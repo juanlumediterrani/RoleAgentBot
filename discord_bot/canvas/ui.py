@@ -1,5 +1,6 @@
 """Canvas Discord UI components."""
 
+from urllib3.connection import port_by_scheme
 from discord_bot import discord_core_commands as core
 
 os = core.os
@@ -8,7 +9,7 @@ discord = core.discord
 Path = core.Path
 AgentDatabase = core.AgentDatabase
 logger = core.logger
-PERSONALIDAD = core.PERSONALIDAD
+PERSONALITY = core.PERSONALITY
 think = core.think
 AGENT_CFG = core.AGENT_CFG
 is_admin = core.is_admin
@@ -24,8 +25,6 @@ set_role_enabled = core.set_role_enabled
 get_banker_db_instance = core.get_banker_db_instance
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
 get_watcher_messages = core.get_watcher_messages
-get_dice_game_db_instance = core.get_dice_game_db_instance
-DiceGame = core.DiceGame
 get_poe2_manager = core.get_poe2_manager
 get_beggar_db_instance = core.get_beggar_db_instance
 get_behaviors_db_instance = core.get_behaviors_db_instance
@@ -41,6 +40,16 @@ _taboo_state_by_guild_id = core._taboo_state_by_guild_id
 get_taboo_state = core.get_taboo_state
 update_taboo_state = core.update_taboo_state
 is_taboo_triggered = core.is_taboo_triggered
+
+try:
+    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
+except Exception:
+    get_dice_game_db_instance = None
+
+try:
+    from roles.trickster.subroles.dice_game.dice_game import DiceGame
+except Exception:
+    DiceGame = None
 
 from .content import (
     _build_canvas_behavior_action_view,
@@ -65,6 +74,7 @@ from .content import (
 from .state import (
     _build_mission_commentary_prompt,
     _get_canvas_dice_state,
+    _get_canvas_dice_ranking,
     _get_canvas_watcher_method_label,
     _get_enabled_roles,
 )
@@ -148,7 +158,22 @@ class CanvasRoleSelect(discord.ui.Select):
         if not content:
             await interaction.response.send_message("❌ This role is not available.", ephemeral=True)
             return
-        detail_view = CanvasRoleDetailView(view.author_id, role_name, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild)
+        
+        # Load current method for news watcher to preserve selection
+        watcher_selected_method = None
+        if role_name == "news_watcher":
+            watcher_selected_method = _get_canvas_watcher_method_label(str(interaction.guild.id)).lower()
+            watcher_selected_method = watcher_selected_method if watcher_selected_method != "unknown" else None
+        
+        detail_view = CanvasRoleDetailView(
+            view.author_id, 
+            role_name, 
+            view.agent_config, 
+            view.admin_visible, 
+            view.sections, 
+            guild=interaction.guild,
+            watcher_selected_method=watcher_selected_method
+        )
         role_embed = _build_canvas_role_embed(role_name, content, view.admin_visible, "overview", interaction.user, detail_view.auto_response_preview)
         await interaction.response.edit_message(content=None, embed=role_embed, view=detail_view)
         # Set the message reference for timeout deletion
@@ -212,7 +237,9 @@ class CanvasRoleDetailSelect(discord.ui.Select):
             sections=view.sections,
             current_detail=detail_name,
             guild=view.guild,
-            message=interaction.message  # Add message reference
+            message=interaction.message,  # Add message reference
+            watcher_selected_method=getattr(view, 'watcher_selected_method', None),
+            watcher_last_action=getattr(view, 'watcher_last_action', None)
         )
         detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, detail_name, None, next_view.auto_response_preview)
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
@@ -227,7 +254,14 @@ class CanvasWatcherMethodSelect(discord.ui.Select):
             discord.SelectOption(label="Method: Keyword", value="method_keyword", description="News filtered by keywords", emoji="🔍"),
             discord.SelectOption(label="Method: General", value="method_general", description="AI critical news analysis", emoji="🤖"),
         ]
-        super().__init__(placeholder="🔧 Select method...", options=options, min_values=1, max_values=1, row=0)
+        
+        # Set placeholder to show current selection
+        placeholder = "🔧 Select method..."
+        if view.watcher_selected_method:
+            method_display = view.watcher_selected_method.title()
+            placeholder = f"🔧 Method: {method_display} (selected)"
+        
+        super().__init__(placeholder=placeholder, options=options, min_values=1, max_values=1, row=0)
         self.canvas_view = view
 
     async def callback(self, interaction: discord.Interaction):
@@ -235,26 +269,18 @@ class CanvasWatcherMethodSelect(discord.ui.Select):
         self.canvas_view.watcher_selected_method = action_name.replace("method_", "")
         self.canvas_view.watcher_last_action = None
         self.canvas_view.auto_response_preview = _get_canvas_auto_response_preview(self.canvas_view.role_name, action_name)
+        
+        # Update the subscription dropdown options based on the selected method
         for child in self.canvas_view.children:
             if isinstance(child, CanvasWatcherSubscriptionSelect):
                 child.set_method(self.canvas_view.watcher_selected_method)
-        content = _build_canvas_role_news_watcher_detail(
-            self.canvas_view.current_detail,
-            self.canvas_view.admin_visible,
-            self.canvas_view.guild,
-            self.canvas_view.author_id,
-            selected_method=self.canvas_view.watcher_selected_method,
-            last_action=self.canvas_view.watcher_last_action,
-        )
-        embed = _build_canvas_role_embed(
-            self.canvas_view.role_name,
-            content or "",
-            self.canvas_view.admin_visible,
-            self.canvas_view.current_detail,
-            None,
-            self.canvas_view.auto_response_preview,
-        )
-        await interaction.response.edit_message(content=None, embed=embed, view=self.canvas_view)
+                break
+        
+        # Update the placeholder to reflect the selection
+        method_display = self.canvas_view.watcher_selected_method.title()
+        self.placeholder = f"🔧 Method: {method_display} (selected)"
+        
+        await _handle_canvas_watcher_action(interaction, action_name, self.canvas_view)
 
 
 class CanvasWatcherSubscriptionSelect(discord.ui.Select):
@@ -268,7 +294,7 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
         # Fixed options for listing categories and feeds
         options = [
             discord.SelectOption(label="Categories", value="list_categories", description="List available categories", emoji="📂"),
-            discord.SelectOption(label="Feeds", value="list_feeds", description="List available feeds", emoji="🔗"),
+            discord.SelectOption(label="Feeds by Category", value="list_feeds_by_category", description="List feeds from a specific category", emoji="🔗"),
         ]
         # Add method-specific options for subscription
         if method:
@@ -324,7 +350,27 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
                 None,
                 self.canvas_view.auto_response_preview,
             )
-            await interaction.response.edit_message(content=None, embed=embed, view=self.canvas_view)
+            
+            # Create a new view to preserve the method selection
+            next_view = CanvasRoleDetailView(
+                self.canvas_view.author_id,
+                self.canvas_view.role_name,
+                self.canvas_view.agent_config,
+                self.canvas_view.admin_visible,
+                self.canvas_view.sections,
+                self.canvas_view.current_detail,
+                self.canvas_view.guild,
+                interaction.message,
+                self.canvas_view.watcher_selected_method,
+                self.canvas_view.watcher_last_action,
+                getattr(self.canvas_view, 'watcher_selected_category', None)
+            )
+            next_view.auto_response_preview = self.canvas_view.auto_response_preview
+            
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        elif action_name == "list_feeds_by_category":
+            # Ask for category with modal
+            await interaction.response.send_modal(CanvasWatcherFeedsByCategoryModal(self.canvas_view))
 
 
 class CanvasWatcherAdminMethodSelect(discord.ui.Select):
@@ -336,7 +382,14 @@ class CanvasWatcherAdminMethodSelect(discord.ui.Select):
             discord.SelectOption(label="Method: Keyword", value="method_keyword", description="News filtered by keywords (server default)", emoji="🔍"),
             discord.SelectOption(label="Method: General", value="method_general", description="AI critical news analysis (server default)", emoji="🤖"),
         ]
-        super().__init__(placeholder="🔧 Set server method...", options=options, min_values=1, max_values=1, row=0)
+        
+        # Set placeholder to show current selection
+        placeholder = "🔧 Set server method..."
+        if view.watcher_selected_method:
+            method_display = view.watcher_selected_method.title()
+            placeholder = f"🔧 Server Method: {method_display} (selected)"
+        
+        super().__init__(placeholder=placeholder, options=options, min_values=1, max_values=1, row=0)
         self.canvas_view = view
 
     async def callback(self, interaction: discord.Interaction):
@@ -344,6 +397,13 @@ class CanvasWatcherAdminMethodSelect(discord.ui.Select):
         self.canvas_view.watcher_selected_method = action_name.replace("method_", "")
         self.canvas_view.watcher_last_action = None
         self.canvas_view.auto_response_preview = _get_canvas_auto_response_preview(self.canvas_view.role_name, action_name)
+        
+        # Update the action dropdown options based on the selected method
+        for child in self.canvas_view.children:
+            if isinstance(child, CanvasWatcherAdminActionSelect):
+                child.update_options_for_method(self.canvas_view.watcher_selected_method)
+                break
+        
         await _handle_canvas_watcher_action(interaction, action_name, self.canvas_view)
 
 
@@ -351,27 +411,101 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
     """Dynamic admin action dropdown for News Watcher."""
     
     def __init__(self, view: "CanvasRoleDetailView"):
-        options = [
-            # Fixed listing options at the top
-            discord.SelectOption(label="Categories", value="list_categories", description="List available categories", emoji="📂"),
-            discord.SelectOption(label="Feeds", value="list_feeds", description="List available feeds", emoji="🔗"),
-            # Channel management options
-            discord.SelectOption(label="Channel: Subscribe", value="channel_subscribe_categories", description="Add channel subscription", emoji="➕"),
-            discord.SelectOption(label="Channel: View Subs", value="channel_view_subscriptions", description="View current channel subs", emoji="📋"),
-            discord.SelectOption(label="Channel: Unsubscribe", value="channel_unsubscribe", description="Cancel channel sub by number", emoji="🗑️"),
-            # Server management options
-            discord.SelectOption(label="Server: Set Frequency", value="watcher_frequency", description="Set news check frequency", emoji="⏰"),
-            discord.SelectOption(label="Server: Force Run", value="watcher_run_now", description="Run news check immediately", emoji="▶️"),
+        # Base options that are always available
+        base_options = [
+            discord.SelectOption(label="Feeds by Category", value="list_feeds_by_category", description="List feeds from a specific category", emoji="🔗"),
+            discord.SelectOption(label="List categories", value="list_categories", description="List available categories", emoji="📂"),
         ]
+        
+        # Method-specific options
+        method_specific_options = []
+        selected_method = getattr(view, 'watcher_selected_method', None)
+        
+        if selected_method == "general":
+            method_specific_options = [
+                discord.SelectOption(label="Subscribe Category", value="channel_subscribe_category", description="Subscribe category <name> <optional feed> for channel", emoji="➕"),
+                discord.SelectOption(label="Unsubscribe Category", value="channel_unsubscribe_category", description="Unsubscribe category <name> <optional feed> for channel", emoji="🗑️"),
+                discord.SelectOption(label="List premises", value="list_premises", description="List premises for next subscription for channel", emoji="🤖"),
+                discord.SelectOption(label="Add premise", value="add_premise", description="Add new premise for channel", emoji="➕"),
+                discord.SelectOption(label="Delete premise", value="delete_premise", description="Delete premise <number> for current", emoji="🗑️"),
+            ]
+        elif selected_method == "keyword":
+            method_specific_options = [
+                discord.SelectOption(label="Subscribe Category", value="channel_subscribe_category", description="Subscribe category <name> <optional feed> for channel", emoji="➕"),
+                discord.SelectOption(label="Unsubscribe Category", value="channel_unsubscribe_category", description="Unsubscribe category <name> <optional feed> for channel", emoji="🗑️"),
+                discord.SelectOption(label="List keywords", value="list_keywords", description="List keywords for channel", emoji="🔍"),
+                discord.SelectOption(label="Add keywords", value="add_keywords", description="Add new keywords for channel", emoji="➕"),
+                discord.SelectOption(label="Delete keywords", value="delete_keywords", description="Delete keywords for channel", emoji="🗑️"),
+            ]
+        else:  # flat method or no method selected
+            method_specific_options = [
+                discord.SelectOption(label="Subscribe Category", value="channel_subscribe_category", description="Subscribe category <name> <optional feed> for channel", emoji="➕"),
+                discord.SelectOption(label="Unsubscribe Category", value="channel_unsubscribe_category", description="Unsubscribe category <name> <optional feed> for channel", emoji="🗑️"),
+            ]
+        
+        # Server management options (always available)
+        server_options = [
+            discord.SelectOption(label="Modify watcher task frequency", value="watcher_frequency", description="Set news check frequency", emoji="⏰"),
+            discord.SelectOption(label="Force watcher channel now", value="watcher_run_now", description="Run news check immediately", emoji="▶️"),
+            discord.SelectOption(label="Force personal subscriptions now", value="watcher_run_personal", description="Run personal subscriptions immediately", emoji="👤"),
+        ]
+        
+        # Combine all options
+        options = base_options + method_specific_options + server_options
+        
         super().__init__(placeholder="⚙️ Select admin action...", options=options, min_values=1, max_values=1, row=1)
         self.canvas_view = view
+
+    def update_options_for_method(self, method: str):
+        """Update dropdown options based on selected method."""
+        
+        # Base options that are always available
+        base_options = [
+            discord.SelectOption(label="List feeds", value="list_feeds", description="List available feeds", emoji="🔗"),
+            discord.SelectOption(label="List categories", value="list_categories", description="List available categories", emoji="📂"),
+        ]
+        
+        # Method-specific options
+        method_specific_options = []
+        
+        if method == "general":
+            method_specific_options = [
+                discord.SelectOption(label="Subscribe Category", value="channel_subscribe_category", description="Subscribe category <name> <optional feed> for channel", emoji="➕"),
+                discord.SelectOption(label="Unsubscribe Category", value="channel_unsubscribe_category", description="Unsubscribe category <name> <optional feed> for channel", emoji="🗑️"),
+                discord.SelectOption(label="List premises", value="list_premises", description="List premises for next subscription for channel", emoji="🤖"),
+                discord.SelectOption(label="Add premise", value="add_premise", description="Add new premise for channel", emoji="➕"),
+                discord.SelectOption(label="Delete premise", value="delete_premise", description="Delete premise <number> for current", emoji="🗑️"),
+            ]
+        elif method == "keyword":
+            method_specific_options = [
+                discord.SelectOption(label="Subscribe Category", value="channel_subscribe_category", description="Subscribe category <name> <optional feed> for channel", emoji="➕"),
+                discord.SelectOption(label="Unsubscribe Category", value="channel_unsubscribe_category", description="Unsubscribe category <name> <optional feed> for channel", emoji="🗑️"),
+                discord.SelectOption(label="List keywords", value="list_keywords", description="List keywords for channel", emoji="🔍"),
+                discord.SelectOption(label="Add keywords", value="add_keywords", description="Add new keywords for channel", emoji="➕"),
+                discord.SelectOption(label="Delete keywords", value="delete_keywords", description="Delete keywords for channel", emoji="🗑️"),
+            ]
+        else:  # flat method or no method selected
+            method_specific_options = [
+                discord.SelectOption(label="Subscribe Category", value="channel_subscribe_category", description="Subscribe category <name> <optional feed> for channel", emoji="➕"),
+                discord.SelectOption(label="Unsubscribe Category", value="channel_unsubscribe_category", description="Unsubscribe category <name> <optional feed> for channel", emoji="🗑️"),
+            ]
+        
+        # Server management options (always available)
+        server_options = [
+            discord.SelectOption(label="Modify watcher task frequency", value="watcher_frequency", description="Set news check frequency", emoji="⏰"),
+            discord.SelectOption(label="Force watcher channel now", value="watcher_run_now", description="Run news check immediately", emoji="▶️"),
+            discord.SelectOption(label="Force personal subscriptions now", value="watcher_run_personal", description="Run personal subscriptions immediately", emoji="👤"),
+        ]
+        
+        # Combine all options and update
+        self.options = base_options + method_specific_options + server_options
 
     async def callback(self, interaction: discord.Interaction):
         action_name = self.values[0]
         self.canvas_view.watcher_last_action = action_name
         
         # Handle listing actions by updating the view
-        if action_name in {"list_categories", "list_feeds"}:
+        if action_name in {"list_categories", "list_feeds", "list_premises", "list_keywords"}:
             content = _build_canvas_role_news_watcher_detail(
                 "admin",
                 self.canvas_view.admin_visible,
@@ -379,6 +513,7 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
                 self.canvas_view.author_id,
                 selected_method=self.canvas_view.watcher_selected_method,
                 last_action=action_name,
+                selected_category=getattr(self.canvas_view, 'watcher_selected_category', None)
             )
             embed = _build_canvas_role_embed(
                 self.canvas_view.role_name,
@@ -395,11 +530,26 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
                 await interaction.followup.edit_message(interaction.message.id, embed=embed, view=self.canvas_view)
             except discord.NotFound:
                 # Message was deleted, send a new one
-                await interaction.followup.send(embed=embed, view=self.canvas_view, ephemeral=True)
+                try:
+                    await interaction.followup.send(embed=embed, view=self.canvas_view, ephemeral=True)
+                except discord.NotFound:
+                    # Interaction completely expired, nothing we can do
+                    logger.warning("Canvas watcher admin interaction expired completely - unable to send followup")
+                except Exception as e:
+                    logger.exception(f"Failed to send canvas watcher admin followup: {e}")
             except Exception as e:
                 logger.exception(f"Failed to edit canvas watcher admin message: {e}")
-                await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+                try:
+                    await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+                except discord.NotFound:
+                    # Interaction expired, nothing we can do
+                    logger.warning("Canvas watcher admin interaction expired during error handling")
+                except Exception as followup_e:
+                    logger.exception(f"Failed to send error followup: {followup_e}")
             return
+        elif action_name == "list_feeds_by_category":
+            # Ask for category with modal
+            await interaction.response.send_modal(CanvasWatcherFeedsByCategoryModal(self.canvas_view))
         
         # Handle other actions through the main handler
         await _handle_canvas_watcher_action(interaction, action_name, self.canvas_view)
@@ -458,7 +608,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 return
             await _handle_canvas_dice_action(interaction, action_name, view)
             return
-        if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now"}:
+        if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now", "watcher_run_personal"}:
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This watcher option is admin-only.", ephemeral=True)
                 return
@@ -494,8 +644,6 @@ class CanvasRoleActionSelect(discord.ui.Select):
         next_view.auto_response_preview = view.auto_response_preview
         action_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, surface_name, None, next_view.auto_response_preview)
         await interaction.response.edit_message(content=None, embed=action_embed, view=next_view)
-
-
 
 
 class CanvasMCActionSelect(discord.ui.Select):
@@ -1417,7 +1565,13 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
             if not interaction.response.is_done():
                 await interaction.response.send_message("❌ Could not submit accusation.", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Could not submit accusation.", ephemeral=True)
+                try:
+                    await interaction.followup.send("❌ Could not submit accusation.", ephemeral=True)
+                except discord.NotFound:
+                    # Interaction expired, nothing we can do
+                    logger.warning("Canvas ring accuse interaction expired - unable to send error followup")
+                except Exception as followup_e:
+                    logger.exception(f"Failed to send canvas ring accuse error followup: {followup_e}")
         return
 
     if action_name == "beggar_donate":
@@ -1578,10 +1732,10 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
             sections=view.sections,
             current_detail=current_detail,
             guild=view.guild,
+            watcher_selected_method=view.watcher_selected_method,
+            watcher_last_action=view.watcher_last_action,
         )
         next_view.message = interaction.message
-        next_view.watcher_selected_method = view.watcher_selected_method
-        next_view.watcher_last_action = view.watcher_last_action
         next_view.auto_response_preview = f"Method set to `{method_name}`."
         action_embed = _build_canvas_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
         try:
@@ -1591,10 +1745,22 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
             await interaction.followup.edit_message(interaction.message.id, embed=action_embed, view=next_view)
         except discord.NotFound:
             # Message was deleted, send a new one
-            await interaction.followup.send(embed=action_embed, view=next_view, ephemeral=True)
+            try:
+                await interaction.followup.send(embed=action_embed, view=next_view, ephemeral=True)
+            except discord.NotFound:
+                # Interaction completely expired, nothing we can do
+                logger.warning("Canvas watcher interaction expired completely - unable to send followup")
+            except Exception as e:
+                logger.exception(f"Failed to send canvas watcher followup: {e}")
         except Exception as e:
             logger.exception(f"Failed to edit canvas watcher message: {e}")
-            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            try:
+                await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            except discord.NotFound:
+                # Interaction expired, nothing we can do
+                logger.warning("Canvas watcher interaction expired during error handling")
+            except Exception as followup_e:
+                logger.exception(f"Failed to send error followup: {followup_e}")
         return
 
     # Handle subscription actions
@@ -1619,6 +1785,30 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
         await interaction.response.send_modal(CanvasWatcherChannelUnsubscribeModal(view, interaction.client))
         return
 
+    if action_name == "channel_subscribe_category":
+        await interaction.response.send_modal(CanvasWatcherChannelSubscribeModal(action_name, view, interaction.client))
+        return
+
+    if action_name == "channel_unsubscribe_category":
+        await interaction.response.send_modal(CanvasWatcherChannelUnsubscribeModal(view, interaction.client))
+        return
+
+    if action_name == "delete_premise":
+        await interaction.response.send_modal(CanvasWatcherDeleteModal("delete_premises", view, interaction.client))
+        return
+
+    if action_name == "add_premise":
+        await interaction.response.send_modal(CanvasWatcherAddModal("add_premises", view, interaction.client))
+        return
+
+    if action_name == "add_keywords":
+        await interaction.response.send_modal(CanvasWatcherAddModal("add_keywords", view, interaction.client))
+        return
+
+    if action_name == "delete_keywords":
+        await interaction.response.send_modal(CanvasWatcherDeleteModal("delete_keywords", view, interaction.client))
+        return
+
     if action_name == "channel_view_subscriptions":
         view.watcher_last_action = action_name
         content = _build_canvas_role_news_watcher_detail(
@@ -1637,10 +1827,10 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
             sections=view.sections,
             current_detail="admin",
             guild=view.guild,
+            watcher_selected_method=view.watcher_selected_method,
+            watcher_last_action=view.watcher_last_action,
         )
         next_view.message = interaction.message
-        next_view.watcher_selected_method = view.watcher_selected_method
-        next_view.watcher_last_action = view.watcher_last_action
         action_embed = _build_canvas_role_embed("news_watcher", content or "", view.admin_visible, "admin", None)
         try:
             await interaction.response.edit_message(content=None, embed=action_embed, view=next_view)
@@ -1649,10 +1839,22 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
             await interaction.followup.edit_message(interaction.message.id, embed=action_embed, view=next_view)
         except discord.NotFound:
             # Message was deleted, send a new one
-            await interaction.followup.send(embed=action_embed, view=next_view, ephemeral=True)
+            try:
+                await interaction.followup.send(embed=action_embed, view=next_view, ephemeral=True)
+            except discord.NotFound:
+                # Interaction completely expired, nothing we can do
+                logger.warning("Canvas watcher interaction expired completely - unable to send followup")
+            except Exception as e:
+                logger.exception(f"Failed to send canvas watcher followup: {e}")
         except Exception as e:
             logger.exception(f"Failed to edit canvas watcher message: {e}")
-            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            try:
+                await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            except discord.NotFound:
+                # Interaction expired, nothing we can do
+                logger.warning("Canvas watcher interaction expired during error handling")
+            except Exception as followup_e:
+                logger.exception(f"Failed to send error followup: {followup_e}")
         return
 
     # Handle admin actions
@@ -1691,6 +1893,66 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
             last_action=view.watcher_last_action,
         )
         next_view = CanvasRoleDetailView(
+            view.author_id,
+            view.role_name,
+            view.agent_config,
+            view.admin_visible,
+            view.sections,
+            current_detail=current_detail,
+            guild=view.guild,
+            watcher_selected_method=view.watcher_selected_method,
+            watcher_last_action=view.watcher_last_action,
+        )
+        next_view.message = interaction.message
+        embed = _build_canvas_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
+        try:
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        except discord.InteractionResponded:
+            # If interaction was already responded to, use followup
+            try:
+                await interaction.followup.edit_message(interaction.message.id, embed=embed, view=next_view)
+            except (discord.NotFound, discord.HTTPException) as e:
+                logger.warning(f"Failed to edit message via followup for watcher_run_now: {e}")
+                return  # Silently fail - user can try again
+        except (discord.NotFound, discord.HTTPException) as e:
+            # Message was deleted or interaction expired
+            logger.warning(f"Interaction not found for watcher_run_now: {e}")
+            return  # Silently fail - user can try again
+        except Exception as e:
+            logger.exception(f"Unexpected error in canvas watcher_run_now interaction: {e}")
+            return  # Silently fail - user can try again
+        return
+
+    if action_name == "watcher_run_personal":
+        try:
+            from roles.news_watcher.news_watcher import process_subscriptions
+            from roles.news_watcher.global_news_db import get_global_news_db
+            from discord_bot.discord_http import DiscordHTTP
+            from agent_engine import get_discord_token
+
+            if not view.guild:
+                await interaction.response.send_message("❌ Guild context is required to run personal subscriptions.", ephemeral=True)
+                return
+            http = DiscordHTTP(get_discord_token())
+            global_db = get_global_news_db()
+            server_name = str(view.guild.id)
+            await process_subscriptions(http, server_name)
+        except Exception as e:
+            logger.exception(f"Canvas force personal subscriptions failed: {e}")
+            await interaction.response.send_message("❌ Could not run personal subscriptions now.", ephemeral=True)
+            return
+
+        current_detail = "admin" if view.current_detail == "admin" else "personal"
+        view.watcher_last_action = action_name
+        content = _build_canvas_role_news_watcher_detail(
+            current_detail,
+            view.admin_visible,
+            view.guild,
+            view.author_id,
+            selected_method=view.watcher_selected_method,
+            last_action=view.watcher_last_action,
+        )
+        next_view = CanvasRoleDetailView(
             author_id=view.author_id,
             role_name=view.role_name,
             agent_config=view.agent_config,
@@ -1698,27 +1960,26 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
             sections=view.sections,
             current_detail=current_detail,
             guild=view.guild,
+            watcher_selected_method=view.watcher_selected_method,
+            watcher_last_action=view.watcher_last_action,
         )
         next_view.message = interaction.message
-        next_view.watcher_selected_method = view.watcher_selected_method
-        next_view.watcher_last_action = view.watcher_last_action
-        next_view.auto_response_preview = "Watcher iteration completed."
-        action_embed = _build_canvas_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
+        embed = _build_canvas_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
         try:
-            await interaction.response.edit_message(content=None, embed=action_embed, view=next_view)
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
         except discord.InteractionResponded:
             # If interaction was already responded to, use followup
             try:
-                await interaction.followup.edit_message(interaction.message.id, embed=action_embed, view=next_view)
+                await interaction.followup.edit_message(interaction.message.id, embed=embed, view=next_view)
             except (discord.NotFound, discord.HTTPException) as e:
-                logger.warning(f"Failed to edit message via followup: {e}")
+                logger.warning(f"Failed to edit message via followup for watcher_run_personal: {e}")
                 return  # Silently fail - user can try again
         except (discord.NotFound, discord.HTTPException) as e:
             # Message was deleted or interaction expired
-            logger.warning(f"Interaction not found for watcher action: {e}")
+            logger.warning(f"Interaction not found for watcher_run_personal: {e}")
             return  # Silently fail - user can try again
         except Exception as e:
-            logger.exception(f"Unexpected error in canvas watcher interaction: {e}")
+            logger.exception(f"Unexpected error in canvas watcher_run_personal interaction: {e}")
             return  # Silently fail - user can try again
         return
     await interaction.response.send_message("❌ Unknown watcher action.", ephemeral=True)
@@ -1786,10 +2047,22 @@ async def _handle_canvas_trickster_action(interaction: discord.Interaction, acti
         await interaction.followup.edit_message(interaction.message.id, embed=action_embed, view=next_view)
     except discord.NotFound:
         # Message was deleted, send a new one
-        await interaction.followup.send(embed=action_embed, view=next_view, ephemeral=True)
+        try:
+            await interaction.followup.send(embed=action_embed, view=next_view, ephemeral=True)
+        except discord.NotFound:
+            # Interaction completely expired, nothing we can do
+            logger.warning("Canvas trickster interaction expired completely - unable to send followup")
+        except Exception as e:
+            logger.exception(f"Failed to send canvas trickster followup: {e}")
     except Exception as e:
         logger.exception(f"Failed to edit canvas trickster message: {e}")
-        await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+        try:
+            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+        except discord.NotFound:
+            # Interaction expired, nothing we can do
+            logger.warning("Canvas trickster interaction expired during error handling")
+        except Exception as followup_e:
+            logger.exception(f"Failed to send error followup: {followup_e}")
 
 
 async def _handle_canvas_dice_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
@@ -1804,19 +2077,19 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     
     # Get current dice state and personality messages
     dice_state = _get_canvas_dice_state(interaction.guild)
-    personality = _personality_answers.get("dice_game_messages", {})
-    balance_messages = _personality_answers.get("dice_game_balance_messages", {})
+    answers = _personality_answers.get("dice_game_messages", {})
+    descriptions = _personality_descriptions.get("dice_game_messages", {})
+    balance_messages = _personality_descriptions.get("dice_game_balance_messages", {})
     
     # Build the base content with personality title and pot balance
-    title = personality.get("invitation", "🎲 **DICE GAME** 🎲")
-    pot_title = balance_messages.get("current_pot_title", "💎 **CURRENT POT:**")
-    
+    title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
+    pot_title = balance_messages.get("current_balance", "💎 **CURRENT POT:**")
+    fixed_bet = balance_messages.get("fixed_bet", "💎 **FIXED BET:**")
     content_parts = [
         title,
-        f"{pot_title} {dice_state['pot_balance']:,} gold",
-        f"💰 **Fixed bet:** {dice_state['bet']:,} gold",
-        "",
-        "─" * 30,
+        f"{pot_title} **{dice_state['pot_balance']:,}** :coin: ",
+        f"{fixed_bet} {dice_state.get('bet', 1):,} :coin:",
+        "─" * 45,
         ""
     ]
     
@@ -1835,13 +2108,13 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
             
             # Check balance
             player_balance = db_banker.get_balance(player_id, server_id)
-            bet_amount = dice_state["bet"]
+            bet_amount = dice_state.get("bet", 1)  # Default to 1 if not set
             
             if player_balance < bet_amount:
-                insufficient_msg = personality.get("insufficient_balance", "❌ Insufficient balance!")
+                insufficient_msg = answers.get("insufficient_balance", "❌ Insufficient balance!")
                 content_parts.extend([
-                    "**🎲 DICE PLAY RESULT**",
-                    insufficient_msg.format(apuesta=bet_amount, saldo=player_balance),
+                    #"**🎲 DICE PLAY RESULT**",
+                    insufficient_msg.format(bet=bet_amount, balance=player_balance),
                     "",
                     f"Your balance: {player_balance:,} gold",
                     f"Required: {bet_amount:,} gold",
@@ -1861,25 +2134,27 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     # Format dice roll
                     dice_values = dice_str.split('-') if dice_str else []
                     dice_display = "🎲".join(dice_values)
-                    roll_title = personality.get("roll_title", "🎲 **YOUR ROLL:**")
-                    result_title = personality.get("combination_title", "📊 **RESULT:**")
-                    prize_title = personality.get("prize_title", "💰 **PRIZE:**")
-                    
+                    roll_title = descriptions.get("roll_title", "🎲 **YOUR ROLL:**")
+                    result_title = descriptions.get("combination_title", "📊 **RESULT:**")
+                    prize_title = descriptions.get("prize_title", "💰 **PRIZE:**")
                     content_parts.extend([
-                        "**🎲 DICE PLAY RESULT**",
-                        f"{roll_title} {dice_display}",
+                        #"**🎲 DICE PLAY RESULT**",
+                        f"{roll_title}\n 🎲**{dice_display}**",
                         f"{result_title} {combination}",
                         "",
                     ])
-                    
-                    if prize > 0:
-                        winner_msg = personality.get("winner", "🎉 **WINNER!!!**")
-                        content_parts.append(f"{prize_title} {prize:,} gold")
-                        content_parts.append(f"🎉 {winner_msg}")
+                    if prize == dice_state['pot_balance']:
+                        pot_winner_msg = answers.get("pot_won", "🎉 **POT WINNER!!!**")
+                        content_parts.append(f"{prize_title} **{prize:,}** :coin:")
+                        content_parts.append(f"\n{pot_winner_msg}\n")
+                    elif prize > 0:
+                        winner_msg = answers.get("winner", "🎉 **WINNER!!!**")
+                        content_parts.append(f"{prize_title} **{prize:,}** :coin:")
+                        content_parts.append(f"\n{winner_msg}\n")
                     else:
-                        loser_msg = personality.get("loser", "😢 **LOSER!**")
-                        content_parts.append(f"{prize_title} {prize:,} gold")
-                        content_parts.append(f"😢 {loser_msg}")
+                        loser_msg = answers.get("loser", "😢 **LOSER!**")
+                        content_parts.append(f"{prize_title} **{prize:,}** :coin:")
+                        content_parts.append(f"\n{loser_msg}\n")
                     
                     # Update balances in database (single transaction)
                     db_banker.update_balance(player_id, player_name, server_id, server_name, -bet_amount, "DICE_PLAY_BET", "Dice game bet")
@@ -1897,11 +2172,12 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     
                     content_parts.extend([
                         "",
+                        "─" * 45,
                         f"New balance: {db_banker.get_balance(player_id, server_id):,} gold",
                         f"New pot: {new_pot_balance:,} gold",
                     ])
                 else:
-                    error_msg = personality.get("error_jugada", "❌ **ERROR!**")
+                    error_msg = answers.get("error_jugada", "❌ **ERROR!**")
                     content_parts.extend([
                         "**🎲 DICE PLAY RESULT**",
                         error_msg.format(error="Game execution failed"),
@@ -1914,33 +2190,23 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
             ])
     
     elif action_name == "dice_ranking":
-        # Show ranking
+        # Show ranking using centralized function
+        
         try:
-            db_dice = get_dice_game_db_instance(server_key)
-            ranking = db_dice.get_player_ranking(server_id, "total_won", 10)
+            ranking_data = _get_canvas_dice_ranking(interaction.guild, 10)
             
-            content_parts.append("**🏆 DICE RANKING**")
-            
-            if ranking:
-                for position, record in enumerate(ranking, 1):
-                    # Parse tuple: (user_id, metric_value, total_plays, total_won, total_bet)
-                    user_id = record[0] if len(record) > 0 else ""
-                    total_won = record[3] if len(record) > 3 else 0
-                    total_plays = record[2] if len(record) > 2 else 0
-                    
-                    # Try to get user name
-                    try:
-                        member = interaction.guild.get_member(int(user_id))
-                        player_name = member.display_name if member else f"User {user_id}"
-                    except:
-                        player_name = f"User {user_id}"
-                    
-                    medal = "🥇" if position == 1 else "🥈" if position == 2 else "🥉" if position == 3 else "🏅"
+            rankingtitle = descriptions.get("ranking", "**🏆 DICE RANKING**")
+            content_parts.append(rankingtitle)
+            content_parts.append("─" * 45)
+            if ranking_data:
+                for player in ranking_data:
+                    medal = "🥇" if player["position"] == 1 else "🥈" if player["position"] == 2 else "🥉" if player["position"] == 3 else "🏅"
                     content_parts.append(
-                        f"{medal} **#{position}** {player_name} | Won: {total_won:,} | Games: {total_plays}"
+                        f"{medal} **#{player['position']}** {player['player_name']} | Won: {player['total_won']:,} | Games: {player['total_plays']}"
                     )
             else:
-                content_parts.append("📊 No ranked players yet. Be the first to play!")
+                rankingvoid = descriptions.get("rankingvoid", "📊 No ranked players yet. Be the first to play!")
+                content_parts.append(rankingvoid)
         except Exception as e:
             logger.exception(f"Canvas dice ranking failed: {e}")
             content_parts.extend([
@@ -1953,8 +2219,9 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         try:
             db_dice = get_dice_game_db_instance(server_key)
             history = db_dice.get_game_history(server_id, 10)
-            
-            content_parts.append("**📜 DICE HISTORY**")
+            historytitle = descriptions.get("history", "**📜 DICE HISTORY**")
+            content_parts.append(historytitle)
+            content_parts.append("─" * 45)
             
             if history:
                 for record in history:
@@ -1971,7 +2238,8 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                         f"👤 {user_name} | {dice_display} → {combination} | {prize_emoji} {prize:,}"
                     )
             else:
-                content_parts.append("📊 No recent games yet. Be the first to play!")
+                historyvoid = descriptions.get("historyvoid", "📊 Any play in the game. Be the first!")
+                content_parts.append(historyvoid)
         except Exception as e:
             logger.exception(f"Canvas dice history failed: {e}")
             content_parts.extend([
@@ -1981,7 +2249,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     
     elif action_name == "dice_help":
         # Show help
-        content_parts.extend([
+        helpmsgfallback = ([
             "**🎲 DICE GAME HELP**",
             "",
             "**How to play:**",
@@ -2000,9 +2268,11 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
             "• Regular combinations = Small prizes",
             "• No match = No prize (bet goes to pot)",
             "",
-            f"**Current bet:** {dice_state['bet']:,} gold",
+            f"**Current bet:** {dice_state.get('bet', 1):,} gold",
             f"**Current pot:** {dice_state['pot_balance']:,} gold",
         ])
+        helpmsg = descriptions.get("help", helpmsgfallback)
+        content_parts.append(helpmsg)
     
     # Rebuild the view with dynamic content
     content = "\n".join(content_parts)
@@ -2024,10 +2294,22 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         await interaction.followup.edit_message(interaction.message.id, embed=role_embed, view=next_view)
     except discord.NotFound:
         # Message was deleted, send a new one
-        await interaction.followup.send(embed=role_embed, view=next_view, ephemeral=True)
+        try:
+            await interaction.followup.send(embed=role_embed, view=next_view, ephemeral=True)
+        except discord.NotFound:
+            # Interaction completely expired, nothing we can do
+            logger.warning("Canvas dice interaction expired completely - unable to send followup")
+        except Exception as e:
+            logger.exception(f"Failed to send canvas dice followup: {e}")
     except Exception as e:
         logger.exception(f"Failed to edit canvas dice message: {e}")
-        await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+        try:
+            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+        except discord.NotFound:
+            # Interaction expired, nothing we can do
+            logger.warning("Canvas dice interaction expired during error handling")
+        except Exception as followup_e:
+            logger.exception(f"Failed to send error followup: {followup_e}")
 
 
 async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
@@ -2070,10 +2352,22 @@ async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction
             await interaction.followup.edit_message(interaction.message.id, embed=embed, view=next_view)
         except discord.NotFound:
             # Message was deleted, send a new one
-            await interaction.followup.send(embed=embed, view=next_view, ephemeral=True)
+            try:
+                await interaction.followup.send(embed=embed, view=next_view, ephemeral=True)
+            except discord.NotFound:
+                # Interaction completely expired, nothing we can do
+                logger.warning("Canvas treasure hunter interaction expired completely - unable to send followup")
+            except Exception as e:
+                logger.exception(f"Failed to send canvas treasure hunter followup: {e}")
         except Exception as e:
             logger.exception(f"Failed to edit canvas treasure hunter message: {e}")
-            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            try:
+                await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            except discord.NotFound:
+                # Interaction expired, nothing we can do
+                logger.warning("Canvas treasure hunter interaction expired during error handling")
+            except Exception as followup_e:
+                logger.exception(f"Failed to send error followup: {followup_e}")
         return
 
     if not view.admin_visible or not is_admin(interaction):
@@ -2107,10 +2401,22 @@ async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction
         await interaction.followup.edit_message(interaction.message.id, embed=embed, view=next_view)
     except discord.NotFound:
         # Message was deleted, send a new one
-        await interaction.followup.send(embed=embed, view=next_view, ephemeral=True)
+        try:
+            await interaction.followup.send(embed=embed, view=next_view, ephemeral=True)
+        except discord.NotFound:
+            # Interaction completely expired, nothing we can do
+            logger.warning("Canvas treasure hunter interaction expired completely - unable to send followup")
+        except Exception as e:
+            logger.exception(f"Failed to send canvas treasure hunter followup: {e}")
     except Exception as e:
         logger.exception(f"Failed to edit canvas treasure hunter message: {e}")
-        await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+        try:
+            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+        except discord.NotFound:
+            # Interaction expired, nothing we can do
+            logger.warning("Canvas treasure hunter interaction expired during error handling")
+        except Exception as followup_e:
+            logger.exception(f"Failed to send error followup: {followup_e}")
 
 
 async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
@@ -2232,10 +2538,22 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
             await interaction.followup.edit_message(interaction.message.id, embed=embed, view=view)
         except discord.NotFound:
             # Message was deleted, send a new one
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            try:
+                await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            except discord.NotFound:
+                # Interaction completely expired, nothing we can do
+                logger.warning("Canvas MC interaction expired completely - unable to send followup")
+            except Exception as e:
+                logger.exception(f"Failed to send canvas MC followup: {e}")
         except Exception as e:
             logger.exception(f"Failed to edit canvas MC message: {e}")
-            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            try:
+                await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            except discord.NotFound:
+                # Interaction expired, nothing we can do
+                logger.warning("Canvas MC interaction expired during error handling")
+            except Exception as followup_e:
+                logger.exception(f"Failed to send error followup: {followup_e}")
             
     except ImportError:
         await interaction.response.send_message("❌ MC commands are not available. Install yt-dlp and PyNaCl.", ephemeral=True)
@@ -2462,7 +2780,7 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
         
         self.category_input = discord.ui.TextInput(
             label="Category",
-            placeholder="Enter category (economy, technology, international, general, crypto)...",
+            placeholder="Enter category (economy, technology, gaming, international, general, crypto)...",
             style=discord.TextStyle.short,
             required=True,
             max_length=50
@@ -2491,12 +2809,25 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
                     self.author = author
                     self.guild = guild
                     
+            # Execute subscription command with return_result=True for canvas
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-            watcher_commands = WatcherCommands(self.bot)
+            
+            # Use guild-specific database for watcher commands
+            if interaction.guild:
+                from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                # Ensure database is properly initialized
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
             
             # Build command arguments
             method = (self.view.watcher_selected_method or "flat").strip().lower()
-            category = str(self.category_input.value).strip()
+            category = str(self.category_input.value).strip().lower()
             
             args = [method, category]
             
@@ -2505,38 +2836,90 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
             if feed_id:  # Only add if not empty
                 args.append(feed_id)
             
-            # Execute subscription command with return_result=True for canvas
-            if method == "general":
-                # Call directly with return_result=True to avoid extra messages
-                user_id = str(interaction.user.id)
-                feed_id_num = int(feed_id) if feed_id else None
-                success, result_msg = await watcher_commands._handle_general_subscribe(
-                    mock_message, user_id, category, feed_id_num, return_result=True
-                )
+            # Execute subscription command based on view type
+            if self.view.current_detail == "admin":
+                # Admin mode: create channel subscription
+                channel_id = str(interaction.channel.id)
+                channel_name = interaction.channel.name
+                server_id = str(interaction.guild.id)
+                server_name = interaction.guild.name
                 
-                if not success:
-                    result_msg = f"❌ {result_msg}"
-            else:
-                # For other methods, use the unified command (they don't send extra messages)
-                await watcher_commands.cmd_unified_subscribe(mock_message, args)
-                
-                method_titles = {
-                    "flat": "Flat Subscription (All News)",
-                    "keyword": "Keyword Subscription (Filtered)",
-                    "general": "General Subscription (AI Analysis)"
-                }
-                
-                result_msg = f"✅ {method_titles.get(method, 'Subscription')} created for {category}"
-                if feed_id:
-                    result_msg += f" (feed #{feed_id})"
+                # Use channel subscription method
+                if method == "general":
+                    # AI channel subscription
+                    try:
+                        db_watcher = get_news_watcher_db_instance(server_id)
+                        default_premises_list = db_watcher._get_default_premises()
+                        default_premises = ", ".join(default_premises_list)
+                    except Exception:
+                        default_premises = "interesting news, relevant events, important developments"
+                    
+                    # Validate and convert feed_id using the same validation function
+                    feed_id_num = None
+                    if feed_id:
+                        # Use the validation function to convert category-relative to absolute database ID
+                        feed_id_num = await watcher_commands._validate_category_and_feed(
+                            mock_message, category, [method, feed_id], db_watcher
+                        )
+                    
+                    if db_watcher.subscribe_channel_category_ai(
+                        channel_id, channel_name, server_id, server_name, category, feed_id_num, default_premises
+                    ):
+                        result_msg = f"✅ General channel subscription created for {category}"
+                        if feed_id:
+                            result_msg += f" (feed #{feed_id})"
+                    else:
+                        result_msg = "❌ Failed to create channel subscription"
                 else:
-                    result_msg += " (all feeds in category)"
+                    # For other methods, use channel subscription commands
+                    args = [category] + ([feed_id] if feed_id else [])
+                    await watcher_commands.cmd_channel_subscribe(mock_message, args)
+                    result_msg = f"✅ {method.title()} channel subscription created for {category}"
+                    if feed_id:
+                        result_msg += f" (feed #{feed_id})"
+            else:
+                # Personal mode: create user subscription
+                if method == "general":
+                    # Call directly with return_result=True to avoid extra messages
+                    user_id = str(interaction.user.id)
+                    
+                    # Validate and convert feed_id using the same validation function
+                    feed_id_num = None
+                    if feed_id:
+                        # Use the validation function to convert category-relative to absolute database ID
+                        feed_id_num = await watcher_commands._validate_category_and_feed(
+                            mock_message, category, [method, feed_id], db_instance
+                        )
+                    
+                    success, result_msg = await watcher_commands._handle_general_subscribe(
+                        mock_message, user_id, category, feed_id_num, return_result=True
+                    )
+                    
+                    if not success:
+                        result_msg = f"❌ {result_msg}"
+                else:
+                    # For other methods, use the unified command (they don't send extra messages)
+                    await watcher_commands.cmd_unified_subscribe(mock_message, args)
+                    
+                    method_titles = {
+                        "flat": "Flat Subscription (All News)",
+                        "keyword": "Keyword Subscription (Filtered)",
+                        "general": "General Subscription (AI Analysis)"
+                    }
+                    
+                    result_msg = f"✅ {method_titles.get(method, 'Subscription')} created for {category}"
+                    if feed_id:
+                        result_msg += f" (feed #{feed_id})"
+                    else:
+                        result_msg += " (all feeds in category)"
             
             # Try to respond, but handle expired interaction gracefully
             try:
                 self.view.watcher_last_action = self.action_name
+                # Maintain current detail instead of forcing "personal"
+                current_detail = self.view.current_detail
                 content = _build_canvas_role_news_watcher_detail(
-                    "personal",
+                    current_detail,
                     self.view.admin_visible,
                     self.view.guild,
                     self.view.author_id,
@@ -2549,13 +2932,15 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
                     agent_config=self.view.agent_config,
                     admin_visible=self.view.admin_visible,
                     sections=self.view.sections,
-                    current_detail="personal",
-                    guild=self.view.guild
+                    current_detail=current_detail,
+                    guild=self.view.guild,
+                    watcher_selected_method=self.view.watcher_selected_method,
+                    watcher_last_action=self.view.watcher_last_action
                 )
                 next_view.watcher_selected_method = self.view.watcher_selected_method
                 next_view.watcher_last_action = self.view.watcher_last_action
                 next_view.auto_response_preview = result_msg
-                embed = _build_canvas_role_embed("news_watcher", content or "", self.view.admin_visible, "personal", None, next_view.auto_response_preview)
+                embed = _build_canvas_role_embed("news_watcher", content or "", self.view.admin_visible, current_detail, None, next_view.auto_response_preview)
                 await interaction.response.edit_message(content=None, embed=embed, view=next_view)
             except discord.NotFound:
                 # Interaction expired - the action was successful, so just acknowledge silently
@@ -2609,17 +2994,34 @@ class CanvasWatcherAddModal(discord.ui.Modal):
                     self.guild = guild
                     
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-            watcher_commands = WatcherCommands(self.bot)
+            
+            # Use guild-specific database for watcher commands
+            if interaction.guild:
+                from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                # Ensure database is properly initialized
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
             
             content = str(self.content_input.value).strip()
             
+            is_admin_channel_view = self.view.current_detail in {"admin", "channel", "setup"}
+
             # Execute appropriate command
             if self.action_name == "add_keywords":
-                await watcher_commands.cmd_keywords_add(mock_message, [content])
-                result_msg = f"✅ Keywords added: {content}"
+                result_msg = await watcher_commands.cmd_keywords_add_canvas(mock_message, [content])
+                if isinstance(result_msg, str):
+                    result_msg = result_msg  # Use the returned message directly
             else:  # add_premises
-                await watcher_commands.cmd_premises_add(mock_message, [content])
-                result_msg = f"✅ Premise added: {content}"
+                # Premises always use user functions, even in admin view
+                result_msg = await watcher_commands.cmd_premises_add_canvas(mock_message, [content])
+                if isinstance(result_msg, str):
+                    result_msg = result_msg  # Use the returned message directly
             
             # Try to respond, but handle expired interaction gracefully
             try:
@@ -2639,7 +3041,9 @@ class CanvasWatcherAddModal(discord.ui.Modal):
                     admin_visible=self.view.admin_visible,
                     sections=self.view.sections,
                     current_detail=self.view.current_detail,
-                    guild=self.view.guild
+                    guild=self.view.guild,
+                    watcher_selected_method=self.view.watcher_selected_method,
+                    watcher_last_action=self.view.watcher_last_action
                 )
                 next_view.watcher_selected_method = self.view.watcher_selected_method
                 next_view.watcher_last_action = self.view.watcher_last_action
@@ -2698,17 +3102,34 @@ class CanvasWatcherDeleteModal(discord.ui.Modal):
                     self.guild = guild
                     
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-            watcher_commands = WatcherCommands(self.bot)
+            
+            # Use guild-specific database for watcher commands
+            if interaction.guild:
+                from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                # Ensure database is properly initialized
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
             
             content = str(self.content_input.value).strip()
             
+            is_admin_channel_view = self.view.current_detail in {"admin", "channel", "setup"}
+
             # Execute appropriate command
             if self.action_name == "delete_keywords":
-                await watcher_commands.cmd_keywords_del(mock_message, [content])
-                result_msg = f"✅ Keyword deleted: {content}"
+                result_msg = await watcher_commands.cmd_keywords_del(mock_message, [content])
+                if isinstance(result_msg, str):
+                    result_msg = f"✅ Keyword deleted: {content}"
             else:  # delete_premises
-                await watcher_commands.cmd_premises_del(mock_message, [content])
-                result_msg = f"✅ Premise #{content} deleted"
+                # Premises always use user functions, even in admin view
+                result_msg = await watcher_commands.cmd_premises_del_canvas(mock_message, [content])
+                if isinstance(result_msg, str):
+                    result_msg = result_msg  # Use the returned message directly
             
             # Try to respond, but handle expired interaction gracefully
             try:
@@ -2728,7 +3149,9 @@ class CanvasWatcherDeleteModal(discord.ui.Modal):
                     admin_visible=self.view.admin_visible,
                     sections=self.view.sections,
                     current_detail=self.view.current_detail,
-                    guild=self.view.guild
+                    guild=self.view.guild,
+                    watcher_selected_method=self.view.watcher_selected_method,
+                    watcher_last_action=self.view.watcher_last_action
                 )
                 next_view.watcher_selected_method = self.view.watcher_selected_method
                 next_view.watcher_last_action = self.view.watcher_last_action
@@ -2764,7 +3187,7 @@ class CanvasWatcherListModal(discord.ui.Modal):
         
         self.action_input = discord.ui.TextInput(
             label="Action",
-            placeholder="Enter: list (to view), add (to add), or del (to delete)",
+            placeholder="Enter: list, add, mod, or del",
             style=discord.TextStyle.short,
             required=True,
             max_length=10
@@ -2782,7 +3205,7 @@ class CanvasWatcherListModal(discord.ui.Modal):
         else:  # premises
             self.value_input = discord.ui.TextInput(
                 label="Premise Text",
-                placeholder="Enter premise text (for add/del)...",
+                placeholder="For mod use: <number> | <new premise text>",
                 style=discord.TextStyle.long,
                 required=False,
                 max_length=500
@@ -2801,12 +3224,26 @@ class CanvasWatcherListModal(discord.ui.Modal):
                     self.guild = guild
                     
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-            watcher_commands = WatcherCommands(self.bot)
+            
+            # Use guild-specific database for watcher commands
+            if interaction.guild:
+                from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                # Ensure database is properly initialized
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
             
             # Build command arguments
             action = str(self.action_input.value).strip().lower()
             value = str(self.value_input.value).strip() if self.value_input.value else ""
             
+            is_admin_channel_view = self.view.current_detail in {"admin", "channel", "setup"}
+
             if self.list_type == "keywords":
                 if action == "add" and value:
                     args = ["add"] + [kw.strip() for kw in value.split(",")]
@@ -2824,16 +3261,32 @@ class CanvasWatcherListModal(discord.ui.Modal):
                     
             else:  # premises
                 if action == "add" and value:
-                    args = ["add", value]
-                    await watcher_commands.cmd_premises_add(mock_message, args)
-                    result_msg = "✅ Premise added successfully"
+                    args = [value]
+                    # Premises always use user functions, even in admin view
+                    result_msg = await watcher_commands.cmd_premises_add_canvas(mock_message, args)
+                    if isinstance(result_msg, str):
+                        result_msg = result_msg  # Use the returned message directly
                 elif action == "list":
-                    await watcher_commands.cmd_premises_list(mock_message, [])
-                    result_msg = "📋 Premises list sent by DM"
+                    # Premises always use user functions, even in admin view
+                    result_msg = await watcher_commands.cmd_premises_list_canvas(mock_message, [])
+                    if isinstance(result_msg, str):
+                        result_msg = result_msg  # Use the returned message directly
                 elif action == "del" and value:
-                    args = ["del", value]
-                    await watcher_commands.cmd_premises_del(mock_message, args)
-                    result_msg = "🗑️ Premise deleted successfully"
+                    args = [value]
+                    # Premises always use user functions, even in admin view
+                    result_msg = await watcher_commands.cmd_premises_del_canvas(mock_message, args)
+                    if isinstance(result_msg, str):
+                        result_msg = result_msg  # Use the returned message directly
+                elif action == "mod" and value:
+                    if "|" not in value:
+                        result_msg = "❌ For mod use: <number> | <new premise text>"
+                    else:
+                        index_text, premise_text = value.split("|", 1)
+                        args = [index_text.strip(), premise_text.strip()]
+                        # Premises always use user functions, even in admin view
+                        result_msg = await watcher_commands.cmd_premises_mod_canvas(mock_message, args)
+                        if isinstance(result_msg, str):
+                            result_msg = result_msg
                 else:
                     result_msg = "❌ Invalid action or missing premise text"
             
@@ -2847,7 +3300,9 @@ class CanvasWatcherListModal(discord.ui.Modal):
                     admin_visible=self.view.admin_visible,
                     sections=self.view.sections,
                     current_detail="overview",
-                    guild=self.view.guild
+                    guild=self.view.guild,
+                    watcher_selected_method=self.view.watcher_selected_method,
+                    watcher_last_action=self.view.watcher_last_action
                 )
                 next_view.auto_response_preview = result_msg
                 embed = _build_canvas_role_embed("news_watcher", content or "", self.view.admin_visible, "overview", None, next_view.auto_response_preview)
@@ -2874,16 +3329,28 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
         title = "Channel Subscribe Categories" if action_name == "channel_subscribe_categories" else "Channel Subscribe Feeds"
         super().__init__(title=title, timeout=300)
 
-        self.category_input = discord.ui.TextInput(
-            label="Category",
-            placeholder="Enter category (economy, technology, international, general, crypto)...",
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=50,
-        )
-        self.add_item(self.category_input)
-
-        if action_name == "channel_subscribe_feeds":
+        # Add optional feed_id input for channel subscription (both singular and plural)
+        if action_name in {"channel_subscribe_categories", "channel_subscribe_category"}:
+            self.category_input = discord.ui.TextInput(
+                label="Category",
+                placeholder="Enter category (economy, technology, gaming, crypto)...",
+                style=discord.TextStyle.short,
+                required=True,
+                max_length=50
+            )
+            self.add_item(self.category_input)
+            
+            # Add helpful feed info in the label
+            self.feed_id_input = discord.ui.TextInput(
+                label="Feed IDs (Optional)",
+                placeholder="Enter feed number (1, 2, 3...)\nFeed 1 = First feed in category\nLeave empty for all feeds",
+                style=discord.TextStyle.paragraph,  # Use paragraph style for longer text
+                required=False,  # Make it optional
+                max_length=50,  # Increased for multiple IDs
+                default=""  # Empty by default
+            )
+            self.add_item(self.feed_id_input)
+        elif action_name == "channel_subscribe_feeds":
             self.feed_id_input = discord.ui.TextInput(
                 label="Feed ID",
                 placeholder="Enter specific feed ID number...",
@@ -2900,30 +3367,133 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                 return
 
             db = get_news_watcher_db_instance(str(interaction.guild.id))
+            # Ensure database is properly initialized
+            if not db.db_path.exists() or db.db_path.stat().st_size == 0:
+                db._init_db()
             method = (self.view.watcher_selected_method or "flat").strip().lower()
             category = str(self.category_input.value).strip().lower()
             feed_id = None
-            if self.action_name == "channel_subscribe_feeds":
-                feed_id = int(str(self.feed_id_input.value).strip())
+            
+            # Handle feed_ids for all channel subscription actions
+            feed_ids = []
+            if self.action_name in {"channel_subscribe_categories", "channel_subscribe_category", "channel_subscribe_feeds"}:
+                feed_ids_str = str(self.feed_id_input.value).strip()
+                if feed_ids_str:  # Only parse if not empty (optional for categories)
+                    try:
+                        # Parse multiple feed IDs separated by commas
+                        feed_ids = [int(id_str.strip()) for id_str in feed_ids_str.split(',') if id_str.strip()]
+                        if not feed_ids:
+                            await interaction.response.send_message("❌ No valid Feed IDs found", ephemeral=True)
+                            return
+                    except ValueError:
+                        await interaction.response.send_message("❌ Feed IDs must be numbers separated by commas", ephemeral=True)
+                        return
 
             channel_id = str(interaction.channel.id)
             channel_name = interaction.channel.name
             server_id = str(interaction.guild.id)
             server_name = interaction.guild.name
 
-            ok = False
-            if method == "flat":
-                ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_name, category, feed_id)
-            elif method == "general":
-                premises, _ = db.get_channel_premises_with_context(channel_id)
-                premises_str = ",".join(premises) if premises else ""
-                ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed_id, premises_str)
-            elif method == "keyword":
-                await interaction.response.send_message("❌ Channel keyword subscriptions are not available in Canvas yet.", ephemeral=True)
-                return
+            # Create subscriptions for each feed ID
+            successful_subscriptions = 0
+            failed_subscriptions = 0
+            
+            if feed_ids:
+                # Subscribe to specific feeds - use category-relative indexing
+                feeds = db.get_active_feeds(category)
+                for feed_id in feed_ids:
+                    if 1 <= feed_id <= len(feeds):
+                        # Get feed by relative index (1-based to 0-based)
+                        feed_data = feeds[feed_id - 1]
+                        # Extract the global feed ID from feed_data
+                        global_feed_id = feed_data[0]
+                        
+                        ok = False
+                        if method == "flat":
+                            ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_name, category, global_feed_id)
+                        elif method == "keyword":
+                            # For keyword method, we need to use the user's keywords
+                            # Get keywords from the user who is creating the subscription
+                            user_id = str(interaction.user.id)
+                            user_keywords = db.get_user_keywords(user_id)
+                            if user_keywords:
+                                ok = db.subscribe_keywords(user_id, user_keywords, channel_id, category, global_feed_id)
+                            else:
+                                # No keywords configured, fail the subscription
+                                ok = False
+                        elif method == "general":
+                            premises, _ = db.get_channel_premises_with_context(channel_id)
+                            premises_str = ",".join(premises) if premises else ""
+                            ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, global_feed_id, premises_str)
+                        
+                        if ok:
+                            successful_subscriptions += 1
+                        else:
+                            failed_subscriptions += 1
+                    else:
+                        failed_subscriptions += 1
+            else:
+                # Subscribe to all feeds in category (default behavior)
+                ok = False
+                if method == "flat":
+                    ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_name, category, None)
+                elif method == "keyword":
+                    # For keyword method, we need to use the user's keywords
+                    user_id = str(interaction.user.id)
+                    user_keywords = db.get_user_keywords(user_id)
+                    if user_keywords:
+                        ok = db.subscribe_keywords(user_id, user_keywords, channel_id, category, None)
+                    else:
+                        # No keywords configured, fail the subscription
+                        ok = False
+                elif method == "general":
+                    premises, _ = db.get_channel_premises_with_context(channel_id)
+                    premises_str = ",".join(premises) if premises else ""
+                    ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, None, premises_str)
+                
+                if ok:
+                    successful_subscriptions = 1
+                else:
+                    failed_subscriptions = 1
 
-            if not ok:
-                await interaction.response.send_message("❌ Could not create channel subscription.", ephemeral=True)
+            if failed_subscriptions > 0 and successful_subscriptions == 0:
+                # Provide helpful error message based on what failed
+                if feed_ids:
+                    if method == "keyword" and not db.get_user_keywords(str(interaction.user.id)):
+                        # Special error for keyword method with no keywords
+                        await interaction.response.send_message(
+                            "❌ Cannot create keyword subscription: **No keywords configured**.\n\n"
+                            "Please add keywords first using the 'Add Keywords' option in the Canvas UI.",
+                            ephemeral=True
+                        )
+                    else:
+                        feeds = db.get_active_feeds(category)
+                        # Build dynamic feed list for error message
+                        feed_list = []
+                        for i, feed in enumerate(feeds[:10]):  # Show up to 10 feeds
+                            feed_list.append(f"• Feed {i+1}: {feed[1]}")
+                        
+                        if len(feeds) > 10:
+                            feed_list.append(f"• ... and {len(feeds) - 10} more feeds")
+                        
+                        await interaction.response.send_message(
+                            f"❌ Could not create any channel subscriptions.\n\n"
+                            f"**Available {category.title()} feeds:**\n"
+                            + "\n".join(feed_list) +
+                            f"\n\n• Total: {len(feeds)} feeds available\n\n"
+                            f"**Try:** Use numbers 1-{len(feeds)} or leave empty for all {category} feeds.",
+                            ephemeral=True
+                        )
+                else:
+                    if method == "keyword" and not db.get_user_keywords(str(interaction.user.id)):
+                        # Special error for keyword method with no keywords
+                        await interaction.response.send_message(
+                            "❌ Cannot create keyword subscription: **No keywords configured**.\n\n"
+                            "Please add keywords first using the 'Add Keywords' option in the Canvas UI.",
+                            ephemeral=True
+                        )
+                    else:
+                        await interaction.response.send_message("❌ Could not create channel subscription. Please try again.", ephemeral=True)
                 return
 
             self.view.watcher_last_action = self.action_name
@@ -2943,11 +3513,27 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                 sections=self.view.sections,
                 current_detail="admin",
                 guild=self.view.guild,
+                watcher_selected_method=self.view.watcher_selected_method,
+                watcher_last_action=self.view.watcher_last_action
             )
             feed_suffix = f" (feed #{feed_id})" if feed_id is not None else ""
+            
+            # Create appropriate success message
+            if feed_ids:
+                if successful_subscriptions == len(feed_ids):
+                    if successful_subscriptions == 1:
+                        feed_list = f"feed #{feed_ids[0]}"
+                    else:
+                        feed_list = f"feeds {', '.join(map(str, feed_ids))}"
+                    success_msg = f"✅ {method.title()} channel subscription created for `{category}` ({feed_list})."
+                else:
+                    success_msg = f"⚠️ {method.title()} channel subscription partially created for `{category}`. {successful_subscriptions}/{len(feed_ids)} feeds successful."
+            else:
+                success_msg = f"✅ {method.title()} channel subscription created for `{category}` (all feeds)."
+            
             next_view.watcher_selected_method = self.view.watcher_selected_method
             next_view.watcher_last_action = self.view.watcher_last_action
-            next_view.auto_response_preview = f"✅ {method.title()} channel subscription created for `{category}`{feed_suffix}."
+            next_view.auto_response_preview = success_msg
             embed = _build_canvas_role_embed("news_watcher", content or "", self.view.admin_visible, "admin", None, next_view.auto_response_preview)
             await interaction.response.edit_message(content=None, embed=embed, view=next_view)
         except ValueError:
@@ -2997,6 +3583,32 @@ class CanvasWatcherChannelUnsubscribeModal(discord.ui.Modal):
                 logger.warning("Could not cancel channel subscription")
                 return
 
+            # Handle listing actions by updating the view
+            if self.view.watcher_last_action in {"list_categories", "list_feeds", "list_keywords", "list_premises"}:
+                content = _build_canvas_role_news_watcher_detail(
+                    self.view.current_detail,
+                    self.view.admin_visible,
+                    self.view.guild,
+                    self.view.author_id,
+                    selected_method=self.view.watcher_selected_method,
+                    last_action=self.view.watcher_last_action,
+                )
+                next_view = CanvasRoleDetailView(
+                    author_id=self.view.author_id,
+                    role_name=self.view.role_name,
+                    agent_config=self.view.agent_config,
+                    admin_visible=self.view.admin_visible,
+                    sections=self.view.sections,
+                    current_detail=self.view.current_detail,
+                    guild=self.view.guild,
+                    watcher_selected_method=self.view.watcher_selected_method,
+                    watcher_last_action=self.view.watcher_last_action
+                )
+                embed = _build_canvas_role_embed("news_watcher", content or "", self.view.admin_visible, self.view.current_detail, None, next_view.auto_response_preview)
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            elif self.view.watcher_last_action == "list_feeds_by_category":
+                # Ask for category with modal
+                await interaction.response.send_modal(CanvasWatcherFeedsByCategoryModal(self.view))
             self.view.watcher_last_action = "channel_unsubscribe"
             content = _build_canvas_role_news_watcher_detail(
                 "admin",
@@ -3056,7 +3668,19 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
                     self.guild = guild
                     
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-            watcher_commands = WatcherCommands(self.bot)
+            
+            # Use guild-specific database for watcher commands
+            if interaction.guild:
+                from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                # Ensure database is properly initialized
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
             
             # Build command arguments
             hours = str(self.hours_input.value).strip()
@@ -3086,7 +3710,9 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
                     admin_visible=self.view.admin_visible,
                     sections=self.view.sections,
                     current_detail=current_detail,
-                    guild=self.view.guild
+                    guild=self.view.guild,
+                    watcher_selected_method=self.view.watcher_selected_method,
+                    watcher_last_action=self.view.watcher_last_action
                 )
                 next_view.watcher_selected_method = self.view.watcher_selected_method
                 next_view.watcher_last_action = self.view.watcher_last_action
@@ -3109,7 +3735,8 @@ class CanvasRoleDetailView(discord.ui.View):
     """Interactive navigation for role-specific details."""
 
     def __init__(self, author_id: int, role_name: str, agent_config: dict, admin_visible: bool,
-                 sections: dict[str, str], current_detail: str = "overview", guild=None, message=None):
+                 sections: dict[str, str], current_detail: str = "overview", guild=None, message=None,
+                 watcher_selected_method: str = None, watcher_last_action: str = None, watcher_selected_category: str = None):
         super().__init__(timeout=600)
         self.author_id = author_id
         self.role_name = role_name
@@ -3121,8 +3748,9 @@ class CanvasRoleDetailView(discord.ui.View):
         self.message = message  # Store the message to delete it later
         
         # Dynamic state for News Watcher
-        self.watcher_selected_method = None  # Will store "flat", "keyword", or "general"
-        self.watcher_last_action = None  # Track last action for dynamic updates
+        self.watcher_selected_method = watcher_selected_method  # Will store "flat", "keyword", or "general"
+        self.watcher_last_action = watcher_last_action  # Track last action for dynamic updates
+        self.watcher_selected_category = watcher_selected_category  # Store selected category for feeds display
         self.auto_response_preview = None
         
         role_details = _get_canvas_role_detail_items(role_name, admin_visible, current_detail)
@@ -3431,12 +4059,55 @@ class CanvasRoleDetailView(discord.ui.View):
                 "- Normal frequency resumes after completion",
                 "- Safe to use occasionally, not continuously",
             ])
+        elif action_name == "watcher_run_personal":
+            return "\n".join([
+                "**👤 Force Personal Subscriptions**",
+                "",
+                "Selected: Run Personal Subscriptions Immediately",
+                "",
+                "**Personal Subscription Processing**",
+                "- Processes all user personal subscriptions",
+                "- Handles flat, keyword, and AI subscription methods",
+                "- Sends notifications directly to users via DMs",
+                "- Bypasses normal frequency schedule for personal subs",
+                "",
+                "**When to Use Personal Force Run**",
+                "- **Testing**: Verify personal subscriptions are working",
+                "- **New setup**: After users configure their subscriptions",
+                "- **Debugging**: Troubleshoot personal notification issues",
+                "- **Immediate results**: Users want news without waiting",
+                "",
+                "**Process**",
+                "- Checks all active personal subscriptions",
+                "- Processes news through each user's preferred method",
+                "- Delivers notifications via user DMs",
+                "- Updates personal subscription timestamps",
+                "",
+                "**User Impact**",
+                "- Only affects personal subscriptions (not channels)",
+                "- Users receive notifications in their DMs",
+                "- No channel spam or public notifications",
+                "- Respects each user's subscription preferences",
+                "",
+                "**Admin Benefits**",
+                "- Helps users verify their setup works",
+                "- Provides immediate feedback for troubleshooting",
+                "- No disruption to channel subscriptions",
+                "- Safe to use anytime for user support",
+                "",
+                "**Resource Usage**",
+                "- Moderate server activity increase",
+                "- Proportional to number of personal subscriptions",
+                "- Normal frequency resumes after completion",
+                "- Safe to use regularly for user support",
+            ])
         else:
             return "\n".join([
                 "**Admin Interactive Selection**",
                 "- Use the dropdowns below to manage channel settings",
                 "- Frequency control: Set how often watcher checks for news",
-                "- Force run: Trigger immediate news check",
+                "- Force run: Trigger immediate news check for channels",
+                "- Force personal: Run personal subscriptions for users",
                 "- This block will update based on your selections",
                 "",
                 "**Channel Management**",
@@ -3621,7 +4292,7 @@ def _get_enabled_roles(agent_config: dict) -> list[str]:
 
 def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
     prompts: list[str] = []
-    role_prompts_cfg = PERSONALIDAD.get("role_system_prompts", {})
+    role_prompts_cfg = PERSONALITY.get("role_system_prompts", {})
 
     for role_name in role_names:
         try:
@@ -3682,7 +4353,7 @@ def _build_mission_commentary_prompt(agent_config: dict, server_name: str = "def
         memories_section = "MEMORIAS: No disponibles temporalmente.\n\n"
 
     # Try to load custom prompt from personality JSON, fallback to default
-    custom_cfg = PERSONALIDAD.get("prompts", {}).get("mission_commentary", {})
+    custom_cfg = PERSONALITY.get("prompts", {}).get("mission_commentary", {})
     if custom_cfg and isinstance(custom_cfg, dict):
         instructions = custom_cfg.get("instructions", [])
         closing = custom_cfg.get("closing", "")
@@ -3710,6 +4381,73 @@ def _build_mission_commentary_prompt(agent_config: dict, server_name: str = "def
         "**FINAL INSTRUCTION:** Now produce your commentary on the active missions, incorporating relevant memories if you have them."
         f"{closing_section}"
     )
+
+
+class CanvasWatcherFeedsByCategoryModal(discord.ui.Modal):
+    """Modal to ask for category to list feeds."""
+    
+    def __init__(self, view: "CanvasRoleDetailView"):
+        super().__init__(title="List Feeds by Category")
+        self.view = view
+        
+        self.category_input = discord.ui.TextInput(
+            label="Category",
+            placeholder="Enter category (economy, technology, gaming, crypto, international, general, patch_notes)...",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=50
+        )
+        self.add_item(self.category_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            category = str(self.category_input.value).strip().lower()
+            
+            # Validate category exists
+            if get_news_watcher_db_instance is None or not interaction.guild:
+                await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
+                return
+            
+            db = get_news_watcher_db_instance(str(interaction.guild.id))
+            feeds = db.get_active_feeds(category)
+            
+            if not feeds:
+                await interaction.response.send_message(f"❌ No feeds found for category '{category}'. Available categories: economy, technology, gaming, crypto, international, general, patch_notes", ephemeral=True)
+                return
+            
+            # Update view to show feeds for this category
+            self.view.watcher_last_action = "list_feeds_by_category"
+            self.view.watcher_selected_category = category  # Store category for display
+            
+            content = _build_canvas_role_news_watcher_detail(
+                self.view.current_detail,
+                self.view.admin_visible,
+                self.view.guild,
+                self.view.author_id,
+                selected_method=self.view.watcher_selected_method,
+                last_action="list_feeds_by_category",
+                selected_category=category
+            )
+            
+            next_view = CanvasRoleDetailView(
+                author_id=self.view.author_id,
+                role_name=self.view.role_name,
+                agent_config=self.view.agent_config,
+                admin_visible=self.view.admin_visible,
+                sections=self.view.sections,
+                current_detail=self.view.current_detail,
+                guild=self.view.guild,
+                watcher_selected_method=self.view.watcher_selected_method,
+                watcher_last_action="list_feeds_by_category",
+                watcher_selected_category=category
+            )
+            
+            embed = _build_canvas_role_embed("news_watcher", content or "", self.view.admin_visible, self.view.current_detail, None, next_view.auto_response_preview)
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            
+        except Exception as e:
+            logger.exception(f"Error in feeds by category modal: {e}")
+            await interaction.response.send_message("❌ Error listing feeds. Please try again.", ephemeral=True)
 
 
 

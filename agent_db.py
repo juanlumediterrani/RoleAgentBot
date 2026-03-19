@@ -178,8 +178,8 @@ def get_personality_name():
     
     # Then try from agent_engine
     try:
-        from agent_engine import PERSONALIDAD
-        return PERSONALIDAD.get("name", "agent").lower()
+        from agent_engine import PERSONALITY
+        return PERSONALITY.get("name", "agent").lower()
     except:
         return "agent"
 
@@ -308,23 +308,71 @@ class AgentDatabase:
                     )
                 ''')
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS notable_memories (
+                    CREATE TABLE IF NOT EXISTS notable_recollections (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         server_name TEXT NOT NULL,
                         memory_date TEXT NOT NULL,
-                        memory_text TEXT NOT NULL,
+                        recollection_text TEXT NOT NULL,
                         source_paragraph TEXT,
-                        extracted_at DATETIME NOT NULL,
+                        extracted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         used_count INTEGER DEFAULT 0,
                         last_used_at DATETIME
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_memories_server ON notable_memories (server_name)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_memories_date ON notable_memories (memory_date)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_recollections_server ON notable_recollections (server_name)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_recollections_date ON notable_recollections (memory_date)')
                 conn.commit()
+                
+                # Initialize notable recollections if empty
+                self._initialize_notable_recollections()
+                
                 logger.info(f"✅ Database ready at {self.db_path}")
         except Exception as e:
             logger.exception(f"❌ [DB] Error in initialization: {e}")
+
+    def _initialize_notable_recollections(self):
+        """Initialize notable recollections from personality JSON if table is empty."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                
+                # Check if recollections table is empty
+                cursor.execute(f'''
+                    SELECT COUNT(*) FROM notable_recollections
+                    WHERE server_name = ?
+                ''', (self.server_name,))
+                count = cursor.fetchone()[0]
+                
+                if count == 0:
+                    # Get initial recollections from personality
+                    try:
+                        from agent_mind import _engine
+                        engine = _engine()
+                        personality = engine.PERSONALITY
+                        initial_recollections = personality.get("initial_recollections", [])
+                    except Exception as e:
+                        logger.warning(f"⚠️ [DB] Could not load personality for initial recollections: {e}")
+                        initial_recollections = []
+                    
+                    if initial_recollections:
+                        extracted_at = datetime.datetime.now().isoformat()
+                        for recollection_text in initial_recollections:
+                            cursor.execute('''
+                                INSERT INTO notable_recollections
+                                (server_name, memory_date, recollection_text, source_paragraph, extracted_at)
+                                VALUES (?, ?, ?, ?, ?)
+                            ''', (self.server_name, date.today().isoformat(), recollection_text, 
+                                  "Initial recollection from personality JSON", extracted_at))
+                        
+                        conn.commit()
+                        logger.info(f"🧠 [DB] Initialized {len(initial_recollections)} notable recollections from personality JSON")
+                    else:
+                        logger.info(f"🧠 [DB] No initial recollections found in personality JSON")
+                
+                conn.close()
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error initializing notable recollections: {e}")
 
     def registrar_interaccion(self, usuario_id, usuario_nombre, tipo_interaccion, contexto, canal_id=None, servidor_id=None, metadata=None):
         fecha = datetime.datetime.now().isoformat()
@@ -350,13 +398,13 @@ class AgentDatabase:
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ''', params)
                     conn.commit()
-                    logger.info(f"✅ Registrada interaccion: usuario_id={usuario_id}, tipo={tipo_interaccion}, canal_id={canal_id}")
+                    logger.info(f"✅ Interaction registered: user_id={usuario_id}, type={tipo_interaccion}, channel_id={canal_id}")
                     return True
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error al registrar (usuario_id={usuario_id}, tipo={tipo_interaccion}): {e}")
+            logger.exception(f"⚠️ [DB] Error registering interaction (user_id={usuario_id}, type={tipo_interaccion}): {e}")
             return False
 
-    def obtener_historial_usuario(self, usuario_id, limite=HISTORIAL_LIMITE):
+    def get_user_history(self, usuario_id, limite=HISTORIAL_LIMITE):
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
@@ -380,7 +428,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving history: {e}")
             return []
 
-    def obtener_historial_usuario_reciente(self, usuario_id, minutos=3):
+    def get_recent_user_history(self, usuario_id, minutos=3):
         """Get history from the last N minutes for temporal context."""
         fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=minutos)).isoformat()
         try:
@@ -428,7 +476,7 @@ class AgentDatabase:
                     meta = json.loads(row['metadata']) if row['metadata'] else {}
                     dialogue.append({
                         "humano": row['contexto'] or "",
-                        "bot": meta.get('respuesta', '') or "",
+                        "bot": meta.get('response', '') or "",
                         "fecha": row['fecha'],
                     })
                 return dialogue
@@ -455,6 +503,37 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving daily memory: {e}")
             return ""
 
+    def get_last_interaction(self, usuario_id):
+        """Get the last interaction for a user to check if bot or human spoke last."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT contexto, metadata, fecha, tipo_interaccion
+                    FROM interacciones
+                    WHERE usuario_id = ?
+                    ORDER BY fecha DESC
+                    LIMIT 1
+                ''', (str(usuario_id),))
+
+                row = cursor.fetchone()
+                conn.close()
+                
+                if row:
+                    meta = json.loads(row['metadata']) if row['metadata'] else {}
+                    return {
+                        "context": row['contexto'] or "",
+                        "bot_response": meta.get('response', '') or meta.get('greeting', '') or meta.get('respuesta', '') or meta.get('saludo', ''),
+                        "type": row['tipo_interaccion'],
+                        "date": row['fecha']
+                    }
+                return None
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving last interaction: {e}")
+            return None
+
     def get_daily_memory_record(self, memory_date=None):
         """Return the stored daily memory row for the current server."""
         target_date = memory_date or date.today().isoformat()
@@ -470,15 +549,7 @@ class AgentDatabase:
                 ''', (target_date, self.server_name))
                 row = cursor.fetchone()
                 conn.close()
-                if not row:
-                    return None
-                metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                return {
-                    "memory_date": row["memory_date"],
-                    "summary": row["summary"] or "",
-                    "metadata": metadata,
-                    "updated_at": row["updated_at"],
-                }
+                return dict(row) if row else None
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving daily memory record: {e}")
             return None
@@ -537,7 +608,7 @@ class AgentDatabase:
                         "usuario_nombre": row["usuario_nombre"] or "",
                         "tipo_interaccion": row["tipo_interaccion"] or "",
                         "contexto": row["contexto"] or "",
-                        "respuesta": metadata.get("respuesta", "") or metadata.get("saludo", "") or "",
+                        "respuesta": metadata.get("response", "") or metadata.get("respuesta", "") or metadata.get("greeting", "") or metadata.get("saludo", ""),
                         "fecha": row["fecha"],
                     })
                 return interactions
@@ -580,7 +651,7 @@ class AgentDatabase:
                         "usuario_nombre": row["usuario_nombre"] or "",
                         "tipo_interaccion": row["tipo_interaccion"] or "",
                         "contexto": row["contexto"] or "",
-                        "respuesta": metadata.get("respuesta", "") or metadata.get("saludo", "") or "",
+                        "respuesta": metadata.get("response", "") or metadata.get("respuesta", "") or metadata.get("greeting", "") or metadata.get("saludo", ""),
                         "fecha": row["fecha"],
                     })
                 return interactions
@@ -846,7 +917,7 @@ class AgentDatabase:
                     metadata = json.loads(row["metadata"]) if row["metadata"] else {}
                     interactions.append({
                         "humano": row["contexto"] or "",
-                        "bot": metadata.get("respuesta", "") or metadata.get("saludo", "") or "",
+                        "bot": metadata.get("response", "") or metadata.get("greeting", "") or metadata.get("respuesta", "") or metadata.get("saludo", "") or "",
                         "fecha": row["fecha"],
                         "tipo_interaccion": row["tipo_interaccion"] or "",
                         "usuario_nombre": row["usuario_nombre"] or "",
@@ -1039,8 +1110,8 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error verificando interacciones recientes: {e}")
             return False
 
-    def add_notable_memory(self, memory_text: str, memory_date: str = None, source_paragraph: str = None) -> int:
-        """Add a new notable memory extracted from daily synthesis."""
+    def add_notable_recollection(self, recollection_text: str, memory_date: str = None, source_paragraph: str = None) -> int:
+        """Add a new notable recollection extracted from daily synthesis."""
         target_date = memory_date or date.today().isoformat()
         extracted_at = datetime.datetime.now().isoformat()
         try:
@@ -1048,29 +1119,29 @@ class AgentDatabase:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 cursor.execute('''
-                    INSERT INTO notable_memories
-                    (server_name, memory_date, memory_text, source_paragraph, extracted_at)
+                    INSERT INTO notable_recollections
+                    (server_name, memory_date, recollection_text, source_paragraph, extracted_at)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (self.server_name, target_date, memory_text, source_paragraph, extracted_at))
-                memory_id = cursor.lastrowid
+                ''', (self.server_name, target_date, recollection_text, source_paragraph, extracted_at))
+                recollection_id = cursor.lastrowid
                 conn.commit()
                 conn.close()
-                logger.info(f"🧠 [MEMORY] Added notable memory id={memory_id} for server={self.server_name}")
-                return memory_id
+                logger.info(f"🧠 [MEMORY] Added notable recollection id={recollection_id} for server={self.server_name}")
+                return recollection_id
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error adding notable memory: {e}")
+            logger.exception(f"⚠️ [DB] Error adding notable recollection: {e}")
             return 0
 
-    def get_random_notable_memory(self) -> dict | None:
-        """Get a random notable memory for injection into synthesis."""
+    def get_random_notable_recollection(self) -> dict | None:
+        """Get a random notable recollection for injection into synthesis."""
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT id, memory_text, memory_date, used_count
-                    FROM notable_memories
+                    SELECT id, recollection_text, memory_date, used_count
+                    FROM notable_recollections
                     WHERE server_name = ?
                     ORDER BY RANDOM()
                     LIMIT 1
@@ -1080,55 +1151,55 @@ class AgentDatabase:
                 if row:
                     return {
                         "id": row["id"],
-                        "memory_text": row["memory_text"],
+                        "recollection_text": row["recollection_text"],
                         "memory_date": row["memory_date"],
                         "used_count": row["used_count"],
                     }
                 return None
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving random notable memory: {e}")
+            logger.exception(f"⚠️ [DB] Error retrieving random notable recollection: {e}")
             return None
 
-    def increment_memory_usage(self, memory_id: int) -> bool:
-        """Increment the usage counter for a memory when it's injected."""
+    def increment_recollection_usage(self, recollection_id: int) -> bool:
+        """Increment the usage counter for a recollection when it's injected."""
         used_at = datetime.datetime.now().isoformat()
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 cursor.execute('''
-                    UPDATE notable_memories
+                    UPDATE notable_recollections
                     SET used_count = used_count + 1,
                         last_used_at = ?
                     WHERE id = ? AND server_name = ?
-                ''', (used_at, memory_id, self.server_name))
+                ''', (used_at, recollection_id, self.server_name))
                 conn.commit()
                 updated = cursor.rowcount > 0
                 conn.close()
                 return updated
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error incrementing memory usage: {e}")
+            logger.exception(f"⚠️ [DB] Error incrementing recollection usage: {e}")
             return False
 
-    def count_notable_memories(self) -> int:
-        """Count total notable memories for this server."""
+    def count_notable_recollections(self) -> int:
+        """Count total notable recollections for this server."""
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT COUNT(*) FROM notable_memories
+                    SELECT COUNT(*) FROM notable_recollections
                     WHERE server_name = ?
                 ''', (self.server_name,))
                 count = cursor.fetchone()[0]
                 conn.close()
                 return count
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error counting notable memories: {e}")
+            logger.exception(f"⚠️ [DB] Error counting notable recollections: {e}")
             return 0
 
-    def get_notable_memories_for_date(self, memory_date: str = None) -> list:
-        """Get all notable memories extracted on a specific date."""
+    def get_notable_recollections_for_date(self, memory_date: str = None) -> list:
+        """Get all notable recollections extracted on a specific date."""
         target_date = memory_date or date.today().isoformat()
         try:
             with self._lock:
@@ -1136,8 +1207,8 @@ class AgentDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT id, memory_text, source_paragraph, extracted_at
-                    FROM notable_memories
+                    SELECT id, recollection_text, source_paragraph, extracted_at
+                    FROM notable_recollections
                     WHERE server_name = ? AND memory_date = ?
                 ''', (self.server_name, target_date))
                 rows = cursor.fetchall()
@@ -1145,14 +1216,14 @@ class AgentDatabase:
                 return [
                     {
                         "id": row["id"],
-                        "memory_text": row["memory_text"],
+                        "recollection_text": row["recollection_text"],
                         "source_paragraph": row["source_paragraph"],
                         "extracted_at": row["extracted_at"],
                     }
                     for row in rows
                 ]
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving notable memories for date: {e}")
+            logger.exception(f"⚠️ [DB] Error retrieving notable recollections for date: {e}")
             return []
     
     def get_active_servers(self) -> list:

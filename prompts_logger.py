@@ -27,8 +27,8 @@ def _get_logging_messages():
     try:
         # Try to get personality from agent_engine
         try:
-            from agent_engine import PERSONALIDAD
-            personality_name = PERSONALIDAD.get("name", "").lower()
+            from agent_engine import PERSONALITY
+            personality_name = PERSONALITY.get("name", "").lower()
         except ImportError:
             # Fallback: try to determine personality from config
             import json

@@ -92,21 +92,33 @@ def _cargar_personalidad() -> dict:
             with open(prompts_file, encoding="utf-8") as f:
                 merged_personality.update(json.load(f))
         
+        # Load descriptions.json
+        descriptions_file = os.path.join(personality_dir, 'descriptions.json')
+        if os.path.exists(descriptions_file):
+            with open(descriptions_file, encoding="utf-8") as f:
+                descriptions_data = json.load(f)
+                # Merge descriptions data under 'discord' key to match JSON structure
+                if 'discord' not in merged_personality:
+                    merged_personality['discord'] = {}
+                merged_personality['discord'].update(descriptions_data.get('discord', {}))
+                # Also store descriptions at root for backward compatibility
+                merged_personality['descriptions'] = descriptions_data.get('discord', {})
+        
         return merged_personality
     else:
         # Load single file (legacy structure)
         with open(personality_path, encoding="utf-8") as f:
             return json.load(f)
 
-PERSONALIDAD = _cargar_personalidad()
+PERSONALITY = _cargar_personalidad()
 # Only show personality log if not in role subprocess
 if os.getenv('ROLE_AGENT_PROCESS') != '1':
-    logger.info(f"🎭 [PERSONALITY] Loaded: {PERSONALIDAD.get('name', 'Unknown')} from {AGENT_CFG.get('personality', 'Unknown')}")
+    logger.info(f"🎭 [PERSONALITY] Loaded: {PERSONALITY.get('name', 'Unknown')} from {AGENT_CFG.get('personality', 'Unknown')}")
 
 
 def get_discord_token():
     """Get Discord token specific for active personality."""
-    personality_name = PERSONALIDAD.get("name", "").upper()
+    personality_name = PERSONALITY.get("name", "").upper()
     specific_token = os.getenv(f"DISCORD_TOKEN_{personality_name}")
     if specific_token:
         logger.info(f"🔑 Using specific token: DISCORD_TOKEN_{personality_name}")
@@ -266,7 +278,7 @@ def _load_subrole_prompts_from_json() -> list[str]:
     is_role_process = os.getenv('ROLE_AGENT_PROCESS') == '1'
     
     # Get subrole prompts from personality JSON
-    subrole_prompts = PERSONALIDAD.get("role_system_prompts", {}).get("subroles", {})
+    subrole_prompts = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
     additions = []
     
     if not is_role_process:
@@ -290,7 +302,7 @@ def _load_subrole_prompts_from_json() -> list[str]:
             
             # Add beggar reasons after the beggar prompt
             if subrole_name == "beggar":
-                beggar_reasons = PERSONALIDAD.get("role_system_prompts", {}).get("beggar_reasons", [])
+                beggar_reasons = PERSONALITY.get("role_system_prompts", {}).get("beggar_reasons", [])
                 if beggar_reasons:
                     reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
                     additions.append(reasons_text)
@@ -333,7 +345,7 @@ def _load_subrole_prompts_from_json() -> list[str]:
                             
                             # Add beggar reasons after the beggar prompt even in fallback
                             if subrole_name == "beggar":
-                                beggar_reasons = PERSONALIDAD.get("role_system_prompts", {}).get("beggar_reasons", [])
+                                beggar_reasons = PERSONALITY.get("role_system_prompts", {}).get("beggar_reasons", [])
                                 if beggar_reasons:
                                     reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
                                     additions.append(reasons_text)
@@ -356,15 +368,15 @@ def _load_subrole_prompts_from_json() -> list[str]:
     return additions
 
 def increment_usage():
-    return runtime_increment_usage(PERSONALIDAD.get("name", "unknown"))
+    return runtime_increment_usage(PERSONALITY.get("name", "unknown"))
 
 
 def _fallback_response():
     """Emergency response defined in personality."""
-    fallbacks = PERSONALIDAD.get("emergency_fallbacks", [])
+    fallbacks = PERSONALITY.get("emergency_fallbacks", [])
     if fallbacks:
         return random.choice(fallbacks)
-    return PERSONALIDAD.get("emergency_fallback", "...")
+    return PERSONALITY.get("emergency_fallback", "...")
 
 
 def _get_readme_response_rules_lines() -> list[str]:
@@ -381,21 +393,8 @@ def _get_readme_response_rules_lines() -> list[str]:
     ]
 
 
-
-def _matches_subrole_keywords(subrole_name: str, text: str) -> bool:
-    """Check if text contains keywords for a specific subrole."""
-    if not text:
-        return False
-    role_system_prompts = (PERSONALIDAD or {}).get("role_system_prompts", {})
-    subroles_cfg = (role_system_prompts or {}).get("subroles", {})
-    subrole_cfg = subroles_cfg.get(subrole_name, {})
-    if not isinstance(subrole_cfg, dict):
-        return False
-    keywords = subrole_cfg.get("keywords", [])
-    if not isinstance(keywords, list):
-        return False
-    text_l = text.lower()
-    return any((kw or "").lower() in text_l for kw in keywords)
+def _get_mission_injection(role_context: str, mission_prompt_key: str | None, user_content: str) -> str:
+    return None
 
 
 def _parse_iso_datetime(value: str | None) -> datetime | None:
@@ -408,7 +407,7 @@ def _parse_iso_datetime(value: str | None) -> datetime | None:
 
 
 def _get_user_prompt_template() -> dict:
-    template = PERSONALIDAD.get("user_prompt_template", {})
+    template = PERSONALITY.get("user_prompt_template", {})
     return template if isinstance(template, dict) else {}
 
 
@@ -425,29 +424,10 @@ def _get_response_rules_lines() -> list[str]:
     ]
 
 
-def _get_keyword_injection(content: str) -> str:
-    if not content:
-        return ""
-    role_system_prompts = (PERSONALIDAD or {}).get("role_system_prompts", {})
-    subroles_cfg = (role_system_prompts or {}).get("subroles", {})
-    for subrole_name, subrole_cfg in subroles_cfg.items():
-        if not isinstance(subrole_cfg, dict):
-            continue
-        if not _matches_subrole_keywords(subrole_name, content):
-            continue
-        mission_active = (subrole_cfg.get("mission_active") or "").strip()
-        chat_detection = (subrole_cfg.get("chat_detection") or {}).get("prompt", "")
-        detection_prompt = str(chat_detection).replace("{username}", "user").strip()
-        parts = [part for part in [mission_active, detection_prompt] if part]
-        if parts:
-            return "\n".join(parts)
-    return ""
-
-
 def _get_mission_injection(role_context: str, mission_prompt_key: str | None, user_content: str) -> str:
     if not mission_prompt_key:
         return ""
-    cfg = PERSONALIDAD.get(mission_prompt_key, {})
+    cfg = PERSONALITY.get(mission_prompt_key, {})
     if not isinstance(cfg, dict):
         return ""
     instructions = cfg.get("instructions", [])
@@ -595,8 +575,8 @@ def build_prompt(
     interaction_type="chat",
 ):
     """Build and return `(system_instruction, prompt_final)` without calling APIs."""
-    public_suffix = PERSONALIDAD.get("public_context_suffix", "")
-    system_instruction = _build_system_prompt(PERSONALIDAD)
+    public_suffix = PERSONALITY.get("public_context_suffix", "")
+    system_instruction = _build_system_prompt(PERSONALITY)
     if is_public and public_suffix:
         system_instruction = f"{system_instruction}\n\nCONTEXT: {public_suffix}"
     prompt_context = _build_prompt_context(
@@ -672,7 +652,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         logger.info(f"🎭 [SUBROLE] Executing internal task: {subrole_name} (frequency: {frequency}h)")
         
         # Get system prompt and base mission prompt
-        system_instruction = _build_system_prompt(PERSONALIDAD)
+        system_instruction = _build_system_prompt(PERSONALITY)
         mission_prompt = subrole_config.get("mission_active", "")
         
         # Build the complete prompt with task and reasons at the end
