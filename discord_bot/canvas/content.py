@@ -90,7 +90,12 @@ def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: st
 
 
 def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) -> discord.Embed:
-    # Get behavior title from personality descriptions for consistency
+    # Get title from personality descriptions for consistency
+    
+    help_title = _personality_descriptions.get("help_menu", {}).get("title", f"📚 {_bot_display_name} Canvas - Help & Troubleshooting")
+    # Replace {_bot_display_name} placeholder if present
+    help_title = help_title.replace("{_bot_display_name}", _bot_display_name)
+    
     if section_name == "behavior":
         behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
         behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} Comportamiento General")
@@ -103,7 +108,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
             "behavior": behavior_title,
             "roles": "🎭 Roles de Putre 🎭",
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
-            "help": f"📚 {_bot_display_name} Canvas - Help & Troubleshooting",
+            "help": help_title,
         }
     else:
         titles = {
@@ -111,7 +116,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
             "behavior": f"⚙️ {_bot_display_name} Canvas - General Behavior",
             "roles": "🎭 Roles de Putre 🎭",
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
-            "help": f"📚 {_bot_display_name} Canvas - Help & Troubleshooting",
+            "help": help_title,
         }
     colors = {
         "home": discord.Color.blurple(),
