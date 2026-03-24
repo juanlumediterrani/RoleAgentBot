@@ -1147,14 +1147,15 @@ def _build_canvas_help() -> str:
     """Build the help and troubleshooting Canvas view."""
     help_messages = _personality_descriptions.get("help_menu", {})
     
-    # First block: Load title and description from descriptions.json
+    # Use Spanish personalized messages with English fallbacks
     title = help_messages.get("title", f"📚 **{_bot_display_name} Canvas - Help & Troubleshooting**")
+    # Replace {_bot_display_name} placeholder if present
+    title = title.replace("{_bot_display_name}", _bot_display_name)
     description = help_messages.get("description_section", "**Description**\nRole Agent Bot its a LLM agent with a loaded personality, that have long term memory and can interatuate with the user.")
-    
-    # Second block: Load remaining sections without duplicates
     separator = help_messages.get("separator", "-" * 45)
     roles = help_messages.get("roles_section", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
     behavior = help_messages.get("behavior_section", "**Behavior**\nIn this section you'll configurate some interactuable behaviors of the bot. Only for Admins")
+    roles_repeat = help_messages.get("roles_repeat", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
     tips = help_messages.get("tips_section", "**Some tips**\n-You can ask to the bot how works a command like: 'how works the command dice?'\n-The most jouicy parts of the bots its inside of each role")
     
     return (
@@ -1163,6 +1164,7 @@ def _build_canvas_help() -> str:
         f"{separator}\n"
         f"{roles}\n"
         f"{behavior}\n"
+        f"{roles_repeat}\n"
         f"{separator}\n"
         f"{tips}"    
     )
