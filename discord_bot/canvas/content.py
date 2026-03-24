@@ -1147,7 +1147,7 @@ def _build_canvas_help() -> str:
     """Build the help and troubleshooting Canvas view."""
     help_messages = _personality_descriptions.get("help_menu", {})
     
-    # Personalized messages with English fallbacks
+    # Use Spanish personalized messages with English fallbacks
     title = help_messages.get("title", f"📚 **{_bot_display_name} Canvas - Help & Troubleshooting**")
     description = help_messages.get("description_section", "**Description**\nRole Agent Bot its a LLM agent with a loaded personality, that have long term memory and can interatuate with the user.")
     separator = help_messages.get("separator", "-" * 45)
