@@ -1148,13 +1148,12 @@ def _build_canvas_help() -> str:
     help_messages = _personality_descriptions.get("help_menu", {})
     
     # Use Spanish personalized messages with English fallbacks
-    title = help_messages.get("title", f"📚 **{_bot_display_name} Canvas - Help & Troubleshooting**")
-    description = help_messages.get("description_section", "**Description**\nRole Agent Bot its a LLM agent with a loaded personality, that have long term memory and can interatuate with the user.")
-    separator = help_messages.get("separator", "-" * 45)
-    roles = help_messages.get("roles_section", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
-    behavior = help_messages.get("behavior_section", "**Behavior**\nIn this section you'll configurate some interactuable behaviors of the bot. Only for Admins")
-    roles_repeat = help_messages.get("roles_repeat", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
-    tips = help_messages.get("tips_section", "**Some tips**\n-You can ask to the bot how works a command like: 'how works the command dice?'\n-The most jouicy parts of the bots its inside of each role")
+    title = help_messages.get("title", f"📚 **{_bot_display_name} - Menú de Ayuda**")
+    description = help_messages.get("description_section", "**Descripción**\nRole Agent Bot es un agente LLM con personalidad cargada, que tiene memoria a largo plazo y puede interactuar con el usuario.")
+    separator = help_messages.get("separator", "---------------------------------------------")
+    roles = help_messages.get("roles_section", "**Roles**\nLos módulos de Roles son algunas capacidades del bot para dar algunos servicios a los usuarios.")
+    behavior = help_messages.get("behavior_section", "**Comportamiento**\nEn esta sección configurarás algunos comportamientos interactuables del bot. Solo para Admins")
+    tips = help_messages.get("tips_section", "**Algunos consejos**\n-Puedes preguntarle al bot cómo funciona un comando como: '¿cómo funciona el comando dice?'\n-Las partes más jugosas del bot están dentro de cada rol")
     
     return (
         f"{title}\n\n"
@@ -1162,7 +1161,6 @@ def _build_canvas_help() -> str:
         f"{separator}\n"
         f"{roles}\n"
         f"{behavior}\n"
-        f"{roles_repeat}\n"
         f"{separator}\n"
         f"{tips}"    
     )
