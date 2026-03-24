@@ -1145,36 +1145,26 @@ def _build_canvas_personal() -> str:
 
 def _build_canvas_help() -> str:
     """Build the help and troubleshooting Canvas view."""
+    help_messages = _personality_descriptions.get("help_menu", {})
+    
+    # Personalized messages with English fallbacks
+    title = help_messages.get("title", f"📚 **{_bot_display_name} Canvas - Help & Troubleshooting**")
+    description = help_messages.get("description_section", "**Description**\nRole Agent Bot its a LLM agent with a loaded personality, that have long term memory and can interatuate with the user.")
+    separator = help_messages.get("separator", "-" * 45)
+    roles = help_messages.get("roles_section", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
+    behavior = help_messages.get("behavior_section", "**Behavior**\nIn this section you'll configurate some interactuable behaviors of the bot. Only for Admins")
+    roles_repeat = help_messages.get("roles_repeat", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
+    tips = help_messages.get("tips_section", "**Some tips**\n-You can ask to the bot how works a command like: 'how works the command dice?'\n-The most jouicy parts of the bots its inside of each role")
+    
     return (
-        f"📚 **{_bot_display_name} Canvas - Help & Troubleshooting**\n\n"
-        "**Command lookup**\n"
-        "- `!agenthelp` - Full command summary\n"
-        "- `!readme` - Complete guide by private message\n"
-        "- `!watcherhelp` - News Watcher user guide\n"
-        "- `!watcherchannelhelp` - News Watcher channel/admin guide\n"
-        "- `!hunterhelp` / `!hunter poe2 help`\n"
-        "- `!trickster help`\n"
-        "- `!banker help`\n"
-        "- `!mc help`\n\n"
-        "**Common issues**\n"
-        "- If a command fails in DM, retry it in a server channel\n"
-        "- If a command fails in a server, check whether it is DM-only\n"
-        "- If setup commands fail, verify administrator permissions\n"
-        "- If a role command is missing, verify the role is enabled in configuration\n\n"
-        "**Concrete choices**\n"
-        "- Use role surfaces when you need command-specific options\n"
-        "- Use setup/behavior surfaces when you need server-wide toggles\n"
-        "- Use personal surfaces when you need DM-oriented text or list management\n\n"
-        "**Navigation**\n"
-        "- `!canvas home`\n"
-        "- `!canvas setup`\n"
-        "- `!canvas roles`\n"
-        "- `!canvas role <name>`\n"
-        "- `!canvas role news_watcher personal`\n"
-        "- `!canvas role trickster dice`\n"
-        "- `!canvas role treasure_hunter personal`\n"
-        "- `!canvas role banker wallet`\n"
-        "- `!canvas personal`"
+        f"{title}\n\n"
+        f"{description}\n"
+        f"{separator}\n"
+        f"{roles}\n"
+        f"{behavior}\n"
+        f"{roles_repeat}\n"
+        f"{separator}\n"
+        f"{tips}"    
     )
 
 

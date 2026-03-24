@@ -514,6 +514,25 @@
         "recuerda cuando", "te suena algo", "acuerdate que",
         "recuerdas cuando", "no te acuerdas", "kien te acuerdas"
       ]
+    },
+    "help_menu": {
+      "title": "📚 **{_bot_display_name} Canvas - Ayuda y Solución de Problemas**",
+      "description_section": "**Descripción**\nRole Agent Bot es un agente LLM con personalidad cargada, que tiene memoria a largo plazo y puede interactuar con el usuario.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Roles**\nLos módulos de Roles son algunas capacidades del bot para dar algunos servicios a los usuarios.",
+      "behavior_section": "**Comportamiento**\nEn esta sección configurarás algunos comportamientos interactuables del bot. Solo para Admins",
+      "roles_repeat": "**Roles**\nLos módulos de Roles son algunas capacidades del bot para dar algunos servicios a los usuarios.",
+      "tips_section": "**Algunos consejos**\n-Puedes preguntarle al bot cómo funciona un comando como: '¿cómo funciona el comando dice?'\n-Las partes más jugosas del bot están dentro de cada rol",
+      "command_lookup_title": "**Búsqueda de comandos**",
+      "command_lookup_list": "- `!agenthelp` - Resumen completo de comandos\n- `!readme` - Guía completa por mensaje privado\n- `!watcherhelp` - Guía de usuario de News Watcher\n- `!watcherchannelhelp` - Guía de canal/admin de News Watcher\n- `!hunterhelp` / `!hunter poe2 help`\n- `!trickster help`\n- `!banker help`\n- `!mc help`",
+      "common_issues_title": "**Problemas comunes**",
+      "common_issues_list": "- Si un comando falla en DM, reinténtalo en un canal del servidor\n- Si un comando falla en un servidor, verifica si es solo para DM\n- Si los comandos de configuración fallan, verifica los permisos de administrador\n- Si falta un comando de rol, verifica que el rol esté activado en la configuración",
+      "concrete_choices_title": "**Opciones concretas**",
+      "concrete_choices_list": "- Usa superficies de rol cuando necesites opciones específicas del comando\n- Usa superficies de configuración/comportamiento cuando necesites alternas generales del servidor\n- Usa superficies personales cuando necesites texto orientado a DM o gestión de listas",
+      "navigation_title": "**Navegación**",
+      "navigation_list": "- `!canvas home`\n- `!canvas setup`\n- `!canvas roles`\n- `!canvas role <name>`\n- `!canvas role news_watcher personal`\n- `!canvas role trickster dice`\n- `!canvas role treasure_hunter personal`\n- `!canvas role banker wallet`\n- `!canvas personal`",
+      "fast_path_title": "**Camino rápido**",
+      "fast_path_list": "- `!watchernotify` - Suscribirse a alertas críticas del watcher\n- `!hunter poe2 list` - Mostrar objetivos POE2 rastreados\n- `!banker balance` - Mostrar tu billetera (unificado en Canvas)\n- `!dice ranking` - Ver el ranking actual"
     }
   }
 }
