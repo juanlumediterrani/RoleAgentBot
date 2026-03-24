@@ -105,7 +105,7 @@ class DatabaseRoleNewsWatcher:
                 self._init_method_config_table()
                 self._init_configuracion_table()
                 self.insert_default_feeds()
-                self._ensure_feed_health()
+                # Feed health check moved to on_guild_join event to avoid running on every !canvas command
                 
                 logger.info(f"✅ News watcher database ready at {self.db_path}")
         except Exception as e:
@@ -1175,6 +1175,51 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error getting channel subscriptions: {e}")
             return []
     
+    def get_all_channel_subscriptions_flat(self) -> list:
+        """Get all active flat channel subscriptions."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT NULL as user_id, category, feed_id, channel_id, subscribed_at
+                    FROM subscriptions_channels 
+                    WHERE is_active = 1 AND (channel_premises IS NULL OR channel_premises = '')
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting all channel flat subscriptions: {e}")
+            return []
+    
+    def get_all_channel_subscriptions_ai(self) -> list:
+        """Get all active AI channel subscriptions."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT NULL as user_id, category, feed_id, channel_id, subscribed_at
+                    FROM subscriptions_channels 
+                    WHERE is_active = 1 AND channel_premises IS NOT NULL AND channel_premises != ''
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting all channel AI subscriptions: {e}")
+            return []
+    
+    def get_all_channel_subscriptions_keywords(self) -> list:
+        """Get all active keyword channel subscriptions."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT NULL as user_id, channel_id, keywords, category, feed_id
+                    FROM subscriptions_channels 
+                    WHERE is_active = 1 AND keywords IS NOT NULL AND keywords != ''
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting all channel keyword subscriptions: {e}")
+            return []
+    
     def get_all_channels_with_subscriptions(self) -> list:
         """Get all channels with active subscriptions."""
         try:
@@ -1451,8 +1496,12 @@ class DatabaseRoleNewsWatcher:
         """Get default premises from personality file."""
         try:
             from agent_engine import PERSONALITY
-            if 'watcher_premises' in PERSONALITY and 'premises' in PERSONALITY['watcher_premises']:
-                return PERSONALITY['watcher_premises']['premises']
+            # Look for premises in the watcher section of role_system_prompts
+            if ('role_system_prompts' in PERSONALITY and 
+                'roles' in PERSONALITY['role_system_prompts'] and
+                'watcher' in PERSONALITY['role_system_prompts']['roles'] and
+                'premises' in PERSONALITY['role_system_prompts']['roles']['watcher']):
+                return PERSONALITY['role_system_prompts']['roles']['watcher']['premises']
             return []
         except Exception as e:
             logger.error(f"Error getting default premises: {e}")

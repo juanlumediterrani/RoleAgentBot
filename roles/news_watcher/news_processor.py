@@ -13,6 +13,7 @@ import logging
 from typing import Dict, List, Tuple, Optional, Set
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
+from urllib import request as urllib_request, error as urllib_error
 import feedparser
 from bs4 import BeautifulSoup
 
@@ -290,8 +291,23 @@ class NewsProcessor:
             feed_url = feed_info['url']
             logger.info(f"Downloading news from feed {feed_id}: {feed_url}")
             
-            # Parse RSS feed
-            feed = feedparser.parse(feed_url)
+            # Download RSS feed with proper User-Agent to avoid 403 errors
+            try:
+                request = urllib_request.Request(feed_url, headers={"User-Agent": "RoleAgentBot/1.0"})
+                with urllib_request.urlopen(request, timeout=30) as response:
+                    if response.getcode() == 200:
+                        raw_data = response.read().decode('utf-8')
+                        feed = feedparser.parse(raw_data)
+                    else:
+                        logger.error(f"HTTP {response.getcode()} error fetching feed {feed_id}: {feed_url}")
+                        return []
+            except urllib_error.HTTPError as e:
+                logger.error(f"HTTP {e.code} error fetching feed {feed_id}: {feed_url}")
+                return []
+            except Exception as e:
+                logger.error(f"Error fetching feed {feed_id}: {e}")
+                return []
+            
             if feed.bozo:
                 logger.warning(f"Feed {feed_id} has parsing issues: {feed.bozo_exception}")
             

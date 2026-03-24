@@ -9,19 +9,17 @@ Path = core.Path
 AgentDatabase = core.AgentDatabase
 logger = core.logger
 PERSONALITY = core.PERSONALITY
-think = core.think
+from agent_mind import call_llm
 AGENT_CFG = core.AGENT_CFG
-is_admin = core.is_admin
-is_duplicate_command = core.is_duplicate_command
-send_dm_or_channel = core.send_dm_or_channel
-send_embed_dm_or_channel = core.send_embed_dm_or_channel
-set_greeting_enabled = core.set_greeting_enabled
-get_greeting_enabled = core.get_greeting_enabled
-is_role_enabled_check = core.is_role_enabled_check
-get_server_key = core.get_server_key
-get_role_interval_hours = core.get_role_interval_hours
-set_role_enabled = core.set_role_enabled
-get_banker_db_instance = core.get_banker_db_instance
+from discord_bot.discord_utils import (
+    get_db_for_server,
+    send_dm_or_channel, send_embed_dm_or_channel,
+    is_admin, is_duplicate_command, is_role_enabled_check,
+    get_greeting_enabled, set_greeting_enabled,
+    check_chat_rate_limit, is_already_initialized, mark_as_initialized,
+    acquire_connection_lock, acquire_process_lock,
+    get_server_key, get_role_interval_hours, set_role_enabled,
+)
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
 
 try:
@@ -31,8 +29,8 @@ except Exception:
 get_watcher_messages = core.get_watcher_messages
 get_poe2_manager = core.get_poe2_manager
 get_beggar_db_instance = core.get_beggar_db_instance
-get_behaviors_db_instance = core.get_behaviors_db_instance
-get_taboo_db_instance = core.get_taboo_db_instance
+get_banker_db_instance = core.get_banker_db_instance
+get_behavior_db_instance = core.get_behavior_db_instance
 _discord_cfg = core._discord_cfg
 _personality_name = core._personality_name
 _bot_display_name = core._bot_display_name
@@ -57,6 +55,21 @@ from .state import (
     _get_enabled_roles,
     _load_role_mission_prompts,
 )
+
+def _get_behavior_db_for_guild(guild):
+    """Get behavior database instance for a guild."""
+    try:
+        from discord_bot.discord_utils import get_behaviors_db_instance, get_server_key
+        if get_behaviors_db_instance is None:
+            return None
+        # Handle None guild case - use default server
+        if guild is None:
+            return get_behaviors_db_instance(None)
+        return get_behaviors_db_instance(get_server_key(guild))
+    except Exception as e:
+        logger.error(f"Error getting behavior database for guild: {e}")
+        return None
+
 
 def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: str, welcome_name: str, nowelcome_name: str,
                            role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_name: str = "default",
@@ -168,100 +181,6 @@ def _split_canvas_blocks(content: str) -> list[tuple[str, list[str]]]:
     if current_lines:
         blocks.append((current_title, current_lines))
     return blocks
-
-
-def _get_canvas_role_gui_controls(role_name: str, surface_name: str, admin_visible: bool) -> list[str]:
-    controls_map: dict[str, dict[str, list[str]]] = {
-        "news_watcher": {
-            "overview": [
-                "- Buttons: open `Personal` or `Admin`",
-                "- Boolean toggle: quick alerts on/off (`watchernotify`)",
-                "- Text input: category or feed to subscribe",
-            ],
-            "personal": [
-                "- Select menu: subscription method (flat, keyword, general)",
-                "- Select menu: category/feed selection before subscribing",
-                "- Text input: feed id when a category requires a specific source",
-                "- Boolean toggle: critical alerts on/off",
-            ],
-            "admin": [
-                "- Select menu: filtering state `flat`, `keyword`, or `general`",
-                "- Number input: watcher frequency in hours",
-                "- Text input: category/feed for channel subscription",
-                "- Boolean action: force one iteration now",
-            ],
-        },
-        "treasure_hunter": {
-            "overview": [
-                "- Buttons: open `Items`, `League`, or `Admin`",
-                "- Text input: tracked item name",
-                "- Select menu: league selection",
-            ],
-            "personal": [
-                "- Text input: item name to add/remove",
-                "- Select menu: tracked items shortcuts",
-                "- Select menu: open league management",
-            ],
-            "league": [
-                "- Select menu: choose target league",
-                "- Text input: custom league name if needed",
-            ],
-            "admin": [
-                "- Boolean toggle: POE2 subrole on/off",
-                "- Number input: execution frequency in hours",
-            ],
-        },
-        "trickster": {
-            "overview": [
-                "- Buttons: open `Dice`, `Ring`, or `Beggar`",
-                "- Boolean toggles: subrole enable/disable where applicable",
-            ],
-            "dice": [
-                "- Number input: fixed bet amount",
-                "- Boolean toggle: announcements on/off",
-                "- Action button: play now",
-            ],
-            "ring": [
-                "- Boolean toggle: ring on/off",
-                "- Number input: ring frequency in hours",
-                "- User picker/text input: accusation target",
-            ],
-            "beggar": [
-                "- Boolean toggle: beggar on/off",
-                "- Number input: beggar frequency in hours",
-            ],
-        },
-        "banker": {
-            "overview": [
-                "- Buttons: open `Wallet`, `Guide`, or `Admin`",
-                "- Number input: economy values for admin setup",
-            ],
-            "wallet": [
-                "- Action button: refresh wallet view",
-                "- Select menu: recent wallet/help shortcuts",
-            ],
-            "guide": [
-                "- Select menu: choose `Wallet` or `Admin` focus",
-            ],
-            "admin": [
-                "- Number input: daily allowance (`tae`)",
-                "- Number input: opening bonus",
-            ],
-        },
-        "mc": {
-            "overview": [
-                "- Text input: song/query to play or add",
-                "- Select menu: queue/history actions",
-                "- Boolean-style action buttons: pause/resume/stop",
-            ],
-        },
-    }
-    role_controls = controls_map.get(role_name, {})
-    controls = role_controls.get(surface_name, [])
-    if not admin_visible:
-        controls = [line for line in controls if "admin" not in line.lower()]
-    return controls
-
 
 def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, surface_name: str = "overview", user=None,
                              auto_response: str | None = None) -> discord.Embed:
@@ -381,6 +300,12 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "dice_ranking": "Showing the current dice ranking for this server.",
             "dice_history": "Showing the most recent dice results.",
             "dice_help": "Showing the dice help and rules.",
+            "runes_single": "Cast a single rune for quick guidance on your question.",
+            "runes_three": "Cast three runes for past, present, and future guidance.",
+            "runes_cross": "Cast five runes in a cross pattern for comprehensive insight.",
+            "runes_history": "Show your recent rune casting history.",
+            "runes_types": "Show available rune reading types and descriptions.",
+            "runes_help": "Show help and instructions for rune casting.",
             "announcements_on": "Dice announcements enabled for this server.",
             "announcements_off": "Dice announcements disabled for this server.",
             "dice_fixed_bet": "The bot will ask for the fixed bet amount and update the dice game configuration.",
@@ -422,7 +347,6 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
         "commentary_frequency": "The bot will ask for the commentary interval in minutes and update the schedule.",
         "taboo_on": "Taboo enabled for this server.",
         "taboo_off": "Taboo disabled for this server.",
-        "taboo_list": "Showing the current taboo keywords.",
         "taboo_add": "The bot will ask for a keyword and add it to the taboo list.",
         "taboo_del": "The bot will ask for a keyword and remove it from the taboo list.",
         "role_control_open": "The bot will ask which role to enable or disable for this server.",
@@ -451,63 +375,63 @@ def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_respons
     embed.set_footer(text=f"General Behavior • {'admin' if admin_visible else 'user'} view")
     return embed
 
-
-def _get_canvas_behavior_action_items(admin_visible: bool) -> list[tuple[str, str, str]]:
-    if not admin_visible:
-        return []
-    return [
-        ("Greetings: On", "greetings_on", "Boolean toggle"),
-        ("Greetings: Off", "greetings_off", "Boolean toggle"),
-        ("Welcome: On", "welcome_on", "Boolean toggle"),
-        ("Welcome: Off", "welcome_off", "Boolean toggle"),
-        ("Commentary: On", "commentary_on", "Boolean toggle"),
-        ("Commentary: Off", "commentary_off", "Boolean toggle"),
-        ("Commentary: Now", "commentary_now", "Action"),
-        ("Role Control", "role_control_open", "Select role and boolean state"),
-    ]
-
-
 def _get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible: bool) -> list[tuple[str, str, str]]:
-    if not admin_visible:
-        return []
+    behavior_messages = _personality_descriptions.get("behavior_messages",{})
+    buttongreetings = behavior_messages.get("greetings",{}).get("button","Saludos")
+    buttonwelcome = behavior_messages.get("welcome",{}).get("button","Bienvenida")
+    buttoncommentary = behavior_messages.get("comentary",{}).get("button","Comentario")
+    buttontaboo = behavior_messages.get("taboo",{}).get("button","Tabú")
+    buttonrolecontrol = behavior_messages.get("role_control",{}).get("button","Control de Roles")
+    
+    # Options for all users
+    common_options = [
+        (f'{buttoncommentary}: On', "commentary_on", "Boolean toggle"),
+        (f'{buttoncommentary}: Off', "commentary_off", "Boolean toggle"),
+        (f'{buttoncommentary}: Now', "commentary_now", "Action"),
+        (f'{buttontaboo}: Add Keyword', "taboo_add", "Text input target"),
+        (f'{buttontaboo}: Remove Keyword', "taboo_del", "Text input target"),
+    ]
+    
+    # Admin-only options
+    admin_options = [
+        (f'{buttongreetings}: On', "greetings_on", "Boolean toggle"),
+        (f'{buttongreetings}: Off', "greetings_off", "Boolean toggle"),
+        (f'{buttonwelcome}: On', "welcome_on", "Boolean toggle"),
+        (f'{buttonwelcome}: Off', "welcome_off", "Boolean toggle"),
+        (f'{buttoncommentary}: Frequency', "commentary_frequency", "Number input target"),
+        (f'{buttontaboo}: On', "taboo_on", "Boolean toggle"),
+        (f'{buttontaboo}: Off', "taboo_off", "Boolean toggle"),
+        (f'{buttonrolecontrol}', "role_control_open", "Select role and boolean state"),
+    ]
+    
     items_map: dict[str, list[tuple[str, str, str]]] = {
-        "greetings": [
-            ("Greetings: On", "greetings_on", "Boolean toggle"),
-            ("Greetings: Off", "greetings_off", "Boolean toggle"),
-        ],
-        "welcome": [
-            ("Welcome: On", "welcome_on", "Boolean toggle"),
-            ("Welcome: Off", "welcome_off", "Boolean toggle"),
-        ],
-        "commentary": [
-            ("Commentary: On", "commentary_on", "Boolean toggle"),
-            ("Commentary: Off", "commentary_off", "Boolean toggle"),
-            ("Commentary: Now", "commentary_now", "Action"),
-            ("Commentary: Frequency", "commentary_frequency", "Number input target"),
-        ],
-        "taboo": [
-            ("Taboo: On", "taboo_on", "Boolean toggle"),
-            ("Taboo: Off", "taboo_off", "Boolean toggle"),
-            ("Taboo: List", "taboo_list", "Action"),
-            ("Taboo: Add Keyword", "taboo_add", "Text input target"),
-            ("Taboo: Remove Keyword", "taboo_del", "Text input target"),
-        ],
-        "role_control": [
-            ("Role Control", "role_control_open", "Select role and boolean state"),
-        ],
+        "conversation": common_options + (admin_options if admin_visible else []),
+        "greetings": [(f'{buttongreetings}: On', "greetings_on", "Boolean toggle"), (f'{buttongreetings}: Off', "greetings_off", "Boolean toggle")] if admin_visible else [],
+        "welcome": [(f'{buttonwelcome}: On', "welcome_on", "Boolean toggle"), (f'{buttonwelcome}: Off', "welcome_off", "Boolean toggle")] if admin_visible else [],
+        "commentary": common_options,
+        "taboo": [(f'{buttontaboo}: On', "taboo_on", "Boolean toggle"), (f'{buttontaboo}: Off', "taboo_off", "Boolean toggle")] + [(f'{buttontaboo}: Add Keyword', "taboo_add", "Text input target"), (f'{buttontaboo}: Remove Keyword', "taboo_del", "Text input target")] if admin_visible else [(f'{buttontaboo}: Add Keyword', "taboo_add", "Text input target"), (f'{buttontaboo}: Remove Keyword', "taboo_del", "Text input target")],
+        "role_control": [(f'{buttonrolecontrol}', "role_control_open", "Select role and boolean state")] if admin_visible else [],
     }
     return items_map.get(detail_name, [])
 
 
 def _get_canvas_behavior_detail_items(admin_visible: bool) -> list[tuple[str, str]]:
-    items = [("Conversation", "conversation")]
+    behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
+    conversation_button = behavior_descriptions.get("conversation", {}).get("button","Conversation")
+    greetings_button = behavior_descriptions.get("greetings", {}).get("button","Conversation")
+    welcome_button = behavior_descriptions.get("welcome", {}).get("button","Conversation")
+    commentary_button = behavior_descriptions.get("comentary", {}).get("button","Conversation")
+    taboo_button = behavior_descriptions.get("taboo", {}).get("button","Conversation")
+    role_control_button = behavior_descriptions.get("role_control", {}).get("button","Conversation")
+    
+    items = [(conversation_button, "conversation")]
     if admin_visible:
         items.extend([
-            ("Greetings", "greetings"),
-            ("Welcome", "welcome"),
-            ("Commentary", "commentary"),
-            ("Taboo", "taboo"),
-            ("Role Control", "role_control"),
+            (greetings_button, "greetings"),
+            (welcome_button, "welcome"),
+            (commentary_button, "commentary"),
+            (taboo_button, "taboo"),
+            (role_control_button, "role_control"),
         ])
     return items
 
@@ -540,10 +464,11 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
         "trickster": (
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
             + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
-        ) if current_detail in {"dice", "ring", "beggar", "dice_admin", "ring_admin", "beggar_admin"} else [
+        ) if current_detail in {"dice", "ring", "beggar", "runes", "dice_admin", "ring_admin", "beggar_admin"} else [
             ("Dice", "dice"),
             ("Ring", "ring"),
             ("Beggar", "beggar"),
+            ("Runes", "runes"),
         ],
         "banker": [
             ("Wallet", "overview"),  # Wallet maps to overview since they're the same view
@@ -601,6 +526,15 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 ("Dice: History", "dice_history", "History action"),
                 ("Dice: Help", "dice_help", "Help action"),
             ]
+        if detail_name == "runes":
+            return [
+                ("Runes: Single Cast", "runes_single", "Text input target"),
+                ("Runes: Three Cast", "runes_three", "Text input target"),
+                ("Runes: Cross Cast", "runes_cross", "Text input target"),
+                ("Runes: History", "runes_history", "Action"),
+                ("Runes: Types", "runes_types", "Action"),
+                ("Runes: Help", "runes_help", "Action"),
+            ]
         if detail_name == "dice_admin" and admin_visible:
             return [
                 ("Announcements: On", "announcements_on", "Dice config"),
@@ -630,11 +564,12 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
         return []
 
-    if role_name == "banker" and admin_visible and detail_name == "admin":
-        return [
-            ("Config: TAE", "config_tae", "Number input target"),
-            ("Config: Bonus", "config_bonus", "Number input target"),
-        ]
+    if role_name == "banker":
+        if detail_name == "admin" and admin_visible:
+            return [
+                ("Config: TAE", "config_tae", "Number input target"),
+                ("Config: Bonus", "config_bonus", "Number input target"),
+            ]
     
     if role_name == "mc":
         return [
@@ -674,7 +609,6 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         "commentary_frequency": ("Mission commentary", "Frequency", f"`!talk{_personality_name} frequency <minutes>`", "Number input"),
         "taboo_on": ("Taboo", "On", "`!taboo on`", "Boolean toggle"),
         "taboo_off": ("Taboo", "Off", "`!taboo off`", "Boolean toggle"),
-        "taboo_list": ("Taboo", "List", "`!taboo list`", "Action"),
         "taboo_add": ("Taboo", "Add keyword", "`!taboo add <keyword>`", "Text input"),
         "taboo_del": ("Taboo", "Remove keyword", "`!taboo del <keyword>`", "Text input"),
         "role_control_open": ("Role control", "Choose role + on/off", f"`!role{_personality_name} <role> <on|off>`", "Select menu + boolean toggle"),
@@ -697,268 +631,6 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         "- Apply the change only if you want to affect the whole server behavior",
     ])
 
-
-def _build_canvas_role_action_view(role_name: str, action_name: str, admin_visible: bool) -> str | None:
-    if role_name == "news_watcher":
-        # Method selection actions
-        method_map = {
-            "method_flat": ("Flat Method", "`!watcher method flat`", "All news with AI opinions.", "Server-wide method selection"),
-            "method_keyword": ("Keyword Method", "`!watcher method keyword`", "News filtered by keywords.", "Server-wide method selection"),
-            "method_general": ("General Method", "`!watcher method general`", "AI critical news analysis.", "Server-wide method selection"),
-        }
-        
-        # Subscription and listing actions
-        subscription_map = {
-            "subscribe_categories": ("Subscribe Categories", "`!watcher subscribe <method> <category> [feed_id]`", "Browse and subscribe to news categories.", "Category selection + method"),
-            "list_keywords": ("List Keywords", "`!watcher keywords list`", "View your configured keywords.", "Display current keywords"),
-            "list_premises": ("List Premises", "`!watcher premises list`", "View your AI analysis premises.", "Display current premises"),
-        }
-        
-        # Check subscription/listing actions first
-        selected = subscription_map.get(action_name)
-        if selected:
-            label, command_name, explanation, input_type = selected
-            return "\n".join([
-                f"📡 **{_bot_display_name} Canvas - News Watcher: {label}**\n",
-                "**Selected option**",
-                f"- Command: {command_name}",
-                f"- Meaning: {explanation}",
-                "",
-                "**GUI input model**",
-                f"- Input type: {input_type}",
-                "- Best use: manage your subscriptions and configuration",
-                "",
-                "**Next step**",
-                "- Browse available options and make selections",
-                "- Configure your filtering preferences",
-            ])
-        
-        # Check method actions
-        selected = method_map.get(action_name)
-        if selected:
-            label, command_name, explanation, input_type = selected
-            return "\n".join([
-                f"📡 **{_bot_display_name} Canvas - News Watcher: {label}**\n",
-                "**Selected option**",
-                f"- Command: {command_name}",
-                f"- Meaning: {explanation}",
-                "",
-                "**GUI input model**",
-                f"- Input type: {input_type}",
-                "- Best use: set default behavior for new subscriptions",
-                "",
-                "**Next step**",
-                "- Choose method that matches your news preferences",
-                "- Configure specific filtering if needed",
-            ])
-
-    if role_name == "treasure_hunter":
-        league_map = {
-            "league_standard": "Standard",
-            "league_fate_of_the_vaal": "Fate of the Vaal",
-            "league_hardcore": "Hardcore",
-        }
-        selected_league = league_map.get(action_name)
-        if selected_league:
-            return "\n".join([
-                f"💎 **{_bot_display_name} Canvas - Treasure Hunter League Choice**\n",
-                "**Selected option**",
-                f"- League: `{selected_league}`",
-                f"- Command: `!hunter poe2 league \"{selected_league}\"`",
-                "",
-                "**GUI input model**",
-                "- Input type: select menu with league options",
-                "- Fallback: text input for a custom league name if needed",
-                "",
-                "**Next step**",
-                "- Apply the league and then review your tracked items",
-            ])
-        if action_name == "poe2_item_add":
-            return "\n".join([
-                f"💎 **{_bot_display_name} Canvas - Treasure Hunter Add Item**\n",
-                "**Selected option**",
-                "- Command: `!hunter poe2 add \"Item Name\"`",
-                "",
-                "**GUI input model**",
-                "- Input type: text input",
-                "- Validation: exact POE2 item name",
-            ])
-        if action_name == "poe2_item_remove":
-            return "\n".join([
-                f"💎 **{_bot_display_name} Canvas - Treasure Hunter Remove Item**\n",
-                "**Selected option**",
-                "- Command: `!hunter poe2 del \"Item Name\"`",
-                "",
-                "**GUI input model**",
-                "- Input type: text input",
-                "- Validation: item name or visible item number",
-            ])
-        if action_name in {"poe2_on", "poe2_off"} and admin_visible:
-            state = "On" if action_name == "poe2_on" else "Off"
-            return "\n".join([
-                f"💎 **{_bot_display_name} Canvas - Treasure Hunter POE2 Toggle**\n",
-                "**Selected option**",
-                f"- State: {state}",
-                f"- Command: `!hunter poe2 {'on' if action_name == 'poe2_on' else 'off'}`",
-                "",
-                "**GUI input model**",
-                "- Input type: boolean selector",
-            ])
-        if action_name == "hunter_frequency" and admin_visible:
-            return "\n".join([
-                f"💎 **{_bot_display_name} Canvas - Treasure Hunter Frequency**\n",
-                "**Selected option**",
-                "- Command: `!hunterfrequency <hours>`",
-                "- Meaning: adjust how often treasure hunter runs automatically",
-                "",
-                "**GUI input model**",
-                "- Input type: number input",
-                "- Valid range: 1 to 168 hours",
-                "",
-                "**Next step**",
-                "- Choose a stable interval before enabling more tracked items",
-            ])
-
-    if role_name == "trickster":
-        action_map = {
-            "ring_on": ("Ring", "On", "`!trickster ring enable`", "Boolean toggle"),
-            "ring_off": ("Ring", "Off", "`!trickster ring disable`", "Boolean toggle"),
-            "ring_frequency": ("Ring", "Frequency", "`!trickster ring frequency <hours>`", "Number input"),
-            "ring_target": ("Ring", "Target", "`!trickster ring target @user`", "User input"),
-            "beggar_on": ("Beggar", "On", "`!trickster beggar enable`", "Boolean toggle"),
-            "beggar_off": ("Beggar", "Off", "`!trickster beggar disable`", "Boolean toggle"),
-            "beggar_frequency": ("Beggar", "Frequency", "`!trickster beggar frequency <hours>`", "Number input"),
-            "beggar_donate": ("Beggar", "Donate", "`!trickster beggar donate <gold>`", "Number input"),
-            "announcements_on": ("Dice announcements", "On", "`!dice config announcements on`", "Boolean toggle"),
-            "announcements_off": ("Dice announcements", "Off", "`!dice config announcements off`", "Boolean toggle"),
-            "dice_fixed_bet": ("Dice fixed bet", "Set", "`!dice config bet <amount>`", "Number input"),
-            "dice_pot_value": ("Dice pot", "Set", "Banker wallet update", "Number input"),
-            "dice_play": ("Dice", "Play", "`!dice play`", "Action"),
-            "dice_ranking": ("Dice", "Ranking", "`!dice ranking`", "Action"),
-            "dice_history": ("Dice", "History", "`!dice history`", "Action"),
-            "dice_help": ("Dice", "Help", "`!dice help`", "Action"),
-        }
-        selected = action_map.get(action_name)
-        if selected:
-            surface, value, command_name, input_type = selected
-            return "\n".join([
-                f"🎭 **{_bot_display_name} Canvas - Trickster Action Choice**\n",
-                "**Selected option**",
-                f"- Surface: {surface}",
-                f"- State: {value}",
-                f"- Command: {command_name}",
-                "",
-                "**GUI input model**",
-                f"- Input type: {input_type}",
-                "",
-                "**Next step**",
-                "- Apply the change and observe the subrole behavior on the server",
-            ])
-
-    if role_name == "banker" and admin_visible:
-        config_map = {
-            "config_tae": ("Daily allowance", "Configure daily TAE from unified view"),
-            "config_bonus": ("Opening bonus", "Configure opening bonus from unified view"),
-        }
-        selected = config_map.get(action_name)
-        if selected:
-            label, command_name = selected
-            return "\n".join([
-                f"💰 **{_bot_display_name} Canvas - Banker Config Target**\n",
-                "**Selected option**",
-                f"- Target: {label}",
-                f"- Command pattern: {command_name}",
-                "",
-                "**GUI input model**",
-                "- Input type: number input",
-                "- Validation: accept only positive numeric values",
-                "",
-                "**Next step**",
-                "- Inspect the current value before changing it",
-            ])
-
-    if role_name == "mc":
-        playback_map = {
-            "playback_play": ("Play", "`!mc play \"song name\"`", "Text input"),
-            "playback_add": ("Add", "`!mc add \"song name\"`", "Text input"),
-            "queue_show": ("Queue", "`!mc queue`", "Action button"),
-        }
-        selected = playback_map.get(action_name)
-        if selected:
-            label, command_name, input_type = selected
-            return "\n".join([
-                f"🎵 **{_bot_display_name} Canvas - MC Action Choice**\n",
-                "**Selected option**",
-                f"- Action: {label}",
-                f"- Command: {command_name}",
-                "",
-                "**GUI input model**",
-                f"- Input type: {input_type}",
-                "",
-                "**Next step**",
-                "- Use this action from a server voice-channel context",
-            ])
-
-    if role_name == "mc":
-        action_map = {
-            "mc_play": ("Play Now", "`!mc play <song>`", "Immediately play a song (replaces current)", "Text input with song name/URL"),
-            "mc_add": ("Add to Queue", "`!mc add <song>`", "Add song to end of queue", "Text input with song name/URL"),
-            "mc_skip": ("Skip", "`!mc skip`", "Skip current song", "Action button"),
-            "mc_pause": ("Pause", "`!mc pause`", "Pause current playback", "Action button"),
-            "mc_resume": ("Resume", "`!mc resume`", "Resume paused playback", "Action button"),
-            "mc_stop": ("Stop", "`!mc stop`", "Stop playback and clear queue", "Action button"),
-            "mc_queue": ("View Queue", "`!mc queue`", "Show current playback queue", "Action button"),
-            "mc_clear": ("Clear Queue", "`!mc clear`", "Clear entire queue (DJ only)", "Action button"),
-            "mc_history": ("History", "`!mc history`", "Show recently played songs", "Action button"),
-            "mc_volume": ("Volume", "`!mc volume <0-100>`", "Adjust playback volume", "Number input 0-100"),
-        }
-        selected = action_map.get(action_name)
-        if selected:
-            label, command_name, explanation, input_type = selected
-            return "\n".join([
-                f"🎵 **{_bot_display_name} Canvas - MC Action: {label}**\n",
-                "**Selected option**",
-                f"- Command: {command_name}",
-                f"- Meaning: {explanation}",
-                "",
-                "**GUI input model**",
-                f"- Input type: {input_type}",
-                "",
-                "**Next step**",
-                "- Use this action from a server voice-channel context",
-            ])
-
-    return None
-
-
-def _get_canvas_role_action_surface_name(role_name: str, action_name: str) -> str:
-    if role_name == "news_watcher" and action_name.startswith("method_"):
-        return "overview"  # Same view for both overview and personal
-    if role_name == "news_watcher" and action_name.startswith("subscribe_"):
-        return "overview"  # Same view for both overview and personal
-    if role_name == "news_watcher" and action_name.startswith("list_"):
-        return "overview"  # Same view for both overview and personal
-    if role_name == "treasure_hunter" and action_name.startswith("league_"):
-        return "league"
-    if role_name == "treasure_hunter" and action_name.startswith("poe2_item_"):
-        return "personal"
-    if role_name == "treasure_hunter" and action_name.startswith("poe2_"):
-        return "admin"
-    if role_name == "trickster":
-        if action_name.startswith("ring_"):
-            return "ring" if action_name == "ring_accuse" else "ring_admin"
-        if action_name.startswith("beggar_"):
-            return "beggar" if action_name == "beggar_donate" else "beggar_admin"
-        if action_name.startswith("announcements_"):
-            return "dice_admin"
-        if action_name.startswith("dice_"):
-            return "dice_admin" if action_name in {"dice_fixed_bet", "dice_pot_value"} else "dice"
-    if role_name == "banker" and action_name.startswith("config_"):
-        return "admin"
-    if role_name == "mc":
-        return "overview"
-    return "overview"
-
 def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, welcome_name: str, nowelcome_name: str,
                        role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_name: str = "default",
                        author_id: int = 0) -> str:
@@ -968,6 +640,10 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     
     # Get home messages from personality with fallback
     home_messages = _personality_descriptions.get("canvas_home_messages", {})
+    personalitystatus = home_messages.get("personalitystatus", "**Personality:**" )
+    homedescription = home_messages.get("description", "Interact with all of the bot feautures from this panel." )
+    recentsynthesistitle = home_messages.get("recentsynthesistitle", "**Recent synthesis**" )
+    personalsynthesistitle = home_messages.get("personalsynthesistitle", "**Personal synthesis with you**" )
     
     def _home_text(key: str, fallback: str) -> str:
         value = home_messages.get(key)
@@ -978,57 +654,46 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     
     try:
         database = AgentDatabase(server_name=server_name)
-        daily_record = database.get_daily_memory_record()
         recent_record = database.get_recent_memory_record()
         relationship_record = database.get_user_relationship_memory(author_id)
     except Exception as e:
         logger.warning(f"Canvas status could not load memory data for server={server_name}: {e}")
-        daily_record = None
         recent_record = None
         relationship_record = {"summary": "", "updated_at": None, "last_interaction_at": None, "metadata": {}}
     
-    mission_prompt_lines = _load_role_mission_prompts(enabled_roles)
-    mission_prompt_count = len(mission_prompt_lines)
-    
-    daily_summary = (daily_record or {}).get("summary", "").strip()
     recent_summary = (recent_record or {}).get("summary", "").strip()
     relationship_summary = (relationship_record or {}).get("summary", "").strip()
     
     status_lines.extend([
-        f"**Personality:** `{_personality_name}`",
-        f"**Active roles:** {roles_text}",
+        f"{homedescription}",
         "",
-        "──────────────────────────────",
+        "─" * 45,
         "",
-        "**Status**",
-        f"- Mission prompt paragraphs active: {mission_prompt_count}",
-        f"- Recent memory: {'available' if recent_summary else 'empty'}",
-        f"- Daily memory: {'available' if daily_summary else 'empty'}",
-        f"- Personal memory with you: {'available' if relationship_summary else 'empty'}",
+        
     ])
     
     if recent_summary:
         status_lines.extend([
             "",
-            "──────────────────────────────",
             "",
-            "**Recent synthesis**",
+            f"{recentsynthesistitle}",
             f"- {recent_summary[:900]}",
         ])
     
     if relationship_summary:
         status_lines.extend([
             "",
-            "──────────────────────────────",
+            "─" * 45,
             "",
-            "**Personal synthesis with you**",
+            f"{personalsynthesistitle}",
             f"- {relationship_summary[:900]}",
         ])
     
     # Add final separator
     status_lines.extend([
         "",
-        "──────────────────────────────"
+        "─" * 45,
+        f"{personalitystatus} `{_personality_name}`"
     ])
     
     return "\n".join(status_lines)
@@ -1038,29 +703,42 @@ def _build_canvas_behavior(greet_name: str, nogreet_name: str, welcome_name: str
                            role_cmd_name: str, talk_cmd_name: str, admin_visible: bool) -> str:
     """Build the shared non-role behavior view - now shows conversation as default."""
     # Return the conversation view as the behavior overview
+
     return _build_canvas_behavior_detail("conversation", admin_visible, None, None) or f"**💬 {_bot_display_name} Comportamiento General**\n**Conversation surface**\n- Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles\n\n**Routing**\n- This is a shared global behavior, not a role-specific one\n- Use `!canvas roles` for role-specific flows"
 
 
 def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=None, agent_config: dict = None) -> str | None:
     """Build a detailed General Behavior view."""
+    behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
+    title_status = behavior_descriptions.get("status", f"**Current status**")
     if detail_name in {"conversation", "chat"}:
         # Get conversation title from personality descriptions with fallback
-        behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        conversation_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} Canvas - General Behavior Conversation")
+        conversations_messages = behavior_descriptions.get("conversation", {})
+        conversation_title = conversations_messages.get("title", f"💬 {_bot_display_name} Canvas - General Behavior Conversation")
+        conversation_description = conversations_messages.get("description", f"**Conversation surface**\n- Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles\n")
         
-        # Replace {_bot} placeholder
-        conversation_title = conversation_title.replace("{_bot}", _bot_display_name)
-        
+        # Get guild_id for taboo keywords
+        guild_id = "unknown"
+        if guild:
+            if hasattr(guild, 'id'):
+                guild_id = str(guild.id)
+            else:
+                guild_id = int(guild)
+        else:
+            guild_id = 0
+            
+        taboo_title_keywords = behavior_descriptions.get("taboo",{}).get("title_keywords", f"**Current keywords**")
+        state = get_taboo_state(guild_id)
+        keywords = ", ".join(state.get("keywords", [])) or "(none)"
+   
         return "\n".join([
             f"{conversation_title}\n",
-            "**Conversation surface**",
-            "- Mention the bot in a server channel to talk",
-            "- Send a DM to the bot for private interaction",
-            "- Replies are shaped by the active personality and roles",
-            "",
-            "**Routing**",
-            "- This is a shared global behavior, not a role-specific one",
-            "- Use `!canvas roles` for role-specific flows",
+            f"{conversation_description}\n",
+            "─" * 45,
+            f"{taboo_title_keywords}\n",
+            f"- {keywords}",
+            #(Future Dev): Implement here a seccioon with the role keywords loaded
+            "─" * 45,
         ])
     if detail_name in {"greetings"}:
         from behavior.greet import clear_greeting_cache
@@ -1077,37 +755,24 @@ def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=N
             guild_id = "unknown"
         
         # Get title from personality descriptions with fallback
-        behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        greetings_title = behavior_descriptions.get("canvas_greetings_title", f"👋 {_bot_display_name} Canvas - General Behavior Greetings")
-        
-        # Replace {_bot} placeholder
-        greetings_title = greetings_title.replace("{_bot}", _bot_display_name)
-        
+
+        greetings_descriptions = behavior_descriptions.get("greetings", {})
+        greetings_title = greetings_descriptions.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Greetings",)
+        greetings_description = greetings_descriptions.get("description", "**Description**\n- Presence greetings are global server behavior\n- Uses behavior/greet.py module\n- Greets users when they come online (offline → online)\n- 5-minute cooldown between greetings per user")
+     
         # Debug info
         from discord_bot.discord_utils import _greeting_config
         debug_config = _greeting_config.get(guild_id, {})
         
         return "\n".join([
             f"{greetings_title}\n",
-            "**Admin controls**",
-            f"- `!greet{_personality_name}` - Enable presence greetings",
-            f"- `!nogreet{_personality_name}` - Disable presence greetings",
-            "",
-            "**Current status**",
+            f"{greetings_description}",
+            "─" * 45,
+            f"{title_status}\n",
             f"- {'✅ Enabled' if greeting_enabled else '❌ Disabled'}",
             "",
-            "**Debug info**",
-            f"- Guild ID: {guild_id}",
-            f"- Behaviors DB available: {get_behaviors_db_instance is not None}",
-            f"- Config exists: {guild_id in _greeting_config}",
-            f"- Raw config: {debug_config}",
-            f"- Final state: {greeting_enabled}",
-            "",
-            "**Routing**",
-            "- Presence greetings are global server behavior",
-            "- Uses behavior/greet.py module",
-            "- Greets users when they come online (offline → online)",
-            "- 5-minute cooldown between greetings per user",
+            "─" * 45,
+            #(Future Dev) - We have to add here the last greeting message that was gived
         ])
     if detail_name in {"welcome"}:
         if not admin_visible:
@@ -1115,14 +780,14 @@ def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=N
         
         # Get welcome state from behaviors database first, fallback to memory
         welcome_enabled = False
-        if guild and get_behaviors_db_instance is not None:
+        if guild and get_behavior_db_instance is not None:
             try:
                 if hasattr(guild, 'id'):
                     guild_id = str(guild.id)
                 else:
                     guild_id = str(guild)
                 
-                db = get_behaviors_db_instance(guild_id)
+                db = get_behavior_db_instance(guild_id)
                 welcome_enabled = db.get_welcome_enabled()
             except Exception as e:
                 logger.warning(f"Error loading welcome state from behaviors database: {e}")
@@ -1135,43 +800,26 @@ def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=N
             welcome_enabled = greeting_cfg.get("enabled", False)
         
         # Get title from personality descriptions with fallback
-        behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        welcome_title = behavior_descriptions.get("canvas_welcome_title", f"👋 {_bot_display_name} Canvas - General Behavior Welcome Messages")
-        
-        # Replace {_bot} placeholder
-        welcome_title = welcome_title.replace("{_bot}", _bot_display_name)
-        
+        welcome_messages = behavior_descriptions.get("welcome", {})
+        welcome_title = welcome_messages.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Welcome Messages")
+        welcome_description = welcome_messages.get("description", f"Configure the bot to give a good greetings when someone join for first time to the server.")
         # Debug info
         guild_id = str(guild.id) if hasattr(guild, 'id') else str(guild) if guild else "unknown"
         
         return "\n".join([
             f"{welcome_title}\n",
-            "**Admin controls**",
-            "- `!welcome{_personality_name}` - Enable member welcome messages",
-            "- `!nowelcome{_personality_name}` - Disable member welcome messages",
-            "",
-            "**Current status**",
+            f"{welcome_description}\n",
+             "─" * 45,
+            f"{title_status}\n",
             f"- {'✅ Enabled' if welcome_enabled else '❌ Disabled'}",
             "",
-            "**Debug info**",
-            f"- Guild ID: {guild_id}",
-            f"- Behaviors DB available: {get_behaviors_db_instance is not None}",
-            f"- Memory cfg: {greeting_cfg.get('enabled', False) if 'greeting_cfg' in locals() else 'N/A'}",
-            f"- Final state: {welcome_enabled}",
-            "",
-            "**Concrete choices**",
-            "- Boolean toggle: welcome messages on/off",
-            "",
-            "**Routing**",
-            "- Welcome behavior is global to the server",
-            "- Uses behavior/welcome.py module",
-            "- Welcomes new members when they join the server",
-            "- Only administrators can change it",
+            #(Future Dev) - We have to add here the last welcome message that was gived
+            "─" * 45,
         ])
     if detail_name in {"commentary", "talk"}:
         if not admin_visible:
             return _build_canvas_setup_not_available()
-        
+
         # Handle both guild object and guild ID
         if guild:
             if hasattr(guild, 'id'):
@@ -1189,9 +837,9 @@ def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=N
         interval_minutes = 180
         channel_id = None
         
-        if get_behaviors_db_instance is not None:
+        if get_behavior_db_instance is not None:
             try:
-                db = get_behaviors_db_instance(guild_id_str)
+                db = get_behavior_db_instance(guild_id_str)
                 db_state = db.get_commentary_state()
                 enabled = db_state['enabled']
                 config = db_state.get('config', {})
@@ -1208,40 +856,21 @@ def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=N
             channel_id = state.get("channel_id")
         
         # Get title from personality descriptions with fallback
-        behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        commentary_title = behavior_descriptions.get("canvas_commentary_title", f"🗣️ {_bot_display_name} Canvas - General Behavior Mission Commentary")
-        
-        # Replace {_bot} placeholder
-        commentary_title = commentary_title.replace("{_bot}", _bot_display_name)
-        
+        comentary_messages = behavior_descriptions.get("comentary", {})
+        commentary_title = comentary_messages.get("title", f"🗣️ {_bot_display_name} Canvas - General Behavior Mission Commentary")
+        commentary_description = comentary_messages.get("description", "Commentary is global behavior driven by active roles")
         return "\n".join([
             f"{commentary_title}\n",
-            "**Admin controls**",
-            f"- `!talk{_personality_name} on` - Enable commentary",
-            f"- `!talk{_personality_name} off` - Disable commentary",
-            f"- `!talk{_personality_name} now` - Trigger commentary now",
-            f"- `!talk{_personality_name} status` - Inspect current status",
-            f"- `!talk{_personality_name} frequency <minutes>` - Set frequency",
-            "",
-            "**Current status**",
+            f"{commentary_description}\n",
+            "─" * 45,
+            f"{title_status}\n",
             f"- {'✅ Enabled' if enabled else '❌ Disabled'}",
             f"- Interval: {interval_minutes} minutes",
             f"- Channel: {f'<#{channel_id}>' if channel_id else 'Not set'}" if enabled else "- Channel: N/A (disabled)",
             "",
-            "**Debug info**",
-            f"- Guild ID: {guild_id_str}",
-            f"- Behaviors DB available: {get_behaviors_db_instance is not None}",
-            f"- Memory state: {_talk_state_by_guild_id.get(guild_id, 'None')}",
-            "",
-            "**Concrete choices**",
-            "- Boolean toggle: commentary on/off",
-            "- Action button: run commentary now",
-            "- Number input: frequency in minutes",
-            "",
-            "**Routing**",
-            "- Commentary is global behavior driven by active roles",
-            "- Only administrators can configure it",
-        ])
+            #(Future Dev) - We have to add here the last comentary message that was gived
+            "─" * 45,
+        ]) 
     if detail_name in {"taboo"}:
         if not admin_visible:
             return _build_canvas_setup_not_available()
@@ -1259,41 +888,33 @@ def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=N
         keywords = ", ".join(state.get("keywords", [])) or "(none)"
         
         # Get title from personality descriptions with fallback
-        behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        taboo_title = behavior_descriptions.get("canvas_taboo_title", f"🚫 {_bot_display_name} Canvas - General Behavior Taboo")
-        
-        # Replace {_bot} placeholder
-        taboo_title = taboo_title.replace("{_bot}", _bot_display_name)
-        
+        taboo_messages = behavior_descriptions.get("taboo", {})
+        taboo_title = taboo_messages.get("title", f"🚫 {_bot_display_name} Canvas - General Behavior Taboo")
+        taboo_description = taboo_messages.get("description", f"- Taboo watches normal server chat and can trigger an in-character reply")
+        taboo_title_keywords = taboo_messages.get("title_keywords", f"**Current keywords**")
+
         return "\n".join([
             f"{taboo_title}\n",
-            "**Admin controls**",
-            "- `!taboo on` - Enable taboo responses",
-            "- `!taboo off` - Disable taboo responses",
-            "- `!taboo add <keyword>` - Add a forbidden keyword",
-            "- `!taboo del <keyword>` - Remove a forbidden keyword",
-            "- `!taboo list` - Inspect the current keyword list",
-            "",
-            "**Current status**",
+            f"{taboo_description}\n",
+            "─" * 45,
+            f"{title_status}\n",
             f"- {'On' if state.get('enabled', False) else 'Off'}",
             "",
-            "**Current keywords**",
+            f"{taboo_title_keywords}\n",
             f"- {keywords}",
-            "",
-            "**Debug info**",
-            f"- Guild ID: {guild_id}",
-            f"- Taboo DB available: {get_taboo_db_instance is not None}",
-            f"- Keywords count: {len(state.get('keywords', []))}",
-            f"- Default from prompts: {'orco' in state.get('keywords', [])}",
-            "",
-            "**Routing**",
-            "- Taboo watches normal server chat and can trigger an in-character reply",
-            "- Only administrators can configure it",
+            ""
+            "─" * 45,
         ])
     if detail_name in {"role_control", "roles"}:
         if not admin_visible:
             return _build_canvas_setup_not_available()
-        enabled_roles = _get_enabled_roles(agent_config) if agent_config else []
+        
+        # Initialize roles system to ensure database is primary source
+        from discord_bot.discord_utils import initialize_roles_from_database
+        initialize_roles_from_database(agent_config)
+        
+        # Get roles status from database (PRIMARY source)
+        db = _get_behavior_db_for_guild(guild)
         all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
         role_labels = {
             "news_watcher": "News Watcher",
@@ -1303,65 +924,59 @@ def _build_canvas_behavior_detail(detail_name: str, admin_visible: bool, guild=N
             "mc": "MC",
         }
         
-        # Debug info - check actual config
-        roles_cfg = (agent_config or {}).get("roles", {})
-        
         status_lines = []
         for role_name in all_roles:
             label = role_labels.get(role_name, role_name.replace("_", " ").title())
-            # Check both methods for consistency
-            method1_status = role_name in enabled_roles
-            method2_status = roles_cfg.get(role_name, {}).get("enabled", False)
-            status = "✅ Enabled" if method1_status else "❌ Disabled"
-            # Add debug info if there's a mismatch
-            debug_info = f" (cfg:{method2_status})" if method1_status != method2_status else ""
-            status_lines.append(f"- {label}: {status}{debug_info}")
-        
-        # Add debug section
-        debug_lines = [
-            "**Debug Info**",
-            f"- Total roles in config: {len(roles_cfg)}",
-            f"- Enabled roles found: {len(enabled_roles)}",
-            f"- Config keys: {list(roles_cfg.keys())}",
-            f"- Enabled list: {enabled_roles}",
-            ""
-        ]
+            
+            # PRIMARY: Get from database
+            if db is not None:
+                try:
+                    # Special case for MC: check if enabled in agent_config and show "Always enabled"
+                    if role_name == "mc" and agent_config:
+                        mc_enabled = agent_config.get("roles", {}).get("mc", {}).get("enabled", False)
+                        if mc_enabled:
+                            status = "✅ Always enabled"
+                            status_lines.append(f"- {label}: {status}")
+                            continue
+                    
+                    enabled = db.get_role_enabled(role_name)
+                    status = "✅ Enabled" if enabled else "❌ Disabled"
+                    status_lines.append(f"- {label}: {status}")
+                except Exception as e:
+                    logger.warning(f"Error getting role {role_name} from database: {e}")
+                    status_lines.append(f"- {label}: ❓ Database Error")
+            else:
+                # EMERGENCY FALLBACK: This should not happen in normal operation
+                logger.error("Database unavailable for role control - this indicates a serious issue")
+                status_lines.append(f"- {label}: ❓ System Error")
         
         # Get title from personality descriptions with fallback
-        behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        role_control_title = behavior_descriptions.get("canvas_role_control_title", f"🎛️ {_bot_display_name} Canvas - General Behavior Role Control")
-        
-        # Replace {_bot} placeholder
-        role_control_title = role_control_title.replace("{_bot}", _bot_display_name)
+        role_control_messages = behavior_descriptions.get("role_control", {})
+        role_control_title = role_control_messages.get("title", f"🎛️ {_bot_display_name} Canvas - General Behavior Role Control")
+        role_control_description = role_control_messages.get("description", "Role activation is managed through database - primary source")
         
         return "\n".join([
             f"{role_control_title}\n",
-            "**Admin controls**",
-            f"- `!role{_personality_name} <role> on` - Activate a role",
-            f"- `!role{_personality_name} <role> off` - Deactivate a role",
-            "",
-            *debug_lines,
-            "**Current status**",
+            f"{role_control_description}\n",
+            "─" * 45,
+            f"{title_status}\n",
             *status_lines,
             "",
-            "**Concrete choices**",
-            "- Select menu: choose role",
-            "- Boolean toggle: on/off",
-            "",
-            "**Routing**",
-            "- Role activation is global server behavior",
-            "- Detailed per-role work continues in `!canvas roles`",
+            "💡 **Database is primary source** - Changes are persisted immediately",
+            "🔧 If you see 'System Error', the database is unavailable",
+            "─" * 45,
         ])
     return None
 
 
 def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> str:
-    """Build the role navigation Canvas view."""
-    roles_config = (agent_config or {}).get("roles", {})
+    """Build the role navigation Canvas view - now uses database as primary source."""
+    # Initialize roles system to ensure database is primary source
+    from discord_bot.discord_utils import initialize_roles_from_database
+    initialize_roles_from_database(agent_config)
     
     # Get roles view messages from personality with fallback
     roles_messages = _personality_descriptions.get("roles_view_messages", {})
-    role_descriptions = roles_messages.get("role_descriptions", {})
     server_name = "Server"  # We don't have guild context here
     
     # Title and description from descriptions.json with fallback
@@ -1383,9 +998,13 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     active_roles = []
     inactive_roles = []
     
+    # Get database for role information
+    db = _get_behavior_db_for_guild(guild)
+    
     # Helper function to get role info with fallback
     def get_role_info(role_key):
-        role_info = role_descriptions.get(role_key, {})
+        # Role info is directly under the role key in roles_view_messages
+        role_info = roles_messages.get(role_key, {})
         fallback_titles = {
             "news_watcher": "News Watcher",
             "treasure_hunter": "Treasure Hunter", 
@@ -1407,55 +1026,54 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
         }
     
     # News Watcher
-    if is_role_enabled_check("news_watcher", agent_config, guild):
+    if is_role_enabled_check("news_watcher", None, guild):
         active_roles.append("news_watcher")
-        interval = get_role_interval_hours("news_watcher", agent_config, guild, 1)
+        interval = get_role_interval_hours("news_watcher", None, guild, 1)
         role_info = get_role_info("news_watcher")
         parts.append(
-            f"📡 **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
+            f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
             f"• {role_info['description']}\n"
             ""
         )
     
     # Treasure Hunter
-    if is_role_enabled_check("treasure_hunter", agent_config, guild):
+    if is_role_enabled_check("treasure_hunter", None, guild):
         active_roles.append("treasure_hunter")
-        interval = get_role_interval_hours("treasure_hunter", agent_config, guild, 1)
+        interval = get_role_interval_hours("treasure_hunter", None, guild, 1)
         role_info = get_role_info("treasure_hunter")
         parts.append(
-            f"💎 **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
+            f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
             f"• {role_info['description']}\n"
             ""
         )
     
     # Trickster
-    if is_role_enabled_check("trickster", agent_config, guild):
+    if is_role_enabled_check("trickster", None, guild):
         active_roles.append("trickster")
         role_info = get_role_info("trickster")
         parts.append(
-            f"🎭 **{role_info['title']}** {enabled_status}\n"
+            f" **{role_info['title']}** {enabled_status}\n"
             f"• {role_info['description']}\n"
             ""
         )
     
     # Banker
-    if is_role_enabled_check("banker", agent_config, guild):
+    if is_role_enabled_check("banker", None, guild):
         active_roles.append("banker")
-        interval = get_role_interval_hours("banker", agent_config, guild, 24)
+        interval = get_role_interval_hours("banker", None, guild, 24)
         role_info = get_role_info("banker")
         parts.append(
-            f"💰 **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
+            f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
             f"• {role_info['description']}\n"
             ""
         )
     
     # MC
-    mc_cfg = roles_config.get("mc", {})
-    if mc_cfg.get("enabled", False):
+    if is_role_enabled_check("mc", None, guild):
         active_roles.append("mc")
         role_info = get_role_info("mc")
         parts.append(
-            f"🎵 **{role_info['title']}** {enabled_status}\n"
+            f" **{role_info['title']}** {enabled_status}\n"
             f"• {role_info['description']}\n"
             ""
         )
@@ -1560,10 +1178,10 @@ def _build_canvas_help() -> str:
     )
 
 
-def _build_canvas_role_news_watcher(agent_config: dict, admin_visible: bool, guild=None) -> str:
+def _build_canvas_role_news_watcher(agent_config: dict, admin_visible: bool, guild=None, author_id: int = 0) -> str:
     """Build the News Watcher role view (same as personal view)."""
     # Use the personal view content directly
-    return _build_canvas_role_news_watcher_detail("personal", admin_visible, guild, 0, None, None, None)
+    return _build_canvas_role_news_watcher_detail("personal", admin_visible, guild, author_id, None, None, None)
 
 
 def _get_canvas_channel_subscriptions_info(guild) -> str:
@@ -1731,7 +1349,7 @@ def _build_canvas_role_news_watcher_detail(
 ) -> str | None:
     """Build a detailed News Watcher view with 3-block structure."""
     watcher_messages = get_watcher_messages() if get_watcher_messages else {}
-    watcher_descriptions = _personality_descriptions.get("watcher_messages", {})
+    watcher_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {})
 
     def _watcher_text(key: str, fallback: str) -> str:
         value = watcher_descriptions.get(key, watcher_messages.get(key))
@@ -1740,17 +1358,17 @@ def _build_canvas_role_news_watcher_detail(
     def _get_watcher_personal_intro_block() -> str:
         """Get the standard watcher personal introduction block."""
         return "\n".join([
-            f"**📡 {_watcher_text('canvas_personal_title', 'News Watcher Personal')}**",
-            _watcher_text('canvas_personal_description', 'Build and maintain your personal news subscriptions. Choose a method first, then subscribe to categories or feeds, or review your keywords and premises.'),
+            f"**📡 {_watcher_text('title', 'News Watcher Personal')}**",
+            _watcher_text('description', 'Build and maintain your personal news subscriptions. Choose a method first, then subscribe to categories or feeds, or review your keywords and premises.'),
             "──────────────────────────────",
         ])
 
     def _get_watcher_admin_intro_block() -> str:
         """Get the standard watcher admin introduction block."""
         return "\n".join([
-            f"**{_watcher_text('canvas_admin_title', '📡 News Watcher')} Admin**",
+            f"**{_watcher_text('title', '📡 News Watcher')} Admin**",
             "",
-            _watcher_text("canvas_admin_description", "Manage channel subscriptions with the same flow as personal view, but applied to channels. Choose a method, then manage categories, feeds, and server actions."),
+            _watcher_text("description", "Manage channel subscriptions with the same flow as personal view, but applied to channels. Choose a method, then manage categories, feeds, and server actions."),
             "──────────────────────────────",
         ])
 
@@ -2030,7 +1648,7 @@ def _build_canvas_role_news_watcher_detail(
         current_method = _get_canvas_watcher_method_label(str(guild.id)) if guild else "Unknown"
         current_frequency = _get_canvas_watcher_frequency_hours(str(guild.id)) if guild else 1
         return "\n".join([
-            f"**{_watcher_text('canvas_admin_title', '📡 News Watcher')} Admin**",
+            f"**{_watcher_text('title', '📡 News Watcher')} Admin**",
             "**Main goal**",
             "- Configure how the server receives and filters watcher output",
             "",
@@ -2070,7 +1688,7 @@ def _build_canvas_role_news_watcher_detail(
 def _build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the Treasure Hunter role view."""
     treasure_messages = _personality_answers.get("treasure_hunter_messages", {})
-    treasure_descriptions = _personality_descriptions.get("treasure_hunter_messages", {})
+    treasure_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {})
     
     def _treasure_text(key: str, fallback: str) -> str:
         value = treasure_descriptions.get(key, treasure_messages.get(key))
@@ -2081,12 +1699,12 @@ def _build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, 
     
     def _get_treasure_overview_intro_block() -> str:
         return "\n".join([
-            _treasure_text("canvas_th_overview_title", f"💎 {_bot_display_name} Canvas - Treasure Hunter"),
+            f"💎 **{_treasure_text('title', f'{_bot_display_name} Canvas - Treasure Hunter')}**",
         ])
     
     def _get_treasure_poe2_intro_block() -> str:
         return "\n".join([
-            _treasure_text("canvas_th_poe2_title", f"💎 {_bot_display_name} Canvas - Treasure Hunter POE2"),
+            f"💎 **{_treasure_text('poe2',{}).get('title', f'{_bot_display_name} Canvas - PoE 2 Treasure Hunter')}**",
         ])
     
     interval = (agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("interval_hours", 1)
@@ -2136,7 +1754,7 @@ def _build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, 
 def _build_canvas_role_treasure_hunter_detail(detail_name: str, admin_visible: bool, guild=None, author_id: int | None = None) -> str | None:
     """Build a detailed Treasure Hunter view."""
     treasure_messages = _personality_answers.get("treasure_hunter_messages", {})
-    treasure_descriptions = _personality_descriptions.get("treasure_hunter_messages", {})
+    treasure_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {})
     
     def _treasure_text(key: str, fallback: str) -> str:
         value = treasure_descriptions.get(key, treasure_messages.get(key))
@@ -2236,9 +1854,10 @@ def _build_canvas_role_treasure_hunter_detail(detail_name: str, admin_visible: b
 def _build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=None) -> str:
     """Build the Trickster role view."""
     # Try to get trickster messages, fallback to empty dict
-    trickster_messages = {}
+    roles_messages = {}
     try:
-        trickster_messages = _personality_descriptions.get("ring_view_messages", {})
+        roles_messages = _personality_descriptions.get("roles_view_messages", {})
+        trickster_messages = roles_messages.get("trickster", {})
     except Exception:
         pass
     
@@ -2273,9 +1892,8 @@ def _build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=
     
     parts = [
         _get_trickster_overview_intro_block(),
-        separator,
         "**Role type:** multi-surface role with subroles",
-        f"**Active subroles:** {subroles_text}",
+        #f"{trickster_description}",
         f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,} | ring {'On' if ring_state['enabled'] else 'Off'} | beggar {'On' if beggar_state['enabled'] else 'Off'}",
         separator,
     ]
@@ -2294,10 +1912,8 @@ def _build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, g
     """Build a detailed Trickster view."""
     # Try to get trickster messages, fallback to empty dict
     trickster_messages = {}
-    try:
-        trickster_messages = _personality_descriptions.get("ring_view_messages", {})
-    except Exception:
-        pass
+    roles_messages = _personality_descriptions.get("roles_view_messages", {})
+    trickster_messages = roles_messages.get("trickster", {})
     
     def _trickster_text(key: str, fallback: str) -> str:
         value = trickster_messages.get(key)
@@ -2319,12 +1935,11 @@ def _build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, g
     
     if detail_name in {"dice", "game"}:
         dice_state = _get_canvas_dice_state(guild)
-        balance_messages = _personality_descriptions.get("dice_game_balance_messages", {})
-        descriptions = _personality_descriptions.get("dice_game_messages", {})
+        descriptions = trickster_messages.get("dice_game", {})
         # Build the base content with personality title and pot balance
         title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
-        pot_title = balance_messages.get("current_balance", "💎 **CURRENT POT:**")
-        fixed_bet = balance_messages.get("fixed_bet", "💎 **FIXED BET:**")
+        pot_title = descriptions.get("current_balance", "💎 **CURRENT POT:**")
+        fixed_bet = descriptions.get("fixed_bet", "💎 **FIXED BET:**")
         parts = [
             title,
             f"{pot_title} **{dice_state['pot_balance']:,}** :coin: ",
@@ -2350,7 +1965,7 @@ def _build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, g
             
         parts.append("─" * 45)       
         server_key = get_server_key(guild)
-        server_id = str(guild.id)
+        server_id = str(guild.id) if guild else "0"
         db_dice = get_dice_game_db_instance(server_key)
         history = db_dice.get_game_history(server_id, 10)
         historytitle = descriptions.get("history", "**📜 DICE HISTORY**")
@@ -2434,9 +2049,9 @@ def _build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, g
         ring_state = _get_canvas_ring_state(guild)
         
         # Get ring view messages from personality with fallback
-        ring_messages = _personality_descriptions.get("ring_view_messages", {})
+        ring_messages = roles_messages.get("trickster", {}).get("ring", {})
         server_name = guild.name if guild else "Server"
-        
+
         # Title and description from personality files with fallback
         title = _trickster_text("canvas_ring_title", f"👁️ **{_bot_display_name} Cazador del Anillo**")
         # Remove ** from title for embed title
@@ -2530,13 +2145,53 @@ def _build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, g
             "**Routing**",
             "- Back only from here",
         ])
+    if detail_name == "runes":
+        # Get runes messages from personality
+        runes_messages = roles_messages.get("trickster", {}).get("nordic_runes", {})
+        
+        # Use personality messages with English fallbacks
+        title = runes_messages.get("canvas_runes_title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
+        description = runes_messages.get("canvas_runes_description", "Ancient wisdom for modern guidance through Elder Futhark runes.")
+        
+        return "\n".join([
+            title,
+            "",
+            description,
+            "",
+            "**Available Readings:**",
+            "• **Single Rune** - Quick guidance for specific questions",
+            "• **Three Rune Spread** - Past, Present, Future insights", 
+            "• **Five Rune Cross** - Comprehensive situation analysis",
+            "",
+            "**How to Use:**",
+            "1. Choose a reading type from the dropdown",
+            "2. Enter your question in the modal",
+            "3. Receive personalized rune interpretation",
+            "",
+            "**The 24 Elder Futhark Runes:**",
+            "Fehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo",
+            "Hagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo", 
+            "Tiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala",
+            "",
+            "**Features:**",
+            "• Personalized interpretations based on your question",
+            "• Reading history tracking",
+            "• Contextual guidance for different life areas",
+            "• Ancient Norse wisdom applied to modern life",
+            "",
+            "**Commands:**",
+            "• `!runes cast [type] <question>` - Direct rune casting",
+            "• `!runes history` - View your reading history",
+            "• `!runes types` - Show reading types",
+            "• `!runes help` - Detailed help",
+        ])
     return None
 
 
 def _build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the unified Banker role view with wallet information."""
     banker_messages = _personality_answers.get("banker_messages", {})
-    banker_descriptions = _personality_descriptions.get("banker_messages", {})
+    banker_descriptions = _personality_descriptions.get("roles_view_messages",{}).get("banker",{})
     
     def _banker_text(key: str, fallback: str) -> str:
         value = banker_descriptions.get(key, banker_messages.get(key))
@@ -2624,7 +2279,7 @@ def _build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None) -
     # Try to get MC messages, fallback to empty dict
     mc_messages_dict = {}
     try:
-        mc_messages_dict = _personality_descriptions.get("mc_messages", {})
+        mc_messages_dict = _personality_descriptions.get("roles_view_messages", {}).get("mc_messages", {})
     except Exception:
         pass
     
@@ -2678,7 +2333,7 @@ def _build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None) -
 def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str | None:
     """Build a role-specific Canvas view."""
     if role_name == "news_watcher" and is_role_enabled_check("news_watcher", agent_config, guild):
-        return _build_canvas_role_news_watcher(agent_config, admin_visible, guild)
+        return _build_canvas_role_news_watcher(agent_config, admin_visible, guild, author_id or 0)
     if role_name == "treasure_hunter" and is_role_enabled_check("treasure_hunter", agent_config, guild):
         return _build_canvas_role_treasure_hunter(agent_config, admin_visible, guild, author_id)
     if role_name == "trickster" and is_role_enabled_check("trickster", agent_config, guild):

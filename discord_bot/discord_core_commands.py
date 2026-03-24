@@ -19,7 +19,7 @@ from pathlib import Path
 
 from agent_db import AgentDatabase
 from agent_logging import get_logger
-from agent_engine import PERSONALITY, think, AGENT_CFG
+from agent_engine import PERSONALITY, AGENT_CFG
 from discord_bot.discord_utils import (
     is_admin, is_duplicate_command, send_dm_or_channel, send_embed_dm_or_channel,
     set_greeting_enabled, get_greeting_enabled,
@@ -55,14 +55,9 @@ except Exception:
     get_beggar_db_instance = None
 
 try:
-    from behavior.db_behavior import get_behavior_db_instance as get_behaviors_db_instance
+    from behavior.db_behavior import get_behavior_db_instance
 except Exception:
-    get_behaviors_db_instance = None
-
-try:
-    from behavior.taboo.db_taboo import get_taboo_db_instance
-except Exception:
-    get_taboo_db_instance = None
+    get_behavior_db_instance = None
 
 logger = get_logger('discord_core')
 
@@ -107,89 +102,94 @@ _taboo_state_by_guild_id: dict[int, dict] = {}
 
 
 def get_taboo_state(guild_id: int) -> dict:
-    """Get taboo state from database, initializing from prompts.json if needed."""
+    """Get taboo state from behavior database, initializing from prompts.json if needed."""
     state = _taboo_state_by_guild_id.get(guild_id)
     if state is None:
-        # Try to get from database first
-        if get_taboo_db_instance is not None:
-            try:
-                server_key = str(guild_id)
-                db_taboo = get_taboo_db_instance(server_key)
-                
-                # Get default keywords from prompts.json
-                role_cfg = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
-                taboo_defaults = role_cfg.get("taboo", {}) if isinstance(role_cfg, dict) else {}
-                default_keywords = list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else []
-                
-                # Initialize database with defaults if empty
-                db_taboo.initialize_from_defaults(default_keywords)
-                
-                # Get current state from database
-                state = {
-                    "enabled": db_taboo.is_enabled(),
-                    "keywords": db_taboo.get_keywords(),
-                    "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
-                }
-                
-            except Exception as e:
-                logger.warning(f"Error accessing taboo database for guild {guild_id}: {e}")
-                # Fallback to in-memory state
-                role_cfg = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
-                taboo_defaults = role_cfg.get("taboo", {}) if isinstance(role_cfg, dict) else {}
-                state = {
-                    "enabled": False,
-                    "keywords": list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else [],
-                    "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
-                }
-        else:
-            # Fallback to prompts.json only
-            role_cfg = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
-            taboo_defaults = role_cfg.get("taboo", {}) if isinstance(role_cfg, dict) else {}
+        # Try to get from behavior database first
+        try:
+            server_key = str(guild_id)
+            db_behavior = get_behavior_db_instance(server_key)
+            
+            # Get default keywords from prompts.json/behaviors/taboo
+            taboo_defaults = PERSONALITY.get("behaviors", {}).get("taboo", {})
+            default_keywords = list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else []
+            
+            # Initialize database with defaults if empty
+            db_behavior.initialize_taboo_defaults(default_keywords)
+            
+            # Get current state from behavior database
             state = {
-                "enabled": False,
-                "keywords": list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else [],
+                "enabled": db_behavior.is_taboo_enabled(),
+                "keywords": db_behavior.get_taboo_keywords(),
                 "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
             }
-        
-        _taboo_state_by_guild_id[guild_id] = state
+            
+            # Cache the state
+            _taboo_state_by_guild_id[guild_id] = state
+            
+        except Exception as e:
+            logger.error(f"Error getting taboo state from behavior database: {e}")
+            # Fallback to empty state
+            state = {
+                "enabled": False,
+                "keywords": [],
+                "response": "WARNING: That word is not appropriate here!"
+            }
+            _taboo_state_by_guild_id[guild_id] = state
+    
     return state
 
 
 def update_taboo_state(guild_id: int, enabled: bool = None, keywords: list = None) -> bool:
-    """Update taboo state in database."""
-    if get_taboo_db_instance is None:
-        logger.warning("Taboo database not available, cannot update state")
-        return False
-    
+    """Update taboo state in behavior database."""
     try:
         server_key = str(guild_id)
-        db_taboo = get_taboo_db_instance(server_key)
+        db_behavior = get_behavior_db_instance(server_key)
         
         # Update enabled status if provided
         if enabled is not None:
-            db_taboo.set_enabled(enabled)
-            _taboo_state_by_guild_id[guild_id]["enabled"] = enabled
+            # Get all keywords from database (including disabled ones)
+            # For now, we'll use a different approach: store default keywords and toggle them
+            default_keywords = PERSONALITY.get("behaviors", {}).get("taboo", {}).get("keywords", [])
+            
+            if enabled:
+                # Enable taboo: restore default keywords
+                for keyword in default_keywords:
+                    db_behavior.add_taboo_keyword(keyword, "admin_enable")
+            else:
+                # Disable taboo: remove all keywords
+                current_keywords = db_behavior.get_taboo_keywords()
+                for keyword in current_keywords:
+                    db_behavior.remove_taboo_keyword(keyword)
+            
+            # Update cache
+            if guild_id in _taboo_state_by_guild_id:
+                _taboo_state_by_guild_id[guild_id]["enabled"] = enabled
+                _taboo_state_by_guild_id[guild_id]["keywords"] = db_behavior.get_taboo_keywords()
         
         # Update keywords if provided
         if keywords is not None:
             # Get current keywords
-            current_keywords = set(db_taboo.get_keywords())
+            current_keywords = set(db_behavior.get_taboo_keywords())
             new_keywords = set(kw.lower().strip() for kw in keywords if kw.strip())
             
             # Add new keywords
             for keyword in new_keywords - current_keywords:
-                db_taboo.add_keyword(keyword, "admin_update")
+                db_behavior.add_taboo_keyword(keyword, "admin_update")
             
             # Remove keywords not in new list
             for keyword in current_keywords - new_keywords:
-                db_taboo.remove_keyword(keyword)
+                db_behavior.remove_taboo_keyword(keyword)
             
-            _taboo_state_by_guild_id[guild_id]["keywords"] = list(new_keywords)
+            # Update cache
+            if guild_id in _taboo_state_by_guild_id:
+                _taboo_state_by_guild_id[guild_id]["keywords"] = list(new_keywords)
+                _taboo_state_by_guild_id[guild_id]["enabled"] = db_behavior.is_taboo_enabled()
         
         return True
         
     except Exception as e:
-        logger.error(f"Error updating taboo state for guild {guild_id}: {e}")
+        logger.error(f"Error updating taboo state: {e}")
         return False
 
 
@@ -219,21 +219,17 @@ from discord_bot.canvas.content import (
     _build_canvas_sections,
     _build_canvas_embed,
     _split_canvas_blocks,
-    _get_canvas_role_gui_controls,
     _build_canvas_role_embed,
     _truncate_canvas_field_value,
     _merge_canvas_block_with_auto_response,
     _get_canvas_auto_response_preview,
     _build_canvas_behavior_embed,
-    _get_canvas_behavior_action_items,
     _get_canvas_behavior_action_items_for_detail,
     _get_canvas_behavior_detail_items,
     _get_canvas_role_detail_items,
     _get_canvas_role_action_items_for_detail,
     _get_canvas_role_action_items,
     _build_canvas_behavior_action_view,
-    _build_canvas_role_action_view,
-    _get_canvas_role_action_surface_name,
     _build_canvas_home,
     _build_canvas_behavior,
     _build_canvas_behavior_detail,
@@ -693,12 +689,29 @@ def register_core_commands(bot, agent_config):
                 else:
                     await ctx.send(f"❌ The keyword `{keyword}` is not configured for taboo.")
                 return
-
             await ctx.send("❌ Unknown taboo action. Use `on`, `off`, `add`, `del`, `remove`, or `list`.")
     else:
         logger.info("Command taboo already registered, skipping...")
 
-    # --- ROLE CONTROL ---
+
+def register_core_commands(bot, agent_config):
+
+    # --- GET PERSONALITY AND CONFIGURATION ---
+    _personality_name = PERSONALITY.get("name", "unknown")
+    _personality_answers = PERSONALITY.get("answers", {})
+    _discord_cfg = PERSONALITY.get("discord", {})
+    _bot_display_name = _discord_cfg.get("display_name", "Bot")
+    
+    # --- COMMAND NAMES ---
+    greet_name = f"greet{_personality_name}"
+    nogreet_name = f"nogreet{_personality_name}"
+    welcome_name = f"welcome{_personality_name}"
+    nowelcome_name = f"nowelcome{_personality_name}"
+    insult_name = f"insult{_personality_name}"
+    role_cmd_name = f"role{_personality_name}"
+    talk_cmd_name = f"talk{_personality_name}"
+
+    # --- ROLE CONTROL FUNCTIONS (accessible within this scope) ---
 
     async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
         """Enable or disable roles dynamically."""
@@ -730,6 +743,10 @@ def register_core_commands(bot, agent_config):
             await ctx.send(role_cfg.get("role_deactivated", "✅ Role '{role}' disabled.").format(role=role_name))
             logger.info(f"{ctx.author.name} deactivated role {role_name} in {ctx.guild.name}")
 
+    # Make the function available globally for import
+    globals()['_cmd_role_toggle'] = _cmd_role_toggle
+
+    # --- ROLE CONTROL COMMAND ---
     if bot.get_command(role_cmd_name) is None:
         @bot.command(name=role_cmd_name)
         async def cmd_role_control(ctx, role_name: str = "", action: str = ""):
@@ -752,6 +769,8 @@ def register_core_commands(bot, agent_config):
                 await ctx.send(usage_message)
     else:
         logger.info(f"Command {role_cmd_name} already registered, skipping...")
+
+    # --- PRESENCE GREETINGS ---
 
     # --- ENGLISH HELP COMMAND WITH PERSONALITY SUPPORT ---
     if bot.get_command("agenthelp") is None:

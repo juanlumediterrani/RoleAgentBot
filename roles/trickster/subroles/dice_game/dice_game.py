@@ -54,7 +54,7 @@ class DiceGame:
         """Analyze dice roll and return combination type, description, and prize multiplier."""
         sorted_dice = sorted(dice)
         dice_str = '-'.join(map(str, dice))
-        rolenamecombinations = _personality_descriptions.get("dice_game_combinations", {})
+        rolenamecombinations = _personality_descriptions.get("roles_view_messages", {}).get("dice_game", {})
         triple_ones = rolenamecombinations.get("triple_ones", "(JACKPOT!)")
         triple = rolenamecombinations.get("three_of_a_kind", "(Triple)")
         straight = rolenamecombinations.get("straight", "(Straight)")
@@ -63,7 +63,7 @@ class DiceGame:
 
         # Check for triple ones (jackpot)
         if dice == (1, 1, 1):
-            return 'triple_one', {triple_ones}, 0
+            return 'triple_one', triple_ones, 0
         
         # Check for any triple
         if dice[0] == dice[1] == dice[2]:
@@ -71,7 +71,7 @@ class DiceGame:
         
         # Check for straight 4-5-6
         if sorted_dice == [4, 5, 6]:
-            return 'straight_456', {straight}, self.PRIZE_TABLE['straight_456']
+            return 'straight_456', straight, self.PRIZE_TABLE['straight_456']
         
         # Check for any pair
         if len(set(dice)) == 2:
@@ -182,7 +182,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
         # Get server config to determine fixed bet
         from .db_dice_game import get_dice_game_db_instance
         
-        server_name = get_server_name_by_id(server_id) or server_display_name
+        server_name = server_id  # Use server_id directly instead of server name
         db_game = get_dice_game_db_instance(server_name)
         
         if db_game:
@@ -201,7 +201,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
         try:
             # Import banker database
             from roles.banker.db_role_banker import get_banker_db_instance
-            server_name = get_server_name_by_id(server_id) or server_display_name
+            server_name = server_id  # Use server_id directly instead of server name
             banker_db = get_banker_db_instance(server_name)
             
             if banker_db and result['success']:
@@ -257,15 +257,6 @@ def process_play(player_id: str, player_name: str, server_id: str,
         }
 
 
-def get_server_name_by_id(server_id: str) -> Optional[str]:
-    """Get server name by ID (helper function)."""
-    try:
-        from discord_bot.discord_utils import get_server_name
-        # This would need to be implemented properly in discord_utils
-        # For now, return None
-        return None
-    except Exception:
-        return None
 
 
 async def dice_game_task():

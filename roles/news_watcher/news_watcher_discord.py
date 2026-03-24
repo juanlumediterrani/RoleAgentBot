@@ -298,12 +298,12 @@ def register_news_watcher_commands(bot, personality, agent_config):
 
         logger.info("📡 Watcher channel command registered")
 
-    # --- !forcewatcher ---
+    # --- !forcewatcher (unified command) ---
     if bot.get_command("forcewatcher") is None and FORCEWATCHER_AVAILABLE:
         @bot.command(name="forcewatcher")
         @commands.has_permissions(administrator=True)
         async def cmd_force_watcher(ctx):
-            """Force news watcher to check subscriptions (Admin only)."""
+            """Force news watcher to check all subscriptions (Admin only)."""
             try:
                 # Check permissions first
                 if not ctx.author.guild_permissions.administrator:
@@ -326,13 +326,13 @@ def register_news_watcher_commands(bot, personality, agent_config):
                 
                 logger.info("✅ DiscordHTTP client created")
                 
-                # Force the watcher to process all subscriptions for this channel
-                from roles.news_watcher.news_watcher import process_channel_all_subscriptions
-                await process_channel_all_subscriptions(http, db, global_db, str(ctx.guild.id), str(ctx.channel.id))
+                # Force the watcher to process all subscriptions (channel + user)
+                from roles.news_watcher.news_watcher import process_subscriptions
+                await process_subscriptions(http, str(ctx.guild.id))
                 
-                logger.info("✅ Channel subscriptions processing completed")
+                logger.info("✅ All subscriptions processing completed")
                 await ctx.send("✅ **News watcher iteration completed!**\n"
-                              "📊 Checked all subscriptions (keywords, flat, AI) for this channel.\n"
+                              "📊 Checked all subscriptions (keywords, flat, AI, channel).\n"
                               "📰 Any new articles will be processed and notifications sent.")
                 
             except commands.MissingPermissions:
@@ -348,49 +348,6 @@ def register_news_watcher_commands(bot, personality, agent_config):
         logger.warning("📡 Force watcher command not available - dependencies missing")
     else:
         logger.info("📡 Force watcher command already registered")
-    
-    # --- !forcewatcherpersonal ---
-    if bot.get_command("forcewatcherpersonal") is None and FORCEWATCHER_AVAILABLE:
-        @bot.command(name="forcewatcherpersonal")
-        async def cmd_force_watcher_personal(ctx):
-            """Force news watcher to check your personal subscriptions."""
-            try:
-                logger.info(f"🔄 Personal force watcher initiated by {ctx.author.name} ({ctx.author.id})")
-                await ctx.send("🔄 **Forcing personal news watcher iteration...**")
-                
-                # Get database instance
-                db = get_news_watcher_db_instance(str(ctx.guild.id))
-                global_db = get_global_news_db()
-                
-                logger.info(f"✅ Database instances ready for user {ctx.author.id}")
-                
-                # Use our custom DiscordHTTP client for notifications
-                from discord_bot.discord_http import DiscordHTTP
-                from agent_engine import get_discord_token
-                http = DiscordHTTP(get_discord_token())
-                
-                logger.info("✅ DiscordHTTP client created")
-                
-                # Force the watcher to process all subscriptions for this user
-                from roles.news_watcher.news_watcher import process_user_all_subscriptions
-                await process_user_all_subscriptions(http, db, global_db, str(ctx.guild.id), str(ctx.author.id))
-                
-                logger.info("✅ Personal subscriptions processing completed")
-                await ctx.send("✅ **Personal news watcher iteration completed!**\n"
-                              "📊 Checked all your personal subscriptions (keywords, flat, AI).\n"
-                              "📰 Any new articles will be processed and notifications sent to your DMs.")
-                
-            except Exception as e:
-                logger.error(f"❌ Error in forcewatcherpersonal command: {e}")
-                await ctx.send(f"❌ **Error running personal news watcher:** `{str(e)}`")
-                import traceback
-                traceback.print_exc()
-        
-        logger.info("📡 Personal force watcher command registered")
-    elif not FORCEWATCHER_AVAILABLE:
-        logger.warning("📡 Personal force watcher command not available - dependencies missing")
-    else:
-        logger.info("📡 Personal force watcher command already registered")
     
     # --- !testwatcher (for debugging without admin permissions) ---
     if bot.get_command("testwatcher") is None and FORCEWATCHER_AVAILABLE:

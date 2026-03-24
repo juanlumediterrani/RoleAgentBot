@@ -351,13 +351,16 @@ class AgentDatabase:
                         engine = _engine()
                         personality = engine.PERSONALITY
                         initial_recollections = personality.get("initial_recollections", [])
+                        default_recollections = personality.get("default_recollections", [])
+                        # Combine both sources
+                        all_recollections = (initial_recollections or []) + (default_recollections or [])
                     except Exception as e:
                         logger.warning(f"⚠️ [DB] Could not load personality for initial recollections: {e}")
-                        initial_recollections = []
+                        all_recollections = []
                     
-                    if initial_recollections:
+                    if all_recollections:
                         extracted_at = datetime.datetime.now().isoformat()
-                        for recollection_text in initial_recollections:
+                        for recollection_text in all_recollections:
                             cursor.execute('''
                                 INSERT INTO notable_recollections
                                 (server_name, memory_date, recollection_text, source_paragraph, extracted_at)
@@ -366,7 +369,7 @@ class AgentDatabase:
                                   "Initial recollection from personality JSON", extracted_at))
                         
                         conn.commit()
-                        logger.info(f"🧠 [DB] Initialized {len(initial_recollections)} notable recollections from personality JSON")
+                        logger.info(f"🧠 [DB] Initialized {len(all_recollections)} notable recollections from personality JSON")
                     else:
                         logger.info(f"🧠 [DB] No initial recollections found in personality JSON")
                 
@@ -454,9 +457,9 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error al recuperar historial reciente: {e}")
             return []
 
-    def get_recent_dialogue_window(self, usuario_id, within_minutes=60, max_pairs=10):
-        """Return recent human/bot dialogue pairs for prompt injection."""
-        fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=within_minutes)).isoformat()
+    
+    def get_last_dialogue_window(self, usuario_id, max_messages=10):
+        """Return last 10 human/bot dialogue pairs for prompt injection regardless of time window."""
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
@@ -465,10 +468,10 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT contexto, metadata, fecha
                     FROM interacciones
-                    WHERE usuario_id = ? AND fecha >= ?
+                    WHERE usuario_id = ?
                     ORDER BY fecha DESC
                     LIMIT ?
-                ''', (str(usuario_id), fecha_limite, max_pairs))
+                ''', (str(usuario_id), max_messages))
 
                 rows = cursor.fetchall()
                 dialogue = []
@@ -481,7 +484,113 @@ class AgentDatabase:
                     })
                 return dialogue
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving recent dialogue window: {e}")
+            logger.exception(f"⚠️ [DB] Error retrieving last dialogue window: {e}")
+            return []
+
+    def get_recent_channel_interactions(self, channel_id, within_minutes=60, max_interactions=10):
+        """Return recent messages from a specific channel for prompt injection."""
+        fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=within_minutes)).isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                # Check if channel_id column exists
+                cursor.execute("PRAGMA table_info(interacciones)")
+                columns = [row[1] for row in cursor.fetchall()]
+                logger.info(f"🧠 [DB] Available columns: {columns}")
+                
+                if 'canal_id' in columns:
+                    logger.info(f"🧠 [DB] Using canal_id filter for channel {channel_id}")
+                    cursor.execute('''
+                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                        FROM interacciones
+                        WHERE canal_id = ? AND fecha >= ?
+                        ORDER BY fecha DESC
+                        LIMIT ?
+                    ''', (str(channel_id), fecha_limite, max_interactions))
+                else:
+                    logger.info(f"🧠 [DB] No canal_id column, using fallback for channel {channel_id}")
+                    # Fallback: try without channel_id filter (older databases)
+                    cursor.execute('''
+                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                        FROM interacciones
+                        WHERE fecha >= ?
+                        ORDER BY fecha DESC
+                        LIMIT ?
+                    ''', (fecha_limite, max_interactions))
+                
+                rows = cursor.fetchall()
+                logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
+                conn.close()
+                
+                messages = []
+                for row in rows:
+                    meta = json.loads(row['metadata']) if row['metadata'] else {}
+                    messages.append({
+                        "user_id": row['usuario_id'],
+                        "user_name": row['usuario_nombre'],
+                        "content": row['contexto'] or "",
+                        "response": meta.get('response', '') or "",
+                        "timestamp": row['fecha'],
+                        "type": row['tipo_interaccion']
+                    })
+                return messages
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving recent channel messages: {e}")
+            return []
+
+    def get_last_channel_interactions(self, channel_id, max_messages=10):
+        """Return last 10 messages from a specific channel for prompt injection regardless of time window."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                # Check if channel_id column exists
+                cursor.execute("PRAGMA table_info(interacciones)")
+                columns = [row[1] for row in cursor.fetchall()]
+                logger.info(f"🧠 [DB] Available columns: {columns}")
+                
+                if 'canal_id' in columns:
+                    logger.info(f"🧠 [DB] Using canal_id filter for channel {channel_id}")
+                    cursor.execute('''
+                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                        FROM interacciones
+                        WHERE canal_id = ?
+                        ORDER BY fecha DESC
+                        LIMIT ?
+                    ''', (str(channel_id), max_messages))
+                else:
+                    logger.info(f"🧠 [DB] No canal_id column, using fallback for channel {channel_id}")
+                    # Fallback: try without channel_id filter (older databases)
+                    cursor.execute('''
+                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                        FROM interacciones
+                        ORDER BY fecha DESC
+                        LIMIT ?
+                    ''', (max_messages,))
+                
+                rows = cursor.fetchall()
+                logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
+                conn.close()
+                
+                messages = []
+                for row in rows:
+                    meta = json.loads(row['metadata']) if row['metadata'] else {}
+                    messages.append({
+                        "user_id": row['usuario_id'],
+                        "user_name": row['usuario_nombre'],
+                        "content": row['contexto'] or "",
+                        "response": meta.get('response', '') or "",
+                        "timestamp": row['fecha'],
+                        "type": row['tipo_interaccion']
+                    })
+                return messages
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving last channel messages: {e}")
             return []
 
     def get_daily_memory(self, memory_date=None):

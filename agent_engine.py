@@ -273,7 +273,8 @@ def _load_active_tasks_system_additions() -> list[str]:
     
     return additions
 
-def _load_subrole_prompts_from_json() -> list[str]:
+#Deprecated
+#def _load_subrole_prompts_from_json() -> list[str]:
     """Load subrole prompts from prompts.json with fallback to Python files."""
     is_role_process = os.getenv('ROLE_AGENT_PROCESS') == '1'
     
@@ -393,10 +394,6 @@ def _get_readme_response_rules_lines() -> list[str]:
     ]
 
 
-def _get_mission_injection(role_context: str, mission_prompt_key: str | None, user_content: str) -> str:
-    return None
-
-
 def _parse_iso_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -423,13 +420,54 @@ def _get_response_rules_lines() -> list[str]:
         '4. No termines frases con palabras sueltas como "ke", "a", "de".',
     ]
 
-
-def _get_mission_injection(role_context: str, mission_prompt_key: str | None, user_content: str) -> str:
+#Deprecated
+#def _get_mission_injection(role_context: str, mission_prompt_key: str | None, user_content: str) -> str:
     if not mission_prompt_key:
+        logger.info(f"🎯 [MISSION] No mission_prompt_key provided")
         return ""
+    
+    logger.info(f"🎯 [MISSION] Available keys in PERSONALITY: {list(PERSONALITY.keys())}")
+    
+    # Try direct lookup first
     cfg = PERSONALITY.get(mission_prompt_key, {})
+    logger.info(f"🎯 [MISSION] Direct lookup for {mission_prompt_key}: {bool(cfg)}")
+    
+    # If not found, try role_system_prompts.subroles structure
+    if not cfg and 'role_system_prompts' in PERSONALITY:
+        role_system = PERSONALITY['role_system_prompts']
+        logger.info(f"🎯 [MISSION] Available role_system_prompts: {list(role_system.keys())}")
+        if 'subroles' in role_system:
+            subroles = role_system['subroles']
+            logger.info(f"🎯 [MISSION] Available subroles: {list(subroles.keys())}")
+            cfg = subroles.get(mission_prompt_key, {})
+            logger.info(f"🎯 [MISSION] Found in subroles: {bool(cfg)}")
+    
+    # If still not found, try prompts section
+    if not cfg and 'prompts' in PERSONALITY:
+        prompts = PERSONALITY['prompts']
+        logger.info(f"🎯 [MISSION] Available prompts: {list(prompts.keys())}")
+        cfg = prompts.get(mission_prompt_key, {})
+        logger.info(f"🎯 [MISSION] Found in prompts: {bool(cfg)}")
+    
+    logger.info(f"🎯 [MISSION] Looking for mission key: {mission_prompt_key}")
+    logger.info(f"🎯 [MISSION] Found config: {bool(cfg)}")
     if not isinstance(cfg, dict):
+        logger.warning(f"🎯 [MISSION] Config is not a dict: {type(cfg)}")
         return ""
+    
+    # Check for mission_active field first (used by nordic_runes and similar)
+    mission_active = cfg.get("mission_active", "")
+    if mission_active:
+        logger.info(f"🎯 [MISSION] Using mission_active field: {mission_active[:100]}..." if len(mission_active) > 100 else f"🎯 [MISSION] Mission active: {mission_active}")
+        return mission_active
+    
+    # Check for task field (used in prompts section)
+    task = cfg.get("task", "")
+    if task:
+        logger.info(f"🎯 [MISSION] Using task field: {task[:100]}..." if len(task) > 100 else f"🎯 [MISSION] Task: {task}")
+        return task
+    
+    # Fall back to instructions-based system
     instructions = cfg.get("instructions", [])
     if not isinstance(instructions, list):
         instructions = []
@@ -442,18 +480,17 @@ def _get_mission_injection(role_context: str, mission_prompt_key: str | None, us
     closing = str(cfg.get("closing", "")).strip()
     if closing:
         processed.append(closing)
-    return "\n".join([line for line in processed if line])
+    result = "\n".join([line for line in processed if line])
+    logger.info(f"🎯 [MISSION] Using instructions-based system, final injection length: {len(result)} chars")
+    return result
 
 
 from agent_mind import (
-    _build_prompt_context,
-    _call_llm_async,
-    _render_user_prompt,
+    call_llm,
     generate_daily_memory_summary,
     generate_recent_memory_summary,
     generate_user_relationship_memory_summary,
     refresh_due_relationship_memories,
-    think,
 )
 
 
@@ -480,119 +517,6 @@ def _build_system_prompt(personalidad: dict) -> str:
             sections.append(f"## {examples_title}\n{examples_text}")
         if sections:
             return "\n\n".join(sections)
-
-    sections = []
-
-    section_titles = personalidad.get("system_prompt_section_titles", {})
-    if not isinstance(section_titles, dict):
-        section_titles = {}
-
-    title_absolute_identity = section_titles.get("absolute_identity", "ABSOLUTE IDENTITY (NON-NEGOTIABLE)")
-    title_character = section_titles.get("character", "CHARACTER")
-    title_golden_rules = section_titles.get("golden_rules", "GOLDEN RULES (NEVER BREAK)")
-    title_orca_orthography = section_titles.get("orca_orthography", "ORCA ORTHOGRAPHY")
-    title_style = section_titles.get("style", "STYLE")
-    title_examples = section_titles.get("examples", "EXAMPLES (learn from these)")
-
-    # 1. ABSOLUTE IDENTITY (never_break) — always first
-    never_break = personalidad.get("never_break", [])
-    if never_break:
-        never_break_text = "\n".join([f"- {r}" for r in never_break])
-        sections.append(f"## {title_absolute_identity}\n{never_break_text}")
-
-    # 2. IDENTIDAD del personaje
-    identity = personalidad.get("identity", "")
-    if identity:
-        sections.append(f"## {title_character}\n{identity}")
-
-    # 3. GOLDEN RULES
-    # Prefer plain-text rules if provided by personality; fallback to legacy format_rules.
-    golden_rules = personalidad.get("golden_rules")
-    reglas = []
-    if isinstance(golden_rules, list):
-        reglas = [str(r).strip() for r in golden_rules if str(r).strip()]
-    elif isinstance(golden_rules, str) and golden_rules.strip():
-        reglas = [line.strip() for line in golden_rules.splitlines() if line.strip()]
-
-    if not reglas:
-        # Legacy format_rules (kept for other personalities)
-        format_rules = personalidad.get("format_rules", {})
-        if isinstance(format_rules, dict) and format_rules:
-            if format_rules.get("length"):
-                reglas.append(f"ALWAYS write {format_rules['length']}")
-            if format_rules.get("no_tildes"):
-                reglas.append("NEVER use tildes (a e i o u, without accent)")
-            if format_rules.get("no_dangling"):
-                reglas.append("NEVER end in single words: \"ke\", \"a\", \"de\", \"por\", \"para\"")
-            if format_rules.get("end_punctuation"):
-                reglas.append(f"{format_rules['end_punctuation']}")
-
-    if reglas:
-        reglas_text = "\n".join([f"- {r}" for r in reglas])
-        sections.append(f"## {title_golden_rules}\n" + reglas_text)
-
-    # 4. ORCA ORTHOGRAPHY
-    orthography = personalidad.get("orthography", [])
-    if orthography:
-        ortho_text = "\n".join(orthography)
-        sections.append(f"## {title_orca_orthography}\n{ortho_text}")
-
-    # 5. STYLE
-    style = personalidad.get("style", [])
-    if style:
-        style_text = "\n".join([f"- {s}" for s in style])
-        sections.append(f"## {title_style}\n{style_text}")
-
-    # 6. EXAMPLES
-    examples = personalidad.get("examples", [])
-    if examples:
-        examples_text = "\n".join([f'"{e}"' for e in examples])
-        sections.append(f"## {title_examples}\n{examples_text}")
-
-    # If there are structured sections, use them; if not, fallback to old system_prompt
-    if sections:
-        return "\n\n".join(sections)
-
-    system_prompt = personalidad.get("system_prompt", "")
-    if isinstance(system_prompt, list):
-        system_prompt = "\n".join([str(x) for x in system_prompt])
-    if never_break:
-        never_break_text = "\n".join([f"- {r}" for r in never_break])
-        return f"## {title_absolute_identity}\n{never_break_text}\n\n{system_prompt}"
-    return system_prompt
-
-
-def build_prompt(
-    role_context,
-    user_content="",
-    history_list=None,
-    max_interactions=5,
-    is_public=False,
-    server=None,
-    mission_prompt_key: str | None = None,
-    user_id=None,
-    user_name=None,
-    interaction_type="chat",
-):
-    """Build and return `(system_instruction, prompt_final)` without calling APIs."""
-    public_suffix = PERSONALITY.get("public_context_suffix", "")
-    system_instruction = _build_system_prompt(PERSONALITY)
-    if is_public and public_suffix:
-        system_instruction = f"{system_instruction}\n\nCONTEXT: {public_suffix}"
-    prompt_context = _build_prompt_context(
-        role_context=role_context,
-        user_content=user_content,
-        is_public=is_public,
-        server=server,
-        mission_prompt_key=mission_prompt_key,
-        user_id=user_id,
-        user_name=user_name,
-        interaction_type=interaction_type,
-    )
-    prompt_final = _render_user_prompt(prompt_context)
-
-    return system_instruction, prompt_final
-
 
 # ============================================================================
 # SUBROLE INTERNAL TASKS SYSTEM
@@ -664,18 +588,24 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             reasons = subrole_config.get("internal_task", {}).get("reasons", [])
             if reasons:
                 selected_reason = random.choice(reasons)
-                task_details = f"\n\nRAZÓN ESPECÍFICA: {selected_reason}"
+                task_details = f"\n\nSPECIFIC REASON: {selected_reason}"
         elif subrole_name == "ring":
             methods = subrole_config.get("internal_task", {}).get("investigation_methods", [])
             if methods:
                 selected_method = random.choice(methods)
-                task_details = f"\n\nMÉTODO DE INVESTIGACIÓN: {selected_method}"
+                task_details = f"\n\nINVESTIGATION METHOD: {selected_method}"
         
         # Construct complete prompt: mission + task + details
-        complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nResponde únicamente con lo que diría Putre, sin explicaciones adicionales."
+        complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nRespond only with what Putre would say, without additional explanations."
         
         # Call LLM
-        response = await _call_llm_async(system_instruction, complete_prompt)
+        response = call_llm(
+            system_instruction=system_instruction,
+            prompt=complete_prompt,
+            async_mode=True,
+            call_type="subrole_async",
+            critical=False
+        )
         
         if response and len(response.strip()) > 5:
             # For now, just log the response - we'll integrate with Discord later

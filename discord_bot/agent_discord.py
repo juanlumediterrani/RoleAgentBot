@@ -12,7 +12,8 @@ import random
 import time
 from discord.ext import commands, tasks
 
-from agent_engine import PERSONALITY, think, get_discord_token, AGENT_CFG
+from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG
+from agent_mind import call_llm
 from agent_db import set_current_server, get_active_server_name
 from agent_logging import get_logger, update_log_file_path
 from discord_bot.discord_utils import (
@@ -177,6 +178,17 @@ async def on_ready():
         update_log_file_path(server_key, _personality_name)
         logger = get_logger('discord')
         logger.info(f"📁 Active server: '{active_guild.name}' ({server_key})")
+        
+        # Load default roles for this server
+        try:
+            from behavior.db_behavior import get_behavior_db_instance as get_behaviors_db_instance
+            if get_behaviors_db_instance is not None:
+                db = get_behaviors_db_instance(server_key)
+                default_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
+                db.load_default_roles(default_roles, "system")
+                logger.info(f"🎭 Default roles loaded for server '{active_guild.name}'")
+        except Exception as e:
+            logger.warning(f"Failed to load default roles for server '{active_guild.name}': {e}")
 
     logger.info(f"🤖 Bot {_bot_display_name} connected as {bot.user}")
     logger.info(f"🤖 Prefix: {_cmd_prefix} | Intents: members={bot.intents.members}, presences={bot.intents.presences}")
@@ -195,6 +207,17 @@ async def on_guild_join(guild):
     server_key = get_server_key(guild)
     update_log_file_path(server_key, _personality_name)
     logger.info(f"📁 New server: '{guild.name}' ({server_key})")
+
+    # Initialize news watcher feeds for this server
+    if is_role_enabled_check("news_watcher", agent_config):
+        try:
+            from roles.news_watcher.db_role_news_watcher import DatabaseRoleNewsWatcher
+            news_db = DatabaseRoleNewsWatcher(server_key)
+            # Run feed health check when joining a new server
+            news_db._ensure_feed_health()
+            logger.info(f"📡 News watcher feeds initialized and health-checked for server {guild.name}")
+        except Exception as e:
+            logger.error(f"❌ Error initializing news watcher for server {guild.name}: {e}")
 
     if is_role_enabled_check("mc", agent_config):
         for channel in guild.text_channels:
@@ -299,32 +322,9 @@ async def on_message(message):
             if taboo_hit:
                 server_name = get_server_key(message.guild)
                 
-                # Get taboo response from prompts.json
-                taboo_prompt_cfg = (PERSONALITY.get("role_system_prompts", {}).get("subroles", {}) or {}).get("taboo", {})
-                taboo_response_msg = taboo_prompt_cfg.get("response", "TABOO WARNING: That word is not appropriate here.")
-                
-                # Build the complete taboo prompt following the standard structure
-                taboo_user_message = f"TABOO DETECTION: The user {message.author.display_name} said the forbidden keyword '{taboo_keyword}'. Respond in character, briefly, and call it out."
-                
-                # Use the same think function as normal chat to get full memory context
-                taboo_response = await asyncio.to_thread(
-                    think,
-                    role_context=f"{_bot_display_name} - taboo",
-                    user_content=taboo_user_message,
-                    is_public=True,
-                    logger=logger,
-                    user_id=message.author.id,
-                    user_name=message.author.name,
-                    server_name=server_name,
-                    interaction_type="taboo",
-                )
-                
-                # If LLM response is good, use it, otherwise fallback to prompts.json response
-                if taboo_response and str(taboo_response).strip():
-                    await message.channel.send(str(taboo_response).strip())
-                else:
-                    # Fallback to direct response from prompts.json
-                    await message.channel.send(taboo_response_msg)
+                # Process taboo trigger using extracted function
+                from behavior.taboo.taboo import process_taboo_trigger
+                await process_taboo_trigger(message, taboo_keyword, server_name)
                 return
         except Exception as e:
             logger.exception(f"Error processing taboo trigger: {e}")
@@ -385,9 +385,8 @@ async def _process_chat_message(message):
         return
 
     try:
-        from agent_engine import think
-
-        is_public = message.guild is not None
+        is_public = message.guild is not None  # True for channel, False for DM
+        is_mention = bot.user.mentioned_in(message)
 
         # Clean message content to replace mentions with readable names
         clean_content = _clean_message_content(message)
@@ -403,26 +402,68 @@ async def _process_chat_message(message):
         roles_config = AGENT_CFG.get("roles", {})
         # Only show roles that inject prompts for context
 
-        response = think(
-            role_context=_bot_display_name,  # Use bot display name as role context
-            user_content=clean_content,  # Use cleaned content instead of raw message.content
-            is_public=is_public,
-            logger=logger,
-            user_id=message.author.id,
-            server_name=server_name,
-            interaction_type="chat",
+        # Build system instruction for call_llm
+        from agent_engine import _build_system_prompt
+        system_instruction = _build_system_prompt(PERSONALITY)
+
+        # Choose the appropriate prompt builder based on context
+        if is_public:
+            # Channel message - use channel prompt builder
+            from agent_mind import _build_conversation_channel_prompt
+            contextual_prompt = _build_conversation_channel_prompt(
+                user_content=clean_content,
+                server=server_name,
+                user_id=message.author.id,
+                user_name=message.author.name,
+                channel_id=message.channel.id,
+            )
+        else:
+            # DM message - use user prompt builder
+            from agent_mind import _build_conversation_user_prompt
+            contextual_prompt = _build_conversation_user_prompt(
+                user_id=message.author.id,
+                user_content=clean_content,
+                server=server_name,
+                user_name=message.author.name,
+            )
+
+        response = call_llm(
+            system_instruction=system_instruction,
+            prompt=contextual_prompt,
+            async_mode=False,
+            call_type="think",
+            critical=True,
+            metadata={
+                "interaction_type": "channel" if is_public else "dm",
+                "is_public": is_public,
+                "user_id": message.author.id,
+                "role": _bot_display_name,
+                "server": server_name,
+                "channel_id": message.channel.id if is_public else None,
+                "is_mention": is_mention
+            },
+            logger=logger
         )
 
         # Register interaction in database
         db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)
+        interaction_type = "CHANNEL" if is_public else "DM"
         await asyncio.to_thread(
             db_instance.registrar_interaccion,
-            message.author.id, message.author.name, "CHAT",
+            message.author.id, message.author.name, interaction_type,
             message.content,
             message.channel.id if message.channel else None,
             message.guild.id if message.guild else None,
-            {"response": response, "is_public": is_public}
+            {"response": response, "is_public": is_public, "is_mention": is_mention}
         )
+
+        # Mark user as replied to greeting if they message the bot
+        if message.guild:
+            from behavior.db_behavior import get_behavior_db_instance
+            from discord_bot.discord_utils import get_server_key
+            server_name = get_server_key(message.guild)
+            behavior_db = get_behavior_db_instance(server_name)
+            await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, message.guild.id)
 
         if response and response.strip():
             await message.channel.send(response)

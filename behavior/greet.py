@@ -7,13 +7,66 @@ import time
 import discord
 import asyncio
 from agent_logging import get_logger
-from agent_engine import think
+from agent_mind import call_llm, _build_conversation_user_prompt, _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
+from agent_engine import _build_system_prompt, PERSONALITY
 from discord_bot.discord_utils import get_greeting_enabled, get_server_key, get_db_for_server
+from behavior.db_behavior import get_behavior_db_instance
 
 logger = get_logger('greet_behavior')
 
 # Track last greetings per user to avoid spam
 _last_greetings = {}
+
+def build_greeting_prompt(user_display_name: str, user_id: str, guild) -> str:
+    """
+    Build a comprehensive contextual prompt for user greetings.
+    
+    Args:
+        user_display_name: Display name of the user being greeted
+        user_id: Discord user ID
+        guild: Discord guild object
+        
+    Returns:
+        Comprehensive contextual prompt with memory, relationship, and interaction history
+    """
+    server_name = get_server_key(guild)
+    
+    # Get greeting configuration from personality
+    greetings_cfg = PERSONALITY.get("behaviors", {}).get("greetings", {})
+    task_template = greetings_cfg.get("task", "Greet {username} that is already connected to the server.")
+    golden_rules = greetings_cfg.get("golden_rules", [])
+    response_title = greetings_cfg.get("response_title", "## WRITE ONLY THE GREET IN THE WORDS OF THE PERSONALITY:")
+    
+    # Build individual blocks using specific functions
+    memory_block = _build_prompt_memory_block(server=server_name)
+    relationship_block = _build_prompt_relationship_block(
+        user_id=user_id,
+        user_name=user_display_name,
+        server=server_name
+    )
+    interactions_block = _build_prompt_last_interactions_block(
+        user_id=user_id,
+        server=server_name
+    )
+    
+    # Format the task with username
+    task = task_template.format(username=user_display_name)
+    
+    # Build the complete prompt structure
+    prompt_sections = [
+        memory_block,
+        relationship_block,
+        interactions_block,
+        "---",  # Separator
+        task,  # Task from prompts.json
+        "\n".join(golden_rules),  # Golden rules from prompts.json
+        response_title  # Response title from prompts.json
+    ]
+    
+    # Filter out empty sections
+    non_empty_sections = [section for section in prompt_sections if section and section.strip()]
+    
+    return "\n\n".join(non_empty_sections)
 
 async def handle_presence_update(before, after, discord_cfg, bot_display_name):
     """
@@ -45,57 +98,59 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
     if before_status != discord.Status.offline or after_status != discord.Status.online:
         return
     
-    # Rate limiting - 5 minutes between greetings per user
+    # Rate limiting - 1 hour between greetings per user
     current_time = time.time()
     last_greeting_key = f"presence_greeting_{after.id}"
-    if current_time - _last_greetings.get(last_greeting_key, 0) < 300:
+    if current_time - _last_greetings.get(last_greeting_key, 0) < 3600:
         logger.info(f"Presence greeting skipped due to cooldown for user={after.name} guild={after.guild.name}")
         return
     
     try:
-        # Check if the user has replied to the bot or if the last message was from the bot
+        # Check if user has an unreplied greeting from before
         server_name = get_server_key(after.guild)
-        db_instance = get_db_for_server(after.guild)
-        last_interaction = await asyncio.to_thread(db_instance.get_last_interaction, after.id)
+        behavior_db = get_behavior_db_instance(server_name)
+        greeting_status = await asyncio.to_thread(behavior_db.get_last_greeting_status, after.id, after.guild.id)
         
-        # Skip greeting if the last interaction was from the bot (greeting, response, etc.)
-        # and the user hasn't replied yet
-        if last_interaction:
-            # Check if the last interaction was a bot-initiated message
-            # Bot-initiated messages have: empty user context OR specific bot-only types
-            is_bot_initiated = (
-                (not last_interaction["context"] or 
-                 last_interaction["context"].startswith("User went from offline to online") or
-                 last_interaction["context"].startswith("User joined the server")) or
-                last_interaction["type"] in ["PRESENCE_DM", "WELCOME"]
-            )
-            
-            if is_bot_initiated:
-                logger.info(f"Presence greeting skipped for {after.name} - last message was from bot and user hasn't replied")
-                return
+        # Skip greeting if user has an unreplied greeting
+        if greeting_status.get('has_unreplied_greeting', False):
+            logger.info(f"Presence greeting skipped for {after.name} - user has unreplied greeting from before")
+            return
+        
+        # Build comprehensive contextual prompt for greeting
+        greeting_prompt = build_greeting_prompt(after.display_name, after.id, after.guild)
+        
+        # Build system instruction for call_llm
+        from agent_engine import _build_system_prompt, PERSONALITY
+        system_instruction = _build_system_prompt(PERSONALITY)
         
         saludo = await asyncio.to_thread(
-            think,
-            role_context=after.display_name,
-            user_content=after.display_name,
+            call_llm,
+            system_instruction=system_instruction,
+            prompt=greeting_prompt,
+            async_mode=False,
+            call_type="think",
+            critical=True,
             logger=logger,
-            mission_prompt_key="prompt_greet",
-            user_id=after.id,
-            user_name=after.name,
-            server_name=server_name,
-            interaction_type="greet",
         )
         
         await after.send(f"👋 {saludo}")
         logger.info(f"🔄 Presence DM sent to {after.name}")
         _last_greetings[last_greeting_key] = current_time
         
+        # Record greeting in behavior database for reply tracking
+        behavior_db = get_behavior_db_instance(server_name)
+        await asyncio.to_thread(
+            behavior_db.record_greeting_sent,
+            after.id, after.name, after.guild.id, saludo, 'presence'
+        )
+        
         # Register interaction in database
         db_instance = get_db_for_server(after.guild)
+        interaction_message = greetings_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
         await asyncio.to_thread(
             db_instance.registrar_interaccion,
             after.id, after.name, "PRESENCE_DM",
-            "User went from offline to online (DM greeting)",
+            interaction_message,
             None, after.guild.id,
             metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
         )

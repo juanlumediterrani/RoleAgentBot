@@ -157,7 +157,7 @@ async def initialize_dice_game_accounts():
                     continue
                     
                 # Check if user already has dice game stats
-                stats = db_dice_game.obtener_estadisticas_jugador(user_id, server_id)
+                stats = db_dice_game.get_player_stats(user_id, server_id)
                 
                 if stats.get('total_plays', 0) == 0:
                     # User doesn't have dice game account yet

@@ -37,7 +37,16 @@
       "prize_multiplier": "🎊 ¡GANASTE, JODIO UMANO! Tiraste {combination} - Botín: {prize:,} monedas!",
       "sin_premio": "{combination} - ¡NAH! ¡Sin premio! ¡Más oro para la orda, largate perdedor!",
       "error_jugada": "¡GRRR la magia negra rompió el juego! La caja ruidosa dice: {error}",
-      "big_pot_announcement": "🔥 ¡EL BOTE ES GIGANTE COMO UN OGRO! 🔥 ¡Hay **{balance:,}** monedas de oro! ¡Usa `!dice play` para robarlo o putre te pisa! 🎲"
+      "big_pot_announcement": "🔥 ¡EL BOTE ES GIGANTE COMO UN OGRO! 🔥 ¡Hay **{balance:,}** monedas de oro! ¡Usa `!dice play` para robarlo o putre te pisa! 🎲",
+      "error_admin_only": "¡GRRR! Solo los jefes pueden usa este comando, umano escoria!",
+      "error_config_parameter": "¡GRRR! Debe especificar ke configurar. Usa `!dice config bet <cantidad>` o `!dice config announcements on/off`.",
+      "error_specify_amount": "¡GRRR! Debe especificar la cantidad. Ejemplo: `!dice config bet 15`.",
+      "error_bet_range": "¡GRRR! La apuesta debe estar entre 1 y 1000 monedas.",
+      "fixed_bet_configured": "✅ **Apuesta fija configurada** - Todos los juegos ahora costarán {amount:,} monedas.",
+      "error_configuring_bet": "❌ ¡GRRR! Error configurando la apuesta fija.",
+      "error_announcement_value": "❌ ¡GRRR! Valor inválido. Usa 'on' o 'off' para anuncios.",
+      "announcements_configured": "✅ **Anuncios configurados** - Las grandes victorias {'serán anunciadas' if enabled else 'NO serán anunciadas'}.",
+      "error_configuring_announcements": "❌ ¡GRRR! Error configurando los anuncios."
     },
     "dice_game_balance_messages": {
       "big_pot": "🔥 **¡EL BOTE ESTÁ REBOSANDO DE ORO!** 🔥\n¡Un buen orco robaría estas {balance:,} monedas ahora mismo!\n",
@@ -45,6 +54,16 @@
       "small_pot": "📉 **bote pequeño** - Pocos muertos hoy, sigue creciendo!\n",
       "sent_private": "📩 ¡Putre ta mandao el estao del bote!",
       "balance_error": "❌ ¡GRRR la majia ozcura me embozca! Putre no puede comproba cuanto oroo hay!."
+    },
+    "nordic_runes_messages": {
+      "welcome": "🔮 ¡GRRR! Putre el sabio de las runas antiguas está listo para revelar tu destino, umano! Las runas nórdicas hablan con poder y verdad!",
+      "casting": "🔮 ¡GRRR! Putre lanza las runas antiguas... los espíritus del norte hablan!",
+      "success": "🔮 ¡UHHH! Las runas antiguas han hablado, umano! ¡Escucha su sabiduría!",
+      "error": "🔮 ¡BLEGH! ¡La magia oscura rompió las runas! ¡intenta de nuevo umano!",
+      "no_question": "🔮 ¡GRRR! ¡Necesitas hacer una pregunta a las runas, umano tonto! ¡no puedo leer tu mente!",
+      "invalid_type": "🔮 ¡GRRR! ¡Tipo de lanzamiento inválido umano baboso! ¡Uza: single, three, cross, runic_cross!",
+      "history_empty": "🔮 ¡GRRR! ¡No tienes lecturas de runas anteriores umano baboso! ¡Lanza tu primera runa!",
+      "reading_saved": "🔮 ¡UHHH! Putre guardó tu lectura de runas en los pergamino antiguos!"
     },
     "mc_messages": {
       "voice_join_empty": "¡GRRR putre entra a la kueva de voz! ¡preparate para oir tambores de guerra y gritos!",

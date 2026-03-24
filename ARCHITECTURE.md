@@ -370,7 +370,7 @@ The memory system is designed to simulate contextual continuity so the bot can a
 - It starts from a neutral paragraph loaded from personality files.
 - Every hour, if there were new interactions with a given user:
   - It takes the current relationship paragraph and the recent bot-user interactions from the last hour.
-  - It calls `think` with the relationship paragraph, the recent interactions, the task prompt, and writing rules.
+  - It calls llm with the relationship paragraph, the recent interactions, the task prompt, and writing rules.
   - The task asks the model to update the relationship summary without losing its prior continuity.
   - Prompt fragments come from the personality directory, with English code fallbacks.
   - The new paragraph becomes the updated relationship memory for that user.
@@ -399,6 +399,14 @@ The bot can emit comments related to currently active roles. The prompt includes
 
 #### Taboo
 The bot reacts when configured taboo words appear in a subscribed channel. It uses a dedicated prompt and task definition to generate the response.
+                //bloque de memoria
+                //bloque de relacion con el usuario (el que ha usado la palabra taboo)
+                //bloque ultimas interaciones con el canal (en cuestion)
+                //-------------separador -*45
+                //tarea desde prompts.json/behavior/taboo
+                //golden rules desde el mismo lugar
+                //message_title desde el mismo lugar seguido del mensaje en cuestion
+                //response_title desde el mismo lugar
 #### Remember that?
 -The bot recognize when someone is asking for a specific recollection while are holding a conversations or having a mencion, and aswer in consecuence.
 -The aim words to know if is a one this kind of question are injected from personalities/personality_name/descriptions.json.
@@ -465,14 +473,13 @@ The Canvas suite is the highest-level interactive UI layer. It reuses titles, de
 
 Views generally follow this structure:
 - Embed title injected from `descriptions.json`
-- First block: description of the current view
-- Second block: list or status of the most relevant features for that view
-- Third block: dynamic output that changes as the user selects options from dropdowns
-- Fourth block: a follow-up comment from the bot, typically sourced from `answers.json`
+- First block: description of the current view injected from `descriptions.json`
+- Second block: dynamic output that changes as the user selects options from dropdowns
+- Third block: a follow-up comment from the bot, typically sourced from `answers.json`
 
 Shared navigation elements can include:
 - Buttons for sibling views
-- A configuration dropdown when the view exposes editable settings
+- A configuration dropdown when the view exposes editable settings (like method)
 - An action dropdown for the functions associated with the current view
 - Back and home buttons
 
@@ -483,30 +490,21 @@ The current Canvas structure is:
 - `home/`
 - `home/overview` (same as `home` and the default `!canvas` entry point)
 - `roles/`
-- `roles/watcher`
-- `roles/watcher/personal` (Watcher overview)
+- `roles/watcher`(Watcher overview)
 - `roles/watcher/admin` (channels and configuration)
 - `roles/hunter`
-- `roles/hunter/poe2`
-- `roles/hunter/poe2/items` (POE2 overview)
-- `roles/hunter/poe2/league`
-- `roles/hunter/poe2/admin`
-- `roles/hunter/poe2/admin/items` (POE2 admin overview)
-- `roles/hunter/poe2/admin/league`
-- `roles/hunter/poe2/admin/config` (enable or disable the POE2 role)
+- `roles/hunter/poe2`(POE2 overview )
+- `roles/hunter/poe2/admin`(POE2 channel overview)
+- `roles/hunter/poe2/admin/admin` (enable or disable the POE2 role)
 - `roles/trickster/`
-- `roles/trickster/dice`
-- `roles/trickster/dice/personal` (Dice overview)
+- `roles/trickster/dice`(Dice overview)
 - `roles/trickster/dice/admin` (server admin configuration)
-- `roles/trickster/ring`
-- `roles/trickster/ring/personal` (Ring overview)
+- `roles/trickster/ring` (Ring overview)
 - `roles/trickster/ring/admin` (server admin configuration)
-- `roles/trickster/beggar`
-- `roles/trickster/beggar/personal` (Beggar overview)
+- `roles/trickster/beggar` (Beggar overview)
 - `roles/trickster/beggar/admin` (server admin configuration)
 - `roles/mc`
-- `roles/banker`
-- `roles/banker/personal` (Banker overview)
+- `roles/banker`(Banker overview)
 - `roles/banker/admin`
 - `behavior/`
 - `behavior/conversation` (Behavior overview)

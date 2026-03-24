@@ -2,16 +2,22 @@ import os
 import time
 import queue
 import threading
+import logging
 from datetime import date, datetime
+from typing import Any
 
-from google import genai
-from google.genai import types
+try:
+    import google.generativeai as genai
+    from google.genai import types
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
 
 from agent_logging import get_logger
 from agent_db import get_active_server_name, get_global_db
-from agent_runtime import get_groq_client, increment_usage as runtime_increment_usage, is_simulation_mode
-from postprocessor import postprocess_response, is_blocked_response, is_help_request, is_readme_response
-from prompts_logger import log_agent_response, log_final_llm_prompt, log_readme_enhanced_prompt
+from agent_runtime import is_simulation_mode, increment_usage as runtime_increment_usage
+from postprocessor import postprocess_response, is_blocked_response
+from prompts_logger import log_agent_response, log_final_llm_prompt
 
 logger = get_logger('agent_mind')
 
@@ -22,43 +28,39 @@ def _engine():
 
 
 def _get_daily_memory_fallback() -> str:
-    template = _engine()._get_user_prompt_template()
-    fallback = template.get("daily_memory_fallback", "")
+    template = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    fallbacks = template.get("fallbacks", {})
+    fallback = fallbacks.get("daily_memory", "")
     if isinstance(fallback, str) and fallback.strip():
         return fallback.strip()
     return "The character does not remember anything important from today."
 
 
 def _get_recent_memory_fallback() -> str:
-    template = _engine()._get_user_prompt_template()
-    fallback = template.get("recent_memory_fallback", "")
+    template = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    fallbacks = template.get("fallbacks", {})
+    fallback = fallbacks.get("recent_memory", "")
     if isinstance(fallback, str) and fallback.strip():
         return fallback.strip()
     return "The character feels calm, with no notable recent events."
 
 
 def _get_daily_summary_task_lines() -> list[str]:
-    template = _engine()._get_user_prompt_template()
-    task_lines = template.get("daily_summary_task", [])
+    synthesis = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    task_lines = synthesis.get("daily_summary_task", [])
     if isinstance(task_lines, list) and task_lines:
         return [str(line).strip() for line in task_lines if str(line).strip()]
     return [
         "TASK: Update the long daily memory paragraph as the character's inner voice.",
         "OBJECTIVE: Merge the previous daily memory with the latest recent-memory paragraph from this day.",
-        "NOTABLE MEMORY: Read the 'NOTABLE MEMORY' section (if provided) and subtly weave it into the new daily memory.",
-        "EXTRACTION: From the previous daily memory (PREVIOUS DAILY MEMORY), extract ONE short phrase (max 15 words) that is the most notable or funny. If nothing notable, respond 'NO_MEMORY'.",
-        "FORMAT: Return EXACTLY in this format:",
-        "---NEW_MEMORY---",
-        "[new daily memory paragraph here]",
-        "---EXTRACTED_MEMORY---",
-        "[extracted notable phrase or NO_MEMORY]",
-        "STYLE: Stay fully in character and never speak as an assistant.",
+        "NOTABLE MEMORY: If there's a 'NOTABLE MEMORY TO WEAVE IN' section, subtly weave that memory into the new daily memory paragraph.",
+        "FORMAT: Return aproximetly a paragraph with 500 caracteres in this format:",
     ]
 
 
 def _get_recent_summary_task_lines() -> list[str]:
-    template = _engine()._get_user_prompt_template()
-    task_lines = template.get("recent_memory_summary_task", [])
+    synthesis = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    task_lines = synthesis.get("recent_memory_summary_task", [])
     if isinstance(task_lines, list) and task_lines:
         return [str(line).strip() for line in task_lines if str(line).strip()]
     return [
@@ -83,16 +85,18 @@ def _get_relationship_summary_task_lines() -> list[str]:
 
 
 def _get_relationship_memory_fallback(user_name: str | None = None) -> str:
-    template = _engine()._get_user_prompt_template()
-    fallback = template.get("relationship_memory_fallback", "")
+    template = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    fallbacks = template.get("fallbacks", {})
+    fallback = fallbacks.get("relationship_memory", "")
     if isinstance(fallback, str) and fallback.strip():
         return fallback.replace("{user_name}", user_name or "human").strip()
     return f"The character does not yet have a clear opinion about {user_name or 'this human'}."
 
 
 def _get_recent_dialogue_fallback() -> str:
-    template = _engine()._get_user_prompt_template()
-    fallback = template.get("recent_dialogue_fallback", "")
+    template = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    fallbacks = template.get("fallbacks", {})
+    fallback = fallbacks.get("recent_dialogue_fallback", "")
     if isinstance(fallback, str) and fallback.strip():
         return fallback.strip()
     return "There has been no recent dialogue with this user."
@@ -104,6 +108,7 @@ def _build_configured_synthesis_prompt(
     replacements: dict[str, str],
     sections: list[tuple[str, str]],
     fallback_closing: str,
+    dreaming_recollection: str | None = None,
 ) -> str:
     personality = _engine().PERSONALITY
     cfg = personality.get(prompt_key, {})
@@ -126,11 +131,19 @@ def _build_configured_synthesis_prompt(
         
         # Inject format titles and placeholders after FORMATO line for recent memory summary
         if prompt_key == "prompt_recent_memory_summary" and line.strip().endswith("en este formato:"):
-            # Get format components from JSON with English fallbacks
-            memory_title = cfg.get("memorytitles", "---NEW_MEMORY---")
-            memory_placeholder = cfg.get("memoryplaceholder", "[new memory paragraph here]")
-            recollection_title = cfg.get("recollectiontitle", "---EXTRACTED_MEMORY---")
-            recollection_placeholder = cfg.get("recollectionplaceholder", "[extracted notable phrase or NO_MEMORY]")
+            # Get format components from synthesis_paragraphs with English fallbacks
+            synthesis = personality.get("synthesis_paragraphs", {})
+            formatting = synthesis.get("formatting", {})
+            memory_title = formatting.get("memory_title", "---NEW_MEMORY---")
+            memory_placeholder = formatting.get("memory_placeholder", "[new memory paragraph here]")
+            recollection_title = formatting.get("recollection_title", "---EXTRACTED_MEMORY---")
+            recollection_placeholder = formatting.get("recollection_placeholder", "[extracted notable phrase or NO_MEMORY]")
+            
+            # Replace variables in the current line too
+            line = line.replace("{memory_title}", memory_title)
+            line = line.replace("{memory_placeholder}", memory_placeholder)
+            line = line.replace("{recollection_title}", recollection_title)
+            line = line.replace("{recollection_placeholder}", recollection_placeholder)
             
             processed.append(line.strip())
             # Insert format components after the complete FORMATO line
@@ -155,17 +168,36 @@ def _build_configured_synthesis_prompt(
     return "\n".join([line for line in processed if line])
 
 
-def _build_recent_dialogue_section(recent_dialogue: list[dict]) -> str:
-    if not recent_dialogue:
+def _build_last_dialogue_section(last_dialogue: list[dict]) -> str:
+    if not last_dialogue:
         return _get_recent_dialogue_fallback()
     lines = []
-    for item in recent_dialogue[-15:]:
+    for item in last_dialogue[-10:]:
         human = str(item.get("humano", "")).strip()
         bot = str(item.get("bot", "")).strip()
+        fecha = str(item.get("fecha", "")).strip()
+        
+        # Format timestamp to be more readable (take just the time part)
+        timestamp = ""
+        if fecha:
+            try:
+                # Parse ISO format and extract time
+                from datetime import datetime
+                dt = datetime.fromisoformat(fecha.replace('Z', '+00:00'))
+                timestamp = dt.strftime('%H:%M')
+            except:
+                timestamp = fecha[:5] if len(fecha) >= 5 else fecha
+        
         if human:
-            lines.append(f'Umano: "{human}"')
+            if timestamp:
+                lines.append(f'[{timestamp}] Umano: "{human}"')
+            else:
+                lines.append(f'Umano: "{human}"')
         if bot:
-            lines.append(f'Putre: "{bot}"')
+            if timestamp:
+                lines.append(f'[{timestamp}] Putre: "{bot}"')
+            else:
+                lines.append(f'Putre: "{bot}"')
     return "\n".join(lines).strip() or _get_recent_dialogue_fallback()
 
 
@@ -208,7 +240,8 @@ def _build_daily_summary_prompt(
     previous_summary: str,
     recent_memory: str,
     target_date: str,
-    injected_memory: str | None = None,
+    injected_memory: str | None = None,  # Kept for compatibility but will be ignored
+    dreaming_recollection: str | None = None,
 ) -> str:
     # Get synthesis paragraph labels from personality JSON with English fallback
     synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
@@ -222,33 +255,17 @@ def _build_daily_summary_prompt(
         (previous_daily_label, previous_block),
         (latest_recent_label, recent_block),
     ]
-    if injected_memory and injected_memory.strip():
-        sections.append((notable_memory_label, injected_memory.strip()))
+    # Only use dreaming recollection, ignore injected_memory parameter
+    if dreaming_recollection and dreaming_recollection.strip():
+        sections.append((notable_memory_label, dreaming_recollection.strip()))
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_daily_memory_summary",
         fallback_instructions=_get_daily_summary_task_lines(),
         replacements={"target_date": target_date},
         sections=sections,
-        fallback_closing="Return exactly in the specified format with both sections.",
+        fallback_closing="",
+        dreaming_recollection=dreaming_recollection,
     )
-
-
-def _format_relationship_interactions_for_summary(interactions: list[dict]) -> str:
-    if not interactions:
-        return "There are no new interactions with this user."
-    lines = []
-    for item in interactions[-25:]:
-        timestamp = str(item.get("fecha", "")).strip()
-        interaction_type = str(item.get("tipo_interaccion", "")).strip() or "INTERACTION"
-        human = str(item.get("humano", "")).strip()
-        bot = str(item.get("bot", "")).strip()
-        lines.append(f"[{timestamp}] {interaction_type}")
-        if human:
-            lines.append(f'Human: "{human}"')
-        if bot:
-            lines.append(f'Putre: "{bot}"')
-        lines.append("")
-    return "\n".join(lines).strip()
 
 
 def _build_relationship_summary_prompt(previous_summary: str, new_interactions: list[dict], user_name: str | None, target_date: str) -> str:
@@ -260,7 +277,35 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
     recent_interactions_label = synthesis_labels.get("recent_interactions", "RECENT INTERACTIONS:")
     
     previous_block = previous_summary.strip() or "No previous synthesis."
-    interactions_block = _format_relationship_interactions_for_summary(new_interactions)
+    
+    # Format interactions directly (already filtered by caller)
+    if not new_interactions:
+        interactions_block = "There are no interactions to summarize."
+    else:
+        lines = []
+        for item in new_interactions:
+            timestamp = str(item.get("fecha", "")).strip()
+            interaction_type = str(item.get("tipo_interaccion", "")).strip() or "INTERACTION"
+            human = str(item.get("humano", "")).strip()
+            bot = str(item.get("bot", "")).strip()
+            
+            # Format timestamp to be more readable
+            formatted_time = ""
+            if timestamp:
+                try:
+                    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    formatted_time = dt.strftime('%H:%M')
+                except:
+                    formatted_time = timestamp[:5] if len(timestamp) >= 5 else timestamp
+            
+            lines.append(f"[{formatted_time}] {interaction_type}")
+            if human:
+                lines.append(f'Human: "{human}"')
+            if bot:
+                lines.append(f'Putre: "{bot}"')
+            lines.append("")
+        interactions_block = "\n".join(lines).strip()
+    
     sections = [
         (target_user_label, user_name or "human"),
         (target_date_label, target_date),
@@ -306,7 +351,13 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
 
     system_instruction = engine._build_system_prompt(engine.PERSONALITY)
     summary_prompt = _build_recent_memory_summary_prompt(previous_summary, interactions, resolved_date)
-    summary_response = _call_llm_async(system_instruction, summary_prompt)
+    summary_response = call_llm(
+        system_instruction=system_instruction,
+        prompt=summary_prompt,
+        async_mode=True,
+        call_type="recent_memory",
+        critical=False
+    )
     
     # Extract new memory and notable recollection from response
     new_memory_text, extracted_recollection = _extract_memory_from_summary(summary_response or "")
@@ -340,18 +391,22 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
     return summary_text
 
 
-def _should_inject_random_memory(db_instance, recollection_count: int) -> bool:
-    """Determine if a random recollection should be injected based on count and probability.
+def _should_trigger_dreaming(db_instance) -> bool:
+    """Determine if dreaming should be triggered based on recollection count and probability.
     
-    - If fewer than 10 recollections: 10% chance
-    - If 10 or more recollections: 33% chance
+    - If fewer than 5 recollections: 5% chance
+    - If 5-19 recollections: 10% chance  
+    - If 20+ recollections: 20% chance
     """
     import random
+    recollection_count = db_instance.count_notable_recollections()
     if recollection_count == 0:
         return False
-    if recollection_count < 10:
+    if recollection_count < 5:
+        return random.random() < 0.05  # 5% chance
+    elif recollection_count < 20:
         return random.random() < 0.10  # 10% chance
-    return random.random() < 0.33  # 33% chance
+    return random.random() < 0.20  # 20% chance
 
 
 def _get_random_recollection_for_injection(db_instance) -> tuple[str | None, int | None]:
@@ -388,13 +443,17 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
     personality = _engine().PERSONALITY
     recent_cfg = personality.get("prompt_recent_memory_summary", {})
     
-    # Get titles from JSON or use English fallbacks
-    memory_title = recent_cfg.get("memorytitles", "---NUEVA_MEMORIA---")
-    recollection_title = recent_cfg.get("recollectiontitle", "---RECUERDO_EXTRAIDO---")
+    # Get titles from synthesis_paragraphs or use English fallbacks
+    synthesis = personality.get("synthesis_paragraphs", {})
+    formatting = synthesis.get("formatting", {})
+    memory_title = formatting.get("memory_title", "---NEW_MEMORY---")
+    recollection_title = formatting.get("recollection_title", "---EXTRACTED_RECOLLECTION---")
+    no_memory_keyword = formatting.get("no_memory_keyword", "NO_RECOLLECTION")
     
     # English fallbacks
     memory_title_en = "---NEW_MEMORY---"
-    recollection_title_en = "---EXTRACTED_MEMORY---"
+    recollection_title_en = "---EXTRACTED_RECOLLECTION--"
+    no_memory_keyword_en = "NO_RECOLLECTION"
     
     # Try personality format first - capture content AFTER markers
     pattern = rf"{re.escape(memory_title)}\s*(.*?)\s*{re.escape(recollection_title)}\s*(.*?)\s*(?:\n|$)"
@@ -409,8 +468,8 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
         new_memory = match.group(1).strip()
         extracted = match.group(2).strip()
         
-        # Check if extracted is NO_MEMORY or empty
-        if extracted.upper() in ["NO_MEMORY", "NO MEMORY", "NONE", "", "NO_MEMORIA", "NO MEMORIA"]:
+        # Check if extracted matches no memory keyword (from JSON or fallback)
+        if extracted.upper() in [no_memory_keyword.upper(), no_memory_keyword_en.upper(), "NO MEMORY", "NONE", "", "NO_MEMORIA", "NO MEMORIA", "NO_RECOLLECTION"]:
             return new_memory, None
         return new_memory, extracted
     
@@ -467,15 +526,30 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
     
     # Determine if we should inject a random recollection
     recollection_count = db_instance.count_notable_recollections()
-    injected_recollection = None
-    if _should_inject_random_memory(db_instance, recollection_count):
-        injected_recollection, _ = _get_random_recollection_for_injection(db_instance)
-        if injected_recollection:
-            logger.info(f"🧠 [DAILY_MEMORY] Injecting random notable recollection ({recollection_count} total recollections)")
+    
+    # Use dreaming mechanism only for recollection injection
+    dreaming_recollection = None
+    
+    # Use proper dreaming probability logic
+    if _should_trigger_dreaming(db_instance):
+        # Only use database recollections for dreaming
+        dreaming_recollection, _ = _get_random_recollection_for_injection(db_instance)
+        if dreaming_recollection:
+            logger.info(f"🧠 [DAILY_MEMORY] DREAMING TRIGGERED - Using database recollection ({recollection_count} total)")
+        else:
+            logger.info(f"🧠 [DAILY_MEMORY] DREAMING TRIGGERED - No recollection available in database")
+    else:
+        logger.info(f"🧠 [DAILY_MEMORY] No dreaming triggered (recollections: {recollection_count})")
     
     system_instruction = engine._build_system_prompt(engine.PERSONALITY)
-    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, injected_recollection)
-    summary_response = _call_llm_async(system_instruction, summary_prompt)
+    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, None, dreaming_recollection)
+    summary_response = call_llm(
+        system_instruction=system_instruction,
+        prompt=summary_prompt,
+        async_mode=True,
+        call_type="daily_memory",
+        critical=False
+    )
     
     # Extract new memory (no extraction for daily memory now)
     summary_text = (summary_response or "").strip() or previous_summary or _get_daily_memory_fallback()
@@ -487,14 +561,14 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
             "source": "llm_daily_summary",
             "recent_memory_used": bool(recent_summary),
             "generated_at": datetime.now().isoformat(),
-            "recollection_injected": bool(injected_recollection),
+            "recollection_injected": bool(dreaming_recollection),
+            "dreaming_triggered": bool(dreaming_recollection),
             "memory_extracted": False,  # Daily memory no longer extracts memories
         },
     )
-    logger.info(f"🧠 [DAILY_MEMORY] Stored summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, injected: {bool(injected_recollection)})")
+    logger.info(f"🧠 [DAILY_MEMORY] Stored summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, dreaming: {bool(dreaming_recollection)})")
     return summary_text
-    
-    
+
 
 def _build_daily_memory_text(db_instance) -> str:
     stored = db_instance.get_daily_memory().strip()
@@ -547,11 +621,20 @@ def generate_user_relationship_memory_summary(
         return fallback
 
     if force and not new_interactions:
-        new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=None, limit=25)
+        # Get interactions from last 1 hour with max 100 pairs
+        import datetime
+        one_hour_ago = (datetime.datetime.now() - datetime.timedelta(hours=1)).isoformat()
+        new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=one_hour_ago, limit=100)
 
     system_instruction = engine._build_system_prompt(engine.PERSONALITY)
     summary_prompt = _build_relationship_summary_prompt(previous_summary, new_interactions, user_name, resolved_date)
-    summary_response = _call_llm_async(system_instruction, summary_prompt)
+    summary_response = call_llm(
+        system_instruction=system_instruction,
+        prompt=summary_prompt,
+        async_mode=True,
+        call_type="relationship_memory",
+        critical=False
+    )
     summary_text = (summary_response or "").strip() or previous_summary or _get_relationship_memory_fallback(user_name)
 
     latest_interaction_at = last_interaction_at
@@ -742,51 +825,240 @@ def _apply_role_specific_content_overrides(prompt_final: str, user_message: str)
     
     return '\n'.join(cleaned_lines)
 
+def _build_prompt_memory_block(server=None):
+    """
+    Build only the MEMORIES block with daily and recent memory.
+    This function is now focused solely on basic memory construction.
+    """
+    server_name = server or get_active_server_name()
+    if not server_name:
+        logger.warning("🧠 [MIND] No server context available, skipping memory-backed prompt enrichment")
+        server_name = None
+    db_instance = get_global_db(server_name=server_name) if server_name else None
+    
+    daily_memory = ""
+    recent_memory = ""
+    if db_instance:
+        daily_memory = _build_daily_memory_text(db_instance)
+        recent_memory = _build_recent_memory_text(db_instance)
+    
+    # Get custom prompt labels from personality JSON
+    engine = _engine()
+    synthesis_labels = engine.PERSONALITY.get("synthesis_paragraphs", {})
+    memory_title = synthesis_labels.get("memory_title", "MEMORY:")
+    memories_label = synthesis_labels.get("memories_label", "[MEMORIES]")
+    recent_memories_label = synthesis_labels.get("recent_memories_label", "[RECENT MEMORIES]")
+    
+    # Build MEMORIES block (only daily and recent)
+    memories_block = []
+    
+    # Memory section
+    if daily_memory:
+        memories_block.append(memories_label)
+        memories_block.append(memory_title)
+        memories_block.append(daily_memory)
+    
+    # Recent memory section
+    if recent_memory:
+        memories_block.append(recent_memories_label)
+        memories_block.append(recent_memory)
+    
+    return "\n".join(memories_block) if memories_block else ""
 
-def _render_user_prompt(context: dict) -> str:
-    lines = [
-        context.get("memory_title", "## MEMORY:"),
-        context.get("memories_label", "[MEMORIES]"),
-        context["daily_memory"],
-        context.get("recent_memories_label", "[RECENT MEMORIES]"),
-        context["recent_memory"],
+
+def _build_prompt_relationship_block(user_id: str, user_name: str | None = None, server: str | None = None):
+    """
+    Build only the RELATIONSHIP block with user relationship memory.
+    This function is now focused solely on relationship construction.
+    """
+    server_name = server or get_active_server_name()
+    db_instance = get_global_db(server_name=server_name) if server_name else None
+    
+    if not db_instance:
+        return ""
+    
+    relationship_memory = _refresh_relationship_memory_if_due(db_instance, user_id, user_name, [])
+    if not relationship_memory:
+        return ""
+    
+    # Get relationship label from personality
+    engine = _engine()
+    relationship_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("relationship_title", "[RELATIONSHIP]")
+    
+    # Build RELATIONSHIP block
+    relationship_block = [
+        relationship_title,
+        relationship_memory
     ]
-    if context.get("include_user_memory", False):
-        lines.extend([
-            context.get("relationship_title", "[RELATIONSHIP]"),
-            context["relationship_memory"],
-            context.get("recent_interactions_label", "[RECENT INTERACTIONS]"),
-            context["recent_dialogue_text"],
-        ])
-    for injected_block in [context.get("keyword_injection", ""), context.get("mission_injection", ""), context.get("memory_context", "")]:
-        if injected_block:
-            lines.extend(["", "## RELEVANT MEMORY:", injected_block])
     
-    # Apply role-specific content overrides (general logic)
-    prompt_final = '\n'.join(lines)
-    prompt_final = _apply_role_specific_content_overrides(prompt_final, context.get("user_message", ""))
-    lines = prompt_final.split('\n')
-    
-    lines.extend([
-        "",
-        context.get("message_title", "## MESSAGE:"),
-        f'"{context["user_message"]}"',
-        "",
-        context.get("response_title", "## RESPONSE:"),
-    ])
-    return "\n".join(lines)
+    return "\n".join(relationship_block)
 
 
-def _build_prompt_context(
-    role_context,
-    user_content="",
-    is_public=False,
-    server=None,
-    mission_prompt_key: str | None = None,
-    user_id=None,
-    user_name=None,
-    interaction_type="chat",
+def _build_conversation_user_prompt(
+    user_id: str,
+    user_content: str = "",
+    server: str | None = None,
+    user_name: str | None = None,
+) -> str:
+    """
+    Build a contextual user prompt using the specialized _build_prompt_memory_block.
+    This function constructs the complete user prompt including memories, rules, and message.
+    """
+    # Get memories block from the focused memory function
+    memories_block = _build_prompt_memory_block(server=server)
+    
+    # Get database instance for memory retrieval
+    server_name = server or get_active_server_name()
+    db_instance = get_global_db(server_name=server_name) if server_name else None
+    
+    # Build the complete prompt sections
+    prompt_sections = []
+    
+    # Add memories block if available
+    if memories_block:
+        prompt_sections.append(memories_block)
+    
+    # Add relationship memory block
+    relationship_block = _build_prompt_relationship_block(user_id=user_id, user_name=user_name, server=server)
+    if relationship_block:
+        prompt_sections.append(relationship_block)
+    
+    # Add recent interactions block
+    recent_interactions_block = _build_prompt_last_interactions_block(user_id=user_id, server=server)
+    if recent_interactions_block:
+        prompt_sections.append(recent_interactions_block)
+        prompt_sections.append("-" * 45)
+    
+    # Add golden rules from personality or fallback to English
+    engine = _engine()
+    golden_rules = engine.PERSONALITY.get("behaviors", {}).get("conversation", {}).get("golden_rules", [])
+    if not golden_rules:
+        # English fallback golden rules
+        golden_rules = [
+            "## RESPONSE RULES:",
+            "1. LENGTH: 1-3 sentences (25-200 characters).",
+            "2. GRAMMAR: No accents. End statements with '!' and questions with '?'.",
+            "3. Don't end sentences with single words like 'that', 'of', 'to'.",
+            "4. Don't repeat what you've said, be original and creative, but stay an orc."
+        ]
+    
+    # Add golden rules section
+    if golden_rules:
+        for rule in golden_rules:
+            prompt_sections.append(str(rule).strip())
+        # Add separator after golden rules
+        prompt_sections.append("-" * 45)
+    
+    # Add user message
+    message_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("message_title", "## A USER NAMED {user_name} TELL YOU:")
+    message_title = message_title.replace("{user_name}", user_name)
+    prompt_sections.append(message_title)
+    prompt_sections.append(user_content or "")
+    
+    # Add memory retrieval if user asks about memories
+    if db_instance and user_content:
+        retrieved_memory = _detect_and_retrieve_memory(user_content, db_instance, user_id)
+        if retrieved_memory:
+            memory_retrieval_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("memory_retrieval_title", "[THIS REMINDS YOU THAT:]")
+            prompt_sections.append(memory_retrieval_title)
+            prompt_sections.append(retrieved_memory)
+            prompt_sections.append("-" * 45)
+    
+    response_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
+    prompt_sections.append(response_title)
+    return "\n".join(prompt_sections)
+
+
+def _build_prompt_last_interactions_block(
+    user_id: str,
+    server: str | None = None,
 ):
+    """
+    Build only the LAST INTERACTIONS block with user's last 15 dialogue messages.
+    This function is now focused solely on last interactions construction regardless of time window.
+    """
+    server_name = server or get_active_server_name()
+    db_instance = get_global_db(server_name=server_name) if server_name else None
+    
+    if not db_instance:
+        return ""
+    
+    last_interactions = db_instance.get_last_dialogue_window(user_id, max_messages=15)
+    if not last_interactions:
+        return ""
+    
+    last_interactions_text = _build_last_dialogue_section(last_interactions)
+    if not last_interactions_text:
+        return ""
+    
+    # Get last interactions label from personality
+    engine = _engine()
+    last_interactions_label = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("last_interactions_label", "[RECENT INTERACTIONS]")
+    
+    # Build LAST INTERACTIONS block
+    interactions_block = [
+        last_interactions_label,
+        last_interactions_text
+    ]
+    
+    return "\n".join(interactions_block)
+
+
+def _build_prompt_channel_messages_block(
+    channel_id: str,
+    server: str | None = None,
+):
+    """
+    Build only the CHANNEL MESSAGES block with recent channel interactions.
+    This function is now focused solely on channel messages construction.
+    """
+    server_name = server or get_active_server_name()
+    db_instance = get_global_db(server_name=server_name) if server_name else None
+    
+    if not db_instance or not channel_id:
+        return ""
+    
+    logger.info(f"🧠 [MIND] Loading recent messages from channel {channel_id}")
+    channel_messages = db_instance.get_recent_channel_interactions(channel_id, within_minutes=60, max_interactions=10)
+    logger.info(f"🧠 [MIND] Found {len(channel_messages)} messages from channel")
+    
+    if not channel_messages:
+        logger.info(f"🧠 [MIND] No channel messages found for channel {channel_id}")
+        return ""
+    
+    # Get label from prompts.json or fallback to English
+    engine = _engine()
+    channel_label = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("recent_interactions_from_channel_label", "MENSAJES RECIENTES EN EL CANAL:")
+    
+    # Build channel messages block
+    channel_block = [channel_label]
+    
+    # Format channel messages (exclude commands, include bot responses)
+    bot_name = engine.PERSONALITY.get("name", "Bot")
+    for message in channel_messages:
+        # Skip if it's a command (starts with !)
+        if message['content'].strip().startswith('!'):
+            continue
+            
+        message_text = f"{message['user_name']}: {message['content']}"
+        if message['response']:
+            message_text += f"\n{bot_name}: {message['response']}"
+        channel_block.append(message_text)
+    
+    return "\n".join(channel_block)
+
+
+def _build_conversation_channel_prompt(
+    user_content: str = "",
+    server: str | None = None,
+    user_id: str | None = None,
+    user_name: str | None = None,
+    channel_id: str | None = None,
+) -> str:
+    """
+    Build a contextual user prompt for channel conversations.
+    This function handles channel-specific context and mentions.
+    """
     engine = _engine()
     bot_name = engine.PERSONALITY.get("name", "Bot")
     content = (user_content or "").strip()
@@ -795,59 +1067,64 @@ def _build_prompt_context(
         logger.warning("🧠 [MIND] No server context available, skipping memory-backed prompt enrichment")
         server_name = None
     db_instance = get_global_db(server_name=server_name) if server_name else None
-    include_user_memory = interaction_type in {"chat", "mention", "greet"} and user_id is not None
-    recent_dialogue = db_instance.get_recent_dialogue_window(user_id, within_minutes=60, max_pairs=15) if include_user_memory and db_instance else []
-    daily_memory = _build_daily_memory_text(db_instance) if db_instance else ""
-    recent_memory = _build_recent_memory_text(db_instance) if db_instance else ""
-    relationship_memory = ""
-    if include_user_memory and db_instance:
-        relationship_memory = _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_dialogue)
-        db_instance.schedule_relationship_refresh(user_id, delay_minutes=60)
-    keyword_injection = _get_keyword_injection(content)
-    mission_injection = engine._get_mission_injection(role_context, mission_prompt_key, content)
     
-    # Memory question detection and retrieval
-    memory_context = ""
-    if include_user_memory and db_instance:
-        memory_context = _detect_and_retrieve_memory(content, db_instance, user_id)
+    # Build the contextual prompt sections
+    prompt_sections = []
     
-    # Get custom prompt labels from personality JSON
-    prompt_labels = engine.PERSONALITY.get("prompt_labels", {})
-    memory_title = prompt_labels.get("memory_title", "MEMORY:")
-    memories_label = prompt_labels.get("memories_label", "[MEMORIES]")
-    recent_memories_label = prompt_labels.get("recent_memories_label", "[RECENT MEMORIES]")
-    relationship_title = prompt_labels.get("relationship_title", "[RELATIONSHIP]")
-    recent_interactions_label = prompt_labels.get("recent_interactions_label", "[RECENT INTERACTIONS]")
-    message_title = prompt_labels.get("message_title", "## MESSAGE:")
-    response_title = prompt_labels.get("response_title", "## RESPONSE:")
-    response_rules_title = prompt_labels.get("response_rules_title", "## RESPONSE RULES:")
+    memories_block = _build_prompt_memory_block(server=server)
+    relationship_block = _build_prompt_relationship_block(user_id, user_name, server)
+    # Add memories block if available
+    prompt_sections.append(memories_block)
+    prompt_sections.append(relationship_block)
     
-    if not content and mission_injection:
-        content = mission_injection.splitlines()[0]
-    if not content:
-        content = bot_name
-    return {
-        "bot_name": bot_name,
-        "server_name": server_name,
-        "is_public": is_public,
-        "include_user_memory": include_user_memory,
-        "daily_memory": daily_memory,
-        "recent_memory": recent_memory,
-        "relationship_memory": relationship_memory,
-        "recent_dialogue_text": _build_recent_dialogue_section(recent_dialogue),
-        "keyword_injection": keyword_injection,
-        "mission_injection": mission_injection,
-        "memory_context": memory_context,
-        "user_message": content,
-        "memory_title": memory_title,
-        "memories_label": memories_label,
-        "recent_memories_label": recent_memories_label,
-        "relationship_title": relationship_title,
-        "recent_interactions_label": recent_interactions_label,
-        "message_title": message_title,
-        "response_title": response_title,
-        "response_rules_title": response_rules_title,
-    }
+    # Add recent channel messages block
+    if channel_id:
+        channel_messages_block = _build_prompt_channel_messages_block(channel_id=channel_id, server=server)
+        if channel_messages_block:
+            prompt_sections.append(channel_messages_block)
+    
+    # Add separator if we have any context sections
+    if prompt_sections:
+        prompt_sections.append("-" * 45)
+    
+    # Add golden rules from personality or fallback to English
+    golden_rules = engine.PERSONALITY.get("behaviors", {}).get("conversation", {}).get("golden_rules_channel", [])
+    if not golden_rules:
+        # English fallback golden rules
+        golden_rules = [
+            "## RESPONSE RULES:",
+            "1. LENGTH: 1-3 sentences (25-200 characters).",
+            "2. GRAMMAR: No accents. End statements with '!' and questions with '?'.",
+            "3. Don't end sentences with single words like 'that', 'of', 'to'.",
+            "4. Don't repeat what you've said, be original and creative, but stay an orc.",
+            "5. Your al talking in a channel, you can talk in plural not only with the user that metion you."
+        ]
+    
+    # Add golden rules section
+    if golden_rules:
+        for rule in golden_rules:
+            prompt_sections.append(str(rule).strip())
+        # Add separator after golden rules
+        prompt_sections.append("-" * 45)
+    
+    # Add user message
+    message_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("message_title", "## MESSAGE:")
+    message_title = message_title.replace("{user_name}", user_name)
+    prompt_sections.append(message_title)
+    prompt_sections.append(content)
+    
+    # Add memory retrieval if user asks about memories (for mentions)
+    if db_instance and user_id and content:
+        retrieved_memory = _detect_and_retrieve_memory(content, db_instance, user_id)
+        if retrieved_memory:
+            memory_retrieval_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("memory_retrieval_title", "[THIS REMINDS YOU THAT:]")
+            prompt_sections.append(memory_retrieval_title)
+            prompt_sections.append(retrieved_memory)
+            prompt_sections.append("-" * 45)
+    
+    response_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
+    prompt_sections.append(response_title)
+    return "\n".join(prompt_sections)
 
 
 def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str) -> str:
@@ -906,12 +1183,26 @@ def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str) ->
                 logger.info(f"🧠 [MEMORY_DETECTION] Skipping recollection {i+1}: no keywords or recollection words")
                 continue
                 
+            # Calculate dynamic similarity scores
             intersection = keywords & recollection_words
-            score = len(intersection) / len(keywords) if keywords else 0
+            keyword_coverage = len(intersection) / len(keywords) if keywords else 0  # % of user keywords matched
+            recollection_coverage = len(intersection) / len(recollection_words) if recollection_words else 0  # % of recollection matched
             
-            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1} score: {score:.2f} (intersection: {intersection})")
+            # Dynamic score: prioritize keyword coverage but boost if recollection is well-covered
+            base_score = keyword_coverage
+            coverage_boost = recollection_coverage * 0.3  # 30% boost for good recollection coverage
+            score = base_score + coverage_boost
             
-            if score > best_score and score >= 0.5:  # 50% threshold
+            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1} - Keyword coverage: {keyword_coverage:.2f}, Recollection coverage: {recollection_coverage:.2f}, Final score: {score:.2f}")
+            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1} intersection: {intersection}")
+            
+            # Dynamic threshold: lower base threshold but require minimum absolute matches
+            min_absolute_matches = 2  # At least 2 words must match
+            dynamic_threshold = 0.3  # 30% base threshold
+            
+            if (score > best_score and 
+                len(intersection) >= min_absolute_matches and 
+                score >= dynamic_threshold):
                 best_score = score
                 best_match = recollection.get("recollection_text", "")
                 logger.info(f"🧠 [MEMORY_DETECTION] New best match found with score {best_score:.2f}")
@@ -962,78 +1253,206 @@ def _matches_subrole_keywords(subrole_name: str, content: str) -> bool:
     return any(keyword.lower() in content_lower for keyword in keywords)
 
 
-def _call_llm_async(system_instruction: str, prompt: str) -> str:
-    engine = _engine()
+def call_llm(
+    system_instruction: str,
+    prompt: str,
+    async_mode: bool = False,
+    call_type: str = "default",
+    temperature: float | None = None,
+    max_tokens: int = 1024,
+    critical: bool = True,
+    metadata: dict | None = None,
+    logger: logging.Logger | None = None
+) -> str:
+    """
+    Unified LLM call function that can operate in sync or async mode.
+    
+    Args:
+        system_instruction: System prompt for the LLM
+        prompt: User prompt for the LLM
+        async_mode: If True, use threading (for background tasks)
+        call_type: Type of call for logging ("think", "subrole_async", "daily_memory", etc.)
+        temperature: Temperature override (auto-detected if None)
+        max_tokens: Maximum tokens (default 1024)
+        critical: Whether errors should break execution
+        metadata: Additional context for logging
+        logger: Logger instance (auto-detected if None)
+    
+    Returns:
+        LLM response text
+    """
+    if logger is None:
+        logger = get_logger('agent_engine')
+    
     start_time = time.time()
-
+    metadata = metadata or {}
+    
+    # Auto-detect temperature if not specified
+    if temperature is None:
+        if call_type == "think" and metadata.get("is_mission"):
+            temperature = 0.9
+        else:
+            temperature = 0.95
+    
+    # Log based on criticality
+    log_prefix = "🤖 [CRITICAL]" if critical else "🤖 [BACKGROUND]"
+    
+    # Log the prompt once at the beginning
+    log_final_llm_prompt(
+        provider="gemini" if not is_simulation_mode() and GEMINI_AVAILABLE else "groq",
+        call_type=call_type,
+        system_instruction=system_instruction,
+        user_prompt=prompt,
+        metadata=metadata
+    )
+    
     try:
         if not is_simulation_mode():
-            logger.info("🤖 [SUBROLE] Starting call to gemini-3-flash-preview")
-            log_final_llm_prompt(
-                provider="gemini",
-                call_type="subrole_async",
-                system_instruction=system_instruction,
-                user_prompt=prompt,
-            )
+            logger.info(f"{log_prefix} Starting call to gemini-3-flash-preview")
+            logger.info(f"   └─ Temp: {temperature} | Max tokens: {max_tokens}")
+            logger.info("   └─ Top-p: 0.95")
 
-            client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-            result_queue = queue.Queue()
-            exception_queue = queue.Queue()
-
-            def call_gemini():
-                try:
-                    res = client_gemini.models.generate_content(
-                        model='gemini-3.1-flash-lite-preview',
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                            temperature=0.9,
-                            max_output_tokens=1024,
-                            top_p=0.95,
-                            safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
-                        )
-                    )
-                    result_queue.put(res)
-                except Exception as e:
-                    exception_queue.put(e)
-
-            gemini_thread = threading.Thread(target=call_gemini)
-            gemini_thread.start()
-            gemini_thread.join(timeout=5.0)
-
-            if not gemini_thread.is_alive() and exception_queue.empty():
-                res = result_queue.get()
-                text = res.text
-                if text and len(text.strip()) > 5:
-                    postprocessed = postprocess_response(text)
-                    total_time = time.time()
-                    logger.info(f"🏁 [SUBROLE] Gemini completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
-                    
-                    # Log the LLM response
-                    try:
-                        from agent_db import get_active_server_name
-                        server_name = get_active_server_name()
-                        log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
-                    except Exception as log_error:
-                        logger.warning(f"Failed to log subrole response: {log_error}")
-                    
-                    return postprocessed
+            if not GEMINI_AVAILABLE:
+                logger.info(f"{log_prefix} Gemini not available, skipping to fallback")
+                if critical:
+                    logger.warning(f"Gemini unavailable for critical call, using fallback")
             else:
-                logger.info("🤖 [SUBROLE] Gemini timeout/error, fallback to Groq")
+                client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+                
+                if async_mode:
+                    return _call_gemini_async(
+                        client_gemini, system_instruction, prompt, temperature, 
+                        max_tokens, start_time, call_type, critical, logger
+                    )
+                else:
+                    return _call_gemini_sync(
+                        client_gemini, system_instruction, prompt, temperature,
+                        max_tokens, start_time, call_type, critical, logger
+                    )
         else:
-            logger.info("🤖 [SUBROLE] Simulation mode, using Groq")
+            logger.info(f"{log_prefix} Simulation mode, using Groq")
+    except ImportError as e:
+        logger.info(f"{log_prefix} Gemini import failed, fallback to Groq: {e}")
+        if critical:
+            logger.warning(f"Gemini unavailable for critical call, using fallback")
     except Exception as e:
-        logger.info(f"🤖 [SUBROLE] Gemini failed, fallback to Groq: {e}")
+        logger.info(f"{log_prefix} Gemini failed, fallback to Groq: {e}")
+        if critical:
+            logger.exception(f"Critical LLM call failed: {e}")
+    
+    # Fallback to Groq
+    return _call_groq_fallback(
+        system_instruction, prompt, temperature, max_tokens, start_time,
+        call_type, critical, logger
+    )
 
+
+def _call_gemini_sync(
+    client_gemini, system_instruction: str, prompt: str, temperature: float,
+    max_tokens: int, start_time: float, call_type: str, critical: bool, logger
+) -> str:
+    """Synchronous Gemini call (for critical operations)"""
     try:
-        logger.info("🤖 [SUBROLE] Starting call to llama-3.3-70b-versatile")
-        log_final_llm_prompt(
-            provider="groq",
-            call_type="subrole_async",
-            system_instruction=system_instruction,
-            user_prompt=prompt,
+        res = client_gemini.models.generate_content(
+            model='gemini-3.1-flash-lite-preview',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                top_p=0.95,
+                safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
+            )
+        )
+        
+        text = res.text
+        if text and len(text.strip()) > 5:
+            postprocessed = postprocess_response(text)
+            total_time = time.time()
+            logger.info(f"🏁 [SYNC] Gemini completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+            
+            # Log the response
+            try:
+                server_name = get_active_server_name()
+                log_agent_response(postprocessed, role=call_type, server=server_name, response_length=len(postprocessed))
+            except Exception as log_error:
+                logger.warning(f"Failed to log response: {log_error}")
+            
+            return postprocessed
+        else:
+            logger.warning("🤖 [SYNC] Gemini returned empty or too short response")
+            return _get_fallback_response(critical)
+            
+    except Exception as e:
+        logger.error(f"🤖 [SYNC] Gemini call failed: {e}")
+        if critical:
+            raise
+        return _get_fallback_response(critical)
+
+def _call_gemini_async(
+    client_gemini, system_instruction: str, prompt: str, temperature: float,
+    max_tokens: int, start_time: float, call_type: str, critical: bool, logger
+) -> str:
+    """Asynchronous Gemini call with threading (for _call_llm_async behavior)"""
+    result_queue = queue.Queue()
+    exception_queue = queue.Queue()
+
+    def call_gemini():
+        try:
+            res = client_gemini.models.generate_content(
+                model='gemini-3.1-flash-lite-preview',
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                    top_p=0.95,
+                    safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
+                )
+            )
+            result_queue.put(res)
+        except Exception as e:
+            exception_queue.put(e)
+
+    gemini_thread = threading.Thread(target=call_gemini)
+    gemini_thread.start()
+    gemini_thread.join(timeout=5.0)
+
+    if not gemini_thread.is_alive() and exception_queue.empty():
+        res = result_queue.get()
+        text = res.text
+        if text and len(text.strip()) > 5:
+            postprocessed = postprocess_response(text)
+            total_time = time.time()
+            logger.info(f"🏁 [ASYNC] Gemini completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+            
+            # Log the response
+            try:
+                server_name = get_active_server_name()
+                log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
+            except Exception as log_error:
+                logger.warning(f"Failed to log subrole response: {log_error}")
+            
+            return postprocessed
+        else:
+            logger.warning("🤖 [ASYNC] Gemini returned empty or too short response")
+            return _get_fallback_response(critical)
+    else:
+        logger.info("🤖 [ASYNC] Gemini timeout/error, fallback to Groq")
+        return _call_groq_fallback(
+            system_instruction, prompt, temperature, max_tokens, start_time,
+            call_type, critical, logger
         )
 
+def _call_groq_fallback(
+    system_instruction: str, prompt: str, temperature: float,
+    max_tokens: int, start_time: float, call_type: str, critical: bool, logger
+) -> str:
+    """Fallback to Groq when Gemini fails"""
+    try:
+        logger.info(f"🤖 [FALLBACK] Starting call to llama-3.3-70b-versatile")
+
+        from agent_runtime import get_groq_client
         completion = get_groq_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -1050,11 +1469,10 @@ def _call_llm_async(system_instruction: str, prompt: str) -> str:
         response = completion.choices[0].message.content
         postprocessed = postprocess_response(response)
         total_time = time.time()
-        logger.info(f"🏁 [SUBROLE] Groq completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+        logger.info(f"🏁 [FALLBACK] Groq completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
         
-        # Log the LLM response
+        # Log the response
         try:
-            from agent_db import get_active_server_name
             server_name = get_active_server_name()
             log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
         except Exception as log_error:
@@ -1062,426 +1480,23 @@ def _call_llm_async(system_instruction: str, prompt: str) -> str:
         
         return postprocessed
     except Exception as e:
-        logger.error(f"🤖 [SUBROLE] Both LLMs failed: {e}")
-        return "[Error in internal subrole task]"
+        logger.error(f"🤖 [FALLBACK] Both LLMs failed: {e}")
+        if critical:
+            raise
+        return _get_fallback_response(critical)
 
 
-def generate_readme() -> str:
-    """Generate comprehensive README documentation for all bot functions."""
-    engine = _engine()
-    readme_path = os.path.join(engine._BASE_DIR, "README_LLM.md")
-
-    try:
-        if os.path.exists(readme_path):
-            with open(readme_path, "r", encoding="utf-8") as file_handle:
-                readme_content = file_handle.read()
-            logger.info(f"📖 [README] Loaded structured README from {readme_path}")
-            return readme_content
-        logger.warning(f"⚠️ [README] Structured file not found: {readme_path}")
-        return _generate_fallback_readme()
-    except Exception as e:
-        logger.error(f"❌ [README] Error reading structured file: {e}")
-        return _generate_fallback_readme()
+def _get_fallback_response(critical: bool) -> str:
+    """Get appropriate fallback response based on criticality"""
+    if critical:
+        raise Exception("Critical LLM call failed and no fallback available")
+    return "[Error in internal task]"
 
 
-def _generate_fallback_readme() -> str:
-    """Generate fallback README content when the structured file is unavailable."""
-    return """# ROLEAGENTBOT - COMMAND REFERENCE
-
-## CORE COMMANDS
-- !agenthelp - Show comprehensive help
-- !ping - Check bot latency
-- !hello - Greet the bot
-- !insult @user - Playful insult
-- !test - Test bot functionality
-
-## ROLES
-- News Watcher: !watchnews, !stopnews, !newsfrequency
-- Treasure Hunter: !hunteradd, !hunterdel, !hunterlist
-- Trickster: !trickster help, !dice play, !accuse
-- Banker: !banker balance, !banker bonus
-- Music: !mc play, !mc add, !mc queue
-
-## USAGE
-- Mention bot for conversation
-- Commands start with !
-- Admin permissions required for some functions"""
 
 
-def build_readme_enhanced_prompt(original_user_content: str, readme_content: str) -> str:
-    """Build the second-pass README prompt used to answer help requests in character."""
-    engine = _engine()
-    try:
-        personality_name = engine.PERSONALITY.get("name", "").lower()
-        prompts_path = os.path.join(engine._BASE_DIR, "personalities", personality_name, "prompts.json")
-        if os.path.exists(prompts_path):
-            with open(prompts_path, "r", encoding="utf-8") as file_handle:
-                prompts_config = json.load(file_handle)
-            task_instruction = prompts_config.get("readme_enhanced_prompt", {}).get("task")
-            if task_instruction:
-                logger.info(f"📖 [README] Loaded task instruction from {personality_name}/prompts.json")
-                return f"""ORIGINAL USER QUESTION: {original_user_content}
-
-HERE IS THE COMPLETE DOCUMENTATION YOU NEED TO EXPLAIN:
-
-{readme_content}
-
-{task_instruction}"""
-    except Exception as e:
-        logger.warning(f"⚠️ [README] Could not load personality prompts.json: {e}")
-
-    logger.info("📖 [README] Using fallback task instruction")
-    return f"""ORIGINAL USER QUESTION: {original_user_content}
-
-HERE IS THE COMPLETE DOCUMENTATION YOU NEED TO EXPLAIN:
-
-{readme_content}
-
-TASK: Explain the relevant parts of this documentation to answer the user's question. Keep your response SHORT, IN CHARACTER, and focused on what they specifically asked about. Do NOT copy-paste the entire documentation. Instead, explain it naturally as if you're teaching them how to use the bot.
-
-Remember to maintain your personality and use your characteristic speech patterns."""
 
 
-def _build_readme_system_prompt(personalidad: dict) -> str:
-    """Build the README-specific system prompt with second-pass response rules."""
-    engine = _engine()
-    base_system_prompt = engine._build_system_prompt(personality)
-    readme_rules = engine._get_readme_response_rules_lines()
-    if not readme_rules:
-        return base_system_prompt
-
-    readme_rules_text = "\n".join([f"- {rule}" for rule in readme_rules])
-    return f"""{base_system_prompt}
-
-## README SECOND PASS RULES
-{readme_rules_text}"""
 
 
-def _call_llm_with_readme(system_instruction: str, enhanced_prompt: str, is_mission: bool = False) -> str:
-    """Call the LLM for README-enhanced second-pass responses."""
-    engine = _engine()
-    logger.info("🤖 [README] Calling LLM with enhanced documentation prompt")
 
-    if not is_simulation_mode():
-        try:
-            logger.info("🤖 [README-GEMINI] Starting call to gemini-3-flash-preview")
-            log_final_llm_prompt(
-                provider="gemini",
-                call_type="readme_second_pass",
-                system_instruction=system_instruction,
-                user_prompt=enhanced_prompt,
-                metadata={"is_mission": is_mission},
-            )
-            client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-            result_queue = queue.Queue()
-            exception_queue = queue.Queue()
-
-            def call_gemini():
-                try:
-                    res = client_gemini.models.generate_content(
-                        model='gemini-3.1-flash-lite-preview',
-                        contents=enhanced_prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                            temperature=0.8,
-                            max_output_tokens=800,
-                            top_p=0.9,
-                            safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")],
-                        ),
-                    )
-                    result_queue.put(res)
-                except Exception as e:
-                    exception_queue.put(e)
-
-            thread = threading.Thread(target=call_gemini)
-            thread.start()
-            thread.join(timeout=8.0)
-
-            if thread.is_alive():
-                logger.warning("⚠️ [README-GEMINI] Timeout, fallback to Groq")
-            elif not exception_queue.empty():
-                raise exception_queue.get()
-            else:
-                res = result_queue.get()
-                if res.text:
-                    text = res.text.strip()
-                    if not is_blocked_response(text):
-                        final_response = postprocess_response(text)
-                        logger.info(f"✅ [README-GEMINI] Enhanced response: {len(final_response)} chars")
-                        return final_response
-        except Exception as e:
-            logger.warning(f"⚠️ [README-GEMINI] Error: {e}, fallback to Groq")
-
-    try:
-        logger.info("🤖 [README-GROQ] Starting call to llama-3.3-70b-versatile")
-        log_final_llm_prompt(
-            provider="groq",
-            call_type="readme_second_pass",
-            system_instruction=system_instruction,
-            user_prompt=enhanced_prompt,
-            metadata={"is_mission": is_mission},
-        )
-        completion = get_groq_client().chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": enhanced_prompt},
-            ],
-            temperature=0.8,
-            top_p=0.9,
-            max_tokens=800,
-            presence_penalty=0.8,
-            frequency_penalty=0.8,
-        )
-        text = completion.choices[0].message.content.strip()
-        if not is_blocked_response(text):
-            final_response = postprocess_response(text)
-            logger.info(f"✅ [README-GROQ] Enhanced response: {len(final_response)} chars")
-            return final_response
-    except Exception as e:
-        logger.error(f"❌ [README-GROQ] Critical error: {e}")
-
-    logger.warning("🚫 [README] All LLM attempts failed, using basic README")
-    return generate_readme()
-
-
-def _process_readme_response(final_response, content, role_context, server, start_time, is_mission: bool = False):
-    """Process README-only responses by running a second LLM pass over the project README."""
-    if is_readme_response(final_response) and is_help_request(content):
-        engine = _engine()
-        logger.info("📖 [README] Help request detected, generating enhanced documentation response")
-        readme_content = generate_readme()
-        enhanced_prompt = build_readme_enhanced_prompt(content, readme_content)
-        system_instruction = _build_readme_system_prompt(engine.PERSONALITY)
-        log_readme_enhanced_prompt(
-            content,
-            readme_content,
-            enhanced_prompt,
-            system_instruction=system_instruction,
-            role=role_context,
-            server=server,
-        )
-        enhanced_response = _call_llm_with_readme(system_instruction, enhanced_prompt, is_mission)
-        log_agent_response(enhanced_response, role=role_context, server=server, response_length=len(enhanced_response))
-        total_time = time.time()
-        logger.info(f"🏁 [README-ENHANCED] Process completed in {(total_time - start_time):.2f}s total")
-        logger.info("=" * 60)
-        return enhanced_response
-    return None
-
-
-def think(
-    role_context,
-    user_content="",
-    history_list=None,
-    is_public=False,
-    logger=None,
-    mission_prompt_key: str | None = None,
-    user_id=None,
-    user_name=None,
-    server_name=None,
-    interaction_type="chat",
-):
-    engine = _engine()
-    start_time = time.time()
-
-    if logger is None:
-        from agent_logging import get_logger as _get_logger
-        logger = _get_logger('agent_engine')
-
-    current_usage = runtime_increment_usage(engine.PERSONALITY.get("name", "unknown"))
-    logger.info(f"🚀 [THINK] Iniciando proceso - Uso diario: {current_usage}/20")
-
-    content = (user_content or "").strip()
-    is_mission = not bool(content)
-    server = server_name or get_active_server_name()
-    system_instruction, prompt_final = engine.build_prompt(
-        role_context,
-        content,
-        is_public=is_public,
-        server=server,
-        mission_prompt_key=mission_prompt_key,
-        user_id=user_id,
-        user_name=user_name,
-        interaction_type=interaction_type,
-    )
-
-    # Apply role-specific content overrides (general logic)
-    prompt_final = _apply_role_specific_content_overrides(prompt_final, content)
-
-    prep_time = time.time()
-    logger.info(f"⚡ [THINK] Preparation completed in {(prep_time - start_time):.2f}s")
-    logger.info(f"🧠 [KRONK] RESPONSE GENERATION - Daily usage: {current_usage}/20")
-    logger.info(f"📝 Context: {len(system_instruction)} chars system | {len(prompt_final)} chars prompt")
-    logger.info(f"💬 History: {len(history_list or [])} interactions | Public: {is_public}")
-    logger.info(f"🎯 Type: {'MISSION' if is_mission else 'CHAT'}")
-    logger.info(f"🎯 Role: {role_context[:80]}..." if len(role_context) > 80 else f"🎯 Role: {role_context}")
-    if is_mission:
-        logger.info(f"📋 Full prompt: {prompt_final[:200]}..." if len(prompt_final) > 200 else f"📋 Full prompt: {prompt_final}")
-    logger.info("=" * 60)
-
-    if not is_simulation_mode() and current_usage <= 20:
-        try:
-            gemini_start = time.time()
-            logger.info("🤖 [GEMINI] Starting call to gemini-3-flash-preview")
-            logger.info(f"   └─ Temp: {0.9 if is_mission else 0.95} | Max tokens: 1024")
-            logger.info("   └─ Top-p: 0.95")
-            log_final_llm_prompt(
-                provider="gemini",
-                call_type="think",
-                system_instruction=system_instruction,
-                user_prompt=prompt_final,
-                role=role_context,
-                server=server,
-                metadata={
-                    "interaction_type": interaction_type,
-                    "is_public": is_public,
-                    "is_mission": is_mission,
-                },
-            )
-
-            client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-            result_queue = queue.Queue()
-            exception_queue = queue.Queue()
-
-            def call_gemini():
-                try:
-                    thread_start = time.time()
-                    logger.info("🧵 [GEMINI] Thread started")
-                    res = client_gemini.models.generate_content(
-                        model='gemini-3.1-flash-lite-preview',
-                        contents=prompt_final,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                            temperature=0.9 if is_mission else 0.95,
-                            max_output_tokens=1024,
-                            top_p=0.95,
-                            safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
-                        )
-                    )
-                    thread_end = time.time()
-                    logger.info(f"🧵 [GEMINI] Thread completed in {(thread_end - thread_start):.2f}s")
-                    result_queue.put(res)
-                except Exception as e:
-                    exception_queue.put(e)
-
-            thread_launch_start = time.time()
-            gemini_thread = threading.Thread(target=call_gemini)
-            gemini_thread.start()
-            gemini_thread.join(timeout=5.0)
-            thread_launch_end = time.time()
-            logger.info(f"⏱️ [GEMINI] Thread execution time: {(thread_launch_end - thread_launch_start):.2f}s")
-
-            if gemini_thread.is_alive():
-                timeout_time = time.time()
-                logger.warning(f"⚠️ [GEMINI] Timeout of 5s reached in {(timeout_time - gemini_start):.2f}s total, fallback to Groq")
-            elif not exception_queue.empty():
-                error_time = time.time()
-                exception = exception_queue.get()
-                logger.error(f"❌ [GEMINI] Error en {(error_time - gemini_start):.2f}s: {exception}")
-                raise exception
-            else:
-                success_time = time.time()
-                logger.info(f"✅ [GEMINI] Response received in {(success_time - gemini_start):.2f}s total")
-                res = result_queue.get()
-                if res.text:
-                    text = res.text.strip()
-                    logger.info(f"✅ [GEMINI] Response received: {len(text)} chars")
-                    logger.info(f"   └─ Preview: {text[:80]}..." if len(text) > 80 else f"   └─ Preview: {text}")
-
-                    if is_blocked_response(text):
-                        logger.warning("🚫 [GEMINI] Response blocked, using emergency fallback")
-                        return engine._fallback_response()
-
-                    if len(text) < 50:
-                        logger.warning(f"⚠️ [GEMINI] Very short response ({len(text)} chars), fallback to Groq")
-                    else:
-                        postprocess_start = time.time()
-                        final_response = postprocess_response(text)
-                        postprocess_end = time.time()
-                        logger.info(f"✨ [GEMINI] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(final_response)} chars")
-
-                        readme_result = _process_readme_response(final_response, content, role_context, server, start_time, is_mission)
-                        if readme_result is not None:
-                            return readme_result
-
-                        log_agent_response(final_response, role=role_context, server=server, response_length=len(final_response))
-                        total_time = time.time()
-                        logger.info(f"🏁 [GEMINI] Process completed in {(total_time - start_time):.2f}s total")
-                        logger.info("=" * 60)
-                        return final_response
-        except Exception as e:
-            error_time = time.time()
-            error_msg = str(e).lower()
-            if "quota" in error_msg or "limit" in error_msg or "429" in error_msg:
-                logger.warning(f"⚠️ [GEMINI] Token/quota limit reached in {(error_time - start_time):.2f}s: {e}")
-            else:
-                logger.error(f"⚠️ [GEMINI] Failure in {(error_time - start_time):.2f}s: {e}")
-            logger.info("   └─ Fallback to Groq activated")
-
-    try:
-        groq_start = time.time()
-        if current_usage > 20:
-            logger.info(f"🤖 [GROQ] Gemini daily limit reached ({current_usage}/20)")
-        logger.info("🤖 [GROQ] Starting call to llama-3.3-70b-versatile")
-        logger.info(f"   └─ Temp: {0.95 if is_mission else 1.0} | Max tokens: 600")
-        logger.info("   └─ Top-p: 1.0 | Presence: 1.0 | Frequency: 1.0")
-        log_final_llm_prompt(
-            provider="groq",
-            call_type="think",
-            system_instruction=system_instruction,
-            user_prompt=prompt_final,
-            role=role_context,
-            server=server,
-            metadata={
-                "interaction_type": interaction_type,
-                "is_public": is_public,
-                "is_mission": is_mission,
-            },
-        )
-
-        api_call_start = time.time()
-        completion = get_groq_client().chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt_final}
-            ],
-            temperature=0.95 if is_mission else 1.0,
-            top_p=1.0,
-            max_tokens=600,
-            presence_penalty=1.0,
-            frequency_penalty=1.0
-        )
-        api_call_end = time.time()
-        logger.info(f"⚡ [GROQ] API call completed in {(api_call_end - api_call_start):.2f}s")
-
-        text = completion.choices[0].message.content.strip()
-        response_time = time.time()
-        logger.info(f"✅ [GROQ] Response received in {(response_time - groq_start):.2f}s total: {len(text)} chars")
-        logger.info(f"   └─ Preview: {text[:80]}..." if len(text) > 80 else f"   └─ Preview: {text}")
-
-        if is_blocked_response(text):
-            logger.warning("🚫 [GROQ] Response blocked, using emergency fallback")
-            return engine._fallback_response()
-
-        postprocess_start = time.time()
-        final_response = postprocess_response(text)
-        postprocess_end = time.time()
-        logger.info(f"✨ [GROQ] Post-processed in {(postprocess_end - postprocess_start):.2f}s: {len(final_response)} chars")
-
-        readme_result = _process_readme_response(final_response, content, role_context, server, start_time, is_mission)
-        if readme_result is not None:
-            return readme_result
-
-        log_agent_response(final_response, role=role_context, server=server, response_length=len(final_response))
-        total_time = time.time()
-        logger.info(f"🏁 [GROQ] Process completed in {(total_time - start_time):.2f}s total")
-        logger.info("=" * 60)
-        return final_response
-    except Exception as e:
-        error_time = time.time()
-        logger.error(f"❌ [GROQ] Critical error in {(error_time - start_time):.2f}s: {e}")
-        logger.info("   └─ Using emergency fallback")
-        logger.info("=" * 60)
-        return engine._fallback_response()

@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_engine import think, PERSONALITY
+from agent_engine import PERSONALITY
+from agent_mind import call_llm
 from agent_logging import get_logger
 from agent_db import AgentDatabase
 from behavior.db_behavior import get_behavior_db_instance

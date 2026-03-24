@@ -23,7 +23,8 @@ except Exception:
     logger = logging.getLogger('poe2_subrole')
 
 from agent_db import get_server_db_path_fallback
-from agent_engine import get_discord_token, think
+from agent_engine import get_discord_token
+from agent_mind import call_llm
 from agent_db import get_active_server_name
 from .poe2scout_client import Poe2ScoutClient, ResponseFormatError, APIError
 

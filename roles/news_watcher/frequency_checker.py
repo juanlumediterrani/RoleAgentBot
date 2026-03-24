@@ -190,11 +190,3 @@ def get_frequency_checker(bot_instance, server_name: str = "default") -> NewsFre
     if _frequency_checker_instance is None:
         _frequency_checker_instance = NewsFrequencyChecker(bot_instance, server_name)
     return _frequency_checker_instance
-
-def start_frequency_checker(bot_instance, server_name: str = "default"):
-    """Start the frequency checker in the background."""
-    checker = get_frequency_checker(bot_instance, server_name)
-    
-    # Start in background task
-    asyncio.create_task(checker.start_frequency_checker())
-    return checker

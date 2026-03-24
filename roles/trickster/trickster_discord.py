@@ -72,6 +72,16 @@ except ImportError:
     cmd_trickster_ring = None
     cmd_accuse_ring = None
 
+try:
+    from roles.trickster.subroles.nordic_runes.nordic_runes_discord import cmd_runes, cmd_runes_cast, cmd_runes_history, cmd_runes_types
+    NORDIC_RUNES_AVAILABLE = True
+except ImportError:
+    NORDIC_RUNES_AVAILABLE = False
+    cmd_runes = None
+    cmd_runes_cast = None
+    cmd_runes_history = None
+    cmd_runes_types = None
+
 
 def _get_beggar_db(guild):
     """Get beggar database instance for a server."""
@@ -359,6 +369,18 @@ def register_trickster_commands(bot, personality, agent_config):
     except ImportError as e:
         logger.error(f"Failed to import dice game commands: {e}")
 
+    # --- Register Nordic Runes commands ---
+    if NORDIC_RUNES_AVAILABLE:
+        try:
+            # Register main runes command
+            if bot.get_command("runes") is None:
+                bot.command(name="runes")(cmd_runes)
+                logger.info("🔮 Runes command registered")
+            else:
+                logger.info("🔮 Runes command already registered")
+        except Exception as e:
+            logger.error(f"Error registering runes command: {e}")
+
     logger.info("🎭 Trickster commands registered successfully")
 
     # --- MAIN TRICKSTER HELP ---
@@ -394,6 +416,14 @@ async def cmd_trickster_help(ctx):
     help_msg += "• `!dice config bet <amount>` - Configure fixed bet (admins only)\n"
     help_msg += "• `!dice config announcements on/off` - Enable/disable announcements (admins only)\n\n"
     
+    if NORDIC_RUNES_AVAILABLE:
+        help_msg += "**Nordic Runes Subrole** - Elder Futhark rune casting\n\n"
+        help_msg += "📋 **RUNES COMMANDS:**\n"
+        help_msg += "• `!runes cast [type] <question>` - Cast runes for guidance\n"
+        help_msg += "• `!runes history [limit]` - View your reading history\n"
+        help_msg += "• `!runes types` - Show available reading types\n"
+        help_msg += "• `!runes help` - Show runes help\n\n"
+    
     help_msg += "💡 **EXAMPLES:**\n"
     help_msg += "• `!trickster beggar enable` → Enable on this server\n"
     help_msg += "• `!trickster beggar frequency 6` → Every 6 hours\n"
@@ -406,7 +436,11 @@ async def cmd_trickster_help(ctx):
         help_msg += "• `!trickster ring target @user` → Change the current investigation target\n"
     
     help_msg += "• `!dice play` → Play the dice game\n"
-    help_msg += "• `!dice config bet 15` → Configure bet to 15 coins\n\n"
+    help_msg += "• `!dice config bet 15` → Configure bet to 15 coins\n"
+    
+    if NORDIC_RUNES_AVAILABLE:
+        help_msg += "• `!runes cast single What should I focus on today?` → Single rune reading\n"
+        help_msg += "• `!runes cast three What does my future hold?` → Three rune spread\n\n"
     
     help_msg += "⚠️ **REQUIREMENTS:**\n"
     help_msg += "• Only administrators can use beggar and dice game configuration commands"

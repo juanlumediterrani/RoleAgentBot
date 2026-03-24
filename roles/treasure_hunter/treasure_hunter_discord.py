@@ -8,7 +8,7 @@ import discord
 import json
 import os
 from agent_logging import get_logger
-from discord_bot.discord_utils import get_server_name, send_dm_or_channel, set_role_interval_hours
+from discord_bot.discord_utils import send_dm_or_channel, set_role_interval_hours
 
 # Import get_message for personality support
 try:
@@ -176,7 +176,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                     
                     if not league:
                         current_league = poe2_manager.get_user_league(user_id, server_id)
-                        await ctx.send(_get_treasure_description("current_league", "🏆 **Current POE2 League**: {league}").format(league=current_league))
+                        await ctx.send(_get_treasure_description("treasure_hunter", ).get("poe2",{}).get("league",{}).get("title","🏆 **Current POE2 League**: {league}").format(league=current_league))
                         return
                     
                     # Validate league

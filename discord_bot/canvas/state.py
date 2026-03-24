@@ -26,6 +26,11 @@ except Exception:
     get_dice_game_db_instance = None
 
 try:
+    from roles.trickster.subroles.nordic_runes.db_nordic_runes import get_nordic_runes_db_instance
+except Exception:
+    get_nordic_runes_db_instance = None
+
+try:
     from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
 except Exception:
     get_poe2_manager = None
@@ -78,7 +83,7 @@ def _get_canvas_dice_state(guild) -> dict:
         db_banker = get_banker_db_instance(server_key)
         server_id = str(guild.id)
         config = db_dice_game.get_server_config(server_id)
-        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, guild.name)
+        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, guild.name if guild else "Unknown Server")
         state["pot_balance"] = db_banker.get_balance("dice_game_pot", server_id)
         state["bet"] = config.get("bet_fija", 1)
         state["announcements_active"] = config.get("announcements_active", True)
@@ -234,13 +239,36 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
 
 
 def _get_enabled_roles(agent_config: dict) -> list[str]:
-    roles_cfg = (agent_config or {}).get("roles", {})
+    """Get enabled roles - PRIMARY: roles table, FALLBACK: agent_config."""
     enabled = []
+    
+    # PRIMARY: Try to get from roles table
+    try:
+        from discord_bot.discord_utils import _get_behavior_db_for_guild
+        db = _get_behavior_db_for_guild(None)  # Use default server for Canvas
+        if db is not None:
+            # Get all roles from database and check which are enabled
+            all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
+            for role_name in all_roles:
+                try:
+                    if db.get_role_enabled(role_name):
+                        enabled.append(role_name)
+                except Exception as e:
+                    logger.warning(f"Error checking role {role_name} from database: {e}")
+            logger.info(f"Loaded {len(enabled)} enabled roles from database: {enabled}")
+            return enabled
+    except Exception as e:
+        logger.warning(f"Could not load roles from database: {e}")
+    
+    # FALLBACK: Use agent_config if database fails (minimal compatibility)
+    logger.warning("Using agent_config fallback for enabled roles - this should not happen in normal operation")
+    roles_cfg = (agent_config or {}).get("roles", {})
     for role_name, cfg in roles_cfg.items():
         if not isinstance(cfg, dict):
             continue
         if cfg.get("enabled", False):
             enabled.append(role_name)
+    
     return enabled
 
 
@@ -278,7 +306,7 @@ def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
 
     return [p for p in prompts if isinstance(p, str) and p.strip()]
 
-
+#This functions its hardcoded and his place is in behaviors/
 def _build_mission_commentary_prompt(agent_config: dict, server_name: str = "default") -> str:
     """Build a comprehensive mission commentary prompt with personality, memories, and role prompts."""
     enabled_roles = _get_enabled_roles(agent_config)
