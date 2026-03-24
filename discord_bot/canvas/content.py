@@ -143,7 +143,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
     elif section_name == "personal":
         description = "Focus on private or user-specific workflows that continue naturally in DM."
     elif section_name == "help":
-        description = "Find command entry points, troubleshooting hints, and the fastest recovery paths."
+        description = _personality_descriptions.get("help_menu").get("description", "Find command entry points, troubleshooting hints, and the fastest recovery paths.")
     elif section_name == "behavior":
         description = "Shared bot behavior that sits above any individual role."
 
@@ -420,7 +420,7 @@ def _get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible
     return items_map.get(detail_name, [])
 
 
-def _get_canvas_behavior_detail_items(admin_visible: bool) -> list[tuple[str, str]]:
+def _get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = "conversation") -> list[tuple[str, str]]:
     behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
     conversation_button = behavior_descriptions.get("conversation", {}).get("button","Conversation")
     greetings_button = behavior_descriptions.get("greetings", {}).get("button","Conversation")
@@ -429,15 +429,22 @@ def _get_canvas_behavior_detail_items(admin_visible: bool) -> list[tuple[str, st
     taboo_button = behavior_descriptions.get("taboo", {}).get("button","Conversation")
     role_control_button = behavior_descriptions.get("role_control", {}).get("button","Conversation")
     
-    items = [(conversation_button, "conversation")]
+    # Start with conversation button, but exclude if we're currently in conversation view
+    items = []
+    if current_detail != "conversation":
+        items.append((conversation_button, "conversation"))
+    
     if admin_visible:
-        items.extend([
+        # Add admin buttons, excluding the current detail
+        admin_items = [
             (greetings_button, "greetings"),
             (welcome_button, "welcome"),
             (commentary_button, "commentary"),
             (taboo_button, "taboo"),
             (role_control_button, "role_control"),
-        ])
+        ]
+        # Filter out the current detail
+        items.extend([item for item in admin_items if item[1] != current_detail])
     return items
 
 
@@ -1150,28 +1157,19 @@ def _build_canvas_personal() -> str:
 
 def _build_canvas_help() -> str:
     """Build the help and troubleshooting Canvas view."""
+    #2nd block for this view
     help_messages = _personality_descriptions.get("help_menu", {})
-    
-    # Use Spanish personalized messages with English fallbacks
-    title = help_messages.get("title", f"📚 **{_bot_display_name} Canvas - Help & Troubleshooting**")
-    # Replace {_bot_display_name} placeholder if present
-    title = title.replace("{_bot_display_name}", _bot_display_name)
-    description = help_messages.get("description_section", "**Description**\nRole Agent Bot its a LLM agent with a loaded personality, that have long term memory and can interatuate with the user.")
     separator = help_messages.get("separator", "-" * 45)
     roles = help_messages.get("roles_section", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
     behavior = help_messages.get("behavior_section", "**Behavior**\nIn this section you'll configurate some interactuable behaviors of the bot. Only for Admins")
-    roles_repeat = help_messages.get("roles_repeat", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
     tips = help_messages.get("tips_section", "**Some tips**\n-You can ask to the bot how works a command like: 'how works the command dice?'\n-The most jouicy parts of the bots its inside of each role")
     
     return (
-        f"{title}\n\n"
-        f"{description}\n"
         f"{separator}\n"
         f"{roles}\n"
         f"{behavior}\n"
-        f"{roles_repeat}\n"
         f"{separator}\n"
-        f"{tips}"    
+        f"{tips}"   
     )
 
 

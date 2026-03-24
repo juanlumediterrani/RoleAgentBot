@@ -865,7 +865,8 @@ class CanvasRoleActionSelect(discord.ui.Select):
             discord.SelectOption(label=label, value=value, description=description)
             for label, value, description in _get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible)
         ]
-        super().__init__(placeholder="Choose a concrete option...", min_values=1, max_values=1, options=options[:25], row=2)
+        generic_option_label = _personality_descriptions.get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
+        super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options[:25], row=2)
         self.role_name = role_name
         self.detail_name = detail_name
 
@@ -977,7 +978,8 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             discord.SelectOption(label=label, value=value, description=description)
             for label, value, description in _get_canvas_behavior_action_items_for_detail(detail_name, admin_visible)
         ]
-        super().__init__(placeholder="Choose a concrete option...", min_values=1, max_values=1, options=options[:25], row=2)
+        generic_option_label = _personality_descriptions.get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
+        super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options[:25], row=2)
 
     async def callback(self, interaction: discord.Interaction):
         view = self.view
@@ -4248,7 +4250,7 @@ class CanvasBehaviorView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.View)
         self.update_visibility()
         
         # Add behavior detail buttons
-        if current_detail in ["conversation", "greetings", "welcome", "commentary", "taboo", "role_control"]:
+        if current_detail in ["greetings", "welcome", "commentary", "taboo", "role_control"]:
             self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible))
         self._add_behavior_buttons()
         
@@ -4264,7 +4266,7 @@ class CanvasBehaviorView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.View)
 
     def _add_behavior_buttons(self):
         """Add behavior-specific detail buttons."""
-        detail_items = _get_canvas_behavior_detail_items(self.admin_visible)
+        detail_items = _get_canvas_behavior_detail_items(self.admin_visible, self.current_detail)
         for label, detail_name in detail_items:
             self.add_item(CanvasBehaviorDetailButton(label=label, detail_name=detail_name))
 

@@ -1,12 +1,11 @@
 {
   "discord": {
     "help_menu": {
-      "title": "📚 **{_bot_display_name} - Menú de Ayuda**",
-      "description_section": "**Descripción**\nRole Agent Bot es un agente LLM con personalidad cargada, que tiene memoria a largo plazo y puede interactuar con el usuario.",
+      "title": "📚 ** {_bot_display_name} - Menú de Ayuda**",
+      "description": "**Descripción**\nRole Agent Bot es un agente LLM con personalidad cargada, que tiene memoria a largo plazo y puede interactuar con el usuario.",
       "separator": "---------------------------------------------",
       "roles_section": "**Roles**\nLos módulos de Roles son algunas capacidades del bot para dar algunos servicios a los usuarios.",
       "behavior_section": "**Comportamiento**\nEn esta sección configurarás algunos comportamientos interactuables del bot. Solo para Admins",
-      "roles_repeat": "**Roles**\nLos módulos de Roles son algunas capacidades del bot para dar algunos servicios a los usuarios.",
       "tips_section": "**Algunos consejos**\n-Puedes preguntarle al bot cómo funciona un comando como: '¿cómo funciona el comando dice?'\n-Las partes más jugosas del bot están dentro de cada rol"
     },
     "canvas_home_messages": {
