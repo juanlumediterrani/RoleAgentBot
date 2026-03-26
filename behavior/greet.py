@@ -146,7 +146,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         
         # Register interaction in database
         db_instance = get_db_for_server(after.guild)
-        interaction_message = greetings_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
+        interaction_message = presence_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
         await asyncio.to_thread(
             db_instance.registrar_interaccion,
             after.id, after.name, "PRESENCE_DM",
@@ -155,11 +155,20 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
             metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
         )
         
+        return  # Exit after successful greeting to prevent fallback
+        
     except discord.errors.Forbidden as e:
         logger.warning(f"Cannot DM presence greeting to {after.name} (Forbidden): {e}")
         fallback_msg = presence_cfg.get("fallback", "Welcome back!")
         try:
             await after.send(f"👋 {fallback_msg}")
+            # Set cooldown and record greeting for fallback too
+            _last_greetings[last_greeting_key] = current_time
+            behavior_db = get_behavior_db_instance(server_name)
+            await asyncio.to_thread(
+                behavior_db.record_greeting_sent,
+                after.id, after.name, after.guild.id, fallback_msg, 'presence'
+            )
         except Exception:
             pass
     
@@ -168,6 +177,13 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         fallback_msg = presence_cfg.get("fallback", "Welcome back!")
         try:
             await after.send(f"👋 {fallback_msg}")
+            # Set cooldown and record greeting for fallback too
+            _last_greetings[last_greeting_key] = current_time
+            behavior_db = get_behavior_db_instance(server_name)
+            await asyncio.to_thread(
+                behavior_db.record_greeting_sent,
+                after.id, after.name, after.guild.id, fallback_msg, 'presence'
+            )
         except Exception:
             pass
 

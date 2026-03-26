@@ -28,6 +28,9 @@
         "ring": {
           "enabled": true,
           "frequency_hours": 24
+        },
+        "nordic_runes": {
+          "enabled": true
         }
       }
     },

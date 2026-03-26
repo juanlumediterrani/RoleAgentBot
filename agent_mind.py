@@ -589,6 +589,7 @@ def generate_user_relationship_memory_summary(
     target_date: str | None = None,
     force: bool = False,
 ) -> str:
+    import datetime
     engine = _engine()
     resolved_server = server_name or get_active_server_name()
     if not resolved_server:
@@ -622,7 +623,6 @@ def generate_user_relationship_memory_summary(
 
     if force and not new_interactions:
         # Get interactions from last 1 hour with max 100 pairs
-        import datetime
         one_hour_ago = (datetime.datetime.now() - datetime.timedelta(hours=1)).isoformat()
         new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=one_hour_ago, limit=100)
 
@@ -645,7 +645,7 @@ def generate_user_relationship_memory_summary(
         "user_name": user_name or "",
         "source": "llm_relationship_summary",
         "interaction_count": len(new_interactions),
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": datetime.datetime.now().isoformat(),
     }
     db_instance.upsert_user_relationship_memory(
         user_id,

@@ -120,8 +120,8 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                         await ctx.send(get_message(personality, "poe2_already_active", "ℹ️ POE2 subrole is already activated on this server."))
                         return
                     
-                    # Download item list if needed
-                    league = poe2_manager.get_active_league(server_id)
+                    # Download item list if needed (use default league for admin activation)
+                    league = "Standard"  # Default league for server activation
                     if poe2_manager.should_refresh_item_list(league):
                         await ctx.send(get_message(personality, "downloading_items", "🔄 Downloading item list..."))
                         success = await poe2_manager.download_item_list(league)
@@ -207,10 +207,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                 @cmd_poe2_group.command(name="help")
                 async def cmd_poe2_help(ctx):
                     """Show POE2-specific help."""
-                    if not poe2_manager.is_activated(str(ctx.guild.id)):
-                        await ctx.send(get_message(personality, "poe2_not_active_server", "❌ POE2 subrole is not activated on this server."))
-                        return
-                    
+                    # Allow help in both DM and server
                     help_text = _build_poe2_help_text()
                     await send_dm_or_channel(ctx, help_text, get_message(personality, "poe2_help_sent", "📩 POE2 help sent by private message."))
             
@@ -225,11 +222,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                         return
                     
                     user_id = str(ctx.author.id)
-                    server_id = poe2_manager.get_user_active_server(user_id)
-                    
-                    if not server_id:
-                        await ctx.send(get_message(personality, "no_active_servers", "❌ No active servers found. Please activate POE2 on a server first."))
-                        return
+                    server_id = ""  # Empty string for DM - let manager find active server
                     
                     if not item_name:
                         await ctx.send(get_message(personality, "specify_item_name", "❌ Please specify an item name. Usage: `!hunter poe2 add \"item name\"`"))
@@ -249,11 +242,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                         return
                     
                     user_id = str(ctx.author.id)
-                    server_id = poe2_manager.get_user_active_server(user_id)
-                    
-                    if not server_id:
-                        await ctx.send(get_message(personality, "no_active_servers", "❌ No active servers found. Please activate POE2 on a server first."))
-                        return
+                    server_id = ""  # Empty string for DM - let manager find active server
                     
                     if not item_name:
                         await ctx.send(get_message(personality, "specify_item_del", "❌ You must specify an item name or number. Example: `!hunter poe2 del \"Ancient Rib\"`"))
@@ -273,11 +262,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
                         return
                     
                     user_id = str(ctx.author.id)
-                    server_id = poe2_manager.get_user_active_server(user_id)
-                    
-                    if not server_id:
-                        await ctx.send(get_message(personality, "no_active_servers", "❌ No active servers found. Please activate POE2 on a server first."))
-                        return
+                    server_id = ""  # Empty string for DM - let manager find active server
                     
                     success, message = poe2_manager.list_objectives(server_id, user_id)
                     

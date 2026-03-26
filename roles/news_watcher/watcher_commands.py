@@ -111,7 +111,7 @@ class WatcherCommands:
                     inline=False
                 )
             
-            embed.set_footer(text=f"Use !watcher subscribe <category> to receive news")
+            embed.set_footer(text=f"Use !watcher subscribe <category> [feed_id|all]\nNo feed_id: first feed | 'all': all feeds")
             await message.channel.send(embed=embed)
             
         except Exception as e:
@@ -210,7 +210,7 @@ class WatcherCommands:
                     inline=True
                 )
             
-            embed.set_footer(text="Use !watcher subscribe <category> to receive news from that category")
+            embed.set_footer(text="Use !watcher subscribe <category> [feed_id|all]\nNo feed_id: first feed | 'all': all feeds")
             await message.channel.send(embed=embed)
             
         except Exception as e:
@@ -243,31 +243,49 @@ class WatcherCommands:
 
     async def _validate_category_and_feed(self, message, category: str, args: list, db) -> int | None:
         """Validate category and optional feed_id, returns feed_id or None."""
-        # Check if it's a specific feed_id
+        # Check if it's a specific feed_id or 'all'
         if len(args) > 1:
-            try:
-                feed_id = int(args[1])
-                # Get feeds in this category to validate category-relative indexing
+            if args[1].lower() == 'all':
+                # 'all' parameter - subscribe to all feeds in category
                 feeds = db.get_active_feeds(category)
-                if 1 <= feed_id <= len(feeds):
-                    # Convert category-relative index to absolute database ID
-                    # feed_id is 1-based relative to category, feeds list is 0-based
-                    absolute_feed_id = feeds[feed_id - 1][0]  # feeds[0] is the database ID
-                    logger.info(f"Converting category-relative feed ID {feed_id} to absolute database ID {absolute_feed_id} for category '{category}'")
-                    return absolute_feed_id
-                else:
-                    await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'. Available: 1-{len(feeds)}")
+                if not feeds:
+                    await message.channel.send(f"❌ No feeds found in category '{category}'")
                     return None
-            except ValueError:
-                await message.channel.send(get_message('feed_id_must_be_number'))
-                return None
+                # Return special value to indicate all feeds
+                return 'all'
+            else:
+                try:
+                    feed_id = int(args[1])
+                    # Get feeds in this category to validate category-relative indexing
+                    feeds = db.get_active_feeds(category)
+                    if 1 <= feed_id <= len(feeds):
+                        # Convert category-relative index to absolute database ID
+                        # feed_id is 1-based relative to category, feeds list is 0-based
+                        absolute_feed_id = feeds[feed_id - 1][0]  # feeds[0] is the database ID
+                        logger.info(f"Converting category-relative feed ID {feed_id} to absolute database ID {absolute_feed_id} for category '{category}'")
+                        return absolute_feed_id
+                    else:
+                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'. Available: 1-{len(feeds)}")
+                        return None
+                except ValueError:
+                    await message.channel.send(get_message('feed_id_must_be_number'))
+                    return None
         else:
             # Verify category exists
             categories = db.get_available_categories()
             if not any(cat[0] == category for cat in categories):
                 await message.channel.send(get_message('error_categoria_no_encontrada', category=category))
                 return None
-            return None  # No feed_id specified, which is valid
+            
+            # NEW BEHAVIOR: Subscribe to first available feed instead of all feeds
+            feeds = db.get_active_feeds(category)
+            if feeds:
+                first_feed_id = feeds[0][0]  # Get database ID of first feed (highest priority)
+                logger.info(f"No feed specified, subscribing to first available feed {first_feed_id} in category '{category}'")
+                return first_feed_id
+            else:
+                await message.channel.send(f"❌ No feeds available in category '{category}'")
+                return None
 
     async def cmd_unsubscribe(self, message, args):
         """Cancel subscription by number (from list) or by category/feed (legacy)."""
@@ -910,14 +928,13 @@ class WatcherCommands:
     async def cmd_keywords_subscribe_existing(self, message, args):
         """Subscribe to a category/feed using the user's existing saved keywords."""
         if not args:
-            await message.channel.send("📝 Usage: `!watcher keywords subscribe <category> [feed_id]`")
+            await message.channel.send("📝 Usage: `!watcher keywords subscribe <category> [feed_id|all]`")
             return
         
         try:
             db = self._get_db()
             user_id = str(message.author.id)
             category = self._normalize_category(args[0])
-            feed_id = None
             
             # Ensure the user has saved keywords
             keywords = db.get_user_keywords(user_id)
@@ -925,25 +942,10 @@ class WatcherCommands:
                 await message.channel.send(get_message('error_no_hay_palabras_clave'))
                 return
             
-            # Check if it's a specific feed_id
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                    # Verify that the feed exists and belongs to the category
-                    feeds = db.get_active_feeds(category)
-                    feed_exists = any(f[0] == feed_id for f in feeds)
-                    if not feed_exists:
-                        await message.channel.send(get_message('feed_id_not_found', feed_id=feed_id, category=category))
-                        return
-                except ValueError:
-                    await message.channel.send(get_message('feed_id_must_be_number'))
-                    return
-            else:
-                # Verify category exists
-                categories = db.get_available_categories()
-                if not any(cat[0] == category for cat in categories):
-                    await message.channel.send(get_message('error_categoria_no_encontrada', category=category))
-                    return
+            # Validate category and feed using the unified validation function
+            feed_id = await self._validate_category_and_feed(message, category, args, db)
+            if feed_id is None and len(args) > 1:  # Validation failed
+                return
             
             # Check current subscription type of the user
             current_subscription_type = db.check_user_subscription_type(user_id)
@@ -960,14 +962,8 @@ class WatcherCommands:
                 )
                 return
             
-            # Create keywords subscription
-            if db.subscribe_keywords(user_id, keywords, None, category, feed_id):
-                if feed_id:
-                    await message.channel.send(f"🔍 **Keywords subscription** to feed {feed_id} in '{category}' - Searching: '{keywords}'")
-                else:
-                    await message.channel.send(f"🔍 **Keywords subscription** to '{category}' - Searching: '{keywords}'")
-            else:
-                await message.channel.send(get_message('error_suscribiendo_palabras_clave'))
+            # Handle keyword subscription using unified handler
+            await self._handle_keyword_subscribe(message, user_id, category, feed_id)
                 
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_subscribe_existing: {e}")
@@ -1446,27 +1442,11 @@ class WatcherCommands:
             server_id = str(message.guild.id)
             server_name = message.guild.name
             category = self._normalize_category(args[0])
-            feed_id = None
             
-            # Check if it's a specific feed_id
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                    # Verify that the feed exists and belongs to the category
-                    feeds = db.get_active_feeds(category)
-                    feed_exists = any(f[0] == feed_id for f in feeds)
-                    if not feed_exists:
-                        await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'")
-                        return
-                except ValueError:
-                    await message.channel.send("❌ feed_id must be a number")
-                    return
-            else:
-                # Verify that the category exists
-                categories = db.get_available_categories()
-                if not any(cat[0] == category for cat in categories):
-                    await message.channel.send(f"❌ Category '{category}' not found")
-                    return
+            # Validate category and feed using the validation function
+            feed_id = await self._validate_category_and_feed(message, category, args, db)
+            if feed_id is None and len(args) > 1:  # Validation failed
+                return
             
             # Check whether the channel has configured premises
             premises, context = db.get_channel_premises_with_context(channel_id)
@@ -1474,7 +1454,26 @@ class WatcherCommands:
                 await message.channel.send(get_message('no_premisas_canal_configuradas'))
                 return
             
-            # Create AI subscription using the channel premises
+            # Handle 'all' parameter for channel AI subscriptions
+            if feed_id == 'all':
+                feeds = db.get_active_feeds(category)
+                if not feeds:
+                    await message.channel.send(f"❌ No feeds found in category '{category}'")
+                    return
+                
+                success_count = 0
+                premises_str = ",".join(premises) if premises else ""
+                for feed in feeds:
+                    if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed[0], premises_str):
+                        success_count += 1
+                
+                if success_count > 0:
+                    await message.channel.send(f"🤖 **AI channel subscription** to ALL {success_count} feeds in '{category}' - I will analyze critical news based on the channel premises")
+                else:
+                    await message.channel.send(get_message('error_creando_suscripcion_ia'))
+                return
+            
+            # Create single AI channel subscription
             premises_str = ",".join(premises) if premises else ""
             if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed_id, premises_str):
                 if feed_id:
@@ -1557,7 +1556,6 @@ class WatcherCommands:
         try:
             db = self._get_db(str(message.guild.id))
             category = self._normalize_category(args[0])
-            feed_id = None
             
             # Check subscription limits
             channel_id = str(message.channel.id)
@@ -1571,25 +1569,10 @@ class WatcherCommands:
                 await message.channel.send(f"❌ {server_msg}")
                 return
             
-            # Check if it's a specific feed_id
-            if len(args) > 1:
-                try:
-                    feed_id = int(args[1])
-                    # Verify that the feed exists and belongs to the category
-                    feeds = db.get_active_feeds(category)
-                    feed_exists = any(f[0] == feed_id for f in feeds)
-                    if not feed_exists:
-                        await message.channel.send(get_message('feed_id_not_found', feed_id=feed_id, category=category))
-                        return
-                except ValueError:
-                    await message.channel.send(get_message('feed_id_must_be_number'))
-                    return
-            else:
-                # Verify that the category exists
-                categories = db.get_available_categories()
-                if not any(cat[0] == category for cat in categories):
-                    await message.channel.send(get_message('error_categoria_no_encontrada', category=category))
-                    return
+            # Validate category and feed using the validation function
+            feed_id = await self._validate_category_and_feed(message, category, args, db)
+            if feed_id is None and len(args) > 1:  # Validation failed
+                return
             
             # Perform AI channel subscription by default
             channel = message.channel
@@ -1604,6 +1587,27 @@ class WatcherCommands:
                 # Fallback to generic premises if there's an error
                 default_premises = "interesting news, relevant events, important developments"
             
+            # Handle 'all' parameter for channel subscriptions
+            if feed_id == 'all':
+                feeds = db.get_active_feeds(category)
+                if not feeds:
+                    await message.channel.send(f"❌ No feeds found in category '{category}'")
+                    return
+                
+                success_count = 0
+                for feed in feeds:
+                    if db.subscribe_channel_category_ai(
+                        str(channel.id), channel.name, str(server.id), server.name, category, feed[0], default_premises
+                    ):
+                        success_count += 1
+                
+                if success_count > 0:
+                    await message.channel.send(f"✅ **Channel subscription** to ALL {success_count} feeds in '{category}' - AI analysis enabled")
+                else:
+                    await message.channel.send(get_message('error_creando_suscripcion_ia'))
+                return
+            
+            # Create single channel subscription
             if db.subscribe_channel_category_ai(
                 str(channel.id), channel.name, str(server.id), server.name, category, feed_id, default_premises
             ):
@@ -2523,7 +2527,7 @@ class WatcherCommands:
             logger.exception(f"Error in cmd_unified_subscribe: {e}")
             await message.channel.send("❌ Error processing subscription")
 
-    async def _handle_flat_subscribe(self, message, user_id: str, category: str, feed_id: int):
+    async def _handle_flat_subscribe(self, message, user_id: str, category: str, feed_id):
         """Handle flat subscription."""
         try:
             db = self._get_db()
@@ -2534,7 +2538,25 @@ class WatcherCommands:
                 await message.channel.send(f"❌ {user_msg}")
                 return
             
-            # Create flat subscription
+            # Handle 'all' parameter
+            if feed_id == 'all':
+                feeds = db.get_active_feeds(category)
+                if not feeds:
+                    await message.channel.send(f"❌ No feeds found in category '{category}'")
+                    return
+                
+                success_count = 0
+                for feed in feeds:
+                    if db.subscribe_user_category(user_id, category, feed[0]):
+                        success_count += 1
+                
+                if success_count > 0:
+                    await message.channel.send(f"✅ **Flat subscription** to ALL {success_count} feeds in '{category}' - You will receive ALL news with AI opinions")
+                else:
+                    await message.channel.send("❌ Error creating flat subscriptions")
+                return
+            
+            # Create single subscription
             if db.subscribe_user_category(user_id, category, feed_id):
                 if feed_id:
                     await message.channel.send(f"✅ **Flat subscription** to feed {feed_id} in '{category}' - You will receive ALL news with AI opinions")
@@ -2547,7 +2569,7 @@ class WatcherCommands:
             logger.exception(f"Error in flat subscribe: {e}")
             await message.channel.send("❌ Error processing flat subscription")
 
-    async def _handle_keyword_subscribe(self, message, user_id: str, category: str, feed_id: int):
+    async def _handle_keyword_subscribe(self, message, user_id: str, category: str, feed_id):
         """Handle keyword subscription."""
         try:
             db = self._get_db()
@@ -2564,7 +2586,25 @@ class WatcherCommands:
                 await message.channel.send(f"❌ {user_msg}")
                 return
             
-            # Create keyword subscription
+            # Handle 'all' parameter
+            if feed_id == 'all':
+                feeds = db.get_active_feeds(category)
+                if not feeds:
+                    await message.channel.send(f"❌ No feeds found in category '{category}'")
+                    return
+                
+                success_count = 0
+                for feed in feeds:
+                    if db.subscribe_keywords(user_id, keywords, None, category, feed[0]):
+                        success_count += 1
+                
+                if success_count > 0:
+                    await message.channel.send(f"✅ **Keyword subscription** to ALL {success_count} feeds in '{category}' - Filtering: '{keywords}'")
+                else:
+                    await message.channel.send("❌ Error creating keyword subscriptions")
+                return
+            
+            # Create single subscription
             if db.subscribe_keywords(user_id, keywords, None, category, feed_id):
                 if feed_id:
                     await message.channel.send(f"✅ **Keyword subscription** to feed {feed_id} in '{category}' - Filtering: '{keywords}'")
@@ -2577,7 +2617,7 @@ class WatcherCommands:
             logger.exception(f"Error in keyword subscribe: {e}")
             await message.channel.send("❌ Error processing keyword subscription")
 
-    async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id: int, return_result: bool = False):
+    async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id, return_result: bool = False):
         """Handle general (AI) subscription."""
         try:
             db = self._get_db()
@@ -2600,7 +2640,35 @@ class WatcherCommands:
                 await message.channel.send(error_msg)
                 return None if return_result else None
             
-            # Create AI subscription
+            # Handle 'all' parameter
+            if feed_id == 'all':
+                feeds = db.get_active_feeds(category)
+                if not feeds:
+                    error_msg = f"❌ No feeds found in category '{category}'"
+                    if return_result:
+                        return False, error_msg
+                    await message.channel.send(error_msg)
+                    return None if return_result else None
+                
+                success_count = 0
+                premises_str = ",".join(premises) if premises else ""
+                for feed in feeds:
+                    if db.subscribe_user_category_ai(user_id, category, feed[0], premises_str):
+                        success_count += 1
+                
+                if success_count > 0:
+                    success_msg = f"🤖 **AI subscription** to ALL {success_count} feeds in '{category}' - I'll analyze critical news using your premises"
+                    if return_result:
+                        return True, success_msg
+                    await message.channel.send(success_msg)
+                else:
+                    error_msg = "❌ Error creating AI subscriptions"
+                    if return_result:
+                        return False, error_msg
+                    await message.channel.send(error_msg)
+                return None if return_result else None
+            
+            # Create single subscription
             premises_str = ",".join(premises) if premises else ""
             if db.subscribe_user_category_ai(user_id, category, feed_id, premises_str):
                 if feed_id:

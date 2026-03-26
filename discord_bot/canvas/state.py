@@ -85,7 +85,7 @@ def _get_canvas_dice_state(guild) -> dict:
         config = db_dice_game.get_server_config(server_id)
         db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, guild.name if guild else "Unknown Server")
         state["pot_balance"] = db_banker.get_balance("dice_game_pot", server_id)
-        state["bet"] = config.get("bet_fija", 1)
+        state["bet"] = config.get("fixed_bet", 1)
         state["announcements_active"] = config.get("announcements_active", True)
     except Exception as e:
         logger.warning(f"Could not load dice state for Canvas: {e}")
@@ -98,10 +98,10 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
     try:
         server_key = get_server_key(guild)
         db_dice_game = get_dice_game_db_instance(server_key)
-        ranking = db_dice_game.get_player_ranking(str(guild.id), "total_won", limit)
+        ranking = db_dice_game.get_player_ranking(str(guild.id), "prize", limit)
         rows: list[dict] = []
         for position, row in enumerate(ranking, 1):
-            user_id, _metric_value, total_plays, total_won, total_bet = row
+            user_id, prize, total_plays, total_won, total_bet = row
             member = guild.get_member(int(user_id)) if str(user_id).isdigit() else None
             player_name = member.display_name if member is not None else str(user_id)
             balance = total_won - total_bet
@@ -109,6 +109,7 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
             rows.append({
                 "position": position,
                 "player_name": player_name,
+                "prize": prize,
                 "total_plays": total_plays,
                 "total_won": total_won,
                 "total_bet": total_bet,
@@ -217,14 +218,23 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
         "league": "Standard",
         "objectives": [],
     }
-    if guild is None or get_poe2_manager is None:
+    if get_poe2_manager is None:
         return state
     try:
         manager = get_poe2_manager()
-        server_id = str(guild.id)
+        
+        # Handle DM case - find any active server
+        if guild is None:
+            server_id = ""  # Empty string for DM - let manager find active server
+            # For DM, we assume there's at least one active server if manager is available
+            active_servers = manager.get_active_servers()
+            state["activated"] = len(active_servers) > 0
+        else:
+            server_id = str(guild.id)
+            state["activated"] = manager.is_activated(server_id)
+        
         user_id = str(author_id) if author_id else ""
-        state["activated"] = manager.is_activated(server_id)
-        state["league"] = manager.get_user_league(user_id, server_id) if user_id else manager.get_active_league(server_id)
+        state["league"] = manager.get_user_league(user_id, server_id) if user_id else "Standard"
         ok, raw = manager.list_objectives(server_id, user_id) if user_id else (True, "")
         if ok and raw:
             items = []

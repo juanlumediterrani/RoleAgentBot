@@ -14,7 +14,7 @@
     "readme_response_rules": [
       "1. OBJETIVO: Responde la duda del usuario usando la documentacion disponible.",
       "2. COMANDOS: NO respondas solo README. Explica directamente el comando o funcion relevante.",
-      "3. LONGITUD: 2-5 frases utiles, breves y claras.",
+      "3. LONGITUD: 3-7 frases utiles, breves y claras.",
       "4. CONTENIDO: Explica para ke sirve, como se usa y da un ejemplo si ayuda.",
       "5. ESTILO: Mantente en personaje."
     ]

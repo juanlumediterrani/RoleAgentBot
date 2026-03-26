@@ -2,7 +2,6 @@
   "discord": {
     "command_prefix": "!",
     "member_greeting": {
-      "enabled": true,
       "welcome_channel": "general",
       "prompt": "Gruñe brutalmente y saluda al nuevo esclavo humano {member_name} que llegó al campamento {server_name}. Eres un orco guerrero y quieres ver si sirve para comer o para pelear.",
       "fallback": "¡UHHH olemos karne nueba! ¡a ber zi sirves para algo umano jodido o solo para el caldero!",
@@ -10,6 +9,9 @@
       "greetings_disabled": "¡BRRR putre ya no bigilara a los inveziles! ¡demasiado trabajo de kobardes!",
       "welcome_enabled": "¡JUARJUAR putre dar la bienvenida a nuebas viktimas! ¡mas karne para los lobos!",
       "welcome_disabled": "¡BLEGH putre serrar la puerta! ¡demasiados umanos apestosos, me dan asko!"
+    },
+    "member_presence": {
+      "fallback": "¡UHHH dextrure ke estar haciendo, putre querer zerbesa!"
     },
     "general_messages": {
       "help_sent_private": "¡GRRR putre te tiro un pergamino por mensaje privado umano, leelo o te lo komes!",
@@ -30,14 +32,14 @@
       "invitation": "🎲 ¡BEN A JUGAR KON LOS GUESOS DE PUTRE! 🎲 ¡apuezta oro para yebarte el BOTE de la orda!",
       "winner": "¡¡¡UHHH LEXUGO UMANO KON ZUERTE!!!",
       "loser": "¡JUARJUAR umano tener zuerte de rata muerta! 🎲 ¡tu oro es de putre!",
-      "big_pot": "🔥 ¡EL BOTE ARDE KOMO ALDEA ELFIKA! 🔥",
+      "big_pot_announcement": "🔥 **¡EL BOTE ARDE KOMO ALDEA ELFIKA!** 🔥\n¡Ven a robar toas estas moneas umano! {balance:,} :coin:\n",
       "animation": "🎲🎲🎲 ¡TIRA LOS KRANEOS JODIO UMANO! 🎲🎲🎲",
       "insufficient_balance": "¡GRRR tu no tener oro suficiente, ezcoria! Necesitas {bet:,} oro para jugar. Tu zako solo tiene: {balance:,} monedas!",
       "pot_won": "🎉🎉🎉 ¡¡¡GANASTE EL GRAN BOTE, UMANO BASTARDO!!! 🎉🎉🎉",
       "prize_multiplier": "🎊 ¡GANASTE, JODIO UMANO! Tiraste {combination} - Botín: {prize:,} monedas!",
       "sin_premio": "{combination} - ¡NAH! ¡Sin premio! ¡Más oro para la orda, largate perdedor!",
       "error_jugada": "¡GRRR la magia negra rompió el juego! La caja ruidosa dice: {error}",
-      "big_pot_announcement": "🔥 ¡EL BOTE ES GIGANTE COMO UN OGRO! 🔥 ¡Hay **{balance:,}** monedas de oro! ¡Usa `!dice play` para robarlo o putre te pisa! 🎲",
+      "jackpot_won_announcement": "🎉 ¡GRRRR! **{player}** se llevo el bote entero y arranco **{prize:,}** monedas de oro en **{server}**!",
       "error_admin_only": "¡GRRR! Solo los jefes pueden usa este comando, umano escoria!",
       "error_config_parameter": "¡GRRR! Debe especificar ke configurar. Usa `!dice config bet <cantidad>` o `!dice config announcements on/off`.",
       "error_specify_amount": "¡GRRR! Debe especificar la cantidad. Ejemplo: `!dice config bet 15`.",
@@ -45,11 +47,11 @@
       "fixed_bet_configured": "✅ **Apuesta fija configurada** - Todos los juegos ahora costarán {amount:,} monedas.",
       "error_configuring_bet": "❌ ¡GRRR! Error configurando la apuesta fija.",
       "error_announcement_value": "❌ ¡GRRR! Valor inválido. Usa 'on' o 'off' para anuncios.",
-      "announcements_configured": "✅ **Anuncios configurados** - Las grandes victorias {'serán anunciadas' if enabled else 'NO serán anunciadas'}.",
+      "announcements_configured": "✅ **Anuncios configurados** - Los avisos de bote a 72x la apuesta y de bote ganado {'serán anunciados' if enabled else 'NO serán anunciados'}.",
       "error_configuring_announcements": "❌ ¡GRRR! Error configurando los anuncios."
     },
     "dice_game_balance_messages": {
-      "big_pot": "🔥 **¡EL BOTE ESTÁ REBOSANDO DE ORO!** 🔥\n¡Un buen orco robaría estas {balance:,} monedas ahora mismo!\n",
+      "big_pot": "🔥 **¡EL BOTE ARDE KOMO ALDEA ELFIKA!** 🔥\n¡Un buen orco robaría estas {balance:,} monedas ahora mismo!\n",
       "medium_pot": "📈 **bote mediano** - Ya vale la pena el riesgo, umano!\n",
       "small_pot": "📉 **bote pequeño** - Pocos muertos hoy, sigue creciendo!\n",
       "sent_private": "📩 ¡Putre ta mandao el estao del bote!",

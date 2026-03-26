@@ -140,26 +140,30 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
 
     if detail_name in {"dice_admin"}:
         dice_state = _get_canvas_dice_state(guild)
-        hot_pot = int(dice_state["bet"] * 73)
+        hot_pot = int(dice_state["bet"] * 72)
+        
+        # Get personality descriptions with English fallbacks
+        descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+        
         return "\n".join([
             _build_canvas_intro_block(
                 f"🎲 {_bot_display_name} Canvas - Trickster / Dice / Admin",
-                "Configure dice game settings and announcements",
+                descriptions.get("admin_description", "Configure dice game settings and announcements"),
             ),
-            "**Current settings**",
-            f"**Current fixed bet:** {dice_state['bet']:,} gold",
-            f"**Current pot:** {dice_state['pot_balance']:,} gold",
-            f"**Big pot threshold:** ~{hot_pot:,} gold",
+            descriptions.get("current_settings", "**Current settings**"),
+            f"{descriptions.get('current_fixed_bet', '**Current fixed bet:**')} {dice_state['bet']:,} {descriptions.get('gold_suffix', 'gold')}",
+            f"{descriptions.get('current_pot', '**Current pot:**')} {dice_state['pot_balance']:,} {descriptions.get('gold_suffix', 'gold')}",
+            f"{descriptions.get('big_pot_threshold', '**Big pot threshold:**')} ~{hot_pot:,} {descriptions.get('gold_suffix', 'gold')}",
             "",
-            "**Controls**",
-            f"- Announcements: {'On' if dice_state['announcements_active'] else 'Off'}",
-            "- Editable fixed bet input",
-            "- Editable pot value input",
-            "- Announcement on/off selector",
+            descriptions.get("controls_title", "**Controls**"),
+            f"{descriptions.get('announcements_status', '- Announcements:')} {'On' if dice_state['announcements_active'] else 'Off'}",
+            descriptions.get("editable_fixed_bet", "- Editable fixed bet input"),
+            descriptions.get("editable_pot_value", "- Editable pot value input"),
+            descriptions.get("announcement_selector", "- Announcement on/off selector"),
             "",
-            "**Routing**",
-            "- Back only from here",
-            "- No other subrole buttons are shown in this admin screen",
+            descriptions.get("routing_title", "**Routing**"),
+            descriptions.get("back_only", "- Back only from here"),
+            descriptions.get("no_other_buttons", "- No other subrole buttons are shown in this admin screen"),
         ])
 
     if detail_name in {"beggar"}:

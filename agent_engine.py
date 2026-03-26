@@ -17,6 +17,19 @@ _AGENT_CONFIG_PATH = os.path.join(_BASE_DIR, "agent_config.json")
 with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
     AGENT_CFG = json.load(f)
 
+
+def _load_personality_descriptions() -> dict:
+    try:
+        personality_rel = AGENT_CFG.get("personality", "")
+        personality_path = os.path.join(_BASE_DIR, personality_rel)
+        descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions.json")
+        if os.path.exists(descriptions_path):
+            with open(descriptions_path, encoding="utf-8") as f:
+                return json.load(f).get("discord", {})
+    except Exception as e:
+        logger.warning(f"Could not load personality descriptions.json: {e}")
+    return {}
+
 # --- MC CONFIGURATION FUNCTIONS ---
 def get_mc_mode():
     """Get MC execution mode from config."""
@@ -111,6 +124,7 @@ def _cargar_personalidad() -> dict:
             return json.load(f)
 
 PERSONALITY = _cargar_personalidad()
+_personality_descriptions = _load_personality_descriptions()
 # Only show personality log if not in role subprocess
 if os.getenv('ROLE_AGENT_PROCESS') != '1':
     logger.info(f"🎭 [PERSONALITY] Loaded: {PERSONALITY.get('name', 'Unknown')} from {AGENT_CFG.get('personality', 'Unknown')}")
@@ -388,7 +402,7 @@ def _get_readme_response_rules_lines() -> list[str]:
     return [
         "1. OBJECTIVE: Answer the user's question using the provided documentation.",
         "2. COMMANDS: Do not reply only with README. Explain the relevant command directly.",
-        "3. LENGTH: 2-5 short useful sentences.",
+        "3. LENGTH: 3-7 short useful sentences.",
         "4. CONTENT: Explain purpose, usage, and a small example when helpful.",
         "5. STYLE: Stay in character and be clear."
     ]
@@ -414,10 +428,10 @@ def _get_response_rules_lines() -> list[str]:
     if isinstance(rules, list) and rules:
         return [str(rule).strip() for rule in rules if str(rule).strip()]
     return [
-        "1. LONGITUD: 1-3 frases (25-150 caracteres). Se breve y violento.",
-        "2. COMANDOS: Si el humano pide ayuda con coomando o funciones, responde UNICAMENTE: README",
-        "3. GRAMATICA: Sin tildes. Termina afirmaciones con '!' y preguntas con '?'.",
-        '4. No termines frases con palabras sueltas como "ke", "a", "de".',
+        "1. LENGTH: 1-3 sentences (25-150 characters). Be brief and direct.",
+        "2. COMMANDS: If human asks for help with commands or functions, respond ONLY with: README",
+        "3. GRAMMAR: No accent marks. End statements with '!' and questions with '?'.",
+        "4. Don't end sentences with single words like 'the', 'a', in'.",
     ]
 
 #Deprecated

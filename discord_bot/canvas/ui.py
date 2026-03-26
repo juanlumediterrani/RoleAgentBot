@@ -115,13 +115,55 @@ async def _safe_edit_interaction_message(interaction: discord.Interaction, conte
         else:
             logger.warning(f"Canvas interaction edit failed: {edit_error}")
 
-    try:
-        if interaction.message:
-            await interaction.message.edit(content=content, embed=embed, view=view)
-            return True
-    except Exception as message_edit_error:
-        logger.warning(f"Canvas direct message edit fallback failed: {message_edit_error}")
-    return False
+        try:
+            if interaction.message:
+                await interaction.message.edit(content=content, embed=embed, view=view)
+                return True
+        except Exception as message_edit_error:
+            logger.warning(f"Canvas direct message edit fallback failed: {message_edit_error}")
+        return False
+
+
+async def _get_canvas_announcement_channel(interaction: discord.Interaction, guild: discord.Guild):
+    if guild is None:
+        return None
+
+    current_channel = interaction.channel
+    if isinstance(current_channel, discord.TextChannel) and current_channel.guild and current_channel.guild.id == guild.id:
+        permissions = current_channel.permissions_for(guild.me)
+        if permissions.send_messages:
+            return current_channel
+
+    preferred_names = ("general", "chat", "principal", "general-chat")
+    for channel in guild.text_channels:
+        permissions = channel.permissions_for(guild.me)
+        if permissions.send_messages and any(name in channel.name.lower() for name in preferred_names):
+            return channel
+
+    for channel in guild.text_channels:
+        permissions = channel.permissions_for(guild.me)
+        if permissions.send_messages:
+            return channel
+
+    return None
+
+
+async def _send_canvas_dice_announcements(interaction: discord.Interaction, guild: discord.Guild, announcements: list[str]) -> None:
+    valid_announcements = [announcement for announcement in announcements if announcement]
+    logger.info(f"📢 Canvas dice announcements queued: {len(valid_announcements)}")
+    if not valid_announcements:
+        return
+
+    channel = await _get_canvas_announcement_channel(interaction, guild)
+    if channel is None:
+        logger.warning("📢 Canvas dice announcement skipped: no valid channel found")
+        return
+
+    logger.info(f"📢 Canvas dice announcement channel: {channel.name} ({channel.id})")
+    for announcement in valid_announcements:
+        await channel.send(announcement)
+        logger.info(f"📢 Canvas dice announcement sent to {channel.name}")
+
 
 # Helper function for back button navigation
 async def navigate_back(interaction, current_view, target_view=None, target_content=None):
@@ -2229,7 +2271,7 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
                     await interaction.response.send_message("❌ Fixed bet must be between 1 and 1000 gold.", ephemeral=True)
                     return
                 db_dice_game = get_dice_game_db_instance(server_key)
-                ok = db_dice_game.configure_server(server_id, bet_fija=amount)
+                ok = db_dice_game.configure_server(server_id, fixed_bet=amount)
                 if not ok:
                     raise RuntimeError("Could not update fixed bet")
                 state = _get_canvas_dice_state(guild)
@@ -2593,7 +2635,10 @@ async def _handle_canvas_trickster_action(interaction: discord.Interaction, acti
         await interaction.response.send_message("❌ Could not update trickster settings.", ephemeral=True)
         return
 
-    content = ""  # Action view content is no longer needed
+    # Generate updated content for the current detail view
+    from discord_bot.canvas.canvas_trickster import _get_canvas_trickster_detail_content
+    content = _get_canvas_trickster_detail_content(current_detail, interaction.guild, view.admin_visible)
+    
     next_view = CanvasRoleDetailView(
         author_id=view.author_id,
         role_name=view.role_name,
@@ -2801,6 +2846,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                         f"{fixed_bet} {bet_amount:,} :coin:",
                         player_balance_line,
                     ])
+                    await _send_canvas_dice_announcements(interaction, guild, result.get("announcements", []))
                 else:
                     error_msg = answers.get("error_jugada", "❌ **ERROR!**")
                     content_parts.extend([

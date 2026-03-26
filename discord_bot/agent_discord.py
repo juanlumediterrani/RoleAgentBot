@@ -12,20 +12,89 @@ import random
 import time
 from discord.ext import commands, tasks
 
-from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG
-from agent_mind import call_llm
+from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
+from agent_mind import call_llm, _build_conversation_user_prompt
+from postprocessor import postprocess_response, is_readme_response
 from agent_db import set_current_server, get_active_server_name
+from behavior.db_behavior import get_behavior_db_instance
 from agent_logging import get_logger, update_log_file_path
 from discord_bot.discord_utils import (
-    get_db_for_server,
-    get_greeting_enabled, check_chat_rate_limit,
+    get_server_key, send_dm_or_channel,
+    get_db_for_server, check_chat_rate_limit,
     set_is_connected, is_role_enabled_check,
-    get_server_key,
 )
 
 logger = get_logger('discord')
 
 # --- CONFIGURATION ---
+
+def _build_readme_prompt(user_question: str) -> str:
+    """Build enhanced prompt with README content for LLM.
+    
+    Args:
+        user_question: The original user question
+        
+    Returns:
+        Enhanced prompt string with README documentation
+        
+    Raises:
+        Exception: If README file cannot be loaded
+    """
+    # Try to load personality-specific README_LLM.md first, then fallback to root
+    personality_rel = AGENT_CFG.get("personality", "")
+    personality_dir = os.path.dirname(os.path.join(os.path.dirname(os.path.dirname(__file__)), personality_rel))
+    personality_readme_path = os.path.join(personality_dir, 'README_LLM.md')
+    root_readme_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'README_LLM.md')
+    
+    readme_content = None
+    readme_source = ""
+    
+    # First try personality-specific README
+    if os.path.exists(personality_readme_path):
+        try:
+            with open(personality_readme_path, 'r', encoding='utf-8') as f:
+                readme_content = f.read()
+            readme_source = "personality-specific"
+            logger.info(f"📖 Using personality-specific README: {personality_readme_path}")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load personality-specific README: {e}")
+    
+    # Fallback to root README if personality-specific failed or doesn't exist
+    if readme_content is None:
+        try:
+            with open(root_readme_path, 'r', encoding='utf-8') as f:
+                readme_content = f.read()
+            readme_source = "root"
+            logger.info(f"📖 Using root README: {root_readme_path}")
+        except Exception as e:
+            logger.error(f"❌ Error loading root README_LLM.md: {e}")
+            raise
+    
+    # Get README response rules
+    try:
+        from agent_engine import _get_readme_response_rules_lines
+        readme_rules = _get_readme_response_rules_lines()
+        readme_rules_text = '\n'.join(readme_rules)
+    except Exception as e:
+        logger.warning(f"Could not load README response rules: {e}")
+        readme_rules_text = ""
+    
+    # Build enhanced prompt with README content
+    readme_descriptions = _personality_descriptions.get("readme", {})
+    label_user_question = readme_descriptions.get("label_user_question", "User Question:")
+    label_documentation = readme_descriptions.get("label_documentation", "Documentation:")
+    task_readme = readme_descriptions.get("task", "Please answer the user's question using the documentation above.")
+    enhanced_prompt = f"""{label_user_question} {user_question}
+
+{label_documentation}
+{readme_content}
+
+{readme_rules_text}
+
+{task_readme}"""
+    
+    return enhanced_prompt
+
 
 def _load_personality_answers() -> dict:
     try:
@@ -445,6 +514,42 @@ async def _process_chat_message(message):
             logger=logger
         )
 
+        # Check if this is a README response (deprecated is_help_request removed)
+        if is_readme_response(response):
+            logger.info(f"🔍 README response detected from {message.author.name}")
+            
+            # Build enhanced prompt with README content
+            try:
+                enhanced_prompt = _build_readme_prompt(clean_content)
+                
+                logger.info(f"📖 Making second LLM call with README documentation")
+                
+                # Make second LLM call with README content
+                response = call_llm(
+                    system_instruction=system_instruction,
+                    prompt=enhanced_prompt,
+                    async_mode=False,
+                    call_type="readme_enhanced",
+                    critical=True,
+                    metadata={
+                        "interaction_type": "channel" if is_public else "dm",
+                        "is_public": is_public,
+                        "user_id": message.author.id,
+                        "role": _bot_display_name,
+                        "server": server_name,
+                        "channel_id": message.channel.id if is_public else None,
+                        "is_mention": is_mention,
+                        "readme_enhanced": True
+                    },
+                    logger=logger
+                )
+                
+                logger.info(f"✅ README enhanced response generated")
+                
+            except Exception as e:
+                logger.error(f"❌ Error building README prompt: {e}")
+                # Continue with original README response if README file fails
+
         # Register interaction in database
         db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)
         interaction_type = "CHANNEL" if is_public else "DM"
@@ -457,13 +562,40 @@ async def _process_chat_message(message):
             {"response": response, "is_public": is_public, "is_mention": is_mention}
         )
 
+        # Schedule relationship refresh after interaction
+        await asyncio.to_thread(
+            db_instance.schedule_relationship_refresh,
+            message.author.id,
+            delay_minutes=60
+        )
+
         # Mark user as replied to greeting if they message the bot
         if message.guild:
+            # Server message - use guild context
             from behavior.db_behavior import get_behavior_db_instance
             from discord_bot.discord_utils import get_server_key
             server_name = get_server_key(message.guild)
             behavior_db = get_behavior_db_instance(server_name)
             await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, message.guild.id)
+        else:
+            # DM message - check all guilds where user might have received greetings
+            import os
+            import glob
+            from behavior.db_behavior import get_behavior_db_instance
+            
+            # Get all server databases
+            db_paths = glob.glob("databases/*/behavior.db")
+            for db_path in db_paths:
+                try:
+                    # Extract server name from path
+                    server_name = os.path.basename(os.path.dirname(db_path))
+                    behavior_db = get_behavior_db_instance(server_name)
+                    # Try to mark user as replied in this server
+                    replied = await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, "dm_context")
+                    if replied:
+                        logger.info(f"Marked user {message.author.name} as replied via DM for server {server_name}")
+                except Exception as e:
+                    logger.debug(f"Could not mark user replied for server {server_name}: {e}")
 
         if response and response.strip():
             await message.channel.send(response)

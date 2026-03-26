@@ -628,13 +628,24 @@ class BehaviorDB:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            cursor.execute('''
-                UPDATE greetings 
-                SET replied = 1, replied_at = CURRENT_TIMESTAMP, needs_reply = 0
-                WHERE user_id = ? AND guild_id = ? AND needs_reply = 1
-                ORDER BY greeting_sent_at DESC
-                LIMIT 1
-            ''', (user_id, guild_id))
+            if guild_id == "dm_context":
+                # DM message - mark user as replied across all guilds in this server database
+                cursor.execute('''
+                    UPDATE greetings 
+                    SET replied = 1, replied_at = CURRENT_TIMESTAMP, needs_reply = 0
+                    WHERE user_id = ? AND needs_reply = 1
+                    ORDER BY greeting_sent_at DESC
+                    LIMIT 1
+                ''', (user_id,))
+            else:
+                # Server message - mark user as replied for specific guild
+                cursor.execute('''
+                    UPDATE greetings 
+                    SET replied = 1, replied_at = CURRENT_TIMESTAMP, needs_reply = 0
+                    WHERE user_id = ? AND guild_id = ? AND needs_reply = 1
+                    ORDER BY greeting_sent_at DESC
+                    LIMIT 1
+                ''', (user_id, guild_id))
             
             conn.commit()
             rows_updated = cursor.rowcount
@@ -654,25 +665,37 @@ class BehaviorDB:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            cursor.execute('''
-                SELECT needs_reply, replied, greeting_sent_at, replied_at, greeting_type
-                FROM greetings
-                WHERE user_id = ? AND guild_id = ?
-                ORDER BY greeting_sent_at DESC
-                LIMIT 1
-            ''', (user_id, guild_id))
+            if guild_id == "dm_context":
+                # DM context - search across all guilds for this user
+                cursor.execute('''
+                    SELECT needs_reply, replied, greeting_sent_at, replied_at, greeting_type, guild_id
+                    FROM greetings
+                    WHERE user_id = ?
+                    ORDER BY greeting_sent_at DESC
+                    LIMIT 1
+                ''', (user_id,))
+            else:
+                # Specific guild context
+                cursor.execute('''
+                    SELECT needs_reply, replied, greeting_sent_at, replied_at, greeting_type, guild_id
+                    FROM greetings
+                    WHERE user_id = ? AND guild_id = ?
+                    ORDER BY greeting_sent_at DESC
+                    LIMIT 1
+                ''', (user_id, guild_id))
             
             result = cursor.fetchone()
             conn.close()
             
             if result:
-                needs_reply, replied, greeting_sent_at, replied_at, greeting_type = result
+                needs_reply, replied, greeting_sent_at, replied_at, greeting_type, result_guild_id = result
                 return {
                     'needs_reply': bool(needs_reply),
                     'replied': bool(replied),
                     'greeting_sent_at': greeting_sent_at,
                     'replied_at': replied_at,
                     'greeting_type': greeting_type,
+                    'guild_id': result_guild_id,
                     'has_unreplied_greeting': bool(needs_reply and not replied)
                 }
             else:
@@ -682,6 +705,7 @@ class BehaviorDB:
                     'greeting_sent_at': None,
                     'replied_at': None,
                     'greeting_type': None,
+                    'guild_id': None,
                     'has_unreplied_greeting': False
                 }
                 
@@ -693,6 +717,7 @@ class BehaviorDB:
                 'greeting_sent_at': None,
                 'replied_at': None,
                 'greeting_type': None,
+                'guild_id': None,
                 'has_unreplied_greeting': False
             }
     

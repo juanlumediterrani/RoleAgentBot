@@ -135,12 +135,13 @@ async def process_flat_subscriptions(http, db_watcher, global_db, server_name: s
                 if feed_data:
                     await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, None, server_name, "flat")
             else:
-                # All feeds in category
+                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
                 feeds = db_watcher.get_active_feeds(category_normalized)
                 if feeds:
-                    logger.info(f"📰 Processing {len(feeds)} feeds in {category} category for user {user_id}")
-                    for feed in feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feed, user_id, None, server_name, "flat")
+                    # Take only the first feed (highest priority)
+                    first_feed = feeds[0]
+                    logger.info(f"📰 Processing first feed in {category} category for user {user_id}: {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, None, server_name, "flat")
                 else:
                     logger.warning(f"📰 No feeds found for category '{category}' (normalized: '{category_normalized}')")
         
@@ -155,12 +156,13 @@ async def process_flat_subscriptions(http, db_watcher, global_db, server_name: s
                 if feed_data:
                     await _process_feed_unified(http, db_watcher, global_db, feed_data, f"channel_{channel_id}", channel_id, server_name, "flat")
             else:
-                # All feeds in category
+                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
                 feeds = db_watcher.get_active_feeds(category_normalized)
                 if feeds:
-                    logger.info(f"📰 Processing {len(feeds)} feeds in {category} category for channel {channel_id}")
-                    for feed in feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feed, f"channel_{channel_id}", channel_id, server_name, "flat")
+                    # Take only the first feed (highest priority)
+                    first_feed = feeds[0]
+                    logger.info(f"📰 Processing first feed in {category} category for channel {channel_id}: {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, f"channel_{channel_id}", channel_id, server_name, "flat")
                 else:
                     logger.warning(f"📰 No feeds found for category '{category}' (normalized: '{category_normalized}')")
                     
@@ -192,12 +194,13 @@ async def process_keyword_subscriptions(http, db_watcher, global_db, server_name
                 else:
                     logger.warning(f"Feed ID {feed_id} not found. Skipping keyword subscription.")
             else:
-                # All feeds in category
+                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
                 feeds = db_watcher.get_active_feeds(category_normalized)
                 if feeds:
-                    logger.info(f"🔍 Processing {len(feeds)} feeds for keywords '{keywords}' in {category} category for user {user_id}")
-                    for feed in feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feed, user_id, channel_id, server_name, "keyword", keywords)
+                    # Take only the first feed (highest priority)
+                    first_feed = feeds[0]
+                    logger.info(f"🔍 Processing first feed for keywords '{keywords}' in {category} category for user {user_id}: {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, channel_id, server_name, "keyword", keywords)
                 else:
                     logger.warning(f"🔍 No feeds found for category '{category}' (normalized: '{category_normalized}')")
         
@@ -214,12 +217,13 @@ async def process_keyword_subscriptions(http, db_watcher, global_db, server_name
                 else:
                     logger.warning(f"Feed ID {feed_id} not found. Skipping keyword subscription.")
             else:
-                # All feeds in category
+                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
                 feeds = db_watcher.get_active_feeds(category_normalized)
                 if feeds:
-                    logger.info(f"🔍 Processing {len(feeds)} feeds for keywords '{keywords}' in {category} category for channel {channel_id}")
-                    for feed in feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feed, f"channel_{channel_id}", channel_id, server_name, "keyword", keywords)
+                    # Take only the first feed (highest priority)
+                    first_feed = feeds[0]
+                    logger.info(f"🔍 Processing first feed for keywords '{keywords}' in {category} category for channel {channel_id}: {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, f"channel_{channel_id}", channel_id, server_name, "keyword", keywords)
                 else:
                     logger.warning(f"🔍 No feeds found for category '{category}' (normalized: '{category_normalized}')")
                     
@@ -258,12 +262,13 @@ async def process_ai_subscriptions(http, db_watcher, global_db, server_name: str
                 if feed_data:
                     await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, None, server_name, "general", user_premises)
             else:
-                # All feeds in category
+                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
                 feeds = db_watcher.get_active_feeds(category_normalized)
                 if feeds:
-                    logger.info(f"🤖 Processing {len(feeds)} feeds in {category} category for user {user_id} with {len(user_premises)} premises")
-                    for feed in feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feed, user_id, None, server_name, "general", user_premises)
+                    # Take only the first feed (highest priority)
+                    first_feed = feeds[0]
+                    logger.info(f"🤖 Processing first feed in {category} category for user {user_id} with {len(user_premises)} premises: {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, None, server_name, "general", user_premises)
                 else:
                     logger.warning(f"🤖 No feeds found for category '{category}' (normalized: '{category_normalized}')")
         
@@ -287,12 +292,13 @@ async def process_ai_subscriptions(http, db_watcher, global_db, server_name: str
                 if feed_data:
                     await _process_feed_unified(http, db_watcher, global_db, feed_data, f"channel_{channel_id}", channel_id, server_name, "general", channel_premises)
             else:
-                # All feeds in category
+                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
                 feeds = db_watcher.get_active_feeds(category_normalized)
                 if feeds:
-                    logger.info(f"🤖 Processing {len(feeds)} feeds in {category} category for channel {channel_id} with {len(channel_premises)} premises")
-                    for feed in feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feed, f"channel_{channel_id}", channel_id, server_name, "general", channel_premises)
+                    # Take only the first feed (highest priority)
+                    first_feed = feeds[0]
+                    logger.info(f"🤖 Processing first feed in {category} category for channel {channel_id} with {len(channel_premises)} premises: {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, f"channel_{channel_id}", channel_id, server_name, "general", channel_premises)
                 else:
                     logger.warning(f"🤖 No feeds found for category '{category}' (normalized: '{category_normalized}')")
                     

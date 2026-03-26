@@ -242,12 +242,12 @@ class DatabaseRoleBanker:
                     ''', (server_id,))
                     bonus_result = cursor.fetchone()
                     opening_bonus = bonus_result[0] if bonus_result else 10
-                    
+                     
                     # Insert new wallet with bonus
                     cursor.execute('''
                         INSERT INTO wallets 
                         (user_id, user_name, server_id, server_name, balance, created_date)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                       VALUES (?, ?, ?, ?, ?, ?)
                     ''', (user_id, user_name, server_id, server_name, 
                           opening_bonus, datetime.now().isoformat()))
                     
@@ -299,7 +299,9 @@ class DatabaseRoleBanker:
                     
                     # Calculate new balance
                     new_balance = current_balance + amount
-                    
+                    if new_balance < 0:
+                        return False
+                     
                     # Update balance
                     cursor.execute('''UPDATE wallets SET balance = ?, user_name = ? 
                                     WHERE user_id = ? AND server_id = ?''',

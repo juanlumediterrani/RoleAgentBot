@@ -457,7 +457,8 @@ The bot searches for the One Ring by questioning users. Users can accuse one ano
 
 ##### Beggar
 The bot asks users for gold according to a rotating daily motive. Administrators control both activation and frequency.
-
+##### Nordic Runes
+The bot interpret the question of the user and intrepret his runes call with his question, and give to him a personalized opinion.
 #### MC
 This role lets users search for songs and add them to a playback queue for a voice channel. It includes queue-management commands and also records relevant interactions that can feed memory and user-relationship synthesis.
 

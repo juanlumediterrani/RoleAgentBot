@@ -1,85 +1,332 @@
-# ROLEAGENTBOT - STRUCTURED COMMAND REFERENCE
 
-## CONTROL COMMANDS
-- !agenthelp [personality] - Show comprehensive help (personality-specific optional)
-- !readme - Get complete user guide by private message (NEW)
-- !greet[personality] - Enable presence greetings (admin)
-- !nogreet[personality] - Disable presence greetings (admin)
-- !welcome[personality] - Enable new member welcome (admin)
-- !nowelcome[personality] - Disable new member welcome (admin)
-- !insult[personality] - Send character-appropriate insult
-- !role[personality] <role> <on/off> - Enable/disable roles dynamically (admin)
-- !test - Test bot functionality
+# RoleAgentBot - LLM Guide for Explaining the User Experience
 
-## ROLE COMMANDS
-### News Watcher (news_watcher)
-- Purpose: Smart news alerts and monitoring
-- Main Commands: !watcher | !nowatcher | !watchernotify
-- Help Commands: !watcherhelp (users) | !watcherchannelhelp (admins)
-- Channel Management: !watcherchannel subscribe/unsubscribe/status/keywords/premises
-- Subscription: !watcher feeds/categories/status/subscribe/unsubscribe/keywords/general/reset
-- Admin: !forcewatcher (manual check)
+## Purpose of This Document
 
-### Treasure Hunter (treasure_hunter)
-- Purpose: POE2 item price monitoring and alerts
-- Admin Control: !hunter poe2 on/off | !hunterfrequency <hours>
-- League Management: !hunter poe2 league "Standard" | !hunter poe2 "Fate of the Vaal"
-- Item Management: !hunteradd "item" | !hunterdel "item"/<number> | !hunterlist
-- Help: !hunterhelp | !hunter poe2 help
+This README is written for an external LLM that needs to explain **what RoleAgentBot feels like to use**.
 
-### Trickster (trickster)
-- Purpose: Entertainment mini-games and subroles
-- Main Help: !trickster help
-- Ring Accusation: !accuse @user (legacy)
-- Dice Game: !dice play/help/balance/stats/ranking/history
-- Dice Configuration: !dice config bet <amount> | !dice config announcements on/off
-- Subroles (when enabled): !trickster beggar/ring enable/disable/frequency/help
+Do not describe the project only as a technical Discord bot. Explain it as a **multi-role AI companion inside Discord** that combines:
 
-### Banker (banker)
-- Purpose: Virtual economy management
-- Main: !banker help
-- Balance: !banker balance (DMs user in channels)
-- Admin Config: !banker bonus <amount>
+- conversational AI
+- server behaviors
+- private alerts and utilities
+- lightweight game and economy systems
+- memory-driven personalization
 
-### Music Controller (mc)
-- Purpose: Music playback in voice channels
-- Common: !mc play "song" | !mc add "song" | !mc queue
-- Help: !mc help
+The goal is to help a reader understand the **user experience**, the **main interaction patterns**, and the **expected behavior** of the bot in real use.
 
-## LLM LOGIC STRUCTURE
-### Golden Rule System
-1. User asks for help about commands/functions
-2. LLM responds with "README" (following personality golden rule)
-3. System detects README response + help request
-4. System loads structured documentation
-5. System resends original question + documentation to LLM
-6. LLM provides character-appropriate explanation
+## One-Sentence Product Description
 
-### Response Guidelines
-- Keep explanations SHORT and focused
-- Maintain personality speech patterns
-- Reference only relevant commands for user's question
-- Use character-appropriate language (Putre: aggressive/simple, Kronk: formal, Agumon: friendly)
+RoleAgentBot is a Discord bot with an AI-driven personality that talks to users, remembers context, reacts to server events, and offers specialized role-based experiences such as news alerts, item hunting, mini-games, banking, and music control.
 
-### Personality Context
-- Putre: Orc character - aggressive speech, no tildes, simple vocabulary
-- Kronk: Empire character - formal, loyal speech patterns
-- Agumon: Digital monster - friendly, tech-savvy language
+## How to Explain the Product
 
-## BASIC INTERACTION
-- Mention bot (@botname) for casual conversation
-- Bot responds using active personality
-- Each personality has unique speech patterns and vocabulary
+When explaining RoleAgentBot to a user, frame it as:
 
-## ADMINISTRATION
-- Most configuration requires admin permissions
-- Role intervals configurable by server administrators
-- Use role-specific help commands for detailed setup
+- **A personality-first bot**
+  The bot is not just a tool that executes commands. It has a character, a tone, and a conversational style.
 
-## USAGE NOTES
-- Commands start with ! prefix
-- Some commands work only in DMs (watcher commands)
-- Bot maintains character consistency in all responses
-- Help requests trigger automatic README explanations
-- Control commands are personality-prefixed (e.g., !greetputre, !insultputre)
-- !readme sends comprehensive user guide via private message for better user experience
+- **A bot with two interaction layers**
+  Users interact with it through both:
+  - direct conversation with the AI
+  - role-specific commands and automations
+
+- **A mixed public/private experience**
+  Some interactions happen in server channels, while more personal or sensitive flows often happen in DMs.
+
+- **A persistent companion**
+  The bot uses memory and relationship context so repeated interactions feel more continuous and less stateless.
+
+## Core User Experience
+
+From the user perspective, RoleAgentBot offers five main experiences.
+
+### 1. Conversational Experience
+
+Users can mention the bot in a server or talk to it in direct messages.
+
+What the user experiences:
+
+- the bot responds as a character, not as a neutral assistant
+- answers are influenced by personality and prior context
+- the conversation feels more aware of recent exchanges
+- private conversations feel more direct and personal
+- public replies are still contextual, but more aware of the shared channel environment
+
+Important explanation for an LLM:
+
+- if a user sends a DM, the experience is closer to a private conversation with the bot
+- if a user mentions the bot in a server, the response is shaped by the public setting and channel context
+- the bot is designed to feel reactive and socially present, not just command-driven
+
+### 2. Role Utility Experience
+
+The bot includes specialized roles that behave like built-in feature packs.
+
+Users do not necessarily think in terms of architecture. They experience these roles as different capabilities:
+
+- **News Watcher** gives curated news alerts
+- **Treasure Hunter** watches item prices and notifies users about opportunities
+- **Trickster** provides playful interactions and mini-games
+- **Banker** manages the internal virtual economy
+- **MC** controls music-related behavior in voice contexts
+
+Explain these roles as separate user-facing experiences that share the same personality layer.
+
+### 3. Automation Experience
+
+RoleAgentBot also acts without being explicitly invoked every time.
+
+Examples of what the user may perceive:
+
+- a welcome message when joining a server
+- a greeting when coming online
+- an automatic reaction to taboo words
+- scheduled alerts or reminders generated by enabled roles
+
+This makes the bot feel more like a **present actor in the server** rather than a passive chatbot.
+
+### 4. Personalized Memory Experience
+
+Users may notice that the bot behaves as if it remembers them.
+
+That experience comes from several layers of context:
+
+- recent dialogue context
+- short-term synthesized memory
+- daily memory summaries
+- relationship memory per user
+
+For an LLM explanation, say that the bot tries to preserve continuity across interactions so users feel recognized over time.
+
+### 5. Control Interface Experience
+
+Users can interact with the bot through commands, but also through a Canvas-style guided interface.
+
+This means the experience is not limited to typing raw commands. In some flows, users can navigate sections, buttons, and structured views to manage roles and settings more comfortably.
+
+## Main User Journeys
+
+Use these journeys when explaining how the bot fits into actual user behavior.
+
+### Journey A: Talking to the Bot
+
+1. A user sends a DM or mentions the bot.
+2. The bot interprets the message in context.
+3. It builds a response using personality, memory, and channel awareness.
+4. It replies in the same interaction space.
+5. The interaction is stored so future conversations can feel more continuous.
+
+User-facing summary:
+
+"You talk to the bot like a character in your Discord environment, and it answers with awareness of recent context."
+
+### Journey B: Receiving a Smart Notification
+
+1. A user configures a role such as News Watcher or Treasure Hunter.
+2. The bot monitors external or scheduled sources in the background.
+3. Relevant events are filtered according to the user's preferences.
+4. The bot sends a notification, often by DM or in the configured channel.
+5. The result feels curated rather than raw or spammy.
+
+User-facing summary:
+
+"The bot watches things for you and only surfaces what appears important or useful."
+
+### Journey C: Experiencing the Bot as Part of the Server
+
+1. Someone joins, comes online, or triggers a taboo word.
+2. The bot reacts based on enabled behaviors.
+3. The response reflects the configured personality and server context.
+4. Other users experience the bot as a social presence inside the community.
+
+User-facing summary:
+
+"The bot feels alive in the server because it responds to events, not only commands."
+
+### Journey D: Using a Role as a Feature
+
+1. A user discovers a role through commands or the Canvas interface.
+2. They enable it or interact with its commands.
+3. The role performs its domain-specific function.
+4. The output still feels consistent with the bot's overall persona.
+
+User-facing summary:
+
+"Each role adds a new kind of experience, but it still feels like the same bot."
+
+## Role-by-Role UX Summary
+
+### News Watcher
+
+How it feels to the user:
+
+- like a personalized news scout
+- focused on relevance rather than raw feed dumping
+- useful for users who want monitored topics delivered with AI filtering
+
+Experience notes:
+
+- users define or manage premises/preferences
+- the bot filters articles based on those premises
+- alerts feel customized to what the user cares about
+
+### Treasure Hunter
+
+How it feels to the user:
+
+- like a market lookout for Path of Exile 2 items
+- oriented around opportunities and price changes
+- useful for players who do not want to watch the market manually
+
+Experience notes:
+
+- users subscribe to tracked objectives
+- the bot checks prices in the background
+- alerts are sent when conditions match the configured goal
+
+### Trickster
+
+How it feels to the user:
+
+- playful, chaotic, and game-like
+- built for entertainment and surprise
+- more about fun interaction than utility
+- expanded by mystical or theatrical subroles such as `runes`
+
+Experience notes:
+
+- includes mini-game patterns such as dice
+- includes a Nordic runes divination experience through the `!runes` command
+- users can ask a question and receive AI-guided rune interpretations
+- supports multiple spreads: `single`, `three`, `cross`, and `runic_cross`
+- stores a personal reading history so the experience feels collectible and revisitable
+- may connect with the internal economy
+- reinforces the bot's personality strongly
+
+### Banker
+
+How it feels to the user:
+
+- a lightweight economy/account layer inside the bot ecosystem
+- gives continuity and stakes to reward-based or game-based features
+
+Experience notes:
+
+- balances and rewards matter across some interactions
+- it supports a sense of progression or ownership
+
+### MC
+
+How it feels to the user:
+
+- a practical music-control interface for Discord voice usage
+- more utility-oriented, but still part of the unified bot experience
+
+## Public vs Private Experience
+
+This distinction is important when an LLM explains the product.
+
+### Public Interactions
+
+In public server channels, the bot feels like:
+
+- a visible community actor
+- responsive to mentions and server events
+- aware that the interaction is happening in a shared space
+
+### Private Interactions
+
+In DMs, the bot feels like:
+
+- more direct and personal
+- better suited for user-specific alerts or settings
+- less performative and more assistant-like, while still in character
+
+If you need a simple rule:
+
+- **public = social presence**
+- **private = personalized guidance and notifications**
+
+## What Makes the UX Distinctive
+
+If an LLM needs to explain what makes RoleAgentBot different, emphasize these points.
+
+### Personality Consistency
+
+The bot is meant to feel like one character across many features.
+
+### Shared Identity Across Roles
+
+Even though the bot has multiple capabilities, the user should feel that all of them belong to the same agent.
+
+### Memory and Continuity
+
+The bot is designed to avoid feeling stateless. Repeated use should feel more familiar.
+
+### Mixture of Conversation and Utility
+
+Users can both talk to the bot and use it as a tool platform.
+
+### Active Presence
+
+The bot does not only wait for commands. It can greet, warn, notify, and react.
+
+## How to Describe the Conversation Flow
+
+When an LLM explains the message-processing experience, it should describe it in user-facing terms like this:
+
+1. The bot receives a DM or mention.
+2. It checks whether the message should trigger a special behavior first, such as a taboo response.
+3. It cleans and interprets the user message.
+4. It builds a prompt using personality, memory, relationship context, and the current conversation setting.
+5. It generates a response through the configured LLM layer.
+6. It sends the reply back to Discord.
+7. It stores the interaction to make future replies more consistent.
+
+This is the core loop behind the feeling that the bot is both conversational and persistent.
+
+## Tone Guidelines for an LLM Explaining the Bot
+
+If you are an LLM explaining RoleAgentBot, your explanation should be:
+
+- **clear**
+- **product-oriented**
+- **centered on the user's perspective**
+- **aware that the bot has personality**
+- **careful not to reduce everything to implementation details**
+
+Good phrasing:
+
+- "The bot feels like a personality-driven Discord companion."
+- "Users can both chat with it and rely on it for specialized role-based features."
+- "It combines automation, memory, and utility so the experience feels continuous."
+
+Avoid overly narrow phrasing like:
+
+- "It is just a Discord command bot."
+- "It is only an API wrapper around an LLM."
+- "It only responds when explicitly called."
+
+## Suggested Short Explanation
+
+RoleAgentBot is a personality-driven Discord bot that combines direct conversation, automated behaviors, and modular role-based features. For the user, it feels like an AI companion inside the server: it can talk, remember context, greet people, react to events, send curated alerts, run mini-games, and provide practical utilities like price tracking, banking, and music control.
+
+## Suggested Medium Explanation
+
+RoleAgentBot is designed to create the feeling of a living AI presence inside Discord. Users can speak to it directly through mentions or DMs, and the bot responds using personality, memory, and contextual awareness. Beyond conversation, it provides a set of specialized roles such as News Watcher, Treasure Hunter, Trickster, Banker, and MC, each adding a different kind of user value. Some experiences are social and public, like greetings or taboo reactions in a server, while others are personal and private, like filtered alerts or user-specific configuration flows. The result is a bot that feels both expressive and useful.
+
+## Suggested Long Explanation
+
+RoleAgentBot is not meant to be understood only as a command system. From the user's perspective, it is closer to a persistent AI character that lives inside Discord and happens to provide multiple services. A user might talk to it casually in a DM, mention it publicly in a server, receive a welcome or presence-based greeting, configure personalized news alerts, monitor game-market opportunities, play a mini-game, or manage a lightweight virtual balance. What ties all of these together is the same personality layer and the same memory-aware conversational core. This creates a user experience where the bot feels coherent across many kinds of interaction: social, functional, reactive, and personalized.
+
+## Final Instruction for Any LLM Reading This File
+
+When explaining RoleAgentBot, prioritize:
+
+- what the user sees
+- what the user feels
+- what the bot does for the user over time
+- how different features combine into a single personality-driven experience
+
+Treat the technical architecture as supporting context, not as the main story.

@@ -409,12 +409,46 @@ class Poe2SubroleBot(discord.Client):
     async def _send_notification(self, item_name: str, signal: str, price: float, user):
         """Send notification about detected opportunity."""
         try:
-            if signal == "COMPRA":
-                message_text = f"POE2 Mission: Purchase opportunity detected. The item {item_name} is cheap ({price:.2f} Div). Time to buy!"
-            else:
-                message_text = f"POE2 Mission: Sale opportunity detected. The item {item_name} is expensive ({price:.2f} Div). Time to sell!"
+            # Get complete system prompt using the proper builder function
+            from agent_engine import _build_system_prompt, PERSONALITY
+            system_instruction = _build_system_prompt(PERSONALITY)
             
-            res = await asyncio.to_thread(think, message_text)
+            # Get treasure hunter configuration from personality
+            personality_config = PERSONALITY
+            
+            # Get mission active and task configuration
+            mission_active = personality_config.get("treasure_hunter", {}).get("mission_active", 
+                "MISSION ACTIVE - TREASURE HUNTER: You are a treasure hunter specializing in Path of Exile 2 market analysis. Your mission is to identify and alert about optimal buy/sell opportunities based on price history analysis. Provide clear, direct advice on market opportunities.")
+            
+            # Get task-specific prompt with fallback
+            notification_tasks = personality_config.get("treasure_hunter", {}).get("notification_task", {})
+            if signal == "COMPRA":
+                task_prompt = notification_tasks.get("buy_prompt", 
+                    f"TASK - BUY OPPORTUNITY: A buy opportunity has been detected for {item_name} at {price:.2f} Divines. This price is low according to historical data. Generate a motivational message indicating it's time to buy. Be direct and concise.")
+            else:
+                task_prompt = notification_tasks.get("sell_prompt", 
+                    f"TASK - SELL OPPORTUNITY: A sell opportunity has been detected for {item_name} at {price:.2f} Divines. This price is high according to historical data. Generate a message indicating it's time to sell for profit. Be direct and concise.")
+            
+            # Format task prompt with actual values
+            task_prompt = task_prompt.format(item_name=item_name, price=price)
+            
+            # Get golden rules with fallback
+            golden_rules = personality_config.get("treasure_hunter", {}).get("golden_rules", [
+                "1. BE CONCISE: Keep messages short, 2-4 sentences maximum (100-200 characters)",
+                "2. CLEAR ACTION: Clearly indicate if it's a BUY or SELL signal",
+                "3. PRICE MENTION: Include the current price prominently",
+                "4. EXPERT ADVICE: Demonstrate market knowledge and expertise",
+                "5. STRONG ENDING: Use decisive tone and clear recommendations",
+                "6. NO EXPLANATIONS: Provide only the alert message, no additional context"
+            ])
+            
+            # Build complete prompt
+            golden_rules_text = "\n".join(golden_rules)
+            complete_prompt = f"{mission_active}\n\n{task_prompt}\n\nGOLDEN RULES:\n{golden_rules_text}\n\nRespond only with the alert message, no additional explanations."
+            
+            # Call LLM with complete configuration
+            res = await asyncio.to_thread(call_llm, system_instruction, complete_prompt, False, "treasure_hunter_notification")
+            
             await user.send(f"🔮 **POE2 TREASURE**: {res}")
             logger.info(f"✅ POE2 notification sent for {item_name} - {signal}")
             

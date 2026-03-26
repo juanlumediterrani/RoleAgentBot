@@ -272,28 +272,70 @@ class DatabaseRoleDiceGame:
     
     def get_player_ranking(self, server_id: str, metric: str = 'total_won', limit: int = 10) -> List[Tuple]:
         """Get player ranking."""
-        valid_metrics = ['total_won', 'total_plays', 'pots_won', 'biggest_prize']
+        valid_metrics = ['total_won', 'total_plays', 'pots_won', 'biggest_prize', 'prize']
         if metric not in valid_metrics:
             metric = 'total_won'
         
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute(f'''
-                    SELECT dg.user_name, ps.{metric}, ps.total_plays, ps.total_won, ps.total_bet
-                    FROM player_stats ps
-                    INNER JOIN dice_games dg ON ps.user_id = dg.user_id AND ps.server_id = dg.server_id
-                    WHERE ps.server_id = ? AND ps.total_plays > 0
-                    AND dg.timestamp = (
-                        SELECT MAX(timestamp) 
-                        FROM dice_games dg2 
-                        WHERE dg2.user_id = ps.user_id AND dg2.server_id = ps.server_id
-                    )
-                    ORDER BY ps.{metric} DESC
-                    LIMIT ?
-                ''', (server_id, limit))
                 
-                return cursor.fetchall()
+                if metric == 'prize':
+                    # Order by individual highest prize from game records
+                    cursor.execute(f'''
+                        SELECT dg.user_id, MAX(dg.prize) as max_prize, 
+                               COUNT(dg.id) as total_plays, 
+                               SUM(dg.prize) as total_won, 
+                               SUM(dg.bet) as total_bet
+                        FROM dice_games dg
+                        WHERE dg.server_id = ? AND dg.prize > 0
+                        GROUP BY dg.user_id
+                        ORDER BY max_prize DESC
+                        LIMIT ?
+                    ''', (server_id, limit))
+                    
+                    results = []
+                    for row in cursor.fetchall():
+                        user_id, max_prize, total_plays, total_won, total_bet = row
+                        
+                        # Get the most recent name from dice_games for display
+                        cursor.execute('''
+                            SELECT user_name FROM dice_games 
+                            WHERE user_id = ? AND server_id = ?
+                            ORDER BY timestamp DESC LIMIT 1
+                        ''', (user_id, server_id))
+                        name_result = cursor.fetchone()
+                        user_name = name_result[0] if name_result else user_id
+                        
+                        results.append((user_name, max_prize, total_plays, total_won, total_bet))
+                    
+                    return results
+                else:
+                    # Use existing logic for other metrics
+                    cursor.execute(f'''
+                        SELECT ps.user_id, ps.{metric}, ps.total_plays, ps.total_won, ps.total_bet
+                        FROM player_stats ps
+                        WHERE ps.server_id = ? AND ps.total_plays > 0
+                        ORDER BY ps.{metric} DESC
+                        LIMIT ?
+                    ''', (server_id, limit))
+                    
+                    results = []
+                    for row in cursor.fetchall():
+                        user_id, metric_value, total_plays, total_won, total_bet = row
+                        
+                        # Get the most recent name from dice_games for display
+                        cursor.execute('''
+                            SELECT user_name FROM dice_games 
+                            WHERE user_id = ? AND server_id = ?
+                            ORDER BY timestamp DESC LIMIT 1
+                        ''', (user_id, server_id))
+                        name_result = cursor.fetchone()
+                        user_name = name_result[0] if name_result else user_id
+                        
+                        results.append((user_name, metric_value, total_plays, total_won, total_bet))
+                    
+                    return results
                 
         except Exception as e:
             logger.error(f"❌ Error getting ranking: {e}")

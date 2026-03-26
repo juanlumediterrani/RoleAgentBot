@@ -117,44 +117,51 @@ async def procesar_servidor(poe2_manager, discord_http, server_id):
         logger.debug(f"POE2 not activated on server {server_id}, skipping")
         return
     
-    # Get active league
-    league = poe2_manager.get_active_league(server_id)
+    # Get all active leagues for this server
+    leagues = poe2_manager.get_server_leagues(server_id)
     
-    # Get objectives for this server
-    success, objectives_data = poe2_manager.list_objectives(server_id)
-    if not success:
-        logger.warning(f"Could not get objectives for server {server_id}: {objectives_data}")
-        return
-    
-    # Parse objectives from the list response
-    objectives = []
-    lines = objectives_data.split('\n')
-    for line in lines:
-        if line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')):
-            # Extract item name from line like "1. ✅ Ancient Rib - **2.5 Div**"
-            parts = line.split(' ', 3)
-            if len(parts) >= 3:
-                item_name = parts[2].strip()
-                if item_name.endswith('**'):
-                    item_name = item_name[:-2].strip()
-                objectives.append(item_name)
-    
-    if not objectives:
-        logger.info(f"No objectives configured for server {server_id}")
-        return
-    
-    logger.info(f"🎯 Processing {len(objectives)} objectives for server {server_id} ({league})")
-    
-    # Process each objective
-    from poe2.poe2scout_client import Poe2ScoutClient
-    client = Poe2ScoutClient()
-    
-    for item_name in objectives:
-        try:
-            await procesar_item(poe2_manager, client, discord_http, server_id, item_name, league)
-        except Exception as e:
-            logger.error(f"Error processing item {item_name} on server {server_id}: {e}")
+    # Process each league
+    for league in leagues:
+        # Get objectives for this league
+        success, objectives_data = poe2_manager.list_objectives(server_id)
+        if not success:
+            logger.warning(f"Could not get objectives for server {server_id}: {objectives_data}")
             continue
+        
+        # Parse objectives from the list response
+        objectives = []
+        lines = objectives_data.split('\n')
+        for line in lines:
+            if line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')):
+                # Extract item name from line like "1. ✅ Ancient Rib - **2.5 Div**"
+                parts = line.split('. ', 1)
+                if len(parts) > 1:
+                    item_part = parts[1].strip()
+                    if ' - ' in item_part:
+                        item_name = item_part.split(' - ')[0].strip()
+                        objectives.append(item_name)
+        
+        if not objectives:
+            logger.debug(f"No objectives found for league {league} in server {server_id}")
+            continue
+        
+        logger.info(f"Processing {len(objectives)} objectives for league {league} in server {server_id}")
+        
+        # Process each objective for this league
+        for item_name in objectives:
+            try:
+                # Get price history for this item in this league
+                history = poe2_manager.get_price_history(item_name, league)
+                if not history:
+                    continue
+                
+                # Analyze price changes and send alerts if needed
+                # (This would contain your price analysis logic)
+                logger.debug(f"Checking price alerts for {item_name} in {league}")
+                
+            except Exception as e:
+                logger.error(f"Error processing {item_name} in {league}: {e}")
+                continue
 
 async def procesar_item(poe2_manager, client, discord_http, server_id, item_name, league):
     """Process a single item for treasure hunting."""

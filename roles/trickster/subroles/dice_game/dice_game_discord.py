@@ -97,6 +97,24 @@ def register_dice_commands(bot, personality, send_dm_or_channel, is_admin,
 
 # --- DICE GAME SUBCOMMANDS ---
 
+async def get_announcement_channel(ctx):
+    """Get the best channel for announcements (general channel or current channel)."""
+    import discord
+    
+    # Try to find a general channel first
+    for channel in ctx.guild.text_channels:
+        if any(name in channel.name.lower() for name in ['general', 'chat', 'principal', 'general-chat']):
+            return channel
+    
+    # If no general channel found, try to find the first channel the bot can read
+    for channel in ctx.guild.text_channels:
+        if channel.permissions_for(ctx.guild.me).send_messages:
+            return channel
+    
+    # Fallback to current channel
+    return ctx.channel
+
+
 async def cmd_dice_play(ctx):
     """Roll the dice in the dice game."""
     if not ctx.guild:
@@ -141,32 +159,29 @@ async def cmd_dice_play(ctx):
             pot_balance,
         )
 
+        print(f"DEBUG: Raw result = {result}")
+        logger.info(f"🎲 Dice game result: success={result.get('success')}, announcements={len(result.get('announcements', []))}")
+
         if result.get("success"):
-            # Update pot balance in banker database (pot should already exist)
-            if _BANKER_DB_AVAILABLE and _get_banker_db_instance and result.get('pot_after') is not None:
-                try:
-                    db_banker = _get_banker_db_instance(server_name)
-                    if db_banker:
-                        # Get current pot balance
-                        current_balance = db_banker.get_balance("dice_game_pot", str(ctx.guild.id))
-                        new_balance = result.get('pot_after', current_balance)
-                        
-                        # Update pot balance
-                        balance_diff = new_balance - current_balance
-                        if balance_diff != 0:
-                            db_banker.update_balance(
-                                user_id="dice_game_pot",
-                                user_name="Dice Game Pot",
-                                server_id=str(ctx.guild.id),
-                                server_name=server_name,
-                                amount=balance_diff,
-                                type="POT_UPDATE",
-                                description=f"Pot update after dice game"
-                            )
-                except Exception as e:
-                    logger.warning(f"Could not update pot balance: {e}")
-            
             await ctx.send(result.get("message", "✅ Dice game round completed."))
+            announcements = result.get("announcements", [])
+            logger.info(f"📢 Processing {len(announcements)} announcements")
+            
+            try:
+                # Get the best channel for announcements
+                announcement_channel = await get_announcement_channel(ctx)
+                logger.info(f"📢 Using announcement channel: {announcement_channel.name} (ID: {announcement_channel.id})")
+                
+                for announcement in announcements:
+                    if announcement:
+                        logger.info(f"📢 Sending announcement: {announcement[:50]}...")
+                        await announcement_channel.send(announcement)
+                        logger.info(f"📢 Announcement sent to {announcement_channel.name}")
+                    else:
+                        logger.warning(f"📢 Empty announcement found")
+            except Exception as e:
+                logger.error(f"❌ Error sending announcements: {e}")
+                
             logger.info(f"🎲 {ctx.author.name} played in {ctx.guild.name} - Prize: {result.get('prize', 0)}")
             return
 
@@ -314,19 +329,18 @@ async def cmd_dice_ranking(ctx):
             await ctx.send(get_message("error_game_database_access"))
             return
 
-        ranking = db_dice_game.get_player_ranking(str(ctx.guild.id), "total_won", 10)
+        ranking = db_dice_game.get_player_ranking(str(ctx.guild.id), "prize", 10)
         if not ranking:
             await ctx.send(get_message("ranking_no_players"))
             return
 
         ranking_msg = get_message("ranking_title", server=ctx.guild.name.upper()) + "\n\n"
-        for i, (name, _metric_value, total_plays, total_won, total_bet) in enumerate(ranking, 1):
+        for i, (name, prize, total_plays, total_won, total_bet) in enumerate(ranking, 1):
             medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"#{i}"
             balance = total_won - total_bet
-            profitability = (total_won / total_bet * 100) if total_bet > 0 else 0
             ranking_msg += f"{medal} **{name}**\n"
-            ranking_msg += f"   {get_message('ranking_won', won=total_won)} | {get_message('ranking_games', games=total_plays)}\n"
-            ranking_msg += f"   {get_message('ranking_balance_line', balance=f'{balance:,}', profitability=profitability)}\n\n"
+            ranking_msg += f"   🏆 Prize: {prize:,} | {get_message('ranking_games', games=total_plays)}\n"
+            ranking_msg += f"   {get_message('ranking_balance_line', balance=f'{balance:,}', profitability=(total_won / total_bet * 100) if total_bet > 0 else 0)}\n\n"
 
         await ctx.send(ranking_msg)
     except Exception as e:
