@@ -2633,8 +2633,8 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     if not guild:
         # Get the first available guild as default
         try:
-            # Try to get the bot instance from the interaction client
-            bot = interaction._state._client
+            # Try to get the bot instance from the interaction
+            bot = interaction.client
             if bot and bot.guilds:
                 guild = bot.guilds[0]  # Use first guild as default
                 logger.info(f"Using default server '{guild.name}' for dice action from DM")
