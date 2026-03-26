@@ -125,7 +125,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
     
     if section_name == "behavior":
         behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} Comportamiento General")
+        behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} General Behavior")
         # Replace {_bot} placeholder
         behavior_title = behavior_title.replace("{_bot}", _bot_display_name)
         # Remove ** for embed title
@@ -133,7 +133,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         titles = {
             "home": f"🧭 {_bot_display_name} Canvas Hub",
             "behavior": behavior_title,
-            "roles": "🎭 Roles de Putre 🎭",
+            "roles": "🎭 Roles",
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
             "help": help_title,
         }
@@ -141,7 +141,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         titles = {
             "home": f"🧭 {_bot_display_name} Canvas Hub",
             "behavior": f"⚙️ {_bot_display_name} Canvas - General Behavior",
-            "roles": "🎭 Roles de Putre 🎭",
+            "roles": "🎭 Roles",
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
             "help": help_title,
         }
@@ -180,7 +180,9 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         color=colors.get(section_name, discord.Color.blurple()),
     )
     blocks = _split_canvas_blocks(content)
-    for block_title, block_lines in blocks[:4]:
+    visible_blocks = blocks[:4]
+    last_block_index = len(visible_blocks) - 1
+    for index, (block_title, block_lines) in enumerate(visible_blocks):
         filtered_lines = [
             line for line in block_lines
             if not (section_name in {"home", "home_status"} and (line.startswith("**Personality:**") or line.startswith("**Active roles:**")))
@@ -213,17 +215,35 @@ def _split_canvas_blocks(content: str) -> list[tuple[str, list[str]]]:
     if current_lines:
         blocks.append((current_title, current_lines))
     return blocks
-#deprecated
+
+
+def _normalize_canvas_title(title: str) -> str:
+    return str(title or "").replace("**", "").strip()
+
+
+def _build_canvas_intro_block(title: str, description: str | None = None) -> str:
+    normalized_title = _normalize_canvas_title(title)
+    parts = [f"**{normalized_title}**"] if normalized_title else []
+    normalized_description = str(description or "").strip()
+    if normalized_description:
+        parts.append(normalized_description)
+    return "\n".join(parts)
+
+
 def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, surface_name: str = "overview", user=None,
                              auto_response: str | None = None) -> discord.Embed:
     """Render a role/detail Canvas screen with a role-specific embed layout."""
+    role_descriptions = _personality_descriptions.get("roles_view_messages", {})
     role_titles = {
-        "news_watcher": "📡 News Watcher",
-        "treasure_hunter": "💎 Treasure Hunter",
-        "trickster": "🎭 Trickster",
-        "banker": "💰 Banker",
-        "mc": "🎵 MC",
+        "news_watcher": _normalize_canvas_title(role_descriptions.get("news_watcher", {}).get("title", "📡 News Watcher")),
+        "treasure_hunter": _normalize_canvas_title(role_descriptions.get("treasure_hunter", {}).get("title", "💎 Treasure Hunter")),
+        "trickster": _normalize_canvas_title(role_descriptions.get("trickster", {}).get("title", "🎭 Trickster")),
+        "banker": _normalize_canvas_title(role_descriptions.get("banker", {}).get("title", "💰 Banker")),
+        "mc": _normalize_canvas_title(role_descriptions.get("mc", {}).get("title", "🎵 MC")),
     }
+    blocks = _split_canvas_blocks(content)
+    title = role_titles.get(role_name, f"{_bot_display_name} Canvas")
+     
     role_colors = {
         "news_watcher": discord.Color.blue(),
         "treasure_hunter": discord.Color.dark_gold(),
@@ -231,27 +251,21 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "banker": discord.Color.green(),
         "mc": discord.Color.purple(),
     }
-
-    # Process all content as blocks, including intro
-    blocks = _split_canvas_blocks(content)
-    
-    # Use the first block as title and description if available
-    title = f"{_bot_display_name} Canvas"
+     
     description = ""
-    
+     
     if blocks:
         first_block_title, first_block_lines = blocks[0]
+        if first_block_title:
+            title = _normalize_canvas_title(first_block_title)
         if first_block_lines:
-            title = first_block_title
-            # Use ALL lines from first block as description, not just the first one
             description = "\n".join(first_block_lines)
-            # Skip the first block for field processing
-        blocks_to_process = blocks[1:4]  # Take next 3 blocks
+        blocks_to_process = blocks[1:4]
     else:
         blocks_to_process = []
 
     embed = discord.Embed(
-        title=title.replace("**", ""),
+        title=_normalize_canvas_title(title),
         description=description,
         color=role_colors.get(role_name, discord.Color.blurple()),
     )
@@ -588,7 +602,7 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         return None
     surface, state, command_name, input_type = selected
     return "\n".join([
-        f"⚙️ **{_bot_display_name} Canvas - General Behavior Action Choice**\n",
+        f"⚙️ {_bot_display_name} Canvas - General Behavior Action Choice\n",
         "**Selected option**",
         f"- Surface: {surface}",
         f"- State or action: {state}",
@@ -846,7 +860,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
 def _build_canvas_personal() -> str:
     """Build the personal/DM-oriented Canvas view."""
     return (
-        f"👤 **{_bot_display_name} Canvas - Personal Space**\n\n"
+        f"👤 {_bot_display_name} Canvas - Personal Space\n\n"
         "**Personal workflows**\n"
         "- News Watcher personal subscriptions: `!watcherhelp`\n"
         "- POE2 objectives and league: `!hunter poe2 help`\n"

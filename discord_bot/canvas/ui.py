@@ -247,7 +247,8 @@ class CanvasSmartBackButton(discord.ui.Button):
                     await _safe_send_interaction_message(interaction, "❌ This role is not available.", ephemeral=True)
                     return
                 
-                from discord_bot.canvas.ui import CanvasRoleDetailView, _build_canvas_embed
+                from discord_bot.canvas.ui import CanvasRoleDetailView
+                from discord_bot.canvas.content import _build_canvas_role_embed
                 detail_view = CanvasRoleDetailView(
                     author_id=view.author_id,
                     role_name=view.role_name,
@@ -258,7 +259,14 @@ class CanvasSmartBackButton(discord.ui.Button):
                     guild=view.guild
                 )
                 detail_view.message = interaction.message
-                role_embed = _build_canvas_embed(view.role_name, content, view.admin_visible)
+                role_embed = _build_canvas_role_embed(
+                    view.role_name,
+                    content,
+                    view.admin_visible,
+                    "overview",
+                    interaction.user,
+                    detail_view.auto_response_preview,
+                )
                 await _safe_edit_interaction_message(interaction, content=None, embed=role_embed, view=detail_view)
         else:
             # For other views, use default navigation to home
@@ -2649,7 +2657,6 @@ async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_s
                 
                 # Add DM notification
                 content_parts.extend([
-                    messages_source.get("dm_default_server_separator", "─────────────────────────────────────────────"),
                     messages_source.get("dm_default_server_title", "🔔 **Using default server: {server_name}**").format(server_name=guild.name),
                     messages_source.get("dm_default_server_message", "*You're navigating from DM, using the first available server.*"),
                     messages_source.get("dm_default_server_separator", "─────────────────────────────────────────────"),
