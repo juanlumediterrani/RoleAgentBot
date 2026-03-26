@@ -94,6 +94,24 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                     await core.send_dm_or_channel(ctx, role_view, canvas_sent_msg)
                 return
 
+            # Handle DM case by using default server
+            guild = ctx.guild
+            is_dm = not guild
+            
+            if is_dm:
+                try:
+                    bot = ctx.bot
+                    if bot and bot.guilds:
+                        guild = bot.guilds[0]  # Use first guild as default
+                        logger.info(f"Using default server '{guild.name}' for Canvas command from DM")
+                    else:
+                        await ctx.send("❌ No servers available. Please execute Canvas commands from a server.")
+                        return
+                except Exception as e:
+                    logger.error(f"Could not get default server for DM Canvas command: {e}")
+                    await ctx.send("❌ Could not access a server. Please execute Canvas commands from a server.")
+                    return
+            
             sections = core._build_canvas_sections(
                 agent_config,
                 greet_name,
@@ -103,9 +121,10 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 role_cmd_name,
                 talk_cmd_name,
                 admin_visible,
-                core.get_server_key(ctx.guild) if ctx.guild else "default",
+                core.get_server_key(guild) if guild else "default",
                 ctx.author.id,
-                ctx.guild,
+                guild,
+                is_dm,
             )
 
             if section_name not in sections:

@@ -20,7 +20,12 @@
       "description": "-Interactua con todas las funciones disponibles para Putre desde aquí.\n -El panel canvas te permite interactuar con todas las opciones del bot desde este menu.",
       "recentsynthesistitle": "**Síntesis Reciente**",
       "dailymemorytitle": "**Memoria**",
-      "personalsynthesistitle": "**Síntesis Personal**"
+      "personalsynthesistitle": "**Síntesis Personal**",
+      "dm_default_server_title": "🔔 **Usando servidor por defecto: {server_name}**",
+      "dm_default_server_message": "*Estás navegando desde DM, usando el primer servidor disponible.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────",
+      "dm_no_servers_available": "❌ No hay servidores disponibles. Por favor ejecuta las acciones desde un servidor.",
+      "dm_server_access_error": "❌ No se pudo acceder a un servidor. Por favor ejecuta las acciones desde un servidor."
     },
     "roles_view_messages": {
       "title": "🎭  Roles de Putre 🎭",
