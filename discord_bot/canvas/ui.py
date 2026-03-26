@@ -1,6 +1,5 @@
 """Canvas Discord UI components."""
 
-from urllib3.connection import port_by_scheme
 import os
 import asyncio
 import discord
@@ -27,6 +26,103 @@ except ImportError:
 
 logger = get_logger('canvas_ui') if get_logger else None
 
+
+class TimeoutResetMixin:
+    """Mixin to reset view timeout on user interaction."""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_timeout = self.timeout
+        self._timeout_task = None
+    
+    def _reset_timeout(self):
+        """Reset the timeout timer."""
+        if self._timeout_task and not self._timeout_task.done():
+            self._timeout_task.cancel()
+        
+        # Create a new timeout task
+        self._timeout_task = asyncio.create_task(self._timeout_handler())
+    
+    async def _timeout_handler(self):
+        """Handle timeout after the specified duration."""
+        try:
+            await asyncio.sleep(self._original_timeout)
+            if not self.is_finished():
+                await self.on_timeout()
+        except asyncio.CancelledError:
+            # Timeout was reset, this is normal
+            pass
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Reset timeout on valid interaction."""
+        # First check if this is the authorized user
+        if hasattr(super(), '_check_user_permission'):
+            if not await super()._check_user_permission(interaction):
+                return False
+        elif hasattr(super(), 'interaction_check'):
+            if not await super().interaction_check(interaction):
+                return False
+        
+        # Reset timeout for valid interactions
+        self._reset_timeout()
+        return True
+
+
+def _is_unknown_interaction_error(error: Exception) -> bool:
+    return isinstance(error, discord.NotFound) and (
+        getattr(error, "code", None) == 10062 or "Unknown interaction" in str(error)
+    )
+
+
+async def _safe_send_interaction_message(interaction: discord.Interaction, content: str, ephemeral: bool = True) -> bool:
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(content, ephemeral=ephemeral)
+        else:
+            await interaction.response.send_message(content, ephemeral=ephemeral)
+        return True
+    except discord.InteractionResponded:
+        try:
+            await interaction.followup.send(content, ephemeral=ephemeral)
+            return True
+        except Exception as send_error:
+            logger.warning(f"Canvas followup send failed: {send_error}")
+            return False
+    except Exception as send_error:
+        if _is_unknown_interaction_error(send_error):
+            logger.info(f"Canvas interaction expired before send_message: {send_error}")
+            return False
+        logger.warning(f"Canvas send_message failed: {send_error}")
+        return False
+
+
+async def _safe_edit_interaction_message(interaction: discord.Interaction, content=None, embed=None, view=None) -> bool:
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.edit_message(interaction.message.id, content=content, embed=embed, view=view)
+        else:
+            await interaction.response.edit_message(content=content, embed=embed, view=view)
+        return True
+    except discord.InteractionResponded:
+        try:
+            await interaction.followup.edit_message(interaction.message.id, content=content, embed=embed, view=view)
+            return True
+        except Exception as edit_error:
+            logger.warning(f"Canvas followup edit failed: {edit_error}")
+    except Exception as edit_error:
+        if _is_unknown_interaction_error(edit_error):
+            logger.info(f"Canvas interaction expired before edit_message: {edit_error}")
+        else:
+            logger.warning(f"Canvas interaction edit failed: {edit_error}")
+
+    try:
+        if interaction.message:
+            await interaction.message.edit(content=content, embed=embed, view=view)
+            return True
+    except Exception as message_edit_error:
+        logger.warning(f"Canvas direct message edit fallback failed: {message_edit_error}")
+    return False
+
 # Helper function for back button navigation
 async def navigate_back(interaction, current_view, target_view=None, target_content=None):
     """Navigate back to previous view or specific target."""
@@ -35,25 +131,25 @@ async def navigate_back(interaction, current_view, target_view=None, target_cont
         # Navigate to specific target view
         target_view.message = interaction.message
         embed = _build_canvas_embed(target_view, target_content, current_view.admin_visible)
-        await interaction.response.edit_message(content=None, embed=embed, view=target_view)
+        await _safe_edit_interaction_message(interaction, content=None, embed=embed, view=target_view)
         return target_view
     else:
         # Default: navigate to home
         home_content = current_view.sections.get("home")
         if not home_content:
-            await interaction.response.send_message("❌ The Canvas home is not available.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ The Canvas home is not available.", ephemeral=True)
             return None
         
         CanvasNavigationView = globals().get('CanvasNavigationView')
         if CanvasNavigationView is None:
-            await interaction.response.send_message("❌ Navigation not available.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ Navigation not available.", ephemeral=True)
             return None
         
         nav_view = CanvasNavigationView(current_view.author_id, current_view.sections, current_view.admin_visible, current_view.agent_config, show_dropdown=False)
         nav_view.update_visibility()
         nav_view.message = interaction.message
         home_embed = _build_canvas_embed("home", home_content, current_view.admin_visible)
-        await interaction.response.edit_message(content=None, embed=home_embed, view=nav_view)
+        await _safe_edit_interaction_message(interaction, content=None, embed=home_embed, view=nav_view)
         return nav_view
 
 
@@ -123,10 +219,11 @@ class CanvasSmartBackButton(discord.ui.Button):
                 # Navigate back to previous view (before action execution)
                 previous_view = view.previous_view
                 previous_view.message = interaction.message
-                await interaction.response.edit_message(
+                await _safe_edit_interaction_message(
                     content=None, 
                     embed=previous_view.current_embed if hasattr(previous_view, 'current_embed') else None,
-                    view=previous_view
+                    view=previous_view,
+                    interaction=interaction,
                 )
                 return
             
@@ -134,20 +231,20 @@ class CanvasSmartBackButton(discord.ui.Button):
                 # Navigate back to roles view
                 roles_content = view.sections.get("roles")
                 if not roles_content:
-                    await interaction.response.send_message("❌ The Canvas roles view is not available.", ephemeral=True)
+                    await _safe_send_interaction_message(interaction, "❌ The Canvas roles view is not available.", ephemeral=True)
                     return
                 
                 from discord_bot.canvas.ui import CanvasRolesView, _build_canvas_embed
                 roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections)
                 roles_view.message = interaction.message
                 roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
-                await interaction.response.edit_message(content=None, embed=roles_embed, view=roles_view)
+                await _safe_edit_interaction_message(interaction, content=None, embed=roles_embed, view=roles_view)
             else:
                 # Navigate back to role overview
                 from discord_bot.canvas.content import _build_canvas_role_view
                 content = _build_canvas_role_view(view.role_name, view.agent_config, view.admin_visible, view.guild, view.author_id)
                 if not content:
-                    await interaction.response.send_message("❌ This role is not available.", ephemeral=True)
+                    await _safe_send_interaction_message(interaction, "❌ This role is not available.", ephemeral=True)
                     return
                 
                 from discord_bot.canvas.ui import CanvasRoleDetailView, _build_canvas_embed
@@ -162,7 +259,7 @@ class CanvasSmartBackButton(discord.ui.Button):
                 )
                 detail_view.message = interaction.message
                 role_embed = _build_canvas_embed(view.role_name, content, view.admin_visible)
-                await interaction.response.edit_message(content=None, embed=role_embed, view=detail_view)
+                await _safe_edit_interaction_message(interaction, content=None, embed=role_embed, view=detail_view)
         else:
             # For other views, use default navigation to home
             from discord_bot.canvas.ui import navigate_back
@@ -204,12 +301,12 @@ class CanvasHomeButton(discord.ui.Button):
         view = self.view
         home_content = view.sections.get("home")
         if not home_content:
-            await interaction.response.send_message("❌ The Canvas home is not available.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ The Canvas home is not available.", ephemeral=True)
             return
         
         CanvasNavigationView = globals().get('CanvasNavigationView')
         if CanvasNavigationView is None:
-            await interaction.response.send_message("❌ Navigation not available.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ Navigation not available.", ephemeral=True)
             return
         
         nav_view = CanvasNavigationView(view.author_id, view.sections, view.admin_visible, view.agent_config, show_dropdown=False)
@@ -217,7 +314,7 @@ class CanvasHomeButton(discord.ui.Button):
         nav_view.message = interaction.message
         
         home_embed = _build_canvas_embed("home", home_content, view.admin_visible)
-        await interaction.response.edit_message(content=None, embed=home_embed, view=nav_view)
+        await _safe_edit_interaction_message(interaction, content=None, embed=home_embed, view=nav_view)
 
 
 class NavigationButtonsMixin(BackButtonMixin, HomeButtonMixin):
@@ -257,13 +354,14 @@ AGENT_CFG = core.AGENT_CFG
 try:
     from discord_bot.discord_utils import (
         send_embed_dm_or_channel, set_greeting_enabled, get_greeting_enabled,
-        is_role_enabled_check, get_server_key, get_role_interval_hours, set_role_enabled
+        is_role_enabled_check, get_server_key, get_role_interval_hours, set_role_enabled, is_admin
     )
     from roles.banker.db_role_banker import get_banker_db_instance
     from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
     from roles.news_watcher.watcher_messages import get_watcher_messages
     from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
     from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
+    from roles.trickster.subroles.dice_game.dice_game import DiceGame
     from roles.trickster.trickster_discord import get_beggar_db_instance
     from behavior.db_behavior import get_behavior_db_instance
     
@@ -293,6 +391,7 @@ except ImportError:
     get_watcher_messages = None
     get_poe2_manager = None
     get_dice_game_db_instance = None
+    DiceGame = None
     get_beggar_db_instance = None
     get_behavior_db_instance = None
     
@@ -321,9 +420,9 @@ if not _personality_descriptions:
         _personality_descriptions = {}
 
 try:
-    from roles.trickster.subroles.dice_game.dice_game import DiceGame
+    from roles.trickster.subroles.dice_game.dice_game import process_play
 except Exception:
-    DiceGame = None
+    process_play = None
 
 try:
     from roles.trickster.subroles.nordic_runes.db_nordic_runes import get_nordic_runes_db_instance
@@ -348,19 +447,13 @@ except Exception:
 
 from .content import (
     _build_canvas_behavior_action_view,
-    _build_canvas_behavior_detail,
     _build_canvas_behavior_embed,
     _build_canvas_embed,
     _build_canvas_role_detail_view,
     _build_canvas_role_embed,
-    _build_canvas_role_mc,
-    _build_canvas_role_news_watcher_detail,
-    _build_canvas_role_trickster_detail,
     _build_canvas_role_view,
     _build_canvas_sections,
     _get_canvas_auto_response_preview,
-    _get_canvas_behavior_action_items_for_detail,
-    _get_canvas_behavior_detail_items,
     _get_canvas_role_action_items_for_detail,
     _get_canvas_role_detail_items,
 )
@@ -370,6 +463,19 @@ from .state import (
     _get_canvas_dice_ranking,
     _get_canvas_watcher_method_label,
     _get_enabled_roles,
+)
+from .canvas_mc import (
+    CanvasMCActionSelect,
+    CanvasMCSongModal,
+    CanvasMCVolumeModal,
+    _handle_canvas_mc_action,
+)
+from .canvas_news_watcher import build_canvas_role_news_watcher_detail as _build_canvas_role_news_watcher_detail
+from .canvas_trickster import build_canvas_role_trickster_detail as _build_canvas_role_trickster_detail
+from .canvas_behavior import (
+    get_canvas_behavior_action_items_for_detail as _get_canvas_behavior_action_items_for_detail,
+    get_canvas_behavior_detail_items as _get_canvas_behavior_detail_items,
+    build_canvas_behavior_detail as _build_canvas_behavior_detail,
 )
 
 class CanvasSectionSelect(discord.ui.Select):
@@ -553,14 +659,38 @@ class CanvasWatcherMethodSelect(discord.ui.Select):
     """Dynamic method selection dropdown for News Watcher."""
     
     def __init__(self, view: "CanvasRoleDetailView"):
-        options = [
-            discord.SelectOption(label="Method: Flat", value="method_flat", description="All news with AI opinions", emoji="📰"),
-            discord.SelectOption(label="Method: Keyword", value="method_keyword", description="News filtered by keywords", emoji="🔍"),
-            discord.SelectOption(label="Method: General", value="method_general", description="AI critical news analysis", emoji="🤖"),
-        ]
+        # Get descriptions for watcher
+        from discord_bot import discord_core_commands as core
+        _personality_descriptions = core._personality_descriptions
+        watcher_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {})
         
+        def _watcher_text(key: str, fallback: str) -> str:
+            value = watcher_descriptions.get(key)
+            return str(value).strip() if value else fallback
+        
+        options = [
+            discord.SelectOption(
+                label=_watcher_text("flat_method", "Method: Flat"), 
+                value="method_flat", 
+                description=_watcher_text("option_flat_description", "All news with AI opinions"), 
+                emoji="📰"
+            ),
+            discord.SelectOption(
+                label=_watcher_text("keyword_method", "Method: Keyword"), 
+                value="method_keyword", 
+                description=_watcher_text("option_keyword_description", "News filtered by keywords"), 
+                emoji="🔍"
+            ),
+            discord.SelectOption(
+                label=_watcher_text("general_method", "Method: General"), 
+                value="method_general", 
+                description=_watcher_text("option_general_description", "AI critical news analysis"), 
+                emoji="🤖"
+            ),
+        ]
+        title_select_method = _watcher_text("select_method", "🔧 Select method...")
         # Set placeholder to show current selection
-        placeholder = "🔧 Select method..."
+        placeholder = title_select_method
         if view.watcher_selected_method:
             method_display = view.watcher_selected_method.title()
             placeholder = f"🔧 Method: {method_display} (selected)"
@@ -890,14 +1020,19 @@ class CanvasRoleActionSelect(discord.ui.Select):
             await interaction.response.send_modal(RoleFrequencyModal(self.role_name, action_name, view.agent_config, view))
             return
         if self.role_name == "treasure_hunter" and action_name in {"poe2_item_add", "poe2_item_remove"}:
-            if not interaction.guild:
-                await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
-                return
-            await interaction.response.send_modal(Poe2ItemModal(action_name, view.author_id, interaction.guild, view))
+            # Allow POE2 item operations in DM
+            guild = interaction.guild  # Will be None in DM
+            await interaction.response.send_modal(Poe2ItemModal(action_name, view.author_id, guild, view))
             return
-        if self.role_name == "treasure_hunter" and action_name in {"league_standard", "league_fate_of_the_vaal", "league_hardcore", "poe2_on", "poe2_off"}:
-            if not interaction.guild:
-                await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
+        if self.role_name == "treasure_hunter" and action_name in {"league_standard", "league_fate_of_the_vaal", "league_hardcore"}:
+            # Allow league changes in DM (user-specific setting)
+            guild = interaction.guild  # Will be None in DM
+            await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
+            return
+        if self.role_name == "treasure_hunter" and action_name in {"poe2_on", "poe2_off"}:
+            # Keep admin restrictions for activation/deactivation
+            if not interaction.guild or not view.admin_visible:
+                await interaction.response.send_message("❌ This option is admin-only and requires a server.", ephemeral=True)
                 return
             await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
             return
@@ -908,9 +1043,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
             await interaction.response.send_modal(TricksterActionModal(action_name, view.author_id, interaction.guild, view.admin_visible))
             return
         if self.role_name == "trickster" and action_name in {"dice_play", "dice_ranking", "dice_history", "dice_help"}:
-            if not interaction.guild:
-                await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
-                return
+            # For dice actions, allow DM execution by using default server
             await _handle_canvas_dice_action(interaction, action_name, view)
             return
         if self.role_name == "trickster" and action_name in {"runes_single", "runes_three", "runes_cross"}:
@@ -946,30 +1079,6 @@ class CanvasRoleActionSelect(discord.ui.Select):
         # This should never be reached as all roles have specific handlers
         await interaction.response.send_message("❌ This role option is not available.", ephemeral=True)
         return
-
-
-class CanvasMCActionSelect(discord.ui.Select):
-    """MC (Music Controller) action selection dropdown."""
-    
-    def __init__(self, view: "CanvasRoleDetailView"):
-        # Get MC action items
-        mc_actions = _get_canvas_role_action_items_for_detail("mc", "overview", view.admin_visible)
-        options = [
-            discord.SelectOption(label=label, value=value, description=description)
-            for label, value, description in mc_actions
-        ]
-        super().__init__(placeholder="🎵 Select MC action...", min_values=1, max_values=1, options=options[:25], row=1)
-        self.canvas_view = view
-
-    async def callback(self, interaction: discord.Interaction):
-        action_name = self.values[0]
-        view = self.canvas_view
-        
-        if not interaction.guild:
-            await interaction.response.send_message("❌ MC actions are only available in a server.", ephemeral=True)
-            return
-            
-        await _handle_canvas_mc_action(interaction, action_name, view)
 
 
 class CanvasBehaviorActionSelect(discord.ui.Select):
@@ -1147,11 +1256,11 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
 
 
-class CanvasNavigationView(BackButtonMixin, HomeButtonMixin, discord.ui.View):
+class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, discord.ui.View):
     """Interactive button-based Canvas navigation for top-level sections."""
 
     def __init__(self, author_id: int, sections: dict[str, str], admin_visible: bool, agent_config: dict, message=None, show_dropdown=True):
-        super().__init__(timeout=600)
+        super().__init__(timeout=600)  # 10 minutes instead of 10
         self.author_id = author_id
         self.sections = sections
         self.admin_visible = admin_visible
@@ -1159,6 +1268,9 @@ class CanvasNavigationView(BackButtonMixin, HomeButtonMixin, discord.ui.View):
         self.message = message  # Store the message to delete it later
         if show_dropdown:
             self.add_item(CanvasSectionSelect(admin_visible))
+        
+        # Start the timeout timer
+        self._reset_timeout()
 
     async def on_timeout(self) -> None:
         """Called when the view times out - delete the entire message."""
@@ -1193,15 +1305,15 @@ class CanvasNavigationView(BackButtonMixin, HomeButtonMixin, discord.ui.View):
     async def _show_section(self, interaction: discord.Interaction, section_name: str):
         content = self.sections.get(section_name)
         if not content:
-            await interaction.response.send_message("❌ This Canvas section is not available.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
         embed = _build_canvas_embed(section_name, content, self.admin_visible)
-        await interaction.response.edit_message(content=None, embed=embed, view=self)
+        await _safe_edit_interaction_message(interaction, content=None, embed=embed, view=self)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def _check_user_permission(self, interaction: discord.Interaction) -> bool:
         """Restrict the interactive Canvas to its original user."""
         if interaction.user.id != self.author_id:
-            await interaction.response.send_message("❌ This Canvas menu belongs to another user.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ This Canvas menu belongs to another user.", ephemeral=True)
             return False
         return True
 
@@ -1210,12 +1322,12 @@ class CanvasNavigationView(BackButtonMixin, HomeButtonMixin, discord.ui.View):
     async def roles_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         roles_content = self.sections.get("roles")
         if not roles_content:
-            await interaction.response.send_message("❌ This Canvas section is not available.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
         roles_view = CanvasRolesView(self.author_id, self.agent_config, self.admin_visible, self.sections)
         roles_view.message = interaction.message
         roles_embed = _build_canvas_embed("roles", roles_content, self.admin_visible)
-        await interaction.response.edit_message(content=None, embed=roles_embed, view=roles_view)
+        await _safe_edit_interaction_message(interaction, content=None, embed=roles_embed, view=roles_view)
         # Set the message reference for timeout deletion
         roles_view.message = interaction.message
 
@@ -1224,11 +1336,11 @@ class CanvasNavigationView(BackButtonMixin, HomeButtonMixin, discord.ui.View):
     async def behavior_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         behavior_content = self.sections.get("behavior")
         if not behavior_content:
-            await interaction.response.send_message("❌ This Canvas section is not available.", ephemeral=True)
+            await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
         behavior_view = CanvasBehaviorView(self.author_id, self.sections, self.admin_visible, self.agent_config, current_detail="conversation", guild=interaction.guild)
         behavior_embed = _build_canvas_behavior_embed(behavior_content, self.admin_visible)
-        await interaction.response.edit_message(content=None, embed=behavior_embed, view=behavior_view)
+        await _safe_edit_interaction_message(interaction, content=None, embed=behavior_embed, view=behavior_view)
         behavior_view.message = interaction.message
 
     
@@ -1246,17 +1358,20 @@ class CanvasNavigationView(BackButtonMixin, HomeButtonMixin, discord.ui.View):
                     break
 
 
-class CanvasRolesView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
+class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
     """Interactive role navigation for enabled roles."""
 
     def __init__(self, author_id: int, agent_config: dict, admin_visible: bool, sections: dict[str, str], message=None):
-        super().__init__(timeout=600)
+        super().__init__(timeout=600)  # 10 minutes
         self.author_id = author_id
         self.agent_config = agent_config
         self.admin_visible = admin_visible
         self.sections = sections
         self.message = message  # Store the message to delete it later
         self._add_role_buttons()
+        
+        # Start the timeout timer
+        self._reset_timeout()
 
     async def on_timeout(self) -> None:
         """Called when the view times out - delete the entire message."""
@@ -1400,6 +1515,46 @@ class CanvasRoleDetailButton(discord.ui.Button):
         )
         next_view.message = interaction.message
         detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, self.detail_name, None, next_view.auto_response_preview)
+        await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
+
+
+class CanvasTreasureHunterPoe2Button(discord.ui.Button):
+    """Button that opens the POE2 items view for Treasure Hunter."""
+
+    def __init__(self, label: str = "POE2", style=discord.ButtonStyle.primary):
+        super().__init__(label=label, style=style)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        if not isinstance(view, CanvasRoleDetailView):
+            await interaction.response.send_message("❌ Canvas role detail navigation is not available.", ephemeral=True)
+            return
+
+        # Navigate to the items (personal) view
+        detail_name = "personal"
+        content = _build_canvas_role_detail_view(
+            "treasure_hunter",
+            detail_name,
+            view.agent_config,
+            view.admin_visible,
+            view.guild,
+            view.author_id,
+        )
+        if not content:
+            await interaction.response.send_message("❌ POE2 items view is not available.", ephemeral=True)
+            return
+
+        next_view = CanvasRoleDetailView(
+            author_id=view.author_id,
+            role_name="treasure_hunter",
+            agent_config=view.agent_config,
+            admin_visible=view.admin_visible,
+            sections=view.sections,
+            current_detail=detail_name,
+            guild=view.guild,
+        )
+        next_view.message = interaction.message
+        detail_embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, detail_name, None, next_view.auto_response_preview)
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
 
 
@@ -1613,7 +1768,8 @@ class Poe2ItemModal(discord.ui.Modal):
             await interaction.response.send_message("❌ POE2 manager is not available.", ephemeral=True)
             return
         manager = get_poe2_manager()
-        server_id = str(self.guild.id)
+        # Use empty string for DM - let manager find active server
+        server_id = "" if self.guild is None else str(self.guild.id)
         user_id = str(self.author_id)
         item_value = str(self.value_input.value).strip()
         if not item_value:
@@ -1660,7 +1816,7 @@ class Poe2ItemModal(discord.ui.Modal):
             guild=self.view.guild,
             message=interaction.message,
         )
-        next_view.auto_response_preview = f"✅ {message}\nLeague: {league}\nTracked items now:\n{summary}"
+        next_view.auto_response_preview = f"✅ {message}"
         detail_embed = _build_canvas_role_embed(
             "treasure_hunter",
             content or "",
@@ -2472,27 +2628,51 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         await interaction.response.send_message("❌ Dice game systems are not available.", ephemeral=True)
         return
 
-    server_key = get_server_key(interaction.guild)
-    server_id = str(interaction.guild.id)
-    server_name = interaction.guild.name
+    # Handle DM case by using default server
+    guild = interaction.guild
+    if not guild:
+        # Get the first available guild as default
+        try:
+            # Try to get the bot instance from the interaction client
+            bot = interaction._state._client
+            if bot and bot.guilds:
+                guild = bot.guilds[0]  # Use first guild as default
+                logger.info(f"Using default server '{guild.name}' for dice action from DM")
+            else:
+                await interaction.response.send_message("❌ No servers available. Please execute dice actions from a server.", ephemeral=True)
+                return
+        except Exception as e:
+            logger.error(f"Could not get default server for DM dice action: {e}")
+            await interaction.response.send_message("❌ Could not access a server. Please execute dice actions from a server.", ephemeral=True)
+            return
+
+    server_key = get_server_key(guild)
+    server_id = str(guild.id)
+    server_name = guild.name
     
     # Get current dice state and personality messages
-    dice_state = _get_canvas_dice_state(interaction.guild)
+    dice_state = _get_canvas_dice_state(guild)
     answers = _personality_answers.get("dice_game_messages", {})
     descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
-    balance_messages = _personality_answers.get("dice_game_balance_messages", {})
     
     # Build the base content with personality title and pot balance
     title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
-    pot_title = balance_messages.get("current_balance", "💎 **CURRENT POT:**")
-    fixed_bet = balance_messages.get("fixed_bet", "💎 **FIXED BET:**")
+    pot_title = descriptions.get("current_balance", "💎 **CURRENT POT:**")
+    fixed_bet = descriptions.get("fixed_bet", "💎 **FIXED BET:**")
     content_parts = [
         title,
-        f"{pot_title} **{dice_state['pot_balance']:,}** :coin: ",
-        f"{fixed_bet} {dice_state.get('bet', 1):,} :coin:",
         "─" * 45,
         ""
     ]
+    
+    # Add DM notification if using default server
+    if not interaction.guild:
+        content_parts.extend([
+            f"🔔 **Using default server:** {guild.name}",
+            "*You're playing from DM, using the first available server.*",
+            "─" * 45,
+            ""
+        ])
     
     # Handle different actions
     if action_name == "dice_play":
@@ -2521,16 +2701,14 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     f"Required: {bet_amount:,} gold",
                 ])
             else:
-                # Create dice game instance and play
-                dice_game = DiceGame(fixed_bet=bet_amount)
-                result = dice_game.play_game(player_id, player_name, server_id, server_name, dice_state['pot_balance'])
+                result = process_play(player_id, player_name, server_id, server_name, dice_state['pot_balance']) if process_play else {"success": False, "message": "Dice game unavailable."}
                 
                 if result.get('success', False):
                     # Parse result
                     dice_str = result.get("dice", "")
                     combination = result.get("combination", "")
                     prize = result.get("prize", 0)
-                    new_pot_balance = result.get("new_pot_balance", dice_state['pot_balance'])
+                    new_pot_balance = result.get("pot_after", dice_state['pot_balance'])
                     
                     # Format dice roll
                     dice_values = dice_str.split('-') if dice_str else []
@@ -2540,8 +2718,8 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     prize_title = descriptions.get("prize_title", "💰 **PRIZE:**")
                     content_parts.extend([
                         #"**🎲 DICE PLAY RESULT**",
-                        f"{roll_title}\n 🎲**{dice_display}**",
-                        f"{result_title} {combination}",
+                        f"{roll_title}\n **{dice_display}**",
+                        f"{result_title} **{combination}**",
                         "",
                     ])
                     if prize == dice_state['pot_balance']:
@@ -2557,25 +2735,35 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                         content_parts.append(f"{prize_title} **{prize:,}** :coin:")
                         content_parts.append(f"\n{loser_msg}\n")
                     
-                    # Update balances in database (single transaction)
-                    db_banker.update_balance(player_id, player_name, server_id, server_name, -bet_amount, "DICE_PLAY_BET", "Dice game bet")
-                    if prize > 0:
-                        db_banker.update_balance(player_id, player_name, server_id, server_name, prize, "DICE_PLAY_WIN", "Dice game win")
-                    else:
-                        db_banker.update_balance("dice_game_pot", "Dice Game Pot", server_id, server_name, bet_amount, "DICE_PLAY_ADD", "Dice game lost bet")
+                    # Get updated balances for display with +/- indicators
+                    old_player_balance = player_balance
+                    new_player_balance = db_banker.get_balance(player_id, server_id)
+                    player_diff = new_player_balance - old_player_balance
                     
-                    # Register the game in database
-                    db_dice.register_game(
-                        player_id, player_name, server_id, server_name,
-                        bet_amount, dice_str, combination, prize,
-                        dice_state['pot_balance'], new_pot_balance
-                    )
+                    # Format player balance with +/- indicator
+                    if player_diff > 0:
+                        player_balance_line = f"Tu zako: {new_player_balance:,} +{player_diff:,} :coin:"
+                    elif player_diff < 0:
+                        player_balance_line = f"Tu zako: {new_player_balance:,} {player_diff:,} :coin:"
+                    else:
+                        player_balance_line = f"Tu zako: {new_player_balance:,} :coin:"
+                    
+                    # Calculate pot difference and format
+                    old_pot_balance = dice_state['pot_balance']
+                    pot_diff = new_pot_balance - old_pot_balance
+                    if pot_diff > 0:
+                        pot_balance_line = f"{pot_title} {new_pot_balance:,} +{pot_diff:,} :coin:"
+                    elif pot_diff < 0:
+                        pot_balance_line = f"{pot_title} {new_pot_balance:,} {pot_diff:,} :coin:"
+                    else:
+                        pot_balance_line = f"{pot_title} {new_pot_balance:,} :coin:"
                     
                     content_parts.extend([
                         "",
                         "─" * 45,
-                        f"New balance: {db_banker.get_balance(player_id, server_id):,} gold",
-                        f"New pot: {new_pot_balance:,} gold",
+                        pot_balance_line,
+                        f"{fixed_bet} {bet_amount:,} :coin:",
+                        player_balance_line,
                     ])
                 else:
                     error_msg = answers.get("error_jugada", "❌ **ERROR!**")
@@ -2594,7 +2782,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         # Show ranking using centralized function
         
         try:
-            ranking_data = _get_canvas_dice_ranking(interaction.guild, 10)
+            ranking_data = _get_canvas_dice_ranking(guild, 10)
             
             rankingtitle = descriptions.get("ranking", "**🏆 DICE RANKING**")
             content_parts.append(rankingtitle)
@@ -2603,7 +2791,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                 for player in ranking_data:
                     medal = "🥇" if player["position"] == 1 else "🥈" if player["position"] == 2 else "🥉" if player["position"] == 3 else "🏅"
                     content_parts.append(
-                        f"{medal} **#{player['position']}** {player['player_name']} | Won: {player['total_won']:,} | Games: {player['total_plays']}"
+                        f"{medal} **#{player['position']}** {player['player_name']} | 🏆 Prize: {player['prize']:,} | Games: {player['total_plays']}"
                     )
             else:
                 rankingvoid = descriptions.get("rankingvoid", "📊 No ranked players yet. Be the first to play!")
@@ -2677,7 +2865,6 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     
     # Rebuild the view with dynamic content
     content = "\n".join(content_parts)
-    
     # Store current embed in view for back navigation
     role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "dice", None, f"Executed {action_name.replace('_', ' ').title()}")
     view.current_embed = role_embed
@@ -2689,7 +2876,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         admin_visible=view.admin_visible,
         sections=view.sections,
         current_detail="dice",
-        guild=view.guild,
+        guild=guild,  # Use the determined guild (default or original)
         previous_view=view,  # Pass current view as previous_view
     )
     next_view.auto_response_preview = f"Executed {action_name.replace('_', ' ').title()}"
@@ -2724,7 +2911,8 @@ async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction
         return
 
     manager = get_poe2_manager()
-    server_id = str(interaction.guild.id)
+    # Use empty string for DM - let manager find active server
+    server_id = "" if interaction.guild is None else str(interaction.guild.id)
     user_id = str(interaction.user.id)
 
     if action_name in {"league_standard", "league_fate_of_the_vaal", "league_hardcore"}:
@@ -2747,10 +2935,22 @@ async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction
         if not ok:
             await interaction.response.send_message("❌ Could not update POE2 league.", ephemeral=True)
             return
-        content = ""  # Action view content is no longer needed
-        next_view = CanvasRoleDetailView(view.author_id, view.role_name, view.agent_config, view.admin_visible, view.sections, current_detail="league", guild=view.guild)
-        next_view.auto_response_preview = f"League changed to `{league}` and default items were synced."
-        embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, "league", None, next_view.auto_response_preview)
+        # Return to the view from where the league action was triggered
+        # If user was in POE2 view (personal), return there, otherwise go to league
+        target_detail = view.current_detail if view.current_detail == "personal" else "league"
+        
+        # Generate updated content for the target view after league action
+        content = _build_canvas_role_detail_view(
+            "treasure_hunter",
+            target_detail,
+            view.agent_config,
+            view.admin_visible,
+            view.guild,
+            view.author_id,
+        )
+        next_view = CanvasRoleDetailView(view.author_id, view.role_name, view.agent_config, view.admin_visible, view.sections, current_detail=target_detail, guild=view.guild)
+        next_view.auto_response_preview = f"✅ League changed to `{league}` and default items were synced."
+        embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, target_detail, None, next_view.auto_response_preview)
         try:
             await interaction.response.edit_message(content=None, embed=embed, view=next_view)
         except discord.InteractionResponded:
@@ -2782,7 +2982,8 @@ async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction
 
     try:
         if action_name == "poe2_on":
-            league = manager.get_active_league(server_id)
+            # For admin actions, use a default league since no specific user is involved
+            league = manager.get_active_league(user_id, server_id)
             if manager.should_refresh_item_list(league):
                 await manager.download_item_list(league)
             ok = manager.activate_subrole(server_id)
@@ -2796,10 +2997,22 @@ async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction
         await interaction.response.send_message("❌ Could not update POE2 activation state.", ephemeral=True)
         return
 
-    content = ""  # Action view content is no longer needed
-    next_view = CanvasRoleDetailView(view.author_id, view.role_name, view.agent_config, view.admin_visible, view.sections, current_detail="admin", guild=view.guild)
+    # Return to the view from where the admin action was triggered
+    # If user was in POE2 view (personal), return there, otherwise go to admin
+    target_detail = view.current_detail if view.current_detail in {"personal", "league"} else "admin"
+    
+    # Generate updated content for the target view after admin action
+    content = _build_canvas_role_detail_view(
+        "treasure_hunter",
+        target_detail,
+        view.agent_config,
+        view.admin_visible,
+        view.guild,
+        view.author_id,
+    )
+    next_view = CanvasRoleDetailView(view.author_id, view.role_name, view.agent_config, view.admin_visible, view.sections, current_detail=target_detail, guild=view.guild)
     next_view.auto_response_preview = f"POE2 {'enabled' if action_name == 'poe2_on' else 'disabled'}."
-    embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, "admin", None, next_view.auto_response_preview)
+    embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, target_detail, None, next_view.auto_response_preview)
     try:
         await interaction.response.edit_message(content=None, embed=embed, view=next_view)
     except discord.InteractionResponded:
@@ -2929,349 +3142,6 @@ async def _handle_canvas_banker_action(interaction: discord.Interaction, action_
         await interaction.response.send_message("❌ Failed to process banker action.", ephemeral=True)
 
 
-async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
-    """Handle MC (Music Controller) canvas actions."""
-    try:
-        # Import MC commands if available
-        from roles.mc.mc_discord import get_mc_commands_instance
-        from agent_engine import get_mc_feature
-        
-        # Get the global MC commands instance
-        mc_commands = get_mc_commands_instance()
-        if not mc_commands:
-            await interaction.response.send_message("❌ MC commands are not initialized.", ephemeral=True)
-            return
-        
-        # Check if MC is enabled and available
-        mc_enabled = get_mc_feature("voice_commands") if get_mc_feature else False
-        if not mc_enabled:
-            await interaction.response.send_message("❌ MC voice commands are not enabled.", ephemeral=True)
-            return
-            
-        # Create a mock message for the MC command
-        class MockMessage:
-            def __init__(self, channel, author, guild):
-                self.channel = channel
-                self.author = author
-                self.guild = guild
-                
-        mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-        
-        # Handle different actions
-        if action_name == "mc_play":
-            # Show modal for song input
-            await interaction.response.send_modal(CanvasMCSongModal("mc_play", view, mc_commands))
-            return
-        elif action_name == "mc_add":
-            # Show modal for song input
-            await interaction.response.send_modal(CanvasMCSongModal("mc_add", view, mc_commands))
-            return
-        elif action_name == "mc_volume":
-            await interaction.response.send_modal(CanvasMCVolumeModal(view, mc_commands))
-            return
-        
-        # For non-modal actions, execute immediately and update view
-        captured_messages = []
-        last_action = None
-        queue_info = None
-        
-        # Set up message callback to capture MC messages
-        async def message_callback(content, **kwargs):
-            captured_messages.append(content)
-        
-        # Set callback before executing command
-        original_callback = mc_commands._message_callback
-        mc_commands.set_message_callback(message_callback)
-        
-        # Store callback reference for cleanup
-        if not hasattr(view, '_mc_callbacks'):
-            view._mc_callbacks = []
-        view._mc_callbacks.append((mc_commands, original_callback))
-        
-        try:
-            if action_name == "mc_skip":
-                await mc_commands.cmd_skip(mock_message, [])
-                last_action = "⏭️ Song skipped"
-            elif action_name == "mc_pause":
-                await mc_commands.cmd_pause(mock_message, [])
-                last_action = "⏸️ Playback paused"
-            elif action_name == "mc_resume":
-                await mc_commands.cmd_resume(mock_message, [])
-                last_action = "▶️ Playback resumed"
-            elif action_name == "mc_stop":
-                await mc_commands.cmd_stop(mock_message, [])
-                last_action = "⏹️ Playback stopped and queue cleared"
-            elif action_name == "mc_queue":
-                await mc_commands.cmd_queue(mock_message, [])
-                last_action = "📋 Queue displayed"
-                # Try to get history info
-                try:
-                    db_mc = get_mc_db_instance(str(interaction.guild.id))
-                    history_data = db_mc.obtener_historial(str(interaction.guild.id), str(interaction.channel.id), limit=10)
-                    history_info = [(title, artist, duration, user) for pos, title, url, duration, artist, user_id, fecha in history_data]
-                except:
-                    pass
-            elif action_name == "mc_clear":
-                await mc_commands.cmd_clear(mock_message, [])
-                last_action = "🗑️ Queue cleared"
-            elif action_name == "mc_history":
-                await mc_commands.cmd_history(mock_message, [])
-                last_action = "📜 History displayed"
-            else:
-                await interaction.response.send_message("❌ Unknown MC action.", ephemeral=True)
-                return
-        finally:
-            # Don't restore callback immediately - let it persist for the lifetime of the view
-            pass
-        
-        # Update the current Canvas view with dynamic content (no transition)
-        # Small delay to allow async messages to be captured
-        await asyncio.sleep(0.5)
-        
-        mc_content = _build_canvas_role_mc(
-            last_action=last_action,
-            queue_info=queue_info,
-            mc_messages=captured_messages
-        )
-        
-        # Update current view state
-        view.auto_response_preview = last_action
-        embed = _build_canvas_role_embed("mc", mc_content, view.admin_visible, "overview", None, view.auto_response_preview)
-        
-        # Update the same view without creating a new one
-        # Note: We pass the same view to maintain all components including the dropdown
-        try:
-            await interaction.response.edit_message(content=None, embed=embed, view=view)
-        except discord.InteractionResponded:
-            # If interaction was already responded to, use followup
-            await interaction.followup.edit_message(interaction.message.id, embed=embed, view=view)
-        except discord.NotFound:
-            # Message was deleted, send a new one
-            try:
-                await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-            except discord.NotFound:
-                # Interaction completely expired, nothing we can do
-                logger.warning("Canvas MC interaction expired completely - unable to send followup")
-            except Exception as e:
-                logger.exception(f"Failed to send canvas MC followup: {e}")
-        except Exception as e:
-            logger.exception(f"Failed to edit canvas MC message: {e}")
-            try:
-                await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
-            except discord.NotFound:
-                # Interaction expired, nothing we can do
-                logger.warning("Canvas MC interaction expired during error handling")
-            except Exception as followup_e:
-                logger.exception(f"Failed to send error followup: {followup_e}")
-            
-    except ImportError:
-        await interaction.response.send_message("❌ MC commands are not available. Install yt-dlp and PyNaCl.", ephemeral=True)
-    except Exception as e:
-        logger.exception(f"Error handling MC canvas action {action_name}: {e}")
-        try:
-            await interaction.followup.send(f"❌ Error updating configuration: {e}", ephemeral=True)
-        except discord.NotFound:
-            # Interaction expired, can't send followup
-            logger.info(f"Could not send error followup for MC action {action_name}: interaction expired")
-        except discord.HTTPException:
-            # Other HTTP errors, can't send followup
-            logger.warning(f"Could not send error followup for MC action {action_name}: HTTP error")
-
-
-class CanvasMCSongModal(discord.ui.Modal):
-    """Modal for MC song input (play or add)."""
-    
-    def __init__(self, action_name: str, view: "CanvasRoleDetailView", mc_commands):
-        self.action_name = action_name
-        self.view = view
-        self.mc_commands = mc_commands
-        title = "Play Song Now" if action_name == "mc_play" else "Add Song to Queue"
-        super().__init__(title=title, timeout=300)
-        
-        self.song_input = discord.ui.TextInput(
-            label="Song Name or URL",
-            placeholder="Enter song name, YouTube URL, or search query...",
-            style=discord.TextStyle.long,
-            required=True,
-            max_length=200
-        )
-        self.add_item(self.song_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        try:
-            # Respond immediately to prevent modal timeout
-            await interaction.response.send_message("🎵 Processing song request...", ephemeral=True, delete_after=5)
-            
-            # Create mock message
-            class MockMessage:
-                def __init__(self, channel, author, guild):
-                    self.channel = channel
-                    self.author = author
-                    self.guild = guild
-                    
-            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-            
-            # Set up message callback to capture MC messages
-            captured_messages = []
-            
-            async def message_callback(content, **kwargs):
-                captured_messages.append(content)
-                # Don't send to channel, capture for Canvas display
-            
-            # Set callback before executing command
-            original_callback = self.mc_commands._message_callback
-            self.mc_commands.set_message_callback(message_callback)
-            
-            # Store callback reference for cleanup
-            if not hasattr(self.view, '_mc_callbacks'):
-                self.view._mc_callbacks = []
-            self.view._mc_callbacks.append((self.mc_commands, original_callback))
-            
-            try:
-                # Execute command
-                song_query = str(self.song_input.value).strip()
-                args = song_query.split()
-                
-                if self.action_name == "mc_play":
-                    await self.mc_commands.cmd_play(mock_message, args)
-                    result_msg = f"🎵 Now playing: {song_query}"
-                else:  # mc_add
-                    await self.mc_commands.cmd_add(mock_message, args)
-                    result_msg = f"🎵 Added to queue: {song_query}"
-                
-                # Get current queue and now playing info
-                queue_info = None
-                try:
-                    # Small delay to ensure DB is updated after playback starts
-                    import asyncio
-                    await asyncio.sleep(0.5)
-                    
-                    from roles.mc.db_role_mc import get_mc_db_instance
-                    db_mc = get_mc_db_instance(str(interaction.guild.id))
-                    queue_data = db_mc.obtener_queue(str(interaction.guild.id), str(interaction.channel.id))
-                    
-                    # Convert queue data to display format
-                    queue_info = []
-                    for pos, title, url, duration, artist, user_id, fecha in queue_data:
-                        try:
-                            # Get user name from Discord
-                            user = interaction.guild.get_member(int(user_id))
-                            user_name = user.display_name if user else "Unknown User"
-                            queue_info.append((title, artist, duration, user_name))
-                        except:
-                            queue_info.append((title, artist, duration, "Unknown User"))
-                except Exception as e:
-                    logger.warning(f"Error getting queue info: {e}")
-                    pass
-                
-            finally:
-                # Don't restore callback immediately - let it persist for the lifetime of the view
-                pass
-            
-            # Try to update the Canvas interface
-            try:
-                # Small delay to allow async messages to be captured
-                await asyncio.sleep(0.5)
-                
-                # Build dynamic MC view with captured messages
-                mc_content = _build_canvas_role_mc(
-                    last_action=result_msg,
-                    queue_info=queue_info,
-                    mc_messages=captured_messages
-                )
-                
-                # Update current view state (no transition)
-                self.view.auto_response_preview = result_msg
-                embed = _build_canvas_role_embed("mc", mc_content, self.view.admin_visible, "overview", None)
-                
-                # Try to update the Canvas view separately using followup
-                try:
-                    await interaction.followup.edit_message(interaction.message.id, embed=embed, view=self.view)
-                except:
-                    pass  # If we can't update Canvas, the initial message is enough
-            except Exception as e:
-                logger.exception(f"Error updating Canvas after modal submission: {e}")
-                pass  # Don't show errors to user since action worked
-            
-        except Exception as e:
-            logger.exception(f"Error in MC song modal: {e}")
-            try:
-                await interaction.followup.send("❌ Error processing song request", ephemeral=True)
-            except (discord.NotFound, discord.InteractionResponded):
-                # Interaction already responded or expired
-                pass
-
-
-class CanvasMCVolumeModal(discord.ui.Modal):
-    """Modal for MC volume input."""
-    
-    def __init__(self, view: "CanvasRoleDetailView", mc_commands):
-        self.view = view
-        self.mc_commands = mc_commands
-        super().__init__(title="Set Volume", timeout=300)
-        
-        self.volume_input = discord.ui.TextInput(
-            label="Volume (0-100)",
-            placeholder="Enter volume level between 0 and 100...",
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=3
-        )
-        self.add_item(self.volume_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        try:
-            # Create mock message
-            class MockMessage:
-                def __init__(self, channel, author, guild):
-                    self.channel = channel
-                    self.author = author
-                    self.guild = guild
-                    
-            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
-            
-            # Execute command
-            volume_str = str(self.volume_input.value).strip()
-            args = [volume_str]
-            await self.mc_commands.cmd_volume(mock_message, args)
-            
-            result_msg = f"🔊 Volume set to {volume_str}%"
-            
-            # Try to update the Canvas interface
-            try:
-                # Build dynamic MC view with volume result
-                mc_content = _build_canvas_role_mc(
-                    last_action=result_msg,
-                    queue_info=None,
-                    mc_messages=None
-                )
-                
-                # Update current view state (no transition)
-                self.view.auto_response_preview = result_msg
-                embed = _build_canvas_role_embed("mc", mc_content, self.view.admin_visible, "overview", None)
-                
-                # Update the Canvas view directly
-                if self.view and not self.view.is_finished():
-                    await interaction.response.edit_message(content=None, embed=embed, view=self.view)
-                else:
-                    # If view is invalid, just confirm the action
-                    await interaction.response.send_message(f"✅ {result_msg}", ephemeral=True, delete_after=3)
-            except discord.NotFound:
-                # Interaction expired - the action was successful
-                logger.info(f"MC Canvas volume action completed but interaction expired")
-            except discord.HTTPException as e:
-                # Other HTTP errors - respond with success message since the action worked
-                logger.warning(f"Could not update Canvas for MC volume action: {e}")
-                try:
-                    await interaction.response.send_message(f"✅ {result_msg}", ephemeral=True, delete_after=3)
-                except:
-                    pass  # If we can't respond, just log it
-            
-        except Exception as e:
-            logger.exception(f"Error in MC volume modal: {e}")
-            # Don't try to respond on error - the interaction is likely expired anyway
-
-
 class CanvasWatcherSubscribeModal(discord.ui.Modal):
     """Modal for News Watcher subscription with unified interface."""
     
@@ -3299,7 +3169,7 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
         # Add optional feed_id input for subscribe_categories
         self.feed_id_input = discord.ui.TextInput(
             label="Feed ID (Optional)",
-            placeholder="Enter specific feed ID number (optional - leave empty to subscribe to all feeds in category)...",
+            placeholder="Enter specific feed ID number, 'all' for all feeds, or leave empty for first feed...",
             style=discord.TextStyle.short,
             required=False,  # Make it optional
             max_length=10,
@@ -4235,10 +4105,10 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
             # Don't try to respond on error - the interaction is likely expired anyway
 
 
-class CanvasBehaviorView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
+class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
     def __init__(self, author_id: int, sections: dict[str, str], admin_visible: bool, agent_config: dict,
                  current_detail: str = "conversation", guild=None, message=None):
-        super().__init__(timeout=600)
+        super().__init__(timeout=600)  # 10 minutes
         self.author_id = author_id
         self.sections = sections
         self.admin_visible = admin_visible
@@ -4257,8 +4127,11 @@ class CanvasBehaviorView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.View)
         # Add navigation buttons using mixins
         self.add_smart_back_button()
         self.add_home_button()
+        
+        # Start the timeout timer
+        self._reset_timeout()
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    async def _check_user_permission(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("❌ This Canvas menu belongs to another user.", ephemeral=True)
             return False
@@ -4299,14 +4172,14 @@ class CanvasBehaviorView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.View)
                 await asyncio.sleep(1)  # Wait before retry
 
 
-class CanvasRoleDetailView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
+class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
     """Interactive navigation for role-specific details."""
 
     def __init__(self, author_id: int, role_name: str, agent_config: dict, admin_visible: bool,
                  sections: dict[str, str], current_detail: str = "overview", guild=None, message=None,
                  watcher_selected_method: str = None, watcher_last_action: str = None, watcher_selected_category: str = None,
                  previous_view=None):
-        super().__init__(timeout=600)
+        super().__init__(timeout=600)  # 10 minutes
         self.author_id = author_id
         self.role_name = role_name
         self.agent_config = agent_config
@@ -4350,8 +4223,16 @@ class CanvasRoleDetailView(SmartBackButtonMixin, HomeButtonMixin, discord.ui.Vie
         # Add navigation buttons using mixins
         self.add_smart_back_button()
         self.add_home_button()
+        
+        # Start the timeout timer
+        self._reset_timeout()
 
     def _add_role_buttons(self):
+        """Add role-specific buttons."""
+        # Add POE2 button only for treasure_hunter main overview (not subrol views)
+        if self.role_name == "treasure_hunter" and self.current_detail == "overview":
+            button_poe2 = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("button_poe2", "👺 POE2")
+            self.add_item(CanvasTreasureHunterPoe2Button(label=button_poe2, style=discord.ButtonStyle.green))
         return
 
     async def on_timeout(self) -> None:
