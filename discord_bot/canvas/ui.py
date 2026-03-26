@@ -2639,11 +2639,11 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                 guild = bot.guilds[0]  # Use first guild as default
                 logger.info(f"Using default server '{guild.name}' for dice action from DM")
             else:
-                await interaction.response.send_message("❌ No servers available. Please execute dice actions from a server.", ephemeral=True)
+                await interaction.response.send_message(descriptions.get("dm_no_servers_available", "❌ No servers available. Please execute dice actions from a server."), ephemeral=True)
                 return
         except Exception as e:
             logger.error(f"Could not get default server for DM dice action: {e}")
-            await interaction.response.send_message("❌ Could not access a server. Please execute dice actions from a server.", ephemeral=True)
+            await interaction.response.send_message(descriptions.get("dm_server_access_error", "❌ Could not access a server. Please execute dice actions from a server."), ephemeral=True)
             return
 
     server_key = get_server_key(guild)
@@ -2668,9 +2668,10 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     # Add DM notification if using default server
     if not interaction.guild:
         content_parts.extend([
-            f"🔔 **Using default server:** {guild.name}",
-            "*You're playing from DM, using the first available server.*",
-            "─" * 45,
+            descriptions.get("dm_default_server_separator", "─────────────────────────────────────────────"),
+            descriptions.get("dm_default_server_title", "🔔 **Using default server: {server_name}**").format(server_name=guild.name),
+            descriptions.get("dm_default_server_message", "*You're playing from DM, using the first available server.*"),
+            descriptions.get("dm_default_server_separator", "─────────────────────────────────────────────"),
             ""
         ])
     

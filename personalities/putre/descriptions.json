@@ -10,19 +10,20 @@
     },
     "canvas_home_messages": {
       "title": "🧭 Putre Hub",
-      "button_home": "Inicio",
-      "button_back": "Atrás",
-      "button_roles": "Roles",
-      "button_behavior": "Comportamiento",
-      "button_help": "Ayuda",
-      "generic_option_label":"Escoge una opción...",
-      "personalitystatus":"Personalidad Cargada:",
+      "button_home": "🧭 Inicio",
+      "button_back": "← Atrás",
+      "button_roles": "🎪 Roles",
+      "button_behavior": "🤖 Comportamiento",
+      "button_help": "📝 Ayuda",
+      "generic_option_label": "Escoge una opción...",
+      "personalitystatus": "Personalidad Cargada:",
       "description": "-Interactua con todas las funciones disponibles para Putre desde aquí.\n -El panel canvas te permite interactuar con todas las opciones del bot desde este menu.",
       "recentsynthesistitle": "**Síntesis Reciente**",
+      "dailymemorytitle": "**Memoria**",
       "personalsynthesistitle": "**Síntesis Personal**"
     },
     "roles_view_messages": {
-      "title": "🎭 Roles de Putre 🎭",
+      "title": "🎭  Roles de Putre 🎭",
       "description": "🌟 Navega a traves de los diferentes roles disponibles para Putre",
       "role_categories": "──────────────────────────────",
       "enabled_status": "active",
@@ -40,408 +41,453 @@
       "role_unavailable": "❌ {role} - PUDRIENDOSE EN LA TIERRA",
       "frequency_help": "📝 Uza el acha azi: `!{role}frequency <oras>` (de 1 a 168 oras)\nEjemplo: `!watcherfrequency 2` ¡para ke aulle kada 2 putas oras!",
       "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!",
-      
       "news_watcher": {
-          "title": "**📡 Vigia de Noticias (alpha)**",
-          "description": "Suscribete a categorias de noticias y recibe alertas segun el análisis escogido.",
-          "button": "Vigia",
-          "alert_title": "**:wolf: Lobos Rastreadores de Putre :wolf:**",
-          "feeds_available_title": "📡 Lobogs Rastreadores de Putre",
-          "categories_available_title": "📂 Terrenos de Kaza",
-          "usage_subscribe": "📝 Uza mi acha: `!watcher subscribe <terreno> [numero_de_nido]`",
-          "usage_unsubscribe": "📝 Uza mi acha: `!watcher unsubscribe <terreno> [numero_de_nido]`",
-          "uso_general": "📝 Uza mi acha: `!watcher general <terreno>`",
-          "uso_palabras": "📝 Uza mi acha: `!watcher keywords \"palabra1,palabra2\"`",
-          "usage_cancelar_palabras": "📝 Uza mi acha: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
-          "usage_mixto": "📝 Uza mi acha: `!watcher mixed <terreno>`",
-          "usage_agregar_feed": "📝 Solo jefes: `!watcher add_feed <nombre> <url> <terreno> [pais] [idioma]`",
-          "usage_canal_suscribir": "📝 Solo jefes: `!watcherchannel subscribe <terreno> [numero_de_nido]`",
-          "usage_canal_cancelar": "📝 Solo jefes: `!watcherchannel unsubscribe <terreno> [numero_de_nido]`",
-          "usage_canal_palabras": "📝 Solo jefes: `!watcherchannel keywords \"palabra1,palabra2\"`"             
-       },
+        "title": "**📡 Vigia de Noticias (alpha)**",
+        "description": "Suscribete a categorias de noticias y recibe alertas segun el método de análisis escogido.",
+        "button": "📡 Vigia",
+        "alert_title": "**:wolf: Lobos Rastreadores de Putre :wolf:**",
+        "feeds_available_title": "📡 Lobogs Rastreadores de Putre",
+        "categories_available_title": "📂 Terrenos de Kaza",
+        "available_feeds_title": "**Feeds disponibles**",
+        "category_feeds_title": "**{category} Feeds**",
+        "title_actual_method": "**Método actual:**",
+        "title_active_subscriptions": "**Suscripciones Activas:**",
+        "title_your_subscriptions": "**Tus suscripciones:**",
+        "title_no_active_subscriptions": "-Sin suscripciones activas",
+        "title_configuration_status": "**Estado de la configuración**",
+        "select_method": "🔧  Selecciona método de análisis...",
+        "not_selected_method": "No seleccionado",
+        "flat_method": "Método: Plano",
+        "keyword_method": "Método: Palabras Clave",
+        "general_method": "Método Premisas con IA",
+        "option_flat_description": "Todas las noticias con opinión",
+        "option_keyword_description": "Noticias filtradas por palabras clave",
+        "option_general_description": "Analisis de noticias por premisas",
+        "keywords_title": "🔍 **Palabras Clave:**",
+        "no_keywords": "Ninguna configurada",
+        "premises_title": "🤖 **Premisas:**",
+        "premises_configured": "configuradas",
+        "no_premises": "Ninguna configurada",
+        "configured_keywords_title": "**Palabras clave configuradas**",
+        "configured_premises_title": "**Premisas configuradas**",
+        "available_categories_title": "**Categorias disponibles**",
+        "channel_subscriptions_title": "**Suscripciones Actuales de Canales**",
+        "channel_unsubscribe_title": "**Desuscribir Canal**",
+        "watcher_frequency_title": "**Frecuencia del Vigia**",
+        "force_watcher_run_title": "**Fuerza run de vigia**",
+        "force_personal_subscriptions_title": "**Fuerza run de vigia para suscripciones personoles**",
+        "usage_subscribe": "📝 Uza mi acha: `!watcher subscribe <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
+        "usage_unsubscribe": "📝 Uza mi acha: `!watcher unsubscribe <terreno> [numero_de_nido]`",
+        "uso_general": "📝 Uza mi acha: `!watcher general <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
+        "uso_palabras": "📝 Uza mi acha: `!watcher keywords \"palabra1,palabra2\" [terreno] [numero_de_nido|all]`",
+        "usage_cancelar_palabras": "📝 Uza mi acha: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
+        "usage_mixto": "📝 Uza mi acha: `!watcher mixed <terreno>`",
+        "usage_agregar_feed": "📝 Solo jefes: `!watcher add_feed <nombre> <url> <terreno> [pais] [idioma]`",
+        "usage_canal_suscribir": "📝 Solo jefes: `!watcherchannel subscribe <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
+        "usage_canal_cancelar": "📝 Solo jefes: `!watcherchannel unsubscribe <terreno> [numero_de_nido]`",
+        "usage_canal_palabras": "📝 Solo jefes: `!watcherchannel keywords \"palabra1,palabra2\"`"
+      },
       "treasure_hunter": {
-          "title": "**💎 Putre Cazador de Tesoros (alpha)**",
+        "title": "**💎 Putre Cazador de Tesoros (alpha)**",
+        "description": "Haz que Putre monitorice precios de objetos en diferentes juegos y te envie alertas cuando el precio este en una zona de max/min",
+        "button": "💎 Tesoros",
+        "user_flows_title": "Flujo para el usuario",
+        "user_flows_1": "Selecciona el juego que quieres suscribirte",
+        "user_flows_2": "Navega en el para configurarlo y selecionar los items deseados.",
+        "task_map_title": "Mapa:",
+        "task_map_1": "Objetos: Se mantiene una lista con precios actualizados.",
+        "task_map_2": "Alertas: Recibe notificacines cuando el precio alcanza un umbral de compra/venta",
+        "available_subroles_title": "Subroles Disponibles",
+        "admin_flows_title": "Flujo para admin",
+        "admin_flows_1": "Navega dentro de los subroles para activarlos y configurarlos, desde su admin view.",
+        "poe2": {
+          "title": "**💎 {_bot} Tesoros en Path of Exile 2**",
           "description": "Haz que Putre monitorice precios y te envie alertas",
-          "button": "Tesoros",
-          "poe2":{
-            "title": "**💎 {_bot} Tesoros en Path of Exile 2**",
-            "description": "Haz que Putre monitorice precios y te envie alertas",
-            "league":{
-              "title":"🏆 **Liga Aktual**: {league}",
-              "description": "Elige que liga de PoE2 quiere que Putre vigile"
-            }
+          "game_description": "Pon a prueba tu suerte con el bote de Putre! 🎲 Tira tres dados contra la banca y llevate todo el oro al lanzar un trio de unos!/n -Parejas:x1\n -Trios:x3\n -Escalera alta:x5\n",
+          "league": {
+            "title": "🏆 **Liga Aktual**: {league}",
+            "description": "Elige que liga de PoE2 quiere que Putre vigile"
           }
+        }
       },
       "trickster": {
         "title": "**🎭Trilero Putre**",
         "description": "Ven y dejate embaucar por el orco trilero, juega y diviertete.",
-        "button": "Trilero",
+        "button": "🎭Trilero",
         "canvas_trickster_overview_title": "**🎭Trilero Putre**",
         "canvas_trickster_overview_description": "tle de esta view.",
         "canvas_trickster_overview_separator": "──────────────────────────────",
         "canvas_trickster_subrole_descriptions": {
           "beggar": "🙏 **Limosnero** - Pide donaciones para proyectos del clan con excusas creativas",
-          "dice_game": "🎲 **Juego de Dados** - Juega contra el banco, sube en el ranking y gana oro",
+          "dice_game": "🎲 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!",
           "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único",
           "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir sabiduría y guía"
-         },
-        "dice_game":{
-            "waitmessage":"Tirando daos...Ezpera!",
-            "roll_title": "TUS GUESOS DIZEN:\n",
-            "combination_title": "RESULTAO:",
-            "prize_title": "BOTIN GANAO:",
-            "current_pot_title": " **💰 EL BOTE 💰**",
-            "ranking": " **:trophy:  PUNTUASIONE BOTE **",
-            "rankingvoid": " No a nadie en tabla umano!",
-            "historyvoid": " No a jugao nadie todavia umano!",
-            "history": " **📜  Istorial de jugas **",
-            "help":" **Aiuda del BOTE**\n Juega al BOTE de Putre, apuezta oro y tira dados pa ganar! Uza 'dice play' pa juga.\n Si el umano tira tres unos gana el BOTE!",
-            "title": "💰 **EL PUTRE BOTE - {servidor}** 💰\n",
-            "current_balance": "Oro amontonao:",
-            "fixed_bet": "Precio pa tira:",
-            "possible_plays": "🎯 **Apuesta reztante:** {jugadas}\n",
-            "use_command": "\n💡 ¡Usa `!dice play` para tirar los kraneos, umano baboso!",
-            "triple_ones": "¡¡¡TRES OJOS DE GRUUMSH!!!",
-            "three_of_a_kind": "TRES KRANEOS ROTOS",
-            "straight": "KORRIDA SANGRIENTA",
-            "pair": "DOS COLMIYOS",
-            "nothing": "¡BASURAH!",
-            "no_prize": "{combination} - ¡NAH! ¡Sin premio! ¡Más oro para la orda, largate perdedor!",
-            "error_servers_only": "¡GRRR! Este comando solo funciona en servidores, umano estupido!",
-            "error_game_unavailable": "¡BLEGH! El juego de dados no está disponible en este servidor!",
-            "error_database_access": "¡GRRR! Error al acceder a las bases de datos del juego!",
-            "error_procesar_tirada": "¡GRRR! Error al procesar la tirada: {error}",
-            "help_titulo": "🎲 **AYUDA DEL BOTE DE PUTRE** 🎲",
-            "help_descripcion": "¡GRRR! Ponle a prueba tu suerte con el bote de Putre! 🎲\n\n",
-            "help_commands": "**Comandos:**\n",
-            "help_play": "• `!dice play` - Tira los dados (cuesta apuesta fija)\n",
-            "help_balance": "• `!dice balance` - Ver balance actual del bote\n",
-            "help_stats": "• `!dice stats` - Tus estadísticas personales\n",
-            "help_ranking": "• `!dice ranking` - Ranking de jugadores del servidor\n",
-            "help_history": "• `!dice history` - Últimas jugadas\n",
-            "help_config": "• `!dice config bet <cantidad>` (Admins) - Configurar apuesta fija\n",
-            "help_announcements": "• `!dice config announcements on/off` (Admins) - Activar/desactivar anuncios de grandes premios\n",
-            "help_prizes": "**Premios:**\n",
-            "help_triple_ones": "• **1-1-1** - ¡Gana todo el bote! 🎰\n",
-            "help_three_of_a_kind": "• **Tres iguales** - 3x apuesta\n",
-            "help_straight": "• **4-5-6** - 5x apuesta\n",
-            "help_pair": "• **Par** - 1x apuesta\n",
-            "help_additional_info": "**Info Adicional:**\n",
-            "help_partial_info": "• Los premios parciales los paga el banco\n",
-            "help_pot_info": "• ¡1-1-1 vacía todo el bote acumulado!\n",
-            "help_sent_private": "📩 Ayuda del juego de dados enviada por privado.",
-            "stats_sent_private": "📩 Estadísticas enviadas por privado.",
-            "sent_private": "📩 Balance del bote enviado por privado.",
-            "error_system_unavailable": "❌ El sistema del juego de dados no está disponible en este servidor.",
-            "error_getting_balance": "❌ Error al obtener el balance del bote.",
-            "error_game_database_access": "❌ Error accediendo a la base de datos del juego de dados.",
-            "ranking_no_players": "📊 **RANKING DEL JUEGO DE DADOS** - No hay jugadores registrados aún.",
-            "error_getting_ranking": "❌ Error obteniendo el ranking.",
-            "history_no_games": "📜 **ÚLTIMAS JUGADAS** - No hay juegos registrados aún.",
-            "error_getting_history": "❌ Error obteniendo el historial.",
-            "error_private_message": "❌ Este comando solo funciona en servidores, no en mensajes privados.",
-            "no_games_played": "🎲 **¡No has jugado aún!** - ¡Usa `!dice play` para empezar!",
-            "ranking_won": "💰 Ganado: {won}",
-            "ranking_games": "🎲 Juegos: {games}",
-            "ranking_balance_line": "📈 Balance: {balance} ({profitability:.1f}%)",
-            "ranking_title": "🏆 **RANKING DEL JUEGO DE DADOS - {server}** 🏆",
-            "history_title": "📜 **ÚLTIMAS JUGADAS** 📜",
-            "game_title": "🎲 **Jugador {player}**",
-            "game_dice": "🎲 Tirada: {dice}",
-            "game_combination": "→ {combination}",
-            "game_prize": "💰 Premio: {prize:,} monedas",
-            "game_date": "📅 {date}",
-            "medium_pot": "📈 **Bote mediano** - Ya vale la pena arriesgar, humano!\n",
-            "small_pot": "📉 **Bote pequeño** - Pocos muertos hoy, sigue creciendo!\n",
-            "big_pot": "🔥 **¡EL BOTE ARDE COMO ALDEA ELFIKA!** 🔥\n¡Hay **{balance:,}** monedas de oro! ¡Usa `!dice play` para robarlo o putre te pisa! 🎲"
         },
-        "ring":{
-            "canvas_ring_title": "**🎭 {_bot} Cazador del Anillo Uniko!**",
-            "canvas_ring_description": "🔍 Putre el cazador del anillo unico busca el artefacto perdido. Tu jefe te encargó encontrar esa joya maldita y no volverás hasta que la tengas. Interroga a los sospechosos y haz que hablen.",
-            "canvas_beggar_title": "**🎭 {_bot} Proyectos - Recaudaciones**",
-            "canvas_beggar_description": "Donar oro a Putre pa zus proiectos",
-            "title": "👁️ **PUTRE CAZADOR DEL ANILLO - {servidor}** 👁️\n",
-            "description": "🔍 Putre el cazador del anillo unico busca el artefacto perdido. Tu jefe te encargó encontrar esa joya maldita y no volverás hasta que la tengas. Interroga a los sospechosos y haz que hablen.",
-            "status_active": "✅ **CAZA ACTIVA** - Putre está buscando el anillo",
-            "status_inactive": "❌ **CAZA INACTIVA** - Putre está descansando",
-            "current_target": "🎯 **OBJETIVO ACTUAL:**",
-            "target_unknown": "👤 Ningun sospechoso selecionao",
-            "investigation_title": "🔍 **HASER UNA ACUSACIÓN:**",
-            "investigation_instructions": "• Usa **Ring: Accuse** del menú desplegable\n• Ingresa: @nombredeusuario, ID o nombre visible\n• La IA generará una acusación amenazante\n• La acusación se publicará en el canal",
-            "investigation_warning": "⚠️ **IMPORTANTE:**\n• No puedes acusarte a ti mismo\n• No puedes acusar bots\n• El ring debe estar activado por un admin",
-            "inactive_title": "⚠️ **LA CAZA ESTÁ INACTIVA**",
-            "inactive_instructions": "Para activar la funcionalidad del ring:\n• Un admin debe ir a **Ring Admin**\n• Hacer clic en **Ring: On** para activar\n• Configurar la frecuencia para investigaciones automáticas\n\nUna vez activado, puedes acusar usuarios de llevar el Anillo Único!",
-            "navigation_info": "📍 **NAVEGACIÓN:**\n• Estás en `trickster / ring / personal`\n• Usa `Admin` para controles de on/off y frecuencia\n• Selecciona **Ring: Accuse** del menú para hacer acusaciones"
+        "subrole_buttons": {
+          "dice": "🎲 Bote",
+          "ring": "👁️ Anillo", 
+          "beggar": "🙏 Limosna",
+          "runes": "🔮 Runas"
         },
-        "nordic_runes":{
-            "canvas_runes_title": "**🔮 {_bot} Runas Nórdicas Antiguas**",
-            "canvas_runes_description": "🔮 Putre el vidente de runas antiguas consulta los sabios del norte para revelar tu destino. Las runas Elder Futhark hablan con verdad y poder, mostrando el camino para guerreros y orcos por igual.",
-            "welcome": "🔮 ¡GRRR! Putre el sabio de las runas antiguas está listo para revelar tu destino, umano! Las runas nórdicas hablan con poder y verdad!",
-            "question_prompt": "🔮 ¡GRRR! ¿ke kieres saber umano jodido? ¡pregunta a las runas antiguas o putre te parte la kara!",
-            "reading_types": "🔮 ¡Tipos de lanzamientos de runas: single, three, cross, runic_cross!",
-            "invalid_type": "🔮 ¡GRRR! ¡Tipo de lanzamiento inválido umano baboso! ¡Uza: single, three, cross, runic_cross!",
-            "no_question": "🔮 ¡GRRR! ¡Necesitas hacer una pregunta a las runas, umano tonto! ¡no puedo leer tu mente!",
-            "reading_saved": "🔮 ¡UHHH! Putre guardó tu lectura de runas en los pergamino antiguos!",
-            "error": "🔮 ¡BLEGH! ¡La magia oscura rompió las runas! ¡intenta de nuevo umano!",
-            "single_cast": "🔮 **LANZAMIENTO DE RUNA ÚNICA** 🔮",
-            "three_cast": "🔮 **LANZAMIENTO DE TRES RUNAS** 🔮", 
-            "cross_cast": "🔮 **LANZAMIENTO DE CRUZ DE CINCO RUNAS** 🔮",
-            "history": "🔮 **HISTORIAL DE RUNAS ANTIGUAS** 🔮",
-            "types": "🔮 **TIPOS DE LANZAMIENTOS DE RUNAS** 🔮",
-            "help": "🔮 **SABIDURÍA DE RUNAS NÓRDICAS** 🔮",
-            "help_content": "🔮 **PUTRE EL VIDENTE DE RUNAS** 🔮\n\n**¿Ke son las Runas Nórdicas?**\n¡GRRR! Las runas Elder Futhark son los símbolos antiguos de los guerreros del norte, usadas por los vikingos para ver el futuro y recibir guía de los dioses!\n\n**Lanzamientos Disponibles:**\n• **Runa Única** - Guía rápida para preguntas específicas\n• **Tres Runas** - Pasado, Presente, Futuro del guerrero\n• **Cruz de Cinco** - Análisis completo de la batalla\n\n**¿Cómo usar?:**\n• ¡Usa los komandos: `!runes cast [tipo] <pregunta>`!\n• ¡Ejemplo: `!runes cast single ¿ke debería hacer hoy?`!\n\n**Las 24 Runas Elder Futhark:**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\n¡Cada runa lleva sabiduría antigua para tu camino de guerrero!",
-            "types_content": "🔮 **TIPOS DE LANZAMIENTOS DE RUNAS ANTIGUAS** 🔮\n\n**single** - Runa Única\n└ Guía rápida para una pregunta específica - Usa 1 runa\n\n**three** - Tres Runas\n└ Lectura de Pasado, Presente, Futuro - Usa 3 runas\n\n**cross** - Cruz de Cinco\n└ Análisis completo de la situación - Usa 5 runas\n\n**runic_cross** - Cruz Rúnica\n└ Lectura profunda de siete runas para guía espiritual - Usa 7 runas\n\n**Ejemplos de Uso:**\n`!runes cast single ¿ke debería hacer hoy?`\n`!runes cast three ¿ke me espera en el futuro?`\n`!runes cast cross Ayúdame a entender mi situación actual`\n\n¡GRRR! ¡Elige tu lanzamiento y pregunta a las runas antiguas!",
-            "history_empty": "🔮 ¡GRRR! ¡No tienes lecturas de runas anteriores umano baboso! ¡Lanza tu primera runa con `!runes cast`!",
-            "history_header": "🔮 **TUS LECTURAS DE RUNAS ANTIGUAS** (Últimas {count})",
-            "history_entry": "**ID {id}** - {type}\nPregunta: {question}\nRunas: {runes}\nFecha: {date}",
-            "stats": "\n**Total de Lecturas:** {total}\n**Tipo Favorito:** {favorite}",
-            "labels": {
-                "meaning": "Significado",
-                "keywords": "Palabras Clave",
-                "interpretation": "Interpretación",
-                "guidance": "Guía para tu pregunta",
-                "question": "Pregunta",
-                "success": "🔮 UHHH! The ancient runes have spoken, human!",
-                "saved": "🔮 UHHH! Putre saved your rune reading in the ancient scrolls!"
+        "dice_game": {
+          "waitmessage": "Tirando daos...Ezpera!",
+          "roll_title": "TUS GUESOS DIZEN:\n",
+          "combination_title": "RESULTAO:",
+          "prize_title": "BOTIN GANAO:",
+          "current_pot_title": " **💰 EL BOTE 💰**",
+          "ranking": " **:trophy:  PUNTUASIONE BOTE **",
+          "rankingvoid": " No a nadie en tabla umano!",
+          "historyvoid": " No a jugao nadie todavia umano!",
+          "history": " **📜  Istorial de jugas **",
+          "help": " **Aiuda del BOTE**\n Juega al BOTE de Putre, apuezta oro y tira dados pa ganar! Uza 'dice play' pa juga.\n Si el umano tira tres unos gana el BOTE!",
+          "title": "💰 **EL PUTRE BOTE - {servidor}** 💰\n",
+          "current_balance": "Oro amontonao:",
+          "fixed_bet": "Precio pa tira:",
+          "possible_plays": "🎯 **Apuesta reztante:** {jugadas}\n",
+          "use_command": "\n💡 ¡Usa `!dice play` para tirar los kraneos, umano baboso!",
+          "triple_ones": "¡¡¡🎱 TRES OJOS 🎱 DE GRUUMSH 🎱!!!",
+          "three_of_a_kind": "💀 TRES KR💀NEOS ROTOS 💀",
+          "straight": "🔪 INKURSION SANGRIENTA🔪 ",
+          "pair": "🐺 DOS COLMIYOS 🐺",
+          "nothing": "¡BASURAH!",
+          "no_prize": "{combination} - ¡NAH! ¡Sin premio! ¡Más oro para la orda, largate perdedor!",
+          "error_servers_only": "¡GRRR! Este comando solo funciona en servidores, umano estupido!",
+          "error_game_unavailable": "¡BLEGH! El juego de dados no está disponible en este servidor!",
+          "error_database_access": "¡GRRR! Error al acceder a las bases de datos del juego!",
+          "error_procesar_tirada": "¡GRRR! Error al procesar la tirada: {error}",
+          "help_titulo": "🎲 **AYUDA DEL BOTE DE PUTRE** 🎲",
+          "help_descripcion": "¡GRRR! Ponle a prueba tu suerte con el bote de Putre! 🎲\n\n",
+          "help_commands": "**Comandos:**\n",
+          "help_play": "• `!dice play` - Tira los dados (cuesta apuesta fija)\n",
+          "help_balance": "• `!dice balance` - Ver balance actual del bote\n",
+          "help_stats": "• `!dice stats` - Tus estadísticas personales\n",
+          "help_ranking": "• `!dice ranking` - Ranking de jugadores del servidor\n",
+          "help_history": "• `!dice history` - Últimas jugadas\n",
+          "help_config": "• `!dice config bet <cantidad>` (Admins) - Configurar apuesta fija\n",
+          "help_announcements": "• `!dice config announcements on/off` (Admins) - Activar/desactivar anuncios de grandes premios\n",
+          "help_additional_info": "**Info Adicional:**\n",
+          "help_partial_info": "• Los premios parciales los paga el banco\n",
+          "help_pot_info": "• ¡1-1-1 vacía todo el bote acumulado!\n",
+          "help_sent_private": "📩 Ayuda del juego de dados enviada por privado.",
+          "stats_sent_private": "📩 Estadísticas enviadas por privado.",
+          "sent_private": "📩 Balance del bote enviado por privado.",
+          "error_system_unavailable": "❌ El sistema del juego de dados no está disponible en este servidor.",
+          "error_getting_balance": "❌ Error al obtener el balance del bote.",
+          "error_game_database_access": "❌ Error accediendo a la base de datos del juego de dados.",
+          "ranking_no_players": "📊 **RANKING DEL JUEGO DE DADOS** - No hay jugadores registrados aún.",
+          "error_getting_ranking": "❌ Error obteniendo el ranking.",
+          "history_no_games": "📜 **ÚLTIMAS JUGADAS** - No hay juegos registrados aún.",
+          "error_getting_history": "❌ Error obteniendo el historial.",
+          "error_private_message": "❌ Este comando solo funciona en servidores, no en mensajes privados.",
+          "no_games_played": "🎲 **¡No has jugado aún!** - ¡Usa `!dice play` para empezar!",
+          "ranking_won": "💰 Ganado: {won}",
+          "ranking_games": "🎲 Juegos: {games}",
+          "ranking_balance_line": "📈 Balance: {balance} ({profitability:.1f}%)",
+          "ranking_title": "🏆 **RANKING DEL JUEGO DE DADOS - {server}** 🏆",
+          "history_title": "📜 **ÚLTIMAS JUGADAS** 📜",
+          "game_title": "🎲 **Jugador {player}**",
+          "game_dice": "🎲 Tirada: {dice}",
+          "game_combination": "→ {combination}",
+          "game_prize": "💰 Premio: {prize:,} monedas",
+          "game_date": "📅 {date}",
+          "medium_pot": "📈 **Bote mediano** - Ya vale la pena arriesgar, humano!\n",
+          "small_pot": "📉 **Bote pequeño** - Pocos muertos hoy, sigue creciendo!\n",
+          "dm_default_server_title": "🔔 **Usando servidor por defecto: {server_name}**",
+          "dm_default_server_message": "*Estás jugando desde DM, usando el primer servidor disponible.*",
+          "dm_default_server_separator": "─────────────────────────────────────────────",
+          "dm_no_servers_available": "❌ No hay servidores disponibles. Por favor ejecuta las acciones de dados desde un servidor.",
+          "dm_server_access_error": "❌ No se pudo acceder a un servidor. Por favor ejecuta las acciones de dados desde un servidor.",
+          "big_pot": "🔥 **¡EL BOTE ARDE COMO ALDEA ELFIKA!** 🔥\n¡Hay **{balance:,}** monedas de oro! ¡Usa `!dice play` para robarlo o putre te pisa! 🎲",
+          "rules":" -**Trio de ojos de GRUUMSH** 🎱 y llevate el **BOTE**!\n -Escalera alta **(4,5,6)** multiplica **x5** la apuesta! INKURSION SANGRIENTA 🔪 !\n - Lanza un cualquier **Trio** de calavaeras rotas 💀 y llevate un **x3** de la apuesta.\n - Un **Par** de colmillos 🐺 **te devolveran** la apuesta.\n ",
+          "description": "**Descripción:**¡GRRR! Pon a prueba tu suerte con el BOTE de Putre! 🎲 Tira los dados contra la banca y lleva todo el oro si puedes!"
+        },
+        "ring": {
+          "canvas_ring_title": "**🎭 {_bot} Cazador del Anillo Uniko!**",
+          "canvas_ring_description": "🔍 Putre el cazador del anillo unico busca el artefacto perdido. Tu jefe te encargó encontrar esa joya maldita y no volverás hasta que la tengas. Interroga a los sospechosos y haz que hablen.",
+          "canvas_beggar_title": "**🎭 {_bot} Proyectos - Recaudaciones**",
+          "canvas_beggar_description": "Donar oro a Putre pa zus proiectos",
+          "title": "👁️ **PUTRE CAZADOR DEL ANILLO - {servidor}** 👁️\n",
+          "description": "🔍 Putre el cazador del anillo unico busca el artefacto perdido. Tu jefe te encargó encontrar esa joya maldita y no volverás hasta que la tengas. Interroga a los sospechosos y haz que hablen.",
+          "status_active": "✅ **CAZA ACTIVA** - Putre está buscando el anillo",
+          "status_inactive": "❌ **CAZA INACTIVA** - Putre está descansando",
+          "current_target": "🎯 **OBJETIVO ACTUAL:**",
+          "target_unknown": "👤 Ningun sospechoso selecionao",
+          "investigation_title": "🔍 **HASER UNA ACUSACIÓN:**",
+          "investigation_instructions": "• Usa **Ring: Accuse** del menú desplegable\n• Ingresa: @nombredeusuario, ID o nombre visible\n• La IA generará una acusación amenazante\n• La acusación se publicará en el canal",
+          "investigation_warning": "⚠️ **IMPORTANTE:**\n• No puedes acusarte a ti mismo\n• No puedes acusar bots\n• El ring debe estar activado por un admin",
+          "inactive_title": "⚠️ **LA CAZA ESTÁ INACTIVA**",
+          "inactive_instructions": "Para activar la funcionalidad del ring:\n• Un admin debe ir a **Ring Admin**\n• Hacer clic en **Ring: On** para activar\n• Configurar la frecuencia para investigaciones automáticas\n\nUna vez activado, puedes acusar usuarios de llevar el Anillo Único!",
+          "navigation_info": "📍 **NAVEGACIÓN:**\n• Estás en `trickster / ring / personal`\n• Usa `Admin` para controles de on/off y frecuencia\n• Selecciona **Ring: Accuse** del menú para hacer acusaciones"
+        },
+        "nordic_runes": {
+          "canvas_runes_title": "**🔮 {_bot} Runas Nórdicas Antiguas**",
+          "canvas_runes_description": "🔮 Putre el vidente de runas antiguas consulta los sabios del norte para revelar tu destino. Las runas Elder Futhark hablan con verdad y poder, mostrando el camino para guerreros y orcos por igual.",
+          "welcome": "🔮 ¡GRRR! Putre el sabio de las runas antiguas está listo para revelar tu destino, umano! Las runas nórdicas hablan con poder y verdad!",
+          "question_prompt": "🔮 ¡GRRR! ¿ke kieres saber umano jodido? ¡pregunta a las runas antiguas o putre te parte la kara!",
+          "reading_types": "🔮 ¡Tipos de lanzamientos de runas: single, three, cross, runic_cross!",
+          "invalid_type": "🔮 ¡GRRR! ¡Tipo de lanzamiento inválido umano baboso! ¡Uza: single, three, cross, runic_cross!",
+          "no_question": "🔮 ¡GRRR! ¡Necesitas hacer una pregunta a las runas, umano tonto! ¡no puedo leer tu mente!",
+          "reading_saved": "🔮 ¡UHHH! Putre guardó tu lectura de runas en los pergamino antiguos!",
+          "error": "🔮 ¡BLEGH! ¡La magia oscura rompió las runas! ¡intenta de nuevo umano!",
+          "single_cast": "🔮 **LANZAMIENTO DE RUNA ÚNICA** 🔮",
+          "three_cast": "🔮 **LANZAMIENTO DE TRES RUNAS** 🔮",
+          "cross_cast": "🔮 **LANZAMIENTO DE CRUZ DE CINCO RUNAS** 🔮",
+          "history": "🔮 **HISTORIAL DE RUNAS ANTIGUAS** 🔮",
+          "types": "🔮 **TIPOS DE LANZAMIENTOS DE RUNAS** 🔮",
+          "help": "🔮 **SABIDURÍA DE RUNAS NÓRDICAS** 🔮",
+          "help_content": "🔮 **PUTRE EL VIDENTE DE RUNAS** 🔮\n\n**¿Ke son las Runas Nórdicas?**\n¡GRRR! Las runas Elder Futhark son los símbolos antiguos de los guerreros del norte, usadas por los vikingos para ver el futuro y recibir guía de los dioses!\n\n**Lanzamientos Disponibles:**\n• **Runa Única** - Guía rápida para preguntas específicas\n• **Tres Runas** - Pasado, Presente, Futuro del guerrero\n• **Cruz de Cinco** - Análisis completo de la batalla\n\n**¿Cómo usar?:**\n• ¡Usa los komandos: `!runes cast [tipo] <pregunta>`!\n• ¡Ejemplo: `!runes cast single ¿ke debería hacer hoy?`!\n\n**Las 24 Runas Elder Futhark:**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\n¡Cada runa lleva sabiduría antigua para tu camino de guerrero!",
+          "types_content": "🔮 **TIPOS DE LANZAMIENTOS DE RUNAS ANTIGUAS** 🔮\n\n**single** - Runa Única\n└ Guía rápida para una pregunta específica - Usa 1 runa\n\n**three** - Tres Runas\n└ Lectura de Pasado, Presente, Futuro - Usa 3 runas\n\n**cross** - Cruz de Cinco\n└ Análisis completo de la situación - Usa 5 runas\n\n**runic_cross** - Cruz Rúnica\n└ Lectura profunda de siete runas para guía espiritual - Usa 7 runas\n\n**Ejemplos de Uso:**\n`!runes cast single ¿ke debería hacer hoy?`\n`!runes cast three ¿ke me espera en el futuro?`\n`!runes cast cross Ayúdame a entender mi situación actual`\n\n¡GRRR! ¡Elige tu lanzamiento y pregunta a las runas antiguas!",
+          "history_empty": "🔮 ¡GRRR! ¡No tienes lecturas de runas anteriores umano baboso! ¡Lanza tu primera runa con `!runes cast`!",
+          "history_header": "🔮 **TUS LECTURAS DE RUNAS ANTIGUAS** (Últimas {count})",
+          "history_entry": "**ID {id}** - {type}\nPregunta: {question}\nRunas: {runes}\nFecha: {date}",
+          "stats": "\n**Total de Lecturas:** {total}\n**Tipo Favorito:** {favorite}",
+          "labels": {
+            "meaning": "Significado",
+            "keywords": "Palabras Clave",
+            "interpretation": "Interpretación",
+            "guidance": "Guía para tu pregunta",
+            "question": "Pregunta",
+            "success": "🔮 UHHH! The ancient runes have spoken, human!",
+            "saved": "🔮 UHHH! Putre saved your rune reading in the ancient scrolls!"
+          },
+          "translations": {
+            "fehu": {
+              "meaning": "Riqueza, Ganado, Posesiones",
+              "keywords": "riqueza, abundancia, éxito, prosperidad, ganancia material",
+              "interpretation": "Representa riqueza material, prosperidad y éxito en asuntos financieros."
             },
-            "translations": {
-                "fehu": {
-                    "meaning": "Riqueza, Ganado, Posesiones",
-                    "keywords": "riqueza, abundancia, éxito, prosperidad, ganancia material",
-                    "interpretation": "Representa riqueza material, prosperidad y éxito en asuntos financieros."
-                },
-                "uruz": {
-                    "meaning": "Fuerza, Poder, Energía Primordial",
-                    "keywords": "fuerza, poder, energía, vitalidad, coraje",
-                    "interpretation": "Simboliza fuerza física, energía primal y la capacidad de superar desafíos."
-                },
-                "thurisaz": {
-                    "meaning": "Gigante, Protección, Defensa",
-                    "keywords": "protección, defensa, fuerza, poder, gateway",
-                    "interpretation": "Representa protección, defensa y el poder para enfrentar obstáculos."
-                },
-                "ansuz": {
-                    "meaning": "Dios, Comunicación, Sabiduría Divina",
-                    "keywords": "comunicación, sabiduría, conocimiento, mensajes divinos",
-                    "interpretation": "Simboliza comunicación clara, sabiduría divina y mensajes de los dioses."
-                },
-                "raidho": {
-                    "meaning": "Viaje, Movimiento, Camino",
-                    "keywords": "viaje, movimiento, camino, progreso, cambio",
-                    "interpretation": "Representa viajes, movimiento en la vida y progreso personal."
-                },
-                "kenaz": {
-                    "meaning": "Antorcha, Conocimiento, Claridad",
-                    "keywords": "conocimiento, claridad, visión, creatividad, inspiración",
-                    "interpretation": "Simboliza iluminación, conocimiento y claridad mental."
-                },
-                "gebo": {
-                    "meaning": "Regalo, Asociación, Equilibrio",
-                    "keywords": "regalo, asociación, equilibrio, unión, intercambio",
-                    "interpretation": "Representa uniones, equilibrio y el intercambio mutuo."
-                },
-                "wunjo": {
-                    "meaning": "Alegría, Gozo, Victoria",
-                    "keywords": "alegría, gozo, victoria, felicidad, éxito",
-                    "interpretation": "Simboliza alegría, gozo y el éxito que viene de la armonía."
-                },
-                "hagalaz": {
-                    "meaning": "Granizo, Disrupción, Cambio",
-                    "keywords": "cambio, disrupción, transformación, caos controlado",
-                    "interpretation": "Representa cambio inevitable y transformación necesaria."
-                },
-                "nauthiz": {
-                    "meaning": "Necesidad, Constricción, Superación",
-                    "keywords": "necesidad, constricción, superación, resistencia, fuerza",
-                    "interpretation": "Simboliza la necesidad que fuerza al crecimiento y la superación."
-                },
-                "isa": {
-                    "meaning": "Hielo, Detención, Quietud",
-                    "keywords": "hielo, detención, quietud, paciencia, reflexión",
-                    "interpretation": "Representa pausa necesaria y tiempo para reflexión."
-                },
-                "jera": {
-                    "meaning": "Cosecha, Ciclo, Recompensa",
-                    "keywords": "cosecha, ciclo, recompensa, esfuerzo, resultado",
-                    "interpretation": "Simboliza el ciclo natural y la recompensa por el esfuerzo."
-                },
-                "eiwaz": {
-                    "meaning": "Tejo, Defensa, Transformación",
-                    "keywords": "defensa, transformación, resistencia, supervivencia, cambio",
-                    "interpretation": "Representa transformación a través de la resistencia y la adaptación."
-                },
-                "perthro": {
-                    "meaning": "Sorte, Misterio, Destino",
-                    "keywords": "sorte, misterio, destino, secreto, oculto",
-                    "interpretation": "Simboliza los misterios del destino y lo oculto."
-                },
-                "algiz": {
-                    "meaning": "Protección, Defensa Divina, Escudo",
-                    "keywords": "protección, defensa divina, escudo, seguridad, guía",
-                    "interpretation": "Representa protección divina y defensa espiritual."
-                },
-                "sowilo": {
-                    "meaning": "Sol, Victoria, Éxito",
-                    "keywords": "sol, victoria, éxito, logro, iluminación",
-                    "interpretation": "Simboliza éxito, victoria y la energía del sol."
-                },
-                "tiwaz": {
-                    "meaning": "Tyr, Justicia, Honor",
-                    "keywords": "justicia, honor, coraje, sacrificio, verdad",
-                    "interpretation": "Representa justicia, honor y el coraje de hacer lo correcto."
-                },
-                "berkano": {
-                    "meaning": "Abedul, Crecimiento, Renovación",
-                    "keywords": "crecimiento, renovación, nacimiento, fertilidad, nueva vida",
-                    "interpretation": "Simboliza crecimiento, renovación y nuevos comienzos."
-                },
-                "ehwaz": {
-                    "meaning": "Caballo, Movimiento, Cooperación",
-                    "keywords": "movimiento, cooperación, viaje, progreso, unión",
-                    "interpretation": "Representa movimiento cooperativo y progreso conjunto."
-                },
-                "mannaz": {
-                    "meaning": "Humanidad, Humanos, Cooperación",
-                    "keywords": "humanidad, cooperación, comunidad, relaciones, apoyo",
-                    "interpretation": "Simboliza la cooperación humana y las relaciones comunitarias."
-                },
-                "laguz": {
-                    "meaning": "Agua, Intuición, Flujo",
-                    "keywords": "agua, intuición, flujo, emociones, curación",
-                    "interpretation": "Representa intuición, flujo emocional y curación."
-                },
-                "ingwaz": {
-                    "meaning": "Ingwaz, Potencial, Crecimiento Interno",
-                    "keywords": "potencial, crecimiento interno, paciencia, desarrollo",
-                    "interpretation": "Simboliza el potencial latente y el crecimiento paciente."
-                },
-                "dagaz": {
-                    "meaning": "Día, Amanecer, Breakthrough",
-                    "keywords": "día, amanecer, breakthrough, claridad, nueva oportunidad",
-                    "interpretation": "Representa el amanecer y las nuevas oportunidades."
-                },
-                "othala": {
-                    "meaning": "Herencia, Hogar, Legado",
-                    "keywords": "herencia, hogar, legado, tradición, seguridad",
-                    "interpretation": "Simboliza herencia, hogar y la seguridad del legado."
-                }
+            "uruz": {
+              "meaning": "Fuerza, Poder, Energía Primordial",
+              "keywords": "fuerza, poder, energía, vitalidad, coraje",
+              "interpretation": "Simboliza fuerza física, energía primal y la capacidad de superar desafíos."
             },
-            "interpretation_header": "**Pregunta:** {question}\n\n",
-            "guidance": {
-                "love": {
-                    "fehu": "Para asuntos del corazón, Fehu sugiere enfocarse en la abundancia compartida y la armonía material en tu relación, umano.",
-                    "uruz": "La energía apasionada y la conexión primal están destacadas en tu vida amorosa.",
-                    "thurisaz": "Protege tu relación de influencias negativas y enfrenta los desafíos juntos.",
-                    "ansuz": "La comunicación clara y la expresión honesta son esenciales para tu relación.",
-                    "raidho": "Tu viaje amoroso requiere movimiento y exploración de nuevos horizontes.",
-                    "kenaz": "La claridad y la visión iluminarán tu camino romántico.",
-                    "gebo": "El equilibrio y el intercambio mutuo son clave para la armonía de tu relación.",
-                    "wunjo": "El gozo y la felicidad están fluyendo en tu vida amorosa, umano afortunado.",
-                    "hagalaz": "Los cambios inesperados pueden transformar tu relación para mejor.",
-                    "nauthiz": "Las dificultades fortalecen los lazos y revelan verdaderas necesidades.",
-                    "isa": "Un período de estabilidad y quietud puede ser necesario para tu relación.",
-                    "jera": "El ciclo natural de tu relación traerá recompensas a su debido tiempo.",
-                    "eiwaz": "La transformación y la resistencia son necesarias para el crecimiento amoroso.",
-                    "perthro": "Los misterios del destino están trabajando en tu vida amorosa.",
-                    "algiz": "Protege tu relación con energía divina y escudos espirituales.",
-                    "sowilo": "El éxito y la victoria iluminan tu camino romántico.",
-                    "tiwaz": "Actúa con honor y justicia en tus relaciones amorosas.",
-                    "berkano": "El crecimiento nutritivo y los nuevos comienzos en las relaciones.",
-                    "ehwaz": "El movimiento cooperativo y el progreso conjunto fortalecen tu relación.",
-                    "mannaz": "Enfócate en el entendimiento y la cooperación con tu pareja.",
-                    "laguz": "Confía en tu intuición y el flujo emocional en asuntos del corazón.",
-                    "ingwaz": "El crecimiento paciente y el potencial fértil en tu relación.",
-                    "dagaz": "Un amanecer y nuevas oportunidades esperan en tu vida amorosa.",
-                    "othala": "Tu herencia y tradiciones familiares guían tus relaciones."
-                },
-                "career": {
-                    "fehu": "El éxito material y la abundancia financiera están indicados en tu camino profesional.",
-                    "uruz": "Afirma tu fuerza y toma acciones audaces en tu carrera.",
-                    "thurisaz": "Protege tus intereses y enfrenta los desafíos laborales de frente.",
-                    "ansuz": "La comunicación clara y el conocimiento esencial impulsarán tu carrera.",
-                    "raidho": "El viaje y el movimiento en tu camino profesional están por venir.",
-                    "kenaz": "Las soluciones creativas y la claridad intelectual te guiarán.",
-                    "gebo": "Las asociaciones profesionales y el intercambio mutuo traerán éxito.",
-                    "wunjo": "El gozo y la satisfacción están fluyendo en tu trabajo.",
-                    "hagalaz": "Los cambios disruptivos pueden crear nuevas oportunidades profesionales.",
-                    "nauthiz": "Las presiones laborales te impulsarán a encontrar soluciones creativas.",
-                    "isa": "Un período de pausa y reflexión puede ser necesario para tu carrera.",
-                    "jera": "Tus esfuerzos profesionales darán frutos a su debido tiempo.",
-                    "eiwaz": "La resistencia y la adaptación son clave para el progreso profesional.",
-                    "perthro": "Los misterios del destino revelan oportunidades inesperadas en tu trabajo.",
-                    "algiz": "Protege tu carrera con sabiduría y defensa estratégica.",
-                    "sowilo": "El éxito y la victoria en tus emprendimientos profesionales.",
-                    "tiwaz": "Actúa con honor y justicia en tu lugar de trabajo.",
-                    "berkano": "El crecimiento profesional y nuevos comienzos están por venir.",
-                    "ehwaz": "El movimiento cooperativo y el trabajo en equipo impulsarán tu éxito.",
-                    "mannaz": "La cooperación y las relaciones profesionales son fundamentales.",
-                    "laguz": "Confía en tu intuición y flujo creativo en decisiones laborales.",
-                    "ingwaz": "El potencial latente se desarrollará gradualmente en tu carrera.",
-                    "dagaz": "Un breakthrough y nuevas oportunidades están emergiendo.",
-                    "othala": "Tu herencia y habilidades tradicionales son valiosas en tu trabajo."
-                },
-                "health": {
-                    "fehu": "La salud física y el bienestar material están relacionados con tu vitalidad.",
-                    "uruz": "Enfócate en construir fuerza física y vitalidad.",
-                    "thurisaz": "Protege tu salud de amenazas y enfrenta los desafíos médicos con fuerza.",
-                    "ansuz": "La comunicación clara con tu cuerpo y médicos es esencial para la sanación.",
-                    "raidho": "El viaje hacia la salud requiere movimiento y cambios positivos.",
-                    "kenaz": "La claridad mental y el conocimiento iluminarán tu camino hacia la sanación.",
-                    "gebo": "El equilibrio entre cuerpo y mente es fundamental para tu salud.",
-                    "wunjo": "El gozo y la felicidad contribuyen significativamente a tu bienestar.",
-                    "hagalaz": "Los cambios de salud pueden ser disruptivos pero necesarios para la sanación.",
-                    "nauthiz": "Las necesidades de salud revelan áreas que requieren atención inmediata.",
-                    "isa": "Un período de descanso y quietud puede ser necesario para tu salud.",
-                    "jera": "Ciclos de sanación natural y recuperación gradual.",
-                    "eiwaz": "La resistencia y la adaptación son clave para superar desafíos de salud.",
-                    "perthro": "Los misterios de la sanación están trabajando en tu cuerpo.",
-                    "algiz": "Protege tu salud y busca energía de sanación divina.",
-                    "sowilo": "Energía de fuerza vital y luz de sanación están disponibles.",
-                    "tiwaz": "Actúa con coraje y disciplina en tus hábitos de salud.",
-                    "berkano": "Crecimiento, renovación y procesos de sanación naturales.",
-                    "ehwaz": "El movimiento y el flujo natural son esenciales para tu salud.",
-                    "mannaz": "La cooperación con profesionales de la salud apoya tu bienestar.",
-                    "laguz": "Sanación emocional y energías de limpieza.",
-                    "ingwaz": "Energía almacenada y restauración gradual de la salud.",
-                    "dagaz": "Un breakthrough en tu salud y nuevas oportunidades de bienestar.",
-                    "othala": "Tu herencia genética y tradiciones familiares influyen en tu salud."
-                },
-                "path": {
-                    "fehu": "Tu camino material y financiero está fluyendo hacia la abundancia.",
-                    "uruz": "Tu camino requiere fuerza primal y energía para superar obstáculos.",
-                    "thurisaz": "Protege tu camino de influencias negativas y enfrenta los desafíos con coraje.",
-                    "ansuz": "Los mensajes divinos guiarán tu camino hacia adelante.",
-                    "raidho": "Tu viaje requiere movimiento y exploración en tu camino de vida.",
-                    "kenaz": "La claridad y la visión iluminarán tu camino.",
-                    "gebo": "Las asociaciones y el equilibrio mutuo definirán tu camino.",
-                    "wunjo": "El gozo y la felicidad están fluyendo en tu camino de vida.",
-                    "hagalaz": "Los cambios disruptivos son necesarios para evolucionar en tu camino.",
-                    "nauthiz": "Las necesidades y restricciones revelan la verdadera dirección de tu camino.",
-                    "isa": "Un período de pausa y reflexión es necesario para tu camino.",
-                    "jera": "El ciclo natural de tu camino traerá recompensas a su debido tiempo.",
-                    "eiwaz": "La transformación y la resistencia son necesarias en tu camino.",
-                    "perthro": "El misterio y el destino están trabajando en tu viaje.",
-                    "algiz": "Protege tu camino con guía divina y escudos espirituales.",
-                    "sowilo": "El éxito y la victoria iluminan tu camino de vida.",
-                    "tiwaz": "Actúa con honor y justicia en las decisiones de tu camino.",
-                    "berkano": "El crecimiento y nuevos comienzos definen tu camino actual.",
-                    "ehwaz": "El movimiento cooperativo y el progreso conjunto marcan tu camino.",
-                    "mannaz": "Tu camino implica cooperación y comunidad.",
-                    "laguz": "Confía en tu intuición y el flujo emocional en tu camino.",
-                    "ingwaz": "El potencial latente se desarrollará gradualmente en tu camino.",
-                    "dagaz": "Un amanecer y un nuevo futuro te esperan.",
-                    "othala": "Tu herencia y sabiduría ancestral guían tu camino."
-                },
-                "general": {
-                    "default": "Esta runa ofrece sabiduría antigua para tu situación actual."
-                }
+            "thurisaz": {
+              "meaning": "Gigante, Protección, Defensa",
+              "keywords": "protección, defensa, fuerza, poder, gateway",
+              "interpretation": "Representa protección, defensa y el poder para enfrentar obstáculos."
+            },
+            "ansuz": {
+              "meaning": "Dios, Comunicación, Sabiduría Divina",
+              "keywords": "comunicación, sabiduría, conocimiento, mensajes divinos",
+              "interpretation": "Simboliza comunicación clara, sabiduría divina y mensajes de los dioses."
+            },
+            "raidho": {
+              "meaning": "Viaje, Movimiento, Camino",
+              "keywords": "viaje, movimiento, camino, progreso, cambio",
+              "interpretation": "Representa viajes, movimiento en la vida y progreso personal."
+            },
+            "kenaz": {
+              "meaning": "Antorcha, Conocimiento, Claridad",
+              "keywords": "conocimiento, claridad, visión, creatividad, inspiración",
+              "interpretation": "Simboliza iluminación, conocimiento y claridad mental."
+            },
+            "gebo": {
+              "meaning": "Regalo, Asociación, Equilibrio",
+              "keywords": "regalo, asociación, equilibrio, unión, intercambio",
+              "interpretation": "Representa uniones, equilibrio y el intercambio mutuo."
+            },
+            "wunjo": {
+              "meaning": "Alegría, Gozo, Victoria",
+              "keywords": "alegría, gozo, victoria, felicidad, éxito",
+              "interpretation": "Simboliza alegría, gozo y el éxito que viene de la armonía."
+            },
+            "hagalaz": {
+              "meaning": "Granizo, Disrupción, Cambio",
+              "keywords": "cambio, disrupción, transformación, caos controlado",
+              "interpretation": "Representa cambio inevitable y transformación necesaria."
+            },
+            "nauthiz": {
+              "meaning": "Necesidad, Constricción, Superación",
+              "keywords": "necesidad, constricción, superación, resistencia, fuerza",
+              "interpretation": "Simboliza la necesidad que fuerza al crecimiento y la superación."
+            },
+            "isa": {
+              "meaning": "Hielo, Detención, Quietud",
+              "keywords": "hielo, detención, quietud, paciencia, reflexión",
+              "interpretation": "Representa pausa necesaria y tiempo para reflexión."
+            },
+            "jera": {
+              "meaning": "Cosecha, Ciclo, Recompensa",
+              "keywords": "cosecha, ciclo, recompensa, esfuerzo, resultado",
+              "interpretation": "Simboliza el ciclo natural y la recompensa por el esfuerzo."
+            },
+            "eiwaz": {
+              "meaning": "Tejo, Defensa, Transformación",
+              "keywords": "defensa, transformación, resistencia, supervivencia, cambio",
+              "interpretation": "Representa transformación a través de la resistencia y la adaptación."
+            },
+            "perthro": {
+              "meaning": "Sorte, Misterio, Destino",
+              "keywords": "sorte, misterio, destino, secreto, oculto",
+              "interpretation": "Simboliza los misterios del destino y lo oculto."
+            },
+            "algiz": {
+              "meaning": "Protección, Defensa Divina, Escudo",
+              "keywords": "protección, defensa divina, escudo, seguridad, guía",
+              "interpretation": "Representa protección divina y defensa espiritual."
+            },
+            "sowilo": {
+              "meaning": "Sol, Victoria, Éxito",
+              "keywords": "sol, victoria, éxito, logro, iluminación",
+              "interpretation": "Simboliza éxito, victoria y la energía del sol."
+            },
+            "tiwaz": {
+              "meaning": "Tyr, Justicia, Honor",
+              "keywords": "justicia, honor, coraje, sacrificio, verdad",
+              "interpretation": "Representa justicia, honor y el coraje de hacer lo correcto."
+            },
+            "berkano": {
+              "meaning": "Abedul, Crecimiento, Renovación",
+              "keywords": "crecimiento, renovación, nacimiento, fertilidad, nueva vida",
+              "interpretation": "Simboliza crecimiento, renovación y nuevos comienzos."
+            },
+            "ehwaz": {
+              "meaning": "Caballo, Movimiento, Cooperación",
+              "keywords": "movimiento, cooperación, viaje, progreso, unión",
+              "interpretation": "Representa movimiento cooperativo y progreso conjunto."
+            },
+            "mannaz": {
+              "meaning": "Humanidad, Humanos, Cooperación",
+              "keywords": "humanidad, cooperación, comunidad, relaciones, apoyo",
+              "interpretation": "Simboliza la cooperación humana y las relaciones comunitarias."
+            },
+            "laguz": {
+              "meaning": "Agua, Intuición, Flujo",
+              "keywords": "agua, intuición, flujo, emociones, curación",
+              "interpretation": "Representa intuición, flujo emocional y curación."
+            },
+            "ingwaz": {
+              "meaning": "Ingwaz, Potencial, Crecimiento Interno",
+              "keywords": "potencial, crecimiento interno, paciencia, desarrollo",
+              "interpretation": "Simboliza el potencial latente y el crecimiento paciente."
+            },
+            "dagaz": {
+              "meaning": "Día, Amanecer, Breakthrough",
+              "keywords": "día, amanecer, breakthrough, claridad, nueva oportunidad",
+              "interpretation": "Representa el amanecer y las nuevas oportunidades."
+            },
+            "othala": {
+              "meaning": "Herencia, Hogar, Legado",
+              "keywords": "herencia, hogar, legado, tradición, seguridad",
+              "interpretation": "Simboliza herencia, hogar y la seguridad del legado."
             }
+          },
+          "interpretation_header": "**Pregunta:** {question}\n\n",
+          "guidance": {
+            "love": {
+              "fehu": "Para asuntos del corazón, Fehu sugiere enfocarse en la abundancia compartida y la armonía material en tu relación, umano.",
+              "uruz": "La energía apasionada y la conexión primal están destacadas en tu vida amorosa.",
+              "thurisaz": "Protege tu relación de influencias negativas y enfrenta los desafíos juntos.",
+              "ansuz": "La comunicación clara y la expresión honesta son esenciales para tu relación.",
+              "raidho": "Tu viaje amoroso requiere movimiento y exploración de nuevos horizontes.",
+              "kenaz": "La claridad y la visión iluminarán tu camino romántico.",
+              "gebo": "El equilibrio y el intercambio mutuo son clave para la armonía de tu relación.",
+              "wunjo": "El gozo y la felicidad están fluyendo en tu vida amorosa, umano afortunado.",
+              "hagalaz": "Los cambios inesperados pueden transformar tu relación para mejor.",
+              "nauthiz": "Las dificultades fortalecen los lazos y revelan verdaderas necesidades.",
+              "isa": "Un período de estabilidad y quietud puede ser necesario para tu relación.",
+              "jera": "El ciclo natural de tu relación traerá recompensas a su debido tiempo.",
+              "eiwaz": "La transformación y la resistencia son necesarias para el crecimiento amoroso.",
+              "perthro": "Los misterios del destino están trabajando en tu vida amorosa.",
+              "algiz": "Protege tu relación con energía divina y escudos espirituales.",
+              "sowilo": "El éxito y la victoria iluminan tu camino romántico.",
+              "tiwaz": "Actúa con honor y justicia en tus relaciones amorosas.",
+              "berkano": "El crecimiento nutritivo y los nuevos comienzos en las relaciones.",
+              "ehwaz": "El movimiento cooperativo y el progreso conjunto fortalecen tu relación.",
+              "mannaz": "Enfócate en el entendimiento y la cooperación con tu pareja.",
+              "laguz": "Confía en tu intuición y el flujo emocional en asuntos del corazón.",
+              "ingwaz": "El crecimiento paciente y el potencial fértil en tu relación.",
+              "dagaz": "Un amanecer y nuevas oportunidades esperan en tu vida amorosa.",
+              "othala": "Tu herencia y tradiciones familiares guían tus relaciones."
+            },
+            "career": {
+              "fehu": "El éxito material y la abundancia financiera están indicados en tu camino profesional.",
+              "uruz": "Afirma tu fuerza y toma acciones audaces en tu carrera.",
+              "thurisaz": "Protege tus intereses y enfrenta los desafíos laborales de frente.",
+              "ansuz": "La comunicación clara y el conocimiento esencial impulsarán tu carrera.",
+              "raidho": "El viaje y el movimiento en tu camino profesional están por venir.",
+              "kenaz": "Las soluciones creativas y la claridad intelectual te guiarán.",
+              "gebo": "Las asociaciones profesionales y el intercambio mutuo traerán éxito.",
+              "wunjo": "El gozo y la satisfacción están fluyendo en tu trabajo.",
+              "hagalaz": "Los cambios disruptivos pueden crear nuevas oportunidades profesionales.",
+              "nauthiz": "Las presiones laborales te impulsarán a encontrar soluciones creativas.",
+              "isa": "Un período de pausa y reflexión puede ser necesario para tu carrera.",
+              "jera": "Tus esfuerzos profesionales darán frutos a su debido tiempo.",
+              "eiwaz": "La resistencia y la adaptación son clave para el progreso profesional.",
+              "perthro": "Los misterios del destino revelan oportunidades inesperadas en tu trabajo.",
+              "algiz": "Protege tu carrera con sabiduría y defensa estratégica.",
+              "sowilo": "El éxito y la victoria en tus emprendimientos profesionales.",
+              "tiwaz": "Actúa con honor y justicia en tu lugar de trabajo.",
+              "berkano": "El crecimiento profesional y nuevos comienzos están por venir.",
+              "ehwaz": "El movimiento cooperativo y el trabajo en equipo impulsarán tu éxito.",
+              "mannaz": "La cooperación y las relaciones profesionales son fundamentales.",
+              "laguz": "Confía en tu intuición y flujo creativo en decisiones laborales.",
+              "ingwaz": "El potencial latente se desarrollará gradualmente en tu carrera.",
+              "dagaz": "Un breakthrough y nuevas oportunidades están emergiendo.",
+              "othala": "Tu herencia y habilidades tradicionales son valiosas en tu trabajo."
+            },
+            "health": {
+              "fehu": "La salud física y el bienestar material están relacionados con tu vitalidad.",
+              "uruz": "Enfócate en construir fuerza física y vitalidad.",
+              "thurisaz": "Protege tu salud de amenazas y enfrenta los desafíos médicos con fuerza.",
+              "ansuz": "La comunicación clara con tu cuerpo y médicos es esencial para la sanación.",
+              "raidho": "El viaje hacia la salud requiere movimiento y cambios positivos.",
+              "kenaz": "La claridad mental y el conocimiento iluminarán tu camino hacia la sanación.",
+              "gebo": "El equilibrio entre cuerpo y mente es fundamental para tu salud.",
+              "wunjo": "El gozo y la felicidad contribuyen significativamente a tu bienestar.",
+              "hagalaz": "Los cambios de salud pueden ser disruptivos pero necesarios para la sanación.",
+              "nauthiz": "Las necesidades de salud revelan áreas que requieren atención inmediata.",
+              "isa": "Un período de descanso y quietud puede ser necesario para tu salud.",
+              "jera": "Ciclos de sanación natural y recuperación gradual.",
+              "eiwaz": "La resistencia y la adaptación son clave para superar desafíos de salud.",
+              "perthro": "Los misterios de la sanación están trabajando en tu cuerpo.",
+              "algiz": "Protege tu salud y busca energía de sanación divina.",
+              "sowilo": "Energía de fuerza vital y luz de sanación están disponibles.",
+              "tiwaz": "Actúa con coraje y disciplina en tus hábitos de salud.",
+              "berkano": "Crecimiento, renovación y procesos de sanación naturales.",
+              "ehwaz": "El movimiento y el flujo natural son esenciales para tu salud.",
+              "mannaz": "La cooperación con profesionales de la salud apoya tu bienestar.",
+              "laguz": "Sanación emocional y energías de limpieza.",
+              "ingwaz": "Energía almacenada y restauración gradual de la salud.",
+              "dagaz": "Un breakthrough en tu salud y nuevas oportunidades de bienestar.",
+              "othala": "Tu herencia genética y tradiciones familiares influyen en tu salud."
+            },
+            "path": {
+              "fehu": "Tu camino material y financiero está fluyendo hacia la abundancia.",
+              "uruz": "Tu camino requiere fuerza primal y energía para superar obstáculos.",
+              "thurisaz": "Protege tu camino de influencias negativas y enfrenta los desafíos con coraje.",
+              "ansuz": "Los mensajes divinos guiarán tu camino hacia adelante.",
+              "raidho": "Tu viaje requiere movimiento y exploración en tu camino de vida.",
+              "kenaz": "La claridad y la visión iluminarán tu camino.",
+              "gebo": "Las asociaciones y el equilibrio mutuo definirán tu camino.",
+              "wunjo": "El gozo y la felicidad están fluyendo en tu camino de vida.",
+              "hagalaz": "Los cambios disruptivos son necesarios para evolucionar en tu camino.",
+              "nauthiz": "Las necesidades y restricciones revelan la verdadera dirección de tu camino.",
+              "isa": "Un período de pausa y reflexión es necesario para tu camino.",
+              "jera": "El ciclo natural de tu camino traerá recompensas a su debido tiempo.",
+              "eiwaz": "La transformación y la resistencia son necesarias en tu camino.",
+              "perthro": "El misterio y el destino están trabajando en tu viaje.",
+              "algiz": "Protege tu camino con guía divina y escudos espirituales.",
+              "sowilo": "El éxito y la victoria iluminan tu camino de vida.",
+              "tiwaz": "Actúa con honor y justicia en las decisiones de tu camino.",
+              "berkano": "El crecimiento y nuevos comienzos definen tu camino actual.",
+              "ehwaz": "El movimiento cooperativo y el progreso conjunto marcan tu camino.",
+              "mannaz": "Tu camino implica cooperación y comunidad.",
+              "laguz": "Confía en tu intuición y el flujo emocional en tu camino.",
+              "ingwaz": "El potencial latente se desarrollará gradualmente en tu camino.",
+              "dagaz": "Un amanecer y un nuevo futuro te esperan.",
+              "othala": "Tu herencia y sabiduría ancestral guían tu camino."
+            },
+            "general": {
+              "default": "Esta runa ofrece sabiduría antigua para tu situación actual."
+            }
+          }
         }
       },
       "banker": {
         "title": "**💰 El Gran Kofre de Putre**",
         "description": "El orco tesorero te administra tus cuentas y transacciones de oro.",
-        "button": "Tesorero",
+        "button": "💰 Tesorero",
         "current_balance": "💎 Botin Zakeado Aora",
         "account_holder": "👤 Umano Zakeador",
         "bank": "🏦 Kueva del Tesoro de la Orda",
@@ -466,7 +512,7 @@
       "mc": {
         "title": "**🎵 MC Putre a los tambores!**",
         "description": "MC Putre, invitalo a un canal de voz para que reproduzca musica por ti.",
-        "button": "MC",
+        "button": "🎵 MC",
         "canvas_mc_title": "**🎵 MC Putre a los tambores!**",
         "canvas_mc_subtitle": "Klavijas de kontrol",
         "canvas_mc_separator": "──────────────────────────────",
@@ -474,55 +520,76 @@
         "canvas_mc_voice_required": "Rekiere ke eztes konectao a un kanal de voh",
         "canvas_mc_admin_title": "🎵 MC Putre • admin view"
       }
-
     },
     "behavior_messages": {
       "status": "Estado actual:",
-      "conversation":{
+      "conversation": {
         "title": "**💬 Putre - Conversacion**",
         "description": "**Descripción:**\n -Putre reacionará a DM y menciones.\n -Tiene memoria persistente e interactiva, puedes preguntarle por algo que ocurrió, puede que le prestará suficiente atención como para recordarlo.\n -Además segun roles y comportamientos, puede reaccionar a diferentes palabras. En el comportamiento taboo puedes configurar una palabra para que reaccione a ella.",
-        "button": "Conversacion"
+        "button": "💬 Conversacion"
       },
-      "greetings":{
+      "greetings": {
         "title": "**👋 Putre - Saludos**",
-        "description":"**Descripción:**\n -Saluda a los usuarios al conectarse a Discord.\n -Espera 5 min antes de contar como desconectado al usuario.\n -(Por implementar):\n Reconoce si no se le responde al saludar, y deja de saludar.\n",
-        "button": "Saludos"
+        "description": "**Descripción:**\n -Saluda a los usuarios al conectarse a Discord.\n -Espera 5 min antes de contar como desconectado al usuario.\n -(Por implementar):\n Reconoce si no se le responde al saludar, y deja de saludar.\n",
+        "button": "👋 Saludos"
       },
-      "welcome":{
-        "title": "**👋 Putre - Bienvenida**",
-        "description":"**Descripción:**\n -Da la bienvenida a nuevos usuarios al servidor.\n",
-        "button": "Bienvenida"
+      "welcome": {
+        "title": "**🍺 Putre - Bienvenida**",
+        "description": "**Descripción:**\n -Da la bienvenida a nuevos usuarios al servidor.\n",
+        "button": "🍺 Bienvenida"
       },
-      "taboo":{
+      "taboo": {
         "title": "**🚫 Putre - Palabras Tabú**",
         "description": "**Como funciona:**\n -Configura a Putre para que reaccione al leer una palabra por un canal o DM.\n -Se puede activar/desactivar o configurar las palabras.\n",
-        "title_keywords":"Palabras tabú actuales:",
-        "button": "Tabú"
+        "title_keywords": "Palabras tabú actuales:",
+        "button": "🚫 Tabú"
       },
-      "comentary":{
+      "comentary": {
         "title": "**🗣️ Putre - Comenta (en desarrollo)**",
         "description": "**Descripción**\n -Hace comentarios activamente sobre sus roles activos y los succesos recientes.",
-        "button": "Comentario"
+        "button": "🗣️ Comentario"
       },
-      "role_control":{
+      "role_control": {
         "title": "**🎛️ Putre - Control de Roles**",
         "description": "**Descripción**\n -Activa y desactiva los roles desde aqui.",
-        "button": "Control de Roles"
+        "button": "🎛️ Control de Roles"
       }
+    },
+    "readme":{
+      "label_user_question":"Pregunta del usuario:",
+      "task":"Porfavor responde a la pregunta del usuario con la documentacion facilitada",
+      "label_documentation":"Documentacion:"
 
     },
     "memory_detection": {
       "memory_trigger_words": [
-        "te acuerdas de", "recuerdas", "haz memoria", "acuerdate",
-        "te acuerdas que", "recuerda cuando", "acuerdese",
-        "¿te acuerdas", "¿recuerdas", "haz memoria de",
-        "acuerdate de", "recuerda algo", "te suena",
-        "te acuerdas", "acuerdate", "recuerda", "haz memoria",
-        "¿te acuerdas?", "¿recuerdas?", "acuerdate de",
-        "recuerda cuando", "te suena algo", "acuerdate que",
-        "recuerdas cuando", "no te acuerdas", "kien te acuerdas"
+        "te acuerdas de",
+        "recuerdas",
+        "haz memoria",
+        "acuerdate",
+        "te acuerdas que",
+        "recuerda cuando",
+        "acuerdese",
+        "¿te acuerdas",
+        "¿recuerdas",
+        "haz memoria de",
+        "acuerdate de",
+        "recuerda algo",
+        "te suena",
+        "te acuerdas",
+        "acuerdate",
+        "recuerda",
+        "haz memoria",
+        "¿te acuerdas?",
+        "¿recuerdas?",
+        "acuerdate de",
+        "recuerda cuando",
+        "te suena algo",
+        "acuerdate que",
+        "recuerdas cuando",
+        "no te acuerdas",
+        "kien te acuerdas"
       ]
     }
-    
   }
 }
