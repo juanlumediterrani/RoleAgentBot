@@ -40,8 +40,8 @@ def get_treasure_hunter_system_prompt():
     """Get system prompt from personality or fallback to English."""
     try:
         from agent_engine import PERSONALITY
-        role_prompts = PERSONALITY.get("role_system_prompts", {})
-        return role_prompts.get("treasure_hunter", "ACTIVE MISSION - TREASURE HUNTER: You search for ancient treasures for your master. If you find something valuable, REMEMBER it and mention it. You search for Ancient Rib, Ancient Collarbone, Ancient Jawbone.")
+        role_prompts = PERSONALITY.get("roles", {})
+        return role_prompts.get("treasure_hunter", {}).get("active_duty", "ACTIVE MISSION - TREASURE HUNTER: You search for ancient treasures for your master. If you find something valuable, REMEMBER it and mention it. You search for Ancient Rib, Ancient Collarbone, Ancient Jawbone.")
     except Exception:
         return "ACTIVE MISSION - TREASURE HUNTER: You search for ancient treasures for your master. If you find something valuable, REMEMBER it and mention it. You search for Ancient Rib, Ancient Collarbone, Ancient Jawbone."
 

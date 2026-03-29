@@ -11,7 +11,7 @@
       "welcome_disabled": "¡BLEGH putre serrar la puerta! ¡demasiados umanos apestosos, me dan asko!"
     },
     "member_presence": {
-      "fallback": "¡UHHH dextrure ke estar haciendo, putre querer zerbesa!"
+      "fallback": "¡UHHH {user_name} ke estar haciendo, putre querer zerbesa!"
     },
     "general_messages": {
       "help_sent_private": "¡GRRR putre te tiro un pergamino por mensaje privado umano, leelo o te lo komes!",

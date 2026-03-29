@@ -8,9 +8,14 @@ from typing import Any, Dict, List, Optional
 from agent_logging import get_logger
 
 try:
+    import discord
+except ImportError:
+    discord = None
+
+try:
     from .nordic_runes import NordicRunes
     from .nordic_runes_messages import READING_TYPES, get_message, get_reading_type, load_personality_messages
-    from .db_nordic_runes import get_nordic_runes_db_instance
+    from .nordic_runes_db import get_nordic_runes_db_instance
 except ImportError:
     # Fallback for direct loading
     import sys
@@ -20,7 +25,7 @@ except ImportError:
     try:
         from nordic_runes import NordicRunes
         from nordic_runes_messages import READING_TYPES, get_message, get_reading_type, load_personality_messages
-        from db_nordic_runes import get_nordic_runes_db_instance
+        from nordic_runes_db import get_nordic_runes_db_instance
     finally:
         sys.path.remove(runes_dir)
 
@@ -35,10 +40,23 @@ logger = get_logger('nordic_runes_discord')
 class NordicRunesCommands:
     """Discord commands for Nordic runes functionality."""
     
-    def __init__(self):
+    def __init__(self, guild=None):
         """Initialize the runes commands."""
         self.runes = NordicRunes()
-        self.db = get_nordic_runes_db_instance()
+        self.guild = guild
+        self.db = self._get_nordic_runes_db()
+    
+    def _get_nordic_runes_db(self):
+        """Get Nordic Runes database instance for a server."""
+        try:
+            if self.guild:
+                server_name = str(self.guild.id)
+            else:
+                server_name = "default"
+            return get_nordic_runes_db_instance(server_name)
+        except Exception as e:
+            logger.error(f"Failed to get Nordic Runes database: {e}")
+            return get_nordic_runes_db_instance("default")
     
     async def cmd_runes(self, ctx, args: List[str]) -> str:
         """Main runes command dispatcher."""
@@ -56,6 +74,8 @@ class NordicRunesCommands:
             return await self.cmd_runes_history(ctx, args[1:])
         elif subcommand == 'types':
             return await self.cmd_runes_types(ctx, args[1:])
+        elif subcommand == 'runes':
+            return await self.cmd_runes_list(ctx, args[1:])
         elif subcommand == 'help':
             return await self._show_help(ctx)
         else:
@@ -117,15 +137,22 @@ class NordicRunesCommands:
             
             logger.info(f"Reading saved with ID: {reading_id}, question: '{question}'")
             
-            # Format response with personality
-            type_info = get_reading_type(reading_type)
-            cast_title = get_message(f"{reading_type}_cast")
-            question_label = get_message('question')
-            success_msg = get_message('success')
-            saved_msg = get_message('saved')
+            # Create embed for DM
+            if discord is None:
+                # Fallback to text if discord is not available
+                return "Discord library not available for rune casting."
             
-            response = f"{cast_title}\n\n"
-            response += f"**{question_label}:** {question}\n\n"
+            embed = discord.Embed(
+                title=cast_title.replace("**", ""),
+                color=discord.Color.purple()
+            )
+            
+            # Add question field
+            embed.add_field(
+                name=question_label,
+                value=question,
+                inline=False
+            )
             
             # Add rune display
             if 'runes_drawn' in reading and reading['runes_drawn']:
@@ -133,8 +160,10 @@ class NordicRunesCommands:
                 try:
                     messages = load_personality_messages()
                     translations = messages.get('translations', {})
+                    positions = messages.get('positions', {})  # Load positions translations
                 except:
                     translations = {}
+                    positions = {}
                 
                 for rune in reading['runes_drawn']:
                     position = rune.get('position', '')
@@ -152,29 +181,50 @@ class NordicRunesCommands:
                             rune_translation = translations[key]
                             break
                     
-                    # Only show position for multi-rune spreads, not for single rune casts
+                    # Create field name with position if applicable
+                    field_name = f"{rune['symbol']} {rune['name']}"
                     if position and reading_type != 'single':
-                        response += f"**{position}:**\n"
-                    response += f"{rune['symbol']} {rune['name']}\n\n"
+                        # Translate position if available, otherwise use English
+                        translated_position = positions.get(position, position)
+                        field_name = f"{translated_position}: {field_name}"
+                    
+                    # Create field value with meaning, keywords, and interpretation
+                    field_value = ""
                     
                     # Use translated meaning if available, otherwise English
                     meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
-                    response += f"**{get_message('meaning')}:** {meaning_text}\n"
+                    field_value += f"**{get_message('meaning')}:** {meaning_text}\n"
                     
                     # Use translated keywords if available, otherwise English
                     keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
-                    response += f"**{get_message('keywords')}:** {keywords_text}\n\n"
+                    field_value += f"**{get_message('keywords')}:** {keywords_text}\n"
                     
                     # Use translated interpretation if available, otherwise English
                     interpretation_text = rune_translation.get('interpretation', rune.get('description', 'No description'))
-                    response += f"**{get_message('interpretation')}:** {interpretation_text}\n\n"
+                    field_value += f"**{get_message('interpretation')}:** {interpretation_text}"
                     
-                    response += "---\n\n"
+                    embed.add_field(
+                        name=field_name,
+                        value=field_value,
+                        inline=False
+                    )
             
-            response += reading['interpretation']
-            response += f"\n\n{success_msg} {saved_msg}"
+            # Add main interpretation
+            embed.add_field(
+                name="🔮 Interpretation",
+                value=reading['interpretation'],
+                inline=False
+            )
             
-            return response
+            embed.set_footer(text=f"{success_msg} {saved_msg}")
+            
+            # Send via DM or channel
+            if send_dm_or_channel:
+                await send_dm_or_channel(ctx, embed=embed)
+                return None  # Message sent via send_dm_or_channel
+            else:
+                # Fallback: return as text
+                return str(embed)
             
         except Exception as e:
             logger.error(f"Error in rune casting: {e}")
@@ -233,6 +283,24 @@ class NordicRunesCommands:
         
         return response
     
+    async def cmd_runes_list(self, ctx, args: List[str]) -> str:
+        """Show all runes with their complete descriptions (supports pagination)."""
+        # Parse page parameter
+        page = 1
+        if args:
+            try:
+                page = max(1, min(3, int(args[0])))  # Clamp between 1 and 3
+            except ValueError:
+                page = 1
+        
+        runes_title = get_message('runes_list')
+        runes_content = get_message('runes_list_content', page)
+        
+        response = f"{runes_title}\n\n"
+        response += runes_content
+        
+        return response
+    
     async def cmd_runes_canvas_cast(self, mock_message, reading_type: str, question: str) -> str:
         """Canvas-compatible rune casting."""
         try:
@@ -273,10 +341,10 @@ class NordicRunesCommands:
                 try:
                     messages = load_personality_messages()
                     translations = messages.get('translations', {})
-                    logger.info(f"🔍 [TRANSLATIONS] Canvas loaded {len(translations)} translations")
+                    positions = messages.get('positions', {})  # Load positions translations
                 except:
                     translations = {}
-                    logger.error("❌ [TRANSLATIONS] Canvas failed to load translations")
+                    positions = {}
                 
                 for rune in reading['runes_drawn']:
                     position = rune.get('position', '')
@@ -292,7 +360,6 @@ class NordicRunesCommands:
                     for key in possible_keys:
                         if key and key in translations:
                             rune_translation = translations[key]
-                            logger.info(f"✅ [TRANSLATION] Canvas found translation for {rune['name']} using key '{key}': {rune_translation.get('meaning', 'NO MEANING')}")
                             break
                     
                     if not rune_translation:
@@ -300,22 +367,21 @@ class NordicRunesCommands:
                     
                     # Only show position for multi-rune spreads, not for single rune casts
                     if position and reading_type != 'single':
-                        response += f"**{position}:**\n"
+                        # Translate position if available, otherwise use English
+                        translated_position = positions.get(position, position)
+                        response += f"**{translated_position}:**\n"
                     response += f"{rune['symbol']} {rune['name']}\n\n"
                     
                     # Use translated meaning if available, otherwise English
                     meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
-                    logger.info(f"🔍 [MEANING] Canvas final meaning text: {meaning_text}")
                     response += f"**{get_message('meaning')}:** {meaning_text}\n"
                     
                     # Use translated keywords if available, otherwise English
                     keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
-                    logger.info(f"🔍 [KEYWORDS] Canvas final keywords text: {keywords_text}")
                     response += f"**{get_message('keywords')}:** {keywords_text}\n\n"
                     
                     # Use translated interpretation if available, otherwise English
                     interpretation_text = rune_translation.get('interpretation', rune.get('description', 'No description'))
-                    logger.info(f"🔍 [INTERPRETATION] Canvas final interpretation text: {interpretation_text}")
                     response += f"**{get_message('interpretation')}:** {interpretation_text}\n\n"
                     
                     response += "---\n\n"
@@ -339,17 +405,30 @@ class NordicRunesCommands:
                 return get_message('history_empty')
             
             history_title = get_message('history')
-            response = history_title.format(count=len(readings)) + "\n\n"
+            response = history_title.format(count=len(readings)) + ("-"*45) + "\n\n"
             
             for reading in readings:
                 type_info = get_reading_type(reading['reading_type'])
                 history_entry = get_message('history_entry')
+                
+                # Extract rune names from the list of dictionaries
+                rune_names = []
+                for rune in reading['runes_drawn']:
+                    if isinstance(rune, dict):
+                        rune_names.append(f"{rune.get('symbol', '?')} {rune.get('name', 'Unknown')}")
+                    else:
+                        rune_names.append(str(rune))
+                
+                # Get reading type name with fallback
+                reading_type_name = type_info.get('name', reading['reading_type'].title())
+                
                 response += history_entry.format(
                     id=reading['id'],
-                    type=type_info['name'],
+                    type=reading_type_name,
                     question=reading['question'],
-                    runes=', '.join(reading['runes_drawn']),
-                    date=reading['created_at'][:10]
+                    runes=', '.join(rune_names),
+                    date=reading['created_at'][:10],
+                    interpretation=reading['interpretation']
                 ) + "\n"
             
             return response
@@ -370,6 +449,7 @@ class NordicRunesCommands:
         response += "`!runes cast [type] <question>` - Cast runes for guidance\n"
         response += "`!runes history [limit]` - View your reading history\n"
         response += "`!runes types` - Show available reading types\n"
+        response += "`!runes runes` - Show all runes with descriptions\n"
         response += "`!runes help` - Show this help\n\n"
         response += reading_types
         
@@ -389,20 +469,50 @@ def get_nordic_runes_commands_instance() -> NordicRunesCommands:
 # Command functions for registration
 async def cmd_runes(ctx, args):
     """Main runes command."""
+    guild = getattr(ctx, 'guild', None)
     commands = get_nordic_runes_commands_instance()
+    # Update the guild context if needed
+    if hasattr(commands, 'guild') and commands.guild != guild:
+        commands.guild = guild
+        commands.db = commands._get_nordic_runes_db()
     return await commands.cmd_runes(ctx, args)
 
 async def cmd_runes_cast(ctx, args):
     """Cast runes command."""
+    guild = getattr(ctx, 'guild', None)
     commands = get_nordic_runes_commands_instance()
+    # Update the guild context if needed
+    if hasattr(commands, 'guild') and commands.guild != guild:
+        commands.guild = guild
+        commands.db = commands._get_nordic_runes_db()
     return await commands.cmd_runes_cast(ctx, args)
 
 async def cmd_runes_history(ctx, args):
     """Rune history command."""
+    guild = getattr(ctx, 'guild', None)
     commands = get_nordic_runes_commands_instance()
+    # Update the guild context if needed
+    if hasattr(commands, 'guild') and commands.guild != guild:
+        commands.guild = guild
+        commands.db = commands._get_nordic_runes_db()
     return await commands.cmd_runes_history(ctx, args)
 
 async def cmd_runes_types(ctx, args):
     """Rune types command."""
+    guild = getattr(ctx, 'guild', None)
     commands = get_nordic_runes_commands_instance()
+    # Update the guild context if needed
+    if hasattr(commands, 'guild') and commands.guild != guild:
+        commands.guild = guild
+        commands.db = commands._get_nordic_runes_db()
     return await commands.cmd_runes_types(ctx, args)
+
+async def cmd_runes_list(ctx, args):
+    """Rune list command."""
+    guild = getattr(ctx, 'guild', None)
+    commands = get_nordic_runes_commands_instance()
+    # Update the guild context if needed
+    if hasattr(commands, 'guild') and commands.guild != guild:
+        commands.guild = guild
+        commands.db = commands._get_nordic_runes_db()
+    return await commands.cmd_runes_list(ctx, args)

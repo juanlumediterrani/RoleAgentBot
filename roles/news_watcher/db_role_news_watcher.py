@@ -1496,12 +1496,11 @@ class DatabaseRoleNewsWatcher:
         """Get default premises from personality file."""
         try:
             from agent_engine import PERSONALITY
-            # Look for premises in the watcher section of role_system_prompts
-            if ('role_system_prompts' in PERSONALITY and 
-                'roles' in PERSONALITY['role_system_prompts'] and
-                'watcher' in PERSONALITY['role_system_prompts']['roles'] and
-                'premises' in PERSONALITY['role_system_prompts']['roles']['watcher']):
-                return PERSONALITY['role_system_prompts']['roles']['watcher']['premises']
+            # Look for premises in the news_watcher section of roles
+            if ('roles' in PERSONALITY and 
+                'news_watcher' in PERSONALITY['roles'] and
+                'premises' in PERSONALITY['roles']['news_watcher']):
+                return PERSONALITY['roles']['news_watcher']['premises']
             return []
         except Exception as e:
             logger.error(f"Error getting default premises: {e}")

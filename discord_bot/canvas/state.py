@@ -11,19 +11,14 @@ from discord_bot.discord_core_commands import (
 from discord_bot.discord_utils import get_server_key
 
 try:
-    from roles.banker.db_role_banker import get_banker_db_instance
-except Exception:
-    get_banker_db_instance = None
+    from agent_roles_db import get_roles_db_instance
+except ImportError:
+    get_roles_db_instance = None
 
 try:
     from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
 except Exception:
     get_news_watcher_db_instance = None
-
-try:
-    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
-except Exception:
-    get_dice_game_db_instance = None
 
 try:
     from roles.trickster.subroles.nordic_runes.db_nordic_runes import get_nordic_runes_db_instance
@@ -75,15 +70,16 @@ def _get_canvas_dice_state(guild) -> dict:
         "announcements_active": True,
         "title": _personality_answers.get("dice_game_balance_messages", {}).get("title", "💰 **THE POT - {servidor}** 💰\n"),
     }
-    if guild is None or get_dice_game_db_instance is None or get_banker_db_instance is None:
+    if guild is None or get_roles_db_instance is None:
         return state
     try:
         server_key = get_server_key(guild)
-        db_dice_game = get_dice_game_db_instance(server_key)
-        db_banker = get_banker_db_instance(server_key)
+        roles_db = get_roles_db_instance(server_key)
+        from roles.banker.banker_db import get_banker_roles_db_instance
+        db_banker = get_banker_roles_db_instance(server_key)
         server_id = str(guild.id)
-        config = db_dice_game.get_server_config(server_id)
-        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, guild.name if guild else "Unknown Server")
+        config = roles_db.get_role_config('dice_game', server_id)
+        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, guild.name if guild else "Unknown Server", wallet_type='system')
         state["pot_balance"] = db_banker.get_balance("dice_game_pot", server_id)
         state["bet"] = config.get("fixed_bet", 1)
         state["announcements_active"] = config.get("announcements_active", True)
@@ -93,15 +89,43 @@ def _get_canvas_dice_state(guild) -> dict:
 
 
 def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
-    if guild is None or get_dice_game_db_instance is None:
+    if guild is None or get_roles_db_instance is None:
         return []
     try:
         server_key = get_server_key(guild)
-        db_dice_game = get_dice_game_db_instance(server_key)
-        ranking = db_dice_game.get_player_ranking(str(guild.id), "prize", limit)
+        roles_db = get_roles_db_instance(server_key)
+        history = roles_db.get_dice_game_history(str(guild.id), 1000)
+        
+        # Aggregate stats by user like in dice_game_discord.py
+        player_stats = {}
+        for play in history:
+            user_id = play['user_id']
+            user_name = play['user_name']
+            if user_id not in player_stats:
+                player_stats[user_id] = {
+                    'user_name': user_name,
+                    'total_won': 0,
+                    'total_plays': 0,
+                    'total_bet': 0
+                }
+            player_stats[user_id]['total_won'] += play['prize']
+            player_stats[user_id]['total_plays'] += 1
+            player_stats[user_id]['total_bet'] += play['bet']
+        
+        # Sort by total won
+        ranking_data = sorted(player_stats.items(), key=lambda x: x[1]['total_won'], reverse=True)[:limit]
+        
         rows: list[dict] = []
-        for position, row in enumerate(ranking, 1):
-            user_id, prize, total_plays, total_won, total_bet = row
+        for position, (user_id, stats) in enumerate(ranking_data, 1):
+            rows.append({
+                'position': position,
+                'user_id': user_id,
+                'user_name': stats['user_name'],
+                'prize': stats['total_won'],
+                'total_plays': stats['total_plays'],
+                'total_won': stats['total_won'],
+                'total_bet': stats['total_bet']
+            })
             member = guild.get_member(int(user_id)) if str(user_id).isdigit() else None
             player_name = member.display_name if member is not None else str(user_id)
             balance = total_won - total_bet
@@ -123,26 +147,28 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
 
 
 def _get_canvas_dice_history(guild, limit: int = 5) -> list[dict]:
-    if guild is None or get_dice_game_db_instance is None:
+    if guild is None or get_roles_db_instance is None:
         return []
     try:
         server_key = get_server_key(guild)
-        db_dice_game = get_dice_game_db_instance(server_key)
-        history = db_dice_game.get_game_history(str(guild.id), limit)
+        roles_db = get_roles_db_instance(server_key)
+        history = roles_db.get_dice_game_history(str(guild.id), limit)
         rows: list[dict] = []
-        for _id, user_id, user_name, _server_id, _server_name, bet, dice, combination, prize, pot_before, pot_after, date in history:
+        for play in history:
             rows.append({
-                "user_id": user_id,
-                "user_name": user_name,
-                "bet": bet,
-                "dice": dice,
-                "combination": combination,
-                "prize": prize,
-                "pot_before": pot_before,
-                "pot_after": pot_after,
-                "date": str(date)[:16],
+                'id': play['id'],
+                'user_id': play['user_id'],
+                'user_name': play['user_name'],
+                'server_id': play['server_id'],
+                'server_name': play['server_name'],
+                'bet': play['bet'],
+                'dice': play['dice'],
+                'combination': play['combination'],
+                'prize': play['prize'],
+                'pot_before': play['pot_before'],
+                'pot_after': play['pot_after'],
+                'date': play['created_at']
             })
-        return rows
     except Exception as e:
         logger.warning(f"Could not load dice history for Canvas: {e}")
         return []
@@ -175,10 +201,11 @@ def _get_canvas_beggar_state(guild) -> dict:
         state["frequency_hours"] = db_beggar.get_frequency_hours(server_id)
         state["last_reason"] = db_beggar.get_last_reason(server_id) or state["last_reason"]
         state["target_gold"] = db_beggar.get_target_gold(server_id)
-        if get_banker_db_instance is not None:
-            db_banker = get_banker_db_instance(server_key)
-            db_banker.create_wallet("beggar_fund", "Beggar Fund", server_id, guild.name)
-            state["fund_balance"] = db_banker.get_balance("beggar_fund", server_id)
+        if get_roles_db_instance is not None:
+            db_banker = get_roles_db_instance(server_key)
+            db_banker.save_banker_wallet("beggar_fund", server_id, "Beggar Fund", server_id, guild.name, 0, 'system')
+            wallet = db_banker.get_banker_wallet("beggar_fund", server_id)
+            state["fund_balance"] = wallet.get('balance', 0) if wallet else 0
     except Exception as e:
         logger.warning(f"Could not load beggar state for Canvas: {e}")
     return state
@@ -193,7 +220,9 @@ def _get_canvas_ring_state(guild) -> dict:
         "title": "Ring",
         "description": "",
     }
-    if guild is None:
+    # Check if guild is valid (has id attribute)
+    if guild is None or not hasattr(guild, 'id'):
+        logger.warning(f"Canvas ring state: invalid guild parameter (type: {type(guild)}, value: {guild})")
         return state
     try:
         from roles.trickster.subroles.ring.ring_discord import _get_ring_state
@@ -205,7 +234,7 @@ def _get_canvas_ring_state(guild) -> dict:
             state["frequency_hours"] = int(current.get("frequency_hours", 24))
             state["target_user_name"] = current.get("target_user_name", "Unknown bearer")
         # Load description from personality
-        subrole_cfg = (PERSONALITY.get("role_system_prompts", {}).get("subroles", {}) or {}).get("ring", {})
+        subrole_cfg = (PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}) or {}).get("ring", {})
         state["description"] = str(subrole_cfg.get("description", "")).strip()
     except Exception as e:
         logger.warning(f"Could not load ring state for Canvas: {e}")
@@ -254,19 +283,27 @@ def _get_enabled_roles(agent_config: dict) -> list[str]:
     
     # PRIMARY: Try to get from roles table
     try:
-        from discord_bot.discord_utils import _get_behavior_db_for_guild
-        db = _get_behavior_db_for_guild(None)  # Use default server for Canvas
-        if db is not None:
-            # Get all roles from database and check which are enabled
+        # Get all roles from roles_config and check which are enabled
+        try:
+            from agent_roles_db import get_roles_db_instance
+            from discord_bot.discord_utils import get_server_key
+            
+            # Use default server for Canvas (no guild context available)
+            server_id = "default"
+            roles_db = get_roles_db_instance(server_id)
             all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
             for role_name in all_roles:
                 try:
-                    if db.get_role_enabled(role_name):
+                    config = roles_db.get_role_config(role_name, server_id)
+                    if config and config.get('enabled', False):
                         enabled.append(role_name)
                 except Exception as e:
-                    logger.warning(f"Error checking role {role_name} from database: {e}")
-            logger.info(f"Loaded {len(enabled)} enabled roles from database: {enabled}")
-            return enabled
+                    logger.warning(f"Could not check {role_name} enabled status: {e}")
+        except Exception as e:
+            logger.warning(f"Could not access roles_config: {e}")
+            
+        logger.info(f"Loaded {len(enabled)} enabled roles from roles_config: {enabled}")
+        return enabled
     except Exception as e:
         logger.warning(f"Could not load roles from database: {e}")
     
@@ -284,7 +321,7 @@ def _get_enabled_roles(agent_config: dict) -> list[str]:
 
 def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
     prompts: list[str] = []
-    role_prompts_cfg = PERSONALITY.get("role_system_prompts", {})
+    role_prompts_cfg = PERSONALITY.get("roles", {})
 
     for role_name in role_names:
         try:

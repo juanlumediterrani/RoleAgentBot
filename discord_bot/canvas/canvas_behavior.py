@@ -286,18 +286,28 @@ def build_canvas_behavior_detail(
         status_lines = []
         for role_name in all_roles:
             label = role_labels.get(role_name, role_name.replace("_", " ").title())
-            if db is not None:
-                try:
-                    if role_name == "mc" and agent_config and agent_config.get("roles", {}).get("mc", {}).get("enabled", False):
-                        status_lines.append(f"- {label}: ✅ Always enabled")
-                        continue
-                    enabled = db.get_role_enabled(role_name)
-                    status_lines.append(f"- {label}: {'✅ Enabled' if enabled else '❌ Disabled'}")
-                except Exception as error:
-                    logger.warning(f"Error getting role {role_name} from database: {error}")
-                    status_lines.append(f"- {label}: ❓ Database Error")
-            else:
-                status_lines.append(f"- {label}: ❓ System Error")
+            
+            # For Canvas, always try to check roles_config regardless of db availability
+            if role_name == "mc" and agent_config and agent_config.get("roles", {}).get("mc", {}).get("enabled", False):
+                status_lines.append(f"- {label}: ✅ Always enabled")
+                continue
+            
+            # PRIMARY: Check roles_config
+            enabled = False
+            try:
+                from agent_roles_db import get_roles_db_instance
+                
+                # Use default server for Canvas (no guild context available)
+                server_id = "default"
+                roles_db = get_roles_db_instance(server_id)
+                config = roles_db.get_role_config(role_name, server_id)
+                if config:
+                    enabled = config.get('enabled', False)
+            except Exception as e:
+                logger.warning(f"Error checking {role_name} in roles_config: {e}")
+                enabled = False
+            
+            status_lines.append(f"- {label}: {'✅ Enabled' if enabled else '❌ Disabled'}")
 
         role_control_messages = behavior_descriptions.get("role_control", {})
         role_control_title = role_control_messages.get("title", f"🎛️ {_bot_display_name} Canvas - General Behavior Role Control")

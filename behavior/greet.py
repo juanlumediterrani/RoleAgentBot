@@ -160,6 +160,8 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
     except discord.errors.Forbidden as e:
         logger.warning(f"Cannot DM presence greeting to {after.name} (Forbidden): {e}")
         fallback_msg = presence_cfg.get("fallback", "Welcome back!")
+        # Replace placeholder in fallback message
+        fallback_msg = fallback_msg.format(user_name=after.display_name)
         try:
             await after.send(f"👋 {fallback_msg}")
             # Set cooldown and record greeting for fallback too
@@ -175,6 +177,8 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
     except Exception as e:
         logger.error(f"Error greeting presence of {after.name}: {e}")
         fallback_msg = presence_cfg.get("fallback", "Welcome back!")
+        # Replace placeholder in fallback message
+        fallback_msg = fallback_msg.format(user_name=after.display_name)
         try:
             await after.send(f"👋 {fallback_msg}")
             # Set cooldown and record greeting for fallback too

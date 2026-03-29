@@ -9,7 +9,6 @@ import logging
 import random
 
 from .rune_data import get_rune, get_reading_type, READING_TYPES, get_all_runes
-from .rune_database import RuneDatabase
 from .nordic_runes_messages import get_guidance_messages, get_message, load_personality_messages
 from ..base_role import BaseRole
 
@@ -345,11 +344,8 @@ class NordicRunes:
                     logger.info(f"🔍 [NORDIC_RUNES] Loaded prompts.json from: {prompts_path}")
                     logger.info(f"🔍 [NORDIC_RUNES] Available top-level keys: {list(prompts_data.keys())}")
                     
-                    # Navigate to the correct path: role_system_prompts.roles.trickster.subroles.nordic_runes.interpretation_tasks
-                    role_system = prompts_data.get("role_system_prompts", {})
-                    logger.info(f"🔍 [NORDIC_RUNES] role_system_prompts keys: {list(role_system.keys())}")
-                    
-                    roles = role_system.get("roles", {})
+                    # Navigate to the correct path: roles.trickster.subroles.nordic_runes.interpretation_tasks
+                    roles = prompts_data.get("roles", {})
                     logger.info(f"🔍 [NORDIC_RUNES] roles keys: {list(roles.keys())}")
                     
                     trickster = roles.get("trickster", {})
@@ -393,13 +389,58 @@ class NordicRunes:
             
             # Step 4: Convert rune data to text format for the prompt
             rune_data_text = ""
+            
+            # Load labels and translations from descriptions.json for translation
+            labels = {}
+            positions = {}
+            rune_translations = {}
+            try:
+                import json
+                import os
+                
+                # Get project root and descriptions path
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+                descriptions_path = os.path.join(project_root, "personalities", "putre", "descriptions.json")
+                
+                with open(descriptions_path, 'r', encoding='utf-8') as f:
+                    descriptions = json.load(f)
+                    nordic_data = descriptions.get('discord', {}).get('roles_view_messages', {}).get('trickster', {}).get('nordic_runes', {})
+                    labels = nordic_data.get('labels', {})
+                    positions = nordic_data.get('positions', {})
+                    rune_translations = nordic_data.get('translations', {})
+            except Exception as e:
+                # Fallback to English if translation fails
+                labels = {
+                    'position': 'Position',
+                    'rune': 'Rune', 
+                    'meaning': 'Meaning',
+                    'keywords': 'Keywords',
+                    'description': 'Description'
+                }
+                positions = {}
+                rune_translations = {}
+            
             for rune_info in rune_data:
                 rune = rune_info.get('rune', {})
-                rune_data_text += f"Position: {rune_info.get('position', 'Unknown')}\n"
-                rune_data_text += f"Rune: {rune.get('name', 'Unknown')} ({rune.get('symbol', '?')})\n"
-                rune_data_text += f"Meaning: {rune.get('meaning', 'Unknown')}\n"
-                rune_data_text += f"Keywords: {', '.join(rune.get('keywords', []))}\n"
-                rune_data_text += f"Description: {rune.get('description', '')}\n\n"
+                position_key = rune_info.get('position', 'Unknown')
+                
+                # Translate position name if available
+                position_name = positions.get(position_key, position_key)
+                
+                # Get rune translations if available
+                rune_key = rune.get('key', '')
+                rune_translation = rune_translations.get(rune_key, {}) if rune_key else {}
+                
+                # Use translated content if available, otherwise use English
+                meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
+                keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
+                description_text = rune_translation.get('interpretation', rune.get('description', 'Unknown'))
+                
+                rune_data_text += f"{labels.get('position', 'Position')}: {position_name}\n"
+                rune_data_text += f"{labels.get('rune', 'Rune')}: {rune.get('name', 'Unknown')} ({rune.get('symbol', '?')})\n"
+                rune_data_text += f"{labels.get('meaning', 'Meaning')}: {meaning_text}\n"
+                rune_data_text += f"{labels.get('keywords', 'Keywords')}: {keywords_text}\n"
+                rune_data_text += f"{labels.get('description', 'Description')}: {description_text}\n\n"
 
             # Step 5: Get complete guidance data from descriptions.json
             guidance_data_text = ""

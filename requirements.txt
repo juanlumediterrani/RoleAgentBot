@@ -1,6 +1,7 @@
 discord.py==2.7.0
 google-genai
 groq
+mistralai
 cohere
 python-dotenv==1.2.1
 requests==2.32.5

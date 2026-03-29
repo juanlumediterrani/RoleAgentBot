@@ -175,14 +175,16 @@ def get_dice_game_instance(fixed_bet: int = 1) -> DiceGame:
 def process_play(player_id: str, player_name: str, server_id: str,
                  server_display_name: str, current_pot: int) -> Dict[str, Any]:
     try:
-        # Get server config to determine fixed bet
-        from .db_dice_game import get_dice_game_db_instance
+        # Try to get banker database
+        try:
+            from agent_roles_db import get_roles_db_instance
+            roles_db = get_roles_db_instance(server_id)  # Use server_id directly instead of server name
+        except ImportError:
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            roles_db = get_banker_roles_db_instance(server_id)
         
-        server_name = server_id  # Use server_id directly instead of server name
-        db_game = get_dice_game_db_instance(server_name)
-        
-        if db_game:
-            config = db_game.get_server_config(server_id)
+        if roles_db:
+            config = roles_db.get_role_config('dice_game', server_id)
             fixed_bet = config.get('fixed_bet', 1)
             announcements_active = config.get('announcements_active', True)
             logger.info(f"🔧 DB Config - Server: {server_id}, Bet: {fixed_bet}, Announcements: {announcements_active}")
@@ -200,14 +202,19 @@ def process_play(player_id: str, player_name: str, server_id: str,
         banker_message = ""
         
         try:
-            # Import banker database
-            from roles.banker.db_role_banker import get_banker_db_instance
-            server_name = server_id  # Use server_id directly instead of server name
-            banker_db = get_banker_db_instance(server_name)
+            from agent_roles_db import get_roles_db_instance
+            banker_db = get_roles_db_instance(server_id)
+        except ImportError:
+            banker_db = None
             
-            if banker_db and result['success']:
-                banker_db.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_display_name)
-                current_pot = banker_db.get_balance("dice_game_pot", server_id)
+        if banker_db and result['success']:
+            try:
+                # Use BankerRolesDB for wallet operations
+                from roles.banker.banker_db import get_banker_roles_db_instance
+                banker_roles_db = get_banker_roles_db_instance(server_id)
+                banker_roles_db.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_display_name)
+                banker_roles_db.create_wallet(player_id, player_name, server_id, server_display_name, 'user')
+                current_pot = banker_roles_db.get_balance("dice_game_pot", server_id)
                 result['pot_before'] = current_pot
                 prize = result.get('prize', 0)
                 if prize > 0 and current_pot < prize:
@@ -218,7 +225,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
                 result['message'] = game._format_result_message(result['dice'], result['combination'], prize, result['pot_after'])
 
                 # Deduct the bet amount from player's wallet
-                bet_deducted = banker_db.update_balance(
+                bet_deducted = banker_roles_db.update_balance(
                     player_id, player_name, server_id, server_display_name,
                     -result['bet'], "dice_game_bet", 
                     f"Dice game bet: {result['dice']}", 
@@ -232,7 +239,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
                 else:
                     # If player won, add the prize to their wallet
                     if result['prize'] > 0:
-                        prize_added = banker_db.update_balance(
+                        prize_added = banker_roles_db.update_balance(
                             player_id, player_name, server_id, server_display_name,
                             result['prize'], "dice_game_win", 
                             f"Dice game winnings: {result['combination']}", 
@@ -250,7 +257,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
 
                     if result['success']:
                         pot_delta = result['pot_after'] - result['pot_before']
-                        pot_updated = banker_db.update_balance(
+                        pot_updated = banker_roles_db.update_balance(
                             "dice_game_pot", "Dice Game Pot", server_id, server_display_name,
                             pot_delta, "dice_game_pot_update",
                             f"Dice game pot update: {result['dice']}",
@@ -261,33 +268,26 @@ def process_play(player_id: str, player_name: str, server_id: str,
                             result['success'] = False
                             result['message'] = banker_message
                         elif result.get('jackpot'):
-                            # Jackpot won - refill pot with banker opening bonus
-                            opening_bonus = banker_db.obtener_opening_bonus(server_id)
+                            # Jackpot won - refill pot with banker opening bonus (15x TAE)
+                            tae = banker_roles_db.get_tae(server_id)
+                            opening_bonus = tae * 15
                             if opening_bonus > 0:
-                                refill_result = banker_db.update_balance(
+                                refill_result = banker_roles_db.update_balance(
                                     "dice_game_pot", "Dice Game Pot", server_id, server_display_name,
                                     opening_bonus, "dice_game_pot_refill",
-                                    f"Jackpot refill with opening bonus",
+                                    f"Jackpot refill with opening bonus (15x TAE)",
                                     "dice_game", "Dice Game System"
                                 )
                                 if refill_result:
                                     result['pot_after'] = opening_bonus
-                                    banker_message += f"\n🎉 Jackpot won! Pot refilled with {opening_bonus:,} gold from banker bonus."
+                                    banker_message += f"\n🎉 Jackpot won! Pot refilled with {opening_bonus:,} gold from banker bonus (15x TAE)."
                                 else:
                                     banker_message += "\n⚠️ Jackpot won but pot refill failed."
                             else:
                                 banker_message += "\n🎉 Jackpot won! No banker bonus configured for refill."
-        except Exception as e:
-            # If banker integration fails, still allow the game but warn
-            banker_message = f"⚠️ Banker integration failed: {str(e)}"
-        
-        # Register the game in database if available
-        if db_game and result['success']:
-            db_game.register_game(
-                player_id, player_name, server_id, server_display_name,
-                result['bet'], result['dice'], result['combination'],
-                result['prize'], result['pot_before'], result['pot_after']
-            )
+            except Exception as e:
+                # If banker integration fails, still allow the game but warn
+                banker_message = f"⚠️ Banker integration failed: {str(e)}"
         
         if result['success']:
             if announcements_active:

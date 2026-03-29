@@ -7,12 +7,15 @@ from postprocessor import postprocess_response, is_blocked_response
 from agent_db import get_active_server_name, get_global_db
 from prompts_logger import log_system_prompt, log_agent_response, log_final_llm_prompt
 from agent_runtime import increment_usage as runtime_increment_usage
+from pathlib import Path
+from dotenv import load_dotenv
+import logging
 
-logger = get_logger('agent_engine')
-
-# --- PERSONALITY LOADING ---
-_BASE_DIR = os.path.dirname(__file__)
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _AGENT_CONFIG_PATH = os.path.join(_BASE_DIR, "agent_config.json")
+
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
     AGENT_CFG = json.load(f)
@@ -149,6 +152,120 @@ def get_discord_token():
 # Cache to avoid multiple role verifications
 _roles_verified = False
 _active_tasks_cache = []
+
+def _get_role_prompt_catalog() -> dict:
+    role_system_prompts = PERSONALITY.get("roles", {})
+    if not isinstance(role_system_prompts, dict):
+        return {}
+    return role_system_prompts
+
+
+def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str = None) -> str:
+    if not isinstance(config, dict):
+        return ""
+    
+    duty_text = str(config.get("active_duty") or config.get("mission_active") or "").strip()
+    
+    # Handle ring subrole special case: replace <accusated_user> placeholder
+    if subrole_name == "ring" and server_id and "<accusated_user>" in duty_text:
+        try:
+            from roles.trickster.subroles.ring.ring_discord import _get_ring_state
+            ring_state = _get_ring_state(server_id)
+            target_user_name = ring_state.get("target_user_name", "Unknown bearer")
+            duty_text = duty_text.replace("<accusated_user>", target_user_name)
+            logger.debug(f"🎭 [RING] Replaced <accusated_user> with '{target_user_name}' in system prompt")
+        except Exception as e:
+            logger.warning(f"🎭 [RING] Failed to replace <accusated_user> placeholder: {e}")
+            # Fallback to a generic name if ring state is not available
+            duty_text = duty_text.replace("<accusated_user>", "el usuario sospechoso")
+    
+    return duty_text
+
+
+def _get_role_display_name(role_name: str) -> str:
+    """Get Spanish display name from descriptions.json with fallback to technical name."""
+    try:
+        from pathlib import Path
+        descriptions_path = Path(__file__).parent / "personalities" / "putre" / "descriptions.json"
+        if descriptions_path.exists():
+            import json
+            descriptions = json.loads(descriptions_path.read_text(encoding='utf-8'))
+            discord_roles = descriptions.get("discord", {}).get("roles_view_messages", {})
+            
+            # Map role names to their Spanish titles
+            role_titles = {
+                "news_watcher": discord_roles.get("news_watcher", {}).get("title", "").replace("**", "").strip(),
+                "treasure_hunter": discord_roles.get("treasure_hunter", {}).get("title", "").replace("**", "").strip(),
+                "trickster": discord_roles.get("trickster", {}).get("title", "").replace("**", "").strip(),
+                "banker": discord_roles.get("banker", {}).get("title", "").replace("**", "").strip(),
+                "mc": discord_roles.get("mc", {}).get("title", "").replace("**", "").strip(),
+            }
+            
+            # Get subrole titles from trickster
+            trickster_subroles = discord_roles.get("trickster", {}).get("canvas_trickster_subrole_descriptions", {})
+            subrole_titles = {
+                "beggar": trickster_subroles.get("beggar", "").split("-")[0].replace("🙏", "").replace("**", "").strip(),
+                "nordic_runes": trickster_subroles.get("nordic_runes", "").split("-")[0].replace("🔮", "").replace("**", "").strip(),
+                "dice_game": trickster_subroles.get("dice_game", "").split("-")[0].replace("🎲", "").replace("**", "").strip(),
+                "ring": trickster_subroles.get("ring", "").split("-")[0].replace("👁️", "").replace("**", "").strip(),
+            }
+            
+            # Return title if found, otherwise fallback to technical name
+            if role_name in role_titles and role_titles[role_name]:
+                return role_titles[role_name]
+            elif role_name in subrole_titles and subrole_titles[role_name]:
+                return subrole_titles[role_name]
+    except Exception:
+        pass  # Silently fall back to technical name if anything fails
+    
+    # Fallback to technical name
+    return role_name
+
+
+def _get_active_roles_section() -> str:
+    roles = (AGENT_CFG or {}).get("roles", {})
+    section_cfg = PERSONALITY.get("active_roles_section", {})
+    role_sections = PERSONALITY.get("roles", {})
+
+    if not isinstance(role_sections, dict):
+        role_sections = {}
+    if not isinstance(section_cfg, dict):
+        section_cfg = {}
+
+    section_label = str(section_cfg.get("label") or "[ACTIVE ROLES IN THE SERVER]").strip()
+    empty_message = str(section_cfg.get("empty") or "- No active role duties are configured right now.").strip()
+    line_template = str(section_cfg.get("line_template") or "- {scope}: {duty}").strip()
+
+    lines: list[str] = []
+    for role_name, role_cfg in roles.items():
+        if not isinstance(role_cfg, dict) or not role_cfg.get("enabled", False):
+            continue
+
+        role_prompt_cfg = role_sections.get(role_name, {})
+        role_duty = _get_active_duty_text(role_prompt_cfg)
+        if role_duty:
+            role_display = _get_role_display_name(role_name)
+            lines.append(line_template.format(scope=role_display, duty=role_duty))
+
+        subroles = role_cfg.get("subroles", {})
+        role_subroles_cfg = role_prompt_cfg.get("subroles", {}) if isinstance(role_prompt_cfg, dict) else {}
+        if not isinstance(subroles, dict):
+            continue
+        if not isinstance(role_subroles_cfg, dict):
+            role_subroles_cfg = {}
+
+        for subrole_name, subrole_cfg in subroles.items():
+            if not isinstance(subrole_cfg, dict) or not subrole_cfg.get("enabled", False):
+                continue
+            subrole_prompt_cfg = role_subroles_cfg.get(subrole_name, {})
+            subrole_duty = _get_active_duty_text(subrole_prompt_cfg)
+            if subrole_duty:
+                subrole_display = _get_role_display_name(subrole_name)
+                lines.append(line_template.format(scope=f"{_get_role_display_name(role_name)}/{subrole_display}", duty=subrole_duty))
+
+    if not lines:
+        return f"{section_label}\n{empty_message}"
+    return f"{section_label}\n" + "\n".join(lines)
 
 def _load_active_tasks_system_additions() -> list[str]:
     global _roles_verified, _active_tasks_cache
@@ -293,7 +410,7 @@ def _load_active_tasks_system_additions() -> list[str]:
     is_role_process = os.getenv('ROLE_AGENT_PROCESS') == '1'
     
     # Get subrole prompts from personality JSON
-    subrole_prompts = PERSONALITY.get("role_system_prompts", {}).get("subroles", {})
+    subrole_prompts = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {})
     additions = []
     
     if not is_role_process:
@@ -317,7 +434,7 @@ def _load_active_tasks_system_additions() -> list[str]:
             
             # Add beggar reasons after the beggar prompt
             if subrole_name == "beggar":
-                beggar_reasons = PERSONALITY.get("role_system_prompts", {}).get("beggar_reasons", [])
+                beggar_reasons = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("beggar", {}).get("reasons", [])
                 if beggar_reasons:
                     reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
                     additions.append(reasons_text)
@@ -360,7 +477,7 @@ def _load_active_tasks_system_additions() -> list[str]:
                             
                             # Add beggar reasons after the beggar prompt even in fallback
                             if subrole_name == "beggar":
-                                beggar_reasons = PERSONALITY.get("role_system_prompts", {}).get("beggar_reasons", [])
+                                beggar_reasons = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("beggar", {}).get("reasons", [])
                                 if beggar_reasons:
                                     reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
                                     additions.append(reasons_text)
@@ -446,10 +563,10 @@ def _get_response_rules_lines() -> list[str]:
     cfg = PERSONALITY.get(mission_prompt_key, {})
     logger.info(f"🎯 [MISSION] Direct lookup for {mission_prompt_key}: {bool(cfg)}")
     
-    # If not found, try role_system_prompts.subroles structure
-    if not cfg and 'role_system_prompts' in PERSONALITY:
-        role_system = PERSONALITY['role_system_prompts']
-        logger.info(f"🎯 [MISSION] Available role_system_prompts: {list(role_system.keys())}")
+    # If not found, try roles.trickster.subroles structure
+    if not cfg and 'roles' in PERSONALITY:
+        role_system = PERSONALITY['roles']['trickster']['subroles']
+        logger.info(f"🎯 [MISSION] Available trickster subroles: {list(role_system.keys())}")
         if 'subroles' in role_system:
             subroles = role_system['subroles']
             logger.info(f"🎯 [MISSION] Available subroles: {list(subroles.keys())}")
@@ -469,11 +586,11 @@ def _get_response_rules_lines() -> list[str]:
         logger.warning(f"🎯 [MISSION] Config is not a dict: {type(cfg)}")
         return ""
     
-    # Check for mission_active field first (used by nordic_runes and similar)
-    mission_active = cfg.get("mission_active", "")
-    if mission_active:
-        logger.info(f"🎯 [MISSION] Using mission_active field: {mission_active[:100]}..." if len(mission_active) > 100 else f"🎯 [MISSION] Mission active: {mission_active}")
-        return mission_active
+    # Check for active_duty field first and keep mission_active as fallback
+    active_duty = str(cfg.get("active_duty") or cfg.get("mission_active") or "").strip()
+    if active_duty:
+        logger.info(f"🎯 [MISSION] Using active duty field: {active_duty[:100]}..." if len(active_duty) > 100 else f"🎯 [MISSION] Active duty: {active_duty}")
+        return active_duty
     
     # Check for task field (used in prompts section)
     task = cfg.get("task", "")
@@ -529,6 +646,9 @@ def _build_system_prompt(personalidad: dict) -> str:
         if examples_title and isinstance(examples_body, list) and examples_body:
             examples_text = "\n".join([str(line).strip() for line in examples_body if str(line).strip()])
             sections.append(f"## {examples_title}\n{examples_text}")
+        active_roles_section = _get_active_roles_section()
+        if active_roles_section:
+            sections.append(active_roles_section)
         if sections:
             return "\n\n".join(sections)
 
@@ -553,7 +673,7 @@ def get_active_subroles():
         with open(prompts_path, 'r', encoding='utf-8') as f:
             prompts_data = json.load(f)
         
-        subroles = prompts_data.get("role_system_prompts", {}).get("subroles", {})
+        subroles = prompts_data.get("roles", {}).get("trickster", {}).get("subroles", {})
         active_subroles = {}
         
         for subrole_name, subrole_config in subroles.items():
@@ -591,7 +711,18 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         
         # Get system prompt and base mission prompt
         system_instruction = _build_system_prompt(PERSONALITY)
-        mission_prompt = subrole_config.get("mission_active", "")
+        
+        # Try to get server_id for ring subrole to replace accused user placeholder
+        server_id = None
+        try:
+            from agent_runtime import get_active_server_name
+            server_name = get_active_server_name()
+            if server_name:
+                server_id = str(server_name)  # Use server name as ID for now
+        except Exception as e:
+            logger.debug(f"🎭 [SUBROLE] Could not get server_id for ring replacement: {e}")
+        
+        mission_prompt = _get_active_duty_text(subrole_config, server_id, subrole_name)
         
         # Build the complete prompt with task and reasons at the end
         base_task_prompt = subrole_config.get("internal_task", {}).get("prompt", "")
@@ -604,6 +735,111 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                 selected_reason = random.choice(reasons)
                 task_details = f"\n\nSPECIFIC REASON: {selected_reason}"
         elif subrole_name == "ring":
+            # For ring, we need to execute an actual accusation
+            # Get ring state to find target and check frequency
+            from roles.trickster.subroles.ring.ring_discord import _get_ring_state, execute_ring_accusation, _can_make_accusation
+            
+            # Try to get a server context (this is tricky in subprocess mode)
+            # For now, we'll use a generic approach - in the future this should be server-aware
+            try:
+                # Get active server name from runtime
+                from agent_runtime import get_active_server_name
+                from agent_db import AgentDatabase
+                
+                server_name = get_active_server_name()
+                if server_name:
+                    db = AgentDatabase(server_name)
+                    
+                    # Get server ID from database or use server name as fallback
+                    server_id = str(server_name)  # Use server name as ID for now
+                    
+                    # Check if we can make an accusation based on frequency
+                    if not _can_make_accusation(server_id):
+                        logger.info(f"🎭 [RING] Frequency check passed - time for next accusation")
+                        
+                        # Get recent interactions to find a target
+                        import sqlite3
+                        try:
+                            conn = sqlite3.connect(db.db_path)
+                            cursor = conn.cursor()
+                            cursor.execute('''
+                                SELECT usuario_id, usuario_nombre, servidor_id 
+                                FROM interacciones 
+                                WHERE servidor_id IS NOT NULL 
+                                AND fecha > datetime('now', '-24 hours')
+                                ORDER BY fecha DESC 
+                                LIMIT 5
+                            ''')
+                            recent_users = cursor.fetchall()
+                            conn.close()
+                            
+                            if recent_users:
+                                # Select a random recent user as target
+                                import random
+                                target_user_id, target_user_name, server_id = random.choice(recent_users)
+                                
+                                # Execute ring accusation
+                                accusation = execute_ring_accusation(None, target_user_id, target_user_name)
+                                logger.info(f"🎭 [RING] Accusation generated for {target_user_name}: {accusation[:100]}...")
+                                
+                                # Try to send the accusation to a channel
+                                try:
+                                    # Get a channel where we can send the accusation
+                                    # Look for recent interactions to find an active channel
+                                    cursor.execute('''
+                                        SELECT canal_id, COUNT(*) as message_count
+                                        FROM interacciones 
+                                        WHERE servidor_id = ? 
+                                        AND fecha > datetime('now', '-24 hours')
+                                        AND canal_id IS NOT NULL
+                                        GROUP BY canal_id
+                                        ORDER BY message_count DESC
+                                        LIMIT 1
+                                    ''', (server_id,))
+                                    channel_result = cursor.fetchone()
+                                    
+                                    if channel_result:
+                                        channel_id = channel_result[0]
+                                        # Import the bot to send the message
+                                        from discord_bot.agent_discord import get_bot_instance
+                                        bot = get_bot_instance()
+                                        
+                                        if bot:
+                                            # Send accusation via DM only (not public channel)
+                                            try:
+                                                target_user = bot.get_user(int(target_user_id))
+                                                if target_user:
+                                                    await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
+                                                    logger.info(f"🎭 [RING] Accusation sent via DM to {target_user_name}")
+                                                else:
+                                                    logger.warning(f"🎭 [RING] Could not find target user {target_user_id} for DM")
+                                            except Exception as dm_error:
+                                                logger.error(f"🎭 [RING] Error sending DM: {dm_error}")
+                                                # Fallback: try to find a mutual server and send via system channel
+                                                channel = bot.get_channel(int(channel_id))
+                                                if channel:
+                                                    await channel.send(f"⚠️ **RING INVESTIGATION** (DM failed)\n{accusation}")
+                                                    logger.info(f"🎭 [RING] Accusation sent to channel {channel_id} as fallback")
+                                        else:
+                                            logger.warning(f"🎭 [RING] Bot instance not available")
+                                    else:
+                                        logger.warning(f"🎭 [RING] No active channel found for server {server_id}")
+                                except Exception as send_error:
+                                    logger.error(f"🎭 [RING] Error sending accusation: {send_error}")
+                                    
+                            else:
+                                logger.warning(f"🎭 [RING] No recent users found for accusation")
+                        except Exception as e:
+                            logger.error(f"🎭 [RING] Error finding target: {e}")
+                    else:
+                        logger.info(f"🎭 [RING] Frequency check failed - not time for next accusation yet")
+                else:
+                    logger.warning(f"🎭 [RING] No active server found")
+                    
+            except Exception as e:
+                logger.error(f"🎭 [RING] Error in ring execution: {e}")
+                
+            # Also generate the regular response as fallback
             methods = subrole_config.get("internal_task", {}).get("investigation_methods", [])
             if methods:
                 selected_method = random.choice(methods)

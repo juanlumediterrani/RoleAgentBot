@@ -13,9 +13,9 @@ _bot_display_name = core._bot_display_name
 get_server_key = core.get_server_key
 
 try:
-    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
-except Exception:
-    get_dice_game_db_instance = None
+    from agent_roles_db import get_roles_db_instance
+except ImportError:
+    get_roles_db_instance = None
 
 
 def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=None) -> str:
@@ -30,7 +30,20 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
         pass
 
     def _trickster_text(key: str, fallback: str) -> str:
-        value = trickster_messages.get(key)
+        """Get text from trickster messages with dot notation support (e.g., 'ring.title')."""
+        # Handle dot notation for nested keys
+        if "." in key:
+            keys = key.split(".")
+            value = trickster_messages
+            for k in keys:
+                if isinstance(value, dict) and k in value:
+                    value = value[k]
+                else:
+                    value = None
+                    break
+        else:
+            value = trickster_messages.get(key)
+        
         if value:
             value = str(value).replace("{_bot}", _bot_display_name)
         return str(value).strip() if value else fallback
@@ -69,14 +82,33 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     return "\n".join(parts)
 
 
-def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, guild=None, author_id: int | None = None) -> str | None:
+def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, guild=None, author_id: int | None = None, agent_config: dict | None = None) -> str | None:
     """Build a detailed Trickster view."""
     from .content import _build_canvas_intro_block
+    
+    # Handle overview case
+    if detail_name == "overview":
+        # Use the main overview function
+        return build_canvas_role_trickster({}, admin_visible, guild)
+    
     roles_messages = _personality_descriptions.get("roles_view_messages", {})
     trickster_messages = roles_messages.get("trickster", {})
 
     def _trickster_text(key: str, fallback: str) -> str:
-        value = trickster_messages.get(key)
+        """Get text from trickster messages with dot notation support (e.g., 'ring.title')."""
+        # Handle dot notation for nested keys
+        if "." in key:
+            keys = key.split(".")
+            value = trickster_messages
+            for k in keys:
+                if isinstance(value, dict) and k in value:
+                    value = value[k]
+                else:
+                    value = None
+                    break
+        else:
+            value = trickster_messages.get(key)
+        
         if value:
             value = str(value).replace("{_bot}", _bot_display_name)
         return str(value).strip() if value else fallback
@@ -109,21 +141,29 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         parts.append("─" * 45)
         server_key = get_server_key(guild)
         server_id = str(guild.id) if guild else "0"
-        if get_dice_game_db_instance is None:
+        if get_roles_db_instance is None:
             parts.append(descriptions.get("historyvoid", "📊 Any play in the game. Be the first!"))
             return "\n".join(parts)
-        db_dice = get_dice_game_db_instance(server_key)
-        history = db_dice.get_game_history(server_id, 10)
+        db_dice = get_roles_db_instance(server_key)
+        history = db_dice.get_dice_game_history(server_id, 10)
         history_title = descriptions.get("history", "**📜 DICE HISTORY**")
         parts.append(history_title)
 
         parts.append("─" * 45)
         if history:
             for record in history:
-                user_name = record[2] if len(record) > 2 else "Unknown"
-                dice = record[6] if len(record) > 6 else ""
-                combination = record[7] if len(record) > 7 else ""
-                prize = record[8] if len(record) > 8 else 0
+                user_name = record.get('user_name', 'Unknown')
+                dice = record.get('dice', '')
+                combination = record.get('combination', '')
+                prize = record.get('prize', 0)
+                created_at = record.get('created_at', '')
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    date_str = dt.strftime("%d/%m %H:%M")
+                except:
+                    date_str = created_at[:16] if created_at else ''
+                
                 dice_display = "🎲".join(dice.split('-')) if dice else "???"
                 prize_emoji = "💰" if prize > 0 else "💸"
                 parts.append(f"👤 {user_name} | {dice_display} → {combination} | {prize_emoji} {prize:,}")
@@ -210,9 +250,9 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         ring_state = _get_canvas_ring_state(guild)
         ring_messages = roles_messages.get("trickster", {}).get("ring", {})
 
-        title = _trickster_text("canvas_ring_title", f"👁️ **{_bot_display_name} Ring Hunter**")
+        title = _trickster_text("ring.title", f"👁️ **{_bot_display_name} Ring Hunter**")
         clean_title = title.replace("**", "")
-        description = _trickster_text("canvas_ring_description", "🔍 Putre the ring hunter seeks the lost artifact. Your boss tasked you with finding that cursed jewel and you won't return until you have it. Interrogate suspects and make them talk.")
+        description = _trickster_text("ring.description", f"🔍 {_bot_display_name} the ring hunter seeks the lost artifact. Your boss tasked you with finding that cursed jewel and you won't return until you have it. Interrogate suspects and make them talk.")
 
         current_target_label = ring_messages.get("current_target", "🎯 **CURRENT TARGET:**")
         target_unknown = ring_messages.get("target_unknown", "👤 No suspect selected")
@@ -221,81 +261,144 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         investigation_warning = ring_messages.get("investigation_warning", "⚠️ **IMPORTANT:**\n• You cannot accuse yourself\n• You cannot accuse bots\n• Ring must be enabled by an admin first")
         inactive_title = ring_messages.get("inactive_title", "⚠️ **THE HUNT IS INACTIVE**")
         inactive_instructions = ring_messages.get("inactive_instructions", "To enable ring functionality:\n• An admin must go to **Ring Admin**\n• Click **Ring: On** to activate\n• Set frequency for automatic investigations\n\nOnce enabled, you can accuse users of carrying the One Ring!")
-        navigation_info = ring_messages.get("navigation_info", "📍 **NAVIGATION:**\n• You are at `trickster / ring / personal`\n• Use `Admin` for on/off and frequency controls\n• Select **Ring: Accuse** from the dropdown to make accusations")
 
         parts = [
             _build_canvas_intro_block(clean_title, description),
-            f"**Status:** {'✅ Active' if ring_state['enabled'] else '❌ Inactive'}",
-            f"**Frequency:** Every {ring_state['frequency_hours']} hours",
-            "",
-        ]
+            "-" * 45,   
+            ]
+        
+        parts.append("")
         if ring_state["enabled"]:
             parts.extend([
-                current_target_label,
-                f"👤 {ring_state['target_user_name']}" if ring_state['target_user_name'] != "Unknown bearer" else target_unknown,
-                "",
                 investigation_title,
                 investigation_instructions,
-                "",
+                "-" * 45,
                 investigation_warning,
+                "-" * 45,
+                current_target_label,
+                f"👤 {ring_state['target_user_name']}" if ring_state['target_user_name'] != "Unknown bearer" else target_unknown,
+                "-" * 45,
             ])
         else:
             parts.extend([inactive_title, "", inactive_instructions])
 
-        parts.extend(["", navigation_info])
+        # Use general descriptions for status
+        general = _personality_descriptions.get("general", {})
+        status_label = general.get("status", "Status:")
+        active_text = general.get("active", "Active")
+        inactive_text = general.get("inactive", "Inactive")
+        
+        parts.append(f"**{status_label}** {'✅ ' + active_text if ring_state['enabled'] else '❌ ' + inactive_text}")
+        
         return "\n".join(parts)
 
     if detail_name in {"ring_admin"}:
         ring_state = _get_canvas_ring_state(guild)
-        return "\n".join([
+        ring_messages = roles_messages.get("trickster", {}).get("ring", {})
+        # Get title without newlines for admin
+        title = _trickster_text("ring.title", f"👁️ **{_bot_display_name} Ring Hunter**")
+        # Use general descriptions for admin panel
+        general = _personality_descriptions.get("general", {})
+        ring_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("ring", {})
+        
+        admin_status = general.get("status", "Status:")
+        active_text = general.get("active", "Active")
+        inactive_text = general.get("inactive", "Inactive")
+        base_freq_label = general.get("base_frequency", "Base Frequency:")
+        current_freq_label = general.get("current_frequency", "Current Frequency:")
+        freq_format = general.get("frequency_format", "Every {hours}h")
+        hot_potato_format = ring_descriptions.get("hot_potato", "🔥 **Hot Potato:** Iteration {iteration} (frequency reduced by {multiplier}x)")
+        description = _trickster_text("ring.description", f"🔍 {_bot_display_name} the ring hunter seeks the lost artifact. Your boss tasked you with finding that cursed jewel and you won't return until you have it. Interrogate suspects and make them talk.")
+
+        base_freq = ring_state.get('base_frequency_hours', ring_state['frequency_hours'])
+        current_freq = ring_state.get('current_frequency_hours', ring_state['frequency_hours'])
+        
+        parts = [
             _build_canvas_intro_block(
-                f"👁️ {_bot_display_name} Canvas - Trickster / Ring / Admin",
-                "Configure ring hunt functionality and frequency",
+                f"{title} Admin",
+                description,
             ),
-            f"**Status:** {'On' if ring_state['enabled'] else 'Off'}",
-            f"**Frequency:** every {ring_state['frequency_hours']}h",
-            "",
-            "**Controls**",
-            "- Enable or disable ring",
-            "- Editable frequency box",
-            "",
-            "**Routing**",
-            "- Back only from here",
-        ])
+            f"**{admin_status}** {active_text if ring_state['enabled'] else inactive_text}",
+            f"**{base_freq_label}** {freq_format.format(hours=base_freq)}",
+            f"**{current_freq_label}** {freq_format.format(hours=current_freq)}",
+        ]
+        
+        # Add hot potato information if active
+        if ring_state.get('frequency_iteration', 0) > 0:
+            iteration = ring_state.get('frequency_iteration', 0)
+            multiplier = 2 ** iteration
+            parts.append(hot_potato_format.format(iteration=iteration, multiplier=multiplier))
+        
+        controls = ring_descriptions.get("controls", "**Controls**\n- Enable or disable ring\n- Editable frequency box (sets base frequency and resets hot potato)")
+        
+        parts.extend(["", controls])
+        
+        return "\n".join(parts)
 
     if detail_name == "runes":
         runes_messages = roles_messages.get("trickster", {}).get("nordic_runes", {})
-        title = runes_messages.get("canvas_runes_title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
-        description = runes_messages.get("canvas_runes_description", "Ancient wisdom for modern guidance through Elder Futhark runes.")
+        title = runes_messages.get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
+        description = runes_messages.get("description", "Ancient wisdom for modern guidance through Elder Futhark runes.")
+        
+        # Check if runes subrole is enabled
+        runes_enabled = False
+        if agent_config:
+            runes_enabled = agent_config.get("roles", {}).get("trickster", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
+        
+        how_to_use = runes_messages.get("how_to_use", "**How to Use:**\n 1. Choose a reading type from the dropdown\n 2. Enter your question in the modal\n 3. Receive personalized rune interpretation\n")
+        runes_title = runes_messages.get("runes_title", "**The 24 Elder Futhark Runes:**")
+        
         return "\n".join([
             _build_canvas_intro_block(title, description),
-            "**Available readings**",
-            "- Single rune: quick guidance",
-            "- Three runes: past, present, future",
-            "• **Three Rune Spread** - Past, Present, Future insights",
-            "• **Five Rune Cross** - Comprehensive situation analysis",
+            "-"*45,
+            how_to_use,
+            "-"*45,
             "",
-            "**How to Use:**",
-            "1. Choose a reading type from the dropdown",
-            "2. Enter your question in the modal",
-            "3. Receive personalized rune interpretation",
+            runes_title,
+            "-"*45,
+            "ᚠ Fehu • ᚢ Uruz • ᚦ Thurisaz • ᚨ Ansuz • ᚱ Raidho • ᚲ Kenaz • ᚷ Gebo • ᚹ Wunjo",
+            "ᚺ Hagalaz • ᚾ Nauthiz • ᛁ Isa • ᛃ Jera • ᛇ Eiwaz • ᛈ Perthro • ᛉ Algiz • ᛊ Sowilo",
+            "ᛏ Tiwaz • ᛒ Berkano • ᛖ Ehwaz • ᛗ Mannaz • ᛚ Laguz • ᛜ Ingwaz • ᛞ Dagaz • ᛟ Othala",
             "",
-            "**The 24 Elder Futhark Runes:**",
-            "Fehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo",
-            "Hagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo",
-            "Tiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala",
+            "-"*45,
+            f"**Status:** {'✅ Enabled' if runes_enabled else '❌ Disabled'}",
+        ])
+
+    if detail_name == "runes_admin":
+        runes_messages = roles_messages.get("trickster", {}).get("nordic_runes", {})
+        title = runes_messages.get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
+        
+        # Get runes subrole status from agent config
+        subroles = (agent_config or {}).get("roles", {}).get("trickster", {}).get("subroles", {})
+        runes_enabled = subroles.get("nordic_runes", {}).get("enabled", False)
+        
+        return "\n".join([
+            _build_canvas_intro_block(
+                f"{title} Admin",
+                "Configure Nordic Runes subrole settings and availability for this server."
+            ),
+            f"**Status:** {'✅ Enabled' if runes_enabled else '❌ Disabled'}",
             "",
-            "**Features:**",
-            "• Personalized interpretations based on your question",
-            "• Reading history tracking",
+            "**Controls**",
+            "- Enable or disable Nordic Runes subrole",
+            "- When enabled, users can cast runes and receive interpretations",
+            "- All rune readings are tracked in the database",
+            "",
+            "**Available Reading Types:**",
+            "• Single Rune - Quick guidance and insight",
+            "• Three Rune Spread - Past, Present, Future",
+            "• Five Rune Cross - Comprehensive situation analysis",
+            "• Seven Rune Runic Cross - Deep spiritual guidance",
+            "",
+            "**Features when enabled:**",
+            "• Personalized rune interpretations based on user questions",
+            "• Reading history tracking for each user",
             "• Contextual guidance for different life areas",
-            "• Ancient Norse wisdom applied to modern life",
+            "• Ancient Norse wisdom applied to modern situations",
             "",
-            "**Commands:**",
-            "• `!runes cast [type] <question>` - Direct rune casting",
-            "• `!runes history` - View your reading history",
-            "• `!runes types` - Show reading types",
-            "• `!runes help` - Detailed help",
+            "**Routing**",
+            "- Back only from here",
+            "- No other subrole buttons are shown in this admin screen",
         ])
 
     return None

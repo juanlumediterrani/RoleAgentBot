@@ -17,9 +17,9 @@ def _build_mc_role_embed(role_name: str, content: str, admin_visible: bool, surf
     return _build_canvas_role_embed(role_name, content, admin_visible, surface_name, user, auto_response)
 
 
-def _get_mc_action_items_for_detail(role_name: str, current_detail: str, admin_visible: bool):
+def _get_mc_action_items_for_detail(role_name: str, current_detail: str, admin_visible: bool, agent_config: dict | None = None):
     from .content import _get_canvas_role_action_items_for_detail
-    return _get_canvas_role_action_items_for_detail(role_name, current_detail, admin_visible)
+    return _get_canvas_role_action_items_for_detail(role_name, current_detail, admin_visible, agent_config)
 
 
 def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None) -> str:
@@ -78,7 +78,7 @@ class CanvasMCActionSelect(discord.ui.Select):
     """MC action selection dropdown."""
 
     def __init__(self, view):
-        mc_actions = _get_mc_action_items_for_detail("mc", "overview", view.admin_visible)
+        mc_actions = _get_mc_action_items_for_detail("mc", "overview", view.admin_visible, view.agent_config)
         options = [
             discord.SelectOption(label=label, value=value, description=description)
             for label, value, description in mc_actions

@@ -4,8 +4,13 @@ from datetime import date
 
 from dotenv import load_dotenv
 from groq import Groq
+try:
+    from mistralai.client import Mistral
+    MISTRAL_AVAILABLE = True
+except ImportError:
+    MISTRAL_AVAILABLE = False
 
-from agent_db import get_active_server_name
+from agent_db import get_active_server_name, increment_fatigue_count, get_fatigue_stats
 from agent_logging import get_logger
 
 load_dotenv()
@@ -22,16 +27,22 @@ _PERSONALITY_PATH = os.path.join(_BASE_DIR, PERSONALITY_RELATIVE_PATH)
 _PERSONALITY_DIR = os.path.dirname(_PERSONALITY_PATH)
 
 _client_groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
+_client_mistral = Mistral(api_key=os.getenv("MISTRAL_API_KEY")) if MISTRAL_AVAILABLE and os.getenv("MISTRAL_API_KEY") else None
 _SIMULATION_MODE = os.getenv("AGENT_SIMULATION", os.getenv("ROLE_AGENT_SIMULATION", "")).strip() in ("1", "true", "True", "yes")
 
 logger.info(f"🔧 [CONFIG] Simulation mode: {'ENABLED' if _SIMULATION_MODE else 'DISABLED'}")
 logger.info("🔧 [CONFIG] Usage counter (path resolved at runtime)")
 logger.info(f"🤖 [AI] Groq client initialized: {'✅' if os.getenv('GROQ_API_KEY') else '❌'}")
 logger.info(f"🤖 [AI] Gemini client available: {'✅' if os.getenv('GEMINI_API_KEY') else '❌'}")
+logger.info(f"🤖 [AI] Mistral client available: {'✅' if _client_mistral else '❌'}")
 
 
 def get_groq_client():
     return _client_groq
+
+
+def get_mistral_client():
+    return _client_mistral
 
 
 def is_simulation_mode() -> bool:
@@ -46,58 +57,46 @@ def get_personality_directory() -> str:
     return _PERSONALITY_DIR
 
 
-def get_fatigue_path(personality_name: str) -> str:
-    """Get the fatigue counter path according to server and personality."""
-    server_name = get_active_server_name()
-    if not server_name:
-        return os.path.join(_BASE_DIR, "fatiga_temp.json")
-
-    normalized_server_name = server_name.lower().replace(' ', '_').replace('-', '_')
-    normalized_server_name = ''.join(char for char in normalized_server_name if char.isalnum() or char == '_')
-    normalized_personality_name = (personality_name or "unknown").lower()
-
-    fatigue_dir = os.path.join(_BASE_DIR, "fatiga", normalized_server_name)
-    os.makedirs(fatigue_dir, exist_ok=True)
-    return os.path.join(fatigue_dir, f"{normalized_personality_name}.json")
-
-
-def get_daily_usage(personality_name: str) -> int:
+def get_daily_usage(personality_name: str, user_id: str = None, user_name: str = None) -> int:
+    """Get daily usage from database."""
     if _SIMULATION_MODE:
         return 0
 
-    counter_path = get_fatigue_path(personality_name)
-    today = str(date.today())
-    if not os.path.exists(counter_path):
+    server_name = get_active_server_name()
+    if not server_name:
         return 0
 
     try:
-        if os.path.getsize(counter_path) == 0:
-            return 0
-        with open(counter_path, 'r', encoding='utf-8') as file_handle:
-            file_content = file_handle.read().strip()
-            if not file_content:
-                return 0
-            data = json.loads(file_content)
-            return data.get("peticiones", 0) if data.get("ultima_fecha") == today else 0
-    except (json.JSONDecodeError, ValueError, KeyError, OSError, IOError) as e:
-        print(f"⚠️ Error reading {counter_path}: {e}. Resetting counter.")
-        try:
-            if os.path.exists(counter_path):
-                os.remove(counter_path)
-        except Exception:
-            pass
+        if user_id:
+            # Get specific user stats
+            stats = get_fatigue_stats(server_name, user_id)
+            return stats.get('daily_requests', 0)
+        else:
+            # Get server total stats
+            server_id = f"server_{server_name}"
+            stats = get_fatigue_stats(server_name, server_id)
+            return stats.get('daily_requests', 0)
+    except Exception as e:
+        logger.warning(f"Error getting daily usage: {e}")
         return 0
 
 
-def increment_usage(personality_name: str) -> int:
+def increment_usage(personality_name: str, user_id: str = None, user_name: str = None) -> int:
+    """Increment usage counter in database."""
     if _SIMULATION_MODE:
         return 1
 
-    counter_path = get_fatigue_path(personality_name)
-    usage = get_daily_usage(personality_name) + 1
+    server_name = get_active_server_name()
+    if not server_name:
+        return 1
+
     try:
-        with open(counter_path, 'w', encoding='utf-8') as file_handle:
-            json.dump({"peticiones": usage, "ultima_fecha": str(date.today())}, file_handle)
-    except (OSError, IOError) as e:
-        print(f"⚠️ Error writing {counter_path}: {e}")
-    return usage
+        # Use server_id if no user_id provided (for backward compatibility)
+        target_user_id = user_id or f"server_{server_name}"
+        target_user_name = user_name or f"Server_{server_name}"
+        
+        daily, total = increment_fatigue_count(server_name, target_user_id, target_user_name)
+        return daily
+    except Exception as e:
+        logger.warning(f"Error incrementing usage: {e}")
+        return 1

@@ -416,9 +416,10 @@ class Poe2SubroleBot(discord.Client):
             # Get treasure hunter configuration from personality
             personality_config = PERSONALITY
             
-            # Get mission active and task configuration
-            mission_active = personality_config.get("treasure_hunter", {}).get("mission_active", 
-                "MISSION ACTIVE - TREASURE HUNTER: You are a treasure hunter specializing in Path of Exile 2 market analysis. Your mission is to identify and alert about optimal buy/sell opportunities based on price history analysis. Provide clear, direct advice on market opportunities.")
+            # Get active duty and task configuration
+            role_prompt = personality_config.get("treasure_hunter", {})
+            active_duty = role_prompt.get("active_duty", role_prompt.get("mission_active", 
+                "CURRENT DUTY - TREASURE HUNTER: You are a treasure hunter specializing in Path of Exile 2 market analysis. Focus on spotting strong buy or sell opportunities from price history and give clear, direct market advice."))
             
             # Get task-specific prompt with fallback
             notification_tasks = personality_config.get("treasure_hunter", {}).get("notification_task", {})
@@ -444,7 +445,7 @@ class Poe2SubroleBot(discord.Client):
             
             # Build complete prompt
             golden_rules_text = "\n".join(golden_rules)
-            complete_prompt = f"{mission_active}\n\n{task_prompt}\n\nGOLDEN RULES:\n{golden_rules_text}\n\nRespond only with the alert message, no additional explanations."
+            complete_prompt = f"{active_duty}\n\n{task_prompt}\n\nGOLDEN RULES:\n{golden_rules_text}\n\nRespond only with the alert message, no additional explanations."
             
             # Call LLM with complete configuration
             res = await asyncio.to_thread(call_llm, system_instruction, complete_prompt, False, "treasure_hunter_notification")

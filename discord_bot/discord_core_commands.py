@@ -25,14 +25,13 @@ from discord_bot.discord_utils import (
     set_greeting_enabled, get_greeting_enabled,
     is_role_enabled_check,
     get_server_key,
-    get_role_interval_hours,
     set_role_enabled,
 )
 
 try:
-    from roles.banker.db_role_banker import get_banker_db_instance
-except Exception:
-    get_banker_db_instance = None
+    from agent_roles_db import get_roles_db_instance
+except ImportError:
+    get_roles_db_instance = None
 
 try:
     from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
@@ -799,7 +798,7 @@ def register_core_commands(bot, agent_config):
 
         # News Watcher
         if is_role_enabled_check("news_watcher", agent_config, ctx.guild):
-            interval = get_role_interval_hours("news_watcher", agent_config, ctx.guild, 1)
+            interval = 1  # Default interval for news_watcher
             help_msg += f"📡 **News Watcher** - Important alerts every {interval}h\n"
             help_msg += "  • **Main:** `!watcher` | `!nowatcher` | `!watchernotify`\n"
             help_msg += "  • **Help:** `!watcherhelp` (users) | `!watcherchannelhelp` (admins)\n"
@@ -807,7 +806,7 @@ def register_core_commands(bot, agent_config):
             help_msg += "  • **Subscription:** `!watcher feeds/categories/status/subscribe/unsubscribe/keywords/general/reset`\n\n"
         # Treasure Hunter
         if is_role_enabled_check("treasure_hunter", agent_config, ctx.guild):
-            interval = get_role_interval_hours("treasure_hunter", agent_config, ctx.guild, 1)
+            interval = 1  # Default interval for treasure_hunter
             help_msg += f"💎 **Treasure Hunter** - POE2 item alerts every {interval}h\n"
             help_msg += "  • **Admin:** `!hunter poe2 on/off`, `!hunterfrequency <h>` (admins only, from a server channel)\n"
             help_msg += "  • **League:** `!hunter poe2 league \"Standard\"` | `!hunter poe2 \"Fate of the Vaal\"`\n"

@@ -4,10 +4,11 @@ import queue
 import threading
 import logging
 from datetime import date, datetime
+import httpx
 from typing import Any
 
 try:
-    import google.generativeai as genai
+    import google.genai as genai
     from google.genai import types
     GEMINI_AVAILABLE = True
 except ImportError:
@@ -340,13 +341,31 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
     if not interactions:
         if previous_summary:
             return previous_summary
+        # No interactions and no previous summary for today - try to find the most recent existing summary
+        try:
+            with db_instance._lock:
+                import sqlite3
+                conn = sqlite3.connect(db_instance.db_path)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT summary FROM recent_memory 
+                    WHERE summary IS NOT NULL AND summary != '' 
+                    ORDER BY updated_at DESC LIMIT 1
+                """)
+                result = cursor.fetchone()
+                conn.close()
+                
+                if result and result[0] and result[0].strip():
+                    # Found existing summary, use it without saving
+                    existing_summary = result[0].strip()
+                    logger.info(f"🧠 [RECENT_MEMORY] No interactions, using existing summary from history")
+                    return existing_summary
+        except Exception as e:
+            logger.debug(f"Could not retrieve existing recent memory: {e}")
+        
+        # No existing summary found, use fallback but don't save it
         fallback = _get_recent_memory_fallback()
-        db_instance.upsert_recent_memory(
-            fallback,
-            memory_date=resolved_date,
-            last_interaction_at=last_interaction_at,
-            metadata={"source": "recent_memory_fallback", "interaction_count": 0},
-        )
+        logger.info(f"🧠 [RECENT_MEMORY] No interactions and no existing summary, using fallback without saving")
         return fallback
 
     system_instruction = engine._build_system_prompt(engine.PERSONALITY)
@@ -362,10 +381,30 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
     # Extract new memory and notable recollection from response
     new_memory_text, extracted_recollection = _extract_memory_from_summary(summary_response or "")
     
-    # Use extracted recollection, or fallback to previous or default
-    summary_text = new_memory_text.strip() if new_memory_text else (previous_summary or _get_recent_memory_fallback())
+    # Only update if LLM successfully generated new content (not error messages)
+    if new_memory_text and new_memory_text.strip() and new_memory_text != "[Error in internal task]":
+        # LLM succeeded, use the new memory
+        summary_text = new_memory_text.strip()
+        
+        latest_interaction_at = interactions[-1].get("fecha") or last_interaction_at
+        db_instance.upsert_recent_memory(
+            summary_text,
+            memory_date=resolved_date,
+            last_interaction_at=latest_interaction_at,
+            metadata={
+                "source": "llm_recent_memory_summary",
+                "interaction_count": len(interactions),
+                "generated_at": datetime.now().isoformat(),
+                "recollection_extracted": bool(extracted_recollection and extracted_recollection != "NO_MEMORY"),
+            },
+        )
+        logger.info(f"🧠 [RECENT_MEMORY] Updated summary for {resolved_server} on {resolved_date} ({len(interactions)} interactions, extracted: {bool(extracted_recollection and extracted_recollection != 'NO_MEMORY')})")
+    else:
+        # LLM failed or returned error, keep existing summary unchanged
+        summary_text = previous_summary or _get_recent_memory_fallback()
+        logger.info(f"🧠 [RECENT_MEMORY] LLM failed, keeping existing summary for {resolved_server} on {resolved_date}")
     
-    # Store extracted recollection if present
+    # Store extracted recollection if present (even if memory update failed)
     if extracted_recollection and extracted_recollection != "NO_MEMORY":
         recollection_id = db_instance.add_notable_recollection(
             recollection_text=extracted_recollection,
@@ -375,19 +414,6 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
         if recollection_id:
             logger.info(f"🧠 [RECENT_MEMORY] Extracted and stored notable recollection: '{extracted_recollection[:60]}...'")
     
-    latest_interaction_at = interactions[-1].get("fecha") or last_interaction_at
-    db_instance.upsert_recent_memory(
-        summary_text,
-        memory_date=resolved_date,
-        last_interaction_at=latest_interaction_at,
-        metadata={
-            "source": "llm_recent_memory_summary",
-            "interaction_count": len(interactions),
-            "generated_at": datetime.now().isoformat(),
-            "recollection_extracted": bool(extracted_recollection and extracted_recollection != "NO_MEMORY"),
-        },
-    )
-    logger.info(f"🧠 [RECENT_MEMORY] Stored summary for {resolved_server} on {resolved_date} ({len(interactions)} interactions, extracted: {bool(extracted_recollection and extracted_recollection != 'NO_MEMORY')})")
     return summary_text
 
 
@@ -516,12 +542,31 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
     if not recent_summary:
         if previous_summary:
             return previous_summary
+        # No recent summary and no previous daily summary - try to find the most recent existing daily summary
+        try:
+            with db_instance._lock:
+                import sqlite3
+                conn = sqlite3.connect(db_instance.db_path)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT summary FROM daily_memory 
+                    WHERE summary IS NOT NULL AND summary != '' 
+                    ORDER BY updated_at DESC LIMIT 1
+                """)
+                result = cursor.fetchone()
+                conn.close()
+                
+                if result and result[0] and result[0].strip():
+                    # Found existing summary, use it without saving
+                    existing_summary = result[0].strip()
+                    logger.info(f"🧠 [DAILY_MEMORY] No recent memory, using existing daily summary from history")
+                    return existing_summary
+        except Exception as e:
+            logger.debug(f"Could not retrieve existing daily memory: {e}")
+        
+        # No existing summary found, use fallback but don't save it
         fallback = _get_daily_memory_fallback()
-        db_instance.upsert_daily_memory(
-            fallback,
-            memory_date=resolved_date,
-            metadata={"source": "daily_memory_fallback", "interaction_count": 0},
-        )
+        logger.info(f"🧠 [DAILY_MEMORY] No recent memory and no existing summary, using fallback without saving")
         return fallback
     
     # Determine if we should inject a random recollection
@@ -552,21 +597,59 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
     )
     
     # Extract new memory (no extraction for daily memory now)
-    summary_text = (summary_response or "").strip() or previous_summary or _get_daily_memory_fallback()
+    llm_response = (summary_response or "").strip()
     
-    db_instance.upsert_daily_memory(
-        summary_text,
-        memory_date=resolved_date,
-        metadata={
-            "source": "llm_daily_summary",
-            "recent_memory_used": bool(recent_summary),
-            "generated_at": datetime.now().isoformat(),
-            "recollection_injected": bool(dreaming_recollection),
-            "dreaming_triggered": bool(dreaming_recollection),
-            "memory_extracted": False,  # Daily memory no longer extracts memories
-        },
-    )
-    logger.info(f"🧠 [DAILY_MEMORY] Stored summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, dreaming: {bool(dreaming_recollection)})")
+    # Only update if LLM successfully generated new content (not error messages)
+    if llm_response and llm_response != "[Error in internal task]":
+        # LLM succeeded, use the new memory
+        summary_text = llm_response
+        
+        db_instance.upsert_daily_memory(
+            summary_text,
+            memory_date=resolved_date,
+            metadata={
+                "source": "llm_daily_summary",
+                "recent_memory_used": bool(recent_summary),
+                "generated_at": datetime.now().isoformat(),
+                "recollection_injected": bool(dreaming_recollection),
+                "dreaming_triggered": bool(dreaming_recollection),
+                "memory_extracted": False,  # Daily memory no longer extracts memories
+            },
+        )
+        logger.info(f"🧠 [DAILY_MEMORY] Updated summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, dreaming: {bool(dreaming_recollection)})")
+    else:
+        # LLM failed or returned error, keep existing summary unchanged
+        if previous_summary:
+            summary_text = previous_summary
+        else:
+            # No today's summary and LLM failed - try to find the most recent existing summary
+            try:
+                with db_instance._lock:
+                    import sqlite3
+                    conn = sqlite3.connect(db_instance.db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT summary FROM daily_memory 
+                        WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
+                        ORDER BY updated_at DESC LIMIT 1
+                    """)
+                    result = cursor.fetchone()
+                    conn.close()
+                    
+                    if result and result[0] and result[0].strip():
+                        # Found existing summary, use it
+                        summary_text = result[0].strip()
+                        logger.info(f"🧠 [DAILY_MEMORY] LLM failed, using existing daily summary from history")
+                    else:
+                        # No existing summary found, use fallback
+                        summary_text = _get_daily_memory_fallback()
+                        logger.info(f"🧠 [DAILY_MEMORY] LLM failed and no existing summary, using fallback")
+            except Exception as e:
+                logger.debug(f"Could not retrieve existing daily memory: {e}")
+                summary_text = _get_daily_memory_fallback()
+        
+        logger.info(f"🧠 [DAILY_MEMORY] LLM failed, keeping existing summary for {resolved_server} on {resolved_date}")
+    
     return summary_text
 
 
@@ -635,32 +718,42 @@ def generate_user_relationship_memory_summary(
         call_type="relationship_memory",
         critical=False
     )
-    summary_text = (summary_response or "").strip() or previous_summary or _get_relationship_memory_fallback(user_name)
+    llm_response = (summary_response or "").strip()
+    
+    # Only update if LLM successfully generated new content (not error messages)
+    if llm_response and llm_response != "[Error in internal task]":
+        # LLM succeeded, use the new memory
+        summary_text = llm_response
+        
+        latest_interaction_at = last_interaction_at
+        if new_interactions:
+            latest_interaction_at = new_interactions[-1].get("fecha") or last_interaction_at
 
-    latest_interaction_at = last_interaction_at
-    if new_interactions:
-        latest_interaction_at = new_interactions[-1].get("fecha") or last_interaction_at
-
-    metadata = {
-        "user_name": user_name or "",
-        "source": "llm_relationship_summary",
-        "interaction_count": len(new_interactions),
-        "generated_at": datetime.datetime.now().isoformat(),
-    }
-    db_instance.upsert_user_relationship_memory(
-        user_id,
-        summary_text,
-        last_interaction_at=latest_interaction_at,
-        metadata=metadata,
-    )
-    db_instance.upsert_user_relationship_daily_memory(
-        user_id,
-        summary_text,
-        memory_date=resolved_date,
-        metadata=metadata,
-    )
-    db_instance.mark_relationship_refresh_completed(user_id)
-    logger.info(f"🧠 [RELATIONSHIP_MEMORY] Stored summary for user={user_id} server={resolved_server} date={resolved_date}")
+        metadata = {
+            "user_name": user_name or "",
+            "source": "llm_relationship_summary",
+            "interaction_count": len(new_interactions),
+            "generated_at": datetime.datetime.now().isoformat(),
+        }
+        db_instance.upsert_user_relationship_memory(
+            user_id,
+            summary_text,
+            last_interaction_at=latest_interaction_at,
+            metadata=metadata,
+        )
+        db_instance.upsert_user_relationship_daily_memory(
+            user_id,
+            summary_text,
+            memory_date=resolved_date,
+            metadata=metadata,
+        )
+        db_instance.mark_relationship_refresh_completed(user_id)
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Updated summary for user={user_id} server={resolved_server} date={resolved_date}")
+    else:
+        # LLM failed or returned error, keep existing summary unchanged
+        summary_text = previous_summary or _get_relationship_memory_fallback(user_name)
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, keeping existing summary for user={user_id} server={resolved_server}")
+    
     return summary_text
 
 
@@ -1222,17 +1315,17 @@ def _get_keyword_injection(content: str) -> str:
     if not content:
         return ""
     engine = _engine()
-    role_system_prompts = (engine.PERSONALITY or {}).get("role_system_prompts", {})
-    subroles_cfg = (role_system_prompts or {}).get("subroles", {})
+    role_system_prompts = (engine.PERSONALITY or {}).get("roles", {})
+    subroles_cfg = (role_system_prompts or {}).get("trickster", {}).get("subroles", {})
     for subrole_name, subrole_cfg in subroles_cfg.items():
         if not isinstance(subrole_cfg, dict):
             continue
         if not _matches_subrole_keywords(subrole_name, content):
             continue
-        mission_active = (subrole_cfg.get("mission_active") or "").strip()
+        active_duty = str(subrole_cfg.get("active_duty") or subrole_cfg.get("mission_active") or "").strip()
         chat_detection = (subrole_cfg.get("chat_detection") or {}).get("prompt", "")
         detection_prompt = str(chat_detection).replace("{username}", "user").strip()
-        parts = [part for part in [mission_active, detection_prompt] if part]
+        parts = [part for part in [active_duty, detection_prompt] if part]
         if parts:
             return "\n".join(parts)
     return ""
@@ -1241,8 +1334,8 @@ def _get_keyword_injection(content: str) -> str:
 def _matches_subrole_keywords(subrole_name: str, content: str) -> bool:
     """Check if content matches keywords for a specific subrole."""
     engine = _engine()
-    role_system_prompts = (engine.PERSONALITY or {}).get("role_system_prompts", {})
-    subroles_cfg = (role_system_prompts or {}).get("subroles", {})
+    role_system_prompts = (engine.PERSONALITY or {}).get("roles", {})
+    subroles_cfg = (role_system_prompts or {}).get("trickster", {}).get("subroles", {})
     subrole_cfg = subroles_cfg.get(subrole_name, {})
     if not isinstance(subrole_cfg, dict):
         return False
@@ -1262,7 +1355,9 @@ def call_llm(
     max_tokens: int = 1024,
     critical: bool = True,
     metadata: dict | None = None,
-    logger: logging.Logger | None = None
+    logger: logging.Logger | None = None,
+    user_id: str = None,
+    user_name: str = None
 ) -> str:
     """
     Unified LLM call function that can operate in sync or async mode.
@@ -1277,6 +1372,8 @@ def call_llm(
         critical: Whether errors should break execution
         metadata: Additional context for logging
         logger: Logger instance (auto-detected if None)
+        user_id: User ID for fatigue tracking (optional)
+        user_name: User name for fatigue tracking (optional)
     
     Returns:
         LLM response text
@@ -1317,39 +1414,53 @@ def call_llm(
                 if critical:
                     logger.warning(f"Gemini unavailable for critical call, using fallback")
             else:
-                client_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+                client_gemini = genai.Client(
+                    api_key=os.getenv("GEMINI_API_KEY"),
+                    http_options=genai.types.HttpOptions(
+                        httpx_client=httpx.Client(timeout=30.0)
+                    )
+                )
                 
                 if async_mode:
-                    return _call_gemini_async(
-                        client_gemini, system_instruction, prompt, temperature, 
-                        max_tokens, start_time, call_type, critical, logger
-                    )
+                    try:
+                        result = _call_gemini_async(
+                            client_gemini, system_instruction, prompt, temperature, 
+                            max_tokens, start_time, call_type, critical, logger, user_id, user_name
+                        )
+                        if result is not None:
+                            return result
+                    except Exception as e:
+                        logger.info(f"{log_prefix} Gemini async call failed, fallback to Groq: {e}")
+                        # Fall through to Groq fallback for all calls (critical and non-critical)
                 else:
-                    return _call_gemini_sync(
-                        client_gemini, system_instruction, prompt, temperature,
-                        max_tokens, start_time, call_type, critical, logger
-                    )
+                    try:
+                        result = _call_gemini_sync(
+                            client_gemini, system_instruction, prompt, temperature,
+                            max_tokens, start_time, call_type, critical, logger, user_id, user_name
+                        )
+                        if result is not None:
+                            return result
+                    except Exception as e:
+                        logger.info(f"{log_prefix} Gemini sync call failed, fallback to Groq: {e}")
+                        # Fall through to Groq fallback for all calls (critical and non-critical)
         else:
             logger.info(f"{log_prefix} Simulation mode, using Groq")
     except ImportError as e:
         logger.info(f"{log_prefix} Gemini import failed, fallback to Groq: {e}")
-        if critical:
-            logger.warning(f"Gemini unavailable for critical call, using fallback")
     except Exception as e:
         logger.info(f"{log_prefix} Gemini failed, fallback to Groq: {e}")
-        if critical:
-            logger.exception(f"Critical LLM call failed: {e}")
     
     # Fallback to Groq
     return _call_groq_fallback(
         system_instruction, prompt, temperature, max_tokens, start_time,
-        call_type, critical, logger
+        call_type, critical, logger, user_id, user_name
     )
 
 
 def _call_gemini_sync(
     client_gemini, system_instruction: str, prompt: str, temperature: float,
-    max_tokens: int, start_time: float, call_type: str, critical: bool, logger
+    max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
+    user_id: str = None, user_name: str = None
 ) -> str:
     """Synchronous Gemini call (for critical operations)"""
     try:
@@ -1378,20 +1489,34 @@ def _call_gemini_sync(
             except Exception as log_error:
                 logger.warning(f"Failed to log response: {log_error}")
             
+            # Increment fatigue counter
+            try:
+                personality_name = _engine().PERSONALITY.get("name", "unknown")
+                runtime_increment_usage(personality_name, user_id, user_name)
+                logger.info(f"📊 [FATIGUE] Incremented counter for {personality_name}" + (f" (user: {user_name})" if user_name else ""))
+            except Exception as fatigue_error:
+                logger.warning(f"Failed to increment fatigue counter: {fatigue_error}")
+            
             return postprocessed
         else:
             logger.warning("🤖 [SYNC] Gemini returned empty or too short response")
-            return _get_fallback_response(critical)
+            if critical:
+                return _get_fallback_response(critical)
+            else:
+                return None
             
     except Exception as e:
         logger.error(f"🤖 [SYNC] Gemini call failed: {e}")
         if critical:
             raise
-        return _get_fallback_response(critical)
+        else:
+            # For non-critical calls, return fallback response to trigger fallback chain
+            return None
 
 def _call_gemini_async(
     client_gemini, system_instruction: str, prompt: str, temperature: float,
-    max_tokens: int, start_time: float, call_type: str, critical: bool, logger
+    max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
+    user_id: str = None, user_name: str = None
 ) -> str:
     """Asynchronous Gemini call with threading (for _call_llm_async behavior)"""
     result_queue = queue.Queue()
@@ -1416,7 +1541,7 @@ def _call_gemini_async(
 
     gemini_thread = threading.Thread(target=call_gemini)
     gemini_thread.start()
-    gemini_thread.join(timeout=5.0)
+    gemini_thread.join(timeout=60.0)
 
     if not gemini_thread.is_alive() and exception_queue.empty():
         res = result_queue.get()
@@ -1433,22 +1558,40 @@ def _call_gemini_async(
             except Exception as log_error:
                 logger.warning(f"Failed to log subrole response: {log_error}")
             
+            # Increment fatigue counter
+            try:
+                personality_name = _engine().PERSONALITY.get("name", "unknown")
+                runtime_increment_usage(personality_name, user_id, user_name)
+                logger.info(f"📊 [FATIGUE] Incremented counter for {personality_name}" + (f" (user: {user_name})" if user_name else ""))
+            except Exception as fatigue_error:
+                logger.warning(f"Failed to increment fatigue counter: {fatigue_error}")
+            
             return postprocessed
         else:
             logger.warning("🤖 [ASYNC] Gemini returned empty or too short response")
-            return _get_fallback_response(critical)
+            if critical:
+                return _get_fallback_response(critical)
+            else:
+                return None
     else:
-        logger.info("🤖 [ASYNC] Gemini timeout/error, fallback to Groq")
+        # Check if there's an exception
+        if not exception_queue.empty():
+            exception = exception_queue.get()
+            logger.error(f"🤖 [ASYNC] Gemini exception: {exception}")
+            logger.info("🤖 [ASYNC] Gemini timeout/error, fallback to Groq")
+        else:
+            logger.info("🤖 [ASYNC] Gemini timeout (thread still alive), fallback to Groq")
         return _call_groq_fallback(
             system_instruction, prompt, temperature, max_tokens, start_time,
-            call_type, critical, logger
+            call_type, critical, logger, user_id, user_name
         )
 
 def _call_groq_fallback(
     system_instruction: str, prompt: str, temperature: float,
-    max_tokens: int, start_time: float, call_type: str, critical: bool, logger
+    max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
+    user_id: str = None, user_name: str = None
 ) -> str:
-    """Fallback to Groq when Gemini fails"""
+    """Fallback to Groq when Gemini fails, with Mistral as second fallback"""
     try:
         logger.info(f"🤖 [FALLBACK] Starting call to llama-3.3-70b-versatile")
 
@@ -1478,9 +1621,74 @@ def _call_groq_fallback(
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
         
+        # Increment fatigue counter
+        try:
+            personality_name = _engine().PERSONALITY.get("name", "unknown")
+            runtime_increment_usage(personality_name, user_id, user_name)
+            logger.info(f"📊 [FATIGUE] Incremented counter for {personality_name}" + (f" (user: {user_name})" if user_name else ""))
+        except Exception as fatigue_error:
+            logger.warning(f"Failed to increment fatigue counter: {fatigue_error}")
+        
         return postprocessed
     except Exception as e:
-        logger.error(f"🤖 [FALLBACK] Both LLMs failed: {e}")
+        logger.error(f"🤖 [FALLBACK] Groq failed: {e}")
+        logger.info(f"🤖 [FALLBACK] Trying Mistral as second fallback")
+        return _call_mistral_fallback(
+            system_instruction, prompt, temperature, max_tokens, start_time,
+            call_type, critical, logger, user_id, user_name
+        )
+
+
+def _call_mistral_fallback(
+    system_instruction: str, prompt: str, temperature: float,
+    max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
+    user_id: str = None, user_name: str = None
+) -> str:
+    """Second fallback to Mistral when both Gemini and Groq fail"""
+    try:
+        logger.info(f"🤖 [FALLBACK2] Starting call to Mistral")
+
+        from agent_runtime import get_mistral_client
+        mistral_client = get_mistral_client()
+        
+        if not mistral_client:
+            logger.error(f"🤖 [FALLBACK2] Mistral client not available")
+            raise Exception("Mistral client not initialized")
+        
+        response = mistral_client.chat.complete(
+            model="mistral-medium-latest",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=0.95,
+        )
+
+        response_text = response.choices[0].message.content
+        postprocessed = postprocess_response(response_text)
+        total_time = time.time()
+        logger.info(f"🏁 [FALLBACK2] Mistral completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+        
+        # Log the response
+        try:
+            server_name = get_active_server_name()
+            log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
+        except Exception as log_error:
+            logger.warning(f"Failed to log subrole response: {log_error}")
+        
+        # Increment fatigue counter
+        try:
+            personality_name = _engine().PERSONALITY.get("name", "unknown")
+            runtime_increment_usage(personality_name, user_id, user_name)
+            logger.info(f"📊 [FATIGUE] Incremented counter for {personality_name}" + (f" (user: {user_name})" if user_name else ""))
+        except Exception as fatigue_error:
+            logger.warning(f"Failed to increment fatigue counter: {fatigue_error}")
+        
+        return postprocessed
+    except Exception as e:
+        logger.error(f"🤖 [FALLBACK2] All LLMs failed (Gemini, Groq, Mistral): {e}")
         if critical:
             raise
         return _get_fallback_response(critical)

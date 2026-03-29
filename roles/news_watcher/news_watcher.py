@@ -511,8 +511,8 @@ def _build_news_watcher_prompt(
     # Try to get golden_rules from personality, fallback to config or default
     try:
         from agent_engine import PERSONALITY
-        role_prompts = PERSONALITY.get("role_system_prompts", {})
-        personality_rules = role_prompts.get("roles", {}).get("watcher", {}).get("golden_rules", [])
+        role_prompts = PERSONALITY.get("roles", {})
+        personality_rules = role_prompts.get("news_watcher", {}).get("golden_rules", [])
         golden_rules = personality_rules if personality_rules else config.get("golden_rules")
     except Exception:
         golden_rules = config.get("golden_rules")
@@ -571,8 +571,8 @@ async def _generate_personality_opinion(
         # Get system prompt from personality or fallback to English
         try:
             from agent_engine import PERSONALITY
-            role_prompts = PERSONALITY.get("role_system_prompts", {})
-            system_prompt = role_prompts.get("roles", {}).get("watcher", {}).get("prompt", ROL_VIGIA_PERSONALITY)
+            role_prompts = PERSONALITY.get("roles", {})
+            system_prompt = role_prompts.get("news_watcher", {}).get("prompt", ROL_VIGIA_PERSONALITY)
             prompt_config = PERSONALITY.get("news_watcher_prompt", {})
         except Exception:
             system_prompt = ROL_VIGIA_PERSONALITY

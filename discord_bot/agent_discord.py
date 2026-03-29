@@ -136,6 +136,11 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix=_cmd_prefix, intents=intents)
 
+
+def get_bot_instance():
+    """Get the global bot instance."""
+    return bot
+
 # --- AUTOMATIC TASKS ---
 
 @tasks.loop(hours=24)
@@ -195,6 +200,80 @@ async def _register_bot_commands():
     logger.info("📦 Importing role commands...")
     await register_all_role_commands(bot, agent_config, PERSONALITY)
     logger.info(f"✅ Role commands registered: {len(bot.commands)}")
+
+
+async def _create_banker_wallets_on_startup():
+    """Create banker wallets for all members of all connected servers."""
+    logger.info("💰 Creating banker wallets for all server members...")
+    
+    try:
+        from roles.banker.banker_db import get_banker_roles_db_instance
+        from agent_roles_db import get_roles_db_instance
+        
+        # Process all guilds the bot is connected to
+        for guild in bot.guilds:
+            guild_id = str(guild.id)
+            guild_name = guild.name
+            
+            logger.info(f"💰 Processing guild: {guild_name} ({guild_id})")
+            
+            try:
+                # Get banker database for this server using server ID
+                db_banker = get_banker_roles_db_instance(guild_id)
+                
+                # Create system accounts first
+                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", guild_id, guild_name, wallet_type='system')
+                db_banker.create_wallet("beggar_fund", "Beggar Fund", guild_id, guild_name, wallet_type='system')
+                
+                # Set default TAE if not configured
+                current_tae = db_banker.get_tae(guild_id)
+                if current_tae == 0:
+                    db_banker.set_tae(guild_id, 10)  # Default 10 coins per day
+                    logger.info(f"💰 Set default TAE to 10 coins per day for {guild_name}")
+                
+                created_count = 0
+                existing_count = 0
+                
+                # Create wallets for all members in this guild
+                for member in guild.members:
+                    if member.bot:
+                        continue  # Skip bot accounts
+                    
+                    member_id = str(member.id)
+                    member_name = member.display_name
+                    
+                    # Create wallet with opening bonus (10x TAE)
+                    was_created = db_banker.create_wallet(
+                        member_id, member_name, guild_id, guild_name, wallet_type='user'
+                    )
+                    
+                    if was_created:
+                        created_count += 1
+                        initial_balance = db_banker.get_balance(member_id, guild_id)
+                        logger.info(f"💰 Created wallet for {member_name} with {initial_balance} coins")
+                    else:
+                        existing_count += 1
+                
+                # Initialize dice game accounts for all members
+                try:
+                    roles_db = get_roles_db_instance(guild_id)
+                    if roles_db:
+                        for member in guild.members:
+                            if not member.bot:
+                                roles_db.save_dice_game_stats(str(member.id), guild_id)
+                        logger.info(f"🎲 Dice game accounts initialized for {guild_name}")
+                except Exception as dice_error:
+                    logger.warning(f"Could not initialize dice game accounts for {guild_name}: {dice_error}")
+                
+                logger.info(f"💰 Guild {guild_name}: {created_count} new wallets, {existing_count} existing wallets")
+                
+            except Exception as guild_error:
+                logger.error(f"Error processing guild {guild_name}: {guild_error}")
+        
+        logger.info("✅ Banker wallet creation completed for all servers")
+        
+    except Exception as e:
+        logger.exception(f"💰 Error in banker wallet creation: {e}")
 
 
 @bot.event
@@ -267,6 +346,9 @@ async def on_ready():
         database_cleanup.start()
         logger.info("🧹 DB cleanup task started")
     await set_mc_presence_if_enabled()
+    
+    # Create banker wallets for all server members
+    await _create_banker_wallets_on_startup()
 
 
 @bot.event
@@ -447,6 +529,277 @@ def _clean_message_content(message):
         return message.content
 
 
+async def _process_accuse_flag(message, llm_response: str, server_name: str, is_public: bool) -> str | None:
+    """Process ACCUSE <USERNAME> flag from LLM response."""
+    try:
+        # Import the ring extraction function
+        from roles.trickster.subroles.ring.ring import extract_accuse_flag
+        
+        # Extract the username from ACCUSE flag
+        accused_username = extract_accuse_flag(llm_response)
+        
+        if not accused_username:
+            logger.warning("ACCUSE flag found but could not extract username")
+            return None
+            
+        logger.info(f"🎯 ACCUSE flag detected: {accused_username} (from user {message.author.name})")
+        
+        # Find a server where both the accuser and the target can be found
+        guild = None
+        if message.guild:
+            # We're already in a server
+            guild = message.guild
+        else:
+            # We're in a DM, find a mutual server
+            for server in bot.guilds:
+                if message.author in server.members:
+                    # Check if trickster role is enabled for this server
+                    from discord_bot.discord_utils import is_role_enabled_check
+                    if is_role_enabled_check("trickster", server):
+                        guild = server
+                        break
+        
+        if not guild:
+            logger.info("ACCUSE flag ignored - no suitable server found")
+            return
+            
+        logger.info(f"🎯 Processing ACCUSE flag in server: {guild.name}")
+        
+        # Validate the username against server members
+        target_member = None
+        for member in guild.members:
+            if member.bot:
+                continue
+            # Check display name and username
+            if (member.display_name.lower() == accused_username.lower() or 
+                member.name.lower() == accused_username.lower()):
+                target_member = member
+                break
+                
+        if target_member:
+            logger.info(f"✅ User '{accused_username}' found in server: {target_member.name}")
+            return await _handle_valid_accusation(message, target_member, guild, server_name, is_public)
+        else:
+            logger.info(f"❌ User '{accused_username}' not found in server")
+            return await _handle_false_accusation(message, accused_username, guild, server_name, is_public)
+            
+    except Exception as e:
+        logger.exception(f"Error processing ACCUSE flag: {e}")
+        return None
+
+
+async def _handle_valid_accusation(message, target_member, guild, server_name: str, is_public: bool) -> str:
+    """Handle accusation when the user exists in the server."""
+    try:
+        # Update the ring state to point to the new target
+        from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+        
+        server_id = str(guild.id)  # Use guild parameter instead of message.guild
+        state = _get_ring_state(server_id)
+        
+        # Update target
+        state['target_user_id'] = str(target_member.id)
+        state['target_user_name'] = target_member.display_name
+        _save_ring_state(server_id, "accuse_flag")
+        
+        # Reset frequency counter since accusation target changed
+        from roles.trickster.subroles.ring.ring_discord import _record_accusation
+        await _record_accusation(server_id, f"ACCUSE {target_member.display_name}", guild, str(target_member.id), target_member.display_name)
+        
+        logger.info(f"🎯 Ring accusation target updated to: {target_member.display_name}")
+        
+        # Build denial prompt for LLM
+        from agent_engine import PERSONALITY
+        from agent_mind import call_llm
+        
+        # Get ring prompts from personality
+        prompts_config = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        denial_config = prompts_config.get("denial", {})
+        
+        task_template = denial_config.get("task", f"Task: The human {target_member.display_name} denies having the ring, warn them not to lie to you and leave them alone")
+        # Replace placeholders with actual names
+        task = task_template.replace("{target_name}", target_member.display_name)
+        task = task.replace("{user_name}", message.author.display_name)
+        rules = denial_config.get("golden_rules", [])
+        
+        # Build the prompt with actual memory data using existing functions
+        from agent_mind import _build_prompt_memory_block, _build_prompt_relationship_block
+        from agent_db import get_global_db
+        
+        # Get database instance for memory retrieval
+        db_instance = get_global_db(server_name) if server_name else get_global_db()
+        
+        # Build memory sections using existing functions (for the user who sent the message)
+        memory_block = _build_prompt_memory_block(server=server_name)
+        relationship_block = _build_prompt_relationship_block(
+            user_id=message.author.id, 
+            user_name=message.author.display_name, 
+            server=server_name
+        )
+        
+        # Get recent interactions for context (for the user who sent the message)
+        recent_interactions = []
+        try:
+            if db_instance:
+                recent_interactions = db_instance.get_user_recent_interactions(message.author.id, limit=5)
+        except Exception as e:
+            logger.debug(f"Could not get recent interactions: {e}")
+        
+        # Build recent dialogue section
+        if recent_interactions:
+            dialogue_lines = []
+            for interaction in recent_interactions:
+                dialogue_lines.append(f"- {interaction.get('user_name', 'Unknown')}: {interaction.get('content', '')[:100]}...")
+            recent_dialogue = "\n".join(dialogue_lines)
+        else:
+            recent_dialogue = "No recent interactions recorded."
+        
+        # Build the prompt
+        prompt_parts = [
+            memory_block,
+            relationship_block,
+            recent_dialogue,
+            "",
+        ]
+        
+        # Add rules
+        for rule in rules:
+            prompt_parts.append(rule)
+        
+        prompt_parts.extend([
+            "",
+            task,
+            "",
+            "## RESPUESTA DE PUTRE:",
+        ])
+        
+        denial_prompt = "\n".join(prompt_parts)
+        
+        # Generate the denial response
+        from agent_engine import _build_system_prompt
+        system_instruction = _build_system_prompt(PERSONALITY)
+        
+        response = call_llm(
+            system_instruction=system_instruction,
+            prompt=denial_prompt,
+            async_mode=False,
+            call_type="ring_denial",
+            critical=True,
+            logger=logger,
+            user_id=str(message.author.id),
+            user_name=message.author.display_name
+        )
+        
+        if response and response.strip():
+            return response
+        else:
+            return f"GRRR! {target_member.display_name}! Don't lie to me, I know you have the ring! Leave it alone or I'll rip your fingers off!"
+            
+    except Exception as e:
+        logger.exception(f"Error handling valid accusation: {e}")
+        return f"GRAAAH! {target_member.display_name}! Don't lie to me, I know you have the ring! Leave it alone or I'll rip your fingers off!"
+
+
+async def _handle_false_accusation(message, accused_username: str, guild, server_name: str, is_public: bool) -> str:
+    """Handle accusation when the user doesn't exist in the server."""
+    try:
+        # Build false accusation prompt for LLM
+        from agent_engine import PERSONALITY
+        from agent_mind import call_llm
+        
+        # Get ring prompts from personality
+        prompts_config = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        false_accusation_config = prompts_config.get("false_accusation", {})
+        
+        mission = false_accusation_config.get("mission", "MISSION ACTIVE - RING: The human falsely accused someone of having the ring.")
+        task_template = false_accusation_config.get("task", f"Task: The human has accused '{accused_username}' who doesn't exist in the server, respond appropriately")
+        # Replace placeholders with actual names
+        task = task_template.replace("{target_name}", accused_username)
+        task = task.replace("{user_name}", message.author.display_name)
+        rules = false_accusation_config.get("golden_rules", [])
+        
+        # Build memory sections using existing functions (using accuser's context)
+        from agent_mind import _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
+        from agent_db import get_global_db
+        
+        # Get database instance for memory retrieval
+        db_instance = get_global_db(server_name) if server_name else get_global_db()
+        
+        # Build memory sections using proper functions
+        memory_block = _build_prompt_memory_block(server=server_name)
+        
+        # Use message.author for relationship context
+        relationship_block = _build_prompt_relationship_block(
+            user_id=message.author.id,
+            user_name=message.author.display_name,
+            server=server_name
+        )
+        last_interactions_block = _build_prompt_last_interactions_block(
+            user_id=message.author.id,
+            server=server_name
+        )
+        
+        # Build the prompt with proper memory sections
+        prompt_parts = []
+        
+        # Add memory block if available
+        if memory_block:
+            prompt_parts.append(memory_block)
+        
+        # Add relationship block if available
+        if relationship_block:
+            prompt_parts.append(relationship_block)
+        
+        # Add last interactions block if available
+        if last_interactions_block:
+            prompt_parts.append(last_interactions_block)
+        
+        # Add mission and task
+        prompt_parts.extend([
+            "",
+            mission,
+            "",
+        ])
+        
+        # Add rules with their own label
+        if rules: 
+            for rule in rules:
+                prompt_parts.append(rule)
+
+        prompt_parts.extend([
+            "",
+            task,
+            "",
+            PERSONALITY.get("closing", "## PUTRE'S RESPONSE:"),
+        ])
+        
+        false_accusation_prompt = "\n".join(prompt_parts)
+        
+        # Generate the false accusation response
+        from agent_mind import _build_system_prompt
+        system_instruction = _build_system_prompt(PERSONITY)
+        
+        response = call_llm(
+            system_instruction=system_instruction,
+            prompt=false_accusation_prompt,
+            async_mode=False,
+            call_type="ring_false_accusation",
+            critical=True,
+            logger=logger,
+            user_id=str(message.author.id),
+            user_name=message.author.display_name
+        )
+        
+        if response and response.strip():
+            return response
+        else:
+            return f"GRAAAH! Who are you accusing? '{accused_username}' doesn't exist in this server! Stop wasting my time, stupid human!"
+            
+    except Exception as e:
+        logger.exception(f"Error handling false accusation: {e}")
+        return f"GRAAAH! Who are you accusing? '{accused_username}' doesn't exist in this server! Stop wasting my time, stupid human!"
+
+
 async def _process_chat_message(message):
     """Process normal chat messages (DMs and mentions) with rate limiting."""
     # Rate limiting per user (security fix)
@@ -511,7 +864,9 @@ async def _process_chat_message(message):
                 "channel_id": message.channel.id if is_public else None,
                 "is_mention": is_mention
             },
-            logger=logger
+            logger=logger,
+            user_id=str(message.author.id),
+            user_name=message.author.display_name
         )
 
         # Check if this is a README response (deprecated is_help_request removed)
@@ -541,7 +896,9 @@ async def _process_chat_message(message):
                         "is_mention": is_mention,
                         "readme_enhanced": True
                     },
-                    logger=logger
+                    logger=logger,
+                    user_id=str(message.author.id),
+                    user_name=message.author.display_name
                 )
                 
                 logger.info(f"✅ README enhanced response generated")
@@ -597,7 +954,17 @@ async def _process_chat_message(message):
                 except Exception as e:
                     logger.debug(f"Could not mark user replied for server {server_name}: {e}")
 
-        if response and response.strip():
+        # Check for ACCUSE flag in LLM response
+        accusation_response = None
+        if response and "ACCUSE" in response:
+            accusation_response = await _process_accuse_flag(message, response, server_name, is_public)
+
+        # Send response to user (either original LLM response or accusation-specific response)
+        if accusation_response:
+            # Send the accusation-specific response
+            await message.channel.send(accusation_response)
+        elif response and response.strip():
+            # Send the original LLM response
             await message.channel.send(response)
 
     except Exception as e:

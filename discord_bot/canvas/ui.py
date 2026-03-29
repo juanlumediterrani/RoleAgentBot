@@ -3,6 +3,7 @@
 import os
 import asyncio
 import discord
+import json
 from pathlib import Path
 
 # Import core components directly to avoid circular imports
@@ -404,13 +405,16 @@ AGENT_CFG = core.AGENT_CFG
 try:
     from discord_bot.discord_utils import (
         send_embed_dm_or_channel, set_greeting_enabled, get_greeting_enabled,
-        is_role_enabled_check, get_server_key, get_role_interval_hours, set_role_enabled, is_admin
+        is_role_enabled_check, get_server_key, set_role_enabled, is_admin
     )
-    from roles.banker.db_role_banker import get_banker_db_instance
-    from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+    from agent_roles_db import get_roles_db_instance
+except ImportError:
+    get_roles_db_instance = None
+
+
+try:
     from roles.news_watcher.watcher_messages import get_watcher_messages
     from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
-    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
     from roles.trickster.subroles.dice_game.dice_game import DiceGame
     from roles.trickster.trickster_discord import get_beggar_db_instance
     from behavior.db_behavior import get_behavior_db_instance
@@ -434,13 +438,12 @@ except ImportError:
     get_greeting_enabled = None
     is_role_enabled_check = None
     get_server_key = None
-    get_role_interval_hours = None
     set_role_enabled = None
-    get_banker_db_instance = None
+    get_banker_db_instance = None  # Now using roles_db directly
     get_news_watcher_db_instance = None
     get_watcher_messages = None
     get_poe2_manager = None
-    get_dice_game_db_instance = None
+    get_roles_db_instance = None
     DiceGame = None
     get_beggar_db_instance = None
     get_behavior_db_instance = None
@@ -451,11 +454,7 @@ except ImportError:
     _bot_display_name = "Bot"
     _insult_cfg = {}
     _personality_answers = {}
-    _personality_descriptions = {}
-    _talk_state_by_guild_id = {}
-    get_taboo_state = None
-    update_taboo_state = None
-    is_taboo_triggered = None
+
 
 # Load descriptions directly if import failed
 if not _personality_descriptions:
@@ -485,7 +484,7 @@ except Exception:
     get_mc_db_instance = None
 
 try:
-    from roles.trickler.subroles.ring.ring_discord import _get_ring_state, execute_ring_accusation
+    from roles.trickster.subroles.ring.ring_discord import _get_ring_state, execute_ring_accusation
 except Exception:
     _get_ring_state = None
     execute_ring_accusation = None
@@ -1040,10 +1039,10 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
 
 
 class CanvasRoleActionSelect(discord.ui.Select):
-    def __init__(self, role_name: str, detail_name: str, admin_visible: bool):
+    def __init__(self, role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None):
         options = [
             discord.SelectOption(label=label, value=value, description=description)
-            for label, value, description in _get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible)
+            for label, value, description in _get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config)
         ]
         generic_option_label = _personality_descriptions.get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
         super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options[:25], row=2)
@@ -1096,16 +1095,24 @@ class CanvasRoleActionSelect(discord.ui.Select):
             # For dice actions, allow DM execution by using default server
             await _handle_canvas_dice_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"runes_single", "runes_three", "runes_cross"}:
+        if self.role_name == "trickster" and action_name in {"runes_single", "runes_three", "runes_cross", "runes_runic_cross"}:
             if not interaction.guild:
                 await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
                 return
+            
+            # Check if runes subrole is enabled
+            runes_enabled = False
+            if view.agent_config:
+                runes_enabled = view.agent_config.get("roles", {}).get("trickster", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
+            
+            if not runes_enabled:
+                await interaction.response.send_message("❌ Nordic Runes subrole is currently disabled. Contact an administrator to enable this feature.", ephemeral=True)
+                return
+            
             await interaction.response.send_modal(RuneCastingModal(action_name, view.author_id, interaction.guild))
             return
-        if self.role_name == "trickster" and action_name in {"runes_history", "runes_types", "runes_help"}:
-            if not interaction.guild:
-                await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
-                return
+        if self.role_name == "trickster" and action_name.startswith("runes_"):
+            # Allow runes actions in DM by using default guild
             await _handle_canvas_runes_action(interaction, action_name, view)
             return
         if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now", "watcher_run_personal"}:
@@ -1114,7 +1121,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 return
             await _handle_canvas_watcher_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off", "ring_on", "ring_off", "beggar_on", "beggar_off"}:
+        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off", "ring_on", "ring_off", "beggar_on", "beggar_off", "runes_on", "runes_off"}:
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This trickster option is admin-only.", ephemeral=True)
                 return
@@ -1527,6 +1534,10 @@ class CanvasRoleDetailButton(discord.ui.Button):
     """Button that opens one detail view inside a role."""
 
     def __init__(self, label: str, role_name: str, detail_name: str):
+        # Ensure detail_name is a string to prevent AttributeError
+        if not isinstance(detail_name, str):
+            detail_name = str(detail_name)
+        
         # Admin buttons should be red, others green
         if "admin" in detail_name.lower():
             button_style = discord.ButtonStyle.danger  # Red for admin
@@ -1625,7 +1636,7 @@ class BankerConfigModal(discord.ui.Modal):
         if not is_admin(interaction):
             await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
             return
-        if get_banker_db_instance is None:
+        if get_roles_db_instance is None:
             await interaction.response.send_message("❌ Banker database is not available.", ephemeral=True)
             return
         try:
@@ -1644,23 +1655,20 @@ class BankerConfigModal(discord.ui.Modal):
                 return
 
         try:
-            db_banker = get_banker_db_instance(str(interaction.guild.id))
+            db_banker = get_roles_db_instance(str(interaction.guild.id))
             if self.action_name == "config_tae":
-                ok = db_banker.configurar_tae(
+                ok = db_banker.set_tae(
                     str(interaction.guild.id),
-                    interaction.guild.name,
                     amount,
-                    str(interaction.user.id),
                 )
                 label = "TAE"
             else:
-                ok = db_banker.configurar_bono(
+                # Bonus is now calculated as 10x TAE, so we handle TAE configuration instead
+                ok = db_banker.set_tae(
                     str(interaction.guild.id),
-                    interaction.guild.name,
                     amount,
-                    str(interaction.user.id),
                 )
-                label = "Bonus"
+                label = "TAE (affects bonus)"
         except Exception as e:
             logger.exception(f"Canvas banker config failed: {e}")
             await interaction.response.send_message("❌ Could not update banker configuration.", ephemeral=True)
@@ -1671,11 +1679,11 @@ class BankerConfigModal(discord.ui.Modal):
             return
 
         try:
-            current_tae = db_banker.obtener_tae(str(interaction.guild.id))
-            current_bonus = db_banker.obtener_opening_bonus(str(interaction.guild.id))
+            current_tae = db_banker.get_tae(str(interaction.guild.id))
+            current_bonus = current_tae * 10
         except Exception:
             current_tae = amount if label == "TAE" else "Unknown"
-            current_bonus = amount if label == "Bonus" else "Unknown"
+            current_bonus = amount if "bonus" in label.lower() else "Unknown"
 
         await interaction.response.send_message(
             f"✅ {label} updated to `{amount}`.\nCurrent config: TAE {current_tae}% | opening bonus {current_bonus}",
@@ -2088,6 +2096,7 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
 
     if action_name == "ring_accuse":
         try:
+            from roles.trickster.subroles.ring.ring_discord import _get_ring_state
             ring_state = _get_ring_state(server_id)
             if not ring_state.get("enabled", False):
                 await interaction.response.send_message("❌ Ring is not enabled on this server.", ephemeral=True)
@@ -2136,8 +2145,26 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
             
             # Update the target in state (no immediate accusation)
             target_name = mentioned_user.display_name if hasattr(mentioned_user, 'display_name') else mentioned_user.name
-            state["target_user_id"] = str(mentioned_user.id)
-            state["target_user_name"] = target_name
+            ring_state["target_user_id"] = str(mentioned_user.id)
+            ring_state["target_user_name"] = target_name
+            
+            # Save the updated ring state
+            from roles.trickster.subroles.ring.ring_discord import _save_ring_state, _record_accusation
+            _save_ring_state(server_id, "canvas_accuse")
+            
+            # Execute immediate accusation
+            try:
+                logger.info(f"🎯 [CANVAS] Executing immediate ring accusation against {target_name}")
+                await _record_accusation(
+                    server_id=server_id,
+                    accusation_text=f"ACCUSE {target_name}",
+                    guild=guild,
+                    target_user_id=str(mentioned_user.id),
+                    target_user_name=target_name
+                )
+                logger.info(f"🎭 [CANVAS] Immediate accusation executed for {target_name}")
+            except Exception as e:
+                logger.error(f"🎭 [CANVAS] Error executing immediate accusation: {e}")
             
             # Log the target change
             db_instance = AgentDatabase(server_name=server_name)
@@ -2153,7 +2180,7 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
             )
             
             # Rebuild the view with updated target
-            content = _build_canvas_role_trickster_detail("ring", admin_visible, guild, author_id)
+            content = _build_canvas_role_trickster_detail("ring", admin_visible, guild, author_id, view.agent_config)
             next_view = CanvasRoleDetailView(
                 author_id=author_id,
                 role_name="trickster",
@@ -2182,7 +2209,7 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
         return
 
     if action_name == "beggar_donate":
-        if get_banker_db_instance is None or get_beggar_db_instance is None:
+        if get_roles_db_instance is None or get_beggar_db_instance is None:
             await interaction.response.send_message("❌ Beggar donation systems are not available.", ephemeral=True)
             return
         try:
@@ -2193,13 +2220,16 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
         if amount <= 0:
             await interaction.response.send_message("❌ Donation amount must be positive.", ephemeral=True)
             return
-        db_banker = get_banker_db_instance(server_key)
+        db_banker = get_roles_db_instance(server_key)
         db_beggar = get_beggar_db_instance(server_key)
         donor_id = str(author_id)
         donor_name = interaction.user.display_name
-        db_banker.create_wallet(donor_id, donor_name, server_id, server_name)
-        db_banker.create_wallet("beggar_fund", "Beggar Fund", server_id, server_name)
-        current_balance = db_banker.get_balance(donor_id, server_id)
+        from roles.banker.banker_db import get_banker_roles_db_instance
+        db_banker_roles = get_banker_roles_db_instance(server_key)
+        db_banker_roles.create_wallet(donor_id, donor_name, server_id, server_name, 'user')
+        db_banker.save_banker_wallet("beggar_fund", server_id, "Beggar Fund", server_id, server_name, 0, 'system')
+        wallet = db_banker.get_banker_wallet(donor_id, server_id)
+        current_balance = wallet.get('balance', 0) if wallet else 0
         if current_balance < amount:
             await interaction.response.send_message(f"❌ You only have {current_balance:,} gold available.", ephemeral=True)
             return
@@ -2207,7 +2237,8 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
         target_gold = db_beggar.get_target_gold(server_id)
         db_banker.update_balance(donor_id, donor_name, server_id, server_name, -amount, "BEGGAR_DONATION_OUT", "Donation sent to beggar")
         db_banker.update_balance("beggar_fund", "Beggar Fund", server_id, server_name, amount, "BEGGAR_DONATION_IN", f"Donation received from {donor_name}")
-        fund_balance = db_banker.get_balance("beggar_fund", server_id)
+        wallet = db_banker.get_banker_wallet("beggar_fund", server_id)
+        fund_balance = wallet.get('balance', 0) if wallet else 0
         await interaction.response.send_message(
             f"✅ Donation accepted: {amount:,} gold.\n🪙 Fund: {fund_balance:,}\n🎯 Target: {target_gold:,}\n📣 Reason: {reason}",
             ephemeral=True,
@@ -2229,12 +2260,23 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
             return
         try:
             if action_name == "ring_frequency":
-                from roles.trickster.subroles.ring.ring_discord import _get_ring_state
+                from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
                 state = _get_ring_state(server_id)
+                
+                # Update both base and current frequency, reset iteration
                 state["frequency_hours"] = hours
+                state["base_frequency_hours"] = hours
+                state["current_frequency_hours"] = hours
+                state["frequency_iteration"] = 0
+                
+                # Save the updated state
+                _save_ring_state(server_id, "canvas_admin")
+                
                 message = (
-                    f"✅ Ring frequency updated to `{hours}` hours.\n"
-                    f"Current state: {'On' if state.get('enabled', False) else 'Off'}"
+                    f"✅ Ring base frequency updated to `{hours}` hours.\n"
+                    f"🔥 Hot potato counter reset.\n"
+                    f"Current state: {'On' if state.get('enabled', False) else 'Off'}\n"
+                    f"Next accusation will use {hours}h frequency."
                 )
             else:
                 db_beggar = get_beggar_db_instance(server_key)
@@ -2254,7 +2296,7 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
         return
 
     if action_name in {"dice_fixed_bet", "dice_pot_value"}:
-        if get_dice_game_db_instance is None or get_banker_db_instance is None:
+        if get_roles_db_instance is None or get_roles_db_instance is None:
             await interaction.response.send_message("❌ Dice game systems are not available.", ephemeral=True)
             return
         try:
@@ -2270,8 +2312,8 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
                 if amount < 1 or amount > 1000:
                     await interaction.response.send_message("❌ Fixed bet must be between 1 and 1000 gold.", ephemeral=True)
                     return
-                db_dice_game = get_dice_game_db_instance(server_key)
-                ok = db_dice_game.configure_server(server_id, fixed_bet=amount)
+                db_dice_game = get_roles_db_instance(server_key)
+                ok = roles_db.save_role_config('dice_game', server_id, True, json.dumps({"fixed_bet": amount}))
                 if not ok:
                     raise RuntimeError("Could not update fixed bet")
                 state = _get_canvas_dice_state(guild)
@@ -2280,8 +2322,9 @@ async def _handle_canvas_trickster_modal_submit(interaction: discord.Interaction
                     f"Current pot: {state['pot_balance']:,} gold"
                 )
             else:
-                db_banker = get_banker_db_instance(server_key)
-                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name)
+                from roles.banker.banker_db import get_banker_roles_db_instance
+                db_banker = get_banker_roles_db_instance(server_key)
+                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name, wallet_type='system')
                 current_balance = db_banker.get_balance("dice_game_pot", server_id)
                 delta = amount - current_balance
                 ok = db_banker.update_balance("dice_game_pot", "Dice Game Pot", server_id, server_name, delta, "DICE_POT_ADMIN_SET", "Canvas pot update", str(interaction.user.id), interaction.user.display_name)
@@ -2597,21 +2640,34 @@ async def _handle_canvas_trickster_action(interaction: discord.Interaction, acti
         server_key = get_server_key(interaction.guild)
         server_id = str(interaction.guild.id)
         if action_name in {"announcements_on", "announcements_off"}:
-            if get_dice_game_db_instance is None:
+            if get_roles_db_instance is None:
                 await interaction.response.send_message("❌ Dice game database is not available.", ephemeral=True)
                 return
-            db_dice_game = get_dice_game_db_instance(server_key)
+            db_dice_game = get_roles_db_instance(server_key)
             enabled = action_name == "announcements_on"
-            ok = db_dice_game.configure_server(server_id, announcements_active=enabled)
+            ok = roles_db.save_role_config('dice_game', server_id, True, json.dumps({"announcements_active": enabled}))
             current_detail = "dice_admin"
             applied_text = f"Dice announcements {'enabled' if enabled else 'disabled'}."
         elif action_name in {"ring_on", "ring_off"}:
             from roles.trickster.subroles.ring.ring_discord import _get_ring_state
-            state = _get_ring_state(server_id)
-            state["enabled"] = action_name == "ring_on"
-            ok = True
-            current_detail = "ring_admin"
-            applied_text = f"Ring {'enabled' if state['enabled'] else 'disabled'}."
+            enabled = action_name == "ring_on"
+            
+            # Update trickster role in roles table
+            success = set_role_enabled(interaction.guild, 'trickster', enabled, None, getattr(interaction.user, "name", "canvas_admin"))
+            
+            if success:
+                # Update ring state in roles table config_data
+                state = _get_ring_state(server_id)
+                state["enabled"] = enabled
+                from roles.trickster.subroles.ring.ring_discord import _save_ring_state
+                _save_ring_state(server_id, "canvas_admin")
+                
+                ok = True
+                current_detail = "ring_admin"
+                applied_text = f"Ring {'enabled' if state['enabled'] else 'disabled'}."
+            else:
+                ok = False
+                applied_text = "Failed to update ring status in database."
         elif action_name in {"beggar_on", "beggar_off"}:
             if get_beggar_db_instance is None:
                 await interaction.response.send_message("❌ Beggar database is not available.", ephemeral=True)
@@ -2624,6 +2680,55 @@ async def _handle_canvas_trickster_action(interaction: discord.Interaction, acti
                 ok = db_beggar.remove_subscription(server_user_id, server_id)
             current_detail = "beggar_admin"
             applied_text = f"Beggar {'enabled' if action_name == 'beggar_on' else 'disabled'}."
+        elif action_name in {"runes_on", "runes_off"}:
+            enabled = action_name == "runes_on"
+            
+            # Update runes subrole in agent config
+            try:
+                from agent_engine import AGENT_CFG
+                server_id_str = str(interaction.guild.id)
+                
+                # Ensure the path exists
+                if "roles" not in AGENT_CFG:
+                    AGENT_CFG["roles"] = {}
+                if "trickster" not in AGENT_CFG["roles"]:
+                    AGENT_CFG["roles"]["trickster"] = {}
+                if "subroles" not in AGENT_CFG["roles"]["trickster"]:
+                    AGENT_CFG["roles"]["trickster"]["subroles"] = {}
+                if "nordic_runes" not in AGENT_CFG["roles"]["trickster"]["subroles"]:
+                    AGENT_CFG["roles"]["trickster"]["subroles"]["nordic_runes"] = {}
+                
+                # Update the enabled status
+                AGENT_CFG["roles"]["trickster"]["subroles"]["nordic_runes"]["enabled"] = enabled
+                
+                # Also update in roles database for persistence
+                if get_roles_db_instance is not None:
+                    db_roles = get_roles_db_instance(server_key)
+                    config_data = json.dumps({"enabled": enabled})
+                    ok = db_roles.save_role_config('nordic_runes', server_id_str, enabled, config_data)
+                else:
+                    ok = True
+                
+                current_detail = "runes_admin"
+                applied_text = f"Nordic Runes {'enabled' if enabled else 'disabled'}."
+                
+                # Update the view's agent_config to reflect the change
+                if view.agent_config is None:
+                    view.agent_config = {}
+                if "roles" not in view.agent_config:
+                    view.agent_config["roles"] = {}
+                if "trickster" not in view.agent_config["roles"]:
+                    view.agent_config["roles"]["trickster"] = {}
+                if "subroles" not in view.agent_config["roles"]["trickster"]:
+                    view.agent_config["roles"]["trickster"]["subroles"] = {}
+                if "nordic_runes" not in view.agent_config["roles"]["trickster"]["subroles"]:
+                    view.agent_config["roles"]["trickster"]["subroles"]["nordic_runes"] = {}
+                
+                view.agent_config["roles"]["trickster"]["subroles"]["nordic_runes"]["enabled"] = enabled
+            except Exception as e:
+                logger.exception(f"Failed to update runes config: {e}")
+                ok = False
+                applied_text = "Failed to update runes configuration."
         else:
             await interaction.response.send_message("❌ Unknown trickster action.", ephemeral=True)
             return
@@ -2636,8 +2741,15 @@ async def _handle_canvas_trickster_action(interaction: discord.Interaction, acti
         return
 
     # Generate updated content for the current detail view
-    from discord_bot.canvas.canvas_trickster import _get_canvas_trickster_detail_content
-    content = _get_canvas_trickster_detail_content(current_detail, interaction.guild, view.admin_visible)
+    from discord_bot.canvas.canvas_trickster import build_canvas_role_trickster_detail
+    
+    # Validate guild parameter
+    if interaction.guild is None or not hasattr(interaction.guild, 'id'):
+        logger.warning(f"Canvas trickster action: invalid interaction.guild (type: {type(interaction.guild)}, value: {interaction.guild})")
+        await interaction.response.send_message("❌ Invalid guild context.", ephemeral=True)
+        return
+    
+    content = build_canvas_role_trickster_detail(current_detail, view.admin_visible, interaction.guild, view.author_id, view.agent_config)
     
     next_view = CanvasRoleDetailView(
         author_id=view.author_id,
@@ -2646,7 +2758,7 @@ async def _handle_canvas_trickster_action(interaction: discord.Interaction, acti
         admin_visible=view.admin_visible,
         sections=view.sections,
         current_detail=current_detail,
-        guild=view.guild,
+        guild=interaction.guild,  # Use interaction.guild instead of view.guild
     )
     next_view.auto_response_preview = applied_text
     action_embed = _build_canvas_role_embed("trickster", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
@@ -2722,7 +2834,7 @@ async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_s
 
 async def _handle_canvas_dice_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
     """Handle dice game actions with dynamic content display."""
-    if get_dice_game_db_instance is None or get_banker_db_instance is None or DiceGame is None:
+    if get_roles_db_instance is None or get_roles_db_instance is None or DiceGame is None:
         await interaction.response.send_message("❌ Dice game systems are not available.", ephemeral=True)
         return
 
@@ -2759,17 +2871,18 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     if action_name == "dice_play":
         # Execute a dice play
         try:
-            db_dice = get_dice_game_db_instance(server_key)
-            db_banker = get_banker_db_instance(server_key)
+            db_dice = get_roles_db_instance(server_key)
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            db_banker_roles = get_banker_roles_db_instance(server_key)
             
             # Get or create player wallet
             player_id = str(interaction.user.id)
             player_name = interaction.user.display_name
-            db_banker.create_wallet(player_id, player_name, server_id, server_name)
-            db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name)
+            db_banker_roles.create_wallet(player_id, player_name, server_id, server_name, 'user')
+            db_banker_roles.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name, wallet_type='system')
             
             # Check balance
-            player_balance = db_banker.get_balance(player_id, server_id)
+            player_balance = db_banker_roles.get_balance(player_id, server_id)
             bet_amount = dice_state.get("bet", 1)  # Default to 1 if not set
             
             if player_balance < bet_amount:
@@ -2818,7 +2931,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     
                     # Get updated balances for display with +/- indicators
                     old_player_balance = player_balance
-                    new_player_balance = db_banker.get_balance(player_id, server_id)
+                    new_player_balance = db_banker_roles.get_balance(player_id, server_id)
                     player_diff = new_player_balance - old_player_balance
                     
                     # Format player balance with +/- indicator
@@ -2888,7 +3001,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     elif action_name == "dice_history":
         # Show recent history
         try:
-            db_dice = get_dice_game_db_instance(server_key)
+            db_dice = get_roles_db_instance(server_key)
             history = db_dice.get_game_history(server_id, 10)
             historytitle = descriptions.get("history", "**📜 DICE HISTORY**")
             content_parts.append(historytitle)
@@ -3122,13 +3235,13 @@ async def _handle_canvas_treasure_hunter_action(interaction: discord.Interaction
 
 async def _handle_canvas_banker_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
     """Handle banker role actions like balance, TAE, and bonus display."""
-    if get_banker_db_instance is None:
+    if get_roles_db_instance is None:
         await interaction.response.send_message("❌ Banker systems are not available.", ephemeral=True)
         return
     
     try:
         server_key = get_server_key(interaction.guild)
-        db_banker = get_banker_db_instance(server_key)
+        db_banker = get_roles_db_instance(server_key)
         server_id = str(interaction.guild.id)
         user_id = str(view.author_id)
         
@@ -3140,7 +3253,8 @@ async def _handle_canvas_banker_action(interaction: discord.Interaction, action_
         content_parts = [f"🏦 **BANKER - {action_name.upper()}** 🏦", ""]
         
         if action_name == "balance":
-            balance = db_banker.get_balance(user_id, server_id)
+            wallet = db_banker.get_banker_wallet(user_id, server_id)
+            balance = wallet.get('balance', 0) if wallet else 0
             content_parts.extend([
                 f"💰 **Your Balance:** {balance:,} :coin:",
                 f"👤 **Account:** {user_name}",
@@ -4268,7 +4382,12 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
         self.admin_visible = admin_visible
         self.sections = sections
         self.current_detail = current_detail
-        self.guild = guild
+        # Validate guild parameter
+        if guild is None or not hasattr(guild, 'id'):
+            logger.warning(f"CanvasRoleDetailView: invalid guild parameter (type: {type(guild)}, value: {guild})")
+            self.guild = None
+        else:
+            self.guild = guild
         self.message = message  # Store the message to delete it later
         
         # Dynamic state for News Watcher
@@ -4294,10 +4413,10 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
                 self.add_item(CanvasMCActionSelect(self))
             # For Banker, only create dropdown for admin (overview/wallet are info-only)
             elif role_name == "banker" and current_detail == "admin":
-                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible))
+                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config))
             # For other roles, create action dropdown
             else:
-                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible))
+                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config))
         for label, detail_name in role_details:
             self.add_item(CanvasRoleDetailButton(label=label, role_name=role_name, detail_name=detail_name))
         self._add_role_buttons()
@@ -4762,7 +4881,7 @@ def _get_enabled_roles(agent_config: dict) -> list[str]:
 
 def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
     prompts: list[str] = []
-    role_prompts_cfg = PERSONALITY.get("role_system_prompts", {})
+    role_prompts_cfg = PERSONALITY.get("roles", {})
 
     for role_name in role_names:
         try:
@@ -4928,7 +5047,8 @@ class RuneCastingModal(discord.ui.Modal):
         title_map = {
             "runes_single": "Single Rune Casting",
             "runes_three": "Three Rune Casting", 
-            "runes_cross": "Five Rune Cross Casting"
+            "runes_cross": "Five Rune Cross Casting",
+            "runes_runic_cross": "Seven Rune Runic Cross Casting"
         }
         super().__init__(title=title_map.get(action_name, "Rune Casting"), timeout=300.0)  # 5 minutes timeout
         self.action_name = action_name
@@ -4952,10 +5072,13 @@ class RuneCastingModal(discord.ui.Modal):
             await interaction.response.send_message("❌ Please provide a question.", ephemeral=True)
             return
         
+        # Immediately acknowledge the modal submission to prevent freezing
+        await interaction.response.defer(ephemeral=True)
+        
         try:
             # Get runes commands
             if get_nordic_runes_commands_instance is None:
-                await interaction.response.send_message("❌ Runes system is not available.", ephemeral=True)
+                await interaction.followup.send("❌ Runes system is not available.", ephemeral=True)
                 return
             
             runes_commands = get_nordic_runes_commands_instance()
@@ -4989,29 +5112,30 @@ class RuneCastingModal(discord.ui.Modal):
             except:
                 descriptions = {}
             
-            # Format response with personality
-            cast_title = descriptions.get(f"{self.reading_type}_cast", f"🔮 **{self.reading_type.upper()} CASTING** 🔮")
-            question_label = descriptions.get("question", "Question")
+            # Get saved message from personality
             saved_msg = descriptions.get("reading_saved", "🔮 Runes have been cast! Your reading has been saved.")
             
-            response = f"{cast_title}\n\n"
-            response += f"**{question_label}:** {question}\n\n"
-            response += result
-            response += f"\n\n{saved_msg}"
+            # The result already contains the formatted response with title and question
+            # Just add the saved message at the end
+            response = result + f"\n\n{saved_msg}"
             
-            # Try to respond to the interaction first
+            # Send the rune reading result via DM (reverted from ephemeral to DM)
             try:
-                await interaction.response.send_message(
-                    embed=discord.Embed(
-                        description=response,
-                        color=discord.Color.purple()
-                    ),
-                    ephemeral=True
+                # Create a proper embed for the rune reading
+                embed = discord.Embed(
+                    description=response,  # Use the complete response including title and question
+                    color=discord.Color.purple()
                 )
-            except discord.errors.NotFound:
-                # Interaction expired, send as followup message
-                logger.info("Interaction expired, sending rune reading as followup message")
+                
+                # Try to send DM first
                 try:
+                    await interaction.user.send(embed=embed)
+                    logger.info(f"Successfully sent rune reading via DM to user {interaction.user.id}")
+                    
+                    # Don't send confirmation message - just let the DM be the delivery
+                except discord.Forbidden:
+                    # User has DMs disabled, send as ephemeral instead
+                    logger.info(f"User {interaction.user.id} has DMs disabled, sending as ephemeral")
                     await interaction.followup.send(
                         embed=discord.Embed(
                             description=response,
@@ -5019,30 +5143,30 @@ class RuneCastingModal(discord.ui.Modal):
                         ),
                         ephemeral=True
                     )
-                except discord.errors.NotFound:
-                    # Followup also expired, send direct message to user
-                    logger.info("Followup also expired, sending direct message to user")
-                    try:
-                        await interaction.user.send(
-                            embed=discord.Embed(
-                                description="🔮 **RUNE READING COMPLETED** 🔮\n\n" + response,
-                                color=discord.Color.purple()
+                    
+            except discord.errors.NotFound:
+                # Interaction expired, try direct DM
+                logger.info("Interaction expired, attempting direct DM for rune reading")
+                try:
+                    embed = discord.Embed(
+                        description=response,  # Use the complete response without extra title
+                        color=discord.Color.purple()
+                    )
+                    await interaction.user.send(embed=embed)
+                    logger.info(f"Successfully sent rune reading via direct DM to user {interaction.user.id}")
+                except Exception as e:
+                    logger.error(f"Failed to send rune reading via DM: {e}")
+                    # Last resort: try to send to channel if possible
+                    if hasattr(interaction, 'channel') and interaction.channel:
+                        try:
+                            await interaction.channel.send(
+                                f"🔮 {interaction.user.mention} Your rune reading is ready!\n\n" + response
                             )
-                        )
-                        logger.info(f"Successfully sent rune reading via DM to user {interaction.user.id}")
-                    except Exception as e:
-                        logger.error(f"Failed to send rune reading via DM: {e}")
-                        # Last resort: try to send to channel if possible
-                        if hasattr(interaction, 'channel') and interaction.channel:
-                            try:
-                                await interaction.channel.send(
-                                    f"🔮 {interaction.user.mention} Your rune reading is ready!\n\n" + response
-                                )
-                                logger.info("Sent rune reading to channel as last resort")
-                            except Exception as channel_error:
-                                logger.error(f"Failed to send to channel: {channel_error}")
-                        else:
-                            logger.error("All delivery methods failed for rune reading")
+                            logger.info("Sent rune reading to channel as last resort")
+                        except Exception as channel_error:
+                            logger.error(f"Failed to send to channel: {channel_error}")
+                    else:
+                        logger.error("All delivery methods failed for rune reading")
             
         except discord.errors.NotFound as e:
             # Interaction has expired (user closed modal or timeout)
@@ -5051,7 +5175,7 @@ class RuneCastingModal(discord.ui.Modal):
         except Exception as e:
             logger.exception(f"Rune casting modal failed: {e}")
             try:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Failed to cast runes. Please try again.",
                     ephemeral=True
                 )
@@ -5070,13 +5194,27 @@ class RuneCastingModal(discord.ui.Modal):
 async def _handle_canvas_runes_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
     """Handle Nordic runes actions with dynamic content display."""
     try:
-        # Import MockMessage
+        # Import runes functions at the beginning
+        try:
+            from roles.trickster.subroles.nordic_runes.nordic_runes_discord import get_nordic_runes_commands_instance
+            from roles.trickster.subroles.nordic_runes.nordic_runes_messages import get_message
+        except ImportError as e:
+            logger.error(f"Failed to import runes modules: {e}")
+            await interaction.response.send_message("❌ Runes system is not available.", ephemeral=True)
+            return
+        
+        # Handle DM case by getting default guild
+        guild = interaction.guild
+        if guild is None:
+            # Use default server for DM interactions
+            pass
+        
         class MockMessage:
             def __init__(self, author, guild):
                 self.author = author
                 self.guild = guild
         
-        mock_message = MockMessage(interaction.user, interaction.guild)
+        mock_message = MockMessage(interaction.user, guild)
         
         if get_nordic_runes_commands_instance is None:
             await interaction.response.send_message("❌ Runes system is not available.", ephemeral=True)
@@ -5090,24 +5228,95 @@ async def _handle_canvas_runes_action(interaction: discord.Interaction, action_n
         if action_name == "runes_history":
             # Show rune reading history
             try:
+                title_history = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title_history", "🌔 **RUNES READING HISTORY**🌔")
                 result = await runes_commands.cmd_runes_canvas_history(mock_message, 10)
-                content_parts.append("🔮 **RUNES READING HISTORY** 🔮")
                 content_parts.append("─" * 45)
                 content_parts.append(result)
             except Exception as e:
                 logger.exception(f"Canvas runes history failed: {e}")
+                error_history = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("error_history", "❌ **ERROR!** Could not load your rune history.")
                 content_parts.extend([
-                    "🔮 **RUNES READING HISTORY** 🔮",
-                    "❌ **ERROR!** Could not load your rune history.",
+                    title_history,
+                    error_history,
+                    "",
+                ])
+        
+        elif action_name == "runes_runes_1":
+            # Show all runes with descriptions - Page 1
+            try:
+                # Get the runes list content for page 1
+                runes_content = get_message('runes_list_content', 1)
+                
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list page 1 failed: {e}")
+                content_parts.extend([
+                    "🔮 **ELDER FUTHARK RUNES I** 🔮",
+                    "❌ **ERROR!** Could not load runes list page 1.",
+                ])
+        
+        elif action_name == "runes_runes_2":
+            # Show all runes with descriptions - Page 2
+            try:
+                # Get the runes list content for page 2
+                runes_content = get_message('runes_list_content', 2)
+                
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list page 2 failed: {e}")
+                content_parts.extend([
+                    "🔮 **ELDER FUTHARK RUNES II** 🔮",
+                    "❌ **ERROR!** Could not load runes list page 2.",
+                ])
+        
+        elif action_name == "runes_runes_3":
+            # Show all runes with descriptions - Page 3
+            try:
+                # Get the runes list content for page 3
+                runes_content = get_message('runes_list_content', 3)
+                
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list page 3 failed: {e}")
+                content_parts.extend([
+                    "🔮 **ELDER FUTHARK RUNES III** 🔮",
+                    "❌ **ERROR!** Could not load runes list page 3.",
+                ])
+        
+        elif action_name == "runes_runes":
+            # Show all runes with descriptions
+            try:
+                # Create a mock message for the command
+                class MockMessage:
+                    def __init__(self):
+                        self.author = type('User', (), {'id': 'canvas_user'})()
+                
+                mock_message = MockMessage()
+                
+                # Get the runes list content
+                runes_content = get_message('runes_list_content')
+                
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list failed: {e}")
+                content_parts.extend([
+                    "🔮 **ELDER FUTHARK RUNES** 🔮",
+                    "❌ **ERROR!** Could not load runes list.",
                 ])
         
         elif action_name == "runes_types":
             # Show available reading types
             try:
-                result = await runes_commands.cmd_runes_types(mock_message, [])
-                content_parts.append("🔮 **RUNES READING TYPES** 🔮")
+                title_available_readings = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title_available_readings", "🌌**Available readings**🌌\n ")
+                available_readings = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("available_readings", "-Single rune: quick guidance\n - Three runes: past, present, future\n - Five Cross runes : Comprehensive multidimension situation analysis\n - Seven Runic Cross runes: Integral spiritual insight\n")
                 content_parts.append("─" * 45)
-                content_parts.append(result)
+                content_parts.append(title_available_readings)
+                content_parts.append("─" * 45)
+                content_parts.append(available_readings)
             except Exception as e:
                 logger.exception(f"Canvas runes types failed: {e}")
                 content_parts.extend([
@@ -5115,53 +5324,16 @@ async def _handle_canvas_runes_action(interaction: discord.Interaction, action_n
                     "❌ **ERROR!** Could not load reading types.",
                 ])
         
-        elif action_name == "runes_help":
-            # Show help with personality messages
-            try:
-                import json
-                import os
-                project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-                descriptions_path = os.path.join(project_root, "personalities", "putre", "descriptions.json")
-                if os.path.exists(descriptions_path):
-                    with open(descriptions_path, encoding="utf-8") as f:
-                        descriptions = json.load(f).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
-                else:
-                    descriptions = {}
-                
-                help_content = descriptions.get("help_content", """🔮 **NORDIC RUNES WISDOM** 🔮
-
-**What are Nordic Runes?**
-The Elder Futhark is the oldest form of the runic alphabets, used by Germanic tribes for divination and magic.
-
-**Available Readings:**
-• **Single Rune** - Quick guidance on a specific question
-• **Three Rune Spread** - Past, Present, Future reading
-• **Five Rune Cross** - Comprehensive situation analysis
-
-**How to use:**
-• Use Discord commands: `!runes cast [type] <question>`
-• Example: `!runes cast single What should I focus on today?`
-
-**The 24 Elder Futhark Runes:**
-Fehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo
-Hagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo
-Tiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala
-
-Each rune carries ancient wisdom and guidance for your journey.""")
-                
-                content_parts.append(help_content)
-            except Exception as e:
-                logger.exception(f"Canvas runes help failed: {e}")
-                content_parts.extend([
-                    "🔮 **NORDIC RUNES HELP** 🔮",
-                    "❌ **ERROR!** Could not load help content.",
-                ])
-        
         # Rebuild the view with dynamic content
         content = "\n".join(content_parts)
         
+        # Get specific title for runes views
+        runes_title = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
+        
         # Store current embed in view for back navigation
         role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "runes", None, f"Viewed {action_name.replace('runes_', '').title()}")
+        # Override the title with runes-specific title
+        role_embed.title = runes_title
         view.current_embed = role_embed
         
         next_view = CanvasRoleDetailView(

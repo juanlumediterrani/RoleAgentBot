@@ -18,8 +18,8 @@ MISSION_CONFIG = {
 def get_mc_system_prompt():
     """Get system prompt from personality or fallback to English."""
     try:
-        role_prompts = PERSONALITY.get("role_system_prompts", {})
-        return role_prompts.get("mc", "ACTIVE MISSION - MC (MASTER OF CEREMONIES): You are the MC, the Master of Ceremonies for music. Your mission is to control music on Discord servers. You are an expert DJ who knows all genres and always keeps the party active with the best songs.")
+        role_prompts = PERSONALITY.get("roles", {})
+        return role_prompts.get("mc", {}).get("active_duty", "ACTIVE MISSION - MC (MASTER OF CEREMONIES): You are the MC, the Master of Ceremonies for music. Your mission is to control music on Discord servers. You are an expert DJ who knows all genres and always keeps the party active with the best songs.")
     except Exception:
         return "ACTIVE MISSION - MC (MASTER OF CEREMONIES): You are the MC, the Master of Ceremonies for music. Your mission is to control music on Discord servers. You are an expert DJ who knows all genres and always keeps the party active with the best songs."
 

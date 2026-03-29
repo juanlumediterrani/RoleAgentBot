@@ -61,22 +61,15 @@ def get_ring_accusation():
     """Get a random ring accusation message."""
     return random.choice(RING_MESSAGES)
 
-async def process_ring_mention(server_id: str, user_name: str) -> str:
-    """Process when someone mentions rings or jewelry."""
-    if not can_accuse(server_id):
-        return None
-    
-    mark_accusation(server_id)
-    accusation = get_ring_accusation()
-    
-    return f"GRRR {user_name}! {accusation} That ring belongs to the Horde and I lost it in battle! Give it back or I'll rip your fingers off, GRAAAH!"
 
-def is_ring_related(text: str) -> bool:
-    """Check if text mentions rings or related items."""
-    ring_keywords = [
-        "anillo", "ring", "joya", "jewelry", "aro", "circulo",
-        "dedo", "finger", "mano", "hand", "oro", "gold"
-    ]
+def extract_accuse_flag(text: str) -> str | None:
+    """Extract ACCUSE <USERNAME> flag from LLM response."""
+    import re
     
-    text_lower = text.lower()
-    return any(keyword in text_lower for keyword in ring_keywords)
+    # Look for ACCUSE <USERNAME> pattern (capture username with optional punctuation)
+    match = re.search(r'ACCUSE\s+([^\s!?]+[!?]?)', text, re.IGNORECASE)
+    if match:
+        # Remove trailing punctuation from username
+        username = match.group(1).strip('!?')
+        return username
+    return None

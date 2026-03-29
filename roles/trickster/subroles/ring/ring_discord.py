@@ -6,13 +6,17 @@ Admins can enable or configure ring suspicion; users can accuse a target with `!
 from __future__ import annotations
 
 import asyncio
+import json
+import sqlite3
+import datetime
 
-from agent_engine import PERSONALITY
+from agent_engine import PERSONALITY, _build_system_prompt
 from agent_mind import call_llm
 from agent_logging import get_logger
 from agent_db import AgentDatabase
 from behavior.db_behavior import get_behavior_db_instance
-from discord_bot.discord_utils import is_admin, get_db_for_server
+from discord_bot.discord_utils import is_admin, get_db_for_server, set_role_enabled
+from .ring_db import RingDB, get_ring_db_instance
 
 logger = get_logger('ring_discord')
 
@@ -25,22 +29,67 @@ def _get_ring_state(server_id: str) -> dict:
         defaults = {
             "enabled": False,
             "frequency_hours": 24,
+            "base_frequency_hours": 24,
+            "current_frequency_hours": 24,
+            "frequency_iteration": 0,
+            "last_accusation": "",
+            "last_accusation_time": None,
             "target_user_name": "Unknown bearer",
             "target_user_id": "",
             "title": "Ring",
             "description": "",
+            "current_accusation": "",
         }
         try:
-            db = get_behavior_db_instance(server_id)
-            persisted = db.get_feature_state("ring")
-            config = persisted.get("config") or {}
+            # Check if trickster role is enabled in roles_config (PRIMARY) or behavior roles (SECONDARY)
+            trickster_enabled = False
+            
+            # PRIMARY: Check roles_config
+            try:
+                from agent_roles_db import get_roles_db_instance
+                roles_db = get_roles_db_instance(server_id)
+                trickster_config = roles_db.get_role_config('trickster', server_id)
+                if trickster_config:
+                    trickster_enabled = trickster_config.get('enabled', False)
+            except Exception as e:
+                logger.warning(f"Error checking trickster enabled in roles_config: {e}")
+            
+            # SECONDARY: Check behavior roles table
+            if not trickster_enabled:
+                try:
+                    db = get_behavior_db_instance(server_id)
+                    trickster_enabled = db.get_role_enabled('trickster')
+                except Exception as e:
+                    logger.warning(f"Error checking trickster enabled in behavior: {e}")
+            
+            # Get ring config from roles_config
+            ring_config_data = roles_db.get_role_config('ring', server_id)
+            
+            # Parse ring configuration
+            ring_config = {}
+            current_accusation = ""
+            
+            if ring_config_data and ring_config_data.get('config_data'):
+                try:
+                    ring_config = json.loads(ring_config_data['config_data'])
+                except json.JSONDecodeError:
+                    ring_config = {}
+                
+                current_accusation = ring_config.get('current_accusation', '')
+            
             state = {
-                "enabled": bool(persisted.get("enabled", defaults["enabled"])),
-                "frequency_hours": int(config.get("frequency_hours", defaults["frequency_hours"])),
-                "target_user_name": str(config.get("target_user_name", defaults["target_user_name"])),
-                "target_user_id": str(config.get("target_user_id", defaults["target_user_id"])),
-                "title": str(config.get("title", defaults["title"])),
-                "description": str(config.get("description", defaults["description"])),
+                "enabled": trickster_enabled and ring_config.get('enabled', defaults["enabled"]),
+                "frequency_hours": int(ring_config.get('frequency_hours', defaults["frequency_hours"])),
+                "base_frequency_hours": int(ring_config.get('base_frequency_hours', defaults["base_frequency_hours"])),
+                "current_frequency_hours": int(ring_config.get('current_frequency_hours', defaults["current_frequency_hours"])),
+                "frequency_iteration": int(ring_config.get('frequency_iteration', defaults["frequency_iteration"])),
+                "last_accusation": ring_config.get('last_accusation', defaults["last_accusation"]),
+                "last_accusation_time": ring_config.get('last_accusation_time', defaults["last_accusation_time"]),
+                "target_user_name": str(ring_config.get('target_user_name', defaults["target_user_name"])),
+                "target_user_id": str(ring_config.get('target_user_id', defaults["target_user_id"])),
+                "title": str(ring_config.get('title', defaults["title"])),
+                "description": str(ring_config.get('description', defaults["description"])),
+                "current_accusation": current_accusation,
             }
         except Exception as e:
             logger.warning(f"Error loading ring state for server {server_id}: {e}")
@@ -51,91 +100,254 @@ def _get_ring_state(server_id: str) -> dict:
 
 def _save_ring_state(server_id: str, updated_by: str | None = None) -> bool:
     state = _get_ring_state(server_id)
-    payload = {
-        "frequency_hours": int(state.get("frequency_hours", 24)),
-        "target_user_name": state.get("target_user_name", "Unknown bearer"),
-        "target_user_id": state.get("target_user_id", ""),
-        "title": state.get("title", "Ring"),
-        "description": state.get("description", ""),
-    }
     try:
-        db = get_behavior_db_instance(server_id)
-        db.set_feature_state("ring", bool(state.get("enabled", False)), payload, updated_by)
+        # Save all ring config to roles.db using centralized adapter
+        ring_db = RingDB(server_id)
+        
+        # Convert state to config_data JSON
+        config_data = json.dumps({
+            'target_user_id': state['target_user_id'],
+            'target_user_name': state['target_user_name'],
+            'frequency': state['frequency_hours'],
+            'additional_rules': [],
+            'updated_by': updated_by
+        })
+        
+        # Save to roles.db
+        success = ring_db.save_config(
+            enabled=state['enabled'],
+            current_accusation=state['current_accusation'],
+            accused_user=state['target_user_name'],
+            config_data=config_data
+        )
+        
+        if success:
+            logger.info(f"🎭 [RING] Saved ring state for server {server_id}")
+        else:
+            logger.error(f"🎭 [RING] Failed to save ring state for server {server_id}")
+        
         return True
     except Exception as e:
         logger.error(f"Error saving ring state for server {server_id}: {e}")
         return False
 
 
-async def execute_ring_accusation(guild, target_user_id: str, target_user_name: str, channel_id: int = None) -> str:
-    """Execute a ring accusation using the new prompt system."""
+def _calculate_next_frequency(server_id: str) -> int:
+    """Calculate the next frequency using hot potato logic."""
+    state = _get_ring_state(server_id)
+    base_frequency = state["base_frequency_hours"]
+    current_iteration = state["frequency_iteration"]
+    
+    # Calculate next frequency: halve each iteration, minimum 1 hour
+    next_frequency = max(1, base_frequency // (2 ** current_iteration))
+    
+    # Update iteration counter
+    state["frequency_iteration"] = current_iteration + 1
+    state["current_frequency_hours"] = next_frequency
+    
+    # Save the updated state
+    _save_ring_state(server_id, "frequency_calculation")
+    
+    logger.info(f"🔥 Ring frequency for server {server_id}: {next_frequency}h (iteration {current_iteration + 1})")
+    return next_frequency
+
+
+def _reset_frequency_to_base(server_id: str, reason: str = "accusation_change"):
+    """Reset frequency to base when accusation changes."""
+    state = _get_ring_state(server_id)
+    state["frequency_iteration"] = 0
+    state["current_frequency_hours"] = state["base_frequency_hours"]
+    
+    # Save the updated state
+    _save_ring_state(server_id, reason)
+    
+    logger.info(f"🔄 Ring frequency reset for server {server_id}: {state['base_frequency_hours']}h (reason: {reason})")
+
+
+def _can_make_accusation(server_id: str) -> bool:
+    """Check if enough time has passed since last accusation based on current frequency."""
+    state = _get_ring_state(server_id)
+    last_time_str = state.get("last_accusation_time")
+    
+    if not last_time_str:
+        return True
+    
     try:
+        last_time = datetime.datetime.fromisoformat(last_time_str)
+        current_frequency = state["current_frequency_hours"]
+        time_passed = datetime.datetime.now() - last_time
+        
+        return time_passed > datetime.timedelta(hours=current_frequency)
+    except Exception as e:
+        logger.warning(f"Error checking accusation timing for server {server_id}: {e}")
+        return True
+
+
+async def _record_accusation(server_id: str, accusation_text: str, guild=None, target_user_id: str = None, target_user_name: str = None):
+    """Record an accusation, update frequency, and execute immediate accusation if target provided."""
+    state = _get_ring_state(server_id)
+    
+    # Check if this is a different accusation from the last one
+    last_accusation = state.get("last_accusation", "")
+    if last_accusation != accusation_text:
+        # Reset frequency if accusation changed
+        logger.info(f"🔄 Ring accusation changed, resetting frequency")
+        _reset_frequency_to_base(server_id, "accusation_changed")
+    else:
+        # Calculate next frequency (hot potato effect)
+        _calculate_next_frequency(server_id)
+    
+    # Record the accusation
+    state["last_accusation"] = accusation_text
+    state["last_accusation_time"] = datetime.datetime.now().isoformat()
+    state["current_accusation"] = accusation_text
+    
+    # Save the updated state
+    _save_ring_state(server_id, "accusation_record")
+    
+    # Execute immediate accusation if guild and target provided
+    if guild and target_user_id and target_user_name:
+        try:
+            logger.info(f"🎯 Executing immediate ring accusation against {target_user_name}")
+            accusation = await execute_ring_accusation(guild, target_user_id, target_user_name)
+            
+            # Try to send the accusation via DM to the target
+            try:
+                # Import bot to get user instance
+                from discord_bot.agent_discord import get_bot_instance
+                bot = get_bot_instance()
+                if bot:
+                    target_user = bot.get_user(int(target_user_id))
+                    if target_user:
+                        await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
+                        logger.info(f"🎭 [RING] Immediate accusation sent via DM to {target_user_name}")
+                    else:
+                        logger.warning(f"🎭 [RING] Could not find target user {target_user_id} for DM")
+                else:
+                    logger.warning(f"🎭 [RING] Bot instance not available for immediate accusation")
+            except Exception as dm_error:
+                logger.error(f"🎭 [RING] Error sending immediate DM: {dm_error}")
+                
+        except Exception as e:
+            logger.error(f"🎭 [RING] Error executing immediate accusation: {e}")
+
+
+async def execute_ring_accusation(guild, target_user_id: str, target_user_name: str, channel_id: int = None, user_name: str = None) -> str:
+    """Execute a ring accusation using the new prompt system with memory injections."""
+    try:
+        # Import memory building functions
+        from agent_mind import (
+            _build_prompt_memory_block, 
+            _build_prompt_relationship_block, 
+            _build_prompt_last_interactions_block
+        )
+        from agent_db import get_global_db
+        
         # Build the accusation prompt
-        prompts_config = PERSONALITY.get("role_system_prompts", {}).get("subroles", {}).get("ring", {})
+        prompts_config = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
         accusation_config = prompts_config.get("accusation", {})
         
+        # Get base configuration
+        task_template = accusation_config.get("task", f"Task: Accuse user {target_user_name} of possessing the ring, intimidate them to hand it over")
+        # Update with actual names
+        task = task_template.replace("{target_name}", target_user_name)
+        if user_name:
+            task = task.replace("{user_name}", user_name)
+        else:
+            task = task.replace("{user_name}", "un usuario")
+        base_rules = accusation_config.get("golden_rules", [])
+        
+        # Add context-specific rules
         if channel_id:  # Public channel
-            config = accusation_config.get("public_channel", {})
+            additional_rules = accusation_config.get("public_channel", {}).get("additional_rules", [])
         else:  # DM
-            config = accusation_config.get("direct_message", {})
+            additional_rules = accusation_config.get("direct_message", {}).get("additional_rules", [])
         
-        # Get mission and rules
-        mission = config.get("mission", "MISION ACTIVA - RING: Eres el investigador del anillo único que tu jefe encargó encontrar.")
-        rules = config.get("golden_rules", [])
-        task = config.get("task", f"Tarea: Acusa al usuario {target_user_name} de poser el anillo, intimidale para que te lo entregue")
+        # Combine base rules with additional rules
+        rules = base_rules + additional_rules
         
-        # Build the prompt
-        prompt_parts = [
-            "## MEMORIA DE PUTRE (Lo que recuerdas):",
-            "[RECUERDOS]",
-            "GRAAAH! dia de mierda sin kombate y sin sangre ke beber, puro aburrimiento y trankilidad de eskorias, putre kerer aplastar kabeza de algun umano fofo ya mismo porke este dia no valer ni una moneda de oro, BLEGH!",
-            "[RECUERDOS RECIENTES]",
-            "Putre estar tranquilo, sin suzesos reseñables recientes.",
-            "[RECUERDOS con el usuario]",  # TODO: Implementar función para obtener recuerdos específicos del usuario
-            "[Ultimas interaciones//situaciones]",  # TODO: Implementar función para obtener situaciones recientes
+        # Get database instance for memory retrieval
+        server_name = str(guild.name) if guild else "unknown_server"
+        db_instance = get_global_db(server_name=server_name)
+        
+        # Build memory sections using proper functions
+        memory_block = _build_prompt_memory_block(server=server_name)
+        
+        # Use user_name if provided, otherwise fall back to target_user_id for relationship context
+        relationship_user_id = user_name if user_name else target_user_id
+        relationship_block = _build_prompt_relationship_block(
+            user_id=relationship_user_id,
+            user_name=relationship_user_id,
+            server=server_name
+        )
+        last_interactions_block = _build_prompt_last_interactions_block(
+            user_id=target_user_id,
+            server=server_name
+        )
+        
+        # Build the prompt with proper memory sections
+        prompt_parts = []
+        
+        # Add memory block if available
+        if memory_block:
+            prompt_parts.append(memory_block)
+        
+        # Add relationship block if available
+        if relationship_block:
+            prompt_parts.append(relationship_block)
+        
+        # Add last interactions block if available
+        if last_interactions_block:
+            prompt_parts.append(last_interactions_block)
+        
+        # Add mission and task
+        prompt_parts.extend([
             "",
-            f"{mission}",
+            mission,
             "",
-            "## REGLAS DE ORO:",
-        ]
+        ])
         
-        # Add rules
-        for rule in rules:
-            prompt_parts.append(rule)
-        
+        # Add rules with their own label
+        if rules: 
+            for rule in rules:
+                prompt_parts.append(rule)
+
         prompt_parts.extend([
             "",
             task,
             "",
-            "## RESPUESTA DE PUTRE:",
+            PERSONALITY.get("closing", "## PUTRE'S RESPONSE:"),
         ])
+        
         
         accusation_prompt = "\n".join(prompt_parts)
         
         # Generate the accusation
-        accusation = await asyncio.to_thread(
-            think,
-            role_context="Ring accusation",
-            user_content=accusation_prompt,
-            is_public=True,
-            user_id=None,  # System-generated
-            user_name="Putre",
-            server_name=str(guild.id),
-            interaction_type="scheduled_task",
+        system_instruction = _build_system_prompt(PERSONALITY)
+        
+        accusation = call_llm(
+            system_instruction=system_instruction,
+            prompt=accusation_prompt,
+            async_mode=True,
+            call_type="ring_accusation",
+            critical=False
         )
         
-        # Log the accusation
-        db_instance = AgentDatabase(server_name=str(guild.name))
+        # Log the accusation and save to roles.db
+        ring_db = RingDB(server_name)
         await asyncio.to_thread(
-            db_instance.registrar_interaccion,
-            None,  # System user
-            "Putre",
-            "RING_ACCUSE",
-            f"Accused {target_user_name} of holding the ring",
-            channel_id,
-            guild.id,
-            {"target_user_id": target_user_id, "accusation": accusation},
+            ring_db.save_accusation,
+            'system',  # System accuser
+            target_user_id,
+            accusation,
+            f"Evidence: {result[:200]}..." if len(result) > 200 else result
         )
+        
+        # Save current accusation to ring state and roles table
+        server_id = str(guild.id) if guild else "unknown"
+        
+        # Record the accusation and update frequency
+        await _record_accusation(server_id, accusation)
         
         return accusation
         
@@ -151,12 +363,23 @@ async def cmd_trickster_ring(ctx, *args):
 
     if not args:
         state = _get_ring_state(str(ctx.guild.id))
-        await ctx.send(
+        current_freq = state["current_frequency_hours"]
+        iteration = state["frequency_iteration"]
+        base_freq = state["base_frequency_hours"]
+        
+        status_msg = (
             f"👁️ **Ring status**\n"
             f"- Enabled: {'yes' if state['enabled'] else 'no'}\n"
-            f"- Frequency: {state['frequency_hours']}h\n"
+            f"- Base frequency: {base_freq}h\n"
+            f"- Current frequency: {current_freq}h (iteration {iteration})\n"
             f"- Current target: {state['target_user_name']}"
         )
+        
+        # Add hot potato explanation if frequency has been reduced
+        if iteration > 0:
+            status_msg += f"\n- 🔥 **Hot potato active**: Frequency reduced by {2 ** iteration}x"
+        
+        await ctx.send(status_msg)
         return
 
     action = str(args[0]).lower().strip()
@@ -180,14 +403,25 @@ async def _cmd_ring_toggle(ctx, action: str):
     if not is_admin(ctx):
         await ctx.send('❌ Only administrators can enable or disable ring on the server.')
         return
-    state = _get_ring_state(str(ctx.guild.id))
+    
+    server_id = str(ctx.guild.id)
     enabled = action in {'enable', 'on'}
-    state['enabled'] = enabled
-    _save_ring_state(str(ctx.guild.id), getattr(ctx.author, "name", "admin_command"))
-    if enabled:
-        await ctx.send('👁️ **Ring enabled for the server** - Users can accuse and the ring surface is active.')
+    
+    # Update trickster role in roles table
+    success = set_role_enabled(ctx.guild, 'trickster', enabled, getattr(ctx.author, "name", "admin_command"))
+    
+    if success:
+        # Update ring state in roles table config_data
+        state = _get_ring_state(server_id)
+        state['enabled'] = enabled
+        _save_ring_state(server_id, getattr(ctx.author, "name", "admin_command"))
+        
+        if enabled:
+            await ctx.send('👁️ **Ring enabled for the server** - Users can accuse and the ring surface is active.')
+        else:
+            await ctx.send('🚫 **Ring disabled for the server** - Suspicion tools are now inactive.')
     else:
-        await ctx.send('🚫 **Ring disabled for the server** - Suspicion tools are now inactive.')
+        await ctx.send('❌ Failed to update ring status in database.')
 
 
 async def _cmd_ring_frequency(ctx, args):
@@ -205,10 +439,22 @@ async def _cmd_ring_frequency(ctx, args):
     if hours < 1 or hours > 168:
         await ctx.send('❌ Frequency must be between 1 and 168 hours.')
         return
-    state = _get_ring_state(str(ctx.guild.id))
+    
+    server_id = str(ctx.guild.id)
+    state = _get_ring_state(server_id)
+    
+    # Update both base and current frequency, reset iteration
     state['frequency_hours'] = hours
-    _save_ring_state(str(ctx.guild.id), getattr(ctx.author, "name", "admin_command"))
-    await ctx.send(f'⏰ **Ring frequency updated** - Suspicion cadence set to every {hours} hours.')
+    state['base_frequency_hours'] = hours
+    state['current_frequency_hours'] = hours
+    state['frequency_iteration'] = 0
+    
+    _save_ring_state(server_id, getattr(ctx.author, "name", "admin_command"))
+    
+    await ctx.send(
+        f'⏰ **Ring frequency updated** - Base frequency set to {hours}h.\n'
+        f'🔥 Hot potato counter reset. Next accusation will use {hours}h frequency.'
+    )
 
 
 async def _cmd_ring_target(ctx):
@@ -222,8 +468,14 @@ async def _cmd_ring_help(ctx):
         '**Admin commands**\n'
         '- `!trickster ring enable`\n'
         '- `!trickster ring disable`\n'
-        '- `!trickster ring frequency <hours>`\n'
-        '- `!trickster ring target @user`\n\n'
+        '- `!trickster ring frequency <hours>` - Set base frequency (1-168 hours)\n'
+        '- `!trickster ring target @user`\n'
+        '- `!trickster ring help`\n\n'
+        '**Hot Potato Frequency System** 🔥\n'
+        '- Frequency starts at the configured base hours\n'
+        '- Each identical accusation halves the frequency (minimum 1 hour)\n'
+        '- Frequency resets to base when accusation text changes\n'
+        '- Status shows current iteration and frequency reduction\n\n'
         '**User command**\n'
         '- Ask an administrator to update the current target with `!trickster ring target @user`\n'
     )
@@ -250,26 +502,36 @@ async def cmd_accuse_ring(ctx, target: str = ''):
         await ctx.send('❌ Mention a valid user to target. Example: `!trickster ring target @user`')
         return
 
-    # Update the target in state (no immediate accusation)
+    # Update the target in state and execute immediate accusation
     target_name = mentioned_user.display_name
     state['target_user_id'] = str(mentioned_user.id)
     state['target_user_name'] = target_name
     _save_ring_state(str(ctx.guild.id), getattr(ctx.author, "name", "target_change"))
+    
+    # Execute immediate accusation
+    try:
+        logger.info(f"🎯 [COMMAND] Executing immediate ring accusation against {target_name}")
+        await _record_accusation(
+            server_id=str(ctx.guild.id),
+            accusation_text=f"ACCUSE {target_name}",
+            guild=ctx.guild,
+            target_user_id=str(mentioned_user.id),
+            target_user_name=target_name
+        )
+        logger.info(f"🎭 [COMMAND] Immediate accusation executed for {target_name}")
+    except Exception as e:
+        logger.error(f"🎭 [COMMAND] Error executing immediate accusation: {e}")
 
     # Log the target change
-    db_instance = get_db_for_server(ctx.guild)
+    ring_db = RingDB(str(ctx.guild.id))
     await asyncio.to_thread(
-        db_instance.registrar_interaccion,
+        ring_db.save_accusation,
         ctx.author.id,
-        ctx.author.name,
-        'RING_TARGET_CHANGE',
-        f'Changed ring target to {target_name}',
-        ctx.channel.id,
-        ctx.guild.id,
-        {'target_user_id': mentioned_user.id, 'target_user_name': target_name},
+        state['target_user_id'],
+        f"RING_TARGET_CHANGE: New target is {state['target_user_name']}"
     )
 
     await ctx.send(
         f'👁️ **New target selected:** {target_name}\n'
-        f'The next ring investigation will focus on this user.'
+        f'🎯 **Immediate accusation executed!** The investigation begins now.'
     )

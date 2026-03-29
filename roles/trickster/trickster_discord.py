@@ -38,30 +38,26 @@ cmd_trickster = None
 # Availability flags
 try:
     from roles.trickster.subroles.beggar.db_beggar import get_beggar_db_instance
-    BEGGAR_DB_AVAILABLE = True
+    # Banker database available - now using roles_db directly
 except ImportError:
-    BEGGAR_DB_AVAILABLE = False
-    get_beggar_db_instance = None
+    # Banker database not available - now using roles_db directly
+    pass
 
 try:
-    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
-    DICE_GAME_DB_AVAILABLE = True
+    from agent_roles_db import get_roles_db_instance
 except ImportError:
-    DICE_GAME_DB_AVAILABLE = False
-    get_dice_game_db_instance = None
+    get_roles_db_instance = None
 
 try:
     from roles.trickster.subroles.dice_game.dice_game import process_play
-    DICE_GAME_AVAILABLE = True
+    # Dice game available - now using roles_db directly
 except ImportError:
-    DICE_GAME_AVAILABLE = False
+    # Dice game not available - now using roles_db directly
     process_play = None
 
 try:
-    from roles.banker.db_role_banker import get_banker_db_instance
-    BANKER_DB_AVAILABLE = True
+    from roles.banker.banker_db import get_banker_roles_db_instance as get_banker_db_instance
 except ImportError:
-    BANKER_DB_AVAILABLE = False
     get_banker_db_instance = None
 
 try:
@@ -83,17 +79,13 @@ except ImportError:
     cmd_runes_types = None
 
 
-def _get_beggar_db(guild):
-    """Get beggar database instance for a server."""
-    if not BEGGAR_DB_AVAILABLE or get_beggar_db_instance is None:
-        return None
-    return get_beggar_db_instance(get_server_key(guild))
-
-
 def _get_banker_db(guild):
-    if not BANKER_DB_AVAILABLE or get_banker_db_instance is None:
-        return None
-    return get_banker_db_instance(get_server_key(guild))
+    """Get banker database instance for a server."""
+    try:
+        id_key = str(guild.id)
+        return get_roles_db_instance(id_key)
+    except Exception:
+        return get_roles_db_instance(str(guild.id))
 
 
 def register_trickster_commands(bot, personality, agent_config):
@@ -362,8 +354,7 @@ def register_trickster_commands(bot, personality, agent_config):
         register_dice_commands(
             bot, personality, send_dm_or_channel, is_admin,
             get_banker_db_instance, get_dice_game_db_instance,
-            process_play, DICE_GAME_AVAILABLE, DICE_GAME_DB_AVAILABLE,
-            BANKER_DB_AVAILABLE
+            process_play, DICE_GAME_AVAILABLE, True  # Using roles_db directly
         )
         logger.info("🎲 Dice game commands imported and registered")
     except ImportError as e:

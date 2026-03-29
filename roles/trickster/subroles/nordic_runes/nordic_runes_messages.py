@@ -3,6 +3,9 @@ Nordic Runes Messages Module
 Contains rune definitions, interpretations, and messages with personality support.
 """
 
+from agent_logging import get_logger
+logger = get_logger('nordic_runes_messages')
+
 # Elder Futhark Runes with their meanings
 RUNES = {
     'fehu': {
@@ -235,54 +238,27 @@ ENGLISH_MESSAGES = {
     'single_cast': "🔮 **SINGLE RUNE CASTING** 🔮",
     'three_cast': "🔮 **THREE RUNE CASTING** 🔮",
     'cross_cast': "🔮 **FIVE RUNE CROSS CASTING** 🔮",
-    'history': "🔮 **ANCIENT RUNES HISTORY** 🔮",
+    'history': "🔮 **ANCIENT RUNES HISTORY** (Last {count}) 🔮",
     'types': "🔮 **RUNE CASTING TYPES** 🔮",
+    'runes_list': "🔮 **ELDER FUTHARK RUNES** 🔮",
     'help': "🔮 **NORDIC RUNES WISDOM** 🔮",
     'help_content': """🔮 **NORDIC RUNES WISDOM** 🔮
 
-**What are Nordic Runes?**
-The Elder Futhark is the oldest form of the runic alphabets, used by Germanic tribes for divination and magic.
-
-**Available Readings:**
-• **Single Rune** - Quick guidance on a specific question
-• **Three Rune Spread** - Past, Present, Future reading
-• **Five Rune Cross** - Comprehensive situation analysis
-
-**How to use:**
-• Use Discord commands: `!runes cast [type] <question>`
-• Example: `!runes cast single What should I focus on today?`
-
-**The 24 Elder Futhark Runes:**
-Fehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo
-Hagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo
-Tiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala
-
-Each rune carries ancient wisdom and guidance for your journey.""",
-    'types_content': """🔮 **RUNE CASTING TYPES** 🔮
-
-**single** - Single Rune
-└ Quick guidance for a specific question - Uses 1 rune
-
-**three** - Three Rune Spread
-└ Past, Present, Future reading - Uses 3 runes
-
-**cross** - Five Rune Cross
-└ Comprehensive situation analysis - Uses 5 runes
-
-**runic_cross** - Runic Cross
-└ Deep spiritual guidance with seven runes - Uses 7 runes
-
-**Usage Examples:**
-`!runes cast single What should I focus on today?`
-`!runes cast three What does my future hold?`
-`!runes cast cross Help me understand my current situation`
 
 Choose your casting type and ask the ancient runes!""",
+    'runes_list_content': 'DYNAMIC_GENERATED',  # This will be replaced by get_runes_list_content()
     'history_empty': "🔮 You have no previous rune readings. Cast your first runes with `!runes cast`!",
     'history_header': "🔮 **YOUR ANCIENT RUNES READINGS** (Last {count})",
     'history_entry': "**ID {id}** - {type}\nQuestion: {question}\nRunes: {runes}\nDate: {date}",
     'stats': "\n**Total Readings:** {total}\n**Favorite Type:** {favorite}",
-    'interpretation_header': "**Question:** {question}\n\n"
+    'interpretation_header': "**Question:** {question}\n\n",
+    # Added missing labels for rune fields
+    'question': "Question",
+    'meaning': "Meaning",
+    'keywords': "Keywords",
+    'interpretation': "Interpretation",
+    'success': "🔮 UHHH! The ancient runes have spoken, human!",
+    'saved': "🔮 UHHH! Putre saved your rune reading in the ancient scrolls!"
 }
 
 # Personality messages cache
@@ -292,71 +268,57 @@ def load_personality_messages():
     """Load messages from personality files with English fallbacks."""
     global _personality_messages
     
-    if _personality_messages is not None:
-        return _personality_messages
+    # Always reload to ensure fresh messages from descriptions.json
+    _personality_messages = None
     
     try:
         import json
         import os
         
-        # Get project root and personality path
-        # Go up 4 levels from nordic_runes to project root
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        # Adjust to the correct project root
-        project_root = os.path.dirname(project_root)  # One more level up
+        # Get project root and descriptions path
+        # Current file: /home/mtx/Documentos/RoleAgentBot/roles/trickster/subroles/nordic_runes/nordic_runes_messages.py
+        # Project root: /home/mtx/Documentos/RoleAgentBot
+        # Need to go up 5 levels: nordic_runes -> subroles -> trickster -> roles -> RoleAgentBot
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         
-        # Try to load descriptions.json
         descriptions_path = os.path.join(project_root, "personalities", "putre", "descriptions.json")
-        descriptions = {}
         
         if os.path.exists(descriptions_path):
             with open(descriptions_path, encoding="utf-8") as f:
                 descriptions = json.load(f)
-                # Get the complete nordic_runes section
+                # Get the nordic_runes section
                 nordic_runes_data = descriptions.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
                 
-                # Use English messages as base, override with specific labels from descriptions
+                # Use English messages as base, override with all messages from descriptions
                 merged_messages = ENGLISH_MESSAGES.copy()
                 
-                # Only override labels and specific messages that should be localized
-                if 'labels' in nordic_runes_data:
-                    merged_messages.update(nordic_runes_data['labels'])
+                # Override with all available messages from descriptions.json
+                for key, value in nordic_runes_data.items():
+                    if key != "translations" and key != "positions":  # Skip special sections
+                        merged_messages[key] = value
                 
-                # Add translations section if it exists
-                if 'translations' in nordic_runes_data:
-                    merged_messages['translations'] = nordic_runes_data['translations']
+                # Also add labels as individual messages
+                labels = nordic_runes_data.get("labels", {})
+                for key, value in labels.items():
+                    merged_messages[key] = value
                 
-                # Override specific messages if they exist
-                override_keys = ['success', 'saved', 'single_cast', 'three_cast', 'cross_cast', 'runic_cross_cast', 
-                                'history', 'types', 'help', 'welcome', 'question_prompt', 'reading_types', 
-                                'invalid_type', 'no_question', 'reading_saved', 'error']
-                for key in override_keys:
-                    if key in nordic_runes_data:
-                        merged_messages[key] = nordic_runes_data[key]
+                # IMPORTANT: Also include translations section
+                translations_section = nordic_runes_data.get("translations", {})
+                merged_messages["translations"] = translations_section
+                merged_messages["positions"] = nordic_runes_data.get("positions", {})
                 
                 _personality_messages = merged_messages
                 return _personality_messages
-        
-        # Try to load answers.json
-        answers_path = os.path.join(project_root, "personalities", "putre", "answers.json")
-        answers = {}
-        
-        if os.path.exists(answers_path):
-            with open(answers_path, encoding="utf-8") as f:
-                answers = json.load(f).get("discord", {}).get("nordic_runes_messages", {})
-        
-        # Merge personality messages with English fallbacks
-        _personality_messages = {
-            **ENGLISH_MESSAGES,  # English fallbacks
-            **descriptions,     # Personality descriptions override
-            **answers           # Personality answers override
-        }
-        
-        return _personality_messages
+        else:
+            # If descriptions.json doesn't exist, use English fallbacks
+            _personality_messages = ENGLISH_MESSAGES.copy()
+            return _personality_messages
         
     except Exception as e:
         # If loading fails, return English fallbacks
-        return ENGLISH_MESSAGES.copy()
+        logger.error(f"Failed to load personality messages: {e}")
+        _personality_messages = ENGLISH_MESSAGES.copy()
+        return _personality_messages
 
 def get_rune(rune_key: str) -> dict:
     """Get rune information by key."""
@@ -366,10 +328,17 @@ def get_reading_type(type_key: str) -> dict:
     """Get reading type information by key."""
     return READING_TYPES.get(type_key, {})
 
-def get_message(message_key: str) -> str:
-    """Get message by key with personality support."""
+def get_message(message_key: str, page: int = 1) -> str:
+    """Get message by key with personality support and optional page parameter."""
     messages = load_personality_messages()
-    return messages.get(message_key, ENGLISH_MESSAGES.get(message_key, f"Unknown message: {message_key}"))
+    
+    # Special handling for runes_list_content to use dynamic generation with pagination
+    if message_key == 'runes_list_content':
+        return get_runes_list_content(page)
+    
+    result = messages.get(message_key, ENGLISH_MESSAGES.get(message_key, f"Unknown message: {message_key}"))
+    
+    return result
 
 def clear_message_cache():
     """Clear the personality messages cache to force reload."""
@@ -389,8 +358,10 @@ def get_guidance_messages(category: str) -> dict:
             import os
             
             # Get project root and descriptions path
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-            project_root = os.path.dirname(project_root)  # One more level up
+            # Current file: /home/mtx/Documentos/RoleAgentBot/roles/trickster/subroles/nordic_runes/nordic_runes_messages.py
+            # Project root: /home/mtx/Documentos/RoleAgentBot
+            # Need to go up 5 levels: nordic_runes -> subroles -> trickster -> roles -> RoleAgentBot
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
             
             descriptions_path = os.path.join(project_root, "personalities", "putre", "descriptions.json")
             
@@ -404,3 +375,65 @@ def get_guidance_messages(category: str) -> dict:
             guidance_data = {}
     
     return guidance_data.get(category, {})
+
+def get_runes_list_content(page: int = 1) -> str:
+    """Generate runes list content dynamically from RUNES data with translations and pagination."""
+    # Load personality messages for translations
+    messages = load_personality_messages()
+    translations = messages.get('translations', {})
+    
+    # Load labels from descriptions.json - access labels section directly
+    try:
+        import json
+        import os
+        
+        # Get project root and descriptions path
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+        descriptions_path = os.path.join(project_root, "personalities", "putre", "descriptions.json")
+        
+        labels_data = {}
+        if os.path.exists(descriptions_path):
+            with open(descriptions_path, encoding="utf-8") as f:
+                descriptions = json.load(f)
+                # Get the labels section directly
+                labels_data = descriptions.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("labels", {})
+    except:
+        labels_data = {}
+    
+    # Get all runes as list for pagination
+    all_runes = list(RUNES.items())
+    
+    # Calculate pagination - 8 runes per page without keywords
+    runes_per_page = 8
+    total_pages = 3
+    start_idx = (page - 1) * runes_per_page
+    end_idx = start_idx + runes_per_page
+    page_runes = all_runes[start_idx:end_idx]
+    
+    # Page titles with rune ranges - get from descriptions.json with fallback
+    page_titles = {
+        1: messages.get('runes_page_1_title', "🔮 **THE ELDER FUTHARK - RUNES I (Fehu to Wunjo)** 🔮"),
+        2: messages.get('runes_page_2_title', "🔮 **THE ELDER FUTHARK - RUNES II ( Hagalaz to Sowilo)** 🔮"), 
+        3: messages.get('runes_page_3_title', "🔮 **THE ELDER FUTHARK - RUNES III (Tiwaz to Othala)** 🔮")
+    }
+    
+    content = page_titles.get(page, f"🔮 **THE ELDER FUTHARK - RUNES {page}** 🔮") + "\n\n" + "-"*55 + "\n\n"
+
+    # Generate content for this page without keywords
+    for rune_key, rune_data in page_runes:
+        symbol = rune_data.get('symbol', '?')
+        name = rune_data.get('name', 'Unknown')
+        meaning = rune_data.get('meaning', 'Unknown')
+        interpretation = rune_data.get('description', 'No description')
+        
+        # Use translations if available
+        rune_translation = translations.get(rune_key, {})
+        if rune_translation:
+            meaning = rune_translation.get('meaning', meaning)
+            interpretation = rune_translation.get('interpretation', interpretation)
+        
+        title_interpretation = labels_data.get("interpretation", "Interpretation:")
+        content += f"**{symbol} {name}** - {meaning}\n"
+        content += f"{title_interpretation} {interpretation}\n\n"
+    
+    return content

@@ -6,7 +6,7 @@ logger = core.logger
 _personality_answers = core._personality_answers
 _personality_descriptions = core._personality_descriptions
 _bot_display_name = core._bot_display_name
-get_banker_db_instance = core.get_banker_db_instance
+get_banker_db_instance = None  # Now using roles_db directly
 get_server_key = core.get_server_key
 
 
@@ -30,18 +30,17 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
     if guild is not None and get_banker_db_instance is not None:
         try:
             server_key = get_server_key(guild)
-            db_banker = get_banker_db_instance(server_key)
             server_id = str(guild.id)
-
-            from agent_db import get_active_server_name
-            server_name = get_active_server_name() or guild.name
+            server_name = guild.name
 
             if author_id is not None:
                 user_id = str(author_id)
                 member = guild.get_member(author_id)
                 user_name = member.display_name if member else "Unknown User"
 
-                db_banker.create_wallet(user_id, user_name, server_id, server_name)
+                from roles.banker.banker_db import get_banker_roles_db_instance
+                db_banker_roles = get_banker_roles_db_instance(server_key)
+                db_banker_roles.create_wallet(user_id, user_name, server_id, server_name, 'user')
 
                 try:
                     from roles.banker.banker_discord import _initialize_dice_game_account
@@ -49,11 +48,12 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
                 except Exception:
                     pass
 
-                balance = db_banker.get_balance(user_id, server_id)
-                history = db_banker.get_transaction_history(user_id, server_id, limit=5)
+                balance = db_banker_roles.get_balance(user_id, server_id)
+                # Get transaction history from the underlying roles database
+                roles_db = get_roles_db_instance(server_key)
+                history = roles_db.get_banker_transaction_history(user_id, server_id, limit=5)
 
-            db_banker.obtener_tae(server_id)
-            db_banker.obtener_opening_bonus(server_id)
+                tae = db_banker_roles.get_tae(server_id)
         except Exception as error:
             logger.warning(f"Could not load banker state for Canvas: {error}")
 

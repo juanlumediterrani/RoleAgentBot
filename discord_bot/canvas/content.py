@@ -20,18 +20,18 @@ from discord_bot.discord_utils import (
     get_greeting_enabled, set_greeting_enabled,
     check_chat_rate_limit, is_already_initialized, mark_as_initialized,
     acquire_connection_lock, acquire_process_lock,
-    get_server_key, get_role_interval_hours, set_role_enabled,
+    get_server_key, set_role_enabled,
 )
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
 
 try:
-    from roles.trickster.subroles.dice_game.db_dice_game import get_dice_game_db_instance
-except Exception:
-    get_dice_game_db_instance = None
+    from agent_roles_db import get_roles_db_instance
+except ImportError:
+    get_roles_db_instance = None
 get_watcher_messages = core.get_watcher_messages
 get_poe2_manager = core.get_poe2_manager
 get_beggar_db_instance = core.get_beggar_db_instance
-get_banker_db_instance = core.get_banker_db_instance
+get_banker_db_instance = None  # Now using roles_db directly
 get_behavior_db_instance = core.get_behavior_db_instance
 _discord_cfg = core._discord_cfg
 _personality_name = core._personality_name
@@ -349,9 +349,12 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "runes_single": "Cast a single rune for quick guidance on your question.",
             "runes_three": "Cast three runes for past, present, and future guidance.",
             "runes_cross": "Cast five runes in a cross pattern for comprehensive insight.",
+            "runes_runic_cross": "Cast seven runes in a runic cross pattern for spiritual guidance.",
             "runes_history": "Show your recent rune casting history.",
             "runes_types": "Show available rune reading types and descriptions.",
-            "runes_help": "Show help and instructions for rune casting.",
+            "runes_runes_1": "Show all runes with descriptions - Page 1 (Fehu to Gebo)",
+            "runes_runes_2": "Show all runes with descriptions - Page 2 (Wunjo to Perthro)",
+            "runes_runes_3": "Show all runes with descriptions - Page 3 (Algiz to Othala)",
             "announcements_on": "Dice announcements enabled for this server.",
             "announcements_off": "Dice announcements disabled for this server.",
             "dice_fixed_bet": "The bot will ask for the fixed bet amount and update the dice game configuration.",
@@ -364,6 +367,8 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "beggar_on": "Beggar enabled for this server.",
             "beggar_off": "Beggar disabled for this server.",
             "beggar_frequency": "The bot will ask for the beggar frequency in hours and update the schedule.",
+            "runes_on": "Nordic Runes subrole enabled for this server.",
+            "runes_off": "Nordic Runes subrole disabled for this server.",
         },
         "banker": {
             "config_tae": "The bot will ask for the daily TAE value and update the banker configuration.",
@@ -429,6 +434,8 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
         "ring_admin": "ring",
         "beggar": "beggar",
         "beggar_admin": "beggar",
+        "runes": "runes",
+        "runes_admin": "runes",
     }
     trickster_admin_map = {
         "dice": "dice_admin",
@@ -437,6 +444,8 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
         "ring_admin": "ring_admin",
         "beggar": "beggar_admin",
         "beggar_admin": "beggar_admin",
+        "runes": "runes_admin",
+        "runes_admin": "runes_admin",
     }
     items_map: dict[str, list[tuple[str, str]]] = {
         "news_watcher": [
@@ -446,9 +455,15 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
             # Show Items and League buttons in POE2 subrol views, but not in main treasure_hunter overview
         ] + ([("Items", "personal"), ("League", "league")] if current_detail in {"personal", "league"} else []) + ([("Admin", "admin")] if admin_visible and current_detail in {"personal", "league", "admin"} else []),
         "trickster": (
+            # Regular subrole views
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
             + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
-        ) if current_detail in {"dice", "ring", "beggar", "runes", "dice_admin", "ring_admin", "beggar_admin"} else [
+        ) if current_detail in {"dice", "ring", "beggar", "runes"} else (
+            # Admin views
+            [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
+            + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
+        ) if current_detail in {"dice_admin", "ring_admin", "beggar_admin", "runes_admin"} else [
+            # Main trickster overview - show all subroles
             (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("dice", "Dice"), "dice"),
             (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("ring", "Ring"), "ring"),
             (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("beggar", "Beggar"), "beggar"),
@@ -464,7 +479,7 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
     return items_map.get(role_name, [])
 
 
-def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool) -> list[tuple[str, str, str]]:
+def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
     if role_name == "news_watcher":
         if detail_name in {"personal", "overview"}:  # Same view for both
             return [
@@ -511,13 +526,46 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 ("Dice: Help", "dice_help", "Help action"),
             ]
         if detail_name == "runes":
+            # Check if runes subrole is enabled
+            runes_enabled = False
+            if agent_config:
+                runes_enabled = agent_config.get("roles", {}).get("trickster", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
+            
+            if not runes_enabled:
+                # Runes disabled - only show info actions
+                return [
+                    ("Runes: Types", "runes_types", "Action"),
+                ]
+            
+            # Runes enabled - show all casting actions
+            # Get personality messages for dropdown labels
+            roles_messages = _personality_descriptions.get("roles_view_messages", {})
+            nordic_runes_messages = roles_messages.get("trickster", {}).get("nordic_runes", {})
+            canvas_labels = nordic_runes_messages.get("canvas_dropdown_labels", {})
+            
+            # English fallbacks
+            english_fallbacks = {
+                "runes_single": "Runes: Single Cast",
+                "runes_three": "Runes: Three Cast", 
+                "runes_cross": "Runes: Cross Cast",
+                "runes_runic_cross": "Runes: Runic Cross Cast",
+                "runes_history": "Runes: History",
+                "runes_types": "Runes: Types",
+                "runes_runes_1": "Runes: All Runes I",
+                "runes_runes_2": "Runes: All Runes II",
+                "runes_runes_3": "Runes: All Runes III"
+            }
+            
             return [
-                ("Runes: Single Cast", "runes_single", "Text input target"),
-                ("Runes: Three Cast", "runes_three", "Text input target"),
-                ("Runes: Cross Cast", "runes_cross", "Text input target"),
-                ("Runes: History", "runes_history", "Action"),
-                ("Runes: Types", "runes_types", "Action"),
-                ("Runes: Help", "runes_help", "Action"),
+                (canvas_labels.get("runes_single", english_fallbacks["runes_single"]), "runes_single", "Text input target"),
+                (canvas_labels.get("runes_three", english_fallbacks["runes_three"]), "runes_three", "Text input target"),
+                (canvas_labels.get("runes_cross", english_fallbacks["runes_cross"]), "runes_cross", "Text input target"),
+                (canvas_labels.get("runes_runic_cross", english_fallbacks["runes_runic_cross"]), "runes_runic_cross", "Text input target"),
+                (canvas_labels.get("runes_history", english_fallbacks["runes_history"]), "runes_history", "Action"),
+                (canvas_labels.get("runes_types", english_fallbacks["runes_types"]), "runes_types", "Action"),
+                (canvas_labels.get("runes_runes_1", english_fallbacks["runes_runes_1"]), "runes_runes_1", "Action"),
+                (canvas_labels.get("runes_runes_2", english_fallbacks["runes_runes_2"]), "runes_runes_2", "Action"),
+                (canvas_labels.get("runes_runes_3", english_fallbacks["runes_runes_3"]), "runes_runes_3", "Action"),
             ]
         if detail_name == "dice_admin" and admin_visible:
             return [
@@ -546,6 +594,11 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 ("Beggar: Off", "beggar_off", "Boolean toggle"),
                 ("Beggar: Frequency", "beggar_frequency", "Number input target"),
             ]
+        if detail_name == "runes_admin" and admin_visible:
+            return [
+                ("Runes: On", "runes_on", "Boolean toggle"),
+                ("Runes: Off", "runes_off", "Boolean toggle"),
+            ]
         return []
 
     if role_name == "banker":
@@ -572,10 +625,10 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     return []
 
 
-def _get_canvas_role_action_items(role_name: str, admin_visible: bool) -> list[tuple[str, str, str]]:
+def _get_canvas_role_action_items(role_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
     actions: list[tuple[str, str, str]] = []
     for _label, detail_name in _get_canvas_role_detail_items(role_name, admin_visible):
-        actions.extend(_get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible))
+        actions.extend(_get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config))
     return actions
 
 
@@ -615,6 +668,77 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         "- Apply the change only if you want to affect the whole server behavior",
     ])
 
+def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int = None, user_name: str = None) -> str:
+    """Try to get the last saved memory paragraph as fallback before using defaults."""
+    import sqlite3
+    
+    try:
+        with database._lock:
+            conn = sqlite3.connect(database.db_path)
+            cursor = conn.cursor()
+            
+            if memory_type == "daily":
+                # Get the most recent daily memory (excluding today's empty record and errors)
+                cursor.execute("""
+                    SELECT summary, updated_at FROM daily_memory 
+                    WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
+                    ORDER BY updated_at DESC LIMIT 5
+                """)
+                records = cursor.fetchall()
+                if records:
+                    for summary, updated_at in records:
+                        summary = summary.strip()
+                        if summary and len(summary) > 20:  # Valid content
+                            conn.close()
+                            return summary
+                        
+            elif memory_type == "recent":
+                # Get the most recent recent memory (excluding today's empty record and errors)
+                cursor.execute("""
+                    SELECT summary, updated_at FROM recent_memory 
+                    WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
+                    ORDER BY updated_at DESC LIMIT 5
+                """)
+                records = cursor.fetchall()
+                if records:
+                    for summary, updated_at in records:
+                        summary = summary.strip()
+                        if summary and len(summary) > 20:  # Valid content
+                            conn.close()
+                            return summary
+                        
+            elif memory_type == "relationship" and author_id:
+                # Get the most recent relationship memory for this user
+                cursor.execute("""
+                    SELECT summary, memory_date FROM user_relationship_daily_memory 
+                    WHERE usuario_id = ? AND summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
+                    ORDER BY memory_date DESC LIMIT 5
+                """, (author_id,))
+                records = cursor.fetchall()
+                if records:
+                    for summary, memory_date in records:
+                        summary = summary.strip()
+                        if summary and len(summary) > 20:  # Valid content
+                            conn.close()
+                            return summary
+            
+            conn.close()
+    except Exception as e:
+        logger.debug(f"Could not retrieve saved memory fallback for {memory_type}: {e}")
+    
+    # If no saved records found, use the default fallback
+    from agent_mind import _get_daily_memory_fallback, _get_recent_memory_fallback, _get_relationship_memory_fallback
+    
+    if memory_type == "daily":
+        return _get_daily_memory_fallback()
+    elif memory_type == "recent":
+        return _get_recent_memory_fallback()
+    elif memory_type == "relationship":
+        return _get_relationship_memory_fallback(user_name or "este umano")
+    
+    return ""
+
+
 def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, welcome_name: str, nowelcome_name: str,
                        role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_name: str = "default",
                        author_id: int = 0, guild=None, is_dm: bool = False) -> str:
@@ -646,6 +770,13 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             "",
         ])
     
+    # Initialize records as None
+    recent_record = None
+    relationship_record = {"summary": "", "updated_at": None, "last_interaction_at": None, "metadata": {}}
+    daily_record = None
+    
+    # Try to get database and records
+    database = None
     try:
         database = AgentDatabase(server_name=server_name)
         recent_record = database.get_recent_memory_record()
@@ -653,13 +784,54 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         daily_record = database.get_daily_memory_record()
     except Exception as e:
         logger.warning(f"Canvas status could not load memory data for server={server_name}: {e}")
-        recent_record = None
-        relationship_record = {"summary": "", "updated_at": None, "last_interaction_at": None, "metadata": {}}
-        daily_record = None
+        # Database error, but we still have the records (might be None)
+        # Don't set fallbacks here - let the logic below handle it
     
     recent_summary = (recent_record or {}).get("summary", "").strip()
     relationship_summary = (relationship_record or {}).get("summary", "").strip()
     daily_summary = (daily_record or {}).get("summary", "").strip()
+    
+    # Exclude error messages from summaries
+    if daily_summary == "[Error in internal task]":
+        daily_summary = ""
+    if recent_summary == "[Error in internal task]":
+        recent_summary = ""
+    if relationship_summary == "[Error in internal task]":
+        relationship_summary = ""
+    
+    # Use fallback content if summaries are empty (e.g., due to token errors or no today's record)
+    if not recent_summary:
+        if database:
+            recent_summary = _get_last_saved_memory_fallback(database, "recent")
+        else:
+            from agent_mind import _get_recent_memory_fallback
+            recent_summary = _get_recent_memory_fallback()
+    
+    if not daily_summary:
+        if database:
+            daily_summary = _get_last_saved_memory_fallback(database, "daily")
+        else:
+            from agent_mind import _get_daily_memory_fallback
+            daily_summary = _get_daily_memory_fallback()
+    
+    if not relationship_summary:
+        # Try to get user name from guild member or fallback to "este umano"
+        user_name = None
+        if guild and author_id:
+            try:
+                member = guild.get_member(author_id)
+                if member and member.display_name:
+                    user_name = member.display_name
+            except:
+                pass
+        if not user_name:
+            user_name = "este umano"
+            
+        if database:
+            relationship_summary = _get_last_saved_memory_fallback(database, "relationship", author_id, user_name)
+        else:
+            from agent_mind import _get_relationship_memory_fallback
+            relationship_summary = _get_relationship_memory_fallback(user_name)
     
     status_lines.extend([
         f"{homedescription}",
@@ -767,7 +939,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     # News Watcher
     if is_role_enabled_check("news_watcher", None, guild):
         active_roles.append("news_watcher")
-        interval = get_role_interval_hours("news_watcher", None, guild, 1)
+        interval = 1  # Default interval for news_watcher
         role_info = get_role_info("news_watcher")
         parts.append(
             f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
@@ -778,7 +950,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     # Treasure Hunter
     if is_role_enabled_check("treasure_hunter", None, guild):
         active_roles.append("treasure_hunter")
-        interval = get_role_interval_hours("treasure_hunter", None, guild, 1)
+        interval = 1  # Default interval for treasure_hunter
         role_info = get_role_info("treasure_hunter")
         parts.append(
             f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
@@ -799,7 +971,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     # Banker
     if is_role_enabled_check("banker", None, guild):
         active_roles.append("banker")
-        interval = get_role_interval_hours("banker", None, guild, 24)
+        interval = 24  # Default interval for banker
         role_info = get_role_info("banker")
         parts.append(
             f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
@@ -937,7 +1109,7 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
             setup_not_available_builder=_build_canvas_setup_not_available,
         )
     if role_name == "trickster" and is_role_enabled_check("trickster", agent_config, guild):
-        return build_canvas_role_trickster_detail(detail_name, admin_visible, guild, author_id)
+        return build_canvas_role_trickster_detail(detail_name, admin_visible, guild, author_id, agent_config)
     if role_name == "banker" and is_role_enabled_check("banker", agent_config, guild):
         return build_canvas_role_banker_detail(detail_name, admin_visible, guild, author_id)
     if role_name == "mc" and (agent_config or {}).get("roles", {}).get("mc", {}).get("enabled", False):

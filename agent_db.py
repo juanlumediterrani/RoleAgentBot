@@ -1432,3 +1432,263 @@ def get_database_path(server_name: str, db_type: str) -> str:
     
     db_name = db_filenames.get(db_type, f'{db_type}_{personality_name}')
     return str(get_server_db_path_fallback(server_name, db_name))
+
+# --- FATIGUE DATABASE SYSTEM ---
+
+def get_fatigue_db_path(server_name: str) -> str:
+    """
+    Get path for fatigue database.
+    
+    Args:
+        server_name: Server name
+        
+    Returns:
+        str: Full path to fatigue database
+    """
+    return str(get_server_db_path(server_name, "fatigue"))
+
+def init_fatigue_db(server_name: str) -> sqlite3.Connection:
+    """
+    Initialize fatigue database for a server.
+    
+    Args:
+        server_name: Server name
+        
+    Returns:
+        sqlite3.Connection: Database connection
+    """
+    db_path = get_fatigue_db_path(server_name)
+    db = sqlite3.connect(db_path, timeout=30.0)
+    
+    # Create fatigue table if it doesn't exist
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS fatigue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            user_name TEXT,
+            daily_requests INTEGER DEFAULT 0,
+            total_requests INTEGER DEFAULT 0,
+            last_request_date TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id)
+        )
+    ''')
+    
+    # Create server row if it doesn't exist
+    server_id = f"server_{server_name}"
+    today = str(date.today())
+    
+    db.execute('''
+        INSERT OR IGNORE INTO fatigue 
+        (user_id, user_name, daily_requests, total_requests, last_request_date)
+        VALUES (?, ?, 0, 0, ?)
+    ''', (server_id, f"Server_{server_name}", today))
+    
+    db.commit()
+    return db
+
+def increment_fatigue_count(server_name: str, user_id: str, user_name: str = None) -> tuple[int, int]:
+    """
+    Increment fatigue count for a user and server.
+    
+    Args:
+        server_name: Server name
+        user_id: User ID (or "server_{server_name}" for server total)
+        user_name: User name (optional)
+        
+    Returns:
+        tuple[int, int]: (daily_requests, total_requests) after increment
+    """
+    db = init_fatigue_db(server_name)
+    today = str(date.today())
+    
+    try:
+        # Get current stats
+        cursor = db.execute('''
+            SELECT daily_requests, total_requests, last_request_date 
+            FROM fatigue WHERE user_id = ?
+        ''', (user_id,))
+        
+        row = cursor.fetchone()
+        
+        if row:
+            current_daily, current_total, last_date = row
+            
+            # Reset daily count if date changed
+            if last_date != today:
+                new_daily = 1
+            else:
+                new_daily = current_daily + 1
+                
+            new_total = current_total + 1
+            
+            # Update user record
+            db.execute('''
+                UPDATE fatigue 
+                SET daily_requests = ?, total_requests = ?, 
+                    last_request_date = ?, updated_at = CURRENT_TIMESTAMP,
+                    user_name = COALESCE(?, user_name)
+                WHERE user_id = ?
+            ''', (new_daily, new_total, today, user_name, user_id))
+        else:
+            # Insert new user record
+            new_daily = 1
+            new_total = 1
+            
+            db.execute('''
+                INSERT INTO fatigue 
+                (user_id, user_name, daily_requests, total_requests, last_request_date)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (user_id, user_name or f"User_{user_id}", new_daily, new_total, today))
+        
+        # Also increment server total if this is a user request (avoid recursion)
+        if not user_id.startswith("server_"):
+            server_id = f"server_{server_name}"
+            # Direct server increment without recursion
+            cursor = db.execute('''
+                SELECT daily_requests, total_requests, last_request_date 
+                FROM fatigue WHERE user_id = ?
+            ''', (server_id,))
+            
+            server_row = cursor.fetchone()
+            
+            if server_row:
+                server_daily, server_total, server_last_date = server_row
+                
+                # Reset server daily count if date changed
+                if server_last_date != today:
+                    new_server_daily = 1
+                else:
+                    new_server_daily = server_daily + 1
+                    
+                new_server_total = server_total + 1
+                
+                db.execute('''
+                    UPDATE fatigue 
+                    SET daily_requests = ?, total_requests = ?, 
+                        last_request_date = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                ''', (new_server_daily, new_server_total, today, server_id))
+            else:
+                # Insert server record if it doesn't exist
+                db.execute('''
+                    INSERT INTO fatigue 
+                    (user_id, user_name, daily_requests, total_requests, last_request_date)
+                    VALUES (?, ?, 1, 1, ?)
+                ''', (server_id, f"Server_{server_name}", today))
+        
+        db.commit()
+        return (new_daily, new_total)
+        
+    finally:
+        db.close()
+
+def get_fatigue_stats(server_name: str, user_id: str = None) -> dict:
+    """
+    Get fatigue statistics.
+    
+    Args:
+        server_name: Server name
+        user_id: User ID (optional, if None gets all users)
+        
+    Returns:
+        dict: Fatigue statistics
+    """
+    db = init_fatigue_db(server_name)
+    
+    try:
+        if user_id:
+            # Get specific user stats
+            cursor = db.execute('''
+                SELECT user_id, user_name, daily_requests, total_requests, last_request_date
+                FROM fatigue WHERE user_id = ?
+            ''', (user_id,))
+            
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'user_id': row[0],
+                    'user_name': row[1],
+                    'daily_requests': row[2],
+                    'total_requests': row[3],
+                    'last_request_date': row[4]
+                }
+            else:
+                return {}
+        else:
+            # Get all users stats
+            cursor = db.execute('''
+                SELECT user_id, user_name, daily_requests, total_requests, last_request_date
+                FROM fatigue ORDER BY total_requests DESC
+            ''')
+            
+            stats = []
+            for row in cursor.fetchall():
+                stats.append({
+                    'user_id': row[0],
+                    'user_name': row[1],
+                    'daily_requests': row[2],
+                    'total_requests': row[3],
+                    'last_request_date': row[4]
+                })
+            
+            return {'users': stats}
+            
+    finally:
+        db.close()
+
+def reset_daily_fatigue(server_name: str) -> int:
+    """
+    Reset daily fatigue counts for all users in a server.
+    This should be called when the date changes.
+    
+    Args:
+        server_name: Server name
+        
+    Returns:
+        int: Number of users whose daily count was reset
+    """
+    db = init_fatigue_db(server_name)
+    
+    try:
+        cursor = db.execute('''
+            UPDATE fatigue 
+            SET daily_requests = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE daily_requests > 0
+        ''')
+        
+        db.commit()
+        return cursor.rowcount
+        
+    finally:
+        db.close()
+
+def cleanup_old_fatigue_data(server_name: str, days_to_keep: int = 30) -> int:
+    """
+    Clean up old fatigue data (users with no activity for specified days).
+    
+    Args:
+        server_name: Server name
+        days_to_keep: Number of days to keep inactive users
+        
+    Returns:
+        int: Number of users removed
+    """
+    db = init_fatigue_db(server_name)
+    
+    try:
+        cutoff_date = (date.today() - datetime.timedelta(days=days_to_keep)).isoformat()
+        
+        cursor = db.execute('''
+            DELETE FROM fatigue 
+            WHERE user_id NOT LIKE 'server_%' 
+            AND last_request_date < ?
+            AND total_requests < 10  # Keep users with some activity
+        ''', (cutoff_date,))
+        
+        db.commit()
+        return cursor.rowcount
+        
+    finally:
+        db.close()

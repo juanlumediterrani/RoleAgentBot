@@ -42,19 +42,6 @@ def get_role_db_for_server(guild, get_db_func, available_flag):
     return get_db_func(server_key)
 
 
-def _get_behavior_db_for_guild(guild):
-    if get_behaviors_db_instance is None:
-        return None
-    try:
-        # Handle None guild case - use default server
-        if guild is None:
-            return get_behaviors_db_instance(None)
-        return get_behaviors_db_instance(get_server_key(guild))
-    except Exception as e:
-        logger.warning(f"Error getting behavior DB for guild: {e}")
-        return None
-
-
 # --- PERMISSION HELPERS ---
 
 def is_admin(ctx) -> bool:
@@ -67,37 +54,72 @@ def is_admin(ctx) -> bool:
     return perms.administrator or perms.manage_guild
 
 
-def initialize_roles_from_database(agent_config=None, guild=None):
-    """Initialize roles system - migrate from config to database and ensure database is primary source."""
+def initialize_roles_from_database(agent_config=None) -> bool:
+    """Initialize roles system - PRIMARY: roles_config, SECONDARY: behavior table."""
     try:
-        db = _get_behavior_db_for_guild(guild)
-        if db is None:
-            logger.warning("Cannot initialize roles - database unavailable")
-            return False
+        logger.info("Initializing roles system - database is primary source")
         
-        # Migrate roles from agent_config to database if needed
-        if agent_config:
-            migrated = db.migrate_roles_from_config(agent_config)
-            if migrated:
-                logger.info("Successfully migrated roles from agent_config to database")
-        
-        # Verify database is working by checking all roles
-        all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
-        for role_name in all_roles:
-            try:
-                # Get enabled state from agent_config if available, otherwise default to True for MC
-                default_enabled = False
-                if agent_config:
-                    default_enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
-                elif role_name == "mc":
-                    # MC should always default to enabled as per user requirement
-                    default_enabled = True
+        # PRIMARY: Initialize roles_config from agent_config.json
+        try:
+            from agent_roles_db import get_roles_db_instance
+            default_server_id = "1472671221027045648"  # Default server
+            roles_db = get_roles_db_instance(default_server_id)
+            
+            # First, migrate from agent_config.json if available
+            if agent_config:
+                logger.info("Migrating roles from agent_config to roles_config")
+                # Create a temporary agent_config file for migration
+                import json
+                import tempfile
+                import os
                 
-                db.get_role_enabled(role_name, default_enabled)  # This will create role if it doesn't exist
-            except Exception as e:
-                logger.error(f"Error verifying role {role_name} in database: {e}")
+                temp_config_path = None
+                try:
+                    # Create temporary file with agent_config data
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                        json.dump(agent_config, f, indent=2)
+                        temp_config_path = f.name
+                    
+                    # Migrate from agent_config to roles_config
+                    migrated = roles_db.migrate_roles_from_agent_config(default_server_id, temp_config_path)
+                    if migrated:
+                        logger.info("Successfully migrated roles from agent_config to roles_config")
+                finally:
+                    # Clean up temporary file
+                    if temp_config_path and os.path.exists(temp_config_path):
+                        os.unlink(temp_config_path)
+            
+            # Then ensure all default roles exist
+            roles_db.ensure_default_roles(default_server_id)
+            
+        except Exception as e:
+            logger.error(f"Error initializing roles_config: {e}")
         
-        logger.info("Roles system initialized successfully - database is primary source")
+        # Verify roles_config is working by checking all roles
+        try:
+            from agent_roles_db import get_roles_db_instance
+            roles_db = get_roles_db_instance("1472671221027045648")
+            
+            all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "ring", "dice_game"]
+            for role_name in all_roles:
+                try:
+                    # Get enabled state from agent_config if available, otherwise default to True for MC
+                    default_enabled = False
+                    if agent_config:
+                        default_enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
+                    elif role_name == "mc":
+                        # MC should always default to enabled as per user requirement
+                        default_enabled = True
+                    
+                    # This will create role in roles_config if it doesn't exist
+                    config = roles_db.get_role_config(role_name, "1472671221027045648", default_enabled)
+                except Exception as e:
+                    logger.error(f"Error verifying role {role_name} in roles_config: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error verifying roles_config: {e}")
+        
+        logger.info("Roles system initialized successfully - roles_config is primary source")
         return True
         
     except Exception as e:
@@ -111,13 +133,18 @@ def is_role_enabled_check(role_name, agent_config=None, guild=None):
     if role_name == "mc":
         return True
     
-    # PRIMARY: Try to get from the dedicated roles table
-    db = _get_behavior_db_for_guild(guild)
-    if db is not None:
-        try:
-            return db.get_role_enabled(role_name)
-        except Exception as e:
-            logger.warning(f"Error getting role enabled state from dedicated table for {role_name}: {e}")
+    # PRIMARY: Try to get from roles_config with auto-creation
+    try:
+        from agent_roles_db import get_roles_db_instance
+        server_id = str(guild.id) if guild else "default"
+        roles_db = get_roles_db_instance(server_id)
+        
+        # Use default_enabled=True for auto-creation (like behavior.db)
+        config = roles_db.get_role_config(role_name, server_id, default_enabled=True)
+        if config:
+            return config.get('enabled', True)
+    except Exception as e:
+        logger.warning(f"Error getting role enabled state from roles_config for {role_name}: {e}")
     
     # FALLBACK: Use agent_config only if database fails
     logger.info(f"Using agent_config fallback for role {role_name} (database unavailable)")
@@ -128,17 +155,35 @@ def is_role_enabled_check(role_name, agent_config=None, guild=None):
 
 
 def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, updated_by: str = None):
-    """Persist role enabled state - PRIMARY: roles table, SECONDARY: agent_config sync."""
-    # PRIMARY: Save to roles table
-    db = _get_behavior_db_for_guild(guild)
+    """Persist role enabled state - PRIMARY: roles_config only."""
+    import json
+    
+    # PRIMARY: Save to roles_config
     success = False
-    if db is not None:
+    try:
+        from agent_roles_db import get_roles_db_instance
+        server_id = str(guild.id) if guild else "default"
+        roles_db = get_roles_db_instance(server_id)
+        
+        # Get existing config or create new one
         try:
-            success = db.set_role_enabled(role_name, enabled, updated_by)
-            if success:
-                logger.info(f"Role {role_name} set to {enabled} in roles table for server {getattr(guild, 'name', 'unknown')}")
-        except Exception as e:
-            logger.error(f"Error persisting role enabled state for {role_name}: {e}")
+            existing_config = roles_db.get_role_config(role_name, server_id)
+            if existing_config and existing_config.get('config_data'):
+                config_data = json.loads(existing_config['config_data'])
+            else:
+                config_data = {}
+        except:
+            config_data = {}
+        
+        # Update enabled state
+        config_data['updated_by'] = updated_by
+        config_data['updated_at'] = '2026-03-28T01:28:00'
+        
+        success = roles_db.save_role_config(role_name, server_id, enabled, json.dumps(config_data))
+        if success:
+            logger.info(f"Role {role_name} set to {enabled} in roles_config for server {getattr(guild, 'name', 'unknown')}")
+    except Exception as e:
+        logger.error(f"Error saving role enabled state to roles_config for {role_name}: {e}")
     
     # SECONDARY: Keep agent_config aligned (for backwards compatibility)
     if agent_config is not None:
@@ -148,51 +193,15 @@ def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, up
     return success
 
 
-def get_role_interval_hours(role_name: str, agent_config=None, guild=None, default_value: int = 1) -> int:
-    """Get persisted role interval from the dedicated roles table with config fallback."""
-    # First try to get from the dedicated roles table
-    db = _get_behavior_db_for_guild(guild)
-    if db is not None:
-        try:
-            return db.get_role_interval_hours(role_name, default_value)
-        except Exception as e:
-            logger.warning(f"Error getting role interval from dedicated table for {role_name}: {e}")
-    
-    # Fallback to agent_config
-    fallback = default_value
-    if agent_config is not None:
-        fallback = agent_config.get("roles", {}).get(role_name, {}).get("interval_hours", default_value)
-    return fallback
-
-
-def set_role_interval_hours(guild, role_name: str, hours: int, agent_config=None, updated_by: str = None):
-    """Persist role interval - PRIMARY: roles table, SECONDARY: agent_config sync."""
-    # PRIMARY: Save to roles table
-    db = _get_behavior_db_for_guild(guild)
-    success = False
-    if db is not None:
-        try:
-            success = db.set_role_interval_hours(role_name, hours, updated_by)
-            if success:
-                logger.info(f"Role {role_name} interval set to {hours} in roles table for server {getattr(guild, 'name', 'unknown')}")
-        except Exception as e:
-            logger.error(f"Error persisting role interval for {role_name}: {e}")
-    
-    # SECONDARY: Keep agent_config aligned (for backwards compatibility)
-    if agent_config is not None:
-        agent_config.setdefault("roles", {}).setdefault(role_name, {})["interval_hours"] = hours
-        logger.debug(f"Synced agent_config interval for role {role_name} = {hours}")
-    
-    return success
-
-
 def get_feature_state(guild, feature_name: str, default_enabled: bool = False, default_config: dict | None = None) -> dict:
     """Get persisted feature state with fallback defaults."""
-    db = _get_behavior_db_for_guild(guild)
+    from behavior.db_behavior import get_behavior_db_instance
+    
     default_config = dict(default_config or {})
-    if db is None:
-        return {"enabled": default_enabled, "config": default_config}
     try:
+        db = get_behavior_db_instance(get_server_key(guild))
+        if db is None:
+            return {"enabled": default_enabled, "config": default_config}
         state = db.get_feature_state(feature_name)
         enabled = bool(state.get("enabled", default_enabled))
         config = dict(default_config)
@@ -205,24 +214,28 @@ def get_feature_state(guild, feature_name: str, default_enabled: bool = False, d
 
 def set_feature_state(guild, feature_name: str, enabled: bool, config: dict | None = None, updated_by: str = None):
     """Persist feature state."""
-    db = _get_behavior_db_for_guild(guild)
-    if db is None:
-        return False
+    from behavior.db_behavior import get_behavior_db_instance
+    
     try:
+        db = get_behavior_db_instance(get_server_key(guild))
+        if db is None:
+            return False
         db.set_feature_state(feature_name, enabled, config or {}, updated_by)
         return True
     except Exception as e:
-        logger.error(f"Error persisting feature state for {feature_name}: {e}")
+        logger.error(f"Error setting feature state for {feature_name}: {e}")
         return False
 
 
 def get_feature_setting(guild, feature_name: str, setting_key: str, default_value=None):
     """Get a persisted feature setting."""
-    db = _get_behavior_db_for_guild(guild)
-    if db is None:
-        return default_value
+    from behavior.db_behavior import get_behavior_db_instance
+    
     try:
-        return db.get_feature_setting(feature_name, setting_key, default_value)
+        db = get_behavior_db_instance(get_server_key(guild))
+        if db is None:
+            return default_value
+        return db.get_behavior_setting(feature_name, setting_key, default_value)
     except Exception as e:
         logger.warning(f"Error getting feature setting {feature_name}.{setting_key}: {e}")
         return default_value
@@ -230,14 +243,16 @@ def get_feature_setting(guild, feature_name: str, setting_key: str, default_valu
 
 def set_feature_setting(guild, feature_name: str, setting_key: str, value, updated_by: str = None):
     """Persist a feature setting."""
-    db = _get_behavior_db_for_guild(guild)
-    if db is None:
-        return False
+    from behavior.db_behavior import get_behavior_db_instance
+    
     try:
-        db.set_feature_setting(feature_name, setting_key, value, updated_by)
+        db = get_behavior_db_instance(get_server_key(guild))
+        if db is None:
+            return False
+        db.set_behavior_setting(feature_name, setting_key, value, updated_by)
         return True
     except Exception as e:
-        logger.error(f"Error persisting feature setting {feature_name}.{setting_key}: {e}")
+        logger.error(f"Error setting feature setting {feature_name}.{setting_key}: {e}")
         return False
 
 

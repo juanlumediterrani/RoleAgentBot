@@ -123,6 +123,37 @@ async def handle_member_join(member, discord_cfg):
             metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
         )
         
+        # Create banker wallet for new member with opening bonus
+        try:
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            
+            server_id = str(member.guild.id)
+            server_name = member.guild.name
+            db_banker = get_banker_roles_db_instance(server_id)
+            
+            # Create wallet with opening bonus (10x TAE)
+            was_created, initial_balance = db_banker.create_wallet(
+                str(member.id), member.display_name, server_id, server_name, wallet_type='user'
+            )
+            
+            if was_created:
+                logger.info(f"💰 Created wallet for new member {member.name} with {initial_balance} coins")
+            else:
+                logger.info(f"💰 Wallet already exists for member {member.name}")
+                
+            # Initialize dice game account if dice game is active
+            try:
+                from agent_roles_db import get_roles_db_instance
+                roles_db = get_roles_db_instance(server_id)
+                if roles_db:
+                    roles_db.save_dice_game_stats(str(member.id), server_id)
+                    logger.info(f"🎲 Dice game account initialized for new member {member.name}")
+            except Exception as dice_error:
+                logger.debug(f"Could not initialize dice game account for {member.name}: {dice_error}")
+                
+        except Exception as banker_error:
+            logger.warning(f"Could not create banker wallet for {member.name}: {banker_error}")
+        
     except Exception as e:
         logger.error(f"Error greeting {member.name}: {e}")
         fallback_msg = greeting_cfg.get("fallback", "¡Bienvenido al servidor!")

@@ -454,7 +454,11 @@ The dice game uses a special Banker wallet as the shared pot. The user places a 
 
 ##### The One Ring
 The bot searches for the One Ring by questioning users. Users can accuse one another so the bot shifts attention to the accused target. Administrators can enable it and configure its frequency.
-
+Actualmente el subrol ring, buscamos keywords durante del chat para averiguar contexto, vamos a retirar este metodo.
+En vez de eso, he introducido una clausula que el LLM puede enviarnos: ACCUSE username, cuando un usuario este acusando a otro durante la charla.
+Deberemos caapturar esa flag, buscaar en el servidor si el nombre del usuario coincide con alguno del servidor.
+-SI no coincide le enviaremos un prompt al llm (system_prompt + memorias + relacion con el usuario + ultimas interaciones con el umaano + prompt/tarea(el umano a acusado en falso del anillo... respondele)
+- Si coincide se movera el puntero de acusasion de la base de datos al nuevo usuario. 
 ##### Beggar
 The bot asks users for gold according to a rotating daily motive. Administrators control both activation and frequency.
 ##### Nordic Runes
