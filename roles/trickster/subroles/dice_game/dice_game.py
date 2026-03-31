@@ -290,6 +290,22 @@ def process_play(player_id: str, player_name: str, server_id: str,
                 banker_message = f"⚠️ Banker integration failed: {str(e)}"
         
         if result['success']:
+            # Save the game to database
+            try:
+                from agent_roles_db import get_roles_db_instance
+                roles_db = get_roles_db_instance(server_id)
+                if roles_db:
+                    play_id = roles_db.save_dice_game_play(
+                        player_id, player_name, server_id, server_display_name,
+                        result['bet'], result['dice'], result['combination'], 
+                        result['prize'], result['pot_before'], result['pot_after']
+                    )
+                    logger.info(f"💾 Saved dice game play {play_id} to database")
+                else:
+                    logger.warning("⚠️ Could not save dice game - no database connection")
+            except Exception as e:
+                logger.error(f"❌ Failed to save dice game play: {e}")
+            
             if announcements_active:
                 logger.info(f"📢 Announcements are ACTIVE, checking thresholds...")
                 announcement_messages = []

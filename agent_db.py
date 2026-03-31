@@ -14,12 +14,6 @@ DB_DIR = Path(__file__).parent / 'databases'
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _sanitize_server_name(server_name: str) -> str:
-    server_sanitized = server_name.lower().replace(' ', '_').replace('-', '_')
-    server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
-    return server_sanitized
-
-
 def get_active_server_name() -> str | None:
     env_active = os.getenv("ACTIVE_SERVER_NAME")
     if env_active:
@@ -57,6 +51,17 @@ def get_shared_data_path(file_name: str, subdir: str = None) -> Path:
 
 # --- UTILITIES FOR SERVER-SPECIFIC DATABASE MANAGEMENT ---
 
+def _resolve_server_storage_id(server_name: str | None) -> str | None:
+    candidate = str(server_name).strip() if server_name is not None else ""
+    if candidate and candidate.isdigit():
+        return candidate
+
+    active = get_active_server_name()
+    if active and active.isdigit():
+        return active
+
+    return None
+
 def get_server_db_path(server_name: str, db_name: str = None) -> Path:
     """
     Genera ruta de base de datos para un servidor específico.
@@ -68,12 +73,10 @@ def get_server_db_path(server_name: str, db_name: str = None) -> Path:
     Returns:
         Path: Ruta completa al archivo de base de datos
     """
-    # Sanitizar nombre del servidor
-    server_sanitized = server_name.lower().replace(' ', '_').replace('-', '_')
-    server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
+    server_storage_id = _resolve_server_storage_id(server_name)
     
     # Directorio base
-    server_dir = DB_DIR / server_sanitized
+    server_dir = DB_DIR / server_storage_id if server_storage_id else DB_DIR
     try:
         server_dir.mkdir(parents=True, exist_ok=True)
     except (PermissionError, OSError) as e:
@@ -84,7 +87,8 @@ def get_server_db_path(server_name: str, db_name: str = None) -> Path:
     
     # Usar nombre de BD si se proporciona, si no el global
     db_filename = db_name or get_personality_name()
-    db_path = server_dir / f'{db_filename}.db'
+    db_file_name = db_filename if str(db_filename).endswith('.db') else f'{db_filename}.db'
+    db_path = server_dir / db_file_name
     
     # Ensure proper permissions if file doesn't exist
     if not db_path.exists():
@@ -101,13 +105,11 @@ def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
     """
     Version with fallback for Docker environments or restricted permissions.
     """
-    if server_name == "default":
-        active = get_active_server_name()
-        if active:
-            server_name = active
+    server_storage_id = _resolve_server_storage_id(server_name)
+    resolved_server_name = server_storage_id or server_name
 
     # Try local path first
-    local_path = get_server_db_path(server_name, db_name)
+    local_path = get_server_db_path(resolved_server_name, db_name)
     
     try:
         # Test if we can write
@@ -123,9 +125,9 @@ def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
         logger.warning(f"⚠️ No write access to {local_path}: {e}. Using fallback in home directory.")
         
         # Fallback in home directory
-        server_sanitized = _sanitize_server_name(server_name)
-        
-        fallback_dir = Path.home() / '.roleagentbot' / 'databases' / server_sanitized
+        fallback_dir = Path.home() / '.roleagentbot' / 'databases'
+        if server_storage_id:
+            fallback_dir = fallback_dir / server_storage_id
         fallback_dir.mkdir(parents=True, exist_ok=True)
         
         fallback_path = fallback_dir / db_name
@@ -152,17 +154,13 @@ def get_server_log_path(server_name: str, log_name: str) -> Path:
     Returns:
         Path: Full path to the log file
     """
-    if server_name == "default":
-        active = get_active_server_name()
-        if active:
-            server_name = active
-
-    # Sanitize server name
-    server_sanitized = _sanitize_server_name(server_name)
+    server_storage_id = _resolve_server_storage_id(server_name)
     
     # Base directory
     base_dir = Path(__file__).parent
-    server_dir = base_dir / "logs" / server_sanitized
+    server_dir = base_dir / "logs"
+    if server_storage_id:
+        server_dir = server_dir / server_storage_id
     
     # Create directory if it doesn't exist
     server_dir.mkdir(parents=True, exist_ok=True)
@@ -191,8 +189,8 @@ class AgentDatabase:
     def __init__(self, server_name: str = "default", db_path: Path = None):
         self.server_name = server_name
         if db_path is None:
-            personality_name = get_personality_name()
-            db_name = f"{personality_name}"
+            # Use generic agent database name instead of personality-specific
+            db_name = "agent"
             self.db_path = get_server_db_path_fallback(server_name, db_name)
         else:
             self.db_path = db_path
@@ -220,17 +218,14 @@ class AgentDatabase:
         except Exception as e:
             logger.warning(f"⚠️ [DB] No write access to {self.db_path}: {e}. Using fallback in home directory.")
             fallback_dir = Path.home() / '.roleagentbot' / 'databases'
-            server_sanitized = self.server_name.lower().replace(' ', '_').replace('-', '_')
-            server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
-            fallback_dir = fallback_dir / server_sanitized
-            try:
-                fallback_dir.mkdir(parents=True, exist_ok=True)
-                personality_name = get_personality_name()
-                fallback_db = fallback_dir / f'{personality_name}'
-                self.db_path = fallback_db
-                logger.info(f"ℹ️ [DB] Database relocated to {self.db_path}")
-            except Exception as e2:
-                logger.error(f"❌ [DB] Could not create fallback DB directory: {e2}")
+            server_storage_id = _resolve_server_storage_id(self.server_name)
+            if server_storage_id:
+                fallback_dir = fallback_dir / server_storage_id
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            
+            fallback_db = fallback_dir / 'agent.db'
+            self.db_path = fallback_db
+            logger.info(f"ℹ️ [DB] Database relocated to {self.db_path}")
 
     def _init_db(self):
         """Initialize all necessary tables."""
@@ -308,6 +303,15 @@ class AgentDatabase:
                     )
                 ''')
                 cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS pending_recent_memory_updates (
+                        server_name TEXT NOT NULL,
+                        scheduled_for DATETIME NOT NULL,
+                        status TEXT NOT NULL,
+                        updated_at DATETIME NOT NULL,
+                        PRIMARY KEY (server_name)
+                    )
+                ''')
+                cursor.execute('''
                     CREATE TABLE IF NOT EXISTS notable_recollections (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         server_name TEXT NOT NULL,
@@ -380,6 +384,8 @@ class AgentDatabase:
     def registrar_interaccion(self, usuario_id, usuario_nombre, tipo_interaccion, contexto, canal_id=None, servidor_id=None, metadata=None):
         fecha = datetime.datetime.now().isoformat()
         meta_json = json.dumps(metadata) if metadata else None
+        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=60)).isoformat()
+        updated_at = datetime.datetime.now().isoformat()
         try:
             with self._lock:
                 db_path_str = str(self.db_path)
@@ -400,6 +406,36 @@ class AgentDatabase:
                         (usuario_id, usuario_nombre, canal_id, tipo_interaccion, contexto, metadata, fecha, servidor_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ''', params)
+                    cursor.execute('''
+                        INSERT INTO pending_recent_memory_updates
+                        (server_name, scheduled_for, status, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(server_name) DO UPDATE SET
+                            scheduled_for = CASE
+                                WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.scheduled_for
+                                ELSE excluded.scheduled_for
+                            END,
+                            status = CASE
+                                WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.status
+                                ELSE excluded.status
+                            END,
+                            updated_at = excluded.updated_at
+                    ''', (self.server_name, scheduled_for, "pending", updated_at))
+                    cursor.execute('''
+                        INSERT INTO pending_relationship_updates
+                        (usuario_id, server_name, scheduled_for, status, updated_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(usuario_id, server_name) DO UPDATE SET
+                            scheduled_for = CASE
+                                WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.scheduled_for
+                                ELSE excluded.scheduled_for
+                            END,
+                            status = CASE
+                                WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.status
+                                ELSE excluded.status
+                            END,
+                            updated_at = excluded.updated_at
+                    ''', (str(usuario_id), self.server_name, scheduled_for, "pending", updated_at))
                     conn.commit()
                     logger.info(f"✅ Interaction registered: user_id={usuario_id}, type={tipo_interaccion}, channel_id={canal_id}")
                     return True
@@ -691,6 +727,92 @@ class AgentDatabase:
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving recent memory record: {e}")
             return None
+
+    def schedule_recent_memory_refresh(self, delay_minutes=60):
+        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=delay_minutes)).isoformat()
+        updated_at = datetime.datetime.now().isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO pending_recent_memory_updates
+                    (server_name, scheduled_for, status, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(server_name) DO UPDATE SET
+                        scheduled_for = CASE
+                            WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.scheduled_for
+                            ELSE excluded.scheduled_for
+                        END,
+                        status = CASE
+                            WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.status
+                            ELSE excluded.status
+                        END,
+                        updated_at = excluded.updated_at
+                ''', (self.server_name, scheduled_for, "pending", updated_at))
+                conn.commit()
+                conn.close()
+                return scheduled_for
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error scheduling recent memory refresh: {e}")
+            return None
+
+    def get_pending_recent_memory_refresh(self):
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT scheduled_for, status, updated_at
+                    FROM pending_recent_memory_updates
+                    WHERE server_name = ?
+                ''', (self.server_name,))
+                row = cursor.fetchone()
+                conn.close()
+                if not row:
+                    return None
+                return dict(row)
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error getting pending recent memory refresh: {e}")
+            return None
+
+    def mark_recent_memory_refresh_completed(self):
+        updated_at = datetime.datetime.now().isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE pending_recent_memory_updates
+                    SET status = ?, updated_at = ?
+                    WHERE server_name = ?
+                ''', ("completed", updated_at, self.server_name))
+                conn.commit()
+                conn.close()
+                return True
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error completing recent memory refresh: {e}")
+            return False
+
+    def get_due_pending_recent_memory_refreshes(self, now_iso=None):
+        current_time = now_iso or datetime.datetime.now().isoformat()
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT server_name, scheduled_for, status, updated_at
+                    FROM pending_recent_memory_updates
+                    WHERE server_name = ? AND status = ? AND scheduled_for <= ?
+                ''', (self.server_name, "pending", current_time))
+                rows = cursor.fetchall()
+                conn.close()
+                return [dict(row) for row in rows]
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving due recent memory refreshes: {e}")
+            return []
 
     def get_daily_interactions(self, limit=25, target_date=None):
         """Return the latest general interactions for a given day."""
@@ -1049,8 +1171,14 @@ class AgentDatabase:
                     (usuario_id, server_name, scheduled_for, status, updated_at)
                     VALUES (?, ?, ?, ?, ?)
                     ON CONFLICT(usuario_id, server_name) DO UPDATE SET
-                        scheduled_for = excluded.scheduled_for,
-                        status = excluded.status,
+                        scheduled_for = CASE
+                            WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.scheduled_for
+                            ELSE excluded.scheduled_for
+                        END,
+                        status = CASE
+                            WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.status
+                            ELSE excluded.status
+                        END,
                         updated_at = excluded.updated_at
                 ''', (str(usuario_id), self.server_name, scheduled_for, "pending", updated_at))
                 conn.commit()
@@ -1403,8 +1531,10 @@ def get_global_db(server_name: str = None, use_default_for_roles: bool = False) 
 def set_current_server(server_name: str):
     """Set the current server for the global DB."""
     global _current_server_name
-    _current_server_name = server_name
-    persist_active_server_name(server_name)
+    resolved_server_id = _resolve_server_storage_id(server_name)
+    _current_server_name = resolved_server_id or _current_server_name or "default"
+    if resolved_server_id:
+        persist_active_server_name(resolved_server_id)
 
 def get_database_path(server_name: str, db_type: str) -> str:
     """
@@ -1417,17 +1547,18 @@ def get_database_path(server_name: str, db_type: str) -> str:
     Returns:
         str: Full path to the database file
     """
-    server_sanitized = _sanitize_server_name(server_name)
+    # Roles that have been migrated to centralized roles.db system
+    centralized_roles = {'beggar', 'trickster', 'mc', 'dice_game', 'nordic_runes', 'banker', 'treasure_hunter'}
+    
+    if db_type in centralized_roles:
+        # Return path to the centralized roles.db
+        return str(get_server_db_path_fallback(server_name, 'roles'))
+    
     personality_name = get_personality_name()
     
-    # Map database types to filenames
+    # Map database types to filenames (only for non-centralized roles)
     db_filenames = {
-        'banker': f'banker_{personality_name}',
         'news_watcher': f'watcher_{personality_name}', 
-        'dice_game': f'dice_game_{personality_name}',
-        'treasure_hunter': f'hunter_{personality_name}',
-        'trickster': f'trickster_{personality_name}',
-        'mc': f'mc_{personality_name}'
     }
     
     db_name = db_filenames.get(db_type, f'{db_type}_{personality_name}')

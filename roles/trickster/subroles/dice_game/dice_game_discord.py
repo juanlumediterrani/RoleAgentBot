@@ -9,6 +9,12 @@ import logging
 from datetime import datetime
 from .dice_game_messages import get_message
 
+# Import roles database
+try:
+    from agent_roles_db import get_roles_db_instance
+except ImportError:
+    get_roles_db_instance = None
+
 logger = logging.getLogger(__name__)
 
 # Legacy variables removed - now using roles_db directly
@@ -52,7 +58,7 @@ def register_dice_commands(bot, personality, send_dm_or_channel, is_admin,
             # Register dice subcommands
             @cmd_dice.command(name="play")
             async def cmd_dice_play_wrapper(ctx):
-                await cmd_dice_play(ctx)
+                await cmd_dice_play(ctx, personality, send_dm_or_channel, is_admin, get_banker_db_instance, process_play)
             
             @cmd_dice.command(name="help")
             async def cmd_dice_help_wrapper(ctx):

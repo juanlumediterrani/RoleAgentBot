@@ -49,11 +49,6 @@ except Exception:
     get_poe2_manager = None
 
 try:
-    from roles.trickster.subroles.beggar.db_beggar import get_beggar_db_instance
-except Exception:
-    get_beggar_db_instance = None
-
-try:
     from behavior.db_behavior import get_behavior_db_instance
 except Exception:
     get_behavior_db_instance = None

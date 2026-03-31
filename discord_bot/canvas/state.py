@@ -30,11 +30,6 @@ try:
 except Exception:
     get_poe2_manager = None
 
-try:
-    from roles.trickster.subroles.beggar.db_beggar import get_beggar_db_instance
-except Exception:
-    get_beggar_db_instance = None
-
 logger = get_logger("discord_core")
 
 def _get_canvas_watcher_method_label(guild_id: str) -> str:
@@ -117,23 +112,24 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
         
         rows: list[dict] = []
         for position, (user_id, stats) in enumerate(ranking_data, 1):
-            rows.append({
-                'position': position,
-                'user_id': user_id,
-                'user_name': stats['user_name'],
-                'prize': stats['total_won'],
-                'total_plays': stats['total_plays'],
-                'total_won': stats['total_won'],
-                'total_bet': stats['total_bet']
-            })
-            member = guild.get_member(int(user_id)) if str(user_id).isdigit() else None
-            player_name = member.display_name if member is not None else str(user_id)
+            member = None
+            try:
+                member = guild.get_member(int(user_id)) if str(user_id).isdigit() else None
+            except AttributeError:
+                # Mock guild or missing method, use user_name from stats
+                pass
+            
+            player_name = member.display_name if member is not None else stats['user_name']
+            total_won = stats['total_won']
+            total_bet = stats['total_bet']
+            total_plays = stats['total_plays']
             balance = total_won - total_bet
             profitability = (total_won / total_bet * 100) if total_bet > 0 else 0
+            
             rows.append({
                 "position": position,
                 "player_name": player_name,
-                "prize": prize,
+                "prize": total_won,
                 "total_plays": total_plays,
                 "total_won": total_won,
                 "total_bet": total_bet,
@@ -183,6 +179,7 @@ def _get_canvas_beggar_state(guild) -> dict:
         "fund_balance": 0,
         "title": "Beggar",
         "message": "",
+        "recent_donations": [],
     }
     if guild is None:
         return state
@@ -191,21 +188,30 @@ def _get_canvas_beggar_state(guild) -> dict:
         state["message"] = beggar_cfg.get("beggar_donation_request", "")
     except Exception:
         pass
-    if get_beggar_db_instance is None:
-        return state
     try:
         server_key = get_server_key(guild)
         server_id = str(guild.id)
-        db_beggar = get_beggar_db_instance(server_key)
-        state["enabled"] = db_beggar.is_subscribed(f"server_{server_id}", server_id)
-        state["frequency_hours"] = db_beggar.get_frequency_hours(server_id)
-        state["last_reason"] = db_beggar.get_last_reason(server_id) or state["last_reason"]
-        state["target_gold"] = db_beggar.get_target_gold(server_id)
+        from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+        beggar_config = get_beggar_config(server_id)
+        state["enabled"] = beggar_config.is_enabled()
+        state["frequency_hours"] = beggar_config.get_frequency_hours()
+        state["last_reason"] = beggar_config.get_current_reason() or state["last_reason"]
+        state["target_gold"] = beggar_config.get_target_gold()
+        try:
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            db_banker = get_banker_roles_db_instance(server_key)
+            db_banker.create_wallet("beggar_fund", "Beggar Fund", server_id, guild.name, wallet_type='system')
+            state["fund_balance"] = db_banker.get_balance("beggar_fund", server_id)
+        except ImportError:
+            # Fallback to regular roles_db if banker_roles_db not available
+            if get_roles_db_instance is not None:
+                db_banker = get_roles_db_instance(server_key)
+                db_banker.save_banker_wallet("beggar_fund", server_id, "Beggar Fund", server_id, guild.name, 0, 'system')
+                wallet = db_banker.get_banker_wallet("beggar_fund", server_id)
+                state["fund_balance"] = wallet.get('balance', 0) if wallet else 0
         if get_roles_db_instance is not None:
-            db_banker = get_roles_db_instance(server_key)
-            db_banker.save_banker_wallet("beggar_fund", server_id, "Beggar Fund", server_id, guild.name, 0, 'system')
-            wallet = db_banker.get_banker_wallet("beggar_fund", server_id)
-            state["fund_balance"] = wallet.get('balance', 0) if wallet else 0
+            roles_db = get_roles_db_instance(server_key)
+            state["recent_donations"] = roles_db.get_recent_beggar_donations(server_id, limit=5)
     except Exception as e:
         logger.warning(f"Could not load beggar state for Canvas: {e}")
     return state
@@ -363,10 +369,13 @@ def _build_mission_commentary_prompt(agent_config: dict, server_name: str = "def
     missions_text = "\n\n".join(mission_prompts) if mission_prompts else "(no mission prompts found)"
 
     try:
-        from agent_mind import generate_daily_memory_summary, generate_recent_memory_summary
+        from agent_db import get_global_db
 
-        daily_memory = generate_daily_memory_summary(server_name) or ""
-        recent_memory = generate_recent_memory_summary(server_name) or ""
+        db_instance = get_global_db(server_name=server_name)
+        daily_record = db_instance.get_daily_memory_record()
+        recent_record = db_instance.get_recent_memory_record()
+        daily_memory = (daily_record or {}).get("summary", "") or ""
+        recent_memory = (recent_record or {}).get("summary", "") or ""
 
         memories_section = ""
         if daily_memory and daily_memory.strip():

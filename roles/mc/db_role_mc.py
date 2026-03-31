@@ -16,10 +16,9 @@ except Exception:
 from agent_db import get_server_db_path_fallback, get_personality_name
 
 def get_db_path(server_name: str = "default") -> Path:
-    """Genera ruta de BD para el MC con nombre de personalidad."""
-    personality_name = get_personality_name()
-    db_name = f"mc_{personality_name}.db"
-    return get_server_db_path_fallback(server_name, db_name)
+    """Generate database path for MC role using centralized roles.db."""
+    # MC role now uses the centralized roles.db system
+    return get_server_db_path_fallback(server_name, "roles")
 
 
 class DatabaseRoleMC:

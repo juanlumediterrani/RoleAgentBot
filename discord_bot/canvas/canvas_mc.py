@@ -25,35 +25,35 @@ def _get_mc_action_items_for_detail(role_name: str, current_detail: str, admin_v
 def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None) -> str:
     """Build the MC role view with dynamic state."""
     from .content import _build_canvas_intro_block
-    mc_messages_dict = {}
+    mc_descriptions = {}
     try:
-        mc_messages_dict = _personality_descriptions.get("roles_view_messages", {}).get("mc_messages", {})
+        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
     except Exception:
         pass
 
     def _mc_text(key: str, fallback: str) -> str:
-        value = mc_messages_dict.get(key)
+        value = mc_descriptions.get(key)
         if value:
             value = str(value).replace("{_bot}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     parts = [
         _build_canvas_intro_block(
-            _mc_text("canvas_mc_title", f"🎵 {_bot_display_name} Canvas - MC (Master of Ceremonies)"),
-            _mc_text("canvas_mc_description", "Use the dropdown below to control music playback."),
+            _mc_text("title", f"🎵 {_bot_display_name} Canvas - MC (Master of Ceremonies)"),
+            _mc_text("description", "Use the dropdown below to control music playback."),
         )
     ]
 
     if last_action:
-        parts.append("**Last action**")
+        parts.append(_mc_text("last_action_title", "**Last action**"))
         parts.append(f"- {last_action}")
 
     if not (last_action or queue_info or mc_messages):
-        parts.append("**Voice channel required**")
+        parts.append(_mc_text("voice_channel_required_title", "**Voice channel required**"))
         parts.append(_mc_text("canvas_mc_voice_required", "You must be in a voice channel to use MC\nBot will auto-connect to your channel"))
 
     if queue_info:
-        parts.append("**Current queue**")
+        parts.append(_mc_text("current_queue_title", "**Current queue**"))
         if len(queue_info) > 0:
             for i, (title, artist, duration, _user) in enumerate(queue_info[:5], 1):
                 parts.append(f"  {i}. {title}")
@@ -62,9 +62,10 @@ def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None) ->
                 if duration and duration != "Unknown":
                     parts.append(f"     ⏱️ {duration}")
             if len(queue_info) > 5:
-                parts.append(f"  ... and {len(queue_info) - 5} more songs")
+                more_count = len(queue_info) - 5
+                parts.append(f"  {_mc_text('and_more_songs', f'... and {more_count} more songs').format(count=more_count)}")
         else:
-            parts.append("  📭 Queue is empty")
+            parts.append(f"  {_mc_text('queue_empty', '📭 Queue is empty')}")
 
     if mc_messages:
         parts.append("**MC status**")
@@ -78,12 +79,21 @@ class CanvasMCActionSelect(discord.ui.Select):
     """MC action selection dropdown."""
 
     def __init__(self, view):
+        # Get MC descriptions for dropdown
+        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        
+        def _mc_text(key: str, fallback: str) -> str:
+            value = mc_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot}", _bot_display_name)
+            return str(value).strip() if value else fallback
+        
         mc_actions = _get_mc_action_items_for_detail("mc", "overview", view.admin_visible, view.agent_config)
         options = [
-            discord.SelectOption(label=label, value=value, description=description)
-            for label, value, description in mc_actions
+            discord.SelectOption(label=label, value=value, description=description, emoji=emoji)
+            for label, value, description, emoji in mc_actions
         ]
-        super().__init__(placeholder="🎵 Select MC action...", min_values=1, max_values=1, options=options[:25], row=1)
+        super().__init__(placeholder=_mc_text("select_mc_action", "🎵 Select MC action..."), min_values=1, max_values=1, options=options[:25], row=1)
         self.canvas_view = view
 
     async def callback(self, interaction: discord.Interaction):
@@ -200,7 +210,17 @@ class CanvasMCSongModal(discord.ui.Modal):
         self.action_name = action_name
         self.view = view
         self.mc_commands = mc_commands
-        title = "Play Song Now" if action_name == "mc_play" else "Add Song to Queue"
+        
+        # Get MC descriptions for modal titles
+        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        
+        def _mc_text(key: str, fallback: str) -> str:
+            value = mc_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot}", _bot_display_name)
+            return str(value).strip() if value else fallback
+        
+        title = _mc_text("play_song_title", "Play Song Now") if action_name == "mc_play" else _mc_text("add_song_title", "Add Song to Queue")
         super().__init__(title=title, timeout=300)
 
         self.song_input = discord.ui.TextInput(
@@ -264,7 +284,17 @@ class CanvasMCVolumeModal(discord.ui.Modal):
     def __init__(self, view, mc_commands):
         self.view = view
         self.mc_commands = mc_commands
-        super().__init__(title="Set Volume", timeout=300)
+        
+        # Get MC descriptions for modal titles
+        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        
+        def _mc_text(key: str, fallback: str) -> str:
+            value = mc_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot}", _bot_display_name)
+            return str(value).strip() if value else fallback
+        
+        super().__init__(title=_mc_text("set_volume_title", "Set Volume"), timeout=300)
 
         self.volume_input = discord.ui.TextInput(
             label="Volume (0-100)",

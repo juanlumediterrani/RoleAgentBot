@@ -64,7 +64,7 @@ def main():
     """Initialize roles_config for all known servers."""
     try:
         # Default server ID (from the bot)
-        default_server_id = "1472671221027045648"
+        default_server_id = "0"
         
         logger.info("🚀 Starting roles_config initialization")
         

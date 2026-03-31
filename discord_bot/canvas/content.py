@@ -30,7 +30,6 @@ except ImportError:
     get_roles_db_instance = None
 get_watcher_messages = core.get_watcher_messages
 get_poe2_manager = core.get_poe2_manager
-get_beggar_db_instance = core.get_beggar_db_instance
 get_banker_db_instance = None  # Now using roles_db directly
 get_behavior_db_instance = core.get_behavior_db_instance
 _discord_cfg = core._discord_cfg
@@ -470,10 +469,10 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
             (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("runes", "Runes"), "runes"),
         ],
         "banker": [
-            ("Wallet", "overview"),  # Wallet maps to overview since they're the same view
+            ("Personal", "overview"),  # Personal maps to overview since they're the same view
         ] + ([("Admin", "admin")] if admin_visible else []),
         "mc": [
-            ("Overview", "overview"),
+            ("Personal", "overview"),
         ],
     }
     return items_map.get(role_name, [])
@@ -481,53 +480,85 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
 
 def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
     if role_name == "news_watcher":
+        # Get news_watcher descriptions for action items
+        _personality_descriptions = core._personality_descriptions
+        news_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("canvas", {}).get("dropdown", {})
+        
+        def _news_text(key: str, fallback: str) -> str:
+            value = news_descriptions.get(key)
+            return str(value).strip() if value else fallback
+        
         if detail_name in {"personal", "overview"}:  # Same view for both
             return [
-                ("Method: Flat", "method_flat", "Set subscription method to flat"),
-                ("Method: Keyword", "method_keyword", "Set subscription method to keyword"),
-                ("Method: General", "method_general", "Set subscription method to general"),
-                ("Subscribe: Categories", "subscribe_categories", "Browse and subscribe to categories"),
-                ("List: Keywords", "list_keywords", "View your configured keywords"),
-                ("List: Premises", "list_premises", "View your configured premises"),
+                (_news_text("method_flat", "Method: Flat"), "method_flat", _news_text("method_flat_description", "Set subscription method to flat"), "📰"),
+                (_news_text("method_keyword", "Method: Keyword"), "method_keyword", _news_text("method_keyword_description", "Set subscription method to keyword"), "🔍"),
+                (_news_text("method_general", "Method: General"), "method_general", _news_text("method_general_description", "Set subscription method to general"), "🤖"),
+                (_news_text("list_premises", "List: Premises"), "list_premises", _news_text("list_premises_description", "View your configured premises"), "🤖"),
             ]
         if detail_name == "admin" and admin_visible:
             return [
-                ("Watcher: Frequency", "watcher_frequency", "Number input target"),
-                ("Watcher: Run Now", "watcher_run_now", "Action"),
+                (_news_text("watcher_frequency", "Watcher: Frequency"), "watcher_frequency", _news_text("watcher_frequency_description", "Number input target"), "⏰"),
+                (_news_text("watcher_run_now", "Watcher: Run Now"), "watcher_run_now", _news_text("watcher_run_now_description", "Action"), "🏃"),
             ]
         return []
 
     if role_name == "treasure_hunter":
+        # Get treasure_hunter descriptions for action items
+        _personality_descriptions = core._personality_descriptions
+        hunter_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("canvas", {}).get("dropdown", {})
+        
+        def _hunter_text(key: str, fallback: str) -> str:
+            value = hunter_descriptions.get(key)
+            return str(value).strip() if value else fallback
+        
         if detail_name == "league":
             return [
-                ("League: Standard", "league_standard", "Choose POE2 league"),
-                ("League: Fate of the Vaal", "league_fate_of_the_vaal", "Choose POE2 league"),
-                ("League: Hardcore", "league_hardcore", "Choose POE2 league"),
+                (_hunter_text("league_standard", "League: Standard"), "league_standard", _hunter_text("league_standard_description", "Choose POE2 league"), "🏆"),
+                (_hunter_text("league_fate_of_the_vaal", "League: Fate of the Vaal"), "league_fate_of_the_vaal", _hunter_text("league_fate_of_the_vaal_description", "Choose POE2 league"), "⚡"),
+                (_hunter_text("league_hardcore", "League: Hardcore"), "league_hardcore", _hunter_text("league_hardcore_description", "Choose POE2 league"), "💀"),
             ]
         if detail_name == "personal":
             return [
-                ("Items: Add", "poe2_item_add", "Add a new POE2 item"),
-                ("Items: Remove", "poe2_item_remove", "Remove a tracked POE2 item"),
+                (_hunter_text("poe2_item_add", "Items: Add"), "poe2_item_add", _hunter_text("poe2_item_add_description", "Add a new POE2 item"), "➕"),
+                (_hunter_text("poe2_item_remove", "Items: Remove"), "poe2_item_remove", _hunter_text("poe2_item_remove_description", "Remove a tracked POE2 item"), "➖"),
             ]
         if detail_name == "admin" and admin_visible:
             return [
-                ("POE2: On", "poe2_on", "Activate POE2 subrole"),
-                ("POE2: Off", "poe2_off", "Deactivate POE2 subrole"),
-                ("Hunter: Frequency", "hunter_frequency", "Number input target"),
+                (_hunter_text("poe2_on", "POE2: On"), "poe2_on", _hunter_text("poe2_on_description", "Activate POE2 subrole"), "✅"),
+                (_hunter_text("poe2_off", "POE2: Off"), "poe2_off", _hunter_text("poe2_off_description", "Deactivate POE2 subrole"), "❌"),
+                (_hunter_text("hunter_frequency", "Hunter: Frequency"), "hunter_frequency", _hunter_text("hunter_frequency_description", "Number input target"), "⏰"),
             ]
         return []
 
     if role_name == "trickster":
+        # Get trickster descriptions for action items
+        _personality_descriptions = core._personality_descriptions
+        trickster_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("canvas", {}).get("dropdown", {})
+        
+        def _trickster_text(key: str, fallback: str) -> str:
+            value = trickster_descriptions.get(key)
+            return str(value).strip() if value else fallback
+        
+        if detail_name == "overview":
+            # Overview shows navigation to subroles, no specific actions
+            return []
         if detail_name == "dice":
+            # Get dice_game descriptions for action items
+            dice_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+            
+            def _dice_text(key: str, fallback: str) -> str:
+                value = dice_descriptions.get(key)
+                return str(value).strip() if value else fallback
+            
             return [
-                ("Dice: Play", "dice_play", "Play action"),
-                ("Dice: Ranking", "dice_ranking", "Ranking action"),
-                ("Dice: History", "dice_history", "History action"),
-                ("Dice: Help", "dice_help", "Help action"),
+                (_dice_text("dice_play", "Dice: Play"), "dice_play", _dice_text("dice_play_description", "Play action"), "🎲"),
+                (_dice_text("dice_ranking", "Dice: Ranking"), "dice_ranking", _dice_text("dice_ranking_description", "Ranking action"), "🏆"),
+                (_dice_text("dice_history", "Dice: History"), "dice_history", _dice_text("dice_history_description", "History action"), "📜"),
+                (_dice_text("dice_stats", "Dice: Stats"), "dice_stats", _dice_text("dice_stats_description", "Stats action"), "📊"),
             ]
         if detail_name == "runes":
             # Check if runes subrole is enabled
-            runes_enabled = False
+            runes_enabled = True  # Temporarily force enabled for testing
             if agent_config:
                 runes_enabled = agent_config.get("roles", {}).get("trickster", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
             
@@ -541,7 +572,11 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             # Get personality messages for dropdown labels
             roles_messages = _personality_descriptions.get("roles_view_messages", {})
             nordic_runes_messages = roles_messages.get("trickster", {}).get("nordic_runes", {})
-            canvas_labels = nordic_runes_messages.get("canvas_dropdown_labels", {})
+            canvas_labels = nordic_runes_messages.get("canvas", {}).get("dropdown", {})
+            
+            def _runes_text(key: str, fallback: str) -> str:
+                value = canvas_labels.get(key)
+                return str(value).strip() if value else fallback
             
             # English fallbacks
             english_fallbacks = {
@@ -557,70 +592,106 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             }
             
             return [
-                (canvas_labels.get("runes_single", english_fallbacks["runes_single"]), "runes_single", "Text input target"),
-                (canvas_labels.get("runes_three", english_fallbacks["runes_three"]), "runes_three", "Text input target"),
-                (canvas_labels.get("runes_cross", english_fallbacks["runes_cross"]), "runes_cross", "Text input target"),
-                (canvas_labels.get("runes_runic_cross", english_fallbacks["runes_runic_cross"]), "runes_runic_cross", "Text input target"),
-                (canvas_labels.get("runes_history", english_fallbacks["runes_history"]), "runes_history", "Action"),
-                (canvas_labels.get("runes_types", english_fallbacks["runes_types"]), "runes_types", "Action"),
-                (canvas_labels.get("runes_runes_1", english_fallbacks["runes_runes_1"]), "runes_runes_1", "Action"),
-                (canvas_labels.get("runes_runes_2", english_fallbacks["runes_runes_2"]), "runes_runes_2", "Action"),
-                (canvas_labels.get("runes_runes_3", english_fallbacks["runes_runes_3"]), "runes_runes_3", "Action"),
+                (canvas_labels.get("runes_single", english_fallbacks["runes_single"]), "runes_single", _runes_text("runes_single_description", "Text input target"), "🦅"),
+                (canvas_labels.get("runes_three", english_fallbacks["runes_three"]), "runes_three", _runes_text("runes_three_description", "Text input target"), "🐾"),
+                (canvas_labels.get("runes_cross", english_fallbacks["runes_cross"]), "runes_cross", _runes_text("runes_cross_description", "Text input target"), "🌍"),
+                (canvas_labels.get("runes_runic_cross", english_fallbacks["runes_runic_cross"]), "runes_runic_cross", _runes_text("runes_runic_cross_description", "Text input target"), "🌌"),
+                (canvas_labels.get("runes_history", english_fallbacks["runes_history"]), "runes_history", _runes_text("runes_history_description", "Action"), "📓"),
+                (canvas_labels.get("runes_types", english_fallbacks["runes_types"]), "runes_types", _runes_text("runes_types_description", "Action"), "🌔"),
+                (canvas_labels.get("runes_runes_1", english_fallbacks["runes_runes_1"]), "runes_runes_1", _runes_text("runes_runes_1_description", "Action"), "🗻"),
+                (canvas_labels.get("runes_runes_2", english_fallbacks["runes_runes_2"]), "runes_runes_2", _runes_text("runes_runes_2_description", "Action"), "🗻"),
+                (canvas_labels.get("runes_runes_3", english_fallbacks["runes_runes_3"]), "runes_runes_3", _runes_text("runes_runes_3_description", "Action"), "🗻"),
             ]
         if detail_name == "dice_admin" and admin_visible:
+            # Get dice_game descriptions for action items
+            _personality_descriptions = core._personality_descriptions
+            dice_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+            
+            def _dice_text(key: str, fallback: str) -> str:
+                value = dice_descriptions.get(key)
+                return str(value).strip() if value else fallback
+            
             return [
-                ("Announcements: On", "announcements_on", "Dice config"),
-                ("Announcements: Off", "announcements_off", "Dice config"),
-                ("Dice: Fixed Bet", "dice_fixed_bet", "Number input target"),
-                ("Dice: Pot Value", "dice_pot_value", "Number input target"),
+                (_dice_text("announcements_on", "Announcements: On"), "announcements_on", _dice_text("announcements_on_description", "Dice config"), "📢"),
+                (_dice_text("announcements_off", "Announcements: Off"), "announcements_off", _dice_text("announcements_off_description", "Dice config"), "🔇"),
+                (_dice_text("dice_fixed_bet", "Dice: Fixed Bet"), "dice_fixed_bet", _dice_text("dice_fixed_bet_description", "Number input target"), "🎲"),
+                (_dice_text("dice_pot_value", "Dice: Pot Value"), "dice_pot_value", _dice_text("dice_pot_value_description", "Number input target"), "💰"),
             ]
         if detail_name == "ring":
             return [
-                ("Ring: Accuse", "ring_accuse", "User target input"),
+                (_trickster_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _trickster_text("ring_accuse_description", "User target input"), "👁️"),
             ]
         if detail_name == "ring_admin" and admin_visible:
+            # Get ring descriptions for action items
+            _personality_descriptions = core._personality_descriptions
+            ring_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+            
+            def _ring_text(key: str, fallback: str) -> str:
+                value = ring_descriptions.get(key)
+                return str(value).strip() if value else fallback
+            
             return [
-                ("Ring: On", "ring_on", "Boolean toggle"),
-                ("Ring: Off", "ring_off", "Boolean toggle"),
-                ("Ring: Frequency", "ring_frequency", "Number input target"),
+                (_ring_text("ring_on", "Ring: On"), "ring_on", _ring_text("ring_on_description", "Boolean toggle"), "👁️"),
+                (_ring_text("ring_off", "Ring: Off"), "ring_off", _ring_text("ring_off_description", "Boolean toggle"), "🚫"),
+                (_ring_text("ring_frequency", "Ring: Frequency"), "ring_frequency", _ring_text("ring_frequency_description", "Number input target"), "⏰"),
             ]
         if detail_name == "beggar":
             return [
-                ("Beggar: Donate", "beggar_donate", "Number input target"),
+                (_trickster_text("beggar_donate", "Beggar: Donate"), "beggar_donate", _trickster_text("beggar_donate_description", "Number input target"), "🙏"),
             ]
         if detail_name == "beggar_admin" and admin_visible:
             return [
-                ("Beggar: On", "beggar_on", "Boolean toggle"),
-                ("Beggar: Off", "beggar_off", "Boolean toggle"),
-                ("Beggar: Frequency", "beggar_frequency", "Number input target"),
+                (_trickster_text("beggar_on", "Beggar: On"), "beggar_on", _trickster_text("beggar_on_description", "Boolean toggle"), "✅"),
+                (_trickster_text("beggar_off", "Beggar: Off"), "beggar_off", _trickster_text("beggar_off_description", "Boolean toggle"), "❌"),
+                (_trickster_text("beggar_frequency", "Beggar: Frequency"), "beggar_frequency", _trickster_text("beggar_frequency_description", "Number input target"), "⏰"),
+                (_trickster_text("beggar_force_minigame", "Beggar: Force Minigame"), "beggar_force_minigame", _trickster_text("beggar_force_minigame_description", "Action button"), "🎲"),
             ]
         if detail_name == "runes_admin" and admin_visible:
             return [
-                ("Runes: On", "runes_on", "Boolean toggle"),
-                ("Runes: Off", "runes_off", "Boolean toggle"),
+                (_trickster_text("runes_on", "Runes: On"), "runes_on", _trickster_text("runes_on_description", "Boolean toggle"), "✅"),
+                (_trickster_text("runes_off", "Runes: Off"), "runes_off", _trickster_text("runes_off_description", "Boolean toggle"), "❌"),
             ]
         return []
 
     if role_name == "banker":
+        if detail_name == "overview":
+            # Overview shows wallet info, no specific actions
+            return []
         if detail_name == "admin" and admin_visible:
+            # Get banker descriptions for action items
+            _personality_descriptions = core._personality_descriptions
+            banker_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("banker", {})
+            
+            def _banker_text(key: str, fallback: str) -> str:
+                value = banker_descriptions.get(key)
+                return str(value).strip() if value else fallback
+            
             return [
-                ("Config: TAE", "config_tae", "Number input target"),
-                ("Config: Bonus", "config_bonus", "Number input target"),
+                (_banker_text("config_tae", "Config: TAE"), "config_tae", _banker_text("config_tae_description", "Number input target"), "💰"),
+                (_banker_text("config_bonus", "Config: Bonus"), "config_bonus", _banker_text("config_bonus_description", "Number input target"), "🎁"),
             ]
     
     if role_name == "mc":
+        # Get MC descriptions for action items
+        _personality_descriptions = core._personality_descriptions
+        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        
+        def _mc_text(key: str, fallback: str) -> str:
+            value = mc_descriptions.get(key)
+            return str(value).strip() if value else fallback
+        
         return [
-            ("Play Now", "mc_play", "Text input target"),
-            ("Add to Queue", "mc_add", "Text input target"),
-            ("Skip Song", "mc_skip", "Action"),
-            ("Pause", "mc_pause", "Action"),
-            ("Resume", "mc_resume", "Action"),
-            ("Stop", "mc_stop", "Action"),
-            ("View Queue", "mc_queue", "Action"),
-            ("Clear Queue", "mc_clear", "Action"),
-            ("Show History", "mc_history", "Action"),
-            ("Set Volume", "mc_volume", "Number input"),
-        ] if detail_name == "overview" else []
+            (_mc_text("mc_play", "Play Now"), "mc_play", _mc_text("mc_play_description", "Text input target"), "🎵"),
+            (_mc_text("mc_add", "Add to Queue"), "mc_add", _mc_text("mc_add_description", "Text input target"), "➕"),
+            (_mc_text("mc_skip", "Skip Song"), "mc_skip", _mc_text("mc_skip_description", "Action"), "⏭️"),
+            (_mc_text("mc_pause", "Pause"), "mc_pause", _mc_text("mc_pause_description", "Action"), "⏸️"),
+            (_mc_text("mc_resume", "Resume"), "mc_resume", _mc_text("mc_resume_description", "Action"), "▶️"),
+            (_mc_text("mc_stop", "Stop"), "mc_stop", _mc_text("mc_stop_description", "Action"), "⏹️"),
+            (_mc_text("mc_queue", "View Queue"), "mc_queue", _mc_text("mc_queue_description", "Action"), "📋"),
+            (_mc_text("mc_clear", "Clear Queue"), "mc_clear", _mc_text("mc_clear_description", "Action"), "🗑️"),
+            (_mc_text("mc_history", "Show History"), "mc_history", _mc_text("mc_history_description", "Action"), "📜"),
+            (_mc_text("mc_volume", "Set Volume"), "mc_volume", _mc_text("mc_volume_description", "Number input"), "🔊"),
+        ]
 
     return []
 
@@ -1082,7 +1153,7 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
         return build_canvas_role_trickster(agent_config, admin_visible, guild)
     if role_name == "banker" and is_role_enabled_check("banker", agent_config, guild):
         return build_canvas_role_banker(agent_config, admin_visible, guild, author_id)
-    if role_name == "mc" and (agent_config or {}).get("roles", {}).get("mc", {}).get("enabled", False):
+    if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
         return build_canvas_role_mc()
     return None
 
@@ -1112,6 +1183,6 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
         return build_canvas_role_trickster_detail(detail_name, admin_visible, guild, author_id, agent_config)
     if role_name == "banker" and is_role_enabled_check("banker", agent_config, guild):
         return build_canvas_role_banker_detail(detail_name, admin_visible, guild, author_id)
-    if role_name == "mc" and (agent_config or {}).get("roles", {}).get("mc", {}).get("enabled", False):
+    if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
         return build_canvas_role_mc()
     return None

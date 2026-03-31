@@ -335,7 +335,7 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
     last_interaction_at = (existing_record or {}).get("last_interaction_at")
     interactions = db_instance.get_daily_interactions_since(
         since_iso=None if force else last_interaction_at,
-        limit=25,
+        limit=100,
         target_date=resolved_date,
     )
     if not interactions:
@@ -413,8 +413,32 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
         )
         if recollection_id:
             logger.info(f"🧠 [RECENT_MEMORY] Extracted and stored notable recollection: '{extracted_recollection[:60]}...'")
+    db_instance.mark_recent_memory_refresh_completed()
     
     return summary_text
+
+
+def refresh_due_recent_memories(server_name: str | None = None) -> int:
+    resolved_server = server_name or get_active_server_name()
+    if not resolved_server:
+        logger.warning("🧠 [RECENT_MEMORY] No server context available, skipping refresh")
+        return 0
+    db_instance = get_global_db(server_name=resolved_server)
+    due_refreshes = db_instance.get_due_pending_recent_memory_refreshes()
+    if not due_refreshes:
+        return 0
+    existing_record = db_instance.get_recent_memory_record(memory_date=date.today().isoformat())
+    last_interaction_at = (existing_record or {}).get("last_interaction_at")
+    new_interactions = db_instance.get_daily_interactions_since(
+        since_iso=last_interaction_at,
+        limit=100,
+        target_date=date.today().isoformat(),
+    )
+    if not new_interactions:
+        db_instance.mark_recent_memory_refresh_completed()
+        return 0
+    generate_recent_memory_summary(server_name=resolved_server)
+    return 1
 
 
 def _should_trigger_dreaming(db_instance) -> bool:
@@ -533,12 +557,6 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
     previous_summary = (existing_record or {}).get("summary", "").strip()
     recent_record = db_instance.get_recent_memory_record(memory_date=resolved_date)
     recent_summary = (recent_record or {}).get("summary", "").strip()
-    if not recent_summary:
-        recent_summary = generate_recent_memory_summary(
-            server_name=resolved_server,
-            target_date=resolved_date,
-            force=force,
-        )
     if not recent_summary:
         if previous_summary:
             return previous_summary
@@ -691,7 +709,7 @@ def generate_user_relationship_memory_summary(
             previous_summary = (latest_daily.get("summary") or "").strip()
 
     last_interaction_at = temporary_state.get("last_interaction_at")
-    new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=last_interaction_at, limit=25)
+    new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=last_interaction_at, limit=100)
     if not new_interactions and not force:
         if previous_summary:
             return previous_summary
@@ -772,7 +790,7 @@ def refresh_due_relationship_memories(server_name: str | None = None) -> int:
         relationship_state = db_instance.get_user_relationship_memory(user_id)
         user_name = relationship_state.get("metadata", {}).get("user_name") or None
         last_interaction_at = relationship_state.get("last_interaction_at")
-        new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=last_interaction_at, limit=25)
+        new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=last_interaction_at, limit=100)
         if not new_interactions:
             db_instance.mark_relationship_refresh_completed(user_id)
             continue
@@ -792,26 +810,8 @@ def refresh_due_relationship_memories(server_name: str | None = None) -> int:
 
 
 def _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_dialogue: list[dict]) -> str:
-    engine = _engine()
     relationship_state = db_instance.get_user_relationship_memory(user_id)
     daily_record = db_instance.get_user_relationship_daily_memory(user_id)
-    pending = db_instance.get_pending_relationship_refresh(user_id)
-    should_refresh = False
-    if pending and pending.get("status") == "pending":
-        scheduled_for = engine._parse_iso_datetime(pending.get("scheduled_for"))
-        if scheduled_for and scheduled_for <= datetime.now():
-            should_refresh = True
-    if should_refresh:
-        try:
-            generate_user_relationship_memory_summary(
-                user_id=user_id,
-                user_name=user_name,
-                server_name=db_instance.server_name,
-            )
-            relationship_state = db_instance.get_user_relationship_memory(user_id)
-            daily_record = db_instance.get_user_relationship_daily_memory(user_id)
-        except Exception as e:
-            logger.warning(f"⚠️ [RELATIONSHIP_MEMORY] Lazy refresh failed for user={user_id}: {e}")
     summary = relationship_state.get("summary", "").strip()
     if summary:
         return summary
@@ -1405,7 +1405,7 @@ def call_llm(
     
     try:
         if not is_simulation_mode():
-            logger.info(f"{log_prefix} Starting call to gemini-3-flash-preview")
+            logger.info(f"{log_prefix} Starting call to gemini-2.5-flash-lite")
             logger.info(f"   └─ Temp: {temperature} | Max tokens: {max_tokens}")
             logger.info("   └─ Top-p: 0.95")
 
@@ -1463,19 +1463,47 @@ def _call_gemini_sync(
     user_id: str = None, user_name: str = None
 ) -> str:
     """Synchronous Gemini call (for critical operations)"""
-    try:
-        res = client_gemini.models.generate_content(
-            model='gemini-3.1-flash-lite-preview',
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                top_p=0.95,
-                safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
+    result_queue = queue.Queue()
+    exception_queue = queue.Queue()
+
+    def call_gemini():
+        try:
+            res = client_gemini.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                    top_p=0.95,
+                    safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
+                )
             )
-        )
-        
+            result_queue.put(res)
+        except Exception as e:
+            exception_queue.put(e)
+
+    gemini_thread = threading.Thread(target=call_gemini)
+    gemini_thread.start()
+    gemini_thread.join(timeout=5.0)
+
+    if gemini_thread.is_alive():
+        logger.error("🤖 [SYNC] Gemini call timed out after 5 seconds")
+        if critical:
+            raise TimeoutError("Gemini API call timed out")
+        else:
+            return None
+
+    if not exception_queue.empty():
+        e = exception_queue.get()
+        logger.error(f"🤖 [SYNC] Gemini call failed: {e}")
+        if critical:
+            raise
+        else:
+            return None
+
+    try:
+        res = result_queue.get()
         text = res.text
         if text and len(text.strip()) > 5:
             postprocessed = postprocess_response(text)
@@ -1506,11 +1534,10 @@ def _call_gemini_sync(
                 return None
             
     except Exception as e:
-        logger.error(f"🤖 [SYNC] Gemini call failed: {e}")
+        logger.error(f"🤖 [SYNC] Failed to process Gemini response: {e}")
         if critical:
             raise
         else:
-            # For non-critical calls, return fallback response to trigger fallback chain
             return None
 
 def _call_gemini_async(

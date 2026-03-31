@@ -8,6 +8,7 @@ import math
 import sys
 import os
 from datetime import datetime, timedelta, timezone
+from collections import defaultdict
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -18,6 +19,7 @@ from agent_db import get_global_db, get_active_server_name
 from dotenv import load_dotenv
 from agent_logging import get_logger
 from discord_bot.discord_http import DiscordHTTP
+from roles.treasure_hunter.db_role_treasure_hunter import get_poe_db_instance
 
 # Import the new POE2 manager
 try:
@@ -97,71 +99,202 @@ async def ejecutar_mision_treasure_hunter(config, server_name=None):
             return
         
         logger.info(f"🔍 Starting treasure hunter execution for {len(servidores_activos)} servers")
-        
+
+        all_subscriptions = []
+        refresh_plan = defaultdict(lambda: defaultdict(set))
+
         for server_id in servidores_activos:
             try:
-                await procesar_servidor(poe2_manager, discord_http, server_id)
+                server_subscriptions = await procesar_servidor(poe2_manager, server_id)
+                for subscription in server_subscriptions:
+                    all_subscriptions.append(subscription)
+                    league = subscription.get("league", "Standard")
+                    for item_name in subscription.get("tracked_items", []):
+                        refresh_plan[league][item_name].add(subscription.get("user_id"))
             except Exception as e:
-                logger.error(f"Error processing server {server_id}: {e}")
+                logger.error(f"Error collecting subscriptions for server {server_id}: {e}")
                 continue
+
+        if not all_subscriptions:
+            logger.info("No active POE2 subscriptions found across active servers")
+            return
+
+        refreshed_items = await actualizar_precios_globales(poe2_manager, refresh_plan)
+        delivered_notifications = set()
+
+        for subscription in all_subscriptions:
+            try:
+                await procesar_suscripcion(poe2_manager, discord_http, subscription, refreshed_items, delivered_notifications)
+            except Exception as e:
+                logger.error(
+                    f"Error processing POE2 subscription for user {subscription.get('user_id')} in server {subscription.get('server_id')}: {e}"
+                )
+
+        for league, item_name, signal, current_price in delivered_notifications:
+            market_data = refreshed_items.get((league, item_name))
+            if not market_data:
+                continue
+            shared_db = market_data.get("db")
+            if shared_db is None:
+                continue
+            shared_db.register_notification(item_name, league, signal, current_price)
         
         logger.info("✅ Treasure hunter execution completed")
         
     except Exception as e:
         logger.error(f"Error in treasure hunter execution: {e}")
 
-async def procesar_servidor(poe2_manager, discord_http, server_id):
-    """Process a single server for treasure hunting."""
-    # Check if POE2 is activated on this server
+async def procesar_servidor(poe2_manager, server_id):
+    """Collect POE2 subscriptions for a single server."""
     if not poe2_manager.is_activated(server_id):
         logger.debug(f"POE2 not activated on server {server_id}, skipping")
-        return
-    
-    # Get all active leagues for this server
-    leagues = poe2_manager.get_server_leagues(server_id)
-    
-    # Process each league
-    for league in leagues:
-        # Get objectives for this league
-        success, objectives_data = poe2_manager.list_objectives(server_id)
-        if not success:
-            logger.warning(f"Could not get objectives for server {server_id}: {objectives_data}")
+        return []
+
+    subscriptions = poe2_manager.get_all_server_subscriptions(server_id)
+    valid_subscriptions = []
+    for subscription in subscriptions:
+        tracked_items = subscription.get("tracked_items", [])
+        if not tracked_items:
             continue
-        
-        # Parse objectives from the list response
-        objectives = []
-        lines = objectives_data.split('\n')
-        for line in lines:
-            if line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')):
-                # Extract item name from line like "1. ✅ Ancient Rib - **2.5 Div**"
-                parts = line.split('. ', 1)
-                if len(parts) > 1:
-                    item_part = parts[1].strip()
-                    if ' - ' in item_part:
-                        item_name = item_part.split(' - ')[0].strip()
-                        objectives.append(item_name)
-        
-        if not objectives:
-            logger.debug(f"No objectives found for league {league} in server {server_id}")
-            continue
-        
-        logger.info(f"Processing {len(objectives)} objectives for league {league} in server {server_id}")
-        
-        # Process each objective for this league
-        for item_name in objectives:
-            try:
-                # Get price history for this item in this league
-                history = poe2_manager.get_price_history(item_name, league)
-                if not history:
-                    continue
-                
-                # Analyze price changes and send alerts if needed
-                # (This would contain your price analysis logic)
-                logger.debug(f"Checking price alerts for {item_name} in {league}")
-                
-            except Exception as e:
-                logger.error(f"Error processing {item_name} in {league}: {e}")
+        valid_subscriptions.append(subscription)
+
+    logger.info(f"Collected {len(valid_subscriptions)} POE2 subscriptions for server {server_id}")
+    return valid_subscriptions
+
+async def actualizar_precios_globales(poe2_manager, refresh_plan):
+    """Refresh global shared price history once per league and item."""
+    refreshed_items = {}
+    for league, items_map in refresh_plan.items():
+        if poe2_manager.should_refresh_item_list(league):
+            await poe2_manager.download_item_list(league)
+
+        items_catalog = poe2_manager.load_item_list(league)
+        shared_db = get_poe_db_instance("default", league)
+
+        for item_name in items_map.keys():
+            item_id = items_catalog.get(item_name.lower())
+            if not item_id:
+                logger.warning(f"POE2 item '{item_name}' not found in league {league}")
                 continue
+
+            try:
+                history_entries = poe2_manager.client.get_item_history(item_name, league=league, days=30)
+                if not history_entries:
+                    logger.warning(f"No POE2 history available for {item_name} in {league}")
+                    continue
+
+                inserted = shared_db.insert_prices_bulk(item_name, history_entries, league)
+                current_price = shared_db.get_current_price(item_name, league)
+                min_price, max_price = shared_db.get_statistics(item_name, league)
+
+                refreshed_items[(league, item_name)] = {
+                    "item_id": item_id,
+                    "entries": history_entries,
+                    "inserted": inserted,
+                    "current_price": current_price,
+                    "min_price": min_price,
+                    "max_price": max_price,
+                    "signal": calcular_senal(current_price, min_price, max_price) if current_price is not None and min_price is not None and max_price is not None else None,
+                    "recent_notification": shared_db.has_recent_similar_notification(
+                        item_name,
+                        league,
+                        calcular_senal(current_price, min_price, max_price),
+                        current_price,
+                    ) if current_price is not None and min_price is not None and max_price is not None and calcular_senal(current_price, min_price, max_price) else False,
+                    "db": shared_db,
+                }
+
+                logger.info(
+                    f"Refreshed {item_name} in {league}: {len(history_entries)} entries, {inserted} inserted, current={current_price}"
+                )
+            except Exception as e:
+                logger.error(f"Error refreshing POE2 market data for {item_name} in {league}: {e}")
+
+    return refreshed_items
+
+async def procesar_suscripcion(poe2_manager, discord_http, subscription, refreshed_items, delivered_notifications):
+    """Process one user subscription using shared global market data."""
+    user_id = subscription.get("user_id")
+    server_id = subscription.get("server_id")
+    league = subscription.get("league", "Standard")
+    tracked_items = subscription.get("tracked_items", [])
+
+    for item_name in tracked_items:
+        market_data = refreshed_items.get((league, item_name))
+        if not market_data:
+            continue
+
+        current_price = market_data.get("current_price")
+        signal = market_data.get("signal")
+
+        if current_price is None or not signal:
+            continue
+
+        if market_data.get("recent_notification"):
+            logger.info(f"Skipping recent similar notification for {item_name} in {league}")
+            continue
+
+        message = await construir_mensaje_alerta(item_name, signal, current_price)
+        sent = await discord_http.send_dm(int(user_id), f"🔮 **POE2 TREASURE** [{server_id}] {message}")
+        if sent:
+            delivered_notifications.add((league, item_name, signal, current_price))
+            logger.info(f"Sent POE2 {signal} alert for {item_name} to user {user_id} from server {server_id}")
+
+def calcular_senal(current_price, min_price, max_price):
+    """Calculate the POE2 market signal from historical bounds."""
+    if current_price <= min_price * (1 + UMBRAL_COMPRA):
+        return "COMPRA"
+    if current_price >= max_price * (1 - UMBRAL_VENTA):
+        return "VENTA"
+    return None
+
+async def construir_mensaje_alerta(item_name, signal, price):
+    """Build the user-facing POE2 alert message."""
+    try:
+        from agent_engine import _build_system_prompt, PERSONALITY
+
+        system_instruction = _build_system_prompt(PERSONALITY)
+        role_prompt = PERSONALITY.get("treasure_hunter", {})
+        active_duty = role_prompt.get(
+            "active_duty",
+            role_prompt.get(
+                "mission_active",
+                "CURRENT DUTY - TREASURE HUNTER: You are a treasure hunter specializing in Path of Exile 2 market analysis. Focus on spotting strong buy or sell opportunities from price history and give clear, direct market advice.",
+            ),
+        )
+        notification_tasks = role_prompt.get("notification_task", {})
+        if signal == "COMPRA":
+            task_prompt = notification_tasks.get(
+                "buy_prompt",
+                f"TASK - BUY OPPORTUNITY: A buy opportunity has been detected for {item_name} at {price:.2f} Divines. This price is low according to historical data. Generate a motivational message indicating it's time to buy. Be direct and concise.",
+            )
+        else:
+            task_prompt = notification_tasks.get(
+                "sell_prompt",
+                f"TASK - SELL OPPORTUNITY: A sell opportunity has been detected for {item_name} at {price:.2f} Divines. This price is high according to historical data. Generate a message indicating it's time to sell for profit. Be direct and concise.",
+            )
+        task_prompt = task_prompt.format(item_name=item_name, price=price)
+        golden_rules = role_prompt.get(
+            "golden_rules",
+            [
+                "1. BE CONCISE: Keep messages short, 2-4 sentences maximum (100-200 characters)",
+                "2. CLEAR ACTION: Clearly indicate if it's a BUY or SELL signal",
+                "3. PRICE MENTION: Include the current price prominently",
+                "4. EXPERT ADVICE: Demonstrate market knowledge and expertise",
+                "5. STRONG ENDING: Use decisive tone and clear recommendations",
+                "6. NO EXPLANATIONS: Provide only the alert message, no additional context",
+            ],
+        )
+        golden_rules_text = "\n".join(golden_rules)
+        complete_prompt = (
+            f"{active_duty}\n\n{task_prompt}\n\nGOLDEN RULES:\n"
+            f"{golden_rules_text}\n\nRespond only with the alert message, no additional explanations."
+        )
+        return await asyncio.to_thread(call_llm, system_instruction, complete_prompt, False, "treasure_hunter_notification")
+    except Exception as e:
+        logger.error(f"Error building POE2 alert message for {item_name}: {e}")
+        action = "BUY" if signal == "COMPRA" else "SELL"
+        return f"{action} {item_name} at {price:.2f} Div."
 
 async def procesar_item(poe2_manager, client, discord_http, server_id, item_name, league):
     """Process a single item for treasure hunting."""

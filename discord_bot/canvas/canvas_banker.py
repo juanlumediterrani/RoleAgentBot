@@ -9,6 +9,12 @@ _bot_display_name = core._bot_display_name
 get_banker_db_instance = None  # Now using roles_db directly
 get_server_key = core.get_server_key
 
+# Import roles database for banker functionality
+try:
+    from agent_roles_db import get_roles_db_instance
+except ImportError:
+    get_roles_db_instance = None
+
 
 def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the unified Banker role view with wallet information."""
@@ -27,7 +33,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
     server_name = "Unknown Server"
     history = []
 
-    if guild is not None and get_banker_db_instance is not None:
+    if guild is not None and get_roles_db_instance is not None:
         try:
             server_key = get_server_key(guild)
             server_id = str(guild.id)
@@ -44,14 +50,13 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
 
                 try:
                     from roles.banker.banker_discord import _initialize_dice_game_account
-                    _initialize_dice_game_account(user_id, user_name, server_id, server_key, server_name)
+                    _initialize_dice_game_account(user_id, user_name, server_id, server_key)
                 except Exception:
                     pass
 
                 balance = db_banker_roles.get_balance(user_id, server_id)
-                # Get transaction history from the underlying roles database
-                roles_db = get_roles_db_instance(server_key)
-                history = roles_db.get_banker_transaction_history(user_id, server_id, limit=5)
+                # Get transaction history from the banker database
+                history = db_banker_roles.roles_db.get_banker_transactions(server_id, user_id, limit=5)
 
                 tae = db_banker_roles.get_tae(server_id)
         except Exception as error:
@@ -63,11 +68,11 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
             title,
             _banker_text("canvas_description", "Check your gold balance and recent account activity."),
         ),
-        "**Wallet status**",
-        f":coin: {balance:,} gold coins",
-        f":bank: {server_name}",
-        f":bust_in_silhouette: {user_name}",
-        "**Recent transactions**",
+        _banker_text("wallet_status_title", "**Wallet status**"),
+        f":coin: {_banker_text('gold_coins', '{amount} monedas de oro').replace('{amount}', f'{balance:,}')}",
+        f":bank: {_banker_text('server_label', 'Zekton').replace('{server_name}', server_name)}",
+        f":bust_in_silhouette: {_banker_text('user_label', 'Umano').replace('{user_name}', user_name)}",
+        _banker_text("recent_transactions_title", "**Recent transactions**"),
     ]
 
     if history:
@@ -76,7 +81,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
             emoji = ":inbox_tray:" if amount > 0 else ":outbox_tray:"
             content_parts.append(f"{emoji} {amount:,} ({transaction_type})")
     else:
-        content_parts.append("No transactions yet")
+        content_parts.append(_banker_text("no_transactions_yet", "No transactions yet"))
 
     return "\n".join(content_parts)
 

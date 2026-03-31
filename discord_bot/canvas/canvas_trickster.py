@@ -140,7 +140,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
 
         parts.append("─" * 45)
         server_key = get_server_key(guild)
-        server_id = str(guild.id) if guild else "0"
+        server_id = str(guild.id) if guild else server_key
         if get_roles_db_instance is None:
             parts.append(descriptions.get("historyvoid", "📊 Any play in the game. Be the first!"))
             return "\n".join(parts)
@@ -208,43 +208,62 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
 
     if detail_name in {"beggar"}:
         beggar_state = _get_canvas_beggar_state(guild)
-        return "\n".join([
-            _build_canvas_intro_block(
-                _trickster_text("canvas_beggar_title", f"🙏 {_bot_display_name} Canvas - Trickster / Beggar"),
-                _trickster_text("canvas_beggar_description", "Donate gold to support the clan project"),
-            ),
-            beggar_state["message"].format(reason=beggar_state["last_reason"] or "the current clan project") if beggar_state["message"] else "",
+        descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
+        
+        title = descriptions.get("title", "🙏 BEGGAR")
+        fund_title = descriptions.get("current_fund", "💰 **CURRENT FUND:**")
+        description = descriptions.get("description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")
+        title_reason = descriptions.get("title_reason", "**Reason:**")
+        title_campaing = descriptions.get("title_campaign", "**Current Campaign**")
+        title_instructions = descriptions.get("title_instructions", "**How it works**")
+        instructions = descriptions.get("instructions", "💝 Click the 'Donate' button below\n - Wait the weekly result at end of the week.\n - If you give whatever donation, the beggar will memory that.\n ")
+        title_donations = descriptions.get("title_donations", "**Recent Donations**")
+    
+        parts = [
+            _build_canvas_intro_block(title, description),
+            "-" * 45,
+            title_campaing,
+            f"{title_reason} {beggar_state['last_reason'] or 'Support the clan'}",
+            f"{fund_title} {beggar_state['fund_balance']:,} :coin:",
+            "-" * 45,
             "",
-            f"**Current fund:** {beggar_state['fund_balance']:,} gold",
-            f"**Last reason:** {beggar_state['last_reason']}",
+            title_instructions,
+            instructions,
+            "-" * 45,
             "",
-            "**Donate gold**",
-            "- Enter the amount in the donation modal",
-            "- Confirm to transfer gold from your wallet",
-            "",
-            "**Routing**",
-            "- This is the user-facing beggar surface",
-            "- Use `Admin` for enable/frequency controls",
-        ])
+            title_donations,
+        ]   
+        
+        # Add recent donation history if available
+        if beggar_state.get('recent_donations'):
+            for donation in beggar_state['recent_donations'][:5]:
+                donor = donation.get('donor_name', 'Anonymous')
+                amount = donation.get('amount', 0)
+                reason = donation.get('reason', 'Support')
+                parts.append(f" - 💰 {donor}: {amount:,} :coin: -->  {reason}")
+        else:
+            no_donations = descriptions.get("no_donations", "📊 No donations yet. Be the first to contribute!")
+            parts.append(no_donations)
+        
+        return "\n".join(parts)
 
     if detail_name in {"beggar_admin"}:
         beggar_state = _get_canvas_beggar_state(guild)
+        descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
+        description = descriptions.get("description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")  
+        title = descriptions.get("title", "🙏 BEGGAR")
+        general_descriptions =  _personality_descriptions.get("general", {})
         return "\n".join([
-            _build_canvas_intro_block(
-                f"🙏 {_bot_display_name} Canvas - Trickster / Beggar / Admin",
-                "Configure beggar functionality and frequency",
-            ),
-            f"**Status:** {'On' if beggar_state['enabled'] else 'Off'}",
-            f"**Frequency:** every {beggar_state['frequency_hours']}h",
-            "",
-            "**Controls**",
-            "- Enable or disable beggar",
-            "- Editable frequency box",
-            "- Users can donate from the personal beggar surface",
-            "",
-            "**Routing**",
-            "- Back only from here",
-        ])
+            _build_canvas_intro_block(title, description),
+            "-" * 45,
+            general_descriptions.get("current_settings", "**Current Settings**"),
+            "-" * 45,
+            f"{general_descriptions.get('status_label', '**Status:**')} {_personality_descriptions.get('active', '✅ Enabled') if beggar_state['enabled'] else _personality_descriptions.get('inactive','❌ Disabled')}",
+            f"{general_descriptions.get('frequency_label', '**Frequency:**')} {_personality_descriptions.get('every', 'every')} {beggar_state['frequency_hours']}h",
+            f"{descriptions.get('current_fund', '**Current Fund:**')} {beggar_state['fund_balance']:,} :coin:",
+            f"{descriptions.get('title_reason', '**Last Reason:**')} {beggar_state['last_reason'] or _personality_descriptions.get('none','None')}",
+           
+           ])
 
     if detail_name in {"ring"}:
         ring_state = _get_canvas_ring_state(guild)
@@ -285,10 +304,10 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         # Use general descriptions for status
         general = _personality_descriptions.get("general", {})
         status_label = general.get("status", "Status:")
-        active_text = general.get("active", "Active")
-        inactive_text = general.get("inactive", "Inactive")
+        active_text = general.get("active", "✅  Active")
+        inactive_text = general.get("inactive", "❌ Inactive")
         
-        parts.append(f"**{status_label}** {'✅ ' + active_text if ring_state['enabled'] else '❌ ' + inactive_text}")
+        parts.append(f"**{status_label}** { active_text if ring_state['enabled'] else  inactive_text}")
         
         return "\n".join(parts)
 

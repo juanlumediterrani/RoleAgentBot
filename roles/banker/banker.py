@@ -162,7 +162,7 @@ async def distribute_daily_tae():
             return
         
         # Get current TAE configuration
-        tae_amount = db_banker.get_tae(server_name)
+        tae_amount = db_banker.get_tae(server_key)
         if tae_amount <= 0:
             logger.info("💰 TAE not configured or set to 0, skipping distribution")
             return

@@ -36,12 +36,7 @@ _subrole_messages = _load_subrole_messages()
 cmd_trickster = None
 
 # Availability flags
-try:
-    from roles.trickster.subroles.beggar.db_beggar import get_beggar_db_instance
-    # Banker database available - now using roles_db directly
-except ImportError:
-    # Banker database not available - now using roles_db directly
-    pass
+BEGGAR_DB_AVAILABLE = True
 
 try:
     from agent_roles_db import get_roles_db_instance
@@ -49,11 +44,18 @@ except ImportError:
     get_roles_db_instance = None
 
 try:
-    from roles.trickster.subroles.dice_game.dice_game import process_play
-    # Dice game available - now using roles_db directly
+    from roles.trickster.subroles.dice_game.dice_game_db import get_dice_game_roles_db_instance as get_dice_game_db_instance
+    DICE_GAME_DB_AVAILABLE = True
 except ImportError:
-    # Dice game not available - now using roles_db directly
+    get_dice_game_db_instance = None
+    DICE_GAME_DB_AVAILABLE = False
+
+try:
+    from roles.trickster.subroles.dice_game.dice_game import process_play
+    DICE_GAME_AVAILABLE = True
+except ImportError:
     process_play = None
+    DICE_GAME_AVAILABLE = False
 
 try:
     from roles.banker.banker_db import get_banker_roles_db_instance as get_banker_db_instance
@@ -81,11 +83,12 @@ except ImportError:
 
 def _get_banker_db(guild):
     """Get banker database instance for a server."""
+    if get_banker_db_instance is None:
+        return None
     try:
-        id_key = str(guild.id)
-        return get_roles_db_instance(id_key)
+        return get_banker_db_instance(str(guild.id))
     except Exception:
-        return get_roles_db_instance(str(guild.id))
+        return None
 
 
 def register_trickster_commands(bot, personality, agent_config):
@@ -107,10 +110,12 @@ def register_trickster_commands(bot, personality, agent_config):
             await _cmd_trickster_beggar_status(ctx)
         elif action == "donate":
             await _cmd_trickster_beggar_donate(ctx, args[1:])
+        elif action == "admin":
+            await _cmd_trickster_beggar_admin(ctx, args[1:])
         elif action == "help":
             await _cmd_trickster_beggar_help(ctx)
         else:
-            await ctx.send(f"❌ Action `{action}` not recognized. Use `enable`, `disable`, `frequency`, `status`, `donate`, or `help`.")
+            await ctx.send(f"❌ Action `{action}` not recognized. Use `enable`, `disable`, `frequency`, `status`, `donate`, `admin`, or `help`.")
 
     # Helper functions for beggar subrole
     async def _cmd_trickster_beggar_toggle(ctx, action):
@@ -122,30 +127,36 @@ def register_trickster_commands(bot, personality, agent_config):
             await ctx.send("❌ Only administrators can enable or disable beggar on this server.")
             return
 
-        db_beggar = _get_beggar_db(ctx.guild)
-        if not db_beggar:
-            await ctx.send("❌ Error accessing the trickster database.")
-            return
-
+        from .subroles.beggar.beggar_config import get_beggar_config
+        
         server_id = str(ctx.guild.id)
-        server_name = ctx.guild.name
-        server_user_id = f"server_{server_id}"
-
+        beggar_config = get_beggar_config(server_id)
+        
         enabled = action in ["enable", "on"]
-
-        if enabled:
-            if db_beggar.add_subscription(server_user_id, server_name, server_id):
-                db_beggar.set_frequency_hours(server_id, db_beggar.get_frequency_hours(server_id))
-                await ctx.send(f"🙏 **Beggar enabled for the server** - Now all members will receive periodic beggar requests.")
-                logger.info(f"🎭 {ctx.author.name} enabled beggar for {server_name}")
+        
+        if beggar_config.set_enabled(enabled):
+            if enabled:
+                # Select a random reason automatically
+                selected_reason = beggar_config.select_new_reason()
+                
+                # Send first message immediately
+                try:
+                    from .subroles.beggar.beggar_task import execute_beggar_task
+                    success = await execute_beggar_task(server_id, bot_instance=ctx.bot)
+                    if success:
+                        await ctx.send(f"🙏 **Beggar enabled for the server** - First message sent with reason: '{selected_reason}'")
+                        logger.info(f"🎭 {ctx.author.name} enabled beggar for {ctx.guild.name} - Reason: {selected_reason} - First message sent")
+                    else:
+                        await ctx.send(f"🙏 **Beggar enabled for the server** - Reason selected: '{selected_reason}' (First message will be sent on next cycle)")
+                        logger.info(f"🎭 {ctx.author.name} enabled beggar for {ctx.guild.name} - Reason: {selected_reason} - First message failed")
+                except Exception as e:
+                    await ctx.send(f"🙏 **Beggar enabled for the server** - Reason selected: '{selected_reason}' (First message failed: {str(e)})")
+                    logger.error(f"🎭 Error sending first beggar message: {e}")
             else:
-                await ctx.send("❌ Error enabling beggar. Please try again.")
+                await ctx.send(f"🚫 **Beggar disabled for the server** - No more periodic beggar requests.")
+                logger.info(f"🎭 {ctx.author.name} disabled beggar for {ctx.guild.name}")
         else:
-            if db_beggar.remove_subscription(server_user_id, server_id):
-                await ctx.send(f"🚫 **Beggar disabled for the server** - No more beggar requests will be sent.")
-                logger.info(f"🎭 {ctx.author.name} disabled beggar for {server_name}")
-            else:
-                await ctx.send("❌ Error disabling beggar. Please try again.")
+            await ctx.send("❌ Error updating beggar configuration.") 
 
     async def _cmd_trickster_beggar_frequency(ctx, args):
         """Adjust the frequency of beggar requests (administrators only)."""
@@ -164,15 +175,18 @@ def register_trickster_commands(bot, personality, agent_config):
             if hours < 1 or hours > 168:
                 await ctx.send("❌ Frequency must be between 1 and 168 hours (1 week).")
                 return
-            db_beggar = _get_beggar_db(ctx.guild)
-            if not db_beggar:
-                await ctx.send("❌ Error accessing the trickster database.")
-                return
-            if not db_beggar.set_frequency_hours(str(ctx.guild.id), hours):
+            
+            from .subroles.beggar.beggar_config import get_beggar_config
+            
+            server_id = str(ctx.guild.id)
+            beggar_config = get_beggar_config(server_id)
+            
+            if beggar_config.set_frequency_hours(hours):
+                await ctx.send(f"⏰ **Frequency adjusted** - Beggar requests will be sent every {hours} hours.")
+                logger.info(f"🎭 {ctx.author.name} adjusted beggar frequency to {hours} hours in {ctx.guild.name}")
+            else:
                 await ctx.send("❌ Could not update beggar frequency.")
-                return
-            await ctx.send(f"⏰ **Frequency adjusted** - Beggar requests will be sent every {hours} hours.")
-            logger.info(f"🎭 {ctx.author.name} adjusted beggar frequency to {hours} hours in {ctx.guild.name}")
+                
         except ValueError:
             await ctx.send("❌ You must specify a valid number of hours.")
 
@@ -182,47 +196,47 @@ def register_trickster_commands(bot, personality, agent_config):
             await ctx.send("❌ This command only works on servers, not in private messages.")
             return
 
-        db_beggar = _get_beggar_db(ctx.guild)
-        if not db_beggar:
-            await ctx.send("❌ Error accessing the trickster database.")
-            return
-
+        from .subroles.beggar.beggar_config import get_beggar_config
+        from agent_roles_db import get_roles_db_instance
+        
         server_id = str(ctx.guild.id)
-        server_user_id = f"server_{server_id}"
-        is_active = db_beggar.is_subscribed(server_user_id, server_id)
+        beggar_config = get_beggar_config(server_id)
+        roles_db = get_roles_db_instance(server_id)
+
+        is_active = beggar_config.is_enabled()
+        config = beggar_config.get_config()
+        reason_status = beggar_config.get_reason_status()
 
         try:
-            count_dm = db_beggar.count_requests_type_last_day("BEGGAR_DM", server_id)
-            count_public = db_beggar.count_requests_type_last_day("BEGGAR_PUBLIC", server_id)
-            frequency_hours = db_beggar.get_frequency_hours(server_id)
-            last_reason = db_beggar.get_last_reason(server_id) or "No reason recorded yet"
-            target_gold = db_beggar.get_target_gold(server_id)
-        except Exception:
-            count_dm = 0
-            count_public = 0
-            frequency_hours = 6
-            last_reason = "No reason recorded yet"
-            target_gold = 0
+            # Get stats from roles database
+            server_stats = roles_db.get_beggar_server_stats(server_id)
+            leaderboard = roles_db.get_beggar_leaderboard(server_id, limit=5)
+            
+            # Get fund balance from banker
+            from roles.banker.banker_db import get_banker_db_instance
+            banker_db = get_banker_db_instance(server_id)
+            fund_balance = banker_db.get_balance("beggar_fund", server_id) if banker_db else 0
 
-        status_emoji = "✅" if is_active else "❌"
-        status_text = "Enabled" if is_active else "Disabled"
+            status_msg = f"📊 **Beggar Status in {ctx.guild.name}**\n\n"
+            status_msg += f"🔧 **Status:** {'✅ Enabled' if is_active else '❌ Disabled'}\n"
+            status_msg += f"⏰ **Frequency:** Every {config.get('frequency_hours', 24)} hours\n"
+            status_msg += f"🎯 **Current reason:** {reason_status['current_reason'] or 'No reason set'}\n"
+            status_msg += f"📅 **Reason active for:** {reason_status['days_active']} days\n"
+            status_msg += f"� **Current fund:** {fund_balance:,} gold\n"
+            status_msg += f"👥 **Total donors:** {server_stats.get('total_donors', 0)}\n"
+            status_msg += f"💵 **Total donated:** {server_stats.get('total_gold', 0):,} gold\n"
 
-        status_msg = f"📊 **Beggar Status in {ctx.guild.name}**\n\n"
-        status_msg += f"{status_emoji} **Status:** {status_text}\n"
-        status_msg += f"⏰ **Frequency:** every {frequency_hours} hours\n"
-        status_msg += f"🎯 **Current target:** {target_gold:,} gold\n"
-        status_msg += f"🪙 **Last reason:** {last_reason}\n"
-        status_msg += f"📈 **Requests today (last 24h):**\n"
-        status_msg += f"  • Private: {count_dm}/2\n"
-        status_msg += f"  • Public: {count_public}/4\n"
-        status_msg += f"🆔 **Server ID:** {server_id}\n"
-
-        if is_active:
-            status_msg += f"\n🙏 Beggar is active and working on this server."
-        else:
-            status_msg += f"\n🚫 Beggar is disabled. Use `!trickster beggar enable` to activate it."
-
-        await ctx.send(status_msg)
+            if leaderboard:
+                status_msg += f"\n� **Top Donors (Last 5):**\n"
+                for i, donor in enumerate(leaderboard[:3], 1):
+                    medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
+                    status_msg += f"  {medal} {donor['user_name']}: {donor['total_donated']:,} gold ({donor['donation_count']} donations)\n"
+            
+            await ctx.send(status_msg)
+            
+        except Exception as e:
+            logger.error(f"Error showing beggar status: {e}")
+            await ctx.send("❌ Error retrieving beggar status.")
 
     async def _cmd_trickster_beggar_donate(ctx, args):
         """Donate gold to beggar from a user wallet."""
@@ -241,17 +255,22 @@ def register_trickster_commands(bot, personality, agent_config):
             await ctx.send("❌ Donation amount must be positive.")
             return
 
-        db_beggar = _get_beggar_db(ctx.guild)
+        from .subroles.beggar.beggar_config import get_beggar_config
+        from agent_roles_db import get_roles_db_instance
+        
         db_banker = _get_banker_db(ctx.guild)
-        if not db_beggar or not db_banker:
+        if not db_banker:
             await ctx.send("❌ Beggar donation systems are not available.")
             return
 
-        server_key = get_server_key(ctx.guild)
         server_id = str(ctx.guild.id)
         server_name = ctx.guild.name
         donor_id = str(ctx.author.id)
         donor_name = ctx.author.display_name
+        
+        # Get beggar config for current reason
+        beggar_config = get_beggar_config(server_id)
+        roles_db = get_roles_db_instance(server_id)
 
         db_banker.create_wallet(donor_id, donor_name, server_id, server_name)
         db_banker.create_wallet("beggar_fund", "Beggar Fund", server_id, server_name)
@@ -261,16 +280,29 @@ def register_trickster_commands(bot, personality, agent_config):
             await ctx.send(f"❌ You only have {current_balance:,} gold available.")
             return
 
-        reason = db_beggar.get_last_reason(server_id) or "the current clan project"
-        target_gold = db_beggar.get_target_gold(server_id)
+        reason = beggar_config.get_current_reason() or "the current group project"
+        
+        # Process donation
         db_banker.update_balance(donor_id, donor_name, server_id, server_name, -amount, "BEGGAR_DONATION_OUT", "Donation sent to beggar")
         db_banker.update_balance("beggar_fund", "Beggar Fund", server_id, server_name, amount, "BEGGAR_DONATION_IN", f"Donation received from {donor_name}")
-        db_beggar.register_request(donor_id, donor_name, "BEGGAR_DONATION", f"Donated {amount} gold", str(ctx.channel.id), server_id, json.dumps({"amount": amount, "server_key": server_key}))
+        
+        # Update user donation record in roles database
+        roles_db.update_beggar_donation(server_id, donor_id, donor_name, amount, reason)
+        
+        roles_db.save_beggar_request(
+            server_id=server_id,
+            user_id=donor_id,
+            user_name=donor_name,
+            request_type="BEGGAR_DONATION",
+            message=f"Donated {amount} gold",
+            channel_id=str(ctx.channel.id),
+            metadata=json.dumps({"amount": amount, "reason": reason}),
+        )
+        
         fund_balance = db_banker.get_balance("beggar_fund", server_id)
         await ctx.send(
             f"🙏 **Donation accepted** - {amount:,} gold sent to beggar.\n"
             f"🪙 Current fund: {fund_balance:,} gold\n"
-            f"🎯 Current target: {target_gold:,} gold\n"
             f"📣 Current reason: {reason}"
         )
 
@@ -279,11 +311,12 @@ def register_trickster_commands(bot, personality, agent_config):
         help_msg = "🙏 **BEGGAR SUBROLE - HELP** 🙏\n\n"
         help_msg += "**What is Beggar?**\n"
         help_msg += "It's a trickster subrole that sends donation requests and trickery to server members.\n\n"
-        help_msg += "📋 **COMMANDS:** (administrators only)\n"
+        help_msg += "📋 **BEGGAR COMMANDS:** (administrators only)\n"
         help_msg += "• `!trickster beggar enable` - Enable beggar on this server\n"
         help_msg += "• `!trickster beggar disable` - Disable beggar on this server\n"
         help_msg += "• `!trickster beggar frequency <hours>` - Adjust frequency (1-168 hours)\n"
-        help_msg += "• `!trickster beggar status` - Show current status\n\n"
+        help_msg += "• `!trickster beggar status` - Show current status\n"
+        help_msg += "• `!trickster beggar admin forceminigame` - Force weekly minigame\n\n"
         help_msg += "📋 **USER COMMANDS:**\n"
         help_msg += "• `!trickster beggar donate <gold>` - Donate gold to the current beggar fund\n\n"
         
@@ -303,6 +336,78 @@ def register_trickster_commands(bot, personality, agent_config):
         help_msg += "• Avoid targeting the same user for 12 hours"
 
         await send_dm_or_channel(ctx, help_msg, "📩 Beggar help sent by private message.")
+
+    async def _cmd_trickster_beggar_admin(ctx, args):
+        """Admin commands for beggar subrole (administrators only)."""
+        if not ctx.guild:
+            await ctx.send("❌ This command only works on servers, not in private messages.")
+            return
+        if not is_admin(ctx):
+            await ctx.send("❌ Only administrators can use beggar admin commands.")
+            return
+        
+        if not args:
+            await ctx.send("❌ You must specify an admin action. Use `!trickster beggar admin forceminigame` or `!trickster beggar admin help`.")
+            return
+        
+        action = args[0].lower()
+        
+        if action == "forceminigame" or action == "force":
+            await _cmd_trickster_beggar_force_minigame(ctx)
+        elif action == "help":
+            await _cmd_trickster_beggar_admin_help(ctx)
+        else:
+            await ctx.send(f"❌ Admin action `{action}` not recognized. Use `forceminigame` or `help`.")
+    
+    async def _cmd_trickster_beggar_force_minigame(ctx):
+        """Force trigger the weekly beggar minigame (administrators only)."""
+        try:
+            from .subroles.beggar.beggar_minigame import BeggarMinigame
+            
+            server_id = str(ctx.guild.id)
+            minigame = BeggarMinigame(server_id)
+            
+            # Send initial message
+            await ctx.send("🎲 **Forcing Weekly Beggar Minigame...**\n⏳ Checking system requirements...")
+            
+            # Force the minigame
+            result = await minigame.force_weekly_minigame()
+            
+            if result['success']:
+                await ctx.send(result['message'])
+                logger.info(f"🎭 {ctx.author.name} forced weekly beggar minigame in {ctx.guild.name}")
+            else:
+                await ctx.send(result['message'])
+                logger.warning(f"🎭 {ctx.author.name} failed to force weekly beggar minigame in {ctx.guild.name}: {result['reason']}")
+                
+        except Exception as e:
+            logger.error(f"Error in force minigame command: {e}")
+            await ctx.send(f"❌ Error forcing minigame: {str(e)}")
+    
+    async def _cmd_trickster_beggar_admin_help(ctx):
+        """Show admin-specific help for beggar subrole."""
+        help_msg = "🔧 **BEGGAR ADMIN - HELP** 🔧\n\n"
+        help_msg += "**Admin Commands for Beggar Management:**\n\n"
+        help_msg += "📋 **ADMIN COMMANDS:**\n"
+        help_msg += "• `!trickster beggar admin forceminigame` - Force trigger weekly minigame\n"
+        help_msg += "• `!trickster beggar admin help` - Show this admin help\n\n"
+        
+        help_msg += "🎲 **FORCED MINIGAME:**\n"
+        help_msg += "• Triggers the weekly minigame immediately\n"
+        help_msg += "• Uses current reason for the minigame\n"
+        help_msg += "• Requires: Enabled minigame, fund balance > 0, participants\n"
+        help_msg += "• Distributes gold to donors and updates relationships\n\n"
+        
+        help_msg += "⚠️ **REQUIREMENTS:**\n"
+        help_msg += "• Administrator permissions required\n"
+        help_msg += "• Minigame must be enabled in config\n"
+        help_msg += "• Gold must be available in beggar fund\n"
+        help_msg += "• At least one donor must exist\n\n"
+        
+        help_msg += "💡 **EXAMPLES:**\n"
+        help_msg += "• `!trickster beggar admin forceminigame` → Force minigame now\n"
+        
+        await send_dm_or_channel(ctx, help_msg, "📩 Beggar admin help sent by private message.")
 
     # --- !trickster ---
     cmd_trickster = bot.get_command("trickster")
@@ -353,8 +458,8 @@ def register_trickster_commands(bot, personality, agent_config):
         from .subroles.dice_game.dice_game_discord import register_dice_commands
         register_dice_commands(
             bot, personality, send_dm_or_channel, is_admin,
-            get_banker_db_instance, get_dice_game_db_instance,
-            process_play, DICE_GAME_AVAILABLE, True  # Using roles_db directly
+            get_banker_db_instance,
+            process_play, DICE_GAME_AVAILABLE
         )
         logger.info("🎲 Dice game commands imported and registered")
     except ImportError as e:
@@ -384,7 +489,8 @@ async def cmd_trickster_help(ctx):
     help_msg += "• `!trickster beggar enable` - Enable beggar on this server\n"
     help_msg += "• `!trickster beggar disable` - Disable beggar on this server\n"
     help_msg += "• `!trickster beggar frequency <hours>` - Adjust frequency (1-168 hours)\n"
-    help_msg += "• `!trickster beggar status` - Show current status\n\n"
+    help_msg += "• `!trickster beggar status` - Show current status\n"
+    help_msg += "• `!trickster beggar admin forceminigame` - Force weekly minigame\n\n"
     
     if RING_AVAILABLE:
         help_msg += "**Ring Subrole** - Ring accusations\n\n"

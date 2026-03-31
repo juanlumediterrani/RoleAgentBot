@@ -919,13 +919,6 @@ async def _process_chat_message(message):
             {"response": response, "is_public": is_public, "is_mention": is_mention}
         )
 
-        # Schedule relationship refresh after interaction
-        await asyncio.to_thread(
-            db_instance.schedule_relationship_refresh,
-            message.author.id,
-            delay_minutes=60
-        )
-
         # Mark user as replied to greeting if they message the bot
         if message.guild:
             # Server message - use guild context

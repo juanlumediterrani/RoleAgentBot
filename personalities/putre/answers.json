@@ -26,7 +26,8 @@
       "beggar_donation_request": "¡GRRR umano! putre necesita oro para {reason}! ¡dame algo o te arranko los brazos!",
       "ring_investigation": "¡UHHH umano! putre busca el anillo único. ¿lo has visto? ¿dónde? ¡no mientas o te korto la lengua!",
       "beggar_keyword_detected": "¡GRRR! ¡ke hablas de oro umano avaro! ¡putre también quiere! ¡dame algo o te robo la bolsa!",
-      "ring_keyword_detected": "¡BLEGH! ¿mencionas anillos umano? ¡putre busca uno especial! ¡dime si lo has visto o te interrogo con el acha!"
+      "ring_keyword_detected": "¡BLEGH! ¿mencionas anillos umano? ¡putre busca uno especial! ¡dime si lo has visto o te interrogo con el acha!",
+      "beggar_donation_success": "Grasia por donar {amount} de oro a causaa de Putre: {reason}! 🪙"
     },
     "dice_game_messages": {
       "invitation": "🎲 ¡BEN A JUGAR KON LOS GUESOS DE PUTRE! 🎲 ¡apuezta oro para yebarte el BOTE de la orda!",
@@ -227,6 +228,9 @@
       "specify_item_del": "❌ ¡di ke tesoro kieres kitar! ¡ejemplo: `!hunter poe2 del \"nombre del tesoro\"`",
       "list_error": "❌ ¡putre no pudo ver tu lista! {message}",
       "treasure_hunter_unavailable": "❌ ¡putre no puede zakear en eza tierra! ¡el zakeo no esta disponible!"
+    },
+    "beggar_messages": {
+      "minigame_fallback": "¡GRRR! PUTRE CAMBIO RAZON A '{new_reason}'! Gracias a los {participant_count} donantes! Todos mejoran su relación! GRAAAH!"
     }
   }
 }

@@ -7,6 +7,7 @@ import sqlite3
 import json
 from datetime import datetime
 from agent_logging import get_logger
+from agent_db import get_server_db_path_fallback
 
 logger = get_logger('db_behavior')
 
@@ -15,7 +16,7 @@ class BehaviorDB:
     
     def __init__(self, server_key: str):
         self.server_key = server_key
-        self.db_path = f"databases/{server_key}/behavior.db"
+        self.db_path = str(get_server_db_path_fallback(server_key, 'behavior'))
         self._init_db()
     
     def _init_db(self):

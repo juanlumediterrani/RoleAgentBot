@@ -300,10 +300,10 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         if last_interactions_block:
             prompt_parts.append(last_interactions_block)
         
-        # Add mission and task
+        # Add task
         prompt_parts.extend([
             "",
-            mission,
+            task,
             "",
         ])
         
@@ -340,7 +340,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
             'system',  # System accuser
             target_user_id,
             accusation,
-            f"Evidence: {result[:200]}..." if len(result) > 200 else result
+            f"Evidence: {accusation[:200]}..." if len(accusation) > 200 else accusation
         )
         
         # Save current accusation to ring state and roles table

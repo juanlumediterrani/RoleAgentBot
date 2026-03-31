@@ -24,7 +24,7 @@ def get_server_key(guild) -> str:
         active = get_active_server_name()
         if active and active.isdigit():
             return active  # Return the guild ID
-        return "1472671221027045648"  # Fallback to known server ID
+        return "0"  # Fallback to default server ID
     return str(guild.id)
 
 
@@ -62,7 +62,7 @@ def initialize_roles_from_database(agent_config=None) -> bool:
         # PRIMARY: Initialize roles_config from agent_config.json
         try:
             from agent_roles_db import get_roles_db_instance
-            default_server_id = "1472671221027045648"  # Default server
+            default_server_id = "0"  # Default server
             roles_db = get_roles_db_instance(default_server_id)
             
             # First, migrate from agent_config.json if available
@@ -98,7 +98,7 @@ def initialize_roles_from_database(agent_config=None) -> bool:
         # Verify roles_config is working by checking all roles
         try:
             from agent_roles_db import get_roles_db_instance
-            roles_db = get_roles_db_instance("1472671221027045648")
+            roles_db = get_roles_db_instance("0")
             
             all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "ring", "dice_game"]
             for role_name in all_roles:
@@ -112,7 +112,7 @@ def initialize_roles_from_database(agent_config=None) -> bool:
                         default_enabled = True
                     
                     # This will create role in roles_config if it doesn't exist
-                    config = roles_db.get_role_config(role_name, "1472671221027045648", default_enabled)
+                    config = roles_db.get_role_config(role_name, "0", default_enabled)
                 except Exception as e:
                     logger.error(f"Error verifying role {role_name} in roles_config: {e}")
                     

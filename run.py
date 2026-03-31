@@ -21,7 +21,7 @@ from agent_engine import (
     should_execute_subrole_task,
     execute_subrole_internal_task,
     generate_daily_memory_summary,
-    generate_recent_memory_summary,
+    refresh_due_recent_memories,
     refresh_due_relationship_memories,
 )
 
@@ -123,8 +123,8 @@ async def _run_server_bound_task(task_name: str, task_func):
 
 
 async def execute_recent_memory_summary():
-    server_name, summary = await _run_server_bound_task("recent_memory_summary", generate_recent_memory_summary)
-    if server_name and summary:
+    server_name, refreshed = await _run_server_bound_task("recent_memory_summary", refresh_due_recent_memories)
+    if server_name and refreshed:
         logger.info(f"[run] 🧠 Recent memory summary refreshed for '{server_name}'")
 
 
@@ -218,9 +218,7 @@ async def _execute_optional_subrole_tasks():
 
 async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dict[str, datetime]):
     task_specs = [
-        ("recent_memory", execute_recent_memory_summary, timedelta(hours=4), "Next recent memory summary"),
         ("daily_memory", execute_daily_memory_summary, timedelta(days=1), "Next daily memory summary"),
-        ("relationship_memory", execute_relationship_memory_refresh, timedelta(hours=1), "Next relationship memory refresh"),
     ]
     for task_key, task_func, interval, log_label in task_specs:
         if now < next_non_role_run[task_key]:
@@ -228,6 +226,8 @@ async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dic
         await task_func()
         next_non_role_run[task_key] = datetime.now() + interval
         logger.info(f"[run] 🧠 {log_label}: {next_non_role_run[task_key]:%Y-%m-%d %H:%M:%S}")
+    await execute_recent_memory_summary()
+    await execute_relationship_memory_refresh()
 
 
 async def _wait_for_active_server_publish(next_run: dict[str, datetime]):
@@ -252,9 +252,7 @@ async def scheduler(config: dict):
     await _wait_for_active_server_publish(next_run)
 
     next_non_role_run = {
-        "recent_memory": datetime.now(),
         "daily_memory": datetime.now(),
-        "relationship_memory": datetime.now(),
     }
 
     while True:

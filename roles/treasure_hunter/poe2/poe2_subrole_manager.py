@@ -21,6 +21,7 @@ except Exception:
 
 from .poe2scout_client import Poe2ScoutClient
 from agent_db import get_data_dir
+from agent_roles_db import get_roles_db_instance
 
 
 class POE2SubroleManager:
@@ -37,12 +38,6 @@ class POE2SubroleManager:
         # Ensure shared market data directory exists
         self.databases_dir = get_data_dir() / "shared_poe2"
         self.databases_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Initialize central hunter database
-        self._init_central_db()
-        
-        # Load activation status from database
-        self._load_activation_status()
         
         # Default objectives for each league
         self._default_objectives = {
@@ -71,71 +66,23 @@ class POE2SubroleManager:
         """Get list of admin user IDs (you can configure this)."""
         # For now, return the bot owner ID - you can expand this
         return [235796491988369408, 1162828262908645376]  # Add user ID for testing
-    
-    def _init_central_db(self):
-        """Initialize the central hunter database."""
-        # Use server-specific databases directory
-        hunter_db_path = get_data_dir() / "hunter.db"
-        
-        conn = sqlite3.connect(str(hunter_db_path))
-        
-        # Create subrole toggles table (server-level activation only)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS subrole_toggles (
-                server_id TEXT PRIMARY KEY,
-                subrole_name TEXT NOT NULL,
-                is_active INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Create user subscriptions table (user-specific league and items)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS user_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                server_id TEXT NOT NULL,
-                league TEXT NOT NULL DEFAULT 'Standard',
-                tracked_items TEXT,  -- JSON array of item IDs
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(user_id, server_id)
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
-        logger.info(f"✅ Central hunter database initialized at {hunter_db_path}")
-    
-    def get_central_db_path(self) -> Path:
-        """Get path for central hunter database."""
-        return get_data_dir() / "hunter.db"
-    
-    def _load_activation_status(self):
-        """Load activation status from database into memory cache."""
-        try:
-            conn = sqlite3.connect(str(self.get_central_db_path()))
-            cursor = conn.cursor()
-            
-            # Load subrole toggles (activation only, no league)
-            cursor.execute('SELECT server_id, is_active FROM subrole_toggles WHERE subrole_name = ?', ("poe2",))
-            rows = cursor.fetchall()
-            
-            with self._lock:
-                for server_id, is_active in rows:
-                    self._activation_status[server_id] = bool(is_active)
-                    # Don't load league here - league is now user-specific
-            
-            conn.close()
-            logger.info(f"✅ Loaded POE2 activation status for {len(rows)} servers")
-        except Exception as e:
-            logger.warning(f"⚠️ Could not load activation status from database: {e}")
+
+    def _get_roles_db(self, server_id: str):
+        return get_roles_db_instance(server_id)
     
     def is_activated(self, server_id: str) -> bool:
         """Check if POE2 is activated on a server."""
-        with self._lock:
-            return self._activation_status.get(server_id, False)
+        if not server_id:
+            return False
+        try:
+            roles_db = self._get_roles_db(server_id)
+            enabled = roles_db.is_role_enabled("poe2", server_id)
+            with self._lock:
+                self._activation_status[server_id] = enabled
+            return enabled
+        except Exception as e:
+            logger.error(f"❌ Failed to check POE2 activation on server {server_id}: {e}")
+            return False
     
     def get_active_servers(self) -> list[str]:
         """Get list of servers where POE2 is activated."""
@@ -145,22 +92,13 @@ class POE2SubroleManager:
     def activate_subrole(self, server_id: str) -> bool:
         """Activate POE2 subrole on a server."""
         try:
-            conn = sqlite3.connect(str(self.get_central_db_path()))
+            roles_db = self._get_roles_db(server_id)
+            success = roles_db.set_role_enabled("poe2", server_id, True)
+            if not success:
+                return False
             
-            # Insert or update subrole toggle (activation only)
-            conn.execute('''
-                INSERT OR REPLACE INTO subrole_toggles 
-                (server_id, subrole_name, is_active, updated_at)
-                VALUES (?, ?, 1, CURRENT_TIMESTAMP)
-            ''', (server_id, "poe2"))
-            
-            conn.commit()
-            conn.close()
-            
-            # Update memory cache
             with self._lock:
                 self._activation_status[server_id] = True
-                # Don't set server league - league is now user-specific
             
             logger.info(f"🏆 POE2 subrole activated on server {server_id}")
             return True
@@ -171,19 +109,11 @@ class POE2SubroleManager:
     def deactivate_subrole(self, server_id: str) -> bool:
         """Deactivate POE2 subrole on a server."""
         try:
-            conn = sqlite3.connect(str(self.get_central_db_path()))
+            roles_db = self._get_roles_db(server_id)
+            success = roles_db.set_role_enabled("poe2", server_id, False)
+            if not success:
+                return False
             
-            # Update subrole toggle to inactive
-            conn.execute('''
-                UPDATE subrole_toggles 
-                SET is_active = 0, updated_at = CURRENT_TIMESTAMP
-                WHERE server_id = ? AND subrole_name = ?
-            ''', (server_id, "poe2"))
-            
-            conn.commit()
-            conn.close()
-            
-            # Update memory cache
             with self._lock:
                 self._activation_status[server_id] = False
             
@@ -195,22 +125,14 @@ class POE2SubroleManager:
     
     def get_active_league(self, user_id: str, server_id: str) -> str:
         """Get the active league for a user on a server."""
-        # Check user subscription first
         try:
-            conn = sqlite3.connect(str(self.get_central_db_path()))
-            cursor = conn.cursor()
-            
-            cursor.execute('SELECT league FROM user_subscriptions WHERE user_id = ? AND server_id = ?', (user_id, server_id))
-            result = cursor.fetchone()
-            
-            conn.close()
-            
-            if result:
-                return result[0]
+            roles_db = self._get_roles_db(server_id)
+            subscription = roles_db.get_poe2_subscription(user_id, server_id)
+            if subscription:
+                return subscription.get('league', 'Standard')
         except Exception as e:
             logger.error(f"❌ Failed to get user league: {e}")
         
-        # Fallback to user preference or default
         with self._lock:
             if user_id in self._user_preferences:
                 return self._user_preferences[user_id].get('league', 'Standard')
@@ -223,15 +145,9 @@ class POE2SubroleManager:
     def get_server_leagues(self, server_id: str) -> List[str]:
         """Get all unique leagues used by users in a server."""
         try:
-            conn = sqlite3.connect(str(self.get_central_db_path()))
-            cursor = conn.cursor()
-            
-            cursor.execute('SELECT DISTINCT league FROM user_subscriptions WHERE server_id = ?', (server_id,))
-            leagues = [row[0] for row in cursor.fetchall()]
-            
-            conn.close()
-            
-            # If no user leagues, return default
+            roles_db = self._get_roles_db(server_id)
+            subscriptions = roles_db.get_poe2_server_subscriptions(server_id)
+            leagues = sorted({subscription.get('league', 'Standard') for subscription in subscriptions})
             return leagues if leagues else ['Standard']
         except Exception as e:
             logger.error(f"❌ Failed to get server leagues: {e}")
@@ -240,25 +156,17 @@ class POE2SubroleManager:
     def set_user_league(self, user_id: str, league: str, server_id: str = None) -> bool:
         """Set personal league preference for a user."""
         if not server_id:
-            # Find active server for user
             server_id = self.get_user_active_server(user_id)
             if not server_id:
                 return False
         
         try:
-            conn = sqlite3.connect(str(self.get_central_db_path()))
+            roles_db = self._get_roles_db(server_id)
+            current_subscription = roles_db.get_poe2_subscription(user_id, server_id)
+            tracked_items = current_subscription.get('tracked_items', []) if current_subscription else []
+            if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items):
+                return False
             
-            # Insert or update user subscription
-            conn.execute('''
-                INSERT OR REPLACE INTO user_subscriptions 
-                (user_id, server_id, league, tracked_items, updated_at)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ''', (user_id, server_id, league, "[]"))
-            
-            conn.commit()
-            conn.close()
-            
-            # Update memory cache
             with self._lock:
                 if user_id not in self._user_preferences:
                     self._user_preferences[user_id] = {}
@@ -274,16 +182,13 @@ class POE2SubroleManager:
     def get_user_active_server(self, user_id: str) -> str:
         """Get the server where POE2 is activated for this user."""
         with self._lock:
-            # First check if user has a preferred server
             if user_id in self._user_preferences and 'server_id' in self._user_preferences[user_id]:
                 server_id = self._user_preferences[user_id]['server_id']
-                if self._activation_status.get(server_id, False):
+                if self.is_activated(server_id):
                     return server_id
-            
-            # If no preferred server or not active, find any active server
+
             for server_id, activated in self._activation_status.items():
-                if activated:
-                    # Store this as user's preferred server
+                if activated or self.is_activated(server_id):
                     if user_id not in self._user_preferences:
                         self._user_preferences[user_id] = {}
                     self._user_preferences[user_id]['server_id'] = server_id
@@ -442,14 +347,10 @@ class POE2SubroleManager:
     
     def add_objective(self, server_id: str, user_id: str, item_name: str) -> Tuple[bool, str]:
         """Add an item to objectives for a user on a server."""
-        # If server_id is empty (DM), find any active server
         if not server_id or not self.is_activated(server_id):
-            # Find any server with POE2 activated
             active_servers = self.get_active_servers()
             if not active_servers:
                 return False, "POE2 subrole is not activated on any server."
-            
-            # Use the first active server
             server_id = active_servers[0]
         
         league = self.get_user_league(user_id, server_id)
@@ -491,10 +392,18 @@ class POE2SubroleManager:
                 INSERT INTO objectives (item_name, item_id, league, active, user_id)
                 VALUES (?, ?, ?, 1, ?)
             ''', (item_name, item_id, league, user_id))
+
+            roles_db = self._get_roles_db(server_id)
+            subscription = roles_db.get_poe2_subscription(user_id, server_id)
+            tracked_items = subscription.get('tracked_items', []) if subscription else []
+            if item_name not in tracked_items:
+                tracked_items.append(item_name)
+            if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items):
+                conn.close()
+                return False, f"Error saving subscription for '{item_name}'."
             
             conn.commit()
             
-            # Download price history for this item
             try:
                 self._download_item_history(item_name, league, item_id)
                 logger.info(f"Downloaded price history for {item_name} in {league}")
@@ -548,14 +457,10 @@ class POE2SubroleManager:
     
     def remove_objective(self, server_id: str, user_id: str, item_name: str) -> Tuple[bool, str]:
         """Remove an item from objectives for a user on a server."""
-        # If server_id is empty (DM), find any active server
         if not server_id or not self.is_activated(server_id):
-            # Find any server with POE2 activated
             active_servers = self.get_active_servers()
             if not active_servers:
                 return False, "POE2 subrole is not activated on any server."
-            
-            # Use the first active server
             server_id = active_servers[0]
         
         league = self.get_user_league(user_id, server_id)
@@ -571,6 +476,14 @@ class POE2SubroleManager:
             ''', (item_name, league, user_id))
             
             if cursor.rowcount > 0:
+                roles_db = self._get_roles_db(server_id)
+                subscription = roles_db.get_poe2_subscription(user_id, server_id)
+                tracked_items = subscription.get('tracked_items', []) if subscription else []
+                tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item != item_name]
+                if tracked_items:
+                    roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items)
+                else:
+                    roles_db.delete_poe2_subscription(user_id, server_id)
                 conn.commit()
                 conn.close()
                 return True, f"Removed '{item_name}' from objectives."
@@ -590,6 +503,14 @@ class POE2SubroleManager:
                         DELETE FROM objectives 
                         WHERE item_name = ? AND league = ? AND user_id = ?
                     ''', (item_to_remove, league, user_id))
+                    roles_db = self._get_roles_db(server_id)
+                    subscription = roles_db.get_poe2_subscription(user_id, server_id)
+                    tracked_items = subscription.get('tracked_items', []) if subscription else []
+                    tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item != item_to_remove]
+                    if tracked_items:
+                        roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items)
+                    else:
+                        roles_db.delete_poe2_subscription(user_id, server_id)
                     
                     conn.commit()
                     conn.close()
@@ -609,14 +530,10 @@ class POE2SubroleManager:
     
     def list_objectives(self, server_id: str, user_id: str) -> Tuple[bool, str]:
         """List all objectives for a user with current prices."""
-        # If server_id is empty (DM), find any active server
         if not server_id or not self.is_activated(server_id):
-            # Find any server with POE2 activated
             active_servers = self.get_active_servers()
             if not active_servers:
                 return False, "POE2 subrole is not activated on any server."
-            
-            # Use the first active server
             server_id = active_servers[0]
         
         league = self.get_user_league(user_id, server_id)
@@ -665,6 +582,25 @@ class POE2SubroleManager:
         except Exception as e:
             logger.error(f"❌ Error listing objectives: {e}")
             return False, f"Error listing objectives: {e}"
+
+    def get_all_server_subscriptions(self, server_id: str) -> List[Dict[str, object]]:
+        """Get all POE2 subscriptions for a server."""
+        try:
+            roles_db = self._get_roles_db(server_id)
+            return roles_db.get_poe2_server_subscriptions(server_id)
+        except Exception as e:
+            logger.error(f"❌ Failed to get all POE2 subscriptions for server {server_id}: {e}")
+            return []
+
+    def get_price_history(self, item_name: str, league: str):
+        """Get global price history for an item in a league."""
+        try:
+            from ..db_role_treasure_hunter import get_poe_db_instance
+            db_instance = get_poe_db_instance("default", league)
+            return db_instance.get_price_history(item_name, league)
+        except Exception as e:
+            logger.error(f"❌ Failed to get price history for {item_name} in {league}: {e}")
+            return []
 
 
 # Global instance

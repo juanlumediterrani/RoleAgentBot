@@ -146,7 +146,8 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         
         # Register interaction in database
         db_instance = get_db_for_server(after.guild)
-        interaction_message = presence_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
+        greetings_cfg = PERSONALITY.get("behaviors", {}).get("greetings", {})
+        interaction_message = greetings_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
         await asyncio.to_thread(
             db_instance.registrar_interaccion,
             after.id, after.name, "PRESENCE_DM",

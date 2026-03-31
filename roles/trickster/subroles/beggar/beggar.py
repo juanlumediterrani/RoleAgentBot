@@ -13,34 +13,27 @@ logger = get_logger('beggar')
 # Mission configuration (fallback if JSON is not available)
 MISSION_CONFIG = {
     "name": "beggar",
-    "system_prompt_addition": "ACTIVE SUBROLE - BEGGAR: You are always looking for gold and donations. When users mention money, gold, or wealth, you immediately ask for donations. You invent creative reasons why you need the gold and use intimidation or guilt to get donations."
+    "system_prompt_addition": "ACTIVE SUBROLE - BEGGAR: You are always looking for gold and donations. When users mention money, gold, or wealth, you immediately ask for donations. You invent creative reasons why you need the gold and use intimidation or guilt to get donations.",
+    "golden_rules": [
+        "golden_rules",
+        "1. CHARACTER STYLE: Maintain consistent character voice and expressions",
+        "2. PERSUASION: Convince users to donate gold for the stated reason", 
+        "3. PUBLIC: Speak in public channel so everyone hears your request",
+        "4. CONTEXT: Respond to current channel atmosphere if relevant",
+        "5. AUTHENTICITY: Act like a real character, not like a bot",
+        "6. LENGTH: 3-8 sentences (150-400 characters)",
+        "7. DIRECT: Get straight to the point with your gold request",
+        "8. EMOTIONAL: Use emotional appeals if necessary"
+    ]
 }
 
-# Load personality messages
-try:
-    import json
-    import os
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-    config_path = os.path.join(project_root, "agent_config.json")
-    with open(config_path, encoding="utf-8") as f:
-        agent_cfg = json.load(f)
-    personality_rel = agent_cfg.get("personality", "")
-    answers_path = os.path.join(project_root, os.path.dirname(personality_rel), "answers.json")
-    with open(answers_path, encoding="utf-8") as f:
-        answers_cfg = json.load(f).get("discord", {})
-    BEGGAR_MESSAGES = answers_cfg.get("role_messages", {}).get("limosna_reasons", [
-        "para traer a tu familia orca contigo",
-        "para comprar armas nuevas y hacer la guerra", 
-        "para pagar tributo al jefe orco y que no te mate",
-        "porque tienes hambre y no quieres comer carne humana otra vez"
-    ])
-except Exception:
-    BEGGAR_MESSAGES = [
-        "para traer a tu familia contigo",
-        "para comprar armas nuevas",
-        "para pagar tributo al jefe",
-        "porque tienes hambre"
-    ]
+# Neutral English fallback messages
+BEGGAR_MESSAGES = [
+    "to support your family",
+    "to buy new supplies", 
+    "to pay your debts",
+    "because you're hungry"
+]
 
 # Track last beg time per server to avoid spam
 _last_beg_time = {}

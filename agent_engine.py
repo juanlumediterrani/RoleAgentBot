@@ -120,6 +120,14 @@ def _cargar_personalidad() -> dict:
                 # Also store descriptions at root for backward compatibility
                 merged_personality['descriptions'] = descriptions_data.get('discord', {})
         
+        # Load answers.json
+        answers_file = os.path.join(personality_dir, 'answers.json')
+        if os.path.exists(answers_file):
+            with open(answers_file, encoding="utf-8") as f:
+                answers_data = json.load(f)
+                # Merge answers data under 'answers' key
+                merged_personality['answers'] = answers_data
+        
         return merged_personality
     else:
         # Load single file (legacy structure)
@@ -621,6 +629,7 @@ from agent_mind import (
     generate_daily_memory_summary,
     generate_recent_memory_summary,
     generate_user_relationship_memory_summary,
+    refresh_due_recent_memories,
     refresh_due_relationship_memories,
 )
 
@@ -730,10 +739,29 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         # Add specific reasons/methods at the end
         task_details = ""
         if subrole_name == "beggar":
-            reasons = subrole_config.get("internal_task", {}).get("reasons", [])
-            if reasons:
-                selected_reason = random.choice(reasons)
-                task_details = f"\n\nSPECIFIC REASON: {selected_reason}"
+            # Use the new beggar task system
+            from roles.trickster.subroles.beggar.beggar_task import execute_beggar_task
+            
+            # Get active server name for context
+            try:
+                from agent_runtime import get_active_server_name
+                server_name = get_active_server_name()
+                if server_name:
+                    server_id = str(server_name)
+                    
+                    # Execute the beggar task
+                    success = await execute_beggar_task(server_id, bot_instance)
+                    if success:
+                        logger.info(f"🎭 [BEGGAR] Task executed successfully for server {server_name}")
+                    else:
+                        logger.warning(f"🎭 [BEGGAR] Task execution failed for server {server_name}")
+                else:
+                    logger.warning(f"🎭 [BEGGAR] No active server found")
+            except Exception as e:
+                logger.error(f"🎭 [BEGGAR] Error in task execution: {e}")
+            
+            # Don't generate regular response for beggar, we handle it in the task
+            return
         elif subrole_name == "ring":
             # For ring, we need to execute an actual accusation
             # Get ring state to find target and check frequency
