@@ -1030,7 +1030,7 @@ def _build_conversation_user_prompt(
         golden_rules = [
             "## RESPONSE RULES:",
             "1. LENGTH: 1-3 sentences (25-200 characters).",
-            "2. GRAMMAR: No accents. End statements with '!' and questions with '?'.",
+            "2. GRAMMAR: No accents.",
             "3. Don't end sentences with single words like 'that', 'of', 'to'.",
             "4. Don't repeat what you've said, be original and creative, but stay an orc."
         ]
@@ -1187,7 +1187,7 @@ def _build_conversation_channel_prompt(
         golden_rules = [
             "## RESPONSE RULES:",
             "1. LENGTH: 1-3 sentences (25-200 characters).",
-            "2. GRAMMAR: No accents. End statements with '!' and questions with '?'.",
+            "2. GRAMMAR: No accents.",
             "3. Don't end sentences with single words like 'that', 'of', 'to'.",
             "4. Don't repeat what you've said, be original and creative, but stay an orc.",
             "5. Your al talking in a channel, you can talk in plural not only with the user that metion you."

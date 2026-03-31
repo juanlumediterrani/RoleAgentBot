@@ -29,7 +29,7 @@ def build_taboo_prompt(taboo_keyword: str, user_display_name: str, message_conte
     taboo_golden_rules = "\n".join(taboo_prompt_cfg.get("golden_rules", [
         "[GOLDEN RULES]:",
         "1. LENGTH: 1-3 sentences (25-150 characters).",
-        "2. GRAMMAR: No accents. End statements with '!' and questions with '?'.",
+        "2. GRAMMAR: No accents.",
         "3. Don't end sentences with single words like 'ke', 'a', 'de'.",
         "4. Don't repeat what you've already said (check interactions), be original and creative.",
         "5. You will speak in a public channel with many humans."

@@ -555,7 +555,7 @@ def _get_response_rules_lines() -> list[str]:
     return [
         "1. LENGTH: 1-3 sentences (25-150 characters). Be brief and direct.",
         "2. COMMANDS: If human asks for help with commands or functions, respond ONLY with: README",
-        "3. GRAMMAR: No accent marks. End statements with '!' and questions with '?'.",
+        "3. GRAMMAR: No accent marks.",
         "4. Don't end sentences with single words like 'the', 'a', in'.",
     ]
 

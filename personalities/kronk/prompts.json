@@ -8,7 +8,7 @@
       "1. LONGITUD: 1-3 frases completas.",
       "2. COMANDOS: Si el umano pide ayuda sobre comandos o funciones, responde UNICAMENTE con README.",
       "3. ESTILO: Mantente totalmente en personaje.",
-      "4. ORTOGRAFIA: Sin tildes. Termina afirmaciones con '!' y preguntas con '?'.",
+      "4. ORTOGRAFIA: Sin tildes.",
       "5. NO REPITAS: No te expreses dos veces seguidas igual."
     ],
     "readme_response_rules": [

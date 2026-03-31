@@ -11,7 +11,6 @@ logger = get_logger('postprocessor')
 MIN_SENTENCE_LENGTH = 30
 MIN_CONTEXT_LENGTH = 20
 DANGLING_REMOVAL_ATTEMPTS = 3
-PUNCTUATION_ENDINGS = ('.', '!', '?')
 
 # Essential prepositions
 ESSENTIAL_PREPOSITIONS = {
@@ -96,10 +95,6 @@ def postprocess_response(text, max_chars=280):
             last_space = recorte.rfind(" ")
             s = (recorte[:last_space] if last_space >= MIN_SENTENCE_LENGTH else recorte).rstrip()
     
-    # Ensure final punctuation only if necessary
-    if s and s[-1] not in PUNCTUATION_ENDINGS:
-        s = s + "!"
-    
     # Remove dangling phrases
     if ends_dangling(s):
         base = s.rstrip(".!? ").strip()
@@ -118,9 +113,6 @@ def postprocess_response(text, max_chars=280):
                 base = base[:cut].rstrip()
         
         s = base.strip()
-        # Add punctuation only if it doesn't have it already
-        if s and s[-1] not in PUNCTUATION_ENDINGS:
-            s = s + "!"
     
     return s
 
