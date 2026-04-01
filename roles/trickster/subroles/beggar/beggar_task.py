@@ -135,14 +135,15 @@ class BeggarDonationView(View):
                     metadata=f"reason:{self.current_reason}",
                 )
                  
-                # Get donation success message from personality
-                from agent_mind import PERSONALITY
-                donation_msg_template = PERSONALITY.get('discord', {}).get('subrole_messages', {}).get('beggar_donation_success', 
+                # Get donation success message from personality descriptions (Spanish) with English fallback
+                from discord_bot.discord_core_commands import _personality_descriptions
+                donation_msg_template = _personality_descriptions.get("trickster", {}).get("beggar", {}).get("beggar_donation_success", 
                     "Thank you for donating {amount} gold to the cause: {reason}! 🪙")
                 
                 await interaction.response.send_message(
                     donation_msg_template.format(amount=amount, reason=self.current_reason),
-                    ephemeral=True
+                    ephemeral=True,
+                    delete_after=300  # Delete after 5 minutes
                 )
                 
                 logger.info(f"{user_name} donated {amount} gold to beggar fund in server {self.server_id}")

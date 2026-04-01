@@ -42,19 +42,28 @@ def get_dice_game_messages():
         
         # Load from descriptions.json
         try:
-            descriptions_path = os.path.join(project_root, os.path.dirname(personality_rel), "descriptions.json")
-            with open(descriptions_path, encoding="utf-8") as f:
-                descriptions_cfg = json.load(f).get("discord", {})
-            
-            # Navigate to the correct path: discord.roles_view_messages.trickster.dice_game
-            roles_view = descriptions_cfg.get("roles_view_messages", {})
-            trickster = roles_view.get("trickster", {})
-            desc_dice_messages = trickster.get("dice_game", {})
+            # First try to load from the new separate trickster.json file
+            trickster_path = os.path.join(project_root, os.path.dirname(personality_rel), "descriptions", "trickster.json")
+            if os.path.exists(trickster_path):
+                with open(trickster_path, encoding="utf-8") as f:
+                    trickster_data = json.load(f)
+                desc_dice_messages = trickster_data.get("dice_game", {})
+                logger.info("🎲 Loaded dice game messages from trickster.json")
+            else:
+                # Fallback to old descriptions.json structure
+                descriptions_path = os.path.join(project_root, os.path.dirname(personality_rel), "descriptions.json")
+                with open(descriptions_path, encoding="utf-8") as f:
+                    descriptions_cfg = json.load(f).get("discord", {})
+                
+                # Navigate to the correct path: discord.roles_view_messages.trickster.dice_game
+                roles_view = descriptions_cfg.get("roles_view_messages", {})
+                trickster = roles_view.get("trickster", {})
+                desc_dice_messages = trickster.get("dice_game", {})
+                logger.info("🎲 Loaded dice game messages from descriptions.json (fallback)")
             
             combined_messages.update(desc_dice_messages)
-            logger.info("🎲 Loaded dice game messages from descriptions.json")
         except Exception as e:
-            logger.warning(f"⚠️ Could not load dice game messages from descriptions.json: {e}")
+            logger.warning(f"⚠️ Could not load dice game messages from descriptions: {e}")
 
         if not combined_messages:
             logger.warning("⚠️ No custom dice game messages found in either file")

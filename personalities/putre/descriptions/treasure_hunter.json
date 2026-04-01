@@ -1,0 +1,39 @@
+{
+    "title": "**💎 Putre Cazador de Tesoros **",
+    "description": "Haz que Putre monitorice precios de objetos en diferentes juegos y te envie alertas cuando el precio este en una zona de max/min",
+    "button": "💎 Tesoros",
+    "user_flows_title": "Flujo para el usuario",
+    "user_flows_1": "Selecciona el juego que quieres suscribirte",
+    "user_flows_2": "Navega en el para configurarlo y selecionar los items deseados.",
+    "task_map_title": "Mapa:",
+    "task_map_1": "Objetos: Se mantiene una lista con precios actualizados.",
+    "task_map_2": "Alertas: Recibe notificacines cuando el precio alcanza un umbral de compra/venta",
+    "available_subroles_title": "Subroles Disponibles",
+    "admin_flows_title": "Flujo para admin",
+    "admin_flows_1": "Navega dentro de los subroles para activarlos y configurarlos, desde su admin view.",
+    "poe2": {
+        "title": "**💎 {_bot} Tesoros en Path of Exile 2**",
+        "description": "Haz que Putre monitorice precios y te envie alertas",
+        "game_description": "Pon a prueba tu suerte con el bote de Putre! 🎲 Tira tres dados contra la banca y llevate todo el oro al lanzar un trio de unos!/n -Parejas:x1\n -Trios:x3\n -Escalera alta:x5\n",
+        "actual_league": "🏆 **Liga Aktual**: {league}",
+        "lueague_description": "Elige que liga de PoE2 quiere que Putre vigile",
+        "dropdown": {
+            "league_standard": "Liga: Estándar",
+            "league_standard_description": "Elegir liga estándar de POE2",
+            "league_fate_of_the_vaal": "Liga: Destino de los Vaal",
+            "league_fate_of_the_vaal_description": "Elegir liga Destino de los Vaal de POE2",
+            "league_hardcore": "Liga: Hardcore",
+            "league_hardcore_description": "Elegir liga Hardcore de POE2",
+            "poe2_item_add": "Objetos: Agregar",
+            "poe2_item_add_description": "Agregar nuevo objeto de POE2",
+            "poe2_item_remove": "Objetos: Eliminar",
+            "poe2_item_remove_description": "Eliminar objeto de POE2 rastreado",
+            "poe2_on": "POE2: Activar",
+            "poe2_on_description": "Activar subrol POE2",
+            "poe2_off": "POE2: Desactivar",
+            "poe2_off_description": "Desactivar subrol POE2",
+            "hunter_frequency": "Cazador: Frecuencia",
+            "hunter_frequency_description": "Establecer frecuencia de monitoreo"
+        }
+    }
+}

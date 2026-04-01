@@ -1,6 +1,9 @@
 {
   "personality": "personalities/putre/personality.json",
   "platform": "discord",
+  "llm": {
+    "max_tokens": 2048
+  },
   "roles": {
     "news_watcher": {
       "enabled": true,

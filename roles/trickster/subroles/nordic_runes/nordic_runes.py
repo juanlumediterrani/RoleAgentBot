@@ -18,15 +18,28 @@ try:
     import sys
     import os
     # Add project root to path
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from agent_mind import call_llm
+    from agent_engine import AGENT_CFG
     AI_AVAILABLE = True
     logger.info("AI system available - rune interpretations will use AI analysis")
 except ImportError:
     AI_AVAILABLE = False
     logger.warning("AI system not available, rune interpretations will use fallback method")
+    AGENT_CFG = {"personality": "personalities/putre/personality.json"}  # Fallback for testing
+
+
+def _get_personality_dir() -> str:
+    """Get the current personality directory dynamically."""
+    try:
+        personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
+        personality_path = os.path.join(project_root, personality_rel)
+        return os.path.dirname(personality_path)
+    except:
+        # Fallback to putre if something goes wrong
+        return os.path.join(project_root, "personalities", "putre")
 
 
 class NordicRunes:
@@ -102,6 +115,9 @@ class NordicRunes:
         
         # Merge rune_obj with rune_data
         rune = {**rune_data, **rune_obj}
+        
+        # Get translations for this specific rune
+        translations = translations_data.get(rune_key, {}) if translations_data and rune_key else {}
         
         interpretation = f"**{rune['symbol']} {rune['name']}**\n\n"
         
@@ -337,7 +353,7 @@ class NordicRunes:
                 
                 # Get project root and prompts path
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-                prompts_path = os.path.join(project_root, "personalities", "putre", "prompts.json")
+                prompts_path = os.path.join(_get_personality_dir(), "prompts.json")
                 
                 with open(prompts_path, encoding="utf-8") as f:
                     prompts_data = json.load(f)
@@ -400,14 +416,32 @@ class NordicRunes:
                 
                 # Get project root and descriptions path
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-                descriptions_path = os.path.join(project_root, "personalities", "putre", "descriptions.json")
+                descriptions_path = os.path.join(_get_personality_dir(), "descriptions.json")
                 
                 with open(descriptions_path, 'r', encoding='utf-8') as f:
                     descriptions = json.load(f)
                     nordic_data = descriptions.get('discord', {}).get('roles_view_messages', {}).get('trickster', {}).get('nordic_runes', {})
                     labels = nordic_data.get('labels', {})
-                    positions = nordic_data.get('positions', {})
-                    rune_translations = nordic_data.get('translations', {})
+                    
+                    # Load translations and positions from separate runesplane.json file
+                    runesplane_path = os.path.join(_get_personality_dir(), "descriptions", "runesplane.json")
+                    if os.path.exists(runesplane_path):
+                        with open(runesplane_path, 'r', encoding='utf-8') as f:
+                            runesplane_data = json.load(f)
+                            positions = runesplane_data.get('positions', {})
+                            rune_translations = runesplane_data.get('translations', {})
+                    else:
+                        # Fallback to old structure if runesplane.json doesn't exist
+                        positions = nordic_data.get('positions', {})
+                        rune_translations = nordic_data.get('translations', {})
+                    
+                    # If no labels found in main descriptions.json, try loading from trickster.json
+                    if not labels:
+                        trickster_path = os.path.join(_get_personality_dir(), "descriptions", "trickster.json")
+                        if os.path.exists(trickster_path):
+                            with open(trickster_path, 'r', encoding='utf-8') as f:
+                                trickster_data = json.load(f)
+                                labels = trickster_data.get('nordic_runes', {}).get('labels', {})
             except Exception as e:
                 # Fallback to English if translation fails
                 labels = {
@@ -415,7 +449,7 @@ class NordicRunes:
                     'rune': 'Rune', 
                     'meaning': 'Meaning',
                     'keywords': 'Keywords',
-                    'description': 'Description'
+                    'interpretation': 'Interpretation'
                 }
                 positions = {}
                 rune_translations = {}
@@ -423,24 +457,24 @@ class NordicRunes:
             for rune_info in rune_data:
                 rune = rune_info.get('rune', {})
                 position_key = rune_info.get('position', 'Unknown')
+                rune_key = rune_info.get('key', '')  # Get the key from the rune_info structure
                 
                 # Translate position name if available
                 position_name = positions.get(position_key, position_key)
                 
                 # Get rune translations if available
-                rune_key = rune.get('key', '')
                 rune_translation = rune_translations.get(rune_key, {}) if rune_key else {}
                 
                 # Use translated content if available, otherwise use English
                 meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
                 keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
-                description_text = rune_translation.get('interpretation', rune.get('description', 'Unknown'))
+                interpretation_text = rune_translation.get('interpretation', rune.get('description', 'Unknown'))
                 
                 rune_data_text += f"{labels.get('position', 'Position')}: {position_name}\n"
                 rune_data_text += f"{labels.get('rune', 'Rune')}: {rune.get('name', 'Unknown')} ({rune.get('symbol', '?')})\n"
                 rune_data_text += f"{labels.get('meaning', 'Meaning')}: {meaning_text}\n"
                 rune_data_text += f"{labels.get('keywords', 'Keywords')}: {keywords_text}\n"
-                rune_data_text += f"{labels.get('description', 'Description')}: {description_text}\n\n"
+                rune_data_text += f"{labels.get('interpretation', 'Interpretation')}: {interpretation_text}\n\n"
 
             # Step 5: Get complete guidance data from descriptions.json
             guidance_data_text = ""
@@ -450,14 +484,21 @@ class NordicRunes:
                 
                 # Get project root and descriptions path
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-                descriptions_path = os.path.join(project_root, "personalities", "putre", "descriptions.json")
+                descriptions_path = os.path.join(_get_personality_dir(), "descriptions.json")
                 
                 with open(descriptions_path, encoding="utf-8") as f:
                     descriptions_data = json.load(f)
                 
-                # Navigate to guidance data
-                nordic_runes = descriptions_data.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
-                guidance = nordic_runes.get("guidance", {})
+                # Navigate to guidance data - try runesplane.json first
+                runesplane_path = os.path.join(_get_personality_dir(), "descriptions", "runesplane.json")
+                if os.path.exists(runesplane_path):
+                    with open(runesplane_path, encoding="utf-8") as f:
+                        runesplane_data = json.load(f)
+                        guidance = runesplane_data.get("guidance", {})
+                else:
+                    # Fallback to old structure
+                    nordic_runes = descriptions_data.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
+                    guidance = nordic_runes.get("guidance", {})
                 
                 # Format all guidance categories
                 for category, category_data in guidance.items():
@@ -687,6 +728,9 @@ class NordicRunes:
             for i, rune_key in enumerate(drawn_runes_keys):
                 position = positions[i] if i < len(positions) else 'Unknown'
                 rune_data = get_rune(rune_key)
+                # Include the rune key in the rune object for translation lookup
+                rune_data_with_key = rune_data.copy()
+                rune_data_with_key['key'] = rune_key
                 drawn_runes.append({
                     'key': rune_key,
                     'name': rune_data.get('name', 'Unknown'),

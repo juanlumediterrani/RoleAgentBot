@@ -1884,11 +1884,12 @@ class DatabaseRoleNewsWatcher:
                 if result and result[0]:
                     premise_list = [p.strip() for p in result[0].split(',') if p.strip()]
                     if premise_list:
+                        # For AI subscriptions, allow use of default premises
                         # Check if these are just copies of global premises
                         global_premises = self._get_default_premises()
                         if premise_list == global_premises:
-                            # These are global copies, don't use them
-                            pass
+                            # These are global copies, but allow them for AI subscriptions
+                            return premise_list, "default"
                         else:
                             # These are actual channel-specific premises
                             return premise_list, "subscription"

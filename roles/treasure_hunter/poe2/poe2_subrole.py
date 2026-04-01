@@ -45,7 +45,10 @@ UMBRAL_VENTA = 0.15
 
 def get_db_path(server_name: str = "default") -> Path:
     """Generate the database path for the POE2 subrole."""
-    return get_server_db_path_fallback(server_name, "PoE2Subrole.db")
+    from agent_db import get_personality_name
+    personality_name = get_personality_name()
+    db_name = f"PoE2Subrole_{personality_name}.db"
+    return get_server_db_path_fallback(server_name, db_name)
 
 class DatabaseRolePoe2:
     """Database for the Treasure Hunter POE2 subrole.

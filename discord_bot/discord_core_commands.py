@@ -69,18 +69,8 @@ def _load_personality_answers() -> dict:
     return {}
 
 
-def _load_personality_descriptions() -> dict:
-    try:
-        personality_rel = AGENT_CFG.get("personality", "")
-        personality_path = Path(os.path.join(os.path.dirname(os.path.dirname(__file__)), personality_rel))
-        descriptions_path = personality_path.parent / "descriptions.json"
-        if descriptions_path.exists():
-            import json
-            with open(descriptions_path, encoding="utf-8") as f:
-                return json.load(f).get("discord", {})
-    except Exception as e:
-        logger.warning(f"Could not load personality descriptions.json: {e}")
-    return {}
+# Import descriptions loading function from agent_engine to avoid duplication
+from agent_engine import _load_personality_descriptions
 
 
 _discord_cfg = _load_personality_answers()

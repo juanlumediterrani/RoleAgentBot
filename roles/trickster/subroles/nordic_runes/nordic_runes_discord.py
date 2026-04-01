@@ -137,22 +137,18 @@ class NordicRunesCommands:
             
             logger.info(f"Reading saved with ID: {reading_id}, question: '{question}'")
             
-            # Create embed for DM
-            if discord is None:
-                # Fallback to text if discord is not available
-                return "Discord library not available for rune casting."
+            # Get message strings
+            cast_title = get_message(f"{reading_type}_cast")
+            question_label = get_message('question')
+            meaning_label = get_message('meaning')
+            keywords_label = get_message('keywords')
+            interpretation_label = get_message('interpretation')
+            success_msg = get_message('success')
+            saved_msg = get_message('saved')
             
-            embed = discord.Embed(
-                title=cast_title.replace("**", ""),
-                color=discord.Color.purple()
-            )
-            
-            # Add question field
-            embed.add_field(
-                name=question_label,
-                value=question,
-                inline=False
-            )
+            # Build plain text response
+            response = f"**{cast_title}**\n\n"
+            response += f"**{question_label}:** {question}\n\n"
             
             # Add rune display
             if 'runes_drawn' in reading and reading['runes_drawn']:
@@ -182,49 +178,38 @@ class NordicRunesCommands:
                             break
                     
                     # Create field name with position if applicable
-                    field_name = f"{rune['symbol']} {rune['name']}"
+                    rune_name = f"{rune['symbol']} {rune['name']}"
                     if position and reading_type != 'single':
                         # Translate position if available, otherwise use English
                         translated_position = positions.get(position, position)
-                        field_name = f"{translated_position}: {field_name}"
+                        response += f"**{translated_position}:** {rune_name}\n\n"
+                    else:
+                        response += f"**{rune_name}**\n\n"
                     
                     # Create field value with meaning, keywords, and interpretation
-                    field_value = ""
-                    
                     # Use translated meaning if available, otherwise English
                     meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
-                    field_value += f"**{get_message('meaning')}:** {meaning_text}\n"
+                    response += f"**{meaning_label}:** {meaning_text}\n"
                     
                     # Use translated keywords if available, otherwise English
                     keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
-                    field_value += f"**{get_message('keywords')}:** {keywords_text}\n"
+                    response += f"**{keywords_label}:** {keywords_text}\n"
                     
                     # Use translated interpretation if available, otherwise English
                     interpretation_text = rune_translation.get('interpretation', rune.get('description', 'No description'))
-                    field_value += f"**{get_message('interpretation')}:** {interpretation_text}"
-                    
-                    embed.add_field(
-                        name=field_name,
-                        value=field_value,
-                        inline=False
-                    )
+                    response += f"**{interpretation_label}:** {interpretation_text}\n\n"
             
             # Add main interpretation
-            embed.add_field(
-                name="🔮 Interpretation",
-                value=reading['interpretation'],
-                inline=False
-            )
-            
-            embed.set_footer(text=f"{success_msg} {saved_msg}")
+            response += f"🔮 **Interpretation:**\n{reading['interpretation']}\n\n"
+            response += f"_{success_msg} {saved_msg}_"
             
             # Send via DM or channel
             if send_dm_or_channel:
-                await send_dm_or_channel(ctx, embed=embed)
+                await send_dm_or_channel(ctx, response)
                 return None  # Message sent via send_dm_or_channel
             else:
                 # Fallback: return as text
-                return str(embed)
+                return response
             
         except Exception as e:
             logger.error(f"Error in rune casting: {e}")

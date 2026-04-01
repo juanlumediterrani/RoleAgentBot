@@ -6,6 +6,7 @@ import logging
 from datetime import date, datetime
 import httpx
 from typing import Any
+import json
 
 try:
     import google.genai as genai
@@ -21,6 +22,23 @@ from postprocessor import postprocess_response, is_blocked_response
 from prompts_logger import log_agent_response, log_final_llm_prompt
 
 logger = get_logger('agent_mind')
+
+# Global cache for config
+_CONFIG_CACHE = None
+
+def _get_config() -> dict:
+    """Load and cache configuration from agent_config.json"""
+    global _CONFIG_CACHE
+    if _CONFIG_CACHE is None:
+        config_path = os.path.join(os.path.dirname(__file__), 'agent_config.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            _CONFIG_CACHE = json.load(f)
+    return _CONFIG_CACHE
+
+def _get_max_tokens() -> int:
+    """Get max_tokens from configuration or default"""
+    config = _get_config()
+    return config.get('llm', {}).get('max_tokens', 1024)
 
 
 def _engine():
@@ -147,13 +165,9 @@ def _build_configured_synthesis_prompt(
             line = line.replace("{recollection_placeholder}", recollection_placeholder)
             
             processed.append(line.strip())
-            # Insert format components after the complete FORMATO line
-            processed.extend([
-                memory_title,
-                memory_placeholder,
-                recollection_title,
-                recollection_placeholder
-            ])
+            # Insert format components in compact format: ---NUEVA_MEMORIA---[placeholder]---RECUERDO_EXTRAIDO---[placeholder]
+            compact_format = f"{memory_title}{memory_placeholder}{recollection_title}{recollection_placeholder}"
+            processed.append(compact_format)
             continue  # Skip adding this line again
         
         processed.append(line.strip())
@@ -233,7 +247,6 @@ def _build_recent_memory_summary_prompt(previous_summary: str, interactions: lis
             ("PREVIOUS RECENT MEMORY:", previous_block),
             ("NEW EVENTS AND INTERACTIONS:", interactions_block),
         ],
-        fallback_closing="Return only the final recent-memory paragraph.",
     )
 
 
@@ -524,6 +537,35 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
         return new_memory, extracted
     
     # If no structured format found, try to extract content after memory title only
+    # First try compact format: ---NUEVA_MEMORIA---(content)---RECUERDO_EXTRAIDO---(content)
+    compact_patterns = [
+        rf"{re.escape(memory_title)}\s*(.*?)\s*{re.escape(recollection_title)}\s*(.*?)(?:\n|$|\Z)",
+        rf"{re.escape(memory_title_en)}\s*(.*?)\s*{re.escape(recollection_title_en)}\s*(.*?)(?:\n|$|\Z)"
+    ]
+    
+    for pattern in compact_patterns:
+        match = re.search(pattern, summary_response, re.DOTALL | re.IGNORECASE)
+        if match:
+            new_memory = match.group(1).strip()
+            extracted = match.group(2).strip()
+            
+            # Clean any remaining markers within the content
+            new_memory = re.sub(rf"{re.escape(memory_title)}\s*", "", new_memory, flags=re.IGNORECASE)
+            new_memory = re.sub(rf"{re.escape(recollection_title)}\s*", "", new_memory, flags=re.IGNORECASE)
+            new_memory = re.sub(rf"{re.escape(memory_title_en)}\s*", "", new_memory, flags=re.IGNORECASE)
+            new_memory = re.sub(rf"{re.escape(recollection_title_en)}\s*", "", new_memory, flags=re.IGNORECASE)
+            
+            extracted = re.sub(rf"{re.escape(memory_title)}\s*", "", extracted, flags=re.IGNORECASE)
+            extracted = re.sub(rf"{re.escape(recollection_title)}\s*", "", extracted, flags=re.IGNORECASE)
+            extracted = re.sub(rf"{re.escape(memory_title_en)}\s*", "", extracted, flags=re.IGNORECASE)
+            extracted = re.sub(rf"{re.escape(recollection_title_en)}\s*", "", extracted, flags=re.IGNORECASE)
+            
+            # Check if extracted matches no memory keyword
+            if extracted.upper() in [no_memory_keyword.upper(), no_memory_keyword_en.upper(), "NO MEMORY", "NONE", "", "NO_MEMORIA", "NO MEMORIA", "NO_RECOLLECTION"]:
+                return new_memory, None
+            return new_memory, extracted
+    
+    # If still no match, fall back to memory-only extraction
     fallback_patterns = [
         rf"{re.escape(memory_title)}\s*(.*?)(?:\n---|\Z)",
         rf"{re.escape(memory_title_en)}\s*(.*?)(?:\n---|\Z)"
@@ -532,7 +574,14 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
     for pattern in fallback_patterns:
         match = re.search(pattern, summary_response, re.DOTALL | re.IGNORECASE)
         if match:
-            return match.group(1).strip(), None
+            content = match.group(1).strip()
+            # Remove any remaining markers that might be within the content
+            content = re.sub(rf"{re.escape(memory_title)}\s*", "", content, flags=re.IGNORECASE)
+            content = re.sub(rf"{re.escape(recollection_title)}\s*", "", content, flags=re.IGNORECASE)
+            content = re.sub(rf"{re.escape(memory_title_en)}\s*", "", content, flags=re.IGNORECASE)
+            content = re.sub(rf"{re.escape(recollection_title_en)}\s*", "", content, flags=re.IGNORECASE)
+            if content and len(content) > 10:  # Only return if substantial content
+                return content.strip(), None
     
     # Last resort: return cleaned response (remove any markers and get content)
     # Split by markers and get the first substantial content
@@ -553,39 +602,30 @@ def generate_daily_memory_summary(server_name: str | None = None, target_date: s
         return ""
     resolved_date = target_date or date.today().isoformat()
     db_instance = get_global_db(server_name=resolved_server)
-    existing_record = db_instance.get_daily_memory_record(memory_date=resolved_date)
-    previous_summary = (existing_record or {}).get("summary", "").strip()
-    recent_record = db_instance.get_recent_memory_record(memory_date=resolved_date)
+    
+    # Get the most recent daily memory (not just today's)
+    most_recent_daily = db_instance.get_most_recent_daily_memory_record()
+    previous_summary = (most_recent_daily or {}).get("summary", "").strip()
+    
+    # Get the most recent memory record (regardless of date)
+    recent_record = db_instance.get_most_recent_memory_record()
     recent_summary = (recent_record or {}).get("summary", "").strip()
+    
+    # Apply fallback logic only for first instances
+    if not previous_summary:
+        previous_summary = _get_daily_memory_fallback()
+        logger.info(f"🧠 [DAILY_MEMORY] First instance - no daily memory found, using daily fallback")
+    else:
+        logger.info(f"🧠 [DAILY_MEMORY] Using previous daily memory from {most_recent_daily.get('memory_date', 'unknown')}")
+    
     if not recent_summary:
-        if previous_summary:
-            return previous_summary
-        # No recent summary and no previous daily summary - try to find the most recent existing daily summary
-        try:
-            with db_instance._lock:
-                import sqlite3
-                conn = sqlite3.connect(db_instance.db_path)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT summary FROM daily_memory 
-                    WHERE summary IS NOT NULL AND summary != '' 
-                    ORDER BY updated_at DESC LIMIT 1
-                """)
-                result = cursor.fetchone()
-                conn.close()
-                
-                if result and result[0] and result[0].strip():
-                    # Found existing summary, use it without saving
-                    existing_summary = result[0].strip()
-                    logger.info(f"🧠 [DAILY_MEMORY] No recent memory, using existing daily summary from history")
-                    return existing_summary
-        except Exception as e:
-            logger.debug(f"Could not retrieve existing daily memory: {e}")
-        
-        # No existing summary found, use fallback but don't save it
-        fallback = _get_daily_memory_fallback()
-        logger.info(f"🧠 [DAILY_MEMORY] No recent memory and no existing summary, using fallback without saving")
-        return fallback
+        recent_summary = _get_recent_memory_fallback()
+        logger.info(f"🧠 [DAILY_MEMORY] First instance - no recent memory found, using recent fallback")
+    else:
+        logger.info(f"🧠 [DAILY_MEMORY] Using recent memory from {recent_record.get('memory_date', 'unknown')}")
+    
+    # Now we always have both memories to combine
+    logger.info(f"🧠 [DAILY_MEMORY] Combining daily memory + recent memory")
     
     # Determine if we should inject a random recollection
     recollection_count = db_instance.count_notable_recollections()
@@ -1352,7 +1392,7 @@ def call_llm(
     async_mode: bool = False,
     call_type: str = "default",
     temperature: float | None = None,
-    max_tokens: int = 1024,
+    max_tokens: int | None = None,
     critical: bool = True,
     metadata: dict | None = None,
     logger: logging.Logger | None = None,
@@ -1368,7 +1408,7 @@ def call_llm(
         async_mode: If True, use threading (for background tasks)
         call_type: Type of call for logging ("think", "subrole_async", "daily_memory", etc.)
         temperature: Temperature override (auto-detected if None)
-        max_tokens: Maximum tokens (default 1024)
+        max_tokens: Maximum tokens (from config if None)
         critical: Whether errors should break execution
         metadata: Additional context for logging
         logger: Logger instance (auto-detected if None)
@@ -1390,6 +1430,10 @@ def call_llm(
             temperature = 0.9
         else:
             temperature = 0.95
+    
+    # Get max_tokens from config if not specified
+    if max_tokens is None:
+        max_tokens = _get_max_tokens()
     
     # Log based on criticality
     log_prefix = "🤖 [CRITICAL]" if critical else "🤖 [BACKGROUND]"
@@ -1630,7 +1674,7 @@ def _call_groq_fallback(
                 {"role": "user", "content": prompt}
             ],
             temperature=1.0,
-            max_tokens=600,
+            max_tokens=max_tokens,
             top_p=1.0,
             presence_penalty=1.0,
             frequency_penalty=1.0,

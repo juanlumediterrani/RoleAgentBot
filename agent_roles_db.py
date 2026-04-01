@@ -17,7 +17,9 @@ logger = get_logger('agent_roles_db')
 
 def get_roles_db_path(server_name: str = "default") -> Path:
     """Generate database path for roles configuration."""
-    db_name = "roles"
+    from agent_db import get_personality_name
+    personality_name = get_personality_name()
+    db_name = f"roles_{personality_name}"
     return get_server_db_path_fallback(server_name, db_name)
 
 

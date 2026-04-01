@@ -19,6 +19,23 @@ def get_watcher_messages():
         with open(answers_path, encoding="utf-8") as f:
             watcher_messages = json.load(f).get("discord", {}).get("watcher_messages", {})
         
+        # Also load from news_watcher.json for commands section
+        news_watcher_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            os.path.dirname(personality_rel),
+            "descriptions",
+            "news_watcher.json",
+        )
+        
+        try:
+            with open(news_watcher_path, encoding="utf-8") as f:
+                news_watcher_data = json.load(f)
+                commands = news_watcher_data.get("commands", {})
+                # Merge commands into watcher_messages
+                watcher_messages.update(commands)
+        except FileNotFoundError:
+            logger.warning("⚠️ news_watcher.json not found, skipping commands section")
+        
         if not watcher_messages:
             logger.warning("⚠️ No custom watcher messages found in personality")
             return get_default_messages()

@@ -60,9 +60,10 @@ from .canvas_news_watcher import (
     build_canvas_role_news_watcher,
     build_canvas_role_news_watcher_detail,
 )
-from .canvas_treasurehunter import (
+from .canvas_treasure_hunter import (
     build_canvas_role_treasure_hunter,
     build_canvas_role_treasure_hunter_detail,
+    handle_canvas_treasure_hunter_action,
 )
 from .canvas_banker import (
     build_canvas_role_banker,
@@ -132,7 +133,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         titles = {
             "home": f"🧭 {_bot_display_name} Canvas Hub",
             "behavior": behavior_title,
-            "roles": "🎭 Roles",
+            "roles": None,  # Will be set from content
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
             "help": help_title,
         }
@@ -140,7 +141,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         titles = {
             "home": f"🧭 {_bot_display_name} Canvas Hub",
             "behavior": f"⚙️ {_bot_display_name} Canvas - General Behavior",
-            "roles": "🎭 Roles",
+            "roles": None,  # Will be set from content
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
             "help": help_title,
         }
@@ -153,6 +154,13 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
     }
     lines = [line.strip() for line in content.splitlines() if line.strip()]
     description = ""
+    
+    # Extract title from content for roles section
+    if section_name == "roles" and lines:
+        # The first line should be the title from _build_canvas_roles
+        first_line = lines[0]
+        if first_line and not first_line.startswith("**"):
+            titles["roles"] = first_line
 
     if section_name == "home":
         personality_line = next((line for line in lines if line.startswith("**Personality:**")), "")
@@ -173,6 +181,10 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
     elif section_name == "behavior":
         description = "Shared bot behavior that sits above any individual role."
 
+    # Fallback title if none was extracted
+    if titles.get(section_name) is None:
+        titles[section_name] = f"{_bot_display_name} Canvas"
+
     embed = discord.Embed(
         title=titles.get(section_name, f"{_bot_display_name} Canvas"),
         description=description[:4096],
@@ -185,6 +197,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         filtered_lines = [
             line for line in block_lines
             if not (section_name in {"home", "home_status"} and (line.startswith("**Personality:**") or line.startswith("**Active roles:**")))
+            and not (section_name == "roles" and index == 0 and block_lines and line == titles.get("roles"))
         ]
         value = "\n".join(filtered_lines)[:1024]
         if value:
@@ -433,7 +446,7 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
         "ring_admin": "ring",
         "beggar": "beggar",
         "beggar_admin": "beggar",
-        "runes": "runes",
+        "runes": "",  # Empty string indicates navigation to role overview
         "runes_admin": "runes",
     }
     trickster_admin_map = {
@@ -444,14 +457,14 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
         "beggar": "beggar_admin",
         "beggar_admin": "beggar_admin",
         "runes": "runes_admin",
-        "runes_admin": "runes_admin",
+        "runes_admin": "runes",
     }
     items_map: dict[str, list[tuple[str, str]]] = {
         "news_watcher": [
             ("Personal", "personal"),
         ] + ([("Admin", "admin")] if admin_visible else []),
         "treasure_hunter": [
-            # Show Items and League buttons in POE2 subrol views, but not in main treasure_hunter overview
+            # Main overview shows POE2 subrole button via CanvasTreasureHunterPoe2Button, internal views show navigation
         ] + ([("Items", "personal"), ("League", "league")] if current_detail in {"personal", "league"} else []) + ([("Admin", "admin")] if admin_visible and current_detail in {"personal", "league", "admin"} else []),
         "trickster": (
             # Regular subrole views
@@ -467,7 +480,7 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
             (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("ring", "Ring"), "ring"),
             (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("beggar", "Beggar"), "beggar"),
             (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("runes", "Runes"), "runes"),
-        ],
+        ] if current_detail not in {"dice", "ring", "beggar", "runes", "dice_admin", "ring_admin", "beggar_admin", "runes_admin"} else [],
         "banker": [
             ("Personal", "overview"),  # Personal maps to overview since they're the same view
         ] + ([("Admin", "admin")] if admin_visible else []),
@@ -475,14 +488,64 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
             ("Personal", "overview"),
         ],
     }
-    return items_map.get(role_name, [])
+    
+    # Special handling for treasure_hunter POE2 subroles
+    if role_name == "treasure_hunter" and current_detail in {"personal", "league", "admin"}:
+        # Don't return from items_map, let specific treasure_hunter logic handle these
+        pass
+    elif role_name == "treasure_hunter":
+        # For other treasure_hunter details, use items_map
+        return items_map.get(role_name, [])
+    else:
+        # For non-treasure_hunter roles, use items_map
+        return items_map.get(role_name, [])
+
+    # Specific treasure_hunter logic for POE2 subroles
+    if role_name == "treasure_hunter":
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {})
+        treasure_hunter = roles_view.get("treasure_hunter", {})
+        poe2 = treasure_hunter.get("poe2", {})
+        
+        # Use poe2.dropdown for the dropdown options
+        hunter_descriptions = poe2.get("dropdown", {})
+        
+        # Ensure hunter_descriptions is a dict
+        if not isinstance(hunter_descriptions, dict):
+            hunter_descriptions = {}
+        
+        def _hunter_text(key: str, fallback: str) -> str:
+            value = hunter_descriptions.get(key)
+            return str(value).strip() if value else fallback
+        
+        if current_detail in {"league", "personal", "admin"}:
+            return [
+                ("Items", "personal"),
+                ("League", "league"),
+                ("Admin", "admin"),
+            ] if admin_visible else [
+                ("Items", "personal"),
+                ("League", "league"),
+            ]
+        # If no specific detail matched, return empty list for treasure_hunter
+        return []
 
 
 def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
     if role_name == "news_watcher":
-        # Get news_watcher descriptions for action items
-        _personality_descriptions = core._personality_descriptions
-        news_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("canvas", {}).get("dropdown", {})
+        # Get news_watcher descriptions for action items with robust fallbacks
+        _personality_descriptions = core._personality_descriptions or {}
+        
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {})
+        news_watcher = roles_view.get("news_watcher", {})
+        
+        # Now dropdown is directly in news_watcher, not nested under canvas
+        news_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
+        
+        # Ensure news_descriptions is a dict
+        if not isinstance(news_descriptions, dict):
+            news_descriptions = {}
         
         def _news_text(key: str, fallback: str) -> str:
             value = news_descriptions.get(key)
@@ -503,9 +566,20 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         return []
 
     if role_name == "treasure_hunter":
-        # Get treasure_hunter descriptions for action items
-        _personality_descriptions = core._personality_descriptions
-        hunter_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("canvas", {}).get("dropdown", {})
+        # Get treasure_hunter descriptions for action items with robust fallbacks
+        _personality_descriptions = core._personality_descriptions or {}
+        
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {})
+        treasure_hunter = roles_view.get("treasure_hunter", {})
+        poe2 = treasure_hunter.get("poe2", {})
+        
+        # Use poe2.dropdown for the dropdown options
+        hunter_descriptions = poe2.get("dropdown", {})
+        
+        # Ensure hunter_descriptions is a dict
+        if not isinstance(hunter_descriptions, dict):
+            hunter_descriptions = {}
         
         def _hunter_text(key: str, fallback: str) -> str:
             value = hunter_descriptions.get(key)
@@ -528,12 +602,41 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (_hunter_text("poe2_off", "POE2: Off"), "poe2_off", _hunter_text("poe2_off_description", "Deactivate POE2 subrole"), "❌"),
                 (_hunter_text("hunter_frequency", "Hunter: Frequency"), "hunter_frequency", _hunter_text("hunter_frequency_description", "Number input target"), "⏰"),
             ]
+        # If no specific detail matched, return empty list for treasure_hunter
         return []
 
     if role_name == "trickster":
-        # Get trickster descriptions for action items
-        _personality_descriptions = core._personality_descriptions
-        trickster_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("canvas", {}).get("dropdown", {})
+        # Get trickster descriptions for action items with robust fallbacks
+        _personality_descriptions = core._personality_descriptions or {}
+        
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {})
+        trickster = roles_view.get("trickster", {})
+        
+        # Initialize empty dropdown descriptions
+        trickster_descriptions = {}
+        
+        # Collect dropdown items from relevant subroles based on detail_name
+        if detail_name in {"dice", "game"}:
+            dice_dropdown = trickster.get("dice_game", {}).get("dropdown", {})
+            if isinstance(dice_dropdown, dict):
+                trickster_descriptions.update(dice_dropdown)
+        elif detail_name in {"ring", "ring_admin"}:
+            ring_dropdown = trickster.get("ring", {}).get("dropdown", {})
+            if isinstance(ring_dropdown, dict):
+                trickster_descriptions.update(ring_dropdown)
+        elif detail_name in {"beggar", "beggar_admin"}:
+            beggar_dropdown = trickster.get("beggar", {}).get("dropdown", {})
+            if isinstance(beggar_dropdown, dict):
+                trickster_descriptions.update(beggar_dropdown)
+        elif detail_name in {"runes", "runes_admin"}:
+            runes_dropdown = trickster.get("nordic_runes", {}).get("dropdown", {})
+            if isinstance(runes_dropdown, dict):
+                trickster_descriptions.update(runes_dropdown)
+        
+        # Ensure trickster_descriptions is a dict
+        if not isinstance(trickster_descriptions, dict):
+            trickster_descriptions = {}
         
         def _trickster_text(key: str, fallback: str) -> str:
             value = trickster_descriptions.get(key)
@@ -554,7 +657,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (_dice_text("dice_play", "Dice: Play"), "dice_play", _dice_text("dice_play_description", "Play action"), "🎲"),
                 (_dice_text("dice_ranking", "Dice: Ranking"), "dice_ranking", _dice_text("dice_ranking_description", "Ranking action"), "🏆"),
                 (_dice_text("dice_history", "Dice: History"), "dice_history", _dice_text("dice_history_description", "History action"), "📜"),
-                (_dice_text("dice_stats", "Dice: Stats"), "dice_stats", _dice_text("dice_stats_description", "Stats action"), "📊"),
+                (_dice_text("dice_stats", "Dice: Stats"), "dice_help", _dice_text("dice_stats_description", "Stats action"), "📊"),
             ]
         if detail_name == "runes":
             # Check if runes subrole is enabled
@@ -572,7 +675,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             # Get personality messages for dropdown labels
             roles_messages = _personality_descriptions.get("roles_view_messages", {})
             nordic_runes_messages = roles_messages.get("trickster", {}).get("nordic_runes", {})
-            canvas_labels = nordic_runes_messages.get("canvas", {}).get("dropdown", {})
+            canvas_labels = nordic_runes_messages.get("dropdown", {})
             
             def _runes_text(key: str, fallback: str) -> str:
                 value = canvas_labels.get(key)
@@ -603,9 +706,19 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (canvas_labels.get("runes_runes_3", english_fallbacks["runes_runes_3"]), "runes_runes_3", _runes_text("runes_runes_3_description", "Action"), "🗻"),
             ]
         if detail_name == "dice_admin" and admin_visible:
-            # Get dice_game descriptions for action items
-            _personality_descriptions = core._personality_descriptions
-            dice_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+            # Get dice_game descriptions for action items with robust fallbacks
+            _personality_descriptions = core._personality_descriptions or {}
+            
+            # Safe nested access with fallbacks
+            roles_view = _personality_descriptions.get("roles_view_messages", {})
+            trickster = roles_view.get("trickster", {})
+            dice_game = trickster.get("dice_game", {})
+            
+            # Ensure dice_descriptions is a dict
+            if not isinstance(dice_game, dict):
+                dice_descriptions = {}
+            else:
+                dice_descriptions = dice_game
             
             def _dice_text(key: str, fallback: str) -> str:
                 value = dice_descriptions.get(key)
@@ -622,9 +735,19 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (_trickster_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _trickster_text("ring_accuse_description", "User target input"), "👁️"),
             ]
         if detail_name == "ring_admin" and admin_visible:
-            # Get ring descriptions for action items
-            _personality_descriptions = core._personality_descriptions
-            ring_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+            # Get ring descriptions for action items with robust fallbacks
+            _personality_descriptions = core._personality_descriptions or {}
+            
+            # Safe nested access with fallbacks
+            roles_view = _personality_descriptions.get("roles_view_messages", {})
+            trickster = roles_view.get("trickster", {})
+            dice_game = trickster.get("dice_game", {})
+            
+            # Ensure ring_descriptions is a dict
+            if not isinstance(dice_game, dict):
+                ring_descriptions = {}
+            else:
+                ring_descriptions = dice_game
             
             def _ring_text(key: str, fallback: str) -> str:
                 value = ring_descriptions.get(key)
@@ -658,9 +781,18 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             # Overview shows wallet info, no specific actions
             return []
         if detail_name == "admin" and admin_visible:
-            # Get banker descriptions for action items
-            _personality_descriptions = core._personality_descriptions
-            banker_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("banker", {})
+            # Get banker descriptions for action items with robust fallbacks
+            _personality_descriptions = core._personality_descriptions or {}
+            
+            # Safe nested access with fallbacks
+            roles_view = _personality_descriptions.get("roles_view_messages", {})
+            banker = roles_view.get("banker", {})
+            
+            # Ensure banker_descriptions is a dict
+            if not isinstance(banker, dict):
+                banker_descriptions = {}
+            else:
+                banker_descriptions = banker
             
             def _banker_text(key: str, fallback: str) -> str:
                 value = banker_descriptions.get(key)
@@ -672,9 +804,18 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
     
     if role_name == "mc":
-        # Get MC descriptions for action items
-        _personality_descriptions = core._personality_descriptions
-        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        # Get MC descriptions for action items with robust fallbacks
+        _personality_descriptions = core._personality_descriptions or {}
+        
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {})
+        mc = roles_view.get("mc", {})
+        
+        # Ensure mc_descriptions is a dict
+        if not isinstance(mc, dict):
+            mc_descriptions = {}
+        else:
+            mc_descriptions = mc
         
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
@@ -962,7 +1103,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     server_name = "Server"  # We don't have guild context here
     
     # Title and description from descriptions.json with fallback
-    title = roles_messages.get("title", f"🎭 PUTRE ROLE MANAGER - {server_name} 🎭\n")
+    title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_name} 🎭")
     description = roles_messages.get("description", "🌟 Putre the role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.")
     
     # Helper messages
@@ -971,6 +1112,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     inactive_status = roles_messages.get("inactive_status", "❌ INACTIVE")
     
     parts = [
+        title,  # Add title as first line
         description,
         "──────────────────────────────",
         ""

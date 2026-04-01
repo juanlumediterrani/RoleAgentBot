@@ -1,4 +1,6 @@
-"""Canvas News Watcher content builders."""
+"""Canvas News Watcher content builders and UI components."""
+
+import discord
 
 from discord_bot import discord_core_commands as core
 from .state import _get_canvas_watcher_method_label, _get_canvas_watcher_frequency_hours
@@ -10,6 +12,1149 @@ _personality_descriptions = core._personality_descriptions
 _bot_display_name = core._bot_display_name
 
 
+def _build_watcher_role_embed(role_name: str, content: str, admin_visible: bool, surface_name: str, user=None, auto_response: str | None = None):
+    from .content import _build_canvas_role_embed
+    return _build_canvas_role_embed(role_name, content, admin_visible, surface_name, user, auto_response)
+
+
+def _get_watcher_auto_response_preview(role_name: str, action_name: str | None = None):
+    from .content import _get_canvas_auto_response_preview
+    return _get_canvas_auto_response_preview(role_name, action_name)
+
+
+def _build_watcher_next_view(view, interaction: discord.Interaction, current_detail: str, auto_response_preview: str | None = None):
+    from .ui import CanvasRoleDetailView
+
+    next_view = CanvasRoleDetailView(
+        author_id=view.author_id,
+        role_name=view.role_name,
+        agent_config=view.agent_config,
+        admin_visible=view.admin_visible,
+        sections=view.sections,
+        current_detail=current_detail,
+        guild=view.guild,
+        message=interaction.message,
+        watcher_selected_method=view.watcher_selected_method,
+        watcher_last_action=view.watcher_last_action,
+        watcher_selected_category=getattr(view, 'watcher_selected_category', None),
+        previous_view=view,
+    )
+    next_view.auto_response_preview = auto_response_preview
+    return next_view
+
+
+class CanvasWatcherMethodSelect(discord.ui.Select):
+    """Dynamic method selection dropdown for News Watcher."""
+
+    def __init__(self, view):
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
+        news_watcher = roles_view.get("news_watcher", {})
+        
+        # Now dropdown is directly in news_watcher, not nested under canvas
+        watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
+        
+        # Ensure watcher_descriptions is a dict
+        if not isinstance(watcher_descriptions, dict):
+            watcher_descriptions = {}
+
+        def _watcher_text(key: str, fallback: str) -> str:
+            value = watcher_descriptions.get(key)
+            return str(value).strip() if value else fallback
+
+        options = [
+            discord.SelectOption(label=_watcher_text("method_flat", "Method: Flat"), value="method_flat", description=_watcher_text("option_flat_description", "All news with AI opinions"), emoji="📰"),
+            discord.SelectOption(label=_watcher_text("method_keyword", "Method: Keyword"), value="method_keyword", description=_watcher_text("option_keyword_description", "News filtered by keywords"), emoji="🔍"),
+            discord.SelectOption(label=_watcher_text("method_general", "Method: General"), value="method_general", description=_watcher_text("option_general_description", "AI critical news analysis"), emoji="🤖"),
+        ]
+        placeholder = _watcher_text("select_method", "🔧 Select method...")
+        if view.watcher_selected_method:
+            method_display = view.watcher_selected_method.title()
+            placeholder = _watcher_text("method_selected", f"🔧 Method: {method_display} (selected)").format(method=method_display)
+
+        super().__init__(placeholder=placeholder, options=options, min_values=1, max_values=1, row=0)
+        self.canvas_view = view
+
+    async def callback(self, interaction: discord.Interaction):
+        action_name = self.values[0]
+        self.canvas_view.watcher_selected_method = action_name.replace("method_", "")
+        self.canvas_view.watcher_last_action = None
+        self.canvas_view.auto_response_preview = _get_watcher_auto_response_preview(self.canvas_view.role_name, action_name)
+
+        for child in self.canvas_view.children:
+            if isinstance(child, CanvasWatcherSubscriptionSelect):
+                child.set_method(self.canvas_view.watcher_selected_method)
+                break
+
+        await handle_canvas_watcher_action(interaction, action_name, self.canvas_view)
+
+
+class CanvasWatcherSubscriptionSelect(discord.ui.Select):
+    """Dynamic subscription dropdown for News Watcher based on selected method."""
+
+    def _watcher_text(self, key: str, fallback: str) -> str:
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
+        news_watcher = roles_view.get("news_watcher", {})
+        
+        # Now dropdown is directly in news_watcher, not nested under canvas
+        watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
+        
+        # Ensure watcher_descriptions is a dict
+        if not isinstance(watcher_descriptions, dict):
+            watcher_descriptions = {}
+            
+        value = watcher_descriptions.get(key)
+        return str(value).strip() if value else fallback
+
+    def __init__(self, view):
+        super().__init__(placeholder=self._watcher_text("select_action", "📋 Select action..."), options=self._build_options(view.watcher_selected_method), min_values=1, max_values=1, row=1)
+        self.canvas_view = view
+
+    def _build_options(self, method: str | None) -> list[discord.SelectOption]:
+        options = [
+            discord.SelectOption(label=self._watcher_text("categories", "Categories"), value="list_categories", description=self._watcher_text("categories_description", "List available categories"), emoji="📂"),
+            discord.SelectOption(label=self._watcher_text("feeds_by_category", "Feeds by Category"), value="list_feeds_by_category", description=self._watcher_text("feeds_by_category_description", "List feeds from a specific category"), emoji="🔗"),
+        ]
+        if method:
+            subscribe_desc = self._watcher_text("subscribe_categories_description", "Subscribe to categories with {method} method")
+            options.append(discord.SelectOption(label=self._watcher_text("subscribe_categories", "Subscribe Categories"), value="subscribe_categories", description=subscribe_desc.format(method=method), emoji="➕"))
+            options.append(discord.SelectOption(label=self._watcher_text("unsubscribe", "Unsubscribe"), value="unsubscribe", description=self._watcher_text("unsubscribe_description", "Unsubscribe from your subscriptions"), emoji="🗑️"))
+        if method == "keyword":
+            options.append(discord.SelectOption(label=self._watcher_text("keywords", "Keywords"), value="list_keywords", description=self._watcher_text("keywords_description", "View your configured keywords"), emoji="🔍"))
+            options.append(discord.SelectOption(label=self._watcher_text("add_keywords", "Add Keywords"), value="add_keywords", description=self._watcher_text("add_keywords_description", "Add new keywords"), emoji="➕"))
+            options.append(discord.SelectOption(label=self._watcher_text("delete_keywords", "Delete Keywords"), value="delete_keywords", description=self._watcher_text("delete_keywords_description", "Remove keywords"), emoji="🗑️"))
+        elif method == "general":
+            options.append(discord.SelectOption(label=self._watcher_text("premises", "Premises"), value="list_premises", description=self._watcher_text("premises_description", "View your AI analysis premises"), emoji="🤖"))
+            options.append(discord.SelectOption(label=self._watcher_text("add_premises_new", "Add Premises"), value="add_premises", description=self._watcher_text("add_premises_new_description", "Add new premises"), emoji="➕"))
+            options.append(discord.SelectOption(label=self._watcher_text("delete_premises_new", "Delete Premises"), value="delete_premises", description=self._watcher_text("delete_premises_new_description", "Remove premises"), emoji="🗑️"))
+        return options
+
+    def set_method(self, method: str | None) -> None:
+        self.options = self._build_options(method)
+
+    async def callback(self, interaction: discord.Interaction):
+        action_name = self.values[0]
+        self.canvas_view.watcher_last_action = action_name
+
+        if action_name == "subscribe_categories":
+            await interaction.response.send_modal(CanvasWatcherSubscribeModal(action_name, self.canvas_view, interaction.client))
+            return
+        if action_name == "unsubscribe":
+            await interaction.response.send_modal(CanvasWatcherPersonalUnsubscribeModal(self.canvas_view, interaction.client))
+            return
+        if action_name in {"add_keywords", "add_premises"}:
+            await interaction.response.send_modal(CanvasWatcherAddModal(action_name, self.canvas_view, interaction.client))
+            return
+        if action_name in {"delete_keywords", "delete_premises"}:
+            await interaction.response.send_modal(CanvasWatcherDeleteModal(action_name, self.canvas_view, interaction.client))
+            return
+        if action_name in {"list_categories", "list_feeds", "list_keywords", "list_premises"}:
+            content = build_canvas_role_news_watcher_detail(
+                self.canvas_view.current_detail,
+                self.canvas_view.admin_visible,
+                self.canvas_view.guild,
+                self.canvas_view.author_id,
+                selected_method=self.canvas_view.watcher_selected_method,
+                last_action=action_name,
+            )
+            next_view = _build_watcher_next_view(self.canvas_view, interaction, self.canvas_view.current_detail, self.canvas_view.auto_response_preview)
+            embed = _build_watcher_role_embed(self.canvas_view.role_name, content or "", self.canvas_view.admin_visible, self.canvas_view.current_detail, None, next_view.auto_response_preview)
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            return
+        if action_name == "list_feeds_by_category":
+            await interaction.response.send_modal(CanvasWatcherFeedsByCategoryModal(self.canvas_view))
+
+
+class CanvasWatcherAdminMethodSelect(discord.ui.Select):
+    """Dynamic method selection dropdown for News Watcher Admin."""
+
+    def __init__(self, view):
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
+        news_watcher = roles_view.get("news_watcher", {})
+        
+        # Now dropdown is directly in news_watcher, not nested under canvas
+        watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
+        
+        # Ensure watcher_descriptions is a dict
+        if not isinstance(watcher_descriptions, dict):
+            watcher_descriptions = {}
+
+        def _watcher_text(key: str, fallback: str) -> str:
+            value = watcher_descriptions.get(key)
+            return str(value).strip() if value else fallback
+
+        options = [
+            discord.SelectOption(label=_watcher_text("method_flat", "Method: Flat"), value="method_flat", description=_watcher_text("option_flat_description", "All news with AI opinions (server default)"), emoji="📰"),
+            discord.SelectOption(label=_watcher_text("method_keyword", "Method: Keyword"), value="method_keyword", description=_watcher_text("option_keyword_description", "News filtered by keywords (server default)"), emoji="🔍"),
+            discord.SelectOption(label=_watcher_text("method_general", "Method: General"), value="method_general", description=_watcher_text("option_general_description", "AI critical news analysis (server default)"), emoji="🤖"),
+        ]
+        placeholder = _watcher_text("set_channel_method", "🔧 Set channel method...")
+        if view.watcher_selected_method:
+            method_display = view.watcher_selected_method.title()
+            placeholder = _watcher_text("server_method_selected", f"🔧 Server Method: {method_display} (selected)").format(method=method_display)
+
+        super().__init__(placeholder=placeholder, options=options, min_values=1, max_values=1, row=0)
+        self.canvas_view = view
+
+    async def callback(self, interaction: discord.Interaction):
+        action_name = self.values[0]
+        self.canvas_view.watcher_selected_method = action_name.replace("method_", "")
+        self.canvas_view.watcher_last_action = None
+        self.canvas_view.auto_response_preview = _get_watcher_auto_response_preview(self.canvas_view.role_name, action_name)
+        for child in self.canvas_view.children:
+            if isinstance(child, CanvasWatcherAdminActionSelect):
+                child.update_options_for_method(self.canvas_view.watcher_selected_method)
+                break
+        await handle_canvas_watcher_action(interaction, action_name, self.canvas_view)
+
+
+class CanvasWatcherAdminActionSelect(discord.ui.Select):
+    """Dynamic admin action dropdown for News Watcher."""
+
+    def __init__(self, view):
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
+        news_watcher = roles_view.get("news_watcher", {})
+        
+        # Now dropdown is directly in news_watcher, not nested under canvas
+        watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
+        
+        # Ensure watcher_descriptions is a dict
+        if not isinstance(watcher_descriptions, dict):
+            watcher_descriptions = {}
+
+        def _watcher_text(key: str, fallback: str) -> str:
+            value = watcher_descriptions.get(key)
+            return str(value).strip() if value else fallback
+
+        self._watcher_text = _watcher_text
+        options = self._build_options(getattr(view, 'watcher_selected_method', None))
+        super().__init__(placeholder=_watcher_text("select_admin_action", "⚙️ Select admin action..."), options=options, min_values=1, max_values=1, row=1)
+        self.canvas_view = view
+
+    def _build_options(self, method: str | None) -> list[discord.SelectOption]:
+        base_options = [
+            discord.SelectOption(label=self._watcher_text("feeds_by_category", "Feeds by Category"), value="list_feeds_by_category", description=self._watcher_text("feeds_by_category_description", "List feeds from a specific category"), emoji="🔗"),
+            discord.SelectOption(label=self._watcher_text("list_categories", "List categories"), value="list_categories", description=self._watcher_text("list_categories_description", "List available categories"), emoji="📂"),
+        ]
+        if method == "general":
+            method_specific_options = [
+                discord.SelectOption(label=self._watcher_text("subscribe_category", "Subscribe Category"), value="channel_subscribe_category", description=self._watcher_text("subscribe_category_description", "Subscribe category <name> <optional feed> for channel"), emoji="➕"),
+                discord.SelectOption(label=self._watcher_text("unsubscribe_category", "Unsubscribe Category"), value="channel_unsubscribe_category", description=self._watcher_text("unsubscribe_category_description", "Unsubscribe category <name> <optional feed> for channel"), emoji="🗑️"),
+                discord.SelectOption(label=self._watcher_text("list_premises", "List premises"), value="list_premises", description=self._watcher_text("list_premises_description", "List premises for next subscription for channel"), emoji="🤖"),
+                discord.SelectOption(label=self._watcher_text("add_premise", "Add premise"), value="add_premise", description=self._watcher_text("add_premises_description", "Add new premise for channel"), emoji="➕"),
+                discord.SelectOption(label=self._watcher_text("delete_premise", "Delete premise"), value="delete_premise", description=self._watcher_text("delete_premise_description", "Delete premise <number> for current"), emoji="🗑️"),
+            ]
+        elif method == "keyword":
+            method_specific_options = [
+                discord.SelectOption(label=self._watcher_text("subscribe_category", "Subscribe Category"), value="channel_subscribe_category", description=self._watcher_text("subscribe_category_description", "Subscribe category <name> <optional feed> for channel"), emoji="➕"),
+                discord.SelectOption(label=self._watcher_text("unsubscribe_category", "Unsubscribe Category"), value="channel_unsubscribe_category", description=self._watcher_text("unsubscribe_category_description", "Unsubscribe category <name> <optional feed> for channel"), emoji="🗑️"),
+                discord.SelectOption(label=self._watcher_text("list_keywords", "List keywords"), value="list_keywords", description=self._watcher_text("list_keywords_description", "List keywords for channel"), emoji="🔍"),
+                discord.SelectOption(label=self._watcher_text("add_keywords", "Add keywords"), value="add_keywords", description=self._watcher_text("add_keywords_description", "Add new keywords for channel"), emoji="➕"),
+                discord.SelectOption(label=self._watcher_text("delete_keywords", "Delete keywords"), value="delete_keywords", description=self._watcher_text("delete_keywords_description", "Delete keywords for channel"), emoji="🗑️"),
+            ]
+        else:
+            method_specific_options = [
+                discord.SelectOption(label=self._watcher_text("subscribe_category", "Subscribe Category"), value="channel_subscribe_category", description=self._watcher_text("subscribe_category_description", "Subscribe category <name> <optional feed> for channel"), emoji="➕"),
+                discord.SelectOption(label=self._watcher_text("unsubscribe_category", "Unsubscribe Category"), value="channel_unsubscribe_category", description=self._watcher_text("unsubscribe_category_description", "Unsubscribe category <name> <optional feed> for channel"), emoji="🗑️"),
+            ]
+        server_options = [
+            discord.SelectOption(label=self._watcher_text("modify_watcher_frequency", "Modify watcher task frequency"), value="watcher_frequency", description=self._watcher_text("modify_watcher_frequency_description", "Set news check frequency"), emoji="⏰"),
+            discord.SelectOption(label=self._watcher_text("force_watcher_channel", "Force watcher channel now"), value="watcher_run_now", description=self._watcher_text("force_watcher_channel_description", "Run news check immediately"), emoji="▶️"),
+            discord.SelectOption(label=self._watcher_text("force_personal_subscriptions", "Force personal subscriptions now"), value="watcher_run_personal", description=self._watcher_text("force_personal_subscriptions_description", "Run personal subscriptions immediately"), emoji="👤"),
+        ]
+        return base_options + method_specific_options + server_options
+
+    def update_options_for_method(self, method: str):
+        self.options = self._build_options(method)
+
+    async def callback(self, interaction: discord.Interaction):
+        action_name = self.values[0]
+        self.canvas_view.watcher_last_action = action_name
+        if action_name in {"list_categories", "list_feeds", "list_premises", "list_keywords"}:
+            content = build_canvas_role_news_watcher_detail(
+                "admin",
+                self.canvas_view.admin_visible,
+                self.canvas_view.guild,
+                self.canvas_view.author_id,
+                selected_method=self.canvas_view.watcher_selected_method,
+                last_action=action_name,
+                selected_category=getattr(self.canvas_view, 'watcher_selected_category', None),
+            )
+            embed = _build_watcher_role_embed(self.canvas_view.role_name, content or "", self.canvas_view.admin_visible, "admin", None, self.canvas_view.auto_response_preview)
+            if not interaction.response.is_done():
+                await interaction.response.edit_message(content=None, embed=embed, view=self.canvas_view)
+            return
+        if action_name == "list_feeds_by_category":
+            if not interaction.response.is_done():
+                await interaction.response.send_modal(CanvasWatcherFeedsByCategoryModal(self.canvas_view))
+            return
+        await handle_canvas_watcher_action(interaction, action_name, self.canvas_view)
+
+
+class CanvasWatcherSubscribeModal(discord.ui.Modal):
+    def __init__(self, action_name: str, view, bot):
+        self.action_name = action_name
+        self.view = view
+        self.bot = bot
+        super().__init__(title="Subscribe to Categories", timeout=300)
+        self.category_input = discord.ui.TextInput(label="Category", placeholder="Enter category (economy, technology, gaming, international, general, crypto)...", style=discord.TextStyle.short, required=True, max_length=50)
+        self.add_item(self.category_input)
+        self.feed_id_input = discord.ui.TextInput(label="Feed ID (Optional)", placeholder="Enter specific feed ID number, 'all' for all feeds, or leave empty for first feed...", style=discord.TextStyle.short, required=False, max_length=10, default="")
+        self.add_item(self.feed_id_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            from roles.news_watcher.watcher_commands import WatcherCommands
+
+            class MockMessage:
+                def __init__(self, channel, author, guild):
+                    self.channel = channel
+                    self.author = author
+                    self.guild = guild
+
+            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
+
+            if interaction.guild:
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = None
+
+            method = (self.view.watcher_selected_method or "flat").strip().lower()
+            category = str(self.category_input.value).strip().lower()
+            args = [method, category]
+            feed_id = str(self.feed_id_input.value).strip()
+            if feed_id:
+                args.append(feed_id)
+
+            if self.view.current_detail == "admin":
+                channel_id = str(interaction.channel.id)
+                channel_name = interaction.channel.name
+                server_id = str(interaction.guild.id)
+                server_name = interaction.guild.name
+
+                if method == "general":
+                    try:
+                        db_watcher = get_news_watcher_db_instance(server_id)
+                        default_premises_list = db_watcher._get_default_premises()
+                        default_premises = ", ".join(default_premises_list)
+                    except Exception:
+                        default_premises = "interesting news, relevant events, important developments"
+
+                    feed_id_num = None
+                    if feed_id:
+                        feed_id_num = await watcher_commands._validate_category_and_feed(
+                            mock_message, category, [method, feed_id], db_watcher
+                        )
+
+                    if db_watcher.subscribe_channel_category_ai(
+                        channel_id, channel_name, server_id, server_name, category, feed_id_num, default_premises
+                    ):
+                        result_msg = f"✅ General channel subscription created for {category}"
+                        if feed_id:
+                            result_msg += f" (feed #{feed_id})"
+                    else:
+                        result_msg = "❌ Failed to create channel subscription"
+                else:
+                    args = [category] + ([feed_id] if feed_id else [])
+                    await watcher_commands.cmd_channel_subscribe(mock_message, args)
+                    result_msg = f"✅ {method.title()} channel subscription created for {category}"
+                    if feed_id:
+                        result_msg += f" (feed #{feed_id})"
+            else:
+                if method == "general":
+                    user_id = str(interaction.user.id)
+                    feed_id_num = None
+                    if feed_id and db_instance is not None:
+                        feed_id_num = await watcher_commands._validate_category_and_feed(
+                            mock_message, category, [method, feed_id], db_instance
+                        )
+
+                    success, result_msg = await watcher_commands._handle_general_subscribe(
+                        mock_message, user_id, category, feed_id_num, return_result=True
+                    )
+                    if not success:
+                        result_msg = f"❌ {result_msg}"
+                else:
+                    await watcher_commands.cmd_unified_subscribe(mock_message, args)
+                    method_titles = {
+                        "flat": "Flat Subscription (All News)",
+                        "keyword": "Keyword Subscription (Filtered)",
+                        "general": "General Subscription (AI Analysis)",
+                    }
+                    result_msg = f"✅ {method_titles.get(method, 'Subscription')} created for {category}"
+                    if feed_id:
+                        result_msg += f" (feed #{feed_id})"
+                    else:
+                        result_msg += " (all feeds in category)"
+
+            try:
+                self.view.watcher_last_action = self.action_name
+                current_detail = self.view.current_detail
+                content = build_canvas_role_news_watcher_detail(
+                    current_detail,
+                    self.view.admin_visible,
+                    self.view.guild,
+                    self.view.author_id,
+                    selected_method=self.view.watcher_selected_method,
+                    last_action=self.view.watcher_last_action,
+                )
+                next_view = _build_watcher_next_view(self.view, interaction, current_detail, result_msg)
+                embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, current_detail, None, next_view.auto_response_preview)
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            except discord.NotFound:
+                logger.info(f"Watcher Canvas subscription {self.action_name} completed but interaction expired")
+            except discord.HTTPException as error:
+                logger.warning(f"Could not update Canvas for Watcher subscription {self.action_name}: {error}")
+
+        except Exception as error:
+            logger.exception(f"Error in Watcher subscription modal: {error}")
+
+
+class CanvasWatcherAddModal(discord.ui.Modal):
+    def __init__(self, action_name: str, view, bot):
+        self.action_name = action_name
+        self.view = view
+        self.bot = bot
+        if action_name == "add_keywords":
+            title = "Add Keywords"
+            label = "Keywords"
+            placeholder = "Enter keywords separated by commas (e.g., bitcoin, ethereum, crypto)..."
+            style = discord.TextStyle.short
+            max_length = 200
+        else:
+            title = "Add Premises"
+            label = "Premise"
+            placeholder = "Enter your AI analysis premise (e.g., Focus on market impact)..."
+            style = discord.TextStyle.paragraph
+            max_length = 500
+        super().__init__(title=title, timeout=300)
+        self.content_input = discord.ui.TextInput(label=label, placeholder=placeholder, style=style, required=True, max_length=max_length)
+        self.add_item(self.content_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            from roles.news_watcher.watcher_commands import WatcherCommands
+
+            class MockMessage:
+                def __init__(self, channel, author, guild):
+                    self.channel = channel
+                    self.author = author
+                    self.guild = guild
+
+            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
+
+            if interaction.guild:
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
+
+            content_value = str(self.content_input.value).strip()
+
+            if self.action_name == "add_keywords":
+                result_msg = await watcher_commands.cmd_keywords_add_canvas(mock_message, [content_value])
+            else:
+                result_msg = await watcher_commands.cmd_premises_add_canvas(mock_message, [content_value])
+
+            try:
+                self.view.watcher_last_action = "list_keywords" if self.action_name == "add_keywords" else "list_premises"
+                content = build_canvas_role_news_watcher_detail(
+                    self.view.current_detail,
+                    self.view.admin_visible,
+                    self.view.guild,
+                    self.view.author_id,
+                    selected_method=self.view.watcher_selected_method,
+                    last_action=self.view.watcher_last_action,
+                )
+                next_view = _build_watcher_next_view(self.view, interaction, self.view.current_detail, result_msg if isinstance(result_msg, str) else None)
+                embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, self.view.current_detail, None, next_view.auto_response_preview)
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            except discord.NotFound:
+                logger.info(f"Watcher Canvas add {self.action_name} completed but interaction expired")
+            except discord.HTTPException as error:
+                logger.warning(f"Could not update Canvas for Watcher add {self.action_name}: {error}")
+
+        except Exception as error:
+            logger.exception(f"Error in Watcher add modal: {error}")
+
+
+class CanvasWatcherDeleteModal(discord.ui.Modal):
+    def __init__(self, action_name: str, view, bot):
+        self.action_name = action_name
+        self.view = view
+        self.bot = bot
+        if action_name == "delete_keywords":
+            title = "Delete Keywords"
+            label = "Keyword to Delete"
+            placeholder = "Enter keyword to remove (e.g., bitcoin)..."
+        else:
+            title = "Delete Premises"
+            label = "Premise Number"
+            placeholder = "Enter premise number to delete (e.g., 1, 2, 3)..."
+        super().__init__(title=title, timeout=300)
+        self.content_input = discord.ui.TextInput(label=label, placeholder=placeholder, style=discord.TextStyle.short, required=True, max_length=100)
+        self.add_item(self.content_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            from roles.news_watcher.watcher_commands import WatcherCommands
+
+            class MockMessage:
+                def __init__(self, channel, author, guild):
+                    self.channel = channel
+                    self.author = author
+                    self.guild = guild
+
+            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
+
+            if interaction.guild:
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
+
+            content_value = str(self.content_input.value).strip()
+
+            if self.action_name == "delete_keywords":
+                result_msg = await watcher_commands.cmd_keywords_del(mock_message, [content_value])
+                if isinstance(result_msg, str):
+                    result_msg = f"✅ Keyword deleted: {content_value}"
+            else:
+                result_msg = await watcher_commands.cmd_premises_del_canvas(mock_message, [content_value])
+
+            try:
+                self.view.watcher_last_action = "list_keywords" if self.action_name == "delete_keywords" else "list_premises"
+                content = build_canvas_role_news_watcher_detail(
+                    self.view.current_detail,
+                    self.view.admin_visible,
+                    self.view.guild,
+                    self.view.author_id,
+                    selected_method=self.view.watcher_selected_method,
+                    last_action=self.view.watcher_last_action,
+                )
+                next_view = _build_watcher_next_view(self.view, interaction, self.view.current_detail, result_msg if isinstance(result_msg, str) else None)
+                embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, self.view.current_detail, None, next_view.auto_response_preview)
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            except discord.NotFound:
+                logger.info(f"Watcher Canvas delete {self.action_name} completed but interaction expired")
+            except discord.HTTPException as error:
+                logger.warning(f"Could not update Canvas for Watcher delete {self.action_name}: {error}")
+
+        except Exception as error:
+            logger.exception(f"Error in Watcher delete modal: {error}")
+
+
+class CanvasWatcherListModal(discord.ui.Modal):
+    def __init__(self, list_type: str, view, bot):
+        self.list_type = list_type
+        self.view = view
+        self.bot = bot
+        super().__init__(title={"keywords": "View Keywords", "premises": "View Premises"}.get(list_type, "View Configuration"), timeout=300)
+        self.action_input = discord.ui.TextInput(label="Action", placeholder="Enter: list, add, mod, or del", style=discord.TextStyle.short, required=True, max_length=10)
+        self.add_item(self.action_input)
+        if list_type == "keywords":
+            self.value_input = discord.ui.TextInput(label="Keywords", placeholder="Enter keyword(s) separated by commas (for add/del)...", style=discord.TextStyle.short, required=False, max_length=200)
+        else:
+            self.value_input = discord.ui.TextInput(label="Premise Text", placeholder="For mod use: <number> | <new premise text>", style=discord.TextStyle.long, required=False, max_length=500)
+        self.add_item(self.value_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            from roles.news_watcher.watcher_commands import WatcherCommands
+
+            class MockMessage:
+                def __init__(self, channel, author, guild):
+                    self.channel = channel
+                    self.author = author
+                    self.guild = guild
+
+            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
+
+            if interaction.guild:
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
+
+            action = str(self.action_input.value).strip().lower()
+            value = str(self.value_input.value).strip() if self.value_input.value else ""
+
+            if self.list_type == "keywords":
+                if action == "add" and value:
+                    args = ["add"] + [keyword.strip() for keyword in value.split(",")]
+                    await watcher_commands.cmd_keywords_add(mock_message, args)
+                    result_msg = f"✅ Keywords added: {value}"
+                elif action == "list":
+                    await watcher_commands.cmd_keywords_list(mock_message, [])
+                    result_msg = "📋 Keywords list sent by DM"
+                elif action == "del" and value:
+                    args = ["del"] + [keyword.strip() for keyword in value.split(",")]
+                    await watcher_commands.cmd_keywords_del(mock_message, args)
+                    result_msg = f"🗑️ Keywords deleted: {value}"
+                else:
+                    result_msg = "❌ Invalid action or missing keywords"
+            else:
+                if action == "add" and value:
+                    result_msg = await watcher_commands.cmd_premises_add_canvas(mock_message, [value])
+                elif action == "list":
+                    result_msg = await watcher_commands.cmd_premises_list_canvas(mock_message, [])
+                elif action == "del" and value:
+                    result_msg = await watcher_commands.cmd_premises_del_canvas(mock_message, [value])
+                elif action == "mod" and value:
+                    if "|" not in value:
+                        result_msg = "❌ For mod use: <number> | <new premise text>"
+                    else:
+                        index_text, premise_text = value.split("|", 1)
+                        result_msg = await watcher_commands.cmd_premises_mod_canvas(mock_message, [index_text.strip(), premise_text.strip()])
+                else:
+                    result_msg = "❌ Invalid action or missing premise text"
+
+            try:
+                next_view = _build_watcher_next_view(self.view, interaction, "overview", result_msg if isinstance(result_msg, str) else None)
+                embed = _build_watcher_role_embed("news_watcher", "", self.view.admin_visible, "overview", None, next_view.auto_response_preview)
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            except discord.NotFound:
+                logger.info(f"Watcher Canvas list {self.list_type} completed but interaction expired")
+            except discord.HTTPException as error:
+                logger.warning(f"Could not update Canvas for Watcher list {self.list_type}: {error}")
+
+        except Exception as error:
+            logger.exception(f"Error in Watcher list modal: {error}")
+
+
+class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
+    def __init__(self, action_name: str, view, bot):
+        self.action_name = action_name
+        self.view = view
+        self.bot = bot
+        title = "Channel Subscribe Categories" if action_name == "channel_subscribe_categories" else "Channel Subscribe Feeds"
+        super().__init__(title=title, timeout=300)
+        self.category_input = discord.ui.TextInput(label="Category", placeholder="Enter category (economy, technology, gaming, crypto)...", style=discord.TextStyle.short, required=True, max_length=50)
+        self.add_item(self.category_input)
+        self.feed_id_input = discord.ui.TextInput(label="Feed IDs (Optional)", placeholder="Enter feed number (1, 2, 3...)\nFeed 1 = First feed in category\nLeave empty for all feeds", style=discord.TextStyle.paragraph, required=False, max_length=50, default="")
+        self.add_item(self.feed_id_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            if get_news_watcher_db_instance is None or not interaction.guild:
+                await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
+                return
+
+            db = get_news_watcher_db_instance(str(interaction.guild.id))
+            if not db.db_path.exists() or db.db_path.stat().st_size == 0:
+                db._init_db()
+            method = (self.view.watcher_selected_method or "flat").strip().lower()
+            category = str(self.category_input.value).strip().lower()
+            feed_ids = []
+
+            feed_ids_str = str(self.feed_id_input.value).strip()
+            if feed_ids_str:
+                try:
+                    feed_ids = [int(id_str.strip()) for id_str in feed_ids_str.split(",") if id_str.strip()]
+                    if not feed_ids:
+                        await interaction.response.send_message("❌ No valid Feed IDs found", ephemeral=True)
+                        return
+                except ValueError:
+                    await interaction.response.send_message("❌ Feed IDs must be numbers separated by commas", ephemeral=True)
+                    return
+
+            channel_id = str(interaction.channel.id)
+            channel_name = interaction.channel.name
+            server_id = str(interaction.guild.id)
+            server_name = interaction.guild.name
+            successful_subscriptions = 0
+            failed_subscriptions = 0
+
+            if feed_ids:
+                feeds = db.get_active_feeds(category)
+                for feed_id in feed_ids:
+                    if 1 <= feed_id <= len(feeds):
+                        global_feed_id = feeds[feed_id - 1][0]
+                        ok = False
+                        if method == "flat":
+                            ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_name, category, global_feed_id)
+                        elif method == "keyword":
+                            user_id = str(interaction.user.id)
+                            user_keywords = db.get_user_keywords(user_id)
+                            if user_keywords:
+                                ok = db.subscribe_keywords(user_id, user_keywords, channel_id, category, global_feed_id)
+                        elif method == "general":
+                            premises, _ = db.get_channel_premises_with_context(channel_id)
+                            if premises:
+                                premises_str = ",".join(premises)
+                            else:
+                                # Use default premises from personality config
+                                try:
+                                    from agent_engine import PERSONALITY
+                                    news_watcher_config = PERSONALITY.get("roles", {}).get("news_watcher", {})
+                                    default_premises = news_watcher_config.get("premises", [
+                                        "War outbreak or nuclear escalation",
+                                        "Bankruptcy of a country or large corporation",
+                                        "Global magnitude catastrophe"
+                                    ])
+                                    premises_str = ",".join(default_premises)
+                                except Exception:
+                                    # English fallback
+                                    premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
+                            ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, global_feed_id, premises_str)
+                        if ok:
+                            successful_subscriptions += 1
+                        else:
+                            failed_subscriptions += 1
+                    else:
+                        failed_subscriptions += 1
+            else:
+                ok = False
+                if method == "flat":
+                    ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_name, category, None)
+                elif method == "keyword":
+                    user_id = str(interaction.user.id)
+                    user_keywords = db.get_user_keywords(user_id)
+                    if user_keywords:
+                        ok = db.subscribe_keywords(user_id, user_keywords, channel_id, category, None)
+                elif method == "general":
+                    premises, _ = db.get_channel_premises_with_context(channel_id)
+                    if premises:
+                        premises_str = ",".join(premises)
+                    else:
+                        # Use default premises from personality config
+                        try:
+                            from agent_engine import PERSONALITY
+                            news_watcher_config = PERSONALITY.get("roles", {}).get("news_watcher", {})
+                            default_premises = news_watcher_config.get("premises", [
+                                "War outbreak or nuclear escalation",
+                                "Bankruptcy of a country or large corporation",
+                                "Global magnitude catastrophe"
+                            ])
+                            premises_str = ",".join(default_premises)
+                        except Exception:
+                            # English fallback
+                            premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
+                    ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, None, premises_str)
+
+                if ok:
+                    successful_subscriptions = 1
+                else:
+                    failed_subscriptions = 1
+
+            if failed_subscriptions > 0 and successful_subscriptions == 0:
+                await interaction.response.send_message("❌ Could not create channel subscription. Please try again.", ephemeral=True)
+                return
+
+            self.view.watcher_last_action = self.action_name
+            content = build_canvas_role_news_watcher_detail(
+                "admin",
+                self.view.admin_visible,
+                self.view.guild,
+                self.view.author_id,
+                selected_method=self.view.watcher_selected_method,
+                last_action=self.view.watcher_last_action,
+            )
+            if feed_ids:
+                if successful_subscriptions == len(feed_ids):
+                    if successful_subscriptions == 1:
+                        feed_list = f"feed #{feed_ids[0]}"
+                    else:
+                        feed_list = f"feeds {', '.join(map(str, feed_ids))}"
+                    success_msg = f"✅ {method.title()} channel subscription created for `{category}` ({feed_list})."
+                else:
+                    success_msg = f"⚠️ {method.title()} channel subscription partially created for `{category}`. {successful_subscriptions}/{len(feed_ids)} feeds successful."
+            else:
+                success_msg = f"✅ {method.title()} channel subscription created for `{category}` (all feeds)."
+
+            next_view = _build_watcher_next_view(self.view, interaction, "admin", success_msg)
+            embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, "admin", None, next_view.auto_response_preview)
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        except ValueError:
+            logger.warning("Invalid Feed ID in channel subscription modal")
+        except Exception as error:
+            logger.exception(f"Error in Watcher channel subscription modal: {error}")
+
+
+class CanvasWatcherChannelUnsubscribeModal(discord.ui.Modal):
+    def __init__(self, view, bot):
+        self.view = view
+        self.bot = bot
+        super().__init__(title="Channel Unsubscribe", timeout=300)
+        self.number_input = discord.ui.TextInput(label="Subscription Number", placeholder="Enter the numbered subscription from block 2...", style=discord.TextStyle.short, required=True, max_length=5)
+        self.add_item(self.number_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            if get_news_watcher_db_instance is None or not interaction.guild:
+                logger.warning("Watcher database not available for channel unsubscribe")
+                return
+
+            db = get_news_watcher_db_instance(str(interaction.guild.id))
+            channel_id = str(interaction.channel.id)
+            index = int(str(self.number_input.value).strip())
+            all_subs = [("channel", category, feed_id) for category, feed_id, _ in db.get_channel_subscriptions(channel_id)]
+
+            if index < 1 or index > len(all_subs):
+                logger.warning(f"Invalid subscription number: {index}")
+                return
+
+            _method, category, feed_id = all_subs[index - 1]
+            ok = db.cancel_channel_subscription(channel_id, category, feed_id)
+            if not ok:
+                ok = db.cancel_category_subscription(f"channel_{channel_id}", category, feed_id)
+            if not ok:
+                logger.warning("Could not cancel channel subscription")
+                return
+
+            self.view.watcher_last_action = "channel_unsubscribe"
+            content = build_canvas_role_news_watcher_detail(
+                "admin",
+                self.view.admin_visible,
+                self.view.guild,
+                self.view.author_id,
+                selected_method=self.view.watcher_selected_method,
+                last_action=self.view.watcher_last_action,
+            )
+            next_view = _build_watcher_next_view(self.view, interaction, "admin", f"✅ Removed channel subscription #{index} from `{category}`.")
+            embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, "admin", None, next_view.auto_response_preview)
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        except ValueError:
+            await interaction.response.send_message("❌ Enter a valid number.", ephemeral=True)
+        except Exception as error:
+            logger.exception(f"Error in Watcher channel unsubscribe modal: {error}")
+
+
+class CanvasWatcherPersonalUnsubscribeModal(discord.ui.Modal):
+    def __init__(self, view, bot):
+        self.view = view
+        self.bot = bot
+        super().__init__(title="Personal Unsubscribe", timeout=300)
+        self.number_input = discord.ui.TextInput(label="Subscription Number", placeholder="Enter the numbered subscription from block 2...", style=discord.TextStyle.short, required=True, max_length=3)
+        self.add_item(self.number_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            from roles.news_watcher.watcher_commands import WatcherCommands
+
+            class MockMessage:
+                def __init__(self, channel, author, guild):
+                    self.channel = channel
+                    self.author = author
+                    self.guild = guild
+
+            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
+
+            if interaction.guild:
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
+
+            try:
+                index = int(self.number_input.value.strip())
+                if index <= 0:
+                    raise ValueError("Number must be positive")
+            except ValueError:
+                await interaction.response.send_message("❌ Enter a valid positive number.", ephemeral=True)
+                return
+
+            user_id = str(interaction.user.id)
+            flat_subs = watcher_commands.db_watcher.get_user_subscriptions(user_id)
+            keyword_subs = watcher_commands.db_watcher.get_user_keyword_subscriptions(user_id)
+            ai_subs = watcher_commands.db_watcher.get_user_ai_subscriptions(user_id)
+            all_subscriptions = []
+
+            for category, feed_id, _ in flat_subs:
+                all_subscriptions.append((category, feed_id, "flat"))
+            for category, _keywords, _ in keyword_subs:
+                all_subscriptions.append((category, None, "keyword"))
+            for category, feed_id, _ in ai_subs:
+                all_subscriptions.append((category, feed_id, "ai"))
+
+            if not all_subscriptions:
+                await interaction.response.send_message("❌ You have no active subscriptions to unsubscribe from.", ephemeral=True)
+                return
+            if index > len(all_subscriptions):
+                await interaction.response.send_message(f"❌ Invalid subscription number. You only have {len(all_subscriptions)} subscription(s).", ephemeral=True)
+                return
+
+            category, feed_id, sub_type = all_subscriptions[index - 1]
+            success = False
+            if sub_type == "keyword":
+                success = watcher_commands.db_watcher.cancel_user_keyword_subscription(user_id, category)
+            else:
+                success = watcher_commands.db_watcher.cancel_category_subscription(user_id, category, feed_id)
+
+            if success:
+                self.view.watcher_last_action = "unsubscribe"
+                content = build_canvas_role_news_watcher_detail(
+                    self.view.current_detail,
+                    self.view.admin_visible,
+                    self.view.guild,
+                    self.view.author_id,
+                    selected_method=self.view.watcher_selected_method,
+                    last_action=self.view.watcher_last_action,
+                )
+                next_view = _build_watcher_next_view(self.view, interaction, self.view.current_detail, f"✅ Unsubscribed from `{category}`.")
+                embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, self.view.current_detail, None, next_view.auto_response_preview)
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            else:
+                await interaction.response.send_message("❌ Failed to unsubscribe. Please try again.", ephemeral=True)
+
+        except ValueError:
+            await interaction.response.send_message("❌ Enter a valid number.", ephemeral=True)
+        except Exception as error:
+            logger.exception(f"Error in Watcher personal unsubscribe modal: {error}")
+
+
+class CanvasWatcherFrequencyModal(discord.ui.Modal):
+    def __init__(self, view, bot):
+        self.view = view
+        self.bot = bot
+        super().__init__(title="Set Watcher Frequency", timeout=300)
+        self.hours_input = discord.ui.TextInput(label="Hours", placeholder="Enter number of hours (1-24)...", style=discord.TextStyle.short, required=True, max_length=5)
+        self.add_item(self.hours_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            from roles.news_watcher.watcher_commands import WatcherCommands
+
+            class MockMessage:
+                def __init__(self, channel, author, guild):
+                    self.channel = channel
+                    self.author = author
+                    self.guild = guild
+
+            mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
+
+            if interaction.guild:
+                server_name = str(interaction.guild.id)
+                watcher_commands = WatcherCommands(self.bot)
+                db_instance = get_news_watcher_db_instance(server_name)
+                if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
+                    db_instance._init_db()
+                watcher_commands.db_watcher = db_instance
+            else:
+                watcher_commands = WatcherCommands(self.bot)
+
+            hours = str(self.hours_input.value).strip()
+            await watcher_commands.cmd_frequency(mock_message, [hours])
+            result_msg = f"✅ Watcher frequency set to {hours} hours"
+
+            try:
+                self.view.watcher_last_action = "watcher_frequency"
+                current_detail = "admin" if self.view.current_detail == "admin" else "personal"
+                content = build_canvas_role_news_watcher_detail(
+                    current_detail,
+                    self.view.admin_visible,
+                    self.view.guild,
+                    self.view.author_id,
+                    selected_method=self.view.watcher_selected_method,
+                    last_action=self.view.watcher_last_action,
+                )
+                next_view = _build_watcher_next_view(self.view, interaction, current_detail, result_msg)
+                embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, current_detail, None, next_view.auto_response_preview)
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+            except discord.NotFound:
+                logger.info("Watcher Canvas frequency completed but interaction expired")
+            except discord.HTTPException as error:
+                logger.warning(f"Could not update Canvas for Watcher frequency: {error}")
+
+        except Exception as error:
+            logger.exception(f"Error in Watcher frequency modal: {error}")
+
+
+class CanvasWatcherFeedsByCategoryModal(discord.ui.Modal):
+    def __init__(self, view):
+        super().__init__(title="List Feeds by Category")
+        self.view = view
+        self.category_input = discord.ui.TextInput(label="Category", placeholder="Enter category (economy, technology, gaming, crypto, international, general, patch_notes)...", style=discord.TextStyle.short, required=True, max_length=50)
+        self.add_item(self.category_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            category = str(self.category_input.value).strip().lower()
+            if get_news_watcher_db_instance is None or not interaction.guild:
+                await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
+                return
+
+            db = get_news_watcher_db_instance(str(interaction.guild.id))
+            feeds = db.get_active_feeds(category)
+            if not feeds:
+                await interaction.response.send_message(f"❌ No feeds found for category '{category}'. Available categories: economy, technology, gaming, crypto, international, general, patch_notes", ephemeral=True)
+                return
+
+            self.view.watcher_last_action = "list_feeds_by_category"
+            self.view.watcher_selected_category = category
+            content = build_canvas_role_news_watcher_detail(
+                self.view.current_detail,
+                self.view.admin_visible,
+                self.view.guild,
+                self.view.author_id,
+                selected_method=self.view.watcher_selected_method,
+                last_action="list_feeds_by_category",
+                selected_category=category,
+            )
+            next_view = _build_watcher_next_view(self.view, interaction, self.view.current_detail)
+            next_view.watcher_last_action = "list_feeds_by_category"
+            next_view.watcher_selected_category = category
+            embed = _build_watcher_role_embed("news_watcher", content or "", self.view.admin_visible, self.view.current_detail, None, next_view.auto_response_preview)
+            await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        except Exception as error:
+            logger.exception(f"Error in feeds by category modal: {error}")
+            await interaction.response.send_message("❌ Error listing feeds. Please try again.", ephemeral=True)
+
+
+async def handle_canvas_watcher_action(interaction: discord.Interaction, action_name: str, view) -> None:
+    if get_news_watcher_db_instance is None:
+        await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
+        return
+
+    if not interaction.guild:
+        await interaction.response.send_message("❌ Watcher actions require a server context.", ephemeral=True)
+        return
+
+    guild_id = str(interaction.guild.id)
+
+    if action_name in {"method_flat", "method_keyword", "method_general"}:
+        method_name = action_name.replace("method_", "")
+        try:
+            db_watcher = get_news_watcher_db_instance(guild_id)
+            ok = db_watcher.set_method_config(guild_id, method_name)
+        except Exception as error:
+            logger.exception(f"Canvas watcher method update failed: {error}")
+            ok = False
+        if not ok:
+            await interaction.response.send_message("❌ Could not update watcher method.", ephemeral=True)
+            return
+
+        view.watcher_selected_method = method_name
+        view.watcher_last_action = None
+        current_detail = "admin" if view.current_detail == "admin" else "personal"
+        content = build_canvas_role_news_watcher_detail(current_detail, view.admin_visible, view.guild, view.author_id, selected_method=view.watcher_selected_method, last_action=view.watcher_last_action)
+        next_view = _build_watcher_next_view(view, interaction, current_detail, f"Method set to `{method_name}`.")
+        embed = _build_watcher_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
+        await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        return
+
+    if action_name == "subscribe_categories":
+        await interaction.response.send_modal(CanvasWatcherSubscribeModal(action_name, view, interaction.client))
+        return
+    if action_name == "channel_subscribe_categories":
+        await interaction.response.send_modal(CanvasWatcherChannelSubscribeModal(action_name, view, interaction.client))
+        return
+    if action_name == "channel_unsubscribe":
+        await interaction.response.send_modal(CanvasWatcherChannelUnsubscribeModal(view, interaction.client))
+        return
+    if action_name == "channel_subscribe_category":
+        await interaction.response.send_modal(CanvasWatcherChannelSubscribeModal(action_name, view, interaction.client))
+        return
+    if action_name == "channel_unsubscribe_category":
+        await interaction.response.send_modal(CanvasWatcherChannelUnsubscribeModal(view, interaction.client))
+        return
+    if action_name == "delete_premise":
+        await interaction.response.send_modal(CanvasWatcherDeleteModal("delete_premises", view, interaction.client))
+        return
+    if action_name == "add_premise":
+        await interaction.response.send_modal(CanvasWatcherAddModal("add_premises", view, interaction.client))
+        return
+    if action_name == "add_keywords":
+        await interaction.response.send_modal(CanvasWatcherAddModal("add_keywords", view, interaction.client))
+        return
+    if action_name == "delete_keywords":
+        await interaction.response.send_modal(CanvasWatcherDeleteModal("delete_keywords", view, interaction.client))
+        return
+    if action_name in {"list_keywords", "list_premises"}:
+        await interaction.response.send_modal(CanvasWatcherListModal(action_name.replace("list_", ""), view, interaction.client))
+        return
+    if action_name == "watcher_frequency":
+        await interaction.response.send_modal(CanvasWatcherFrequencyModal(view, interaction.client))
+        return
+
+    if action_name == "channel_view_subscriptions":
+        view.watcher_last_action = action_name
+        content = build_canvas_role_news_watcher_detail(
+            "admin",
+            view.admin_visible,
+            view.guild,
+            view.author_id,
+            selected_method=view.watcher_selected_method,
+            last_action=view.watcher_last_action,
+        )
+        next_view = _build_watcher_next_view(view, interaction, "admin")
+        embed = _build_watcher_role_embed("news_watcher", content or "", view.admin_visible, "admin", None, next_view.auto_response_preview)
+        await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        return
+
+    if action_name in {"watcher_run_now", "watcher_run_personal"}:
+        try:
+            from roles.news_watcher.news_watcher import process_subscriptions
+            from discord_bot.discord_http import DiscordHTTP
+            from agent_engine import get_discord_token
+
+            if not view.guild:
+                await interaction.response.send_message("❌ Guild context is required to run watcher actions.", ephemeral=True)
+                return
+
+            http = DiscordHTTP(get_discord_token())
+            server_name = str(view.guild.id)
+            await process_subscriptions(http, server_name)
+        except Exception as error:
+            logger.exception(f"Canvas watcher force run failed for {action_name}: {error}")
+            message = "❌ Could not run watcher now." if action_name == "watcher_run_now" else "❌ Could not run personal subscriptions now."
+            await interaction.response.send_message(message, ephemeral=True)
+            return
+
+        current_detail = "admin" if view.current_detail == "admin" else "personal"
+        view.watcher_last_action = action_name
+        content = build_canvas_role_news_watcher_detail(
+            current_detail,
+            view.admin_visible,
+            view.guild,
+            view.author_id,
+            selected_method=view.watcher_selected_method,
+            last_action=view.watcher_last_action,
+        )
+        success_message = "Watcher run completed." if action_name == "watcher_run_now" else "Personal subscriptions run completed."
+        next_view = _build_watcher_next_view(view, interaction, current_detail, success_message)
+        embed = _build_watcher_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
+        # Defensive check to avoid Unknown interaction error
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
+        except Exception as e:
+            logger.warning(f"Could not edit interaction message: {e}")
+            # Try to send a new message as fallback
+            try:
+                await interaction.followup.send("✅ Action completed successfully", ephemeral=True)
+            except Exception:
+                pass  # Silent fail if we can't even send followup
+        return
+
+    await interaction.response.send_message("❌ Unknown watcher action.", ephemeral=True)
+
+
 def build_canvas_role_news_watcher(agent_config: dict, admin_visible: bool, guild=None, author_id: int = 0) -> str:
     """Build the News Watcher role view (same as personal view)."""
     return build_canvas_role_news_watcher_detail("personal", admin_visible, guild, author_id, None, None, None)
@@ -18,57 +1163,70 @@ def build_canvas_role_news_watcher(agent_config: dict, admin_visible: bool, guil
 def get_canvas_channel_subscriptions_info(guild) -> str:
     """Get formatted channel subscriptions information for canvas display."""
     try:
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
+        news_watcher = roles_view.get("news_watcher", {})
+        dropdown = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
+        
+        def _watcher_text(key: str, fallback: str) -> str:
+            # Try dropdown first, then main level
+            value = dropdown.get(key)
+            if value is None:
+                value = news_watcher.get(key)
+            return str(value).strip() if value else fallback
+        
         if get_news_watcher_db_instance is None:
-            return "**Channel subscriptions**\n- Unable to load channel subscription data"
+            return f"**{_watcher_text('channel_subscriptions_title', 'Channel subscriptions')}**\n- Unable to load channel subscription data"
 
         db = get_news_watcher_db_instance(str(guild.id))
-        all_channel_subs = db.get_all_channels_with_subscriptions()
-
-        total_count = 0
-        subscriptions_list = []
-
-        for channel_id, channel_name, server_id in all_channel_subs:
-            if str(server_id) == str(guild.id):
-                channel_subs = db.get_channel_subscriptions(channel_id)
-                total_count += len(channel_subs)
-
-                for category, feed_id, _ in channel_subs:
-                    if feed_id:
-                        subscriptions_list.append(f"  📡 {category} (feed #{feed_id}) - #{channel_name}")
-                    else:
-                        subscriptions_list.append(f"  📡 {category} (all feeds) - #{channel_name}")
-
-        keyword_subs = db.get_all_active_keyword_subscriptions()
-        for _user_id, channel_id, keywords, category, feed_id in keyword_subs:
-            if channel_id:
-                try:
-                    channel = guild.get_channel(int(channel_id))
-                    channel_name = channel.name if channel else f"Channel-{channel_id}"
-                except Exception:
-                    channel_name = f"Channel-{channel_id}"
-
-                total_count += 1
-                if feed_id:
-                    subscriptions_list.append(f"  🔍 {category} (keywords: {keywords}, feed #{feed_id}) - #{channel_name}")
-                else:
-                    subscriptions_list.append(f"  🔍 {category} (keywords: {keywords}, all feeds) - #{channel_name}")
-
+        
+        # Get all channel subscriptions with proper 5-value format
+        all_channel_subs = []
+        
+        # Get flat subscriptions (channel_id, category, feed_id)
+        flat_subs = db.get_all_channel_subscriptions_flat()
+        for channel_id, category, feed_id in flat_subs:
+            channel_name = f"#{channel_id}"  # Fallback name
+            all_channel_subs.append((channel_id, channel_name, category, "", feed_id is None))
+        
+        # Get keyword subscriptions (channel_id, category, feed_id, keywords)
+        keyword_subs = db.get_all_channel_subscriptions_keywords()
+        for channel_id, category, feed_id, keywords in keyword_subs:
+            channel_name = f"#{channel_id}"  # Fallback name
+            all_channel_subs.append((channel_id, channel_name, category, keywords, feed_id is None))
+        
+        # Get AI subscriptions (channel_id, category, feed_id, premises)
+        ai_subs = db.get_all_channel_subscriptions_ai()
+        for channel_id, category, feed_id, premises in ai_subs:
+            channel_name = f"#{channel_id}"  # Fallback name
+            all_channel_subs.append((channel_id, channel_name, category, "AI premises", feed_id is None))
+        
+        total_count = len(all_channel_subs)
         max_subs = 5
-        usage_info = f"**Channel subscriptions** ({total_count}/{max_subs})\n"
+        usage_info = f"**{_watcher_text('channel_subscriptions_title', 'Channel subscriptions')}** ({total_count}/{max_subs})\n"
 
         if total_count == 0:
             usage_info += "- No active channel subscriptions\n"
         else:
+            subscriptions_list = []
+            for channel_id, channel_name, category, keywords, all_feeds in all_channel_subs:
+                if all_feeds:
+                    subscriptions_list.append(f"  📰 {category} (all feeds) - #{channel_name}")
+                elif keywords:
+                    subscriptions_list.append(f"  🔍 {category} (keywords: {keywords}, all feeds) - #{channel_name}")
+                else:
+                    subscriptions_list.append(f"  📰 {category} (feed #{channel_name})")
+            
             for sub in subscriptions_list:
                 usage_info += f"{sub}\n"
 
-        config_info = "\n──────────────────────────────\n\n**Server configuration**\n"
+        config_info = f"\n──────────────────────────────\n\n{_watcher_text('server_configuration_title', '**Server configuration**')}\n"
 
         try:
             frequency = db.get_frequency_config(str(guild.id))
-            config_info += f"- ⏰ **Check frequency**: Every {frequency} hours\n"
+            config_info += f"- ⏰ **{_watcher_text('watcher_frequency_title', 'Check frequency')}**: Every {frequency} hours\n"
         except Exception:
-            config_info += "- ⏰ **Check frequency**: Not configured\n"
+            config_info += f"- ⏰ **{_watcher_text('watcher_frequency_title', 'Check frequency')}**: Not configured\n"
 
         method = db.get_method_config(str(guild.id))
         method_labels = {
@@ -82,7 +1240,7 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
 
     except Exception as e:
         logger.warning(f"Could not load channel subscriptions for Canvas: {e}")
-        return "**Channel subscriptions**\n- Error loading channel subscription data"
+        return f"**{_watcher_text('channel_subscriptions_title', 'Channel subscriptions')}**\n- Error loading channel subscription data"
 
 
 def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
@@ -172,7 +1330,16 @@ def build_canvas_role_news_watcher_detail(
     """Build a detailed News Watcher view with 3-block structure."""
     from .content import _build_canvas_intro_block
     watcher_messages = get_watcher_messages() if get_watcher_messages else {}
-    watcher_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {})
+    
+    # Safe nested access with fallbacks
+    roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
+    news_watcher = roles_view.get("news_watcher", {})
+    
+    # Ensure watcher_descriptions is a dict
+    if not isinstance(news_watcher, dict):
+        watcher_descriptions = {}
+    else:
+        watcher_descriptions = news_watcher
 
     def _watcher_text(key: str, fallback: str) -> str:
         value = watcher_descriptions.get(key, watcher_messages.get(key))
@@ -294,9 +1461,9 @@ def build_canvas_role_news_watcher_detail(
 
     not_selected_method = _watcher_text("not_selected_method", "Not selected")
     method_labels = {
-        "flat": _watcher_text("flat_method", "Flat"),
-        "keyword": _watcher_text("keyword_method", "Keyword"),
-        "general": _watcher_text("general_method", "General"),
+        "flat": _watcher_text("method_flat", "Flat"),
+        "keyword": _watcher_text("method_keyword", "Keyword"),
+        "general": _watcher_text("method_general", "General"),
         None: not_selected_method,
     }
     method_label = method_labels.get(selected_method, str(selected_method).title() if selected_method else not_selected_method)

@@ -8,7 +8,7 @@ import discord
 import json
 import os
 from agent_logging import get_logger
-from discord_bot.discord_utils import send_dm_or_channel, set_role_interval_hours
+from discord_bot.discord_utils import send_dm_or_channel, set_role_enabled
 
 # Import get_message for personality support
 try:
@@ -27,14 +27,15 @@ def _get_treasure_description(key: str, default: str) -> str:
         with open(config_path, encoding="utf-8") as f:
             agent_cfg = json.load(f)
         personality_rel = agent_cfg.get("personality", "")
-        descriptions_path = os.path.join(
+        personality_dir = os.path.dirname(personality_rel)
+        answers_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            os.path.dirname(personality_rel),
-            "descriptions.json",
+            personality_dir,
+            "answers.json",
         )
-        with open(descriptions_path, encoding="utf-8") as f:
-            descriptions = json.load(f).get("discord", {}).get("treasure_hunter_messages", {})
-        value = descriptions.get(key)
+        with open(answers_path, encoding="utf-8") as f:
+            answers = json.load(f).get("discord", {}).get("treasure_hunter_messages", {})
+        value = answers.get(key)
         return str(value) if value else default
     except Exception:
         return default

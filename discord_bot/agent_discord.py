@@ -329,12 +329,13 @@ async def on_ready():
         
         # Load default roles for this server
         try:
-            from behavior.db_behavior import get_behavior_db_instance as get_behaviors_db_instance
-            if get_behaviors_db_instance is not None:
-                db = get_behaviors_db_instance(server_key)
-                default_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
-                db.load_default_roles(default_roles, "system")
-                logger.info(f"🎭 Default roles loaded for server '{active_guild.name}'")
+            from agent_roles_db import RolesDatabase
+            roles_db = RolesDatabase(server_key)
+            default_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
+            for role_name in default_roles:
+                # Enable each default role if not already configured
+                roles_db.save_role_config(role_name, server_key, True, '{}')
+            logger.info(f"🎭 Default roles loaded for server '{active_guild.name}'")
         except Exception as e:
             logger.warning(f"Failed to load default roles for server '{active_guild.name}': {e}")
 
@@ -604,7 +605,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_name: s
         
         # Reset frequency counter since accusation target changed
         from roles.trickster.subroles.ring.ring_discord import _record_accusation
-        await _record_accusation(server_id, f"ACCUSE {target_member.display_name}", guild, str(target_member.id), target_member.display_name)
+        await _record_accusation(server_id, f"ACCUSE {target_member.display_name}", guild, str(target_member.id), target_member.display_name, message.author.display_name, str(message.author.id))
         
         logger.info(f"🎯 Ring accusation target updated to: {target_member.display_name}")
         

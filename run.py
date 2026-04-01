@@ -50,6 +50,38 @@ def load_config() -> dict:
 _persistent_processes: dict = {}
 
 
+def _get_last_daily_memory_update_time() -> datetime | None:
+    """Get the timestamp of the last daily memory update from the active server."""
+    try:
+        server_name = _get_active_server_name()
+        if not server_name:
+            return None
+        
+        from agent_mind import get_global_db
+        db_instance = get_global_db(server_name=server_name)
+        
+        with db_instance._lock:
+            import sqlite3
+            conn = sqlite3.connect(db_instance.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT updated_at FROM daily_memory 
+                WHERE summary IS NOT NULL AND summary != '' 
+                ORDER BY updated_at DESC LIMIT 1
+            """)
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result and result[0]:
+                from datetime import datetime
+                # Parse the datetime string
+                return datetime.fromisoformat(result[0].replace('Z', '+00:00'))
+                
+    except Exception as e:
+        logger.debug(f"Could not retrieve last daily memory update time: {e}")
+    
+    return None
+
 def _get_active_server_name() -> str | None:
     if not ACTIVE_SERVER_FILE.exists():
         return None
@@ -138,6 +170,40 @@ async def execute_relationship_memory_refresh():
     server_name, refreshed = await _run_server_bound_task("relationship_memory_refresh", refresh_due_relationship_memories)
     if server_name and refreshed:
         logger.info(f"[run] 🧠 Relationship memories refreshed for '{server_name}': {refreshed}")
+
+
+def _get_last_daily_memory_update_time(server_name: str | None = None) -> datetime | None:
+    """Get the last time daily memory was updated from the database."""
+    from agent_db import get_global_db
+    resolved_server = server_name or _get_active_server_name()
+    if not resolved_server:
+        return None
+    try:
+        db_instance = get_global_db(server_name=resolved_server)
+        # Get the most recent daily memory record by updated_at
+        import sqlite3
+        with db_instance._lock:
+            conn = sqlite3.connect(db_instance.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT updated_at FROM daily_memory
+                WHERE server_name = ? AND summary IS NOT NULL AND summary != ''
+                ORDER BY updated_at DESC LIMIT 1
+            ''', (resolved_server,))
+            row = cursor.fetchone()
+            conn.close()
+            if row and row["updated_at"]:
+                # Parse ISO format datetime string
+                from datetime import datetime
+                try:
+                    return datetime.fromisoformat(row["updated_at"])
+                except (ValueError, TypeError):
+                    return None
+        return None
+    except Exception as e:
+        logger.warning(f"[run] ⚠️ Could not get last daily memory time: {e}")
+        return None
 
 
 def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
@@ -251,8 +317,18 @@ async def scheduler(config: dict):
 
     await _wait_for_active_server_publish(next_run)
 
+    # Calculate next daily memory run based on last database update time
+    # This prevents the timer from resetting on every bot restart
+    last_daily_memory_time = _get_last_daily_memory_update_time()
+    if last_daily_memory_time:
+        next_daily_memory_run = last_daily_memory_time + timedelta(days=1)
+        logger.info(f"[run] 🧠 Last daily memory was at {last_daily_memory_time:%Y-%m-%d %H:%M:%S}, next run scheduled for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
+    else:
+        next_daily_memory_run = datetime.now()
+        logger.info(f"[run] 🧠 No previous daily memory found, scheduling first run for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
+
     next_non_role_run = {
-        "daily_memory": datetime.now(),
+        "daily_memory": next_daily_memory_run,
     }
 
     while True:

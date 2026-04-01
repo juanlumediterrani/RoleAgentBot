@@ -26,9 +26,44 @@ def _load_personality_descriptions() -> dict:
         personality_rel = AGENT_CFG.get("personality", "")
         personality_path = os.path.join(_BASE_DIR, personality_rel)
         descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions.json")
+        descriptions = {}
+        
+        # Load main descriptions.json
         if os.path.exists(descriptions_path):
             with open(descriptions_path, encoding="utf-8") as f:
-                return json.load(f).get("discord", {})
+                descriptions = json.load(f).get("discord", {})
+        
+        # Load news_watcher descriptions from separate file
+        news_watcher_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "news_watcher.json")
+        if os.path.exists(news_watcher_descriptions_path):
+            with open(news_watcher_descriptions_path, encoding="utf-8") as f:
+                news_watcher_descriptions = json.load(f)
+                # Merge news_watcher descriptions into roles_view_messages
+                if "roles_view_messages" not in descriptions:
+                    descriptions["roles_view_messages"] = {}
+                descriptions["roles_view_messages"]["news_watcher"] = news_watcher_descriptions
+        
+        # Load treasure_hunter descriptions from separate file
+        treasure_hunter_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "treasure_hunter.json")
+        if os.path.exists(treasure_hunter_descriptions_path):
+            with open(treasure_hunter_descriptions_path, encoding="utf-8") as f:
+                treasure_hunter_descriptions = json.load(f)
+                # Merge treasure_hunter descriptions into roles_view_messages
+                if "roles_view_messages" not in descriptions:
+                    descriptions["roles_view_messages"] = {}
+                descriptions["roles_view_messages"]["treasure_hunter"] = treasure_hunter_descriptions
+        
+        # Load trickster descriptions from separate file
+        trickster_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "trickster.json")
+        if os.path.exists(trickster_descriptions_path):
+            with open(trickster_descriptions_path, encoding="utf-8") as f:
+                trickster_descriptions = json.load(f)
+                # Merge trickster descriptions into roles_view_messages
+                if "roles_view_messages" not in descriptions:
+                    descriptions["roles_view_messages"] = {}
+                descriptions["roles_view_messages"]["trickster"] = trickster_descriptions
+        
+        return descriptions
     except Exception as e:
         logger.warning(f"Could not load personality descriptions.json: {e}")
     return {}
@@ -187,6 +222,26 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
             # Fallback to a generic name if ring state is not available
             duty_text = duty_text.replace("<accusated_user>", "el usuario sospechoso")
     
+    # Handle beggar subrole special case: inject current gold collection task after "para:"
+    if subrole_name == "beggar" and server_id and duty_text.endswith("para:"):
+        try:
+            from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+            beggar_config = get_beggar_config(server_id)
+            current_reason = beggar_config.get_current_reason()
+            
+            if current_reason:
+                duty_text = duty_text + " " + current_reason
+                logger.debug(f"🎭 [BEGGAR] Injected current reason '{current_reason}' in system prompt")
+            else:
+                # Fallback to a default reason if no current reason is set
+                default_reason = "clan matters"
+                duty_text = duty_text + " " + default_reason
+                logger.debug(f"🎭 [BEGGAR] No current reason found, using default '{default_reason}'")
+        except Exception as e:
+            logger.warning(f"🎭 [BEGGAR] Failed to inject current reason: {e}")
+            # Fallback to a generic reason if beggar config is not available
+            duty_text = duty_text + " clan matters"
+    
     return duty_text
 
 
@@ -194,7 +249,18 @@ def _get_role_display_name(role_name: str) -> str:
     """Get Spanish display name from descriptions.json with fallback to technical name."""
     try:
         from pathlib import Path
-        descriptions_path = Path(__file__).parent / "personalities" / "putre" / "descriptions.json"
+        
+        def _get_personality_dir():
+            """Get the current personality directory dynamically."""
+            try:
+                personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
+                personality_path = Path(__file__).parent / personality_rel
+                return personality_path.parent
+            except:
+                # Fallback to putre if something goes wrong
+                return Path(__file__).parent / "personalities" / "putre"
+        
+        descriptions_path = _get_personality_dir() / "descriptions.json"
         if descriptions_path.exists():
             import json
             descriptions = json.loads(descriptions_path.read_text(encoding='utf-8'))
@@ -766,6 +832,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             # For ring, we need to execute an actual accusation
             # Get ring state to find target and check frequency
             from roles.trickster.subroles.ring.ring_discord import _get_ring_state, execute_ring_accusation, _can_make_accusation
+            from roles.trickster.subroles.ring.ring_db import RingDB
             
             # Try to get a server context (this is tricky in subprocess mode)
             # For now, we'll use a generic approach - in the future this should be server-aware
@@ -799,15 +866,44 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                                 LIMIT 5
                             ''')
                             recent_users = cursor.fetchall()
-                            conn.close()
                             
                             if recent_users:
                                 # Select a random recent user as target
                                 import random
                                 target_user_id, target_user_name, server_id = random.choice(recent_users)
                                 
+                                # Get the original accuser from database
+                                accuser_name = "a user"  # default fallback
+                                try:
+                                    ring_db = RingDB(server_name)
+                                    accusations = ring_db.get_accusations(limit=1)
+                                    logger.info(f"🔍 [RING DEBUG] Retrieved {len(accusations)} accusations")
+                                    if accusations and len(accusations) > 0:
+                                        latest_accusation = accusations[0]
+                                        accuser_id = latest_accusation.get('accuser_id')
+                                        logger.info(f"🔍 [RING DEBUG] accuser_id: {accuser_id} (type: {type(accuser_id)})")
+                                        if accuser_id:
+                                            # Try to get user name from recent interactions
+                                            cursor.execute('''
+                                                SELECT usuario_nombre FROM interacciones 
+                                                WHERE usuario_id = ? AND servidor_id = ?
+                                                ORDER BY fecha DESC LIMIT 1
+                                            ''', (accuser_id, server_id))
+                                            result = cursor.fetchone()
+                                            logger.info(f"🔍 [RING DEBUG] Query result: {result}")
+                                            if result:
+                                                accuser_name = result[0]
+                                                logger.info(f"🔍 [RING DEBUG] Found accuser_name: {accuser_name}")
+                                            else:
+                                                # If not found in interactions, maybe accuser_id is already a name
+                                                if isinstance(accuser_id, str) and not accuser_id.isdigit():
+                                                    accuser_name = accuser_id
+                                                    logger.info(f"🔍 [RING DEBUG] Using accuser_id as name: {accuser_name}")
+                                except Exception as e:
+                                    logger.warning(f"Could not get original accuser: {e}")
+                                
                                 # Execute ring accusation
-                                accusation = execute_ring_accusation(None, target_user_id, target_user_name)
+                                accusation = execute_ring_accusation(None, target_user_id, target_user_name, user_name=accuser_name)
                                 logger.info(f"🎭 [RING] Accusation generated for {target_user_name}: {accusation[:100]}...")
                                 
                                 # Try to send the accusation to a channel

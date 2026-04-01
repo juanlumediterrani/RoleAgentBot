@@ -183,7 +183,7 @@ def _can_make_accusation(server_id: str) -> bool:
         return True
 
 
-async def _record_accusation(server_id: str, accusation_text: str, guild=None, target_user_id: str = None, target_user_name: str = None):
+async def _record_accusation(server_id: str, accusation_text: str, guild=None, target_user_id: str = None, target_user_name: str = None, accuser_name: str = None, accuser_id: str = None):
     """Record an accusation, update frequency, and execute immediate accusation if target provided."""
     state = _get_ring_state(server_id)
     
@@ -209,7 +209,7 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
     if guild and target_user_id and target_user_name:
         try:
             logger.info(f"🎯 Executing immediate ring accusation against {target_user_name}")
-            accusation = await execute_ring_accusation(guild, target_user_id, target_user_name)
+            accusation = await execute_ring_accusation(guild, target_user_id, target_user_name, user_name=accuser_name, accuser_id=accuser_id)
             
             # Try to send the accusation via DM to the target
             try:
@@ -232,7 +232,7 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
             logger.error(f"🎭 [RING] Error executing immediate accusation: {e}")
 
 
-async def execute_ring_accusation(guild, target_user_id: str, target_user_name: str, channel_id: int = None, user_name: str = None) -> str:
+async def execute_ring_accusation(guild, target_user_id: str, target_user_name: str, channel_id: int = None, user_name: str = None, accuser_id: str = None) -> str:
     """Execute a ring accusation using the new prompt system with memory injections."""
     try:
         # Import memory building functions
@@ -254,7 +254,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         if user_name:
             task = task.replace("{user_name}", user_name)
         else:
-            task = task.replace("{user_name}", "un usuario")
+            task = task.replace("{user_name}", "a user")
         base_rules = accusation_config.get("golden_rules", [])
         
         # Add context-specific rules
@@ -273,11 +273,10 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         # Build memory sections using proper functions
         memory_block = _build_prompt_memory_block(server=server_name)
         
-        # Use user_name if provided, otherwise fall back to target_user_id for relationship context
-        relationship_user_id = user_name if user_name else target_user_id
+        # Use target_user_id for relationship context (the accused), not the accuser
         relationship_block = _build_prompt_relationship_block(
-            user_id=relationship_user_id,
-            user_name=relationship_user_id,
+            user_id=target_user_id,
+            user_name=target_user_name,
             server=server_name
         )
         last_interactions_block = _build_prompt_last_interactions_block(
@@ -314,9 +313,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
 
         prompt_parts.extend([
             "",
-            task,
-            "",
-            PERSONALITY.get("closing", "## PUTRE'S RESPONSE:"),
+            PERSONALITY.get("closing", "## Personality RESPONSE:"),
         ])
         
         
@@ -335,9 +332,12 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         
         # Log the accusation and save to roles.db
         ring_db = RingDB(server_name)
+        # Use the provided accuser_id if available, otherwise fallback to system
+        accuser_id_to_save = accuser_id if accuser_id else 'system'
+        logger.info(f"🔍 [RING SAVE DEBUG] Saving accusation - accuser_id: {accuser_id_to_save}, accuser_name: {user_name}")
         await asyncio.to_thread(
             ring_db.save_accusation,
-            'system',  # System accuser
+            accuser_id_to_save,
             target_user_id,
             accusation,
             f"Evidence: {accusation[:200]}..." if len(accusation) > 200 else accusation
@@ -346,8 +346,26 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         # Save current accusation to ring state and roles table
         server_id = str(guild.id) if guild else "unknown"
         
-        # Record the accusation and update frequency
-        await _record_accusation(server_id, accusation)
+        # Record the accusation and update frequency (without executing again)
+        state = _get_ring_state(server_id)
+        
+        # Check if this is a different accusation from the last one
+        last_accusation = state.get("last_accusation", "")
+        if last_accusation != accusation:
+            # Reset frequency if accusation changed
+            logger.info(f"🔄 Ring accusation changed, resetting frequency")
+            _reset_frequency_to_base(server_id, "accusation_changed")
+        else:
+            # Calculate next frequency (hot potato effect)
+            _calculate_next_frequency(server_id)
+        
+        # Record the accusation
+        state["last_accusation"] = accusation
+        state["last_accusation_time"] = datetime.datetime.now().isoformat()
+        state["current_accusation"] = accusation
+        
+        # Save the updated state
+        _save_ring_state(server_id, "accusation_record")
         
         return accusation
         
@@ -516,7 +534,9 @@ async def cmd_accuse_ring(ctx, target: str = ''):
             accusation_text=f"ACCUSE {target_name}",
             guild=ctx.guild,
             target_user_id=str(mentioned_user.id),
-            target_user_name=target_name
+            target_user_name=target_name,
+            accuser_name=ctx.author.display_name,
+            accuser_id=str(ctx.author.id)
         )
         logger.info(f"🎭 [COMMAND] Immediate accusation executed for {target_name}")
     except Exception as e:

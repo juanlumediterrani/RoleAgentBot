@@ -1,5 +1,10 @@
 """Canvas Trickster content builders."""
 
+import asyncio
+import json
+
+import discord
+
 from discord_bot import discord_core_commands as core
 from .state import (
     _get_canvas_dice_state,
@@ -11,11 +16,20 @@ from .state import (
 _personality_descriptions = core._personality_descriptions
 _bot_display_name = core._bot_display_name
 get_server_key = core.get_server_key
+logger = core.logger
+AgentDatabase = core.AgentDatabase
+is_admin = core.is_admin
+set_role_enabled = core.set_role_enabled
 
 try:
     from agent_roles_db import get_roles_db_instance
 except ImportError:
     get_roles_db_instance = None
+
+try:
+    from roles.trickster.subroles.nordic_runes.nordic_runes_discord import get_nordic_runes_commands_instance
+except Exception:
+    get_nordic_runes_commands_instance = None
 
 
 def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=None) -> str:
@@ -250,6 +264,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
     if detail_name in {"beggar_admin"}:
         beggar_state = _get_canvas_beggar_state(guild)
         descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
+        trickster_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {})
         description = descriptions.get("description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")  
         title = descriptions.get("title", "🙏 BEGGAR")
         general_descriptions =  _personality_descriptions.get("general", {})
@@ -258,10 +273,10 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
             "-" * 45,
             general_descriptions.get("current_settings", "**Current Settings**"),
             "-" * 45,
-            f"{general_descriptions.get('status_label', '**Status:**')} {_personality_descriptions.get('active', '✅ Enabled') if beggar_state['enabled'] else _personality_descriptions.get('inactive','❌ Disabled')}",
-            f"{general_descriptions.get('frequency_label', '**Frequency:**')} {_personality_descriptions.get('every', 'every')} {beggar_state['frequency_hours']}h",
+            f"{general_descriptions.get('status_label', '**Status:**')} {general_descriptions.get('active', '✅ Enabled') if beggar_state['enabled'] else general_descriptions.get('inactive','❌ Disabled')}",
+            f"{general_descriptions.get('frequency_label', '**Frequency:**')} {general_descriptions.get('every', 'every')} {beggar_state['frequency_hours']}h",
             f"{descriptions.get('current_fund', '**Current Fund:**')} {beggar_state['fund_balance']:,} :coin:",
-            f"{descriptions.get('title_reason', '**Last Reason:**')} {beggar_state['last_reason'] or _personality_descriptions.get('none','None')}",
+            f"{descriptions.get('title_reason', '**Last Reason:**')} {beggar_state['last_reason'] or general_descriptions.get('none','None')}",
            
            ])
 
@@ -421,3 +436,815 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         ])
 
     return None
+
+
+class RuneCastingModal(discord.ui.Modal):
+    """Modal for rune casting questions."""
+
+    def __init__(self, action_name: str, author_id: int, guild):
+        reading_type = action_name.replace("runes_", "")
+        title_map = {
+            "runes_single": "Single Rune Casting",
+            "runes_three": "Three Rune Casting",
+            "runes_cross": "Five Rune Cross Casting",
+            "runes_runic_cross": "Seven Rune Runic Cross Casting",
+        }
+        super().__init__(title=title_map.get(action_name, "Rune Casting"), timeout=300.0)
+        self.action_name = action_name
+        self.author_id = author_id
+        self.guild = guild
+        self.reading_type = reading_type
+
+        self.add_item(discord.ui.TextInput(
+            label="Your Question",
+            placeholder="What would you like to know from the runes?",
+            style=discord.TextStyle.paragraph,
+            required=True,
+            max_length=500,
+        ))
+
+    async def on_submit(self, interaction: discord.Interaction):
+        question = self.children[0].value.strip()
+
+        if not question:
+            await interaction.response.send_message("❌ Please provide a question.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            if get_nordic_runes_commands_instance is None:
+                await interaction.followup.send("❌ Runes system is not available.", ephemeral=True)
+                return
+
+            runes_commands = get_nordic_runes_commands_instance()
+
+            class MockMessage:
+                def __init__(self, author, guild):
+                    self.author = author
+                    self.guild = guild
+
+            mock_message = MockMessage(interaction.user, interaction.guild)
+            result = await runes_commands.cmd_runes_canvas_cast(mock_message, self.reading_type, question)
+
+            descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
+            saved_msg = descriptions.get("reading_saved", "🔮 Runes have been cast! Your reading has been saved.")
+            response = result + f"\n\n{saved_msg}"
+
+            try:
+                try:
+                    await interaction.user.send(response)
+                    logger.info(f"Successfully sent rune reading via DM to user {interaction.user.id}")
+                except discord.Forbidden:
+                    logger.info(f"User {interaction.user.id} has DMs disabled, sending as ephemeral")
+                    await interaction.followup.send(
+                        response,
+                        ephemeral=True,
+                    )
+            except discord.errors.NotFound:
+                logger.info("Interaction expired, attempting direct DM for rune reading")
+                try:
+                    await interaction.user.send(response)
+                    logger.info(f"Successfully sent rune reading via direct DM to user {interaction.user.id}")
+                except Exception as e:
+                    logger.error(f"Failed to send rune reading via DM: {e}")
+                    if hasattr(interaction, "channel") and interaction.channel:
+                        try:
+                            await interaction.channel.send(
+                                f"🔮 {interaction.user.mention} Your rune reading is ready!\n\n" + response
+                            )
+                            logger.info("Sent rune reading to channel as last resort")
+                        except Exception as channel_error:
+                            logger.error(f"Failed to send to channel: {channel_error}")
+                    else:
+                        logger.error("All delivery methods failed for rune reading")
+
+        except discord.errors.NotFound as e:
+            logger.warning(f"Rune casting modal interaction expired: {e}")
+        except Exception as e:
+            logger.exception(f"Rune casting modal failed: {e}")
+            try:
+                await interaction.followup.send("❌ Failed to cast runes. Please try again.", ephemeral=True)
+            except discord.errors.NotFound:
+                logger.warning("Cannot send error message - interaction expired")
+            except Exception:
+                try:
+                    await interaction.user.send("❌ Failed to cast runes. Please try again.")
+                    logger.info(f"Sent error message via DM to user {interaction.user.id}")
+                except Exception:
+                    logger.error("All error message delivery methods failed")
+
+
+async def handle_canvas_runes_action(interaction: discord.Interaction, action_name: str, view) -> None:
+    """Handle Nordic runes actions with dynamic content display."""
+    try:
+        try:
+            from roles.trickster.subroles.nordic_runes.nordic_runes_messages import get_message
+        except ImportError as e:
+            logger.error(f"Failed to import runes modules: {e}")
+            await interaction.response.send_message("❌ Runes system is not available.", ephemeral=True)
+            return
+
+        guild = interaction.guild
+
+        class MockMessage:
+            def __init__(self, author, guild):
+                self.author = author
+                self.guild = guild
+
+        mock_message = MockMessage(interaction.user, guild)
+
+        if get_nordic_runes_commands_instance is None:
+            await interaction.response.send_message("❌ Runes system is not available.", ephemeral=True)
+            return
+
+        runes_commands = get_nordic_runes_commands_instance()
+        content_parts = []
+
+        if action_name == "runes_history":
+            try:
+                title_history = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title_history", "🌔 **RUNES READING HISTORY**🌔")
+                result = await runes_commands.cmd_runes_canvas_history(mock_message, 10)
+                content_parts.append("─" * 45)
+                content_parts.append(result)
+            except Exception as e:
+                logger.exception(f"Canvas runes history failed: {e}")
+                error_history = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("error_history", "❌ **ERROR!** Could not load your rune history.")
+                content_parts.extend([title_history, error_history, ""])
+        elif action_name == "runes_runes_1":
+            try:
+                runes_content = get_message("runes_list_content", 1)
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list page 1 failed: {e}")
+                content_parts.extend(["🔮 **ELDER FUTHARK RUNES I** 🔮", "❌ **ERROR!** Could not load runes list page 1."])
+        elif action_name == "runes_runes_2":
+            try:
+                runes_content = get_message("runes_list_content", 2)
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list page 2 failed: {e}")
+                content_parts.extend(["🔮 **ELDER FUTHARK RUNES II** 🔮", "❌ **ERROR!** Could not load runes list page 2."])
+        elif action_name == "runes_runes_3":
+            try:
+                runes_content = get_message("runes_list_content", 3)
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list page 3 failed: {e}")
+                content_parts.extend(["🔮 **ELDER FUTHARK RUNES III** 🔮", "❌ **ERROR!** Could not load runes list page 3."])
+        elif action_name == "runes_runes":
+            try:
+                runes_content = get_message("runes_list_content")
+                content_parts.append("─" * 45)
+                content_parts.append(runes_content)
+            except Exception as e:
+                logger.exception(f"Canvas runes list failed: {e}")
+                content_parts.extend(["🔮 **ELDER FUTHARK RUNES** 🔮", "❌ **ERROR!** Could not load runes list."])
+        elif action_name == "runes_types":
+            try:
+                title_available_readings = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title_available_readings", "🌌**Available readings**🌌\n ")
+                available_readings = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("available_readings", "-Single rune: quick guidance\n - Three runes: past, present, future\n - Five Cross runes : Comprehensive multidimension situation analysis\n - Seven Runic Cross runes: Integral spiritual insight\n")
+                content_parts.append("─" * 45)
+                content_parts.append(title_available_readings)
+                content_parts.append("─" * 45)
+                content_parts.append(available_readings)
+            except Exception as e:
+                logger.exception(f"Canvas runes types failed: {e}")
+                content_parts.extend(["🔮 **RUNES READING TYPES** 🔮", "❌ **ERROR!** Could not load reading types."])
+
+        content = "\n".join(content_parts)
+        from .content import _build_canvas_role_embed
+        from discord_bot.canvas.ui import CanvasRoleDetailView
+
+        runes_title = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
+        role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "runes", None, f"Viewed {action_name.replace('runes_', '').title()}")
+        role_embed.title = runes_title
+        view.current_embed = role_embed
+
+        next_view = CanvasRoleDetailView(
+            author_id=view.author_id,
+            role_name=view.role_name,
+            agent_config=view.agent_config,
+            admin_visible=view.admin_visible,
+            sections=view.sections,
+            current_detail="runes",
+            guild=view.guild,
+            previous_view=view,
+        )
+        next_view.auto_response_preview = f"Viewed {action_name.replace('runes_', '').title()}"
+
+        try:
+            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
+        except discord.InteractionResponded:
+            await interaction.followup.edit_message(interaction.message.id, embed=role_embed, view=next_view)
+        except discord.NotFound:
+            try:
+                await interaction.followup.send(embed=role_embed, view=next_view, ephemeral=True)
+            except discord.NotFound:
+                logger.debug("Canvas runes interaction expired completely - unable to send followup")
+        except Exception as e:
+            logger.exception(f"Failed to edit canvas runes message: {e}")
+            try:
+                await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+            except discord.NotFound:
+                logger.warning("Canvas runes interaction expired during error handling")
+            except Exception as followup_e:
+                logger.exception(f"Failed to send error followup: {followup_e}")
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in Canvas runes action: {e}")
+        if not interaction.response.is_done():
+            await interaction.response.send_message("❌ An unexpected error occurred.", ephemeral=True)
+        else:
+            try:
+                await interaction.followup.send("❌ An unexpected error occurred.", ephemeral=True)
+            except discord.NotFound:
+                logger.warning("Canvas runes interaction expired during error handling")
+
+
+class TricksterActionModal(discord.ui.Modal):
+    def __init__(self, action_name: str, author_id: int, guild, admin_visible: bool, view=None):
+        titles = {
+            "dice_fixed_bet": "Dice Fixed Bet",
+            "dice_pot_value": "Dice Pot Value",
+            "ring_frequency": "Ring Frequency",
+            "beggar_frequency": "Beggar Frequency",
+            "beggar_donate": "Beggar Donation",
+            "ring_accuse": "Accuse User",
+        }
+        super().__init__(title=titles.get(action_name, "Trickster Action"))
+        self.action_name = action_name
+        self.author_id = author_id
+        self.guild = guild
+        self.admin_visible = admin_visible
+        self.view = view
+        label_map = {
+            "dice_fixed_bet": "Gold amount",
+            "dice_pot_value": "New pot balance",
+            "ring_frequency": "Hours",
+            "beggar_frequency": "Hours",
+            "beggar_donate": "Gold amount",
+            "ring_accuse": "User mention, id, or name",
+        }
+        placeholder_map = {
+            "dice_fixed_bet": "15",
+            "dice_pot_value": "500",
+            "ring_frequency": "24",
+            "beggar_frequency": "6",
+            "beggar_donate": "25",
+            "ring_accuse": "@user",
+        }
+        self.value_input = discord.ui.TextInput(
+            label=label_map.get(action_name, "Value"),
+            placeholder=placeholder_map.get(action_name, ""),
+            required=True,
+            max_length=120,
+        )
+        self.add_item(self.value_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await handle_canvas_trickster_modal_submit(
+            interaction,
+            self.action_name,
+            str(self.value_input.value).strip(),
+            self.guild,
+            self.author_id,
+            self.admin_visible,
+            self.view,
+        )
+
+
+async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction, action_name: str, raw_value: str, guild, author_id: int, admin_visible: bool, view=None) -> None:
+    server_key = get_server_key(guild)
+    server_id = str(guild.id)
+    server_name = guild.name
+
+    from discord_bot.agent_discord import AGENT_CFG
+    from .content import _build_canvas_role_embed, _build_canvas_sections, _build_canvas_embed
+    from discord_bot.canvas.ui import CanvasRoleDetailView, _safe_edit_interaction_message
+
+    sections = _build_canvas_sections(
+        AGENT_CFG,
+        "greetputre",
+        "nogreetputre",
+        "welcomeputre",
+        "nowelcomeputre",
+        "roleputre",
+        "talkputre",
+        admin_visible,
+        server_name,
+        author_id,
+    )
+
+    if action_name == "ring_accuse":
+        try:
+            from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state, _record_accusation
+
+            ring_state = _get_ring_state(server_id)
+            if not ring_state.get("enabled", False):
+                await interaction.response.send_message("❌ Ring is not enabled on this server.", ephemeral=True)
+                return
+
+            raw_target = raw_value.strip()
+            mentioned_user = None
+            if guild is not None:
+                cleaned = raw_target.replace("<@", "").replace("!", "").replace(">", "").strip()
+                if cleaned.isdigit():
+                    mentioned_user = guild.get_member(int(cleaned))
+
+                if mentioned_user is None:
+                    lowered = raw_target.lower()
+                    for member in getattr(guild, "members", []) or []:
+                        if getattr(member, "bot", False) or member.id == interaction.user.id:
+                            continue
+                        names = {member.name.lower(), member.display_name.lower()}
+                        if lowered in names:
+                            mentioned_user = member
+                            break
+
+                if mentioned_user is None and cleaned.isdigit():
+                    try:
+                        mentioned_user = await interaction.client.fetch_user(int(cleaned))
+                    except Exception:
+                        pass
+
+                if mentioned_user is None:
+                    lowered = raw_target.lower()
+                    for member in getattr(guild, "members", []) or []:
+                        if getattr(member, "bot", False) or member.id == interaction.user.id:
+                            continue
+                        names = {member.name.lower(), member.display_name.lower()}
+                        if any(lowered in name for name in names):
+                            mentioned_user = member
+                            break
+
+            if mentioned_user is None:
+                await interaction.response.send_message("❌ Enter a valid user mention, id, or visible name.", ephemeral=True)
+                return
+
+            target_name = mentioned_user.display_name if hasattr(mentioned_user, "display_name") else mentioned_user.name
+            ring_state["target_user_id"] = str(mentioned_user.id)
+            ring_state["target_user_name"] = target_name
+            _save_ring_state(server_id, "canvas_accuse")
+
+            try:
+                logger.info(f"🎯 [CANVAS] Executing immediate ring accusation against {target_name}")
+                await _record_accusation(
+                    server_id=server_id,
+                    accusation_text=f"ACCUSE {target_name}",
+                    guild=guild,
+                    target_user_id=str(mentioned_user.id),
+                    target_user_name=target_name,
+                    accuser_name=interaction.user.display_name,
+                    accuser_id=str(interaction.user.id)
+                )
+                logger.info(f"🎭 [CANVAS] Immediate accusation executed for {target_name}")
+            except Exception as e:
+                logger.error(f"🎭 [CANVAS] Error executing immediate accusation: {e}")
+
+            db_instance = AgentDatabase(server_name=server_name)
+            await asyncio.to_thread(
+                db_instance.registrar_interaccion,
+                interaction.user.id,
+                interaction.user.name,
+                "RING_TARGET_CHANGE",
+                f"Changed ring target to {target_name}",
+                interaction.channel.id if interaction.channel else None,
+                guild.id,
+                {"target_user_id": mentioned_user.id, "target_user_name": target_name},
+            )
+
+            content = build_canvas_role_trickster_detail("ring", admin_visible, guild, author_id, view.agent_config)
+            next_view = CanvasRoleDetailView(
+                author_id=author_id,
+                role_name="trickster",
+                agent_config=AGENT_CFG,
+                admin_visible=admin_visible,
+                sections=sections,
+                current_detail="ring",
+                guild=guild,
+                message=interaction.message,
+            )
+            next_view.auto_response_preview = f"New target: {target_name}\nThe next investigation will focus on this user."
+            role_embed = _build_canvas_role_embed("trickster", content or "", admin_visible, "ring", None, next_view.auto_response_preview)
+            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
+        except Exception as e:
+            logger.exception(f"Canvas ring accuse failed: {e}")
+            if not interaction.response.is_done():
+                await interaction.response.send_message("❌ Could not submit accusation.", ephemeral=True)
+            else:
+                try:
+                    await interaction.followup.send("❌ Could not submit accusation.", ephemeral=True)
+                except discord.NotFound:
+                    logger.warning("Canvas ring accuse interaction expired - unable to send error followup")
+                except Exception as followup_e:
+                    logger.exception(f"Failed to send canvas ring accuse error followup: {followup_e}")
+        return
+
+    if action_name == "beggar_donate":
+        # Defer the interaction to avoid timeout issues
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+        
+        if get_roles_db_instance is None:
+            await interaction.followup.send("❌ Beggar donation systems are not available.", ephemeral=True)
+            return
+        try:
+            amount = int(raw_value)
+        except ValueError:
+            await interaction.followup.send("❌ Enter a valid gold amount.", ephemeral=True)
+            return
+        if amount <= 0:
+            await interaction.followup.send("❌ Donation amount must be positive.", ephemeral=True)
+            return
+        db_banker = get_roles_db_instance(server_key)
+        donor_id = str(author_id)
+        donor_name = interaction.user.display_name
+        from roles.banker.banker_db import get_banker_roles_db_instance
+        from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+        db_banker_roles = get_banker_roles_db_instance(server_key)
+        db_banker_roles.create_wallet(donor_id, donor_name, server_id, server_name, "user")
+        wallet = db_banker.get_banker_wallet(donor_id, server_id)
+        current_balance = wallet.get("balance", 0) if wallet else 0
+        if current_balance < amount:
+            await interaction.followup.send(f"❌ You only have {current_balance:,} gold available.", ephemeral=True)
+            return
+        beggar_config = get_beggar_config(server_id)
+        reason = beggar_config.get_current_reason() or "the current clan project"
+        target_gold = beggar_config.get_target_gold()
+        
+        # Process donation with proper error handling
+        donation_success = False
+        error_message = ""
+        
+        try:
+            # Update user balance (deduct donation)
+            user_update_success = db_banker_roles.update_balance(
+                donor_id, donor_name, server_id, server_name, 
+                -amount, "BEGGAR_DONATION_OUT", "Donation sent to beggar"
+            )
+            
+            if not user_update_success:
+                error_message = "Failed to deduct gold from your account."
+                logger.error(f"Failed to deduct {amount} gold from user {donor_id}")
+                raise RuntimeError("User balance update failed")
+            
+            # Update beggar fund (add donation)
+            fund_update_success = db_banker_roles.update_balance(
+                "beggar_fund", "Beggar Fund", server_id, server_name, 
+                amount, "BEGGAR_DONATION_IN", f"Donation received from {donor_name}"
+            )
+            
+            if not fund_update_success:
+                error_message = "Failed to add gold to beggar fund."
+                logger.error(f"Failed to add {amount} gold to beggar fund")
+                # Rollback user balance
+                db_banker_roles.update_balance(
+                    donor_id, donor_name, server_id, server_name, 
+                    amount, "BEGGAR_DONATION_ROLLBACK", "Rollback - donation failed"
+                )
+                raise RuntimeError("Fund balance update failed")
+            
+            # Update beggar statistics
+            roles_db = get_roles_db_instance(server_key)
+            stats_update_success = roles_db.update_beggar_donation(server_id, donor_id, donor_name, amount, reason)
+            
+            if not stats_update_success:
+                error_message = "Failed to update donation statistics."
+                logger.error(f"Failed to update beggar statistics for {donor_id}")
+                # This is non-critical, donation still processed
+            
+            # Save donation request
+            roles_db.save_beggar_request(
+                server_id,
+                donor_id,
+                donor_name,
+                "BEGGAR_DONATION",
+                f"Donated {amount} gold",
+                str(interaction.channel.id) if interaction.channel else None,
+                None,
+            )
+            
+            donation_success = True
+            
+        except Exception as e:
+            logger.error(f"Donation processing error for {donor_id}: {e}")
+            if not error_message:
+                error_message = "Database error during donation processing."
+        
+        if not donation_success:
+            await interaction.followup.send(
+                f"❌ {error_message} Please try again later.",
+                ephemeral=True
+            )
+            return
+
+        fund_balance = db_banker_roles.get_balance("beggar_fund", server_id)
+        
+        # Try to refresh the view, but don't let it prevent the success message
+        try:
+            current_detail = getattr(view, "current_detail", "beggar") if view else "beggar"
+            if current_detail.startswith("beggar"):
+                new_content = build_canvas_role_trickster_detail(current_detail, admin_visible, guild, author_id, view.agent_config if view else AGENT_CFG)
+                if new_content:
+                    embed = _build_canvas_embed("roles", new_content, admin_visible)
+                    if view:
+                        await _safe_edit_interaction_message(interaction, embed=embed, view=view)
+                    # Note: We can't edit the message directly if interaction is deferred and no view
+        except Exception as refresh_error:
+            logger.warning(f"Could not refresh Canvas view after donation: {refresh_error}")
+            # Don't return here - continue to show success message
+
+        # Show success message using followup since interaction is deferred
+        success_message = (
+            f"✅ Donation accepted: {amount:,} gold.\n"
+            f"🪙 Fund: {fund_balance:,}\n"
+            f"🎯 Target: {target_gold:,}\n"
+            f"📣 Reason: {reason}"
+        )
+        
+        await interaction.followup.send(success_message, ephemeral=True)
+        return
+
+    if not admin_visible or not is_admin(interaction):
+        await interaction.response.send_message("❌ This trickster option is admin-only.", ephemeral=True)
+        return
+
+    if action_name in {"ring_frequency", "beggar_frequency"}:
+        try:
+            hours = int(raw_value)
+        except ValueError:
+            await interaction.response.send_message("❌ Enter a valid number of hours.", ephemeral=True)
+            return
+        if hours < 1 or hours > 168:
+            await interaction.response.send_message("❌ Frequency must be between 1 and 168 hours.", ephemeral=True)
+            return
+        try:
+            if action_name == "ring_frequency":
+                from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+                state = _get_ring_state(server_id)
+                state["frequency_hours"] = hours
+                state["base_frequency_hours"] = hours
+                state["current_frequency_hours"] = hours
+                state["frequency_iteration"] = 0
+                _save_ring_state(server_id, "canvas_admin")
+                message = (
+                    f"✅ Ring base frequency updated to `{hours}` hours.\n"
+                    f"🔥 Hot potato counter reset.\n"
+                    f"Current state: {'On' if state.get('enabled', False) else 'Off'}\n"
+                    f"Next accusation will use {hours}h frequency."
+                )
+            else:
+                from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+                beggar_config = get_beggar_config(server_id)
+                ok = beggar_config.set_frequency_hours(hours)
+                if not ok:
+                    raise RuntimeError("Could not update beggar frequency")
+                target_gold = beggar_config.get_target_gold()
+                message = (
+                    f"✅ Beggar frequency updated to `{hours}` hours.\n"
+                    f"Current target: {target_gold:,} gold"
+                )
+        except Exception as e:
+            logger.exception(f"Canvas trickster frequency update failed: {e}")
+            await interaction.response.send_message("❌ Could not update frequency.", ephemeral=True)
+            return
+        await interaction.response.send_message(message, ephemeral=True)
+        return
+
+    if action_name in {"dice_fixed_bet", "dice_pot_value"}:
+        if get_roles_db_instance is None or get_roles_db_instance is None:
+            await interaction.response.send_message("❌ Dice game systems are not available.", ephemeral=True)
+            return
+        try:
+            amount = int(raw_value)
+        except ValueError:
+            await interaction.response.send_message("❌ Enter a valid gold amount.", ephemeral=True)
+            return
+        if amount < 0:
+            await interaction.response.send_message("❌ Amount must be zero or greater.", ephemeral=True)
+            return
+        try:
+            if action_name == "dice_fixed_bet":
+                if amount < 1 or amount > 1000:
+                    await interaction.response.send_message("❌ Fixed bet must be between 1 and 1000 gold.", ephemeral=True)
+                    return
+                roles_db = get_roles_db_instance(server_key)
+                ok = roles_db.save_role_config("dice_game", server_id, True, json.dumps({"fixed_bet": amount}))
+                if not ok:
+                    raise RuntimeError("Could not update fixed bet")
+                state = _get_canvas_dice_state(guild)
+                message = (
+                    f"✅ Dice fixed bet updated to `{amount}` gold.\n"
+                    f"Current pot: {state['pot_balance']:,} gold"
+                )
+            else:
+                from roles.banker.banker_db import get_banker_roles_db_instance
+                db_banker = get_banker_roles_db_instance(server_key)
+                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name, wallet_type="system")
+                current_balance = db_banker.get_balance("dice_game_pot", server_id)
+                delta = amount - current_balance
+                ok = db_banker.update_balance("dice_game_pot", "Dice Game Pot", server_id, server_name, delta, "DICE_POT_ADMIN_SET", "Canvas pot update", str(interaction.user.id), interaction.user.display_name)
+                if not ok:
+                    raise RuntimeError("Could not update pot balance")
+                state = _get_canvas_dice_state(guild)
+                message = (
+                    f"✅ Dice pot balance updated to `{amount}` gold.\n"
+                    f"Current fixed bet: {state['bet']:,} gold"
+                )
+        except Exception as e:
+            logger.exception(f"Canvas trickster dice update failed: {e}")
+            await interaction.response.send_message("❌ Could not update dice settings.", ephemeral=True)
+            return
+        await interaction.response.send_message(message, ephemeral=True)
+
+
+async def handle_canvas_trickster_action(interaction: discord.Interaction, action_name: str, view) -> None:
+    from .content import _build_canvas_role_embed
+    from discord_bot.canvas.ui import CanvasRoleDetailView, _safe_send_interaction_message
+
+    try:
+        server_key = get_server_key(interaction.guild)
+        server_id = str(interaction.guild.id)
+        if action_name in {"announcements_on", "announcements_off"}:
+            if get_roles_db_instance is None:
+                await interaction.response.send_message("❌ Dice game database is not available.", ephemeral=True)
+                return
+            enabled = action_name == "announcements_on"
+            roles_db = get_roles_db_instance(server_key)
+            ok = roles_db.save_role_config("dice_game", server_id, True, json.dumps({"announcements_active": enabled}))
+            current_detail = "dice_admin"
+            applied_text = f"Dice announcements {'enabled' if enabled else 'disabled'}."
+        elif action_name in {"ring_on", "ring_off"}:
+            from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+
+            enabled = action_name == "ring_on"
+            success = set_role_enabled(interaction.guild, "trickster", enabled, None, getattr(interaction.user, "name", "canvas_admin"))
+
+            if success:
+                state = _get_ring_state(server_id)
+                state["enabled"] = enabled
+                _save_ring_state(server_id, "canvas_admin")
+                ok = True
+                current_detail = "ring_admin"
+                applied_text = f"Ring {'enabled' if state['enabled'] else 'disabled'}."
+            else:
+                ok = False
+                current_detail = "ring_admin"
+                applied_text = "Failed to update ring status in database."
+        elif action_name in {"beggar_on", "beggar_off"}:
+            try:
+                from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+                from roles.trickster.subroles.beggar.beggar_task import execute_beggar_task
+
+                server_id_str = str(interaction.guild.id)
+                beggar_config = get_beggar_config(server_id_str)
+                enabled = action_name == "beggar_on"
+
+                if beggar_config.set_enabled(enabled):
+                    if enabled:
+                        selected_reason = beggar_config.select_new_reason()
+                        try:
+                            success = await execute_beggar_task(server_id_str, bot_instance=interaction.client)
+                            if success:
+                                applied_text = f"🙏 **Beggar enabled** - First message sent with reason: '{selected_reason}'"
+                            else:
+                                applied_text = f"🙏 **Beggar enabled** - Reason selected: '{selected_reason}' (First message will be sent on next cycle)"
+                        except Exception as e:
+                            applied_text = f"🙏 **Beggar enabled** - Reason selected: '{selected_reason}' (First message failed: {str(e)})"
+                    else:
+                        applied_text = "🚫 **Beggar disabled** - No more periodic beggar requests."
+                    ok = True
+                else:
+                    applied_text = "❌ Error updating beggar configuration."
+                    ok = False
+            except ImportError:
+                await interaction.response.send_message("❌ Beggar system is not available.", ephemeral=True)
+                return
+            except Exception as e:
+                applied_text = f"❌ Error: {str(e)}"
+                ok = False
+
+            current_detail = "beggar_admin"
+        elif action_name == "beggar_force_minigame":
+            try:
+                from roles.trickster.subroles.beggar.beggar_minigame import BeggarMinigame
+
+                server_id_str = str(interaction.guild.id)
+                if not interaction.response.is_done():
+                    await interaction.response.defer(ephemeral=True)
+
+                async def execute_minigame_background():
+                    try:
+                        minigame = BeggarMinigame(server_id_str)
+                        result = await minigame.force_weekly_minigame(fallback_channel=interaction.channel)
+                        logger.info(f"Background minigame completed for server {server_id_str}: {result['success']}")
+                    except Exception as e:
+                        logger.error(f"Error in background minigame execution: {e}")
+
+                asyncio.create_task(execute_minigame_background())
+                applied_text = "🎲 Minigame iniciado en background..."
+                ok = True
+            except ImportError:
+                applied_text = "❌ Beggar minigame system is not available."
+                ok = False
+            except Exception as e:
+                logger.error(f"Error in beggar force minigame setup: {e}")
+                applied_text = f"❌ Error forcing minigame: {str(e)}"
+                ok = False
+
+            current_detail = "beggar_admin"
+        elif action_name in {"runes_on", "runes_off"}:
+            enabled = action_name == "runes_on"
+            try:
+                from agent_engine import AGENT_CFG
+
+                server_id_str = str(interaction.guild.id)
+                if "roles" not in AGENT_CFG:
+                    AGENT_CFG["roles"] = {}
+                if "trickster" not in AGENT_CFG["roles"]:
+                    AGENT_CFG["roles"]["trickster"] = {}
+                if "subroles" not in AGENT_CFG["roles"]["trickster"]:
+                    AGENT_CFG["roles"]["trickster"]["subroles"] = {}
+                if "nordic_runes" not in AGENT_CFG["roles"]["trickster"]["subroles"]:
+                    AGENT_CFG["roles"]["trickster"]["subroles"]["nordic_runes"] = {}
+                AGENT_CFG["roles"]["trickster"]["subroles"]["nordic_runes"]["enabled"] = enabled
+
+                if get_roles_db_instance is not None:
+                    db_roles = get_roles_db_instance(server_key)
+                    config_data = json.dumps({"enabled": enabled})
+                    ok = db_roles.save_role_config("nordic_runes", server_id_str, enabled, config_data)
+                else:
+                    ok = True
+
+                current_detail = "runes_admin"
+                applied_text = f"Nordic Runes {'enabled' if enabled else 'disabled'}."
+
+                if view.agent_config is None:
+                    view.agent_config = {}
+                if "roles" not in view.agent_config:
+                    view.agent_config["roles"] = {}
+                if "trickster" not in view.agent_config["roles"]:
+                    view.agent_config["roles"]["trickster"] = {}
+                if "subroles" not in view.agent_config["roles"]["trickster"]:
+                    view.agent_config["roles"]["trickster"]["subroles"] = {}
+                if "nordic_runes" not in view.agent_config["roles"]["trickster"]["subroles"]:
+                    view.agent_config["roles"]["trickster"]["subroles"]["nordic_runes"] = {}
+                view.agent_config["roles"]["trickster"]["subroles"]["nordic_runes"]["enabled"] = enabled
+            except Exception as e:
+                logger.exception(f"Failed to update runes config: {e}")
+                ok = False
+                current_detail = "runes_admin"
+                applied_text = "Failed to update runes configuration."
+        else:
+            await interaction.response.send_message("❌ Unknown trickster action.", ephemeral=True)
+            return
+    except Exception as e:
+        logger.exception(f"Canvas trickster action failed: {e}")
+        ok = False
+
+    if not ok:
+        error_message = applied_text if "applied_text" in locals() and applied_text else "❌ Could not update trickster settings."
+        await _safe_send_interaction_message(interaction, error_message, ephemeral=True)
+        return
+
+    if interaction.guild is None or not hasattr(interaction.guild, "id"):
+        logger.warning(f"Canvas trickster action: invalid interaction.guild (type: {type(interaction.guild)}, value: {interaction.guild})")
+        await _safe_send_interaction_message(interaction, "❌ Invalid guild context.", ephemeral=True)
+        return
+
+    content = build_canvas_role_trickster_detail(current_detail, view.admin_visible, interaction.guild, view.author_id, view.agent_config)
+
+    next_view = CanvasRoleDetailView(
+        author_id=view.author_id,
+        role_name=view.role_name,
+        agent_config=view.agent_config,
+        admin_visible=view.admin_visible,
+        sections=view.sections,
+        current_detail=current_detail,
+        guild=interaction.guild,
+    )
+    next_view.auto_response_preview = applied_text
+    action_embed = _build_canvas_role_embed("trickster", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
+    try:
+        await interaction.response.edit_message(content=None, embed=action_embed, view=next_view)
+    except discord.InteractionResponded:
+        await interaction.followup.edit_message(interaction.message.id, embed=action_embed, view=next_view)
+    except discord.NotFound:
+        try:
+            await interaction.followup.send(embed=action_embed, view=next_view, ephemeral=True)
+        except discord.NotFound:
+            logger.warning("Canvas trickster interaction expired completely - unable to send followup")
+        except Exception as e:
+            logger.exception(f"Failed to send canvas trickster followup: {e}")
+    except Exception as e:
+        logger.exception(f"Failed to edit canvas trickster message: {e}")
+        try:
+            await interaction.followup.send("❌ Failed to update view. Please try again.", ephemeral=True)
+        except discord.NotFound:
+            logger.warning("Canvas trickster interaction expired during error handling")
+        except Exception as followup_e:
+            logger.exception(f"Failed to send error followup: {followup_e}")

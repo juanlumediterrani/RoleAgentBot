@@ -16,7 +16,10 @@ class BehaviorDB:
     
     def __init__(self, server_key: str):
         self.server_key = server_key
-        self.db_path = str(get_server_db_path_fallback(server_key, 'behavior'))
+        from agent_db import get_personality_name
+        personality_name = get_personality_name()
+        db_name = f'behavior_{personality_name}'
+        self.db_path = str(get_server_db_path_fallback(server_key, db_name))
         self._init_db()
     
     def _init_db(self):

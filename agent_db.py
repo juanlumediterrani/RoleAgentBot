@@ -189,8 +189,9 @@ class AgentDatabase:
     def __init__(self, server_name: str = "default", db_path: Path = None):
         self.server_name = server_name
         if db_path is None:
-            # Use generic agent database name instead of personality-specific
-            db_name = "agent"
+            # Use personality-specific database name
+            personality_name = get_personality_name()
+            db_name = f"agent_{personality_name}"
             self.db_path = get_server_db_path_fallback(server_name, db_name)
         else:
             self.db_path = db_path
@@ -223,7 +224,7 @@ class AgentDatabase:
                 fallback_dir = fallback_dir / server_storage_id
             fallback_dir.mkdir(parents=True, exist_ok=True)
             
-            fallback_db = fallback_dir / 'agent.db'
+            fallback_db = fallback_dir / f'agent_{get_personality_name()}.db'
             self.db_path = fallback_db
             logger.info(f"ℹ️ [DB] Database relocated to {self.db_path}")
 
@@ -679,6 +680,35 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving last interaction: {e}")
             return None
 
+    def get_most_recent_daily_memory_record(self):
+        """Return the most recent daily memory row for the current server, regardless of date."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT memory_date, summary, metadata, updated_at
+                    FROM daily_memory
+                    WHERE server_name = ? AND summary IS NOT NULL AND summary != ''
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                ''', (self.server_name,))
+                row = cursor.fetchone()
+                conn.close()
+                if not row:
+                    return None
+                metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+                return {
+                    "memory_date": row["memory_date"],
+                    "summary": row["summary"] or "",
+                    "metadata": metadata,
+                    "updated_at": row["updated_at"],
+                }
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving most recent daily memory record: {e}")
+            return None
+
     def get_daily_memory_record(self, memory_date=None):
         """Return the stored daily memory row for the current server."""
         target_date = memory_date or date.today().isoformat()
@@ -697,6 +727,36 @@ class AgentDatabase:
                 return dict(row) if row else None
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving daily memory record: {e}")
+            return None
+
+    def get_most_recent_memory_record(self):
+        """Return the most recent stored recent memory row for the current server, regardless of date."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT memory_date, summary, metadata, updated_at, last_interaction_at
+                    FROM recent_memory
+                    WHERE server_name = ?
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                ''', (self.server_name,))
+                row = cursor.fetchone()
+                conn.close()
+                if not row:
+                    return None
+                metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+                return {
+                    "memory_date": row["memory_date"],
+                    "summary": row["summary"] or "",
+                    "metadata": metadata,
+                    "updated_at": row["updated_at"],
+                    "last_interaction_at": row["last_interaction_at"],
+                }
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving most recent memory record: {e}")
             return None
 
     def get_recent_memory_record(self, memory_date=None):
@@ -1551,8 +1611,9 @@ def get_database_path(server_name: str, db_type: str) -> str:
     centralized_roles = {'beggar', 'trickster', 'mc', 'dice_game', 'nordic_runes', 'banker', 'treasure_hunter'}
     
     if db_type in centralized_roles:
-        # Return path to the centralized roles.db
-        return str(get_server_db_path_fallback(server_name, 'roles'))
+        # Return path to the centralized roles.db with personality-specific naming
+        from agent_roles_db import get_roles_db_path
+        return str(get_roles_db_path(server_name))
     
     personality_name = get_personality_name()
     
@@ -1576,7 +1637,9 @@ def get_fatigue_db_path(server_name: str) -> str:
     Returns:
         str: Full path to fatigue database
     """
-    return str(get_server_db_path(server_name, "fatigue"))
+    personality_name = get_personality_name()
+    db_name = f"fatigue_{personality_name}"
+    return str(get_server_db_path(server_name, db_name))
 
 def init_fatigue_db(server_name: str) -> sqlite3.Connection:
     """

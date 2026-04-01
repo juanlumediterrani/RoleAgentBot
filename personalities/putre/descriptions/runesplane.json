@@ -1,0 +1,247 @@
+{   
+    "positions": {
+        "Center (Core Issue)": "Centro (Asunto Central)",
+        "North (Higher Power)": "Norte (Poder Superior)",
+        "South (Foundation)": "Sur (Fundamentos)",
+        "East (Challenges)": "Este (Desafíos)",
+        "West (Past Influences)": "Oeste (Influencias Pasadas)",
+        "Center (Present Situation)": "Centro (Situación Presente)",
+        "North (Goals & Aspirations)": "Norte (Metas y Aspiraciones)",
+        "South (Past Influences)": "Sur (Influencias Pasadas)",
+        "East (Future Possibilities)": "Este (Posibilidades Futuras)",
+        "West (External Influences)": "Oeste (Influencias Externas)",
+        "Above (Spiritual Guidance)": "Arriba (Guía Espiritual)",
+        "Below (Foundation & Inner Self)": "Abajo (Fundamentos y Yo Interior)"
+    },
+    "translations": {
+        "fehu": {
+            "meaning": "Riqueza, Ganado, Posesiones",
+            "keywords": "riqueza, abundancia, éxito, prosperidad, ganancia material",
+            "interpretation": "Representa riqueza material, prosperidad y éxito en asuntos financieros."
+        },
+        "uruz": {
+            "meaning": "Fuerza, Poder, Energía Primordial",
+            "keywords": "fuerza, poder, energía, vitalidad, coraje",
+            "interpretation": "Simboliza fuerza física, energía primal y la capacidad de superar desafíos."
+        },
+        "thurisaz": {
+            "meaning": "Gigante, Protección, Defensa",
+            "keywords": "protección, defensa, fuerza, poder, puerta",
+            "interpretation": "Representa protección, defensa y el poder para enfrentar obstáculos."
+        },
+        "ansuz": {
+            "meaning": "Dios, Comunicación, Sabiduría Divina",
+            "keywords": "comunicación, sabiduría, conocimiento, mensajes divinos",
+            "interpretation": "Simboliza comunicación clara, sabiduría divina y mensajes de los dioses."
+        },
+        "raidho": {
+            "meaning": "Viaje, Movimiento, Camino",
+            "keywords": "viaje, movimiento, camino, progreso, cambio",
+            "interpretation": "Representa viajes, movimiento en la vida y progreso personal."
+        },
+        "kenaz": {
+            "meaning": "Antorcha, Conocimiento, Claridad",
+            "keywords": "conocimiento, claridad, visión, creatividad, inspiración",
+            "interpretation": "Simboliza iluminación, conocimiento y claridad mental."
+        },
+        "gebo": {
+            "meaning": "Regalo, Asociación, Equilibrio",
+            "keywords": "regalo, asociación, equilibrio, unión, intercambio",
+            "interpretation": "Representa uniones, equilibrio y el intercambio mutuo."
+        },
+        "wunjo": {
+            "meaning": "Alegría, Gozo, Victoria",
+            "keywords": "alegría, gozo, victoria, felicidad, éxito",
+            "interpretation": "Simboliza alegría, gozo y el éxito que viene de la armonía."
+        },
+        "hagalaz": {
+            "meaning": "Granizo, Disrupción, Cambio",
+            "keywords": "cambio, disrupción, transformación, caos controlado",
+            "interpretation": "Representa cambio inevitable y transformación necesaria."
+        },
+        "nauthiz": {
+            "meaning": "Necesidad, Constricción, Superación",
+            "keywords": "necesidad, constricción, superación, resistencia, fuerza",
+            "interpretation": "Simboliza la necesidad que fuerza al crecimiento y la superación."
+        },
+        "isa": {
+            "meaning": "Hielo, Detención, Quietud",
+            "keywords": "hielo, detención, quietud, paciencia, reflexión",
+            "interpretation": "Representa pausa necesaria y tiempo para reflexión."
+        },
+        "jera": {
+            "meaning": "Cosecha, Ciclo, Recompensa",
+            "keywords": "cosecha, ciclo, recompensa, esfuerzo, resultado",
+            "interpretation": "Simboliza el ciclo natural y la recompensa por el esfuerzo."
+        },
+        "eiwaz": {
+            "meaning": "Tejo, Defensa, Transformación",
+            "keywords": "defensa, transformación, resistencia, supervivencia, cambio",
+            "interpretation": "Representa transformación a través de la resistencia y la adaptación."
+        },
+        "perthro": {
+            "meaning": "Sorte, Misterio, Destino",
+            "keywords": "sorte, misterio, destino, secreto, oculto",
+            "interpretation": "Simboliza los misterios del destino y lo oculto."
+        },
+        "algiz": {
+            "meaning": "Protección, Defensa Divina, Escudo",
+            "keywords": "protección, defensa divina, escudo, seguridad, guía",
+            "interpretation": "Representa protección divina y defensa espiritual."
+        },
+        "sowilo": {
+            "meaning": "Sol, Victoria, Éxito",
+            "keywords": "sol, victoria, éxito, logro, iluminación",
+            "interpretation": "Simboliza éxito, victoria y la energía del sol."
+        },
+        "tiwaz": {
+            "meaning": "Tyr, Justicia, Honor",
+            "keywords": "justicia, honor, coraje, sacrificio, verdad",
+            "interpretation": "Representa justicia, honor y el coraje de hacer lo correcto."
+        },
+        "berkano": {
+            "meaning": "Abedul, Crecimiento, Renovación",
+            "keywords": "crecimiento, renovación, nacimiento, fertilidad, nueva vida",
+            "interpretation": "Simboliza crecimiento, renovación y nuevos comienzos."
+        },
+        "ehwaz": {
+            "meaning": "Caballo, Movimiento, Cooperación",
+            "keywords": "movimiento, cooperación, viaje, progreso, unión",
+            "interpretation": "Representa movimiento cooperativo y progreso conjunto."
+        },
+        "mannaz": {
+            "meaning": "Humanidad, Humanos, Cooperación",
+            "keywords": "humanidad, cooperación, comunidad, relaciones, apoyo",
+            "interpretation": "Simboliza la cooperación humana y las relaciones comunitarias."
+        },
+        "laguz": {
+            "meaning": "Agua, Intuición, Flujo",
+            "keywords": "agua, intuición, flujo, emociones, curación",
+            "interpretation": "Representa intuición, flujo emocional y curación."
+        },
+        "ingwaz": {
+            "meaning": "Ingwaz, Potencial, Crecimiento Interno",
+            "keywords": "potencial, crecimiento interno, paciencia, desarrollo",
+            "interpretation": "Simboliza el potencial latente y el crecimiento paciente."
+        },
+        "dagaz": {
+            "meaning": "Día, Amanecer, Breakthrough",
+            "keywords": "día, amanecer, breakthrough, claridad, nueva oportunidad",
+            "interpretation": "Representa el amanecer y las nuevas oportunidades."
+        },
+        "othala": {
+            "meaning": "Herencia, Hogar, Legado",
+            "keywords": "herencia, hogar, legado, tradición, seguridad",
+            "interpretation": "Simboliza herencia, hogar y la seguridad del legado."
+        }
+    },
+    "guidance": {
+    "love": {
+        "fehu": "Para asuntos del corazón, Fehu sugiere enfocarse en la abundancia compartida y la armonía material en tu relación, umano.",
+        "uruz": "La energía apasionada y la conexión primal están destacadas en tu vida amorosa.",
+        "thurisaz": "Protege tu relación de influencias negativas y enfrenta los desafíos juntos.",
+        "ansuz": "La comunicación clara y la expresión honesta son esenciales para tu relación.",
+        "raidho": "Tu viaje amoroso requiere movimiento y exploración de nuevos horizontes.",
+        "kenaz": "La claridad y la visión iluminarán tu camino romántico.",
+        "gebo": "El equilibrio y el intercambio mutuo son clave para la armonía de tu relación.",
+        "wunjo": "El gozo y la felicidad están fluyendo en tu vida amorosa, umano afortunado.",
+        "hagalaz": "Los cambios inesperados pueden transformar tu relación para mejor.",
+        "nauthiz": "Las dificultades fortalecen los lazos y revelan verdaderas necesidades.",
+        "isa": "Un período de estabilidad y quietud puede ser necesario para tu relación.",
+        "jera": "El ciclo natural de tu relación traerá recompensas a su debido tiempo.",
+        "eiwaz": "La transformación y la resistencia son necesarias para el crecimiento amoroso.",
+        "perthro": "Los misterios del destino están trabajando en tu vida amorosa.",
+        "algiz": "Protege tu relación con energía divina y escudos espirituales.",
+        "sowilo": "El éxito y la victoria iluminan tu camino romántico.",
+        "tiwaz": "Actúa con honor y justicia en tus relaciones amorosas.",
+        "berkano": "El crecimiento nutritivo y los nuevos comienzos en las relaciones.",
+        "ehwaz": "El movimiento cooperativo y el progreso conjunto fortalecen tu relación.",
+        "mannaz": "Enfócate en el entendimiento y la cooperación con tu pareja.",
+        "laguz": "Confía en tu intuición y el flujo emocional en asuntos del corazón.",
+        "ingwaz": "El crecimiento paciente y el potencial fértil en tu relación.",
+        "dagaz": "Un amanecer y nuevas oportunidades esperan en tu vida amorosa.",
+        "othala": "Tu herencia y tradiciones familiares guían tus relaciones."
+    },
+    "career": {
+        "fehu": "El éxito material y la abundancia financiera están indicados en tu camino profesional.",
+        "uruz": "Afirma tu fuerza y toma acciones audaces en tu carrera.",
+        "thurisaz": "Protege tus intereses y enfrenta los desafíos laborales de frente.",
+        "ansuz": "La comunicación clara y el conocimiento esencial impulsarán tu carrera.",
+        "raidho": "El viaje y el movimiento en tu camino profesional están por venir.",
+        "kenaz": "Las soluciones creativas y la claridad intelectual te guiarán.",
+        "gebo": "Las asociaciones profesionales y el intercambio mutuo traerán éxito.",
+        "wunjo": "El gozo y la satisfacción están fluyendo en tu trabajo.",
+        "hagalaz": "Los cambios disruptivos pueden crear nuevas oportunidades profesionales.",
+        "nauthiz": "Las presiones laborales te impulsarán a encontrar soluciones creativas.",
+        "isa": "Un período de pausa y reflexión puede ser necesario para tu carrera.",
+        "jera": "Tus esfuerzos profesionales darán frutos a su debido tiempo.",
+        "eiwaz": "La resistencia y la adaptación son clave para el progreso profesional.",
+        "perthro": "Los misterios del destino revelan oportunidades inesperadas en tu trabajo.",
+        "algiz": "Protege tu carrera con sabiduría y defensa estratégica.",
+        "sowilo": "El éxito y la victoria en tus emprendimientos profesionales.",
+        "tiwaz": "Actúa con honor y justicia en tu lugar de trabajo.",
+        "berkano": "El crecimiento profesional y nuevos comienzos están por venir.",
+        "ehwaz": "El movimiento cooperativo y el trabajo en equipo impulsarán tu éxito.",
+        "mannaz": "La cooperación y las relaciones profesionales son fundamentales.",
+        "laguz": "Confía en tu intuición y flujo creativo en decisiones laborales.",
+        "ingwaz": "El potencial latente se desarrollará gradualmente en tu carrera.",
+        "dagaz": "Un breakthrough y nuevas oportunidades están emergiendo.",
+        "othala": "Tu herencia y habilidades tradicionales son valiosas en tu trabajo."
+    },
+    "health": {
+        "fehu": "La salud física y el bienestar material están relacionados con tu vitalidad.",
+        "uruz": "Enfócate en construir fuerza física y vitalidad.",
+        "thurisaz": "Protege tu salud de amenazas y enfrenta los desafíos médicos con fuerza.",
+        "ansuz": "La comunicación clara con tu cuerpo y médicos es esencial para la sanación.",
+        "raidho": "El viaje hacia la salud requiere movimiento y cambios positivos.",
+        "kenaz": "La claridad mental y el conocimiento iluminarán tu camino hacia la sanación.",
+        "gebo": "El equilibrio entre cuerpo y mente es fundamental para tu salud.",
+        "wunjo": "El gozo y la felicidad contribuyen significativamente a tu bienestar.",
+        "hagalaz": "Los cambios de salud pueden ser disruptivos pero necesarios para la sanación.",
+        "nauthiz": "Las necesidades de salud revelan áreas que requieren atención inmediata.",
+        "isa": "Un período de descanso y quietud puede ser necesario para tu salud.",
+        "jera": "Ciclos de sanación natural y recuperación gradual.",
+        "eiwaz": "La resistencia y la adaptación son clave para superar desafíos de salud.",
+        "perthro": "Los misterios de la sanación están trabajando en tu cuerpo.",
+        "algiz": "Protege tu salud y busca energía de sanación divina.",
+        "sowilo": "Energía de fuerza vital y luz de sanación están disponibles.",
+        "tiwaz": "Actúa con coraje y disciplina en tus hábitos de salud.",
+        "berkano": "Crecimiento, renovación y procesos de sanación naturales.",
+        "ehwaz": "El movimiento y el flujo natural son esenciales para tu salud.",
+        "mannaz": "La cooperación con profesionales de la salud apoya tu bienestar.",
+        "laguz": "Sanación emocional y energías de limpieza.",
+        "ingwaz": "Energía almacenada y restauración gradual de la salud.",
+        "dagaz": "Un breakthrough en tu salud y nuevas oportunidades de bienestar.",
+        "othala": "Tu herencia genética y tradiciones familiares influyen en tu salud."
+    },
+    "path": {
+        "fehu": "Tu camino material y financiero está fluyendo hacia la abundancia.",
+        "uruz": "Tu camino requiere fuerza primal y energía para superar obstáculos.",
+        "thurisaz": "Protege tu camino de influencias negativas y enfrenta los desafíos con coraje.",
+        "ansuz": "Los mensajes divinos guiarán tu camino hacia adelante.",
+        "raidho": "Tu viaje requiere movimiento y exploración en tu camino de vida.",
+        "kenaz": "La claridad y la visión iluminarán tu camino.",
+        "gebo": "Las asociaciones y el equilibrio mutuo definirán tu camino.",
+        "wunjo": "El gozo y la felicidad están fluyendo en tu camino de vida.",
+        "hagalaz": "Los cambios disruptivos son necesarios para evolucionar en tu camino.",
+        "nauthiz": "Las necesidades y restricciones revelan la verdadera dirección de tu camino.",
+        "isa": "Un período de pausa y reflexión es necesario para tu camino.",
+        "jera": "El ciclo natural de tu camino traerá recompensas a su debido tiempo.",
+        "eiwaz": "La transformación y la resistencia son necesarias en tu camino.",
+        "perthro": "El misterio y el destino están trabajando en tu viaje.",
+        "algiz": "Protege tu camino con guía divina y escudos espirituales.",
+        "sowilo": "El éxito y la victoria iluminan tu camino de vida.",
+        "tiwaz": "Actúa con honor y justicia en las decisiones de tu camino.",
+        "berkano": "El crecimiento y nuevos comienzos definen tu camino actual.",
+        "ehwaz": "El movimiento cooperativo y el progreso conjunto marcan tu camino.",
+        "mannaz": "Tu camino implica cooperación y comunidad.",
+        "laguz": "Confía en tu intuición y el flujo emocional en tu camino.",
+        "ingwaz": "El potencial latente se desarrollará gradualmente en tu camino.",
+        "dagaz": "Un amanecer y un nuevo futuro te esperan.",
+        "othala": "Tu herencia y sabiduría ancestral guían tu camino."
+    },
+    "general": {
+        "default": "Esta runa ofrece sabiduría antigua para tu situación actual."
+    }
+    }
+}
