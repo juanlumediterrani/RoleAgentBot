@@ -78,7 +78,7 @@ def _get_ring_state(server_id: str) -> dict:
                 current_accusation = ring_config.get('current_accusation', '')
             
             state = {
-                "enabled": trickster_enabled and ring_config.get('enabled', defaults["enabled"]),
+                "enabled": trickster_enabled and ring_config_data.get('enabled', defaults["enabled"]),
                 "frequency_hours": int(ring_config.get('frequency_hours', defaults["frequency_hours"])),
                 "base_frequency_hours": int(ring_config.get('base_frequency_hours', defaults["base_frequency_hours"])),
                 "current_frequency_hours": int(ring_config.get('current_frequency_hours', defaults["current_frequency_hours"])),

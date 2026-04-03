@@ -23,10 +23,17 @@ try:
         sys.path.insert(0, project_root)
     from agent_mind import call_llm
     from agent_engine import AGENT_CFG
+    # Import bot display name for dynamic replacement
+    try:
+        from discord_bot.discord_core_commands import _bot_display_name
+    except ImportError:
+        # Fallback if discord is not available
+        _bot_display_name = "Bot"
     AI_AVAILABLE = True
     logger.info("AI system available - rune interpretations will use AI analysis")
 except ImportError:
     AI_AVAILABLE = False
+    _bot_display_name = "Bot"  # Fallback
     logger.warning("AI system not available, rune interpretations will use fallback method")
     AGENT_CFG = {"personality": "personalities/putre/personality.json"}  # Fallback for testing
 
@@ -143,8 +150,8 @@ class NordicRunes:
             
             interpretation += guidance_text
         
-        # Add Putre's final analysis (simplified)
-        interpretation += f"\n\n**Putre's Analysis:** GRRR! {rune['name']} tells you that "
+        # Add bot's final analysis (simplified)
+        interpretation += f"\n\n**{_bot_display_name}'s Analysis:** GRRR! {rune['name']} tells you that "
         interpretation += f"the energies of {rune['name']} are with you. "
         interpretation += f"UHHH! Listen to the ancient wisdom of the runes, human! {rune['symbol']}"
         
@@ -195,8 +202,7 @@ class NordicRunes:
     
     def interpret_cross(self, rune_keys: List[str], question: str = "") -> str:
         """Interpret a five-rune cross spread - simplified fallback."""
-        positions = ['Center (Core Issue)', 'North (Higher Power)', 'South (Foundation)', 
-                   'East (Challenges)', 'West (Past Influences)']
+        positions = ['Center', 'North', 'South', 'East', 'West']
         interpretation = "**Five Rune Cross**\n\n"
         
         # Load personality messages
@@ -239,10 +245,8 @@ class NordicRunes:
     
     def interpret_runic_cross(self, rune_keys: List[str], question: str = "") -> str:
         """Interpret a traditional seven-rune cross - simplified fallback."""
-        positions = ['Center (Present Situation)', 'North (Goals & Aspirations)', 
-                   'South (Past Influences)', 'East (Future Possibilities)',
-                   'West (External Influences)', 'Above (Spiritual Guidance)',
-                   'Below (Foundation & Inner Self)']
+        positions = ['Center_Present', 'North_Goals', 'South_Past', 'East_Future',
+                   'West_External', 'Above', 'Below']
         interpretation = "**Runic Cross - Seven Rune Spread**\n\n"
         
         # Load personality messages
@@ -322,8 +326,7 @@ class NordicRunes:
                         'key': rune_key
                     })
             elif reading_type == 'cross':
-                positions = ['Center (Core Issue)', 'North (Higher Power)', 'South (Foundation)', 
-                           'East (Challenges)', 'West (Past Influences)']
+                positions = ['Center', 'North', 'South', 'East', 'West']
                 for i, rune_key in enumerate(rune_keys):
                     rune_data.append({
                         'position': positions[i],
@@ -331,10 +334,8 @@ class NordicRunes:
                         'key': rune_key
                     })
             elif reading_type == 'runic_cross':
-                positions = ['Center (Present Situation)', 'North (Goals & Aspirations)', 
-                           'South (Past Influences)', 'East (Future Possibilities)',
-                           'West (External Influences)', 'Above (Spiritual Guidance)',
-                           'Below (Foundation & Inner Self)']
+                positions = ['Center_Present', 'North_Goals', 'South_Past', 'East_Future',
+                           'West_External', 'Above', 'Below']
                 for i, rune_key in enumerate(rune_keys):
                     rune_data.append({
                         'position': positions[i],

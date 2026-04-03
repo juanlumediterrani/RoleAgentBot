@@ -67,7 +67,7 @@ class DiscordHTTP:
                     return None
                 return await r.json()
 
-    async def send_dm(self, user_id: int, content: str) -> bool:
+    async def send_dm(self, user_id: int, content: str, embed: dict = None, components: list = None) -> bool:
         """Create a DM channel and send a private message to a user."""
         async with aiohttp.ClientSession() as s:
             async with s.post(
@@ -84,23 +84,47 @@ class DiscordHTTP:
             if not channel_id:
                 return False
 
+            # Build message payload
+            payload = {}
+            if content:
+                payload["content"] = content
+            if embed:
+                payload["embeds"] = [embed]
+            if components:
+                payload["components"] = components
+            
+            if not payload:  # Nothing to send
+                return False
+
             async with s.post(
                 f"{BASE}/channels/{channel_id}/messages",
                 headers=self._headers,
-                json={"content": content},
+                json=payload,
             ) as r:
                 if r.status >= 400:
                     logger.warning(f"send_dm: error sending message to {user_id} ({r.status})")
                     return False
                 return True
 
-    async def send_channel_message(self, channel_id: int, content: str) -> bool:
+    async def send_channel_message(self, channel_id: int, content: str, embed: dict = None, components: list = None) -> bool:
         """Send a message to a text channel."""
         async with aiohttp.ClientSession() as s:
+            # Build message payload
+            payload = {}
+            if content:
+                payload["content"] = content
+            if embed:
+                payload["embeds"] = [embed]
+            if components:
+                payload["components"] = components
+            
+            if not payload:  # Nothing to send
+                return False
+
             async with s.post(
                 f"{BASE}/channels/{channel_id}/messages",
                 headers=self._headers,
-                json={"content": content},
+                json=payload,
             ) as r:
                 if r.status >= 400:
                     logger.warning(f"send_channel_message({channel_id}) error {r.status}: {await r.text()}")

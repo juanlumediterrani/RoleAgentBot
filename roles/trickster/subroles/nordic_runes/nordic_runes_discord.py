@@ -286,16 +286,21 @@ class NordicRunesCommands:
         
         return response
     
-    async def cmd_runes_canvas_cast(self, mock_message, reading_type: str, question: str) -> str:
-        """Canvas-compatible rune casting."""
+    async def cmd_runes_canvas_cast(self, mock_message, reading_type: str, question: str) -> tuple[str, str]:
+        """Canvas-compatible rune casting.
+        
+        Returns:
+            tuple: (main_response, interpretation_response) - Two separate messages 
+                   to avoid Discord's 4000 character limit
+        """
         try:
             # Validate reading type
             if reading_type not in READING_TYPES:
-                return get_message('invalid_type')
+                return get_message('invalid_type'), None
             
             # Check for question
             if not question.strip():
-                return get_message('no_question')
+                return get_message('no_question'), None
             
             # Perform the reading
             reading = self.runes.get_reading(reading_type, question)
@@ -317,9 +322,8 @@ class NordicRunesCommands:
             type_info = get_reading_type(reading_type)
             cast_title = get_message(f"{reading_type}_cast")
             question_label = get_message('question')
-            response = f"{cast_title}\n\n"
-            response += f"**{question_label}:** {question}\n\n"
-            
+            response = f"**{question_label}:** {question}\n"
+            response += "---\n"
             # Add rune display
             if 'runes_drawn' in reading and reading['runes_drawn']:
                 # Load translations for rune meanings
@@ -354,30 +358,47 @@ class NordicRunesCommands:
                     if position and reading_type != 'single':
                         # Translate position if available, otherwise use English
                         translated_position = positions.get(position, position)
-                        response += f"**{translated_position}:**\n"
-                    response += f"{rune['symbol']} {rune['name']}\n\n"
-                    
+                        response += f"**{translated_position}:** "
+                    response += f"{rune['symbol']} {rune['name']} - "
                     # Use translated meaning if available, otherwise English
                     meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
-                    response += f"**{get_message('meaning')}:** {meaning_text}\n"
+                    response += f"{meaning_text}\n"
                     
                     # Use translated keywords if available, otherwise English
-                    keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
-                    response += f"**{get_message('keywords')}:** {keywords_text}\n\n"
+                    #keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
+                    #response += f"**{get_message('keywords')}:** {keywords_text}\n\n"
                     
                     # Use translated interpretation if available, otherwise English
-                    interpretation_text = rune_translation.get('interpretation', rune.get('description', 'No description'))
-                    response += f"**{get_message('interpretation')}:** {interpretation_text}\n\n"
+                    #interpretation_text = rune_translation.get('interpretation', rune.get('description', 'No description'))
+                    #response += f"**{get_message('interpretation')}:** {interpretation_text}\n\n"
                     
-                    response += "---\n\n"
+                    response += "---\n"
             
-            response += reading['interpretation']
+            # Split into two messages to avoid Discord 4000 character limit
+            main_response = response
+            interpretation_response = reading['interpretation']
             
-            return response
+            # Split interpretation_response if it exceeds 2000 characters
+            if len(interpretation_response) > 2000:
+                # Find a good split point (preferably at a sentence break)
+                split_point = interpretation_response[:2000].rfind('. ')
+                if split_point == -1:  # No sentence break found, split at space
+                    split_point = interpretation_response[:2000].rfind(' ')
+                if split_point == -1:  # No space found, split at exactly 2000
+                    split_point = 2000
+                
+                first_part = interpretation_response[:split_point + 1]  # Include the period/space
+                second_part = interpretation_response[split_point + 1:].strip()
+                
+                # Return tuple with three elements: main_response, interpretation_part1, interpretation_part2
+                return main_response, first_part, second_part
+            else:
+                # Return both messages as a tuple for the Canvas UI to handle
+                return main_response, interpretation_response
             
         except Exception as e:
             logger.error(f"Error in canvas rune casting: {e}")
-            return get_message('error')
+            return get_message('error'), None
     
     async def cmd_runes_canvas_history(self, mock_message, limit: int = 5) -> str:
         """Canvas-compatible reading history."""

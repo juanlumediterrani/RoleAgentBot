@@ -13,7 +13,7 @@ logger = get_logger('news_watcher_discord')
 
 # Import forcewatcher dependencies
 try:
-    from roles.news_watcher.news_watcher import process_channel_subscriptions
+    from roles.news_watcher.news_watcher import process_subscriptions
     from roles.news_watcher.global_news_db import get_global_news_db
     from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
     FORCEWATCHER_AVAILABLE = True

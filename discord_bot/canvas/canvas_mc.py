@@ -34,7 +34,7 @@ def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None) ->
     def _mc_text(key: str, fallback: str) -> str:
         value = mc_descriptions.get(key)
         if value:
-            value = str(value).replace("{_bot}", _bot_display_name)
+            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     parts = [
@@ -85,7 +85,7 @@ class CanvasMCActionSelect(discord.ui.Select):
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot}", _bot_display_name)
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         mc_actions = _get_mc_action_items_for_detail("mc", "overview", view.admin_visible, view.agent_config)
@@ -217,7 +217,7 @@ class CanvasMCSongModal(discord.ui.Modal):
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot}", _bot_display_name)
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         title = _mc_text("play_song_title", "Play Song Now") if action_name == "mc_play" else _mc_text("add_song_title", "Add Song to Queue")
@@ -291,7 +291,7 @@ class CanvasMCVolumeModal(discord.ui.Modal):
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot}", _bot_display_name)
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         super().__init__(title=_mc_text("set_volume_title", "Set Volume"), timeout=300)

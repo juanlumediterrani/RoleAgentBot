@@ -14,6 +14,13 @@ from agent_logging import get_logger
 from agent_mind import call_llm
 from agent_engine import _build_system_prompt, PERSONALITY
 
+# Import bot display name for dynamic replacement
+try:
+    from discord_bot.discord_core_commands import _bot_display_name
+except ImportError:
+    # Fallback if discord is not available
+    _bot_display_name = "Bot"
+
 from .beggar_config import get_beggar_config
 from agent_roles_db import get_roles_db_instance
 
@@ -106,7 +113,7 @@ class BeggarDonationView(View):
                 # Process the donation
                 success = banker_db.update_balance(
                     user_id, user_name, self.server_id, server_name,
-                    -amount, "BEGGAR_DONATION", f"Donation to Putre: {self.current_reason}"
+                    -amount, "BEGGAR_DONATION", f"Donation to {_bot_display_name}: {self.current_reason}"
                 )
                 
                 if success:
@@ -327,6 +334,9 @@ class BeggarTask:
         
         task_prompt = task_prompt_template.format(reason=reason)
         
+        # Get weekly donations summary
+        weekly_donations_context = self._get_weekly_donations_context()
+        
         # Build recent messages context
         messages_context = ""
         if recent_messages:
@@ -338,13 +348,44 @@ class BeggarTask:
         golden_rules = self._get_golden_rules()
         
         # Complete prompt
-        complete_prompt = f"""{task_prompt}{messages_context}
+        complete_prompt = f"""{task_prompt}{weekly_donations_context}{messages_context}
 
 {golden_rules}
 
 """
         
         return complete_prompt
+    
+    def _get_weekly_donations_context(self) -> str:
+        """Get minimal context about users who donated this week using Putre's personality."""
+        try:
+            weekly_donors = self.roles_db.get_weekly_donations_summary(self.server_id)
+            
+            # Get messages from Putre's personality
+            weekly_messages = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('weekly_donations', {})
+            
+            if not weekly_donors:
+                return weekly_messages.get('no_donations', '')
+            
+            total_weekly = sum(donor['weekly_amount'] for donor in weekly_donors)
+            donor_count = len(weekly_donors)
+            
+            # Build context using Putre's messages
+            context = weekly_messages.get('with_donations', ' Weekly fund: {total} gold from {count} donors:').format(
+                total=total_weekly, 
+                count=donor_count
+            )
+            
+            donor_format = weekly_messages.get('donor_format', '{name}({amount}g)')
+            
+            for donor in weekly_donors[:3]:  # Show top 3 only
+                context += f" {donor_format.format(name=donor['donor_name'], amount=donor['weekly_amount'])},"
+            
+            return context.rstrip(",") + "."
+            
+        except Exception as e:
+            logger.error(f"Error getting weekly donations context: {e}")
+            return weekly_messages.get('error', ' Weekly donations: Data unavailable.') if 'weekly_messages' in locals() else " Weekly donations: Data unavailable."
     
     def _get_golden_rules(self) -> str:
         """Get golden rules for the begging task."""

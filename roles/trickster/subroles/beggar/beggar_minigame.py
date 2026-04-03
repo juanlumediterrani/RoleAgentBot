@@ -14,6 +14,13 @@ from agent_mind import call_llm
 from agent_engine import _build_system_prompt, PERSONALITY
 from agent_roles_db import get_roles_db_instance
 
+# Import bot display name for dynamic replacement
+try:
+    from discord_bot.discord_core_commands import _bot_display_name
+except ImportError:
+    # Fallback if discord is not available
+    _bot_display_name = "Bot"
+
 from .beggar_config import get_beggar_config
 
 logger = get_logger('beggar_minigame')
@@ -454,7 +461,7 @@ class BeggarMinigame:
         reason_context_template = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('relationship_reason_context', '')
         
         if not reason_context_template:
-            reason_context_template = "=== BEGGAR COLLECTION REASON ===\nThis week Putre was collecting money for: {reason}"
+            reason_context_template = f"=== BEGGAR COLLECTION REASON ===\nThis week {_bot_display_name} was collecting money for: {{reason}}"
         
         # Format the reason context with the previous weekly reason
         reason_context = reason_context_template.format(reason=reason_context_value)

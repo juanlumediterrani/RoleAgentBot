@@ -220,6 +220,7 @@ def _treasure_text_factory(treasure_messages: dict, treasure_descriptions: dict)
 
         if value:
             value = str(value).replace("{_bot}", _bot_display_name)
+            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     return _treasure_text

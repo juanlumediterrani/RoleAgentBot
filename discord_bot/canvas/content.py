@@ -126,25 +126,47 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
     if section_name == "behavior":
         behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
         behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} General Behavior")
-        # Replace {_bot} placeholder
-        behavior_title = behavior_title.replace("{_bot}", _bot_display_name)
+        # Replace {_bot_display_name} placeholder
+        behavior_title = behavior_title.replace("{_bot_display_name}", _bot_display_name)
         # Remove ** for embed title
         behavior_title = behavior_title.replace("**", "")
+        
+        # Get home title from descriptions.json
+        canvas_home_messages = _personality_descriptions.get("canvas_home_messages", {})
+        home_title = canvas_home_messages.get("title", f"🧭 {_bot_display_name} Canvas Hub")
+        # Replace {_bot_display_name} placeholder
+        home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
+        # Remove ** for embed title
+        home_title = home_title.replace("**", "")
+        
         titles = {
-            "home": f"🧭 {_bot_display_name} Canvas Hub",
+            "home": home_title,
             "behavior": behavior_title,
             "roles": None,  # Will be set from content
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
             "help": help_title,
         }
     else:
+        # Get home title from descriptions.json
+        canvas_home_messages = _personality_descriptions.get("canvas_home_messages", {})
+        home_title = canvas_home_messages.get("title", f"🧭 {_bot_display_name} Canvas Hub")
+        # Replace {_bot_display_name} placeholder
+        home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
+        # Remove ** for embed title
+        home_title = home_title.replace("**", "")
+        
         titles = {
-            "home": f"🧭 {_bot_display_name} Canvas Hub",
+            "home": home_title,
             "behavior": f"⚙️ {_bot_display_name} Canvas - General Behavior",
             "roles": None,  # Will be set from content
             "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
             "help": help_title,
         }
+    
+    # Replace placeholders in all titles
+    for key in titles:
+        if titles[key]:
+            titles[key] = titles[key].replace("{_bot_display_name}", _bot_display_name)
     colors = {
         "home": discord.Color.blurple(),
         "behavior": discord.Color.orange(),
@@ -184,9 +206,14 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
     # Fallback title if none was extracted
     if titles.get(section_name) is None:
         titles[section_name] = f"{_bot_display_name} Canvas"
+        titles[section_name] = titles[section_name].replace("{_bot_display_name}", _bot_display_name)
+
+    # Get final title with placeholder replacement
+    final_title = titles.get(section_name, f"{_bot_display_name} Canvas")
+    final_title = final_title.replace("{_bot_display_name}", _bot_display_name)
 
     embed = discord.Embed(
-        title=titles.get(section_name, f"{_bot_display_name} Canvas"),
+        title=final_title,
         description=description[:4096],
         color=colors.get(section_name, discord.Color.blurple()),
     )
@@ -234,6 +261,10 @@ def _normalize_canvas_title(title: str) -> str:
 
 
 def _build_canvas_intro_block(title: str, description: str | None = None) -> str:
+    # Apply placeholder replacement to title and description
+    title = str(title).replace("{_bot_display_name}", _bot_display_name)
+    description = str(description or "").replace("{_bot_display_name}", _bot_display_name)
+    
     normalized_title = _normalize_canvas_title(title)
     parts = [f"**{normalized_title}**"] if normalized_title else []
     normalized_description = str(description or "").strip()
@@ -255,6 +286,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
     }
     blocks = _split_canvas_blocks(content)
     title = role_titles.get(role_name, f"{_bot_display_name} Canvas")
+    title = title.replace("{_bot_display_name}", _bot_display_name)
      
     role_colors = {
         "news_watcher": discord.Color.blue(),
@@ -288,7 +320,9 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         if value:
             embed.add_field(name=block_title, value=value, inline=False)
 
-    embed.set_footer(text=f"{role_titles.get(role_name, role_name)} • {'admin' if admin_visible else 'user'} view")
+    footer_title = role_titles.get(role_name, role_name)
+    footer_title = footer_title.replace("{_bot_display_name}", _bot_display_name)
+    embed.set_footer(text=f"{footer_title} • {'admin' if admin_visible else 'user'} view")
     
     # Add user thumbnail for banker role (like !banker balance)
     if role_name == "banker" and user and hasattr(user, 'display_avatar'):
@@ -516,6 +550,8 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
         
         def _hunter_text(key: str, fallback: str) -> str:
             value = hunter_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         if current_detail in {"league", "personal", "admin"}:
@@ -527,7 +563,7 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
                 ("Items", "personal"),
                 ("League", "league"),
             ]
-        # If no specific detail matched, return empty list for treasure_hunter
+        # If no specific detail matched (including overview), return empty list for treasure_hunter
         return []
 
 
@@ -549,6 +585,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         
         def _news_text(key: str, fallback: str) -> str:
             value = news_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         if detail_name in {"personal", "overview"}:  # Same view for both
@@ -583,6 +621,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         
         def _hunter_text(key: str, fallback: str) -> str:
             value = hunter_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         if detail_name == "league":
@@ -640,6 +680,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         
         def _trickster_text(key: str, fallback: str) -> str:
             value = trickster_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         if detail_name == "overview":
@@ -651,6 +693,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             
             def _dice_text(key: str, fallback: str) -> str:
                 value = dice_descriptions.get(key)
+                if value:
+                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
                 return str(value).strip() if value else fallback
             
             return [
@@ -679,6 +723,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             
             def _runes_text(key: str, fallback: str) -> str:
                 value = canvas_labels.get(key)
+                if value:
+                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
                 return str(value).strip() if value else fallback
             
             # English fallbacks
@@ -722,6 +768,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             
             def _dice_text(key: str, fallback: str) -> str:
                 value = dice_descriptions.get(key)
+                if value:
+                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
                 return str(value).strip() if value else fallback
             
             return [
@@ -751,6 +799,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             
             def _ring_text(key: str, fallback: str) -> str:
                 value = ring_descriptions.get(key)
+                if value:
+                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
                 return str(value).strip() if value else fallback
             
             return [
@@ -796,6 +846,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             
             def _banker_text(key: str, fallback: str) -> str:
                 value = banker_descriptions.get(key)
+                if value:
+                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
                 return str(value).strip() if value else fallback
             
             return [
@@ -817,8 +869,13 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         else:
             mc_descriptions = mc
         
+        # Get dropdown section if available, otherwise use root level
+        dropdown_section = mc_descriptions.get("dropdown", mc_descriptions)
+        
         def _mc_text(key: str, fallback: str) -> str:
-            value = mc_descriptions.get(key)
+            value = dropdown_section.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         return [
@@ -960,14 +1017,17 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     
     # Get home messages from personality with fallback
     home_messages = _personality_descriptions.get("canvas_home_messages", {})
-    personalitystatus = home_messages.get("personalitystatus", "**Personality:**" )
-    homedescription = home_messages.get("description", "Interact with all of the bot feautures from this panel." )
-    recentsynthesistitle = home_messages.get("recentsynthesistitle", "**Recent synthesis**" )
-    personalsynthesistitle = home_messages.get("personalsynthesistitle", "**Personal synthesis with you**" )
     
     def _home_text(key: str, fallback: str) -> str:
         value = home_messages.get(key)
+        if value:
+            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
+    
+    personalitystatus = _home_text("personalitystatus", "**Personality:**" )
+    homedescription = _home_text("description", "Interact with all of the bot feautures from this panel." )
+    recentsynthesistitle = _home_text("recentsynthesistitle", "**Recent synthesis**" )
+    personalsynthesistitle = _home_text("personalsynthesistitle", "**Personal synthesis with you**" )
     
     # Build status content
     status_lines: list[str] = []
@@ -1104,7 +1164,11 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     
     # Title and description from descriptions.json with fallback
     title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_name} 🎭")
-    description = roles_messages.get("description", "🌟 Putre the role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.")
+    description = roles_messages.get("description", f"🌟 {core._bot_display_name} the role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.")
+    
+    # Replace {_bot_display_name} placeholder in main title and description
+    title = title.replace("{_bot_display_name}", _bot_display_name)
+    description = description.replace("{_bot_display_name}", _bot_display_name)
     
     # Helper messages
     enabled_status = roles_messages.get("enabled_status", "ACTIVE")
@@ -1144,9 +1208,16 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
             "mc": "Music playback and queue management"
         }
         
+        title = role_info.get("title", fallback_titles.get(role_key, role_key))
+        description = role_info.get("description", fallback_descriptions.get(role_key, "Role functionality"))
+        
+        # Replace {_bot_display_name} placeholder in role titles and descriptions
+        title = title.replace("{_bot_display_name}", _bot_display_name)
+        description = description.replace("{_bot_display_name}", _bot_display_name)
+        
         return {
-            "title": role_info.get("title", fallback_titles.get(role_key, role_key)),
-            "description": role_info.get("description", fallback_descriptions.get(role_key, "Role functionality"))
+            "title": title,
+            "description": description
         }
     
     # News Watcher

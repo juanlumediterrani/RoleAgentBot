@@ -1431,6 +1431,36 @@ class RolesDatabase:
             logger.error(f"Failed to get beggar user stats: {e}")
             return {}
     
+    def get_weekly_donations_summary(self, server_id: str) -> List[Dict[str, Any]]:
+        """Get summary of users who donated this week with their amounts."""
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    
+                    cursor.execute("""
+                        SELECT user_id, user_name, weekly_donated, weekly_donation_count, last_donation
+                        FROM beggar_subrole
+                        WHERE server_id = ? AND weekly_donated > 0
+                        ORDER BY weekly_donated DESC, datetime(last_donation) DESC
+                    """, (server_id,))
+                    
+                    weekly_donors = []
+                    for row in cursor.fetchall():
+                        weekly_donors.append({
+                            'user_id': row[0],
+                            'donor_name': row[1],
+                            'weekly_amount': row[2],
+                            'weekly_count': row[3],
+                            'last_donation': row[4],
+                        })
+                    
+                    return weekly_donors
+                    
+        except Exception as e:
+            logger.error(f"Failed to get weekly donations summary: {e}")
+            return []
+
     def get_recent_beggar_donations(self, server_id: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Get most recent beggar donations for a server."""
         try:

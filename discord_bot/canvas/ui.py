@@ -275,15 +275,30 @@ class CanvasSmartBackButton(discord.ui.Button):
         
         logger.info(f"🔧 Back button clicked - view type: {type(view).__name__}")
         
+        # Handle different view types
+        if isinstance(view, (CanvasBehaviorView, CanvasNavigationView)):
+            # For behavior views and navigation views, always go to home
+            logger.info(f"🔧 Behavior/Navigation view -> home")
+            await self._navigate_to_home(interaction, view)
+            return
+        
         if hasattr(view, 'current_detail') and hasattr(view, 'role_name'):
             logger.info(f"🔧 RoleDetailView navigation - current_detail: {view.current_detail}, role_name: {view.role_name}")
             
             # Determine navigation target based on current detail level
             if view.current_detail.endswith("_admin") or view.current_detail == "admin":
                 # Level 3: Admin views -> Level 2 (parent overview)
-                target_detail = view.current_detail.replace("_admin", "") if view.current_detail.endswith("_admin") else "overview"
-                target_function = _build_canvas_role_detail_view
-                logger.info(f"🔧 Admin view -> parent overview: {target_detail}")
+                # Special handling for treasure_hunter admin view
+                logger.info(f"🔧 Checking admin view navigation - role_name: '{view.role_name}', current_detail: '{view.current_detail}'")
+                if view.role_name == "treasure_hunter":
+                    # For treasure_hunter, admin should go back to main role view (which has POE2 button)
+                    logger.info(f"🔧 Treasure hunter admin view -> main role view")
+                    await self._navigate_to_treasure_hunter_main(interaction, view)
+                    return
+                else:
+                    target_detail = view.current_detail.replace("_admin", "") if view.current_detail.endswith("_admin") else "overview"
+                    target_function = _build_canvas_role_detail_view
+                    logger.info(f"🔧 Admin view -> parent overview: {target_detail}")
                 
             elif view.current_detail == "overview":
                 # Level 2: Overview views -> Level 1 (roles view)
@@ -333,13 +348,9 @@ class CanvasSmartBackButton(discord.ui.Button):
                 logger.info(f"🔧 Detail view -> role overview")
                 
             else:
-                # Level 1: Role overview -> Use previous view logic
-                logger.info(f"🔧 Role overview -> previous view or home")
-                if hasattr(view, 'previous_view') and view.previous_view:
-                    await self._navigate_to_previous_view(interaction, view)
-                else:
-                    logger.info(f"🔧 No previous view, going to home")
-                    await self._navigate_to_home(interaction, view)
+                # Level 1: Role overview -> Home
+                logger.info(f"🔧 Role overview -> home")
+                await self._navigate_to_home(interaction, view)
                 return
             
             # Execute navigation to determined target
@@ -449,6 +460,55 @@ class CanvasSmartBackButton(discord.ui.Button):
             await self._navigate_to_previous_view(interaction, view)
         else:
             logger.info(f"🔧 No previous view, going to home")
+            await self._navigate_to_home(interaction, view)
+
+    async def _navigate_to_treasure_hunter_main(self, interaction: discord.Interaction, view):
+        """Navigate to the main treasure hunter role view (with POE2 button)."""
+        try:
+            # Check required functions
+            if not _build_canvas_role_view or not _build_canvas_role_embed:
+                raise ImportError("Role view functions not available")
+            
+            # Build main treasure hunter role content
+            content = _build_canvas_role_view(
+                "treasure_hunter",
+                view.agent_config,
+                view.admin_visible,
+                view.guild,
+                view.author_id,
+            )
+            
+            CanvasRoleDetailView_class = globals().get('CanvasRoleDetailView')
+            if not CanvasRoleDetailView_class:
+                raise ImportError("CanvasRoleDetailView class not available")
+            
+            # Create new detail view for main treasure hunter (overview)
+            main_view = CanvasRoleDetailView_class(
+                author_id=view.author_id,
+                role_name="treasure_hunter",
+                agent_config=view.agent_config,
+                admin_visible=view.admin_visible,
+                sections=view.sections,
+                current_detail="overview",  # This will show the main view with POE2 button
+                guild=view.guild,
+                previous_view=view.previous_view,  # Maintain the chain
+            )
+            main_view.message = interaction.message
+            
+            # Build embed for main view
+            main_embed = _build_canvas_role_embed(
+                "treasure_hunter", 
+                content, 
+                view.admin_visible, 
+                "overview", 
+                None, 
+                main_view.auto_response_preview
+            )
+            
+            await interaction.response.edit_message(embed=main_embed, view=main_view)
+            logger.info(f"✅ Successfully navigated to treasure hunter main view")
+        except Exception as e:
+            logger.error(f"❌ Failed to navigate to treasure hunter main view: {e}")
             await self._navigate_to_home(interaction, view)
 
     async def _navigate_to_previous_view(self, interaction: discord.Interaction, view):

@@ -777,7 +777,7 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
         false_accusation_prompt = "\n".join(prompt_parts)
         
         # Generate the false accusation response
-        from agent_mind import _build_system_prompt
+        from agent_engine import _build_system_prompt
         system_instruction = _build_system_prompt(PERSONITY)
         
         response = call_llm(
@@ -935,7 +935,7 @@ async def _process_chat_message(message):
             from behavior.db_behavior import get_behavior_db_instance
             
             # Get all server databases
-            db_paths = glob.glob("databases/*/behavior.db")
+            db_paths = glob.glob("databases/*/behavior*.db")
             for db_path in db_paths:
                 try:
                     # Extract server name from path

@@ -26,7 +26,7 @@ class NewsFrequencyChecker:
         self.db = get_news_watcher_db_instance(server_name)
         self.processor = NewsProcessor(self.db)
         self.last_check_time: Optional[datetime] = None
-        self.check_interval_hours = 1  # Default to 1 hour
+        self.check_interval_hours = 4  # Default to 4 hours
         self.is_running = False
         
     async def start_frequency_checker(self):

@@ -11,6 +11,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 import logging
 
+# Import bot display name for dynamic replacement
+try:
+    from discord_bot.discord_core_commands import _bot_display_name
+except ImportError:
+    # Fallback if discord is not available
+    _bot_display_name = "Bot"
+
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _AGENT_CONFIG_PATH = os.path.join(_BASE_DIR, "agent_config.json")
 
@@ -19,6 +26,18 @@ logger = logging.getLogger(__name__)
 
 with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
     AGENT_CFG = json.load(f)
+
+
+def _replace_bot_display_name_placeholders(obj, bot_display_name: str):
+    """Recursively replace {_bot_display_name} placeholders in strings within nested data structures."""
+    if isinstance(obj, dict):
+        return {key: _replace_bot_display_name_placeholders(value, bot_display_name) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [_replace_bot_display_name_placeholders(item, bot_display_name) for item in obj]
+    elif isinstance(obj, str):
+        return obj.replace("{_bot_display_name}", bot_display_name)
+    else:
+        return obj
 
 
 def _load_personality_descriptions() -> dict:
@@ -62,6 +81,30 @@ def _load_personality_descriptions() -> dict:
                 if "roles_view_messages" not in descriptions:
                     descriptions["roles_view_messages"] = {}
                 descriptions["roles_view_messages"]["trickster"] = trickster_descriptions
+        
+        # Load banker descriptions from separate file
+        banker_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "banker.json")
+        if os.path.exists(banker_descriptions_path):
+            with open(banker_descriptions_path, encoding="utf-8") as f:
+                banker_descriptions = json.load(f)
+                # Merge banker descriptions into roles_view_messages
+                if "roles_view_messages" not in descriptions:
+                    descriptions["roles_view_messages"] = {}
+                descriptions["roles_view_messages"]["banker"] = banker_descriptions
+        
+        # Load mc descriptions from separate file
+        mc_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "mc.json")
+        if os.path.exists(mc_descriptions_path):
+            with open(mc_descriptions_path, encoding="utf-8") as f:
+                mc_descriptions = json.load(f)
+                # Merge mc descriptions into roles_view_messages
+                if "roles_view_messages" not in descriptions:
+                    descriptions["roles_view_messages"] = {}
+                descriptions["roles_view_messages"]["mc"] = mc_descriptions
+        
+        # Replace {_bot_display_name} placeholder with actual bot name
+        bot_display_name = PERSONALITY.get("bot_display_name", PERSONALITY.get("name", "Bot"))
+        descriptions = _replace_bot_display_name_placeholders(descriptions, bot_display_name)
         
         return descriptions
     except Exception as e:
@@ -223,24 +266,22 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
             duty_text = duty_text.replace("<accusated_user>", "el usuario sospechoso")
     
     # Handle beggar subrole special case: inject current gold collection task after "para:"
-    if subrole_name == "beggar" and server_id and duty_text.endswith("para:"):
+    if subrole_name == "beggar" and server_id and duty_text.rstrip().endswith(":"):
         try:
             from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
             beggar_config = get_beggar_config(server_id)
-            current_reason = beggar_config.get_current_reason()
             
-            if current_reason:
-                duty_text = duty_text + " " + current_reason
-                logger.debug(f"🎭 [BEGGAR] Injected current reason '{current_reason}' in system prompt")
+            if beggar_config.is_enabled():
+                current_reason = beggar_config.get_current_reason()
+                if current_reason:
+                    duty_text = duty_text + " " + current_reason
+                    logger.debug(f"🎭 [BEGGAR] Injected current reason '{current_reason}' in system prompt")
+                else:
+                    logger.debug("🎭 [BEGGAR] No current reason available, leaving base line unchanged")
             else:
-                # Fallback to a default reason if no current reason is set
-                default_reason = "clan matters"
-                duty_text = duty_text + " " + default_reason
-                logger.debug(f"🎭 [BEGGAR] No current reason found, using default '{default_reason}'")
+                logger.debug("🎭 [BEGGAR] Beggar not enabled, leaving base line unchanged")
         except Exception as e:
-            logger.warning(f"🎭 [BEGGAR] Failed to inject current reason: {e}")
-            # Fallback to a generic reason if beggar config is not available
-            duty_text = duty_text + " clan matters"
+            logger.debug(f"🎭 [BEGGAR] Failed to inject current reason: {e}")
     
     return duty_text
 
@@ -332,7 +373,19 @@ def _get_active_roles_section() -> str:
             if not isinstance(subrole_cfg, dict) or not subrole_cfg.get("enabled", False):
                 continue
             subrole_prompt_cfg = role_subroles_cfg.get(subrole_name, {})
-            subrole_duty = _get_active_duty_text(subrole_prompt_cfg)
+            
+            # Get server_id for subrole injection (ring needs it)
+            server_id = None
+            try:
+                from agent_runtime import get_active_server_name
+                server_name = get_active_server_name()
+                if server_name:
+                    server_id = str(server_name)
+            except Exception:
+                pass
+            
+            subrole_duty = _get_active_duty_text(subrole_prompt_cfg, server_id, subrole_name)
+            
             if subrole_duty:
                 subrole_display = _get_role_display_name(subrole_name)
                 lines.append(line_template.format(scope=f"{_get_role_display_name(role_name)}/{subrole_display}", duty=subrole_duty))
@@ -970,7 +1023,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                 task_details = f"\n\nINVESTIGATION METHOD: {selected_method}"
         
         # Construct complete prompt: mission + task + details
-        complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nRespond only with what Putre would say, without additional explanations."
+        complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nRespond only with what {_bot_display_name} would say, without additional explanations."
         
         # Call LLM
         response = call_llm(

@@ -1109,26 +1109,19 @@ class DatabaseRoleNewsWatcher:
             return False
     
     def subscribe_channel_category_ai(self, channel_id: str, channel_name: str, server_id: str, 
-                                   server_name: str, category: str, feed_id: int = None, premises: str = None) -> bool:
+                                   server_name: str, category: str, feed_id: int = None, premises: str = None, user_id: str = None) -> bool:
         """Subscribe a channel to a category with AI analysis."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                     cursor = conn.cursor()
                     
-                    # Add channel to subscriptions_channels table
+                    # Add channel to subscriptions_channels table only
                     cursor.execute('''
                         INSERT OR REPLACE INTO subscriptions_channels 
-                        (channel_id, channel_name, server_id, server_name, category, feed_id, subscribed_at, is_active, channel_premises)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-                    ''', (channel_id, channel_name, server_id, server_name, category, feed_id, datetime.now().isoformat(), premises))
-                    
-                    # Add subscription to subscriptions_categories table
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO subscriptions_categories 
-                        (user_id, category, feed_id, subscribed_at, is_active, user_premises)
-                        VALUES (?, ?, ?, ?, 1, ?)
-                    ''', (f"channel_{channel_id}", category, feed_id, datetime.now().isoformat(), premises))
+                        (channel_id, channel_name, server_id, server_name, category, feed_id, subscribed_at, is_active, channel_premises, user_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    ''', (channel_id, channel_name, server_id, server_name, category, feed_id, datetime.now().isoformat(), premises, user_id))
                     
                     conn.commit()
                     return True
@@ -1211,9 +1204,9 @@ class DatabaseRoleNewsWatcher:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT NULL as user_id, channel_id, keywords, category, feed_id
-                    FROM subscriptions_channels 
-                    WHERE is_active = 1 AND keywords IS NOT NULL AND keywords != ''
+                    SELECT user_id, channel_id, keywords, category, feed_id
+                    FROM subscriptions_keywords 
+                    WHERE is_active = 1 AND channel_id IS NOT NULL
                 ''')
                 return cursor.fetchall()
         except Exception as e:
@@ -1390,14 +1383,14 @@ class DatabaseRoleNewsWatcher:
             return []
     
     def get_all_active_keyword_subscriptions(self) -> list:
-        """Get all active keyword subscriptions."""
+        """Get all active keyword subscriptions (user subscriptions only)."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT user_id, channel_id, keywords, category, feed_id
                     FROM subscriptions_keywords 
-                    WHERE is_active = 1
+                    WHERE is_active = 1 AND (channel_id IS NULL OR channel_id = '')
                 ''')
                 return cursor.fetchall()
         except Exception as e:
@@ -2442,43 +2435,25 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error getting all AI user subscriptions: {e}")
             return []
 
-    def get_all_channel_subscriptions_flat(self) -> List[tuple]:
-        """Get all active flat channel subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT channel_id, category, feed_id
-                    FROM subscriptions_channels
-                    WHERE is_active = 1 AND (channel_premises IS NULL OR channel_premises = '')
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all flat channel subscriptions: {e}")
-            return []
-
-    def get_all_channel_subscriptions_keywords(self) -> List[tuple]:
-        """Get all active keyword channel subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT channel_id, category, feed_id, keywords
-                    FROM subscriptions_keywords
-                    WHERE is_active = 1 AND channel_id IS NOT NULL
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all keyword channel subscriptions: {e}")
-            return []
-
+    
     def get_all_channel_subscriptions_ai(self) -> List[tuple]:
         """Get all active AI channel subscriptions."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
+                
+                # Ensure user_id column exists
+                cursor.execute('PRAGMA table_info(subscriptions_channels)')
+                columns = cursor.fetchall()
+                column_names = {col[1] for col in columns}
+                
+                if 'user_id' not in column_names:
+                    cursor.execute('ALTER TABLE subscriptions_channels ADD COLUMN user_id TEXT')
+                    conn.commit()
+                    logger.info("Added user_id column to subscriptions_channels")
+                
                 cursor.execute('''
-                    SELECT channel_id, category, feed_id, channel_premises
+                    SELECT channel_id, category, feed_id, channel_premises, user_id
                     FROM subscriptions_channels
                     WHERE is_active = 1 AND channel_premises IS NOT NULL AND channel_premises != ''
                 ''')
@@ -2486,7 +2461,7 @@ class DatabaseRoleNewsWatcher:
         except Exception as e:
             logger.exception(f"Error getting all AI channel subscriptions: {e}")
             return []
-
+    
     def get_frequency_setting(self) -> int:
         """Get the frequency setting in hours."""
         try:
@@ -2497,10 +2472,10 @@ class DatabaseRoleNewsWatcher:
                     WHERE clave = 'frequency_hours'
                 ''')
                 result = cursor.fetchone()
-                return result[0] if result else 1  # Default to 1 hour
+                return result[0] if result else 4  # Default to 4 hours
         except Exception as e:
             logger.exception(f"Error getting frequency setting: {e}")
-            return 1  # Default to 1 hour on error
+            return 4  # Default to 4 hours on error
 
     def set_frequency_setting(self, hours: int) -> bool:
         """Set the frequency setting in hours."""

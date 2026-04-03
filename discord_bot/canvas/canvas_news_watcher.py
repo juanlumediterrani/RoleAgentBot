@@ -60,6 +60,8 @@ class CanvasWatcherMethodSelect(discord.ui.Select):
 
         def _watcher_text(key: str, fallback: str) -> str:
             value = watcher_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
 
         options = [
@@ -105,6 +107,8 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
             watcher_descriptions = {}
             
         value = watcher_descriptions.get(key)
+        if value:
+            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     def __init__(self, view):
@@ -183,6 +187,8 @@ class CanvasWatcherAdminMethodSelect(discord.ui.Select):
 
         def _watcher_text(key: str, fallback: str) -> str:
             value = watcher_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
 
         options = [
@@ -227,6 +233,8 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
 
         def _watcher_text(key: str, fallback: str) -> str:
             value = watcher_descriptions.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
 
         self._watcher_text = _watcher_text
@@ -938,6 +946,19 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
+            # Validate input first
+            hours_str = str(self.hours_input.value).strip()
+            
+            try:
+                hours_int = int(hours_str)
+            except ValueError:
+                await interaction.response.send_message("❌ Invalid format. Please enter a number between 1 and 24.", ephemeral=True)
+                return
+            
+            if not 1 <= hours_int <= 24:
+                await interaction.response.send_message("❌ Frequency must be between 1 and 24 hours.", ephemeral=True)
+                return
+
             from roles.news_watcher.watcher_commands import WatcherCommands
 
             class MockMessage:
@@ -955,12 +976,16 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
                 if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
                     db_instance._init_db()
                 watcher_commands.db_watcher = db_instance
+                
+                # Direct database update instead of using cmd_frequency (which sends embeds)
+                if db_instance.set_frequency_setting(hours_int):
+                    result_msg = f"✅ Watcher frequency set to {hours_int} hours"
+                else:
+                    await interaction.response.send_message("❌ Error updating frequency setting", ephemeral=True)
+                    return
             else:
-                watcher_commands = WatcherCommands(self.bot)
-
-            hours = str(self.hours_input.value).strip()
-            await watcher_commands.cmd_frequency(mock_message, [hours])
-            result_msg = f"✅ Watcher frequency set to {hours} hours"
+                await interaction.response.send_message("❌ Guild context required", ephemeral=True)
+                return
 
             try:
                 self.view.watcher_last_action = "watcher_frequency"
@@ -1173,6 +1198,8 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
             value = dropdown.get(key)
             if value is None:
                 value = news_watcher.get(key)
+            if value:
+                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
         
         if get_news_watcher_db_instance is None:
@@ -1183,21 +1210,21 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
         # Get all channel subscriptions with proper 5-value format
         all_channel_subs = []
         
-        # Get flat subscriptions (channel_id, category, feed_id)
+        # Get flat subscriptions (user_id, category, feed_id, channel_id, subscribed_at)
         flat_subs = db.get_all_channel_subscriptions_flat()
-        for channel_id, category, feed_id in flat_subs:
+        for user_id, category, feed_id, channel_id, subscribed_at in flat_subs:
             channel_name = f"#{channel_id}"  # Fallback name
             all_channel_subs.append((channel_id, channel_name, category, "", feed_id is None))
         
-        # Get keyword subscriptions (channel_id, category, feed_id, keywords)
+        # Get keyword subscriptions (user_id, channel_id, keywords, category, feed_id)
         keyword_subs = db.get_all_channel_subscriptions_keywords()
-        for channel_id, category, feed_id, keywords in keyword_subs:
+        for user_id, channel_id, keywords, category, feed_id in keyword_subs:
             channel_name = f"#{channel_id}"  # Fallback name
             all_channel_subs.append((channel_id, channel_name, category, keywords, feed_id is None))
         
-        # Get AI subscriptions (channel_id, category, feed_id, premises)
+        # Get AI subscriptions (channel_id, category, feed_id, premises, user_id)
         ai_subs = db.get_all_channel_subscriptions_ai()
-        for channel_id, category, feed_id, premises in ai_subs:
+        for channel_id, category, feed_id, premises, user_id in ai_subs:
             channel_name = f"#{channel_id}"  # Fallback name
             all_channel_subs.append((channel_id, channel_name, category, "AI premises", feed_id is None))
         
@@ -1343,6 +1370,8 @@ def build_canvas_role_news_watcher_detail(
 
     def _watcher_text(key: str, fallback: str) -> str:
         value = watcher_descriptions.get(key, watcher_messages.get(key))
+        if value:
+            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     def _get_watcher_personal_intro_block() -> str:

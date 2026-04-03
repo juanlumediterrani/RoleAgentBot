@@ -28,7 +28,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
     def _banker_text(key: str, fallback: str) -> str:
         value = banker_descriptions.get(key, banker_messages.get(key))
         if value:
-            value = str(value).replace("{_bot}", _bot_display_name)
+            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     balance = 0
@@ -73,8 +73,8 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
         ),
         _banker_text("wallet_status_title", "**Wallet status**"),
         f":coin: {_banker_text('gold_coins', '{amount} monedas de oro').replace('{amount}', f'{balance:,}')}",
-        f":bank: {_banker_text('server_label', 'Zekton').replace('{server_name}', server_name)}",
-        f":bust_in_silhouette: {_banker_text('user_label', 'Umano').replace('{user_name}', user_name)}",
+        f":bank: {_banker_text('server_label', 'Server')}: {server_name}",
+        f":bust_in_silhouette: {_banker_text('user_label', 'User')}: {user_name}",
         _banker_text("recent_transactions_title", "**Recent transactions**"),
     ]
 

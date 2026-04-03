@@ -20,6 +20,27 @@ def _get_watcher_description_text(key: str, fallback: str) -> str:
         with open(config_path, encoding="utf-8") as f:
             agent_cfg = json.load(f)
         personality_rel = agent_cfg.get("personality", "")
+        
+        # First try to get from news_watcher descriptions
+        news_watcher_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            os.path.dirname(personality_rel),
+            "descriptions",
+            "news_watcher.json",
+        )
+        
+        try:
+            with open(news_watcher_path, encoding="utf-8") as f:
+                news_watcher_descriptions = json.load(f)
+                value = news_watcher_descriptions.get(key)
+                if value:
+                    # Apply placeholder replacement for bot display name
+                    from discord_bot.canvas.content import _bot_display_name
+                    return str(value).replace("{_bot_display_name}", _bot_display_name)
+        except FileNotFoundError:
+            pass  # Continue to fallback
+        
+        # Fallback to old descriptions.json
         descriptions_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             os.path.dirname(personality_rel),
@@ -1463,8 +1484,9 @@ class WatcherCommands:
                 
                 success_count = 0
                 premises_str = ",".join(premises) if premises else ""
+                user_id = str(message.author.id)  # Get the user who is creating the subscription
                 for feed in feeds:
-                    if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed[0], premises_str):
+                    if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed[0], premises_str, user_id):
                         success_count += 1
                 
                 if success_count > 0:
@@ -1475,7 +1497,8 @@ class WatcherCommands:
             
             # Create single AI channel subscription
             premises_str = ",".join(premises) if premises else ""
-            if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed_id, premises_str):
+            user_id = str(message.author.id)  # Get the user who is creating the subscription
+            if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed_id, premises_str, user_id):
                 if feed_id:
                     await message.channel.send(f"🤖 **AI channel subscription** to feed {feed_id} in '{category}' - I will analyze critical news based on the channel premises")
                 else:
@@ -1595,9 +1618,10 @@ class WatcherCommands:
                     return
                 
                 success_count = 0
+                user_id = str(message.author.id)  # Get the user who is creating the subscription
                 for feed in feeds:
                     if db.subscribe_channel_category_ai(
-                        str(channel.id), channel.name, str(server.id), server.name, category, feed[0], default_premises
+                        str(channel.id), channel.name, str(server.id), server.name, category, feed[0], default_premises, user_id
                     ):
                         success_count += 1
                 
@@ -1608,8 +1632,9 @@ class WatcherCommands:
                 return
             
             # Create single channel subscription
+            user_id = str(message.author.id)  # Get the user who is creating the subscription
             if db.subscribe_channel_category_ai(
-                str(channel.id), channel.name, str(server.id), server.name, category, feed_id, default_premises
+                str(channel.id), channel.name, str(server.id), server.name, category, feed_id, default_premises, user_id
             ):
                 if feed_id:
                     await message.channel.send(get_message('channel_subscription_successful_feed', feed_id=feed_id, category=category))

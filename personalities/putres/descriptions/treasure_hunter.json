@@ -1,0 +1,39 @@
+{
+    "title": "**🏹 {_bot_display_name} Loot Hunter**",
+    "description": "Get {_bot_display_name} to watch da prizez and yell at ya when dere'z loot to take.",
+    "button": "🏹 Loot",
+    "user_flows_title": "Da Humie Path",
+    "user_flows_1": "Pick da game ya wanna rob",
+    "user_flows_2": "Go in and pick what shiny stuff ya want to watch.",
+    "task_map_title": "Loot Map:",
+    "task_map_1": "Stuff: I got a lizt of what it'z worth.",
+    "task_map_2": "Alertz: I'll yell in yer ear when it'z cheap enough to buy.",
+    "available_subroles_title": "Huntin' Groundz",
+    "admin_flows_title": "Da Boss Path",
+    "admin_flows_1": "Check da groundz to turn 'em on from da Boss View.",
+    "poe2": {
+        "title": "**💎 {_bot} Treasurez in Path of Exile 2**",
+        "description": "Putre watchez da prizez so ya don't 'ave to, ya lazy git.",
+        "game_description": "Try yer luck wiv Putre'z bonez! 🎲 Roll free dice and take da gold if ya get a trio of onez!/n -Pairz: x1\\n -Trioz: x3\\n -High Straight: x5\\n",
+        "actual_league": "🏆 **Kurrent League**: {league}",
+        "lueague_description": "Pick da PoE2 league for Putre to watch",
+        "dropdown": {
+            "league_standard": "League: Normal",
+            "league_standard_description": "Watch da borin' league",
+            "league_fate_of_the_vaal": "League: Fate of da Vaal",
+            "league_fate_of_the_vaal_description": "Watch da league wiv red monsterz",
+            "league_hardcore": "League: Real Men Only",
+            "league_hardcore_description": "Watch da league where ya die for real",
+            "poe2_item_add": "Add Stuff",
+            "poe2_item_add_description": "Tell me summat new to watch",
+            "poe2_item_remove": "Toss Stuff",
+            "poe2_item_remove_description": "Stop lookin' at dat junk",
+            "poe2_on": "Wake Eye",
+            "poe2_off": "Close Eye",
+            "poe2_on_description": "Putre startz watchin' PoE2",
+            "poe2_off_description": "Putre goez for a nap",
+            "hunter_frequency": "Scout Speed",
+            "hunter_frequency_description": "How fast Putre checkz da loot"
+        }
+    }
+}

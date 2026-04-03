@@ -8,7 +8,7 @@
 async def force_watcher(ctx):
     """Manually trigger news watcher to process all subscriptions."""
     import asyncio
-    from roles.news_watcher.news_watcher import process_channel_subscriptions
+    from roles.news_watcher.news_watcher import process_subscriptions
     from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
     
     try:
@@ -20,8 +20,8 @@ async def force_watcher(ctx):
         # Create HTTP client (you'll need to implement this based on your bot's HTTP client)
         http = None  # Replace with your actual HTTP client
         
-        # Force the watcher to process all channel subscriptions
-        await process_channel_subscriptions(http, db, str(ctx.guild.id))
+        # Force the watcher to process all subscriptions
+        await process_subscriptions(http, str(ctx.guild.id))
         
         await ctx.send("✅ **News watcher iteration completed!**\n"
                       "📊 Checked all channel subscriptions for new articles.\n"

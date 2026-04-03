@@ -407,21 +407,32 @@ class AgentDatabase:
                         (usuario_id, usuario_nombre, canal_id, tipo_interaccion, contexto, metadata, fecha, servidor_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ''', params)
+                    # Programar actualización de recent memory con lógica anti-atasco
                     cursor.execute('''
                         INSERT INTO pending_recent_memory_updates
                         (server_name, scheduled_for, status, updated_at)
                         VALUES (?, ?, ?, ?)
                         ON CONFLICT(server_name) DO UPDATE SET
                             scheduled_for = CASE
-                                WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.scheduled_for
-                                ELSE excluded.scheduled_for
+                                WHEN pending_recent_memory_updates.status = 'pending' 
+                                     AND datetime(pending_recent_memory_updates.scheduled_for) < datetime('now', '-2 hours')
+                                THEN excluded.scheduled_for
+                                ELSE pending_recent_memory_updates.scheduled_for
                             END,
-                            status = CASE
-                                WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.status
-                                ELSE excluded.status
-                            END,
-                            updated_at = excluded.updated_at
+                            updated_at = CASE
+                                WHEN pending_recent_memory_updates.status = 'pending' 
+                                     AND datetime(pending_recent_memory_updates.scheduled_for) < datetime('now', '-2 hours')
+                                THEN excluded.updated_at
+                                ELSE pending_recent_memory_updates.updated_at
+                            END
                     ''', (self.server_name, scheduled_for, "pending", updated_at))
+                    
+                    # Programar actualización de relationship con retraso para evitar solapamiento
+                    # Recent memory tiene prioridad, relationship se ejecuta 5 minutos después
+                    from datetime import timedelta
+                    relationship_delay = timedelta(minutes=5)
+                    relationship_scheduled_for = (datetime.datetime.fromisoformat(scheduled_for.replace('Z', '+00:00')) + relationship_delay).isoformat()
+                    
                     cursor.execute('''
                         INSERT INTO pending_relationship_updates
                         (usuario_id, server_name, scheduled_for, status, updated_at)
@@ -436,9 +447,10 @@ class AgentDatabase:
                                 ELSE excluded.status
                             END,
                             updated_at = excluded.updated_at
-                    ''', (str(usuario_id), self.server_name, scheduled_for, "pending", updated_at))
-                    conn.commit()
+                    ''', (str(usuario_id), self.server_name, relationship_scheduled_for, "pending", updated_at))
+                    
                     logger.info(f"✅ Interaction registered: user_id={usuario_id}, type={tipo_interaccion}, channel_id={canal_id}")
+                    logger.info(f"🧠 [SCHEDULING] Recent memory: {scheduled_for}, Relationship: {relationship_scheduled_for} (5min delay)")
                     return True
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error registering interaction (user_id={usuario_id}, type={tipo_interaccion}): {e}")

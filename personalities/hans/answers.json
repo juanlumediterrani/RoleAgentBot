@@ -142,7 +142,7 @@
       "voice_disconnected": "¡ACHTUNG! ¡Conexión de voz terminada!",
       "volume_adjust_error": "¡FALLO! ¡No puedo ajustar el volumen!",
       "volume_range_error": "¡DUMMKOPF! ¡El volumen debe ser entre 0 y 100!",
-      "presence_status": "🎵MC.Herr Hans transmitiendo propaganda militar !mc play para escuchar!"
+      "presence_status": "Usa !canvas para presentar informe"
     },
     "watcher_messages": {
       "subscription_successful_category": "¡JAWOHL! ¡El Ministerio de Inteligencia vigilar '{category}'! ¡Interceptaremos todo!",

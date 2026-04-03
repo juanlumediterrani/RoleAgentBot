@@ -23,6 +23,13 @@ from prompts_logger import log_agent_response, log_final_llm_prompt
 
 logger = get_logger('agent_mind')
 
+# Import bot display name for dynamic replacement
+try:
+    from discord_bot.discord_core_commands import _bot_display_name
+except ImportError:
+    # Fallback if discord is not available
+    _bot_display_name = "Bot"
+
 # Global cache for config
 _CONFIG_CACHE = None
 
@@ -210,9 +217,9 @@ def _build_last_dialogue_section(last_dialogue: list[dict]) -> str:
                 lines.append(f'Umano: "{human}"')
         if bot:
             if timestamp:
-                lines.append(f'[{timestamp}] Putre: "{bot}"')
+                lines.append(f'[{timestamp}] {_bot_display_name}: "{bot}"')
             else:
-                lines.append(f'Putre: "{bot}"')
+                lines.append(f'{_bot_display_name}: "{bot}"')
     return "\n".join(lines).strip() or _get_recent_dialogue_fallback()
 
 
@@ -230,7 +237,7 @@ def _format_daily_interactions_for_summary(interactions: list[dict]) -> str:
         if context:
             lines.append(f"Human/Event: {context}")
         if response:
-            lines.append(f"Putre: {response}")
+            lines.append(f"{_bot_display_name}: {response}")
         lines.append("")
     return "\n".join(lines).strip()
 
@@ -247,6 +254,7 @@ def _build_recent_memory_summary_prompt(previous_summary: str, interactions: lis
             ("PREVIOUS RECENT MEMORY:", previous_block),
             ("NEW EVENTS AND INTERACTIONS:", interactions_block),
         ],
+        fallback_closing="",
     )
 
 
@@ -316,7 +324,7 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
             if human:
                 lines.append(f'Human: "{human}"')
             if bot:
-                lines.append(f'Putre: "{bot}"')
+                lines.append(f'{_bot_display_name}: "{bot}"')
             lines.append("")
         interactions_block = "\n".join(lines).strip()
     
@@ -440,6 +448,8 @@ def refresh_due_recent_memories(server_name: str | None = None) -> int:
     due_refreshes = db_instance.get_due_pending_recent_memory_refreshes()
     if not due_refreshes:
         return 0
+    
+    # Obtener última síntesis para verificar si hay interacciones nuevas
     existing_record = db_instance.get_recent_memory_record(memory_date=date.today().isoformat())
     last_interaction_at = (existing_record or {}).get("last_interaction_at")
     new_interactions = db_instance.get_daily_interactions_since(
@@ -447,9 +457,14 @@ def refresh_due_recent_memories(server_name: str | None = None) -> int:
         limit=100,
         target_date=date.today().isoformat(),
     )
+    
     if not new_interactions:
+        logger.info(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {resolved_server}")
         db_instance.mark_recent_memory_refresh_completed()
         return 0
+    
+    # Ejecutar síntesis solo si hay interacciones nuevas
+    logger.info(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {resolved_server}")
     generate_recent_memory_summary(server_name=resolved_server)
     return 1
 
@@ -751,9 +766,32 @@ def generate_user_relationship_memory_summary(
     last_interaction_at = temporary_state.get("last_interaction_at")
     new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=last_interaction_at, limit=100)
     if not new_interactions and not force:
-        if previous_summary:
-            return previous_summary
+        # Check if we have any existing relationship memory (temporary or daily)
+        has_existing_memory = False
+        existing_summary = previous_summary
+        
+        # Also check the current temporary state as a backup
+        if not existing_summary:
+            current_temp = db_instance.get_user_relationship_memory(user_id)
+            existing_summary = current_temp.get("summary", "").strip()
+            if existing_summary:
+                has_existing_memory = True
+        
+        # If we have existing memory, preserve it - don't overwrite with fallback
+        if existing_summary and existing_summary.strip():
+            logger.info(f"🧠 [RELATIONSHIP_MEMORY] Preserving existing memory for user={user_id} server={resolved_server}")
+            # Update the temporary state to ensure it's current
+            db_instance.upsert_user_relationship_memory(
+                user_id,
+                existing_summary,
+                last_interaction_at=last_interaction_at,
+                metadata={"user_name": user_name or "", "source": "preserved_existing"},
+            )
+            return existing_summary
+        
+        # Only use fallback if user truly has no relationship history
         fallback = _get_relationship_memory_fallback(user_name)
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Using fallback for new user={user_id} server={resolved_server}")
         db_instance.upsert_user_relationship_memory(
             user_id,
             fallback,
@@ -808,9 +846,14 @@ def generate_user_relationship_memory_summary(
         db_instance.mark_relationship_refresh_completed(user_id)
         logger.info(f"🧠 [RELATIONSHIP_MEMORY] Updated summary for user={user_id} server={resolved_server} date={resolved_date}")
     else:
-        # LLM failed or returned error, keep existing summary unchanged
-        summary_text = previous_summary or _get_relationship_memory_fallback(user_name)
-        logger.info(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, keeping existing summary for user={user_id} server={resolved_server}")
+        # LLM failed or returned error, preserve existing summary
+        if previous_summary and previous_summary.strip():
+            summary_text = previous_summary
+            logger.info(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, preserving existing summary for user={user_id} server={resolved_server}")
+        else:
+            # Only use fallback if there truly was no previous summary
+            summary_text = _get_relationship_memory_fallback(user_name)
+            logger.warning(f"🧠 [RELATIONSHIP_MEMORY] LLM failed and no existing summary, using fallback for user={user_id} server={resolved_server}")
     
     return summary_text
 
@@ -854,9 +897,11 @@ def _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_
     daily_record = db_instance.get_user_relationship_daily_memory(user_id)
     summary = relationship_state.get("summary", "").strip()
     if summary:
+        logger.debug(f"🧠 [RELATIONSHIP_MEMORY] Using existing temporary summary for user={user_id}")
         return summary
     if daily_record and daily_record.get("summary", "").strip():
         summary = daily_record["summary"].strip()
+        logger.debug(f"🧠 [RELATIONSHIP_MEMORY] Restoring from daily snapshot for user={user_id}")
         db_instance.upsert_user_relationship_memory(
             user_id,
             summary,
@@ -864,6 +909,9 @@ def _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_
             metadata={"user_name": user_name or "", "source": "daily_snapshot_restore"},
         )
         return summary
+    
+    # Only use fallback if user truly has no relationship history
+    logger.info(f"🧠 [RELATIONSHIP_MEMORY] No existing memory found, using fallback for new user={user_id}")
     fallback = _get_relationship_memory_fallback(user_name)
     db_instance.upsert_user_relationship_memory(
         user_id,

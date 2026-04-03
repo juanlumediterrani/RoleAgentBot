@@ -1,17 +1,17 @@
 {
     "positions": {
-        "Center (Core Issue)": "Centro (Asunto Central)",
-        "North (Higher Power)": "Norte (Poder Superior)",
-        "South (Foundation)": "Sur (Fundamentos)",
-        "East (Challenges)": "Este (Desafíos)",
-        "West (Past Influences)": "Oeste (Influencias Pasadas)",
-        "Center (Present Situation)": "Centro (Situación Presente)",
-        "North (Goals & Aspirations)": "Norte (Metas y Aspiraciones)",
-        "South (Past Influences)": "Sur (Influencias Pasadas)",
-        "East (Future Possibilities)": "Este (Posibilidades Futuras)",
-        "West (External Influences)": "Oeste (Influencias Externas)",
-        "Above (Spiritual Guidance)": "Arriba (Guía Espiritual)",
-        "Below (Foundation & Inner Self)": "Abajo (Fundamentos y Yo Interior)"
+        "Center": "Centro (Asunto Central)",
+        "North": "Norte (Poder Superior)",
+        "South": "Sur (Fundamentos)",
+        "East": "Este (Desafíos)",
+        "West": "Oeste (Influencias Pasadas)",
+        "Center_Present": "Centro (Situación Presente)",
+        "North_Goals": "Norte (Metas y Aspiraciones)",
+        "South_Past": "Sur (Influencias Pasadas)",
+        "East_Future": "Este (Posibilidades Futuras)",
+        "West_External": "Oeste (Influencias Externas)",
+        "Above": "Arriba (Guía Espiritual)",
+        "Below": "Abajo (Fundamentos y Yo Interior)"
     },
     "translations": {
         "fehu": {

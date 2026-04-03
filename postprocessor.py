@@ -24,8 +24,24 @@ def _find_last_sentence_end(text):
     return max(text.rfind("."), text.rfind("!"), text.rfind("?"))
 
 def _sanitize_text(text):
-    """Normalize whitespace in text."""
-    return " ".join(str(text).strip().split())
+    """Normalize whitespace in text while preserving line breaks."""
+    if not text:
+        return ""
+    
+    # Strip leading/trailing whitespace but preserve internal line breaks
+    text = str(text).strip()
+    
+    # Normalize multiple consecutive spaces to single spaces
+    import re
+    text = re.sub(r' +', ' ', text)
+    
+    # Normalize multiple consecutive line breaks to single line breaks
+    text = re.sub(r'\n+', '\n', text)
+    
+    # Remove spaces at the beginning of lines
+    text = re.sub(r'\n +', '\n', text)
+    
+    return text
 
 def is_response_cut_off(text):
     """Detects if a response is cut off or incomplete."""
@@ -95,7 +111,7 @@ def consolidate_context(history_list, max_interactions=5, personality=None, role
     human_label = personality.get("context_labels", {}).get("human", "Humano")
     bot_label = personality.get("context_labels", {}).get("bot", "Bot")
 
-    # Putre/template history format: match the prompt layout used in logs/examples.
+    # Bot/template history format: match the prompt layout used in logs/examples.
     # Keep oro/beggar injection out of history (handled in build_prompt bottom context block).
     history_label = (personality.get("context_history_label") or "").strip().lower()
     use_template_format = history_label in {"istorial", "historial"}

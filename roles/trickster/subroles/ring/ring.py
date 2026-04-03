@@ -66,10 +66,10 @@ def extract_accuse_flag(text: str) -> str | None:
     """Extract ACCUSE <USERNAME> flag from LLM response."""
     import re
     
-    # Look for ACCUSE <USERNAME> pattern (capture username with optional punctuation)
-    match = re.search(r'ACCUSE\s+([^\s!?]+[!?]?)', text, re.IGNORECASE)
+    # Look for ACCUSE <USERNAME> pattern (capture username with spaces, up to punctuation or end)
+    match = re.search(r'ACCUSE\s+(.+?)(?:[!?]|$)', text, re.IGNORECASE)
     if match:
-        # Remove trailing punctuation from username
-        username = match.group(1).strip('!?')
+        # Remove trailing punctuation and whitespace from username
+        username = match.group(1).strip('!? ')
         return username
     return None

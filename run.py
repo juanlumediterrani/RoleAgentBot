@@ -157,7 +157,7 @@ async def _run_server_bound_task(task_name: str, task_func):
 async def execute_recent_memory_summary():
     server_name, refreshed = await _run_server_bound_task("recent_memory_summary", refresh_due_recent_memories)
     if server_name and refreshed:
-        logger.info(f"[run] 🧠 Recent memory summary refreshed for '{server_name}'")
+        logger.info(f"[run] 🧠 Recent memory summary refreshed for '{server_name}' (PRIORITY: 1)")
 
 
 async def execute_daily_memory_summary():
@@ -169,7 +169,7 @@ async def execute_daily_memory_summary():
 async def execute_relationship_memory_refresh():
     server_name, refreshed = await _run_server_bound_task("relationship_memory_refresh", refresh_due_relationship_memories)
     if server_name and refreshed:
-        logger.info(f"[run] 🧠 Relationship memories refreshed for '{server_name}': {refreshed}")
+        logger.info(f"[run] 🧠 Relationship memories refreshed for '{server_name}': {refreshed} (PRIORITY: 2)")
 
 
 def _get_last_daily_memory_update_time(server_name: str | None = None) -> datetime | None:
@@ -293,6 +293,8 @@ async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dic
         next_non_role_run[task_key] = datetime.now() + interval
         logger.info(f"[run] 🧠 {log_label}: {next_non_role_run[task_key]:%Y-%m-%d %H:%M:%S}")
     await execute_recent_memory_summary()
+    # Pequeño retraso para evitar solapamiento y dar prioridad a recent memory
+    await asyncio.sleep(5)
     await execute_relationship_memory_refresh()
 
 

@@ -5,41 +5,48 @@ Generates periodic comments about active missions incorporating memories and per
 
 from agent_logging import get_logger
 
+# Import bot display name for dynamic replacement
+try:
+    from discord_bot.discord_core_commands import _bot_display_name
+except ImportError:
+    # Fallback if discord is not available
+    _bot_display_name = "Bot"
+
 logger = get_logger('commentary')
 
 def get_commentary_system_prompt() -> str:
     """Get the system prompt for the commentary role."""
-    return "MISION ACTIVA - COMMENTARY: Eres el comentarista de misiones del bot. Tu misión es generar comentarios entretenidos sobre las misiones activas, incorporando recuerdos relevantes y manteniendo la personalidad del personaje."
+    return "ACTIVE MISSION - COMMENTARY: You are the bot's mission commentator. Your mission is to generate entertaining comments about active missions, incorporating relevant memories and maintaining the character's personality."
 
 def get_commentary_task_prompt(enabled_roles: list[str], memories_context: str = "") -> str:
     """Generate a structured task prompt for mission commentary."""
-    roles_text = "\n".join([f"- {role}" for role in enabled_roles]) if enabled_roles else "- Ningún rol activo"
+    roles_text = "\n".join([f"- {role}" for role in enabled_roles]) if enabled_roles else "- No active roles"
     
-    return f"""**TAREA DE COMENTARIO DE MISIONES**
+    return f"""**MISSION COMMENTARY TASK**
 
-Tu tarea específica es: **Haz un comentario sobre tus misiones activas**.
+Your specific task is: **Make a comment about your active missions**.
 
-Directrices:
-- Sé breve y entretenido (1-3 frases)
-- Incorpora recuerdos relevantes si los tienes
-- Menciona al menos una de tus misiones activas
-- Mantén la personalidad de Putre
-- No te repitas
+Guidelines:
+- Be brief and entertaining (1-3 sentences)
+- Incorporate relevant memories if you have them
+- Mention at least one of your active missions
+- Maintain the personality of {_bot_display_name}
+- Don't repeat yourself
 
-**ROLES ACTIVOS:**
+**ACTIVE ROLES:**
 {roles_text}
 
-**CONTEXTO DE RECUERDOS:**
-{memories_context or "Sin recuerdos importantes recientes."}
+**MEMORIES CONTEXT:**
+{memories_context or "No important recent memories."}
 
-**INSTRUCCIÓN FINAL:** Ahora produce tu comentario sobre las misiones activas.
+**FINAL INSTRUCTION:** Now produce your comment about the active missions.
 
-Solo di las palabras de Putre:"""
+Just say the words of {_bot_display_name}:"""
 
 def format_commentary_response(response: str) -> str:
     """Format the commentary response for Discord."""
     if not response or not str(response).strip():
-        return "⚠️ Putre no tener nada ke decir ahora mismo..."
+        return f"⚠️ {_bot_display_name} has nothing to say right now..."
     
     # Clean up the response and add some flavor
     cleaned = str(response).strip()

@@ -108,12 +108,17 @@ def build_canvas_behavior_detail(
 ) -> str | None:
     from .content import _build_canvas_intro_block
     behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-    title_status = behavior_descriptions.get("status", "**Current status**")
+    general_descriptions = _personality_descriptions.get("general", {})
+    title_status = general_descriptions.get("status", "**Current status**")
 
     if detail_name in {"conversation", "chat"}:
         conversations_messages = behavior_descriptions.get("conversation", {})
         conversation_title = conversations_messages.get("title", f"💬 {_bot_display_name} Canvas - General Behavior Conversation")
         conversation_description = conversations_messages.get("description", "**Conversation surface**\n- Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles\n")
+        
+        # Reemplazar placeholders con el nombre del bot
+        conversation_title = conversation_title.replace("{_bot_display_name}", _bot_display_name)
+        conversation_description = conversation_description.replace("{_bot_display_name}", _bot_display_name)
 
         if guild and hasattr(guild, "id"):
             guild_id = str(guild.id)
@@ -141,6 +146,10 @@ def build_canvas_behavior_detail(
         greetings_descriptions = behavior_descriptions.get("greetings", {})
         greetings_title = greetings_descriptions.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Greetings")
         greetings_description = greetings_descriptions.get("description", "**Description**\n- Presence greetings are global server behavior\n- Uses behavior/greet.py module\n- Greets users when they come online (offline → online)\n- 5-minute cooldown between greetings per user")
+        
+        # Reemplazar placeholders con el nombre del bot
+        greetings_title = greetings_title.replace("{_bot_display_name}", _bot_display_name)
+        greetings_description = greetings_description.replace("{_bot_display_name}", _bot_display_name)
 
         return "\n".join([
             _build_canvas_intro_block(greetings_title, greetings_description),
@@ -173,6 +182,10 @@ def build_canvas_behavior_detail(
         welcome_messages = behavior_descriptions.get("welcome", {})
         welcome_title = welcome_messages.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Welcome Messages")
         welcome_description = welcome_messages.get("description", "Configure the bot to give a good greeting when someone joins the server for the first time.")
+        
+        # Reemplazar placeholders con el nombre del bot
+        welcome_title = welcome_title.replace("{_bot_display_name}", _bot_display_name)
+        welcome_description = welcome_description.replace("{_bot_display_name}", _bot_display_name)
 
         return "\n".join([
             _build_canvas_intro_block(welcome_title, welcome_description),
@@ -222,6 +235,10 @@ def build_canvas_behavior_detail(
         commentary_messages = behavior_descriptions.get("comentary", {})
         commentary_title = commentary_messages.get("title", f"🗣️ {_bot_display_name} Canvas - General Behavior Mission Commentary")
         commentary_description = commentary_messages.get("description", "Commentary is global behavior driven by active roles")
+        
+        # Reemplazar placeholders con el nombre del bot
+        commentary_title = commentary_title.replace("{_bot_display_name}", _bot_display_name)
+        commentary_description = commentary_description.replace("{_bot_display_name}", _bot_display_name)
 
         return "\n".join([
             _build_canvas_intro_block(commentary_title, commentary_description),
@@ -253,6 +270,10 @@ def build_canvas_behavior_detail(
         taboo_title = taboo_messages.get("title", f"🚫 {_bot_display_name} Canvas - General Behavior Taboo")
         taboo_description = taboo_messages.get("description", "- Taboo watches normal server chat and can trigger an in-character reply")
         taboo_title_keywords = taboo_messages.get("title_keywords", "**Current keywords**")
+        
+        # Reemplazar placeholders con el nombre del bot
+        taboo_title = taboo_title.replace("{_bot_display_name}", _bot_display_name)
+        taboo_description = taboo_description.replace("{_bot_display_name}", _bot_display_name)
 
         return "\n".join([
             _build_canvas_intro_block(taboo_title, taboo_description),
@@ -312,6 +333,10 @@ def build_canvas_behavior_detail(
         role_control_messages = behavior_descriptions.get("role_control", {})
         role_control_title = role_control_messages.get("title", f"🎛️ {_bot_display_name} Canvas - General Behavior Role Control")
         role_control_description = role_control_messages.get("description", "Role activation is managed through database - primary source")
+        
+        # Reemplazar placeholders con el nombre del bot
+        role_control_title = role_control_title.replace("{_bot_display_name}", _bot_display_name)
+        role_control_description = role_control_description.replace("{_bot_display_name}", _bot_display_name)
 
         return "\n".join([
             _build_canvas_intro_block(role_control_title, role_control_description),

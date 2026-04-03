@@ -301,11 +301,12 @@ async def initialize_dice_game_pot():
                 
                 if pot_balance == 0:
                     # Create pot wallet (it will get opening bonus if configured)
-                    was_created, initial_balance = db_banker.create_wallet(
+                    was_created = db_banker.create_wallet(
                         "dice_game_pot", "Dice Game Pot", server_id, server_name
                     )
                     
                     if was_created:
+                        initial_balance = db_banker.get_balance("dice_game_pot", server_id)
                         logger.info(f"💰 Dice game pot created for {server_name} with {initial_balance} coins")
                     else:
                         logger.info(f"💰 Dice game pot already exists for {server_name}")

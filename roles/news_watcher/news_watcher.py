@@ -10,15 +10,44 @@ import feedparser
 import aiohttp
 import logging
 import time
+import datetime
+import discord
 from dotenv import load_dotenv
 from agent_db import get_active_server_name
 from agent_logging import get_logger
 from agent_engine import get_discord_token
 from discord_bot.discord_http import DiscordHTTP
 from discord_bot import discord_core_commands as core
-_personality_descriptions = core._personality_descriptions
 
 logger = get_logger('news_watcher')
+
+# Load news_watcher descriptions directly
+import json
+import os
+from pathlib import Path
+
+def _load_news_watcher_descriptions():
+    """Load news_watcher.json descriptions directly."""
+    try:
+        # Get personality name from configuration
+        from agent_engine import PERSONALITY
+        personality_name = PERSONALITY.get("name", "putre").lower()
+        
+        # Get personality directory
+        personality_dir = Path(__file__).parent.parent.parent / "personalities" / personality_name / "descriptions"
+        news_watcher_path = personality_dir / "news_watcher.json"
+        
+        if news_watcher_path.exists():
+            with open(news_watcher_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            logger.warning(f"News watcher descriptions not found at {news_watcher_path}")
+            return {}
+    except Exception as e:
+        logger.exception(f"Error loading news_watcher descriptions: {e}")
+        return {}
+
+_personality_descriptions = _load_news_watcher_descriptions()
 
 # Personality prompt fallback legacy not normalized
 ROL_VIGIA_PERSONALITY = (
@@ -208,18 +237,15 @@ async def process_keyword_subscriptions(http, db_watcher, global_db, server_name
                     logger.warning(f"🔍 No feeds found for category '{category}' (normalized: '{category_normalized}')")
         
         # Process channel subscriptions
-        for channel_id, category, feed_id, keywords in channel_subscriptions:
+        for channel_id, category, feed_id, keywords, user_id in channel_subscriptions:
             # Convert category to lowercase for database query
             category_normalized = category.lower()
-            
-            # Use channel_id as user_id prefix for channel subscriptions
-            prefixed_user_id = f"channel_{channel_id}"
             
             if feed_id:
                 # Specific feed - use absolute database ID
                 feed_data = db_watcher.get_feed_by_id(feed_id)
                 if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, prefixed_user_id, channel_id, server_name, "keyword", keywords)
+                    await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "keyword", keywords)
                 else:
                     logger.warning(f"Feed ID {feed_id} not found. Skipping keyword subscription.")
             else:
@@ -228,8 +254,8 @@ async def process_keyword_subscriptions(http, db_watcher, global_db, server_name
                 if feeds:
                     # Take only the first feed (highest priority)
                     first_feed = feeds[0]
-                    logger.info(f"🔍 Processing first feed for keywords '{keywords}' in {category} category for channel {channel_id}: {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, prefixed_user_id, channel_id, server_name, "keyword", keywords)
+                    logger.info(f"🔍 Processing first feed for keywords '{keywords}' in {category} category for channel {channel_id} (created by user {user_id}): {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, channel_id, server_name, "keyword", keywords)
                 else:
                     logger.warning(f"🔍 No feeds found for category '{category}' (normalized: '{category_normalized}')")
                     
@@ -279,35 +305,31 @@ async def process_ai_subscriptions(http, db_watcher, global_db, server_name: str
                     logger.warning(f"🤖 No feeds found for category '{category}' (normalized: '{category_normalized}')")
         
         # Process channel subscriptions
-        for channel_id, category, feed_id, premises in channel_subscriptions:
-            # Get channel's premises for AI analysis
-            channel_premises, context = db_watcher.get_channel_premises_with_context(channel_id)
-            
-            if not channel_premises:
+        for channel_id, category, feed_id, premises, user_id in channel_subscriptions:
+            # Channel premises are already provided as comma-separated string
+            if premises:
+                channel_premises = [p.strip() for p in premises.split(',') if p.strip()]
+                logger.info(f"🤖 Channel {channel_id} has {len(channel_premises)} premises from subscription (created by user {user_id})")
+            else:
                 logger.info(f"🤖 Channel {channel_id} has no premises, skipping AI subscription")
                 continue
-                
-            logger.info(f"🤖 Channel {channel_id} has {len(channel_premises)} premises, context: {context}")
             
             # Convert category to lowercase for database query
             category_normalized = category.lower()
-            
-            # Use channel_id as user_id prefix for channel subscriptions
-            prefixed_user_id = f"channel_{channel_id}"
             
             if feed_id:
                 # Specific feed
                 feed_data = db_watcher.get_feed_by_id(feed_id)
                 if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, prefixed_user_id, channel_id, server_name, "general", channel_premises)
+                    await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "general", channel_premises)
             else:
                 # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
                 feeds = db_watcher.get_active_feeds(category_normalized)
                 if feeds:
                     # Take only the first feed (highest priority)
                     first_feed = feeds[0]
-                    logger.info(f"🤖 Processing first feed in {category} category for channel {channel_id} with {len(channel_premises)} premises: {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, prefixed_user_id, channel_id, server_name, "general", channel_premises)
+                    logger.info(f"🤖 Processing first feed in {category} category for channel {channel_id} (created by user {user_id}) with {len(channel_premises)} premises: {first_feed[1]} (id={first_feed[0]})")
+                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, channel_id, server_name, "general", channel_premises)
                 else:
                     logger.warning(f"🤖 No feeds found for category '{category}' (normalized: '{category_normalized}')")
                     
@@ -391,7 +413,7 @@ async def _process_feed_flat_opinion(http, feed, name, url, global_db, db_watche
     )
     rendered_opinion = opinion or "Watcher opinion unavailable"
 
-    message = _build_watcher_notification_message("flat", pending_articles, rendered_opinion)
+    message = _build_watcher_notification_message("flat", pending_articles, rendered_opinion, user_id)
     await _send_notification(http, user_id, channel_id, message)
 
     for article in pending_articles:
@@ -441,6 +463,7 @@ async def _process_feed_keyword_filter(http, feed, name, url, global_db, db_watc
             "keyword",
             matched_articles,
             rendered_opinion,
+            user_id,
             keywords=keywords,
         )
         await _send_notification(http, user_id, channel_id, message)
@@ -513,86 +536,97 @@ async def _process_feed_ai_batch(http, feed, name, url, global_db, db_watcher, u
     )
     rendered_opinion = opinion or "Watcher opinion unavailable"
 
-    message = _build_watcher_notification_message("general", matched_articles, rendered_opinion)
+    message = _build_watcher_notification_message("general", matched_articles, rendered_opinion, user_id, channel_id, premises=premises)
     await _send_notification(http, user_id, channel_id, message)
 
     for article in matched_articles:
         db_watcher.mark_notification_sent(article["title"], "general", rendered_opinion, article["link"])
 
 
-def _build_watcher_notification_message(method: str, articles: list[dict], rendered_opinion: str, keywords: str | None = None) -> str:
+def _build_watcher_notification_message(method: str, articles: list[dict], rendered_opinion: str, user_id: str, channel_id: str = None, keywords: str | None = None, premises: str | None = None) -> tuple[str, str, str | None]:
+    """Build watcher notification message split into two parts with single quote.
+    
+    Returns:
+        tuple: (first_message, second_message, news_data)
+        - first_message: Contains title, opinion, and premises
+        - second_message: Contains news details and links (fallback)
+        - news_data: Tuple with (articles, method, keywords) for components
+    """
     if not articles:
-        return f"💭 **Watcher Opinion:** {rendered_opinion}"
+        first_message = f"💭 {rendered_opinion}"
+        second_message = ""
+        news_data = (articles, method, keywords)
+        return first_message, second_message, news_data
 
+    # Get premises for the analysis (only for general method)
+    premises_info = ""
+    if method == "general" and premises:
+        # Use premises passed directly as parameter (handle both list and string)
+        # Handle both list and string formats
+        if isinstance(premises, list):
+            premise_list = [str(p).strip() for p in premises if str(p).strip()]
+        else:
+            premise_list = [p.strip() for p in premises.split(',') if p.strip()]
+            
+        for i, premise in enumerate(premise_list[:7], start=1):  # Limit to first 7 premises
+            premises_info += f"{i}. {premise}\n"
+        premises_info += "\n"    
+    
+    # Get alert title
+    alert_title = ""
+    alert_title = _personality_descriptions.get("alert_title", "🤖 **Critical News Analysis**")
+    from discord_bot.canvas.content import _bot_display_name
+    alert_title = alert_title.replace("{_bot_display_name}", _bot_display_name)
+
+
+    # Build first message with title, premises, and opinion
+    separator = "-" * 150
     if method == "general":
-        watcher_alert_messages = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {})
-        alert_title = watcher_alert_messages.get("alert_title", "🤖 **Critical News Analysis**")
-        article_lines = []
-        
-        # Limit number of articles to prevent exceeding Discord's 2000 character limit
-        max_articles = 5 if len(articles) > 5 else len(articles)
-        
-        for index, article in enumerate(articles[:max_articles], start=1):
-            article_lines.append(f"{index}. **{article['title']}**")
-            if article["summary"]:
-                # Reduce summary length for multiple articles
-                summary_len = 150 if len(articles) > 3 else 300
-                article_lines.append(f"   {article['summary'][:summary_len]}...")
-            article_lines.append(f"   🔗 {article['link']}")
-        
-        # Add note if articles were truncated
-        if len(articles) > max_articles:
-            article_lines.append(f"   ... and {len(articles) - max_articles} more articles")
-        
-        message = f"{alert_title}\n\n" + "\n".join(article_lines) + f"\n\n:speech_left: {rendered_opinion}"
-        
-        # Final safety check - if still too long, truncate further
-        if len(message) > 1950:  # Leave some margin
-            # Keep only titles and links for very long messages
-            short_lines = [f"{index}. **{article['title']}**" for index, article in enumerate(articles[:3], start=1)]
-            short_lines.append(f"... and {len(articles) - 3} more critical articles")
-            message = f"{alert_title}\n\n" + "\n".join(short_lines) + f"\n\n:speech_left: {rendered_opinion}"
-        
-        return message
+        first_message = f"{alert_title}\n{premises_info}💭 {rendered_opinion}\n{separator}"
+    elif method == "keyword":
+        first_message = f"{alert_title}\n{keywords}\n\n💭 {rendered_opinion}\n{separator}"
+    else:
+        first_message = f"{alert_title}\n\n💭 {rendered_opinion}\n{separator}"
 
-    if method == "keyword":
-        if len(articles) == 1:
-            article = articles[0]
-            return (
-                f"🔍 **Keyword Match:** {article['title']}\n\n{article['summary'][:500]}...\n\n"
-                f"🎯 **Matched keywords:** {keywords}\n\n"
-                f"💭 **Watcher Opinion:** {rendered_opinion}\n\n"
-                f"🔗 **Read more:** {article['link']}"
-            )
-
-        article_lines = []
-        for index, article in enumerate(articles, start=1):
-            article_lines.append(f"{index}. **{article['title']}**")
-            if article["summary"]:
-                article_lines.append(f"   {article['summary'][:300]}...")
-            article_lines.append(f"   🔗 {article['link']}")
-        return (
-            f"🔍 **Keyword News Bulletin**\n\n"
-            f"🎯 **Matched keywords:** {keywords}\n\n"
-            + "\n".join(article_lines)
-            + f"\n\n💭 **Watcher Opinion:** {rendered_opinion}"
-        )
-
-    if len(articles) == 1:
-        article = articles[0]
-        return (
-            f"📰 **{article['title']}**\n\n{article['summary'][:500]}...\n\n"
-            f"💭 **Watcher Opinion:** {rendered_opinion}\n\n"
-            f"🔗 **Read more:** {article['link']}"
-        )
-
+    # Build second message with news details and links (fallback)
     article_lines = []
-    for index, article in enumerate(articles, start=1):
-        article_lines.append(f"{index}. **{article['title']}**")
+    
+    # Limit number of articles to prevent exceeding Discord's 2000 character limit
+    max_articles = 20 if len(articles) > 20 else len(articles)
+    
+    for index, article in enumerate(articles[:max_articles], start=1):
+        article_lines.append(f"**{article['title']}**")
         if article["summary"]:
-            article_lines.append(f"   {article['summary'][:300]}...")
-        article_lines.append(f"   🔗 {article['link']}")
-    return "📰 **Watcher News Bulletin**\n\n" + "\n".join(article_lines) + f"\n\n💭 **Watcher Opinion:** {rendered_opinion}"
+            # Reduce summary length for multiple articles
+            summary_len = 150 if len(articles) > 3 else 300
+            article_lines.append(f"{article['summary'][:summary_len]}...")
+        article_lines.append(f"🔗 {article['link']}")
+        # Add spacing between articles
+        if index < len(articles[:max_articles]):
+            article_lines.append("")
+    
+    # Add note if articles were truncated
+    if len(articles) > max_articles:
+        article_lines.append(f"... and {len(articles) - max_articles} more articles")
+    
+    second_message = "\n".join(article_lines)
+    
+    # Return articles data for components
+    news_data = (articles, method, keywords)
+    
+    # Final safety check - if still too long, truncate further
+    if len(second_message) > 1980:  # Leave some margin
+        # Keep only titles and links for very long messages
+        short_lines = []
+        for index, article in enumerate(articles[:3], start=1):
+            short_lines.append(f"**{article['title']}**")
+            short_lines.append(f"🔗 {article['link']}")
+            if index < 3:
+                short_lines.append("")
+        short_lines.append(f"... and {len(articles) - 3} more critical articles")
+        second_message = "\n".join(short_lines)
+    
+    return first_message, second_message, news_data
 
 
 
@@ -620,7 +654,7 @@ def _build_news_watcher_prompt(
     # Fallback to English defaults if no rules found
     if not golden_rules:
         golden_rules = [
-            "1. LENGHT: 2-4 sentences (100-250 characters).",
+            "1. LENGHT: 2-8 sentences (100-500 characters).",
             "2. GRAMMAR: Don't finish a sentence with a free word like \"the\" \"of\" \"with\"",
             "3. EXPRESS YOURSELF as the character's personality would",
         ]
@@ -661,7 +695,6 @@ def _build_news_watcher_prompt(
             prompt_sections.extend([
                 f'{bulletin_item_label} {index} {title_label} "{item.get("title", "No title")}"',
                 f'{bulletin_item_label} {index} {description_label} "{item_summary}"',
-                f'{bulletin_item_label} {index} Link: "{item.get("link", "")}"',
                 "",
             ])
         prompt_sections.append(bulletin_request)
@@ -820,116 +853,21 @@ logger = get_logger('watcher')
 
 
 
-def _sanitize_summary_for_alert(summary: str) -> str:
-    """Remove legacy analysis markers and trim whitespace for the alert body."""
-    if not summary:
-        return ""
-    text = summary.strip()
-    markers_to_remove = [
-        "🤖 Critical News Analysis",
-    ]
-    for marker in markers_to_remove:
-        text = text.replace(marker, "")
-    analysis_marker = "🎯 Analysis:"
-    marker_index = text.find(analysis_marker)
-    if marker_index != -1:
-        text = text[:marker_index]
-    return text.strip()
-
-
-def _format_critical_news_alert(title: str, summary: str, link: str, opinion: str) -> str:
-    """Format the critical news alert using the new presentation layout."""
-    try:
-        alert_title = _get_alert_title()
-        personality_name = _get_personality_name()
-        separator = "────────────────────────────────────────────────────────────"
-
-        cleaned_summary = _sanitize_summary_for_alert(summary)
-
-        max_summary_length = 800
-        if len(cleaned_summary) > max_summary_length:
-            cleaned_summary = cleaned_summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
-
-        max_opinion_length = 400
-        if len(opinion) > max_opinion_length:
-            opinion = opinion[:max_opinion_length].rsplit(' ', 1)[0] + "..."
-
-        message_parts = [
-            f"**{alert_title}**",
-            separator,
-        ]
-
-        if title:
-            message_parts.append(f"📰 {title}")
-        message_parts.append(separator)
-        message_parts.append(f"💭 {personality_name}: {opinion}")
-        message_parts.append(separator)
-
-        message = "\n".join(part for part in message_parts if part)
-
-        if len(message) > 1990:
-            excess = len(message) - 1990
-            if cleaned_summary and len(cleaned_summary) > excess + 10:
-                cleaned_summary = cleaned_summary[:-(excess + 10)].rsplit(' ', 1)[0] + "..."
-            else:
-                opinion = opinion[:-(excess + 10)].rsplit(' ', 1)[0] + "..."
-
-            message_parts = [
-                f"**{alert_title}**",
-                separator,
-            ]
-            if title:
-                message_parts.append(f"📰 {title}")
-            if cleaned_summary:
-                message_parts.append(cleaned_summary)
-            message_parts.append(separator)
-            message_parts.append(f"💭 {personality_name}: {opinion}")
-            message_parts.append(separator)
-            message = "\n".join(part for part in message_parts if part)
-
-        return message
-
-    except Exception as e:
-        logger.exception(f"Error formatting critical news alert: {e}")
-        alert_title = _get_alert_title()
-        personality_name = _get_personality_name()
-
-        fallback_summary = _sanitize_summary_for_alert(summary)
-        max_summary_length = 800
-        if len(fallback_summary) > max_summary_length:
-            fallback_summary = fallback_summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
-
-        max_opinion_length = 400
-        if len(opinion) > max_opinion_length:
-            opinion = opinion[:max_opinion_length].rsplit(' ', 1)[0] + "..."
-
-        fallback_parts = [
-            f"**{alert_title}**",
-            separator,
-        ]
-        if title:
-            fallback_parts.append(f"� {title}")
-        if fallback_summary:
-            fallback_parts.append(fallback_summary)
-        fallback_parts.append(separator)
-        fallback_parts.append(f"💭 {personality_name}: {opinion}")
-        fallback_parts.append(separator)
-        fallback_message = "\n".join(part for part in fallback_parts if part)
-
-        if len(fallback_message) > 1990:
-            excess = len(fallback_message) - 1990
-            opinion = opinion[:-(excess + 10)].rsplit(' ', 1)[0] + "..."
-            fallback_parts[-2] = f"💭 {personality_name}: {opinion}"
-            fallback_message = "\n".join(part for part in fallback_parts if part)
-
-        return fallback_message
-
-
 def _get_alert_title() -> str:
     """Get alert title from descriptions.json or fallback."""
     try:
-        from agent_engine import PERSONALITY
+        from agent_engine import PERSONALITY, _bot_display_name
         descriptions = PERSONALITY.get("discord", {})
+        
+        # Try to get from news_watcher descriptions first
+        news_watcher_descriptions = descriptions.get("roles_view_messages", {}).get("news_watcher", {})
+        alert_title = news_watcher_descriptions.get("alert_title")
+        
+        if alert_title:
+            # Apply placeholder replacement for bot display name
+            return alert_title.replace("{_bot_display_name}", _bot_display_name)
+        
+        # Fallback to watcher messages
         watcher_messages = descriptions.get("watcher_messages", {})
         
         # Look for a title field in watcher messages
@@ -938,9 +876,9 @@ def _get_alert_title() -> str:
         elif "canvas_personal_title" in watcher_messages:
             return watcher_messages["canvas_personal_title"]
         else:
-            return "Watcher"  # Fallback
+            return f"🤖 {_bot_display_name} Watcher"  # Fallback with bot name
     except Exception:
-        return "Watcher"  # Fallback
+        return "🤖 Watcher"  # Fallback
 
 
 def _get_personality_name() -> str:
@@ -952,31 +890,145 @@ def _get_personality_name() -> str:
         return "Watcher"  # Fallback
 
 
-async def _send_notification(http, user_id: str, channel_id: str, message: str):
-    """Send notification to user (DM) or channel."""
-    try:
-        # Debug logs
-        logger.info(f"🔍 _send_notification called:")
-        logger.info(f"  - user_id: {user_id} (type: {type(user_id)})")
-        logger.info(f"  - channel_id: {channel_id} (type: {type(channel_id)})")
-        logger.info(f"  - channel_id is truthy: {bool(channel_id)}")
-        logger.info(f"  - channel_id is not None: {channel_id is not None}")
-        logger.info(f"  - channel_id is not empty: {channel_id != ''}")
+def _build_news_embed(article: dict, color: int = 0x3498db) -> dict:
+    """Build a Discord embed for a news article.
+    
+    Args:
+        article: Dict with 'title', 'summary', 'link' keys
+        color: Embed color (default blue)
         
-        if channel_id:
-            # Send to channel
-            logger.info(f"📢 Sending to channel {channel_id}")
-            await http.send_channel_message(channel_id, message)
+    Returns:
+        Discord embed dict
+    """
+    embed = {
+        "title": article.get('title', 'No title'),
+        "description": article.get('summary', '')[:400] + '...' if len(article.get('summary', '')) > 400 else article.get('summary', ''),
+        "url": article.get('link', ''),
+        "color": color,
+        "footer": {
+            "text": "🐺 RoleAgentBot News Watcher"
+        }
+    }
+    
+    # Try to extract image from article if available
+    # Note: This would require additional processing to extract images from the article content
+    # For now, Discord will automatically fetch the Open Graph image from the URL
+    
+    return embed
+
+
+
+
+def _build_news_components(articles: list[dict], method: str = "general", keywords: str = None) -> list:
+    """Build Discord components (buttons) for news articles.
+    
+    Args:
+        articles: List of dicts with 'title', 'summary', 'link' keys
+        method: News method ('general', 'keyword', 'flat') - affects title formatting
+        keywords: Matched keywords (for keyword method)
+        
+    Returns:
+        List of Discord components or empty list if no articles
+    """
+    if not articles:
+        return []
+    
+    # Limit number of articles for buttons (Discord max is 25 buttons, 5 per row)
+    max_articles = min(len(articles), 25)
+    
+    # Create button components manually in Discord API format
+    buttons = []
+    for i, article in enumerate(articles[:max_articles], start=1):
+        article_title = article.get('title', 'No title')
+        if len(article_title) > 80:  # Discord button label limit
+            article_title = article_title[:77] + "..."
+        
+        button = {
+            "type": 2,  # Button component type
+            "label": f"{i}. {article_title}",
+            "style": 5,  # Link button style
+            "url": article.get('link', ''),
+            "disabled": False
+        }
+        buttons.append(button)
+    
+    # Group buttons into rows (max 5 buttons per row)
+    rows = []
+    for i in range(0, len(buttons), 5):
+        row_buttons = buttons[i:i+5]
+        action_row = {
+            "type": 1,  # Action Row component type
+            "components": row_buttons
+        }
+        rows.append(action_row)
+    
+    return rows
+
+async def _send_notification(http, user_id: str, channel_id: str, messages: str | tuple[str, str] | tuple[str, str, str]):
+    """Send notification to user (DM) or channel.
+    
+    Args:
+        messages: Can be:
+            - Single message string
+            - Tuple of (first_message, second_message) 
+            - Tuple of (first_message, second_message, news_quote)
+    """
+    try:
+        # Only handle tuple with news data for components
+        if isinstance(messages, tuple) and len(messages) == 3:
+            first_message, second_message, news_data = messages
+            logger.info(f"📨 Sending message with news content")
+            
+            # Send first message (title and opinion)
+            if channel_id:
+                logger.info(f"📢 Sending first message to channel {channel_id}")
+                await http.send_channel_message(channel_id, first_message)
+            else:
+                logger.info(f"📩 Sending first message to DM for user {user_id}")
+                await http.send_dm(user_id, first_message)
+            
+            # Wait a moment between messages for better UX
+            await asyncio.sleep(0.5)
+            
+            # Check if news_data is a tuple with (articles, method, keywords) for components
+            if isinstance(news_data, tuple) and len(news_data) == 3:
+                articles, method, keywords = news_data
+                logger.info(f"🎨 Building button components for {len(articles)} articles")
+                
+                # Build components
+                components = _build_news_components(articles, method, keywords)
+                
+                if components:
+                    # Send message with components
+                    from discord_bot.canvas.content import _bot_display_name
+                    buttons_title = _personality_descriptions.get("news_buttons_title", "📰 **Click on any article to open it:**")
+                    
+                    if channel_id:
+                        logger.info(f"📢 Sending buttons to channel {channel_id}")
+                        await http.send_channel_message(channel_id, buttons_title, components=components)
+                    else:
+                        logger.info(f"📩 Sending buttons to DM for user {user_id}")
+                        await http.send_dm(user_id, buttons_title, components=components)
+                else:
+                    # Fallback if components failed
+                    fallback_msg = _personality_descriptions.get("news_components_unavailable", "📰 **News components unavailable**\n\nPlease try again later.")
+                    if channel_id:
+                        logger.info(f"📢 Sending fallback message to channel {channel_id}")
+                        await http.send_channel_message(channel_id, fallback_msg)
+                    else:
+                        logger.info(f"📩 Sending fallback message to DM for user {user_id}")
+                        await http.send_dm(user_id, fallback_msg)
+            else:
+                logger.warning("� Invalid news_data format, expected (articles, method, keywords)")
         else:
-            # Send to user DM
-            logger.info(f"📩 Sending to DM for user {user_id}")
-            await http.send_dm(user_id, message)
+            logger.warning(f"� Unsupported message format: {type(messages)} - Expected tuple with 3 elements")
+                
     except Exception as e:
         logger.exception(f"Error sending notification: {e}")
 
 
 async def send_critical_news(http, user_id: str, channel_id: str, title: str, summary: str, link: str, opinion: str = None):
-    """Send critical news notification with proper formatting."""
+    """Send critical news notification with proper formatting using split messages."""
     try:
         # Clean the summary to remove any remaining HTML
         from news_processor import NewsProcessor
@@ -985,13 +1037,36 @@ async def send_critical_news(http, user_id: str, channel_id: str, title: str, su
         processor = NewsProcessor(db_watcher)
         clean_summary = processor._clean_html(summary)
         
-        # Format the message
-        rendered_opinion = opinion or "Watcher opinion unavailable"
-        message = _format_critical_news_alert(title, clean_summary, link, rendered_opinion)
+        # Get alert title and personality name
+        alert_title = _get_alert_title()
+        personality_name = _get_personality_name()
         
-        # Send notification with link to generate Discord embed
-        full_message = f"{message} {link}"
-        await _send_notification(http, user_id, channel_id, full_message)
+        # Format the opinion
+        rendered_opinion = opinion or "Watcher opinion unavailable"
+        
+        # Build first message (title and opinion)
+        first_message = f"**{alert_title}**\n\n💭 {personality_name}: {rendered_opinion}"
+        
+        # Build second message (details and links)
+        second_message_parts = []
+        
+        if title:
+            second_message_parts.append(f"📰 **{title}**")
+        
+        if clean_summary:
+            # Limit summary length
+            max_summary_length = 800
+            if len(clean_summary) > max_summary_length:
+                clean_summary = clean_summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
+            second_message_parts.append(clean_summary)
+        
+        # Add the link
+        second_message_parts.append(f"🔗 {link}")
+        
+        second_message = "\n\n".join(second_message_parts)
+        
+        # Send as split messages
+        await _send_notification(http, user_id, channel_id, (first_message, second_message))
         
         # Mark as sent in local database
         db_watcher = get_news_watcher_db_instance()
@@ -1002,6 +1077,84 @@ async def send_critical_news(http, user_id: str, channel_id: str, title: str, su
         
     except Exception as e:
         logger.exception(f"Error sending critical news: {e}")
+
+
+async def send_multiple_critical_news(http, user_id: str, channel_id: str, articles: list[dict], opinion: str = None):
+    """Send multiple critical news notifications with proper formatting using split messages and components.
+    
+    Args:
+        articles: List of dicts with 'title', 'summary', 'link' keys
+        opinion: Shared opinion for all articles
+    """
+    try:
+        if not articles:
+            logger.info("📝 No articles to send in send_multiple_critical_news")
+            return
+        
+        # Get alert title and personality name
+        alert_title = _get_alert_title()
+        personality_name = _get_personality_name()
+        
+        # Format the opinion
+        rendered_opinion = opinion or "Watcher opinion unavailable"
+        
+        # Build first message (title and opinion)
+        if len(articles) == 1:
+            first_message = f"**{alert_title}**\n\n💭 {personality_name}: {rendered_opinion}"
+        else:
+            first_message = f"**{alert_title}** ({len(articles)} news)\n\n💭 {personality_name}: {rendered_opinion}"
+        
+        # Return articles data for components
+        news_data = (articles, "general", None)
+        
+        # Limit number of articles to prevent exceeding Discord's 2000 character limit
+        max_articles = 12 if len(articles) > 12 else len(articles)
+        
+        for index, article in enumerate(articles[:max_articles], start=1):
+            # Clean summary
+            from news_processor import NewsProcessor
+            from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+            db_watcher = get_news_watcher_db_instance()
+            processor = NewsProcessor(db_watcher)
+            clean_summary = processor._clean_html(article.get('summary', ''))
+            
+            # Add article title
+            second_message_parts.append(f"📰 **{article['title']}**")
+            
+            # Add summary if available
+            if clean_summary:
+                # Limit summary length
+                max_summary_length = 300 if len(articles) > 2 else 500
+                if len(clean_summary) > max_summary_length:
+                    clean_summary = clean_summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
+                second_message_parts.append(clean_summary)
+            
+            # Add link
+            second_message_parts.append(f"🔗 {article['link']}")
+            
+            # Add spacing between articles (except last one)
+            if index < len(articles[:max_articles]):
+                second_message_parts.append("")
+        
+        # Add note if articles were truncated
+        if len(articles) > max_articles:
+            second_message_parts.append(f"... and {len(articles) - max_articles} more news")
+        
+        second_message = "\n".join(second_message_parts)
+        
+        # Send as split messages with news data for components
+        await _send_notification(http, user_id, channel_id, (first_message, second_message, news_data))
+        
+        # Mark all as sent in local database
+        db_watcher = get_news_watcher_db_instance()
+        if db_watcher:
+            for article in articles:
+                db_watcher.mark_notification_sent(article['title'], "ai", rendered_opinion, article['link'])
+        
+        logger.info(f"✅ {len(articles)} critical news sent with single quote")
+        
+    except Exception as e:
+        logger.exception(f"Error sending multiple critical news: {e}")
 
 
 async def _analyze_critical_news_batch(articles: list, premises: list) -> list:

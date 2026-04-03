@@ -15,8 +15,15 @@ try:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from agent_engine import AGENT_CFG
+    # Import bot display name for dynamic replacement
+    try:
+        from discord_bot.discord_core_commands import _bot_display_name
+    except ImportError:
+        # Fallback if discord is not available
+        _bot_display_name = "Bot"
 except ImportError:
     AGENT_CFG = {"personality": "personalities/putre/personality.json"}  # Fallback for testing
+    _bot_display_name = "Bot"  # Fallback
 
 
 def _get_personality_dir() -> str:
@@ -261,6 +268,7 @@ ENGLISH_MESSAGES = {
     'single_cast': "🔮 **SINGLE RUNE CASTING** 🔮",
     'three_cast': "🔮 **THREE RUNE CASTING** 🔮",
     'cross_cast': "🔮 **FIVE RUNE CROSS CASTING** 🔮",
+    'runic_cross_cast': "🔮 **SEVEN RUNE RUNIC CROSS CASTING** 🔮",
     'history': "🔮 **ANCIENT RUNES HISTORY** (Last {count}) 🔮",
     'types': "🔮 **RUNE CASTING TYPES** 🔮",
     'runes_list': "🔮 **ELDER FUTHARK RUNES** 🔮",
@@ -281,7 +289,7 @@ Choose your casting type and ask the ancient runes!""",
     'keywords': "Keywords",
     'interpretation': "Interpretation",
     'success': "🔮 UHHH! The ancient runes have spoken, human!",
-    'saved': "🔮 UHHH! Putre saved your rune reading in the ancient scrolls!"
+    'saved': f"🔮 UHHH! {_bot_display_name} saved your rune reading in the ancient scrolls!"
 }
 
 # Personality messages cache
@@ -311,6 +319,14 @@ def load_personality_messages():
                 descriptions = json.load(f)
                 # Get the nordic_runes section
                 nordic_runes_data = descriptions.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
+                
+                # If no nordic_runes data found in main descriptions.json, try loading from trickster.json
+                if not nordic_runes_data:
+                    trickster_path = os.path.join(_get_personality_dir(), "descriptions", "trickster.json")
+                    if os.path.exists(trickster_path):
+                        with open(trickster_path, encoding="utf-8") as f:
+                            trickster_data = json.load(f)
+                            nordic_runes_data = trickster_data.get("nordic_runes", {})
                 
                 # Use English messages as base, override with all messages from descriptions
                 merged_messages = ENGLISH_MESSAGES.copy()

@@ -1,0 +1,127 @@
+{
+  "discord": {
+    "general": {
+      "status": "Current status:",
+      "active": "✅ Active",
+      "inactive": "❌ Inactive",
+      "none": "None",
+      "every": "every",
+      "for": "fer",
+      "base_frequency": "Base frequency:",
+      "current_frequency": "Current frequency:",
+      "current_settings": "🔧 **Current settin'z:**",
+      "frequency_format": "Every {hours}h"
+    },
+    "help_menu": {
+      "title": "📚 ** {_bot_display_name} - 'Elp Menu**",
+      "description": "**Description**\nRole Agent Bot iz an LLM agent wif a loaded personality, got long-term memory and can talk to da humie user.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Rolez**\nRole modules are sum of da bot's skillz to give service to da boyz and humies.",
+      "behavior_section": "**Behavior**\nIn dis section u configure sum interactive behaviors of da bot. Only fer Bosses (Admins).",
+      "tips_section": "**Sum tipz**\n-U can ask da bot 'ow a command works like: ''ow does da dice command work?'\n-Da juiciest partz of da bot are inside each role."
+    },
+    "canvas_home_messages": {
+      "title": "🧭 {_bot_display_name} Hub",
+      "button_home": "🧭 'Ome",
+      "button_back": "← Back",
+      "button_roles": "🎪 Rolez",
+      "button_behavior": "🤖 Behavior",
+      "button_help": "📝 'Elp",
+      "generic_option_label": "Pick an option...",
+      "personalitystatus": "Personality Loaded:",
+      "description": "-Interact wif all available functions fer {_bot_display_name} from 'ere.\n -Da canvas panel lets ya interact wif all bot options from dis menu.",
+      "recentsynthesistitle": "**Recent Synfesis**",
+      "dailymemorytitle": "**Memory**",
+      "personalsynthesistitle": "**Personal Synfesis**",
+      "dm_default_server_title": "🔔 **Usin default serva: {server_name}**",
+      "dm_default_server_message": "*Yer browsin' from DM, usin' da first available serva.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────",
+      "dm_no_servers_available": "❌ No servas available. Please run da actions from a serva.",
+      "dm_server_access_error": "❌ Could not access a serva. Please run da actions from a serva."
+    },
+    "roles_view_messages": {
+      "title": "🎭  {_bot_display_name} Rolez 🎭",
+      "description": "🌟 Browse thru da different rolez available fer {_bot_display_name}",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "active",
+      "inactive_status": "❌ INACTIVE",
+      "interval_info": "//⏰ Every {interval}h",
+      "subroles_info": "🎪 **Active subrolez:** {subroles}",
+      "admin_note": "🔧 **BOSS SETTIN'Z:**",
+      "user_note": "👤 **HUMIE FUNCTIONZ:**",
+      "help_commands": "💡 **'ELP COMMANDZ:**",
+      "canvas_details": "🎨 **CANVAS DETAILZ:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **NO ROLEZ ACTIVE**\n\nNo specialized rolez active right now. Tell a boss to activate sum rolez usin `!canvas setup`.\n\n**Available rolez to activate:**\n• 📡 News Watcher - News lookout\n• 💎 Treasure Hunter - Loot hunter\n• 🎭 Trickster - Scammer and gamez\n• 💰 Banker - Clan economy\n• 🎵 MC - Muzik and noize",
+      "role_list_title": "☠️ Titlez and Jobz",
+      "role_available": "✅ {role} - ROARIN' AND BLOODY",
+      "role_unavailable": "❌ {role} - ROTTIN' IN DA DIRT",
+      "frequency_help": "📝 Use yer choppa like dis: `!{role}frequency <hourz>` (from 1 to 168 hourz)\nExample: `!watcherfrequency 2` so 'e 'owls every 2 zoggin' hourz!",
+      "music_help": "🎵 **{_bot_display_name}'s Drumz** - `!mc play <noize>` / `!mc queue` | `!mc help` to read da fat scroll of 'ow to do it!"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 {_bot_display_name} - Talkin'**",
+        "description": "**Description:**\n -{_bot_display_name} will react to DMs and mentionz.\n -Got persistent and interactive memory, u can ask 'im bout sumfin dat happened, maybe 'e paid enuff attention to remembah.\n -Also dependin on rolez and behaviorz, 'e might react to different wordz. In taboo behavior u can set a word fer 'im to react to.",
+        "button": "💬 Talkin'"
+      },
+      "greetings": {
+        "title": "**👋 {_bot_display_name} - Greetin'z**",
+        "description": "**Description:**\n -Greets humies when joinin' Discord.\n -Waits 5 min before countin' da humie as disconnected.\n -(To be added):\n Realizes if 'e ain't answered when greetin', and stops greetin'.\n",
+        "button": "👋 Greetin'z"
+      },
+      "welcome": {
+        "title": "**🍺 {_bot_display_name} - Welcome**",
+        "description": "**Description:**\n -Welcomes fresh humies to da serva.\n",
+        "button": "🍺 Welcome"
+      },
+      "taboo": {
+        "title": "**🚫 {_bot_display_name} - Taboo Wordz**",
+        "description": "**'Ow it works:**\n -Set {_bot_display_name} to react when readin a word in a channel or DM.\n -Can be turned on/off or set da wordz.\n",
+        "title_keywords": "Current taboo wordz:",
+        "button": "🚫 Taboo"
+      },
+      "comentary": {
+        "title": "**🗣️ {_bot_display_name} - Commentz (in makin')**",
+        "description": "**Description**\n -Actively makes commentz bout iz active rolez and recent happenin'z.",
+        "button": "🗣️ Commentz"
+      },
+      "role_control": {
+        "title": "**🎛️ {_bot_display_name} - Role Control**",
+        "description": "**Description**\n -Turn rolez on and off from 'ere.",
+        "button": "🎛️ Role Control"
+      }
+    },
+    "readme": {
+      "label_user_question": "Humie's question:",
+      "task": "Please answer da humie's question wif da provided documentation",
+      "label_documentation": "Documentation:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "do u remembah",
+        "remembah",
+        "recolleck",
+        "memba",
+        "do u memba dat",
+        "remembah wen",
+        "remembah it",
+        "u remembah",
+        "u memba",
+        "try to remembah",
+        "memba dat",
+        "remembah sumfin",
+        "ring a bell",
+        "do ya remembah",
+        "memba it",
+        "recolleck dat",
+        "memba wen",
+        "does it ring a bell",
+        "memba dat ting",
+        "u remembah wen",
+        "don't u remembah",
+        "oo do u remembah"
+      ]
+    }
+  }
+}
