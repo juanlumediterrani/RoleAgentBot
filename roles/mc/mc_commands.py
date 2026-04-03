@@ -63,7 +63,7 @@ def _test_cookie_file():
 def _get_ydl_opts_with_cookies():
     """Get yt-dlp options with cookie support if available"""
     base_opts = {
-        'format': 'bestaudio[acodec=opus]/bestaudio/best',  # More flexible format selection
+        'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]/bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio[ext=mp3]/bestaudio/best/worst',  # Comprehensive fallback hierarchy
         'quiet': True,
         'no_warnings': True,
         'source_address': '0.0.0.0',
@@ -80,8 +80,8 @@ def _get_ydl_opts_with_cookies():
         # Additional options to bypass restrictions
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'web'],
-                'player_skip': ['configs', 'webpage'],
+                'player_client': ['android', 'web', 'ios'],
+                'player_skip': ['configs', 'webpage', 'js'],
             }
         },
         'socket_timeout': 30,
@@ -305,7 +305,7 @@ class MCCommands:
             ydl_opts.update({
                 'extract_flat': False,
                 'noplaylist': True,
-                'format': 'bestaudio[acodec=opus]/bestaudio[ext=m4a]/bestaudio/best',  # Flexible format hierarchy
+                'format': 'bestaudio/bestaudio/worst',  # Simple format that works for all videos
             })
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -333,17 +333,14 @@ class MCCommands:
 
                 # Don't clean up temporary cookie file - keep it for reuse
                 
-
                 from db_role_mc import get_mc_db_instance
                 db_mc = get_mc_db_instance(server_id)
                 
-
                 db_mc.agregar_cancion_queue(
                     server_id, str(message.channel.id), str(message.author.id),
                     title, url, duration_str, artist, posicion=0
                 )
                 
-
                 if server_id in self.voice_clients and self.voice_clients[server_id].is_playing():
                     logger.info(f"MC: Stop song in the server {server_id}")
                     self.voice_clients[server_id].stop()
