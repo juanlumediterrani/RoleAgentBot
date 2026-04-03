@@ -63,7 +63,7 @@ def _test_cookie_file():
 def _get_ydl_opts_with_cookies():
     """Get yt-dlp options with cookie support if available"""
     base_opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[acodec=opus]/bestaudio/best',  # More flexible format selection
         'quiet': True,
         'no_warnings': True,
         'source_address': '0.0.0.0',
@@ -87,6 +87,9 @@ def _get_ydl_opts_with_cookies():
         'socket_timeout': 30,
         'retries': 3,
         'fragment_retries': 3,
+        # Prevent cookie saving to avoid read-only file system error
+        'cookiefile': None,  # Will be set conditionally
+        'no_cookies': True,  # Don't save cookies back to file
     }
     
     # Test and add cookie file if available
@@ -94,9 +97,19 @@ def _get_ydl_opts_with_cookies():
     cookie_valid, cookie_msg = _test_cookie_file()
     
     if cookie_valid:
-        base_opts['cookiefile'] = cookie_file
-        logger.info(f"MC: ✅ {cookie_msg}")
-        logger.info("MC: YouTube authentication will use cookies")
+        # Copy cookies to a temporary writable location
+        import tempfile
+        import shutil
+        
+        try:
+            temp_cookie_file = tempfile.mktemp(suffix='.txt')
+            shutil.copy2(cookie_file, temp_cookie_file)
+            base_opts['cookiefile'] = temp_cookie_file
+            logger.info(f"MC: ✅ {cookie_msg}")
+            logger.info(f"MC: YouTube authentication will use cookies (temp file)")
+        except Exception as e:
+            logger.warning(f"MC: Failed to copy cookies to temp file: {e}")
+            logger.warning("MC: Using fallback authentication (headers + player clients)")
     else:
         logger.warning(f"MC: ❌ Cookie file issue: {cookie_msg}")
         logger.warning("MC: Using fallback authentication (headers + player clients)")
@@ -275,6 +288,7 @@ class MCCommands:
             ydl_opts.update({
                 'extract_flat': False,
                 'noplaylist': True,
+                'format': 'bestaudio[acodec=opus]/bestaudio[ext=m4a]/bestaudio/best',  # Flexible format hierarchy
             })
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -299,6 +313,15 @@ class MCCommands:
                         duration_str = f"{minutes}:{seconds:02d}"
                 else:
                     duration_str = "Unknown"
+
+                # Clean up temporary cookie file if it exists
+                temp_cookie_file = ydl_opts.get('cookiefile')
+                if temp_cookie_file and temp_cookie_file != '/app/cookies.txt':
+                    try:
+                        import os
+                        os.unlink(temp_cookie_file)
+                    except:
+                        pass  # Ignore cleanup errors
                 
 
                 from db_role_mc import get_mc_db_instance
@@ -405,13 +428,22 @@ class MCCommands:
             # Configure yt-dlp with enhanced options and cookie support
             ydl_opts = _get_ydl_opts_with_cookies()
             ydl_opts.update({
-                'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                'format': 'bestaudio[acodec=opus]/bestaudio[ext=m4a]/bestaudio/best',  # Flexible format hierarchy
                 'noplaylist': True,
                 'default_search': 'ytsearch',
             })
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
+                
+                # Clean up temporary cookie file if it exists
+                temp_cookie_file = ydl_opts.get('cookiefile')
+                if temp_cookie_file and temp_cookie_file != '/app/cookies.txt':
+                    try:
+                        import os
+                        os.unlink(temp_cookie_file)
+                    except:
+                        pass  # Ignore cleanup errors
                 
                 if 'entries' in info:
                     info = info['entries'][0]
@@ -824,10 +856,22 @@ class MCCommands:
             
             # Configure yt-dlp with enhanced options and cookie support
             ydl_opts = _get_ydl_opts_with_cookies()
+            ydl_opts.update({
+                'format': 'bestaudio[acodec=opus]/bestaudio[ext=m4a]/bestaudio/best',  # Flexible format hierarchy
+            })
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 audio_url = info['url']
+                
+                # Clean up temporary cookie file if it exists
+                temp_cookie_file = ydl_opts.get('cookiefile')
+                if temp_cookie_file and temp_cookie_file != '/app/cookies.txt':
+                    try:
+                        import os
+                        os.unlink(temp_cookie_file)
+                    except:
+                        pass  # Ignore cleanup errors
             
             audio_source = discord.FFmpegPCMAudio(
                 audio_url,
