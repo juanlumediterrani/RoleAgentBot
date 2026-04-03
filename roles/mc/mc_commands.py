@@ -97,16 +97,33 @@ def _get_ydl_opts_with_cookies():
     cookie_valid, cookie_msg = _test_cookie_file()
     
     if cookie_valid:
-        # Copy cookies to a temporary writable location
-        import tempfile
-        import shutil
+        # Use a fixed temporary file name for reuse
+        temp_cookie_file = '/tmp/youtube_cookies.txt'
         
         try:
-            temp_cookie_file = tempfile.mktemp(suffix='.txt')
-            shutil.copy2(cookie_file, temp_cookie_file)
+            # Copy cookies to temporary location only if it doesn't exist or is older
+            import os
+            import shutil
+            import time
+            
+            need_copy = False
+            if not os.path.exists(temp_cookie_file):
+                need_copy = True
+                logger.info("MC: Creating temporary cookie file")
+            else:
+                # Check if original is newer than temp file
+                original_mtime = os.path.getmtime(cookie_file)
+                temp_mtime = os.path.getmtime(temp_cookie_file)
+                if original_mtime > temp_mtime:
+                    need_copy = True
+                    logger.info("MC: Updating temporary cookie file (original is newer)")
+            
+            if need_copy:
+                shutil.copy2(cookie_file, temp_cookie_file)
+            
             base_opts['cookiefile'] = temp_cookie_file
             logger.info(f"MC: ✅ {cookie_msg}")
-            logger.info(f"MC: YouTube authentication will use cookies (temp file)")
+            logger.info(f"MC: YouTube authentication will use cookies (temp file: {temp_cookie_file})")
         except Exception as e:
             logger.warning(f"MC: Failed to copy cookies to temp file: {e}")
             logger.warning("MC: Using fallback authentication (headers + player clients)")
@@ -314,14 +331,7 @@ class MCCommands:
                 else:
                     duration_str = "Unknown"
 
-                # Clean up temporary cookie file if it exists
-                temp_cookie_file = ydl_opts.get('cookiefile')
-                if temp_cookie_file and temp_cookie_file != '/app/cookies.txt':
-                    try:
-                        import os
-                        os.unlink(temp_cookie_file)
-                    except:
-                        pass  # Ignore cleanup errors
+                # Don't clean up temporary cookie file - keep it for reuse
                 
 
                 from db_role_mc import get_mc_db_instance
@@ -436,14 +446,7 @@ class MCCommands:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
                 
-                # Clean up temporary cookie file if it exists
-                temp_cookie_file = ydl_opts.get('cookiefile')
-                if temp_cookie_file and temp_cookie_file != '/app/cookies.txt':
-                    try:
-                        import os
-                        os.unlink(temp_cookie_file)
-                    except:
-                        pass  # Ignore cleanup errors
+                # Don't clean up temporary cookie file - keep it for reuse
                 
                 if 'entries' in info:
                     info = info['entries'][0]
@@ -864,14 +867,7 @@ class MCCommands:
                 info = ydl.extract_info(url, download=False)
                 audio_url = info['url']
                 
-                # Clean up temporary cookie file if it exists
-                temp_cookie_file = ydl_opts.get('cookiefile')
-                if temp_cookie_file and temp_cookie_file != '/app/cookies.txt':
-                    try:
-                        import os
-                        os.unlink(temp_cookie_file)
-                    except:
-                        pass  # Ignore cleanup errors
+                # Don't clean up temporary cookie file - keep it for reuse
             
             audio_source = discord.FFmpegPCMAudio(
                 audio_url,
