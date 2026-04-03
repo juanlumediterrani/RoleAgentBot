@@ -15,6 +15,95 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 logger = get_logger('mc_commands')
 
 
+def _test_cookie_file():
+    """Test if the cookie file exists and has valid format"""
+    cookie_file = '/app/cookies.txt'
+    
+    if not os.path.exists(cookie_file):
+        return False, "Cookie file not found"
+    
+    try:
+        with open(cookie_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+        # Basic format checks
+        if not content.strip():
+            return False, "Cookie file is empty"
+        
+        # Check for Netscape cookie format
+        lines = content.strip().split('\n')
+        if len(lines) < 2:
+            return False, "Cookie file too short - invalid format"
+        
+        # Check header line (should start with #)
+        if not lines[0].startswith('#'):
+            return False, "Invalid cookie format - missing header"
+        
+        # Check at least one cookie entry
+        cookie_lines = [line for line in lines[1:] if line.strip() and not line.startswith('#')]
+        if not cookie_lines:
+            return False, "No cookie entries found"
+        
+        # Validate a cookie line format (basic check)
+        first_cookie = cookie_lines[0].split('\t')
+        if len(first_cookie) < 7:
+            return False, "Invalid cookie line format"
+        
+        # Check for YouTube domain cookies
+        youtube_cookies = [line for line in cookie_lines if 'youtube.com' in line.lower()]
+        if not youtube_cookies:
+            return False, "No YouTube cookies found"
+        
+        return True, f"Valid cookie file with {len(youtube_cookies)} YouTube cookies"
+        
+    except Exception as e:
+        return False, f"Error reading cookie file: {str(e)}"
+
+
+def _get_ydl_opts_with_cookies():
+    """Get yt-dlp options with cookie support if available"""
+    base_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'no_warnings': True,
+        'source_address': '0.0.0.0',
+        # Enhanced authentication and bypass options
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        },
+        # Additional options to bypass restrictions
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+                'player_skip': ['configs', 'webpage'],
+            }
+        },
+        'socket_timeout': 30,
+        'retries': 3,
+        'fragment_retries': 3,
+    }
+    
+    # Test and add cookie file if available
+    cookie_file = '/app/cookies.txt'
+    cookie_valid, cookie_msg = _test_cookie_file()
+    
+    if cookie_valid:
+        base_opts['cookiefile'] = cookie_file
+        logger.info(f"MC: ✅ {cookie_msg}")
+        logger.info("MC: YouTube authentication will use cookies")
+    else:
+        logger.warning(f"MC: ❌ Cookie file issue: {cookie_msg}")
+        logger.warning("MC: Using fallback authentication (headers + player clients)")
+    
+    return base_opts
+
+
 def _load_mc_answers() -> dict:
     try:
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -181,14 +270,12 @@ class MCCommands:
         await self._send_message(message.channel, "🔍 **Searching for song...**")
         
         try:
-            # Configure yt-dlp
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'quiet': True,
-                'no_warnings': True,
+            # Configure yt-dlp with enhanced options and cookie support
+            ydl_opts = _get_ydl_opts_with_cookies()
+            ydl_opts.update({
                 'extract_flat': False,
                 'noplaylist': True,
-            }
+            })
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 # Determine if URL or search
@@ -237,6 +324,20 @@ class MCCommands:
                 logger.info(f"MC: Inialising the reproduction for '{title}' in the server {server_id}")
                 await self._play_next(server_id, message.channel)
                 
+        except yt_dlp.utils.DownloadError as e:
+            error_msg = str(e)
+            if "Sign in to confirm you're not a bot" in error_msg:
+                logger.error(f"MC: YouTube bot detection error: {e}")
+                await self._send_message(message.channel, 
+                    "🚫 **YouTube bot detection detected**\n\n"
+                    "This happens when YouTube blocks automated access. Try:\n"
+                    "• Using a direct YouTube URL instead of search\n"
+                    "• Waiting a few minutes and trying again\n"
+                    "• Using a different song or source\n\n"
+                    "If this persists, consider using YouTube cookies for authentication.")
+            else:
+                logger.exception(f"MC: yt-dlp DownloadError: {e}")
+                await self._send_message(message.channel, self.get_mc_message("play_error", f"❌ **Download error:** {error_msg}"))
         except Exception as e:
             logger.exception(f"Error finding song {e}")
             await self._send_message(message.channel, self.get_mc_message("play_error", "❌ **I could not find the song. **"))
@@ -301,15 +402,13 @@ class MCCommands:
         await self._send_message(message.channel, "🔍 **Searching for the song...**")
         
         try:
-            # Configure yt-dlp
-            ydl_opts = {
+            # Configure yt-dlp with enhanced options and cookie support
+            ydl_opts = _get_ydl_opts_with_cookies()
+            ydl_opts.update({
                 'format': 'bestaudio[ext=m4a]/bestaudio/best',
                 'noplaylist': True,
-                'quiet': True,
-                'no_warnings': True,
                 'default_search': 'ytsearch',
-                'source_address': '0.0.0.0'
-            }
+            })
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
@@ -340,13 +439,20 @@ class MCCommands:
                     title, url, duration_str, artist, posicion=-1
                 )
                 
-                await self._send_message(message.channel, self.get_mc_message("song_added", f"🎵 **Adding song to the tail of the queue:**\n🎶 {title}\n👤 {artist}\n⏱️ {duration_str}", song=title))
+                # Song added silently - no automatic message
                 
                 if (server_id not in self.voice_clients or 
                     not self.voice_clients[server_id].is_connected() or 
                     not self.voice_clients[server_id].is_playing()):
                     await self._play_next(server_id, message.channel)
                 
+        except yt_dlp.utils.DownloadError as e:
+            error_msg = str(e)
+            if "Sign in to confirm you're not a bot" in error_msg:
+                logger.error(f"MC: YouTube bot detection error in add: {e}")
+            else:
+                logger.exception(f"MC: yt-dlp DownloadError in add: {e}")
+                await self._send_message(message.channel, self.get_mc_message("play_error", f"❌ **Download error:** {error_msg}"))
         except Exception as e:
             logger.exception(f"Error finding song {e}")
             await self._send_message(message.channel, self.get_mc_message("play_error", "❌ **I couldn't find the song**"))
@@ -594,6 +700,58 @@ class MCCommands:
             logger.exception(f"Error ajustando volumen: {e}")
             await self._send_message(message.channel, "❌ **I couldn't adjust the volumen**")
     
+    async def cmd_test_cookies(self, message, args):
+        """Test YouTube cookies file status and yt-dlp compatibility"""
+        await self._send_message(message.channel, "🔍 **Testing YouTube cookies...**")
+        
+        # Test cookie file
+        cookie_valid, cookie_msg = _test_cookie_file()
+        
+        if cookie_valid:
+            await self._send_message(message.channel, f"✅ **Cookie file OK:** {cookie_msg}")
+            
+            # Test yt-dlp with cookies
+            try:
+                ydl_opts = _get_ydl_opts_with_cookies()
+                ydl_opts.update({
+                    'simulate': True,
+                    'skip_download': True,
+                })
+                
+                # Test with a simple YouTube URL
+                test_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # Rick Roll for testing
+                
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(test_url, download=False)
+                    title = info.get('title', 'Unknown')
+                    duration = info.get('duration', 0)
+                    
+                    await self._send_message(message.channel, 
+                        f"✅ **yt-dlp + Cookies working!**\n"
+                        f"🎵 Test video: {title}\n"
+                        f"⏱️ Duration: {duration} seconds\n"
+                        f"🔐 Authentication: Cookies accepted")
+                        
+            except yt_dlp.utils.DownloadError as e:
+                if "Sign in to confirm you're not a bot" in str(e):
+                    await self._send_message(message.channel, 
+                        "❌ **Cookies not working - still getting bot detection**\n"
+                        "The cookies may be expired or invalid.")
+                else:
+                    await self._send_message(message.channel, 
+                        f"❌ **yt-dlp error:** {str(e)}")
+            except Exception as e:
+                await self._send_message(message.channel, 
+                    f"❌ **Unexpected error:** {str(e)}")
+        else:
+            await self._send_message(message.channel, 
+                f"❌ **Cookie file problem:** {cookie_msg}\n\n"
+                "📝 **To fix this:**\n"
+                "1. Install 'Get cookies.txt' extension in your browser\n"
+                "2. Login to YouTube\n"
+                "3. Export cookies as Netscape format\n"
+                "4. Save as `/var/lib/roleagentbot/cookies.txt`")
+    
     async def cmd_help(self, message, args):
         """Show the MC commands"""
         embed = discord.Embed(
@@ -617,6 +775,7 @@ class MCCommands:
             ("!mc history", "Shows the playback history"),
             ("!mc volume <0-100>", "Adjusts the music volume"),
             ("!mc leave / !mc disconnect", "Leaves the voice channel (DJ role required)"),
+            ("!mc test_cookies", "Tests YouTube cookies authentication"),
             ("!mc help / !mc commands", "Shows this help message")
         ]
         
@@ -663,11 +822,8 @@ class MCCommands:
             
             pos, title, url, duration, artist, user_id, fecha = queue[0]
             
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'quiet': True,
-                'no_warnings': True,
-            }
+            # Configure yt-dlp with enhanced options and cookie support
+            ydl_opts = _get_ydl_opts_with_cookies()
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -725,6 +881,26 @@ class MCCommands:
             # Anunciar
             await self._send_message(channel, self.get_mc_message("now_playing", f"🎵 **Now Playing**\n🎶 {title}\n👤 {artist}\n⏱️ {duration}\n🎤 Added by: {user_name}", song=title))
             
+        except yt_dlp.utils.DownloadError as e:
+            error_msg = str(e)
+            if "Sign in to confirm you're not a bot" in error_msg:
+                logger.error(f"MC: YouTube bot detection error in play_next: {e}")
+                await self._send_message(channel, 
+                    "🚫 **YouTube bot detection detected during playback**\n\n"
+                    "Skipping to next song. This happens when YouTube blocks automated access.")
+                # Remove the problematic song from queue and continue
+                try:
+                    from db_role_mc import get_mc_db_instance
+                    db_mc = get_mc_db_instance(server_id)
+                    db_mc.remover_cancion_queue(server_id, str(channel.id), pos)
+                    # Try to play next song
+                    await self._play_next(server_id, channel)
+                except Exception as next_e:
+                    logger.exception(f"Error skipping to next song: {next_e}")
+                    await self._send_message(channel, "❌ **Error skipping to next song. Queue may be empty.**")
+            else:
+                logger.exception(f"MC: yt-dlp DownloadError in play_next: {e}")
+                await self._send_message(channel, f"❌ **Playback error:** {error_msg}")
         except Exception as e:
             logger.exception(f"Error playing the next song {e}")
             await self._send_message(channel, "❌ **Error playing the next song.**")
@@ -793,6 +969,7 @@ COMANDOS_MC = {
     'history': MCCommands.cmd_history,
     'leave': MCCommands.cmd_leave,
     'disconnect': MCCommands.cmd_leave,  # Alias
+    'test_cookies': MCCommands.cmd_test_cookies,  # Test YouTube cookies
     'help': MCCommands.cmd_help,
     'commands': MCCommands.cmd_help,  # Alias
 }
