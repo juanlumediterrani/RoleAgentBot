@@ -26,18 +26,13 @@ services:
     environment:
       - PERSONALITY=kronk
       - ROLE_AGENT_PROCESS=false
-      - DISCORD_TOKEN=${DISCORD_TOKEN_KRONK}
       - ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc
-      - NEWS_WATCHER_ENABLED=true
-      - TREASURE_HUNTER_ENABLED=true
-      - TRICKSTER_ENABLED=true
-      - BANKER_ENABLED=true
-      - MC_ENABLED=true
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages
       - ../databases:/app/databases
       - ../logs:/app/logs
       - ../fatiga:/app/fatiga
+      - ../cookies.txt:/app/cookies.txt:ro  # YouTube cookies for authentication
     restart: unless-stopped
 
   # Bot 2: Putre - Todos los roles activos
@@ -46,27 +41,22 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        PERSONALITY: putre
+        PERSONALITY: putre(english)
         HOST_UID: ${HOST_UID:-1001}
         HOST_GID: ${HOST_GID:-1001}
     image: roleagentbot:putre
     container_name: roleagentbot-putre
     env_file: ../.env
     environment:
-      - PERSONALITY=putre
+      - PERSONALITY=putre(english)
       - ROLE_AGENT_PROCESS=false
-      - DISCORD_TOKEN=${DISCORD_TOKEN_PUTRE}
       - ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc
-      - NEWS_WATCHER_ENABLED=true
-      - TREASURE_HUNTER_ENABLED=true
-      - TRICKSTER_ENABLED=true
-      - BANKER_ENABLED=true
-      - MC_ENABLED=true
     volumes:
       - python-shared:/usr/local/lib/python3.13/site-packages
       - ../databases:/app/databases
       - ../logs:/app/logs
       - ../fatiga:/app/fatiga
+      - ../cookies.txt:/app/cookies.txt:ro  # YouTube cookies for authentication
     restart: unless-stopped
 
 # Volumen compartido para Python (ahorro de recursos)

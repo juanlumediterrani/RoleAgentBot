@@ -10,25 +10,24 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        PERSONALITY: ""  # Usa lo que tenga agent_config.json
+        PERSONALITY: putre(english)
         HOST_UID: ${HOST_UID:-1001}
         HOST_GID: ${HOST_GID:-1001}
     image: roleagentbot:default
     container_name: roleagentbot-default
 
     # Variables de entorno
-    env_file:
-      - ../.env
+    env_file: ../.env
     environment:
-      - PERSONALITY=
+      - PERSONALITY=putre(english)
       - ROLE_AGENT_PROCESS=false
-      # Sin variables de rol específicas -> usa agent_config.json
 
     # Volúmenes específicos para instancia default
     volumes:
       - ../databases:/app/databases
       - ../logs:/app/logs
       - ../fatiga:/app/fatiga
+      - ../cookies.txt:/app/cookies.txt:ro  # YouTube cookies for authentication
     restart: unless-stopped
 
     # Logging compacto
