@@ -15,125 +15,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 logger = get_logger('mc_commands')
 
 
-def _test_cookie_file():
-    """Test if the cookie file exists and has valid format"""
-    cookie_file = '/app/cookies.txt'
-    
-    if not os.path.exists(cookie_file):
-        return False, "Cookie file not found"
-    
-    try:
-        with open(cookie_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-            
-        # Basic format checks
-        if not content.strip():
-            return False, "Cookie file is empty"
-        
-        # Check for Netscape cookie format
-        lines = content.strip().split('\n')
-        if len(lines) < 2:
-            return False, "Cookie file too short - invalid format"
-        
-        # Check header line (should start with #)
-        if not lines[0].startswith('#'):
-            return False, "Invalid cookie format - missing header"
-        
-        # Check at least one cookie entry
-        cookie_lines = [line for line in lines[1:] if line.strip() and not line.startswith('#')]
-        if not cookie_lines:
-            return False, "No cookie entries found"
-        
-        # Validate a cookie line format (basic check)
-        first_cookie = cookie_lines[0].split('\t')
-        if len(first_cookie) < 7:
-            return False, "Invalid cookie line format"
-        
-        # Check for YouTube domain cookies
-        youtube_cookies = [line for line in cookie_lines if 'youtube.com' in line.lower()]
-        if not youtube_cookies:
-            return False, "No YouTube cookies found"
-        
-        return True, f"Valid cookie file with {len(youtube_cookies)} YouTube cookies"
-        
-    except Exception as e:
-        return False, f"Error reading cookie file: {str(e)}"
-
-
-def _get_ydl_opts_with_cookies():
-    """Get yt-dlp options with cookie support if available"""
-    base_opts = {
-        'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]/bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio[ext=mp3]/bestaudio/best/worst',  # Comprehensive fallback hierarchy
-        'quiet': True,
-        'no_warnings': True,
-        'source_address': '0.0.0.0',
-        # Enhanced authentication and bypass options
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-        },
-        # Additional options to bypass restrictions
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web', 'ios'],
-                'player_skip': ['configs', 'webpage', 'js'],
-            }
-        },
-        'socket_timeout': 30,
-        'retries': 3,
-        'fragment_retries': 3,
-        # Prevent cookie saving to avoid read-only file system error
-        'cookiefile': None,  # Will be set conditionally
-        'no_cookies': True,  # Don't save cookies back to file
-    }
-    
-    # Test and add cookie file if available
-    cookie_file = '/app/cookies.txt'
-    cookie_valid, cookie_msg = _test_cookie_file()
-    
-    if cookie_valid:
-        # Use a fixed temporary file name for reuse
-        temp_cookie_file = '/tmp/youtube_cookies.txt'
-        
-        try:
-            # Copy cookies to temporary location only if it doesn't exist or is older
-            import os
-            import shutil
-            import time
-            
-            need_copy = False
-            if not os.path.exists(temp_cookie_file):
-                need_copy = True
-                logger.info("MC: Creating temporary cookie file")
-            else:
-                # Check if original is newer than temp file
-                original_mtime = os.path.getmtime(cookie_file)
-                temp_mtime = os.path.getmtime(temp_cookie_file)
-                if original_mtime > temp_mtime:
-                    need_copy = True
-                    logger.info("MC: Updating temporary cookie file (original is newer)")
-            
-            if need_copy:
-                shutil.copy2(cookie_file, temp_cookie_file)
-            
-            base_opts['cookiefile'] = temp_cookie_file
-            logger.info(f"MC: ✅ {cookie_msg}")
-            logger.info(f"MC: YouTube authentication will use cookies (temp file: {temp_cookie_file})")
-        except Exception as e:
-            logger.warning(f"MC: Failed to copy cookies to temp file: {e}")
-            logger.warning("MC: Using fallback authentication (headers + player clients)")
-    else:
-        logger.warning(f"MC: ❌ Cookie file issue: {cookie_msg}")
-        logger.warning("MC: Using fallback authentication (headers + player clients)")
-    
-    return base_opts
-
-
 def _load_mc_answers() -> dict:
     try:
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -300,13 +181,36 @@ class MCCommands:
         await self._send_message(message.channel, "🔍 **Searching for song...**")
         
         try:
-            # Configure yt-dlp with enhanced options and cookie support
-            ydl_opts = _get_ydl_opts_with_cookies()
-            ydl_opts.update({
+            # Configure yt-dlp with enhanced options to bypass bot detection
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'quiet': True,
+                'no_warnings': True,
                 'extract_flat': False,
                 'noplaylist': True,
-                'format': 'bestaudio/bestaudio/worst',  # Simple format that works for all videos
-            })
+                # YouTube cookies for authentication
+                'cookiefile': '/app/cookies.txt',
+                # Enhanced authentication and bypass options
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                },
+                # Additional options to bypass restrictions
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                        'player_skip': ['configs', 'webpage'],
+                    }
+                },
+                'socket_timeout': 30,
+                'retries': 3,
+                'fragment_retries': 3,
+            }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 # Determine if URL or search
@@ -330,17 +234,18 @@ class MCCommands:
                         duration_str = f"{minutes}:{seconds:02d}"
                 else:
                     duration_str = "Unknown"
-
-                # Don't clean up temporary cookie file - keep it for reuse
                 
+
                 from db_role_mc import get_mc_db_instance
                 db_mc = get_mc_db_instance(server_id)
                 
+
                 db_mc.agregar_cancion_queue(
                     server_id, str(message.channel.id), str(message.author.id),
                     title, url, duration_str, artist, posicion=0
                 )
                 
+
                 if server_id in self.voice_clients and self.voice_clients[server_id].is_playing():
                     logger.info(f"MC: Stop song in the server {server_id}")
                     self.voice_clients[server_id].stop()
@@ -432,18 +337,40 @@ class MCCommands:
         await self._send_message(message.channel, "🔍 **Searching for the song...**")
         
         try:
-            # Configure yt-dlp with enhanced options and cookie support
-            ydl_opts = _get_ydl_opts_with_cookies()
-            ydl_opts.update({
-                'format': 'bestaudio[acodec=opus]/bestaudio[ext=m4a]/bestaudio/best',  # Flexible format hierarchy
+            # Configure yt-dlp with enhanced options to bypass bot detection
+            ydl_opts = {
+                'format': 'bestaudio[ext=m4a]/bestaudio/best',
                 'noplaylist': True,
+                'quiet': True,
+                'no_warnings': True,
                 'default_search': 'ytsearch',
-            })
+                'source_address': '0.0.0.0',
+                # YouTube cookies for authentication
+                'cookiefile': '/app/cookies.txt',
+                # Enhanced authentication and bypass options
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                },
+                # Additional options to bypass restrictions
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                        'player_skip': ['configs', 'webpage'],
+                    }
+                },
+                'socket_timeout': 30,
+                'retries': 3,
+                'fragment_retries': 3,
+            }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
-                
-                # Don't clean up temporary cookie file - keep it for reuse
                 
                 if 'entries' in info:
                     info = info['entries'][0]
@@ -732,58 +659,6 @@ class MCCommands:
             logger.exception(f"Error ajustando volumen: {e}")
             await self._send_message(message.channel, "❌ **I couldn't adjust the volumen**")
     
-    async def cmd_test_cookies(self, message, args):
-        """Test YouTube cookies file status and yt-dlp compatibility"""
-        await self._send_message(message.channel, "🔍 **Testing YouTube cookies...**")
-        
-        # Test cookie file
-        cookie_valid, cookie_msg = _test_cookie_file()
-        
-        if cookie_valid:
-            await self._send_message(message.channel, f"✅ **Cookie file OK:** {cookie_msg}")
-            
-            # Test yt-dlp with cookies
-            try:
-                ydl_opts = _get_ydl_opts_with_cookies()
-                ydl_opts.update({
-                    'simulate': True,
-                    'skip_download': True,
-                })
-                
-                # Test with a simple YouTube URL
-                test_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # Rick Roll for testing
-                
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(test_url, download=False)
-                    title = info.get('title', 'Unknown')
-                    duration = info.get('duration', 0)
-                    
-                    await self._send_message(message.channel, 
-                        f"✅ **yt-dlp + Cookies working!**\n"
-                        f"🎵 Test video: {title}\n"
-                        f"⏱️ Duration: {duration} seconds\n"
-                        f"🔐 Authentication: Cookies accepted")
-                        
-            except yt_dlp.utils.DownloadError as e:
-                if "Sign in to confirm you're not a bot" in str(e):
-                    await self._send_message(message.channel, 
-                        "❌ **Cookies not working - still getting bot detection**\n"
-                        "The cookies may be expired or invalid.")
-                else:
-                    await self._send_message(message.channel, 
-                        f"❌ **yt-dlp error:** {str(e)}")
-            except Exception as e:
-                await self._send_message(message.channel, 
-                    f"❌ **Unexpected error:** {str(e)}")
-        else:
-            await self._send_message(message.channel, 
-                f"❌ **Cookie file problem:** {cookie_msg}\n\n"
-                "📝 **To fix this:**\n"
-                "1. Install 'Get cookies.txt' extension in your browser\n"
-                "2. Login to YouTube\n"
-                "3. Export cookies as Netscape format\n"
-                "4. Save as `/var/lib/roleagentbot/cookies.txt`")
-    
     async def cmd_help(self, message, args):
         """Show the MC commands"""
         embed = discord.Embed(
@@ -807,7 +682,6 @@ class MCCommands:
             ("!mc history", "Shows the playback history"),
             ("!mc volume <0-100>", "Adjusts the music volume"),
             ("!mc leave / !mc disconnect", "Leaves the voice channel (DJ role required)"),
-            ("!mc test_cookies", "Tests YouTube cookies authentication"),
             ("!mc help / !mc commands", "Shows this help message")
         ]
         
@@ -854,17 +728,37 @@ class MCCommands:
             
             pos, title, url, duration, artist, user_id, fecha = queue[0]
             
-            # Configure yt-dlp with enhanced options and cookie support
-            ydl_opts = _get_ydl_opts_with_cookies()
-            ydl_opts.update({
-                'format': 'bestaudio[acodec=opus]/bestaudio[ext=m4a]/bestaudio/best',  # Flexible format hierarchy
-            })
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'quiet': True,
+                'no_warnings': True,
+                # YouTube cookies for authentication
+                'cookiefile': '/app/cookies.txt',
+                # Enhanced authentication and bypass options
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                },
+                # Additional options to bypass restrictions
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android', 'web'],
+                        'player_skip': ['configs', 'webpage'],
+                    }
+                },
+                'socket_timeout': 30,
+                'retries': 3,
+                'fragment_retries': 3,
+            }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 audio_url = info['url']
-                
-                # Don't clean up temporary cookie file - keep it for reuse
             
             audio_source = discord.FFmpegPCMAudio(
                 audio_url,
@@ -1006,7 +900,6 @@ COMANDOS_MC = {
     'history': MCCommands.cmd_history,
     'leave': MCCommands.cmd_leave,
     'disconnect': MCCommands.cmd_leave,  # Alias
-    'test_cookies': MCCommands.cmd_test_cookies,  # Test YouTube cookies
     'help': MCCommands.cmd_help,
     'commands': MCCommands.cmd_help,  # Alias
 }
