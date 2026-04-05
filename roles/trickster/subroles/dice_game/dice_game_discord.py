@@ -145,6 +145,7 @@ async def cmd_dice_play(ctx):
             ctx.author.display_name,
             ctx.guild.name,
             pot_balance,
+            str(ctx.guild.id),
         )
 
         print(f"DEBUG: Raw result = {result}")

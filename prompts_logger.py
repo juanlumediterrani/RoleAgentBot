@@ -58,14 +58,20 @@ def _get_logging_messages():
 LOG_DIR = Path(__file__).parent / 'logs'
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-def get_prompts_logger():
+def get_prompts_logger(server_id=None):
     """
     Gets a dedicated logger for prompts with custom formatting.
+    If server_id is provided, creates server-specific logging.
+    
+    Args:
+        server_id (str, optional): Discord server ID for server-specific logging
     
     Returns:
         logging.Logger: Logger configured for prompt logging
     """
-    logger = logging.getLogger('prompts')
+    # Create logger name based on server_id
+    logger_name = f'prompts_{server_id}' if server_id else 'prompts'
+    logger = logging.getLogger(logger_name)
     
     # Avoid adding handlers multiple times
     if logger.handlers:
@@ -74,8 +80,13 @@ def get_prompts_logger():
     logger.propagate = False
     logger.setLevel(logging.INFO)
     
-    # Create prompts log file
-    prompts_log_file = LOG_DIR / 'prompt.log'
+    # Create server-specific log directory and file
+    if server_id:
+        server_log_dir = LOG_DIR / server_id
+        server_log_dir.mkdir(parents=True, exist_ok=True)
+        prompts_log_file = server_log_dir / 'prompt.log'
+    else:
+        prompts_log_file = LOG_DIR / 'prompt.log'
     
     # Custom formatter for clear separation
     formatter = logging.Formatter(
@@ -99,7 +110,7 @@ def get_prompts_logger():
     
     return logger
 
-def log_prompt(prompt_type, content, metadata=None):
+def log_prompt(prompt_type, content, metadata=None, server_id=None):
     """
     Logs a prompt with clear separation and metadata.
     
@@ -107,8 +118,9 @@ def log_prompt(prompt_type, content, metadata=None):
         prompt_type (str): Type of prompt (e.g., 'system', 'user', 'consolidated', 'subrole')
         content (str): The prompt content
         metadata (dict, optional): Additional metadata (role, server, user_id, etc.)
+        server_id (str, optional): Discord server ID for server-specific logging
     """
-    logger = get_prompts_logger()
+    logger = get_prompts_logger(server_id)
     
     # Create separator
     separator = "=" * 80
@@ -138,7 +150,7 @@ def log_prompt(prompt_type, content, metadata=None):
     log_entry = "\n".join(log_lines)
     logger.info(log_entry)
 
-def log_system_prompt(content, role=None, server=None):
+def log_system_prompt(content, role=None, server=None, server_id=None):
     """Convenience function to log system prompts."""
     metadata = {}
     if role:
@@ -146,9 +158,9 @@ def log_system_prompt(content, role=None, server=None):
     if server:
         metadata['server'] = server
     
-    log_prompt('system', content, metadata)
+    log_prompt('system', content, metadata, server_id)
 
-def log_user_prompt(content, user_id=None, server=None, role=None):
+def log_user_prompt(content, user_id=None, server=None, role=None, server_id=None):
     """Convenience function to log user prompts."""
     metadata = {}
     if user_id:
@@ -158,10 +170,10 @@ def log_user_prompt(content, user_id=None, server=None, role=None):
     if role:
         metadata['role'] = role
     
-    log_prompt('user', content, metadata)
+    log_prompt('user', content, metadata, server_id)
 
-def log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, role=None, server=None, metadata=None):
-    logger = get_prompts_logger()
+def log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, role=None, server=None, metadata=None, server_id=None):
+    logger = get_prompts_logger(server_id)
     separator = "=" * 80
 
     final_metadata = {
@@ -198,7 +210,7 @@ def log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, r
 
     logger.info("\n".join(log_lines))
 
-def log_consolidated_context(content, role=None, server=None, interaction_count=None):
+def log_consolidated_context(content, role=None, server=None, interaction_count=None, server_id=None):
     """Convenience function to log consolidated context prompts."""
     metadata = {}
     if role:
@@ -208,9 +220,9 @@ def log_consolidated_context(content, role=None, server=None, interaction_count=
     if interaction_count:
         metadata['interaction_count'] = interaction_count
     
-    log_prompt('consolidated', content, metadata)
+    log_prompt('consolidated', content, metadata, server_id)
 
-def log_readme_enhanced_prompt(original_question, readme_content, enhanced_prompt, system_instruction=None, role=None, server=None):
+def log_readme_enhanced_prompt(original_question, readme_content, enhanced_prompt, system_instruction=None, role=None, server=None, server_id=None):
     metadata = {
         "readme_length": len(readme_content or ""),
         "original_question": original_question or "",
@@ -223,9 +235,10 @@ def log_readme_enhanced_prompt(original_question, readme_content, enhanced_promp
         role=role,
         server=server,
         metadata=metadata,
+        server_id=server_id,
     )
 
-def log_subrole_prompt(subrole_name, content, role=None, server=None):
+def log_subrole_prompt(subrole_name, content, role=None, server=None, server_id=None):
     """Convenience function to log subrole prompts."""
     metadata = {
         'subrole': subrole_name
@@ -235,9 +248,9 @@ def log_subrole_prompt(subrole_name, content, role=None, server=None):
     if server:
         metadata['server'] = server
     
-    log_prompt('subrole', content, metadata)
+    log_prompt('subrole', content, metadata, server_id)
 
-def log_agent_response(content, role=None, server=None, response_length=None):
+def log_agent_response(content, role=None, server=None, response_length=None, server_id=None):
     """Convenience function to log agent responses (for completeness)."""
     metadata = {}
     if role:
@@ -247,4 +260,4 @@ def log_agent_response(content, role=None, server=None, response_length=None):
     if response_length:
         metadata['response_length'] = response_length
     
-    log_prompt('response', content, metadata)
+    log_prompt('response', content, metadata, server_id)

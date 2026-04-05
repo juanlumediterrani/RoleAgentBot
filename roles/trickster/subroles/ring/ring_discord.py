@@ -367,7 +367,8 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
             prompt=accusation_prompt,
             async_mode=True,
             call_type="ring_accusation",
-            critical=False
+            critical=False,
+            server_id=server_id
         )
         
         # Log the accusation and save to roles.db

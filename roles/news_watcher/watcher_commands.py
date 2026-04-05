@@ -309,7 +309,7 @@ class WatcherCommands:
                 return None
 
     async def cmd_unsubscribe(self, message, args):
-        """Cancel subscription by number (from list) or by category/feed (legacy)."""
+        """Cancel subscription by number (from list) or by category/feed."""
         if not args:
             await message.channel.send(get_message('uso_cancelar'))
             await message.channel.send("💡 Use `!watcher subscriptions` to see numbered list")
@@ -325,7 +325,7 @@ class WatcherCommands:
                 await self._unsubscribe_by_number(message, user_id, list_number)
                 return
             except ValueError:
-                # Not a number, use legacy category-based method
+                # Not a number, use category-based method
                 await self._unsubscribe_by_category(message, user_id, args)
                 
         except Exception as e:
@@ -401,7 +401,7 @@ class WatcherCommands:
             await message.channel.send(get_message('error_cancelacion'))
 
     async def _unsubscribe_by_category(self, message, user_id: str, args):
-        """Legacy unsubscribe by category/feed method."""
+        """Unsubscribe by category/feed method."""
         category = self._normalize_category(args[0])
         feed_id = None
         

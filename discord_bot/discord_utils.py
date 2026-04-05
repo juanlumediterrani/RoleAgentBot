@@ -54,7 +54,7 @@ def is_admin(ctx) -> bool:
     return perms.administrator or perms.manage_guild
 
 
-def initialize_roles_from_database(agent_config=None) -> bool:
+def initialize_roles_from_database(agent_config=None, guild=None) -> bool:
     """Initialize roles system - PRIMARY: roles_config, SECONDARY: behavior table."""
     try:
         logger.info("Initializing roles system - database is primary source")
@@ -62,8 +62,9 @@ def initialize_roles_from_database(agent_config=None) -> bool:
         # PRIMARY: Initialize roles_config from agent_config.json
         try:
             from agent_roles_db import get_roles_db_instance
-            default_server_id = "0"  # Default server
-            roles_db = get_roles_db_instance(default_server_id)
+            # Use guild-specific server_id if available, otherwise default to "0"
+            server_id = str(guild.id) if guild else "0"
+            roles_db = get_roles_db_instance(server_id)
             
             # First, migrate from agent_config.json if available
             if agent_config:
@@ -98,7 +99,8 @@ def initialize_roles_from_database(agent_config=None) -> bool:
         # Verify roles_config is working by checking all roles
         try:
             from agent_roles_db import get_roles_db_instance
-            roles_db = get_roles_db_instance("0")
+            # Use the same server_id as above for verification
+            roles_db = get_roles_db_instance(server_id)
             
             all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "ring", "dice_game"]
             for role_name in all_roles:

@@ -324,23 +324,69 @@ async def initialize_dice_game_pot():
         logger.exception(f"💰 Error in dice game pot initialization: {e}")
 
 
+async def banker_task_for_server(server_id: str):
+    """Execute banker role tasks for a specific server."""
+    logger.info(f"💰 Starting banker role tasks for server {server_id}...")
+    
+    # Temporarily set the active server for this task
+    import os
+    original_server = os.environ.get("ACTIVE_SERVER_ID")
+    os.environ["ACTIVE_SERVER_ID"] = server_id
+    
+    try:
+        # Create wallets for all server members first
+        await create_wallets_for_all_server_members()
+        
+        # Initialize dice game pot first
+        await initialize_dice_game_pot()
+        
+        # Initialize dice game accounts for existing users
+        await initialize_dice_game_accounts()
+        
+        # Main banker task: distribute daily TAE
+        await distribute_daily_tae()
+        
+        logger.info(f"✅ Banker role tasks completed for server {server_id}")
+    except Exception as e:
+        logger.error(f"❌ Error in banker tasks for server {server_id}: {e}")
+    finally:
+        # Restore original server
+        if original_server:
+            os.environ["ACTIVE_SERVER_ID"] = original_server
+        else:
+            os.environ.pop("ACTIVE_SERVER_ID", None)
+
+
 async def banker_task():
-    """Execute banker role tasks."""
-    logger.info("💰 Starting banker role tasks...")
+    """Execute banker role tasks for all servers."""
+    logger.info("💰 Starting banker role tasks for all servers...")
     
-    # Create wallets for all server members first
-    await create_wallets_for_all_server_members()
+    # Get all server directories
+    from pathlib import Path
+    db_dir = Path(__file__).parent.parent.parent / "databases"
     
-    # Initialize dice game pot first
-    await initialize_dice_game_pot()
+    if not db_dir.exists():
+        logger.warning("💰 No databases directory found")
+        return
     
-    # Initialize dice game accounts for existing users
-    await initialize_dice_game_accounts()
+    server_dirs = [d for d in db_dir.iterdir() if d.is_dir() and d.name.isdigit()]
     
-    # Main banker task: distribute daily TAE
-    await distribute_daily_tae()
+    if not server_dirs:
+        logger.warning("💰 No server databases found")
+        return
     
-    logger.info("✅ Banker role tasks completed")
+    logger.info(f"💰 Found {len(server_dirs)} server directories")
+    
+    # Run tasks for each server
+    for server_dir in server_dirs:
+        server_id = server_dir.name
+        try:
+            await banker_task_for_server(server_id)
+        except Exception as e:
+            logger.error(f"💰 Failed to run banker tasks for server {server_id}: {e}")
+            continue
+    
+    logger.info("💰 Banker role tasks completed for all servers")
 
 
 async def main():

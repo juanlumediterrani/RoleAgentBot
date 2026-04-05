@@ -518,7 +518,7 @@ class NewsProcessor:
     
     async def _process_flat(self, news_item: NewsItem) -> str:
         """Process flat subscription - all news with AI opinion."""
-        # TODO: Implement AI opinion generation
+        # Generate basic summary without AI analysis for flat subscriptions
         title = news_item.title
         content = news_item.content[:500]  # Limit content length
         

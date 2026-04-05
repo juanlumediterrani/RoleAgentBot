@@ -459,8 +459,8 @@ def get_runes_messages() -> dict:
     try:
         # Load from personality descriptions following the normal program pattern
         descriptions = _personality_descriptions
-        if descriptions and "trickster" in descriptions and "nordic_runes" in descriptions["trickster"]:
-            return descriptions["trickster"]["nordic_runes"]
+        if descriptions and "roles_view_messages" in descriptions and "trickster" in descriptions["roles_view_messages"] and "nordic_runes" in descriptions["roles_view_messages"]["trickster"]:
+            return descriptions["roles_view_messages"]["trickster"]["nordic_runes"]
     except Exception as e:
         logger.error(f"Error loading runes messages from descriptions: {e}")
     
@@ -532,20 +532,23 @@ class RuneCastingModal(discord.ui.Modal):
                     self.guild = guild
 
             mock_message = MockMessage(interaction.user, interaction.guild)
-            result = await runes_commands.cmd_runes_canvas_cast(mock_message, self.reading_type, question)
+            result = await runes_commands.cmd_runes_cast(mock_message, self.reading_type, question)
 
             descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
             saved_msg = descriptions.get("reading_saved", "🔮 Runes have been cast! Your reading has been saved.")
             
-            # Handle tuple return value (main_response, interpretation_response)
+            # Handle tuple return value (main_response, interpretation_response_parts)
             if isinstance(result, tuple) and len(result) == 2:
                 main_response, interpretation_response = result
-                response = main_response  # Don't add saved_msg here, it goes in embed footer
-                interpretation_msg = interpretation_response
+                response = main_response
+                interpretation_parts = [interpretation_response]
+            elif isinstance(result, tuple) and len(result) == 3:
+                main_response, interpretation_part_one, interpretation_part_two = result
+                response = main_response
+                interpretation_parts = [interpretation_part_one, interpretation_part_two]
             else:
-                # Fallback for single response (backward compatibility)
-                response = result  # Don't add saved_msg here, it goes in embed footer
-                interpretation_msg = None
+                response = result
+                interpretation_parts = []
 
             try:
                 # Create embed for main response to avoid 2000 character limit
@@ -562,8 +565,8 @@ class RuneCastingModal(discord.ui.Modal):
                 await interaction.user.send(embed=embed)
                 logger.info(f"Successfully sent rune reading via DM to user {interaction.user.id}")
                 
-                # Send interpretation as second message if available
-                if interpretation_msg:
+                # Send interpretation as plain-text follow-up message(s) if available
+                for interpretation_msg in interpretation_parts:
                     await asyncio.sleep(0.5)  # Small delay to ensure proper ordering
                     await interaction.user.send(interpretation_msg)
                     logger.info(f"Successfully sent rune interpretation via DM to user {interaction.user.id}")
@@ -585,8 +588,7 @@ class RuneCastingModal(discord.ui.Modal):
                     embed=embed,
                     ephemeral=True,
                 )
-                # Send interpretation as second ephemeral message if available
-                if interpretation_msg:
+                for interpretation_msg in interpretation_parts:
                     await asyncio.sleep(0.5)  # Small delay to ensure proper ordering
                     await interaction.followup.send(
                         interpretation_msg,
@@ -606,8 +608,7 @@ class RuneCastingModal(discord.ui.Modal):
                     await interaction.user.send(embed=embed)
                     logger.info(f"Successfully sent rune reading via direct DM to user {interaction.user.id}")
                     
-                    # Send interpretation as second message if available
-                    if interpretation_msg:
+                    for interpretation_msg in interpretation_parts:
                         await asyncio.sleep(0.5)  # Small delay to ensure proper ordering
                         await interaction.user.send(interpretation_msg)
                         logger.info(f"Successfully sent rune interpretation via direct DM to user {interaction.user.id}")
@@ -627,8 +628,7 @@ class RuneCastingModal(discord.ui.Modal):
                             await interaction.channel.send(embed=embed)
                             logger.info("Sent rune reading to channel as last resort")
                             
-                            # Send interpretation as second channel message if available
-                            if interpretation_msg:
+                            for interpretation_msg in interpretation_parts:
                                 await asyncio.sleep(0.5)  # Small delay to ensure proper ordering
                                 await interaction.channel.send(interpretation_msg)
                                 logger.info("Sent rune interpretation to channel as last resort")
@@ -1282,7 +1282,7 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
                     if enabled:
                         selected_reason = beggar_config.select_new_reason()
                         try:
-                            success = await execute_beggar_task(bot_instance=interaction.client)
+                            success = await execute_beggar_task(server_id=server_id_str, bot_instance=interaction.client)
                             if success:
                                 applied_text = f"🙏 **Beggar enabled** - First message sent with reason: '{selected_reason}'"
                             else:

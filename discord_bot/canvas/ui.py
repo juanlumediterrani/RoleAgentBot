@@ -591,6 +591,7 @@ class CanvasSmartBackButton(discord.ui.Button):
                 complete_sections,  # Pass complete sections for full navigation
                 view.admin_visible,
                 view.agent_config,
+                guild=view.guild,
                 message=interaction.message,
                 show_dropdown=False
             )
@@ -637,7 +638,35 @@ class CanvasHomeButton(discord.ui.Button):
     
     async def callback(self, interaction: discord.Interaction):
         view = self.view
-        home_content = view.sections.get("home")
+        
+        # Get current guild from interaction to ensure correct server context
+        guild = interaction.guild
+        if not guild:
+            await _safe_send_interaction_message(interaction, "❌ This command is only available in a server.", ephemeral=True)
+            return
+        
+        # Rebuild sections with current guild context to ensure correct server data
+        server_id = get_server_key(guild) if get_server_key else str(guild.id)
+        author_id = view.author_id
+        admin_visible = view.admin_visible
+        
+        # Rebuild home content with current server context
+        from .content import _build_canvas_home
+        home_content = _build_canvas_home(
+            view.agent_config,
+            "Canvas",
+            "No Canvas",
+            "Welcome",
+            "No Welcome",
+            "!canvas",
+            "!talk",
+            admin_visible,
+            server_id,
+            author_id,
+            guild,
+            False
+        )
+        
         if not home_content:
             await _safe_send_interaction_message(interaction, "❌ The Canvas home is not available.", ephemeral=True)
             return
@@ -647,7 +676,24 @@ class CanvasHomeButton(discord.ui.Button):
             await _safe_send_interaction_message(interaction, "❌ Navigation not available.", ephemeral=True)
             return
         
-        nav_view = CanvasNavigationView(view.author_id, view.sections, view.admin_visible, view.agent_config, show_dropdown=False)
+        # Build complete sections for proper navigation
+        from .content import _build_canvas_sections
+        complete_sections = _build_canvas_sections(
+            view.agent_config,
+            "Canvas",
+            "No Canvas",
+            "Welcome",
+            "No Welcome",
+            "!canvas",
+            "!talk",
+            admin_visible,
+            server_id,
+            author_id,
+            guild,
+            False
+        )
+        
+        nav_view = CanvasNavigationView(view.author_id, complete_sections, view.admin_visible, view.agent_config, guild=guild, show_dropdown=False)
         nav_view.update_visibility()
         nav_view.message = interaction.message
         
@@ -848,6 +894,25 @@ class CanvasSectionSelect(discord.ui.Select):
         if not isinstance(view, CanvasNavigationView):
             await interaction.response.send_message("❌ Canvas section navigation is not available.", ephemeral=True)
             return
+        guild = interaction.guild or view.guild
+        if guild:
+            server_id = get_server_key(guild) if get_server_key else str(guild.id)
+            refreshed_sections = _build_canvas_sections(
+                view.agent_config,
+                "Canvas",
+                "No Canvas",
+                "Welcome",
+                "No Welcome",
+                "!canvas",
+                "!talk",
+                view.admin_visible,
+                server_id,
+                view.author_id,
+                guild,
+                False
+            )
+            view.sections = refreshed_sections
+            view.guild = guild
         selected = self.values[0]
         if selected == "roles":
             roles_content = view.sections.get("roles")
@@ -1270,7 +1335,27 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
         await _cleanup_canvas_view_on_timeout(self, "Canvas sections")
 
     async def _show_section(self, interaction: discord.Interaction, section_name: str):
+        guild = interaction.guild or self.guild
+        if guild:
+            server_id = get_server_key(guild) if get_server_key else str(guild.id)
+            refreshed_sections = _build_canvas_sections(
+                self.agent_config,
+                "Canvas",
+                "No Canvas",
+                "Welcome",
+                "No Welcome",
+                "!canvas",
+                "!talk",
+                self.admin_visible,
+                server_id,
+                self.author_id,
+                guild,
+                False
+            )
+            self.sections = refreshed_sections
+            self.guild = guild
         content = self.sections.get(section_name)
+        
         if not content:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
@@ -1287,6 +1372,24 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
     button_roles = _personality_descriptions.get("canvas_home_messages", {}).get("button_roles", "Roles")
     @discord.ui.button(label=button_roles, style=discord.ButtonStyle.success)
     async def roles_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild or self.guild
+        if guild:
+            server_id = get_server_key(guild) if get_server_key else str(guild.id)
+            self.sections = _build_canvas_sections(
+                self.agent_config,
+                "Canvas",
+                "No Canvas",
+                "Welcome",
+                "No Welcome",
+                "!canvas",
+                "!talk",
+                self.admin_visible,
+                server_id,
+                self.author_id,
+                guild,
+                False
+            )
+            self.guild = guild
         roles_content = self.sections.get("roles")
         if not roles_content:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
@@ -1302,6 +1405,24 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
     button_behavior = _personality_descriptions.get("canvas_home_messages", {}).get("button_behavior", "Behavior")
     @discord.ui.button(label=button_behavior, style=discord.ButtonStyle.success)
     async def behavior_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild or self.guild
+        if guild:
+            server_id = get_server_key(guild) if get_server_key else str(guild.id)
+            self.sections = _build_canvas_sections(
+                self.agent_config,
+                "Canvas",
+                "No Canvas",
+                "Welcome",
+                "No Welcome",
+                "!canvas",
+                "!talk",
+                self.admin_visible,
+                server_id,
+                self.author_id,
+                guild,
+                False
+            )
+            self.guild = guild
         behavior_content = self.sections.get("behavior")
         if not behavior_content:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
@@ -1914,7 +2035,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     f"Required: {bet_amount:,} gold",
                 ])
             else:
-                result = process_play(player_id, player_name, guild.name, dice_state['pot_balance']) if process_play else {"success": False, "message": "Dice game unavailable."}
+                result = process_play(player_id, player_name, guild.name, dice_state['pot_balance'], server_key) if process_play else {"success": False, "message": "Dice game unavailable."}
                 
                 if result.get('success', False):
                     # Parse result

@@ -228,7 +228,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         ]
         value = "\n".join(filtered_lines)[:1024]
         if value:
-            embed.add_field(name=block_title, value=value, inline=False)
+            embed.add_field(name=block_title or "\u200b", value=value, inline=False)
     embed.set_footer(text=f"Canvas section: {section_name}")
     return embed
 
@@ -1154,7 +1154,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     """Build the role navigation Canvas view - now uses database as primary source."""
     # Initialize roles system to ensure database is primary source
     from discord_bot.discord_utils import initialize_roles_from_database
-    initialize_roles_from_database(agent_config)
+    initialize_roles_from_database(agent_config, guild)
     
     # Get roles view messages from personality with fallback
     roles_messages = _personality_descriptions.get("roles_view_messages", {})

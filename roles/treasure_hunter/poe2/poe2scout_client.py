@@ -219,7 +219,7 @@ class Poe2ScoutClient:
 
         return None
 
-    def get_item_history_old(self, item_id: int, league: str = 'Standard',
+    def get_item_history(self, item_id: int, league: str = 'Standard',
                          log_count: int = None, days: int = None,
                          reference_currency: str = 'divine') -> List[PriceEntry]:
         """Retrieve item price history from poe2scout API.
@@ -382,7 +382,7 @@ class Poe2ScoutClient:
         if item_id:
             try:
                 # Use correct parameters according to API: 720 entries, current endTime, divine currency
-                entries = self.get_item_history_old(
+                entries = self.get_item_history(
                     item_id, 
                     league=league, 
                     log_count=720,  # 24h * 30d = 720 entries

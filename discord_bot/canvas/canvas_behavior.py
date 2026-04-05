@@ -292,7 +292,7 @@ def build_canvas_behavior_detail(
             return "❌ This setup is only available to administrators."
 
         from discord_bot.discord_utils import initialize_roles_from_database
-        initialize_roles_from_database(agent_config)
+        initialize_roles_from_database(agent_config, guild)
 
         db = behavior_db_loader(guild) if callable(behavior_db_loader) else None
         all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]

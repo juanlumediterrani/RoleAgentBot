@@ -861,7 +861,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             
             # Execute the beggar task with runtime context
             try:
-                success = await execute_beggar_task(bot_instance=bot_instance)
+                success = await execute_beggar_task(server_id=server_id, bot_instance=bot_instance)
                 if success:
                     logger.info(f"🎭 [BEGGAR] Task executed successfully")
                 else:
@@ -1014,12 +1014,14 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nRespond only with what {_bot_display_name} would say, without additional explanations."
         
         # Call LLM
+        from agent_db import get_active_server_id
         response = call_llm(
             system_instruction=system_instruction,
             prompt=complete_prompt,
             async_mode=True,
             call_type="subrole_async",
-            critical=False
+            critical=False,
+            server_id=get_active_server_id()
         )
         
         if response and len(response.strip()) > 5:

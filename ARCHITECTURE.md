@@ -254,6 +254,12 @@ This lets `think(...)` combine immediate context, short-term synthesis, and dura
 - Scheduled watcher role with configurable frequency
 - Subscription service that sends news alerts after the selected filtering or analysis method is applied
 - Discord administration commands for activation, notifications, channels, and help
+- **Global RSS Feed Health System**: 
+  - Feed health is checked once at startup in `run.py` via `global_feed_health.py`
+  - Healthy feeds are stored in a shared global database (`data/global_feeds_{personality}.db`)
+  - Each server syncs healthy feeds during initialization instead of checking individually
+  - This prevents redundant network requests and improves startup performance
+  - Feed status is tracked with health logs and automatic disabling of broken feeds
 
 ### `treasure_hunter`
 
@@ -284,6 +290,7 @@ This lets `think(...)` combine immediate context, short-term synthesis, and dura
 
 ### In `run.py`
 
+- **Global RSS Feed Health Check**: Checks all RSS feeds once at startup and shares results with all servers
 - Enabled role subprocess scheduling
 - Internal subrole task execution
 - Recent memory refresh

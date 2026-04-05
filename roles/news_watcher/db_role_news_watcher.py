@@ -6,7 +6,6 @@ import stat
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Tuple
-from urllib import request as urllib_request, error as urllib_error
 from agent_logging import get_logger
 
 try:
@@ -300,102 +299,43 @@ class DatabaseRoleNewsWatcher:
                         category TEXT NOT NULL,
                         country TEXT DEFAULT NULL,
                         language TEXT DEFAULT 'es',
-                        is_active INTEGER DEFAULT 1,
-                        priority INTEGER DEFAULT 1,
                         keywords TEXT DEFAULT NULL,
+                        priority INTEGER DEFAULT 0,
+                        active INTEGER DEFAULT 1,
                         feed_type TEXT DEFAULT 'especializado',
                         created_at TEXT NOT NULL,
-                        updated_at TEXT DEFAULT NULL,
-                        last_checked_at TEXT DEFAULT NULL,
-                        last_error TEXT DEFAULT NULL
+                        updated_at TEXT DEFAULT NULL
                     )
                 ''')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_category ON feeds_config (category)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_is_active ON feeds_config (is_active)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_priority ON feeds_config (priority)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_feed_type ON feeds_config (feed_type)')
-                # Ensure new columns exist for health tracking
+                
+                # Migration: Add missing columns for legacy databases
                 cursor.execute('PRAGMA table_info(feeds_config)')
                 columns = cursor.fetchall()
                 column_names = {col[1] for col in columns}
-                if 'last_checked_at' not in column_names:
-                    cursor.execute('ALTER TABLE feeds_config ADD COLUMN last_checked_at TEXT DEFAULT NULL')
-                if 'last_error' not in column_names:
-                    cursor.execute('ALTER TABLE feeds_config ADD COLUMN last_error TEXT DEFAULT NULL')
+                
+                migrations = [
+                    ('country', 'TEXT DEFAULT NULL'),
+                    ('language', "TEXT DEFAULT 'es'"),
+                    ('keywords', 'TEXT DEFAULT NULL'),
+                    ('priority', 'INTEGER DEFAULT 0'),
+                    ('active', 'INTEGER DEFAULT 1')
+                ]
+                
+                for col_name, col_def in migrations:
+                    if col_name not in column_names:
+                        cursor.execute(f'ALTER TABLE feeds_config ADD COLUMN {col_name} {col_def}')
+                        logger.info(f"🔄 Migrated feeds_config: added {col_name} column")
+                
+                # Create indexes after ensuring columns exist
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_active ON feeds_config (active)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_priority ON feeds_config (priority)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_feeds_feed_type ON feeds_config (feed_type)')
+                
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creating feeds_config table: {e}")
 
-    def _ensure_feed_health(self):
-        """Check feed health and keep only working feeds active."""
-        try:
-            feeds = self._fetch_feeds_for_health()
-            if not feeds:
-                logger.info("📡 No feeds configured to validate")
-                return
-            logger.info("🔍 Checking health for %d configured feeds...", len(feeds))
-            healthy = 0
-            broken = 0
-            for feed in feeds:
-                feed_id, name, url = feed
-                ok, error_message = self._probe_feed_url(url)
-                self._update_feed_status(feed_id, ok, error_message)
-                if ok:
-                    healthy += 1
-                else:
-                    broken += 1
-                    logger.warning("⚠️ Feed disabled due to errors: %s (%s)", name, error_message)
-            logger.info("✅ Feed health check completed: %d healthy, %d disabled", healthy, broken)
-        except Exception as e:
-            logger.exception(f"❌ Error checking feed health: {e}")
-
-    def _fetch_feeds_for_health(self) -> list:
-        """Return list of (id, name, url) for configured feeds."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT id, name, url FROM feeds_config')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error fetching feeds for health check: {e}")
-            return []
-
-    def _probe_feed_url(self, url: str, timeout: int = 10) -> Tuple[bool, Optional[str]]:
-        """Probe a feed URL and return (is_working, error_message)."""
-        try:
-            request = urllib_request.Request(url, headers={"User-Agent": "RoleAgentBot/1.0"})
-            with urllib_request.urlopen(request, timeout=timeout) as response:
-                status = getattr(response, 'status', None) or response.getcode()
-                if 200 <= status < 300:
-                    # Read a small chunk to ensure stream works
-                    response.read(1024)
-                    return True, None
-                return False, f"HTTP {status}"
-        except urllib_error.HTTPError as e:
-            return False, f"HTTP {e.code}"
-        except Exception as e:
-            return False, str(e)
-
-    def _update_feed_status(self, feed_id: int, is_active: bool, error_message: Optional[str]):
-        """Persist feed status after health check."""
-        try:
-            with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        UPDATE feeds_config
-                        SET is_active = ?, last_checked_at = ?, last_error = ?
-                        WHERE id = ?
-                    ''', (
-                        1 if is_active else 0,
-                        datetime.now().isoformat(),
-                        None if is_active else (error_message or 'Unknown error'),
-                        feed_id,
-                    ))
-                    conn.commit()
-        except Exception as e:
-            logger.exception(f"Error updating feed status: {e}")
-    
     def _init_subscriptions_categories_table(self):
         """Initialize category subscriptions table (for AI-based subscriptions)."""
         try:
@@ -791,12 +731,12 @@ class DatabaseRoleNewsWatcher:
                 for feed in default_feeds:
                     cursor.execute('''
                         INSERT OR IGNORE INTO feeds_config 
-                        (name, url, category, country, language, keywords, feed_type, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        (name, url, category, country, language, keywords, feed_type, active, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (
                         feed['name'], feed['url'], feed['category'], 
                         feed['country'], feed['language'], feed['keywords'],
-                        feed['feed_type'], datetime.now().isoformat()
+                        feed['feed_type'], 1, datetime.now().isoformat()
                     ))
                 conn.commit()
                 logger.info("✅ Default feeds inserted")
@@ -812,10 +752,10 @@ class DatabaseRoleNewsWatcher:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT OR REPLACE INTO feeds_config 
-                        (name, url, category, country, language, keywords, feed_type,
+                        (name, url, category, country, language, keywords, feed_type, active,
                          created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (name, url, category, country, language, keywords, feed_type,
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (name, url, category, country, language, keywords, feed_type, 1,
                          datetime.now().isoformat(), datetime.now().isoformat()))
                     conn.commit()
                     return True
@@ -832,14 +772,14 @@ class DatabaseRoleNewsWatcher:
                     cursor.execute('''
                         SELECT id, name, url, category, country, language, priority, keywords, feed_type
                         FROM feeds_config 
-                        WHERE is_active = 1 AND category = ?
+                        WHERE active = 1 AND category = ?
                         ORDER BY priority DESC, name
                     ''', (category,))
                 else:
                     cursor.execute('''
                         SELECT id, name, url, category, country, language, priority, keywords, feed_type
                         FROM feeds_config 
-                        WHERE is_active = 1
+                        WHERE active = 1
                         ORDER BY priority DESC, name
                     ''')
                 return cursor.fetchall()
@@ -855,7 +795,7 @@ class DatabaseRoleNewsWatcher:
                 cursor.execute('''
                     SELECT id, name, url, category, country, language, priority, keywords, feed_type
                     FROM feeds_config 
-                    WHERE id = ? AND is_active = 1
+                    WHERE id = ? AND active = 1
                 ''', (feed_id,))
                 result = cursor.fetchone()
                 return result if result else None
@@ -871,7 +811,7 @@ class DatabaseRoleNewsWatcher:
                 cursor.execute('''
                     SELECT DISTINCT category, COUNT(*) as count
                     FROM feeds_config 
-                    WHERE is_active = 1
+                    WHERE active = 1
                     GROUP BY category
                     ORDER BY category
                 ''')
@@ -1189,7 +1129,7 @@ class DatabaseRoleNewsWatcher:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT NULL as user_id, category, feed_id, channel_id, subscribed_at
+                    SELECT channel_id, category, feed_id, channel_premises, user_id
                     FROM subscriptions_channels 
                     WHERE is_active = 1 AND channel_premises IS NOT NULL AND channel_premises != ''
                 ''')

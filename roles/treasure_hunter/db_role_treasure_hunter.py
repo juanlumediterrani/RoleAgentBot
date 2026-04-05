@@ -35,7 +35,7 @@ class DatabaseRolePoe:
     
     def __init__(self, server_id: str = "default", liga: str = "Standard", db_path: Path = None):
         if db_path is None:
-            self.db_path = get_db_path(server_name, liga)
+            self.db_path = get_db_path(server_id, liga)
         else:
             self.db_path = db_path
         self._lock = threading.Lock()

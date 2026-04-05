@@ -49,44 +49,6 @@ def load_config() -> dict:
 
 _persistent_processes: dict = {}
 
-
-def _get_last_daily_memory_update_time() -> datetime | None:
-    """Get the timestamp of the last daily memory update from the active server."""
-    try:
-        server_id = _get_active_server_id()
-        if not server_id:
-            return None
-        
-        from agent_mind import get_global_db
-        db_instance = get_global_db(server_id=server_id)
-        
-        with db_instance._lock:
-            import sqlite3
-            conn = sqlite3.connect(db_instance.db_path)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT updated_at FROM daily_memory 
-                WHERE summary IS NOT NULL AND summary != '' 
-                ORDER BY updated_at DESC LIMIT 1
-            """)
-            result = cursor.fetchone()
-            conn.close()
-            
-            if result and result[0]:
-                from datetime import datetime
-                # Parse the datetime string
-                return datetime.fromisoformat(result[0].replace('Z', '+00:00'))
-                
-    except Exception as e:
-        logger.debug(f"Could not retrieve last daily memory update time: {e}")
-    
-    return None
-
-def _get_active_server_id() -> str | None:
-    if not ACTIVE_SERVER_FILE.exists():
-        return None
-    return ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip() or None
-
 async def launch_role(name: str, script_rel: str, persistent: bool = False):
     """Run the role script as a subprocess. Persistent roles are launched once and don't block."""
     script = BASE_DIR / script_rel
@@ -142,68 +104,107 @@ async def launch_role(name: str, script_rel: str, persistent: bool = False):
     except Exception as e:
         logger.error(f"[run] ❌ Error launching '{name}': {e}")
 
-async def _run_server_bound_task(task_name: str, task_func):
-    try:
-        server_id = _get_active_server_id()
-        if not server_id:
-            return
-        result = await asyncio.to_thread(task_func, server_id)
-        return server_id, result
-    except Exception as e:
-        logger.error(f"[run] ❌ Error running server-bound task '{task_name}': {e}")
-        return None, None
+async def execute_recent_memory_summary_all_servers():
+    from agent_db import get_all_server_ids
+
+    server_ids = get_all_server_ids()
+    if not server_ids:
+        logger.info("[run] 🧠 No servers found for recent memory refresh")
+        return
+
+    total_refreshed = 0
+    for server_id in server_ids:
+        try:
+            refreshed = await asyncio.to_thread(refresh_due_recent_memories, server_id)
+            if refreshed:
+                total_refreshed += refreshed
+                logger.info(f"[run] 🧠 Recent memory summary refreshed for '{server_id}' (PRIORITY: 1)")
+        except Exception as e:
+            logger.error(f"[run] ❌ Error refreshing recent memory for server '{server_id}': {e}")
+
+    if total_refreshed:
+        logger.info(f"[run] 🧠 Recent memory refresh completed across servers: {total_refreshed} update(s)")
 
 
-async def execute_recent_memory_summary():
-    server_id, refreshed = await _run_server_bound_task("recent_memory_summary", refresh_due_recent_memories)
-    if server_id and refreshed:
-        logger.info(f"[run] 🧠 Recent memory summary refreshed for '{server_id}' (PRIORITY: 1)")
+async def execute_daily_memory_summary_all_servers():
+    """Execute daily memory generation for ALL servers, not just active one."""
+    from agent_db import get_all_server_ids
+    from agent_mind import generate_daily_memory_summary
+    
+    server_ids = get_all_server_ids()
+    if not server_ids:
+        logger.info("[run] 🧠 No servers found for daily memory generation")
+        return
+    
+    logger.info(f"[run] 🧠 Running daily memory generation for {len(server_ids)} servers")
+    
+    for server_id in server_ids:
+        try:
+            # Check if server needs daily memory generation
+            from agent_db import get_global_db
+            import sqlite3
+            
+            db_instance = get_global_db(server_id=server_id)
+            with db_instance._lock:
+                conn = sqlite3.connect(db_instance.db_path)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT summary, updated_at FROM daily_memory 
+                    WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
+                    ORDER BY updated_at DESC LIMIT 1
+                """)
+                result = cursor.fetchone()
+                conn.close()
+                
+                should_generate = False
+                if not result or not result[0] or not result[0].strip():
+                    # No daily memory - generate immediately
+                    should_generate = True
+                    reason = "no existing memory"
+                else:
+                    # Check if it's been more than 24 hours
+                    from datetime import datetime, timedelta
+                    last_update = datetime.fromisoformat(result[1].replace('Z', '+00:00'))
+                    if datetime.now().replace(tzinfo=last_update.tzinfo) - last_update > timedelta(hours=24):
+                        should_generate = True
+                        reason = "24+ hours since last update"
+                
+                if should_generate:
+                    logger.info(f"[run] 🧠 Generating daily memory for server '{server_id}' ({reason})")
+                    summary = await asyncio.to_thread(generate_daily_memory_summary, server_id)
+                    if summary:
+                        logger.info(f"[run] ✅ Daily memory generated for '{server_id}': {summary[:50]}...")
+                    else:
+                        logger.warning(f"[run] ⚠️ Failed to generate daily memory for '{server_id}'")
+                else:
+                    logger.debug(f"[run] 🧠 Daily memory up to date for '{server_id}'")
+                    
+        except Exception as e:
+            logger.error(f"[run] ❌ Error processing daily memory for server '{server_id}': {e}")
+    
+    logger.info(f"[run] 🧠 Daily memory generation completed for all servers")
 
 
-async def execute_daily_memory_summary():
-    server_id, summary = await _run_server_bound_task("daily_memory_summary", generate_daily_memory_summary)
-    if server_id and summary:
-        logger.info(f"[run] 🧠 Daily memory summary refreshed for '{server_id}'")
+async def execute_relationship_memory_refresh_all_servers():
+    from agent_db import get_all_server_ids
 
+    server_ids = get_all_server_ids()
+    if not server_ids:
+        logger.info("[run] 🧠 No servers found for relationship memory refresh")
+        return
 
-async def execute_relationship_memory_refresh():
-    server_id, refreshed = await _run_server_bound_task("relationship_memory_refresh", refresh_due_relationship_memories)
-    if server_id and refreshed:
-        logger.info(f"[run] 🧠 Relationship memories refreshed for '{server_id}': {refreshed} (PRIORITY: 2)")
+    total_refreshed = 0
+    for server_id in server_ids:
+        try:
+            refreshed = await asyncio.to_thread(refresh_due_relationship_memories, server_id)
+            if refreshed:
+                total_refreshed += refreshed
+                logger.info(f"[run] 🧠 Relationship memories refreshed for '{server_id}': {refreshed} (PRIORITY: 2)")
+        except Exception as e:
+            logger.error(f"[run] ❌ Error refreshing relationship memory for server '{server_id}': {e}")
 
-
-def _get_last_daily_memory_update_time(server_id: str | None = None) -> datetime | None:
-    """Get the last time daily memory was updated from the database."""
-    from agent_db import get_global_db
-    resolved_server = server_id or _get_active_server_id()
-    if not resolved_server:
-        return None
-    try:
-        db_instance = get_global_db(server_id=resolved_server)
-        # Get the most recent daily memory record by updated_at
-        import sqlite3
-        with db_instance._lock:
-            conn = sqlite3.connect(db_instance.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT updated_at FROM daily_memory
-                WHERE summary IS NOT NULL AND summary != ''
-                ORDER BY updated_at DESC LIMIT 1
-            ''')
-            row = cursor.fetchone()
-            conn.close()
-            if row and row["updated_at"]:
-                # Parse ISO format datetime string
-                from datetime import datetime
-                try:
-                    return datetime.fromisoformat(row["updated_at"])
-                except (ValueError, TypeError):
-                    return None
-        return None
-    except Exception as e:
-        logger.warning(f"[run] ⚠️ Could not get last daily memory time: {e}")
-        return None
+    if total_refreshed:
+        logger.info(f"[run] 🧠 Relationship memory refresh completed across servers: {total_refreshed} update(s)")
 
 
 def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
@@ -284,7 +285,7 @@ async def _execute_optional_subrole_tasks():
 
 async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dict[str, datetime]):
     task_specs = [
-        ("daily_memory", execute_daily_memory_summary, timedelta(days=1), "Next daily memory summary"),
+        ("daily_memory", execute_daily_memory_summary_all_servers, timedelta(days=1), "Next daily memory summary"),
     ]
     for task_key, task_func, interval, log_label in task_specs:
         if now < next_non_role_run[task_key]:
@@ -292,10 +293,10 @@ async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dic
         await task_func()
         next_non_role_run[task_key] = datetime.now() + interval
         logger.info(f"[run] 🧠 {log_label}: {next_non_role_run[task_key]:%Y-%m-%d %H:%M:%S}")
-    await execute_recent_memory_summary()
+    await execute_recent_memory_summary_all_servers()
     # Small delay to avoid overlap and give priority to recent memory
     await asyncio.sleep(5)
-    await execute_relationship_memory_refresh()
+    await execute_relationship_memory_refresh_all_servers()
 
 
 async def _wait_for_active_server_publish(next_run: dict[str, datetime]):
@@ -319,15 +320,8 @@ async def scheduler(config: dict):
 
     await _wait_for_active_server_publish(next_run)
 
-    # Calculate next daily memory run based on last database update time
-    # This prevents the timer from resetting on every bot restart
-    last_daily_memory_time = _get_last_daily_memory_update_time()
-    if last_daily_memory_time:
-        next_daily_memory_run = last_daily_memory_time + timedelta(days=1)
-        logger.info(f"[run] 🧠 Last daily memory was at {last_daily_memory_time:%Y-%m-%d %H:%M:%S}, next run scheduled for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
-    else:
-        next_daily_memory_run = datetime.now()
-        logger.info(f"[run] 🧠 No previous daily memory found, scheduling first run for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
+    next_daily_memory_run = datetime.now()
+    logger.info(f"[run] 🧠 Next global daily memory sweep scheduled for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
 
     next_non_role_run = {
         "daily_memory": next_daily_memory_run,
@@ -366,6 +360,14 @@ async def discord_bot():
 async def main():
     config   = load_config()
     platform = config.get("platform", "discord")
+
+    # Perform global RSS feed health check once at startup
+    logger.info("[run] 📡 Performing global RSS feed health check...")
+    try:
+        from roles.news_watcher.global_feed_health import check_global_feed_health
+        check_global_feed_health()
+    except Exception as e:
+        logger.error(f"[run] ❌ Error in global feed health check: {e}")
 
     logger.info(f"[run] 🌐 Platform: {platform}")
     logger.info(f"[run] 📋 Configuration loaded from: {CONFIG_FILE}")

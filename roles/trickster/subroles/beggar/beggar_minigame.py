@@ -55,7 +55,7 @@ class BeggarMinigame:
                 return False
             
             # Execute minigame
-            result = self._execute_minigame(old_reason, new_reason, participants, fund_balance)
+            result = self._execute_minigame(old_reason, new_reason, participants, fund_balance, self.server_id)
             
             # Process results
             if result['success']:
@@ -99,7 +99,7 @@ class BeggarMinigame:
             logger.error(f"Error getting participants: {e}")
             return []
     
-    def _execute_minigame(self, old_reason: str, new_reason: str, participants: List[Dict[str, Any]], fund_balance: int) -> Dict[str, Any]:
+    def _execute_minigame(self, old_reason: str, new_reason: str, participants: List[Dict[str, Any]], fund_balance: int, server_id: str = None) -> Dict[str, Any]:
         """Execute the minigame logic."""
         try:
             # Calculate minigame parameters
@@ -112,7 +112,7 @@ class BeggarMinigame:
             participant_results = self._apply_general_multiplier(participants, general_multiplier)
             
             # Generate narrative (all participants get flat relationship improvement)
-            narrative = self._generate_minigame_narrative(old_reason, new_reason, participants, general_multiplier, participant_results)
+            narrative = self._generate_minigame_narrative(old_reason, new_reason, participants, general_multiplier, participant_results, server_id)
             
             return {
                 'success': True,
@@ -191,7 +191,7 @@ class BeggarMinigame:
         
         return participant_results
     
-    def _generate_minigame_narrative(self, old_reason: str, new_reason: str, participants: List[Dict[str, Any]], general_multiplier: Dict[str, Any], participant_results: List[Dict[str, Any]]) -> str:
+    def _generate_minigame_narrative(self, old_reason: str, new_reason: str, participants: List[Dict[str, Any]], general_multiplier: Dict[str, Any], participant_results: List[Dict[str, Any]], server_id: str = None) -> str:
         """Generate narrative for the minigame using LLM."""
         # Get task prompt from personality dynamically
         task_prompt_template = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('minigame_prompt', '')
@@ -267,7 +267,8 @@ class BeggarMinigame:
                 async_mode=False,
                 call_type="beggar_minigame",
                 critical=False,
-                temperature=0.95
+                temperature=0.95,
+                server_id=server_id
             )
             
             if response and len(response.strip()) > 10:
@@ -396,7 +397,8 @@ class BeggarMinigame:
                         async_mode=False,
                         call_type="relationship_improvement",
                         critical=False,
-                        temperature=0.9
+                        temperature=0.9,
+                        server_id=server_id
                     )
                     
                     if response and len(response.strip()) > 10:
@@ -533,7 +535,7 @@ class BeggarMinigame:
     
     def get_minigame_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get history of recent minigames."""
-        # TODO: Implement minigame history storage and retrieval
+        # Minigame history not implemented yet - return empty list
         return []
     
     async def force_weekly_minigame(self, fallback_channel: Optional[discord.abc.Messageable] = None) -> Dict[str, Any]:
@@ -588,7 +590,7 @@ class BeggarMinigame:
                 }
             
             # Execute minigame with the new reason (actual reason change)
-            result = self._execute_minigame(old_reason, new_reason, participants, fund_balance)
+            result = self._execute_minigame(old_reason, new_reason, participants, fund_balance, self.server_id)
             
             # Add forced flag to result
             result['forced'] = True

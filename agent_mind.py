@@ -396,7 +396,8 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
         prompt=summary_prompt,
         async_mode=True,
         call_type="recent_memory",
-        critical=False
+        critical=False,
+        server_id=resolved_server
     )
     
     # Extract new memory and notable recollection from response
@@ -616,7 +617,8 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         logger.warning("🧠 [DAILY_MEMORY] No server context available, skipping summary generation")
         return ""
     resolved_date = target_date or date.today().isoformat()
-    db_instance = get_global_db(server_id=resolved_server)
+    from agent_db import get_db_instance
+    db_instance = get_db_instance(resolved_server)
     
     # Get the most recent daily memory (not just today's)
     most_recent_daily = db_instance.get_most_recent_daily_memory_record()
@@ -666,7 +668,8 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         prompt=summary_prompt,
         async_mode=True,
         call_type="daily_memory",
-        critical=False
+        critical=False,
+        server_id=resolved_server
     )
     
     # Extract new memory (no extraction for daily memory now)
@@ -812,7 +815,8 @@ def generate_user_relationship_memory_summary(
         prompt=summary_prompt,
         async_mode=True,
         call_type="relationship_memory",
-        critical=False
+        critical=False,
+        server_id=resolved_server
     )
     llm_response = (summary_response or "").strip()
     
@@ -1447,7 +1451,8 @@ def call_llm(
     metadata: dict | None = None,
     logger: logging.Logger | None = None,
     user_id: str = None,
-    user_name: str = None
+    user_name: str = None,
+    server_id: str = None
 ) -> str:
     """
     Unified LLM call function that can operate in sync or async mode.
@@ -1464,6 +1469,7 @@ def call_llm(
         logger: Logger instance (auto-detected if None)
         user_id: User ID for fatigue tracking (optional)
         user_name: User name for fatigue tracking (optional)
+        server_id: Server ID for server-specific logging (optional, uses active server if not provided)
     
     Returns:
         LLM response text
@@ -1489,12 +1495,15 @@ def call_llm(
     log_prefix = "🤖 [CRITICAL]" if critical else "🤖 [BACKGROUND]"
     
     # Log the prompt once at the beginning
+    # Use provided server_id or get active server ID
+    effective_server_id = server_id or get_active_server_id()
     log_final_llm_prompt(
         provider="gemini" if not is_simulation_mode() and GEMINI_AVAILABLE else "groq",
         call_type=call_type,
         system_instruction=system_instruction,
         user_prompt=prompt,
-        metadata=metadata
+        metadata=metadata,
+        server_id=effective_server_id
     )
     
     try:
@@ -1519,7 +1528,7 @@ def call_llm(
                     try:
                         result = _call_gemini_async(
                             client_gemini, system_instruction, prompt, temperature, 
-                            max_tokens, start_time, call_type, critical, logger, user_id, user_name
+                            max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
                         )
                         if result is not None:
                             return result
@@ -1530,7 +1539,7 @@ def call_llm(
                     try:
                         result = _call_gemini_sync(
                             client_gemini, system_instruction, prompt, temperature,
-                            max_tokens, start_time, call_type, critical, logger, user_id, user_name
+                            max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
                         )
                         if result is not None:
                             return result
@@ -1547,14 +1556,14 @@ def call_llm(
     # Fallback to Groq
     return _call_groq_fallback(
         system_instruction, prompt, temperature, max_tokens, start_time,
-        call_type, critical, logger, user_id, user_name
+        call_type, critical, logger, user_id, user_name, server_id
     )
 
 
 def _call_gemini_sync(
     client_gemini, system_instruction: str, prompt: str, temperature: float,
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
-    user_id: str = None, user_name: str = None
+    user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
     """Synchronous Gemini call (for critical operations)"""
     result_queue = queue.Queue()
@@ -1606,8 +1615,8 @@ def _call_gemini_sync(
             
             # Log the response
             try:
-                server_id = get_active_server_id()
-                log_agent_response(postprocessed, role=call_type, server=server_id, response_length=len(postprocessed))
+                effective_server_id = server_id or get_active_server_id()
+                log_agent_response(postprocessed, role=call_type, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
             except Exception as log_error:
                 logger.warning(f"Failed to log response: {log_error}")
             
@@ -1637,7 +1646,7 @@ def _call_gemini_sync(
 def _call_gemini_async(
     client_gemini, system_instruction: str, prompt: str, temperature: float,
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
-    user_id: str = None, user_name: str = None
+    user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
     """Asynchronous Gemini call with threading (for _call_llm_async behavior)"""
     result_queue = queue.Queue()
@@ -1674,8 +1683,8 @@ def _call_gemini_async(
             
             # Log the response
             try:
-                server_id = get_active_server_id()
-                log_agent_response(postprocessed, role="subrole", server=server_id, response_length=len(postprocessed))
+                effective_server_id = server_id or get_active_server_id()
+                log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
             except Exception as log_error:
                 logger.warning(f"Failed to log subrole response: {log_error}")
             
@@ -1710,7 +1719,7 @@ def _call_gemini_async(
 def _call_groq_fallback(
     system_instruction: str, prompt: str, temperature: float,
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
-    user_id: str = None, user_name: str = None
+    user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
     """Fallback to Groq when Gemini fails, with Mistral as second fallback"""
     try:
@@ -1737,8 +1746,8 @@ def _call_groq_fallback(
         
         # Log the response
         try:
-            server_id = get_active_server_id()
-            log_agent_response(postprocessed, role="subrole", server=server_id, response_length=len(postprocessed))
+            effective_server_id = server_id or get_active_server_id()
+            log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
         
@@ -1756,14 +1765,14 @@ def _call_groq_fallback(
         logger.info(f"🤖 [FALLBACK] Trying Mistral as second fallback")
         return _call_mistral_fallback(
             system_instruction, prompt, temperature, max_tokens, start_time,
-            call_type, critical, logger, user_id, user_name
+            call_type, critical, logger, user_id, user_name, server_id
         )
 
 
 def _call_mistral_fallback(
     system_instruction: str, prompt: str, temperature: float,
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
-    user_id: str = None, user_name: str = None
+    user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
     """Second fallback to Mistral when both Gemini and Groq fail"""
     try:
@@ -1794,8 +1803,8 @@ def _call_mistral_fallback(
         
         # Log the response
         try:
-            server_id = get_active_server_id()
-            log_agent_response(postprocessed, role="subrole", server=server_id, response_length=len(postprocessed))
+            effective_server_id = server_id or get_active_server_id()
+            log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
         

@@ -172,11 +172,12 @@ def get_dice_game_instance(fixed_bet: int = 1) -> DiceGame:
         _game_instance = DiceGame(fixed_bet)
     return _game_instance
 
-def process_play(player_id: str, player_name: str, server_display_name: str, current_pot: int) -> Dict[str, Any]:
+def process_play(player_id: str, player_name: str, server_display_name: str, current_pot: int, server_id: str = None) -> Dict[str, Any]:
     try:
-        # Get server_id from the active server environment
-        from agent_db import get_active_server_id
-        server_id = get_active_server_id() or "default"
+        # Use provided server_id or get from active server environment
+        if server_id is None:
+            from agent_db import get_active_server_id
+            server_id = get_active_server_id() or "default"
         
         # Try to get banker database
         try:

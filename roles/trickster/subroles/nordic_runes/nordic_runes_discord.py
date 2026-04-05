@@ -82,136 +82,124 @@ class NordicRunesCommands:
             logger.info(f"No subcommand matched, treating as direct cast with args: {args}")
             return await self.cmd_runes_cast(ctx, args)
     
-    async def cmd_runes_cast(self, ctx, args: List[str]) -> str:
+    async def cmd_runes_cast(self, ctx, args_or_reading_type, question: Optional[str] = None) -> str:
         """Cast runes for a reading."""
-        # Debug logging
-        logger.info(f"cmd_runes_cast called with args: {args}")
-        
-        # Parse reading type
-        reading_type = 'single'  # default
-        question = ""
-        
-        if args:
-            # Check if first arg is a reading type
-            potential_type = args[0].lower()
-            logger.info(f"Checking potential_type: {potential_type}")
-            logger.info(f"Available types: {list(READING_TYPES.keys())}")
-            
-            if potential_type in READING_TYPES:
-                reading_type = potential_type
-                question = ' '.join(args[1:]) if len(args) > 1 else ""
-                logger.info(f"Using reading_type: {reading_type}, question: {question}")
-            else:
-                question = ' '.join(args)
-                logger.info(f"No valid type found, using question: {question}")
-        
-        # Validate reading type
+        if isinstance(args_or_reading_type, list):
+            args = args_or_reading_type
+            logger.info(f"cmd_runes_cast called with args: {args}")
+
+            reading_type = 'single'
+            parsed_question = ""
+
+            if args:
+                potential_type = args[0].lower()
+                logger.info(f"Checking potential_type: {potential_type}")
+                logger.info(f"Available types: {list(READING_TYPES.keys())}")
+
+                if potential_type in READING_TYPES:
+                    reading_type = potential_type
+                    parsed_question = ' '.join(args[1:]) if len(args) > 1 else ""
+                    logger.info(f"Using reading_type: {reading_type}, question: {parsed_question}")
+                else:
+                    parsed_question = ' '.join(args)
+                    logger.info(f"No valid type found, using question: {parsed_question}")
+        else:
+            reading_type = str(args_or_reading_type).lower()
+            parsed_question = question or ""
+            logger.info(f"cmd_runes_cast called with direct values: reading_type={reading_type}, question={parsed_question}")
+
         if reading_type not in READING_TYPES:
             logger.info(f"Invalid reading type: {reading_type}")
-            return get_message('invalid_type')
-        
-        # Check for question
-        if not question.strip():
+            if question is None and isinstance(args_or_reading_type, list):
+                return get_message('invalid_type')
+            return get_message('invalid_type'), None
+
+        if not parsed_question.strip():
             logger.info("No question provided")
-            return get_message('no_question')
-        
-        logger.info(f"Final - reading_type: {reading_type}, question: '{question}'")
-        
+            if question is None and isinstance(args_or_reading_type, list):
+                return get_message('no_question')
+            return get_message('no_question'), None
+
+        logger.info(f"Final - reading_type: {reading_type}, question: '{parsed_question}'")
+
         try:
-            # Perform the reading
-            reading = self.runes.get_reading(reading_type, question)
+            # Get server ID from Discord context
+            server_id = str(ctx.guild.id) if hasattr(ctx, 'guild') and ctx.guild else None
             
-            # Get user info
+            reading = self.runes.get_reading(reading_type, parsed_question, server_id)
+
             user_id = str(ctx.author.id) if hasattr(ctx, 'author') else 'unknown'
-            
-            # Save to database
+
             reading_id = self.db.save_reading(
                 user_id=user_id,
-                question=question,
+                question=parsed_question,
                 runes_drawn=reading['runes_drawn'],
                 interpretation=reading['interpretation'],
                 reading_type=reading_type
             )
-            
-            logger.info(f"Reading saved with ID: {reading_id}, question: '{question}'")
-            
-            # Get message strings
-            cast_title = get_message(f"{reading_type}_cast")
+
+            logger.info(f"Reading saved with ID: {reading_id}, question: '{parsed_question}'")
+
             question_label = get_message('question')
-            meaning_label = get_message('meaning')
-            keywords_label = get_message('keywords')
-            interpretation_label = get_message('interpretation')
-            success_msg = get_message('success')
-            saved_msg = get_message('saved')
-            
-            # Build plain text response
-            response = f"**{cast_title}**\n\n"
-            response += f"**{question_label}:** {question}\n\n"
-            
-            # Add rune display
+            response = f"**{question_label}:** {parsed_question}\n"
+            response += "---\n"
+
             if 'runes_drawn' in reading and reading['runes_drawn']:
-                # Load translations for rune meanings
                 try:
                     messages = load_personality_messages()
                     translations = messages.get('translations', {})
-                    positions = messages.get('positions', {})  # Load positions translations
-                except:
+                    positions = messages.get('positions', {})
+                except Exception:
                     translations = {}
                     positions = {}
-                
+
                 for rune in reading['runes_drawn']:
                     position = rune.get('position', '')
-                    # Try multiple possible keys for translation
                     possible_keys = [
                         rune.get('key', ''),
                         rune.get('name', '').lower(),
                         rune.get('name', '')
                     ]
-                    
-                    # Find the first key that has a translation
+
                     rune_translation = {}
                     for key in possible_keys:
                         if key and key in translations:
                             rune_translation = translations[key]
                             break
-                    
-                    # Create field name with position if applicable
-                    rune_name = f"{rune['symbol']} {rune['name']}"
+
+                    if not rune_translation:
+                        logger.warning(f"⚠️ [TRANSLATION] No translation found for {rune['name']} (tried keys: {possible_keys})")
+
                     if position and reading_type != 'single':
-                        # Translate position if available, otherwise use English
                         translated_position = positions.get(position, position)
-                        response += f"**{translated_position}:** {rune_name}\n\n"
-                    else:
-                        response += f"**{rune_name}**\n\n"
-                    
-                    # Create field value with meaning, keywords, and interpretation
-                    # Use translated meaning if available, otherwise English
+                        response += f"**{translated_position}:** "
+
+                    response += f"{rune['symbol']} {rune['name']} - "
                     meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
-                    response += f"**{meaning_label}:** {meaning_text}\n"
-                    
-                    # Use translated keywords if available, otherwise English
-                    keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
-                    response += f"**{keywords_label}:** {keywords_text}\n"
-                    
-                    # Use translated interpretation if available, otherwise English
-                    interpretation_text = rune_translation.get('interpretation', rune.get('description', 'No description'))
-                    response += f"**{interpretation_label}:** {interpretation_text}\n\n"
-            
-            # Add main interpretation
-            response += f"🔮 **Interpretation:**\n{reading['interpretation']}\n\n"
-            response += f"_{success_msg} {saved_msg}_"
-            
-            # Send via DM or channel
-            if send_dm_or_channel:
-                await send_dm_or_channel(ctx, response)
-                return None  # Message sent via send_dm_or_channel
-            else:
-                # Fallback: return as text
-                return response
-            
+                    response += f"{meaning_text}\n"
+                    response += "---\n"
+
+            main_response = response
+            interpretation_response = reading['interpretation']
+
+            if len(interpretation_response) > 2000:
+                split_point = interpretation_response[:2000].rfind('. ')
+                if split_point == -1:
+                    split_point = interpretation_response[:2000].rfind(' ')
+                if split_point == -1:
+                    split_point = 2000
+
+                first_part = interpretation_response[:split_point + 1]
+                second_part = interpretation_response[split_point + 1:].strip()
+                return main_response, first_part, second_part
+
+            return main_response, interpretation_response
+
         except Exception as e:
             logger.error(f"Error in rune casting: {e}")
-            return get_message('error')
+            if question is None and isinstance(args_or_reading_type, list):
+                return get_message('error')
+            return get_message('error'), None
     
     async def cmd_runes_history(self, ctx, args: List[str]) -> str:
         """Show user's reading history."""
@@ -283,119 +271,6 @@ class NordicRunesCommands:
         response += runes_content
         
         return response
-    
-    async def cmd_runes_canvas_cast(self, mock_message, reading_type: str, question: str) -> tuple[str, str]:
-        """Canvas-compatible rune casting.
-        
-        Returns:
-            tuple: (main_response, interpretation_response) - Two separate messages 
-                   to avoid Discord's 4000 character limit
-        """
-        try:
-            # Validate reading type
-            if reading_type not in READING_TYPES:
-                return get_message('invalid_type'), None
-            
-            # Check for question
-            if not question.strip():
-                return get_message('no_question'), None
-            
-            # Perform the reading
-            reading = self.runes.get_reading(reading_type, question)
-            
-            # Get user info from mock message
-            user_id = str(mock_message.author.id) if hasattr(mock_message, 'author') else 'canvas_user'
-            
-            # Save to database
-            reading_id = self.db.save_reading(
-                user_id=user_id,
-                question=question,
-                runes_drawn=reading['runes_drawn'],
-                interpretation=reading['interpretation'],
-                reading_type=reading_type
-            )
-            
-            # Format response for Canvas with personality
-            type_info = get_reading_type(reading_type)
-            cast_title = get_message(f"{reading_type}_cast")
-            question_label = get_message('question')
-            response = f"**{question_label}:** {question}\n"
-            response += "---\n"
-            # Add rune display
-            if 'runes_drawn' in reading and reading['runes_drawn']:
-                # Load translations for rune meanings
-                try:
-                    messages = load_personality_messages()
-                    translations = messages.get('translations', {})
-                    positions = messages.get('positions', {})  # Load positions translations
-                except:
-                    translations = {}
-                    positions = {}
-                
-                for rune in reading['runes_drawn']:
-                    position = rune.get('position', '')
-                    # Try multiple possible keys for translation
-                    possible_keys = [
-                        rune.get('key', ''),
-                        rune.get('name', '').lower(),
-                        rune.get('name', '')
-                    ]
-                    
-                    # Find the first key that has a translation
-                    rune_translation = {}
-                    for key in possible_keys:
-                        if key and key in translations:
-                            rune_translation = translations[key]
-                            break
-                    
-                    if not rune_translation:
-                        logger.warning(f"⚠️ [TRANSLATION] Canvas no translation found for {rune['name']} (tried keys: {possible_keys})")
-                    
-                    # Only show position for multi-rune spreads, not for single rune casts
-                    if position and reading_type != 'single':
-                        # Translate position if available, otherwise use English
-                        translated_position = positions.get(position, position)
-                        response += f"**{translated_position}:** "
-                    response += f"{rune['symbol']} {rune['name']} - "
-                    # Use translated meaning if available, otherwise English
-                    meaning_text = rune_translation.get('meaning', rune.get('meaning', 'Unknown'))
-                    response += f"{meaning_text}\n"
-                    
-                    # Use translated keywords if available, otherwise English
-                    #keywords_text = rune_translation.get('keywords', ', '.join(rune.get('keywords', [])))
-                    #response += f"**{get_message('keywords')}:** {keywords_text}\n\n"
-                    
-                    # Use translated interpretation if available, otherwise English
-                    #interpretation_text = rune_translation.get('interpretation', rune.get('description', 'No description'))
-                    #response += f"**{get_message('interpretation')}:** {interpretation_text}\n\n"
-                    
-                    response += "---\n"
-            
-            # Split into two messages to avoid Discord 4000 character limit
-            main_response = response
-            interpretation_response = reading['interpretation']
-            
-            # Split interpretation_response if it exceeds 2000 characters
-            if len(interpretation_response) > 2000:
-                # Find a good split point (preferably at a sentence break)
-                split_point = interpretation_response[:2000].rfind('. ')
-                if split_point == -1:  # No sentence break found, split at space
-                    split_point = interpretation_response[:2000].rfind(' ')
-                if split_point == -1:  # No space found, split at exactly 2000
-                    split_point = 2000
-                
-                first_part = interpretation_response[:split_point + 1]  # Include the period/space
-                second_part = interpretation_response[split_point + 1:].strip()
-                
-                # Return tuple with three elements: main_response, interpretation_part1, interpretation_part2
-                return main_response, first_part, second_part
-            else:
-                # Return both messages as a tuple for the Canvas UI to handle
-                return main_response, interpretation_response
-            
-        except Exception as e:
-            logger.error(f"Error in canvas rune casting: {e}")
-            return get_message('error'), None
     
     async def cmd_runes_canvas_history(self, mock_message, limit: int = 5) -> str:
         """Canvas-compatible reading history."""

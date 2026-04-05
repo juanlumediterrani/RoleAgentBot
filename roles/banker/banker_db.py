@@ -33,31 +33,36 @@ class BankerRolesDB:
             # Check if wallet already exists
             existing = self.roles_db.get_banker_wallet(wallet_id)
             if existing:
-                # If wallet exists but has 0 balance and is a user wallet, apply opening bonus
-                if wallet_type == 'user' and existing.get('balance', 0) == 0:
+                # If wallet exists but has 0 balance, apply opening bonus for user wallets and dice game pot
+                if (wallet_type == 'user' or wallet_id == "dice_game_pot") and existing.get('balance', 0) == 0:
                     tae = self.get_tae(self.server_id)
                     initial_balance = tae * 10
                     if initial_balance > 0:
-                        logger.info(f"💰 Applying retroactive opening bonus of {initial_balance} coins (10x TAE={tae}) to existing wallet {wallet_id}")
+                        bonus_type = "opening bonus" if wallet_type == 'user' else "pot initialization"
+                        logger.info(f"💰 Applying retroactive {bonus_type} of {initial_balance} coins (10x TAE={tae}) to existing wallet {wallet_id}")
                         # Add the opening bonus
                         success = self.add_balance(wallet_id, initial_balance)
                         if success:
                             # Record bonus transaction
                             self.roles_db.save_banker_transaction(
                                 "system", wallet_id, initial_balance, "opening_bonus", 
-                                f"Retroactive opening bonus (10x TAE) for existing {wallet_type} wallet", "system"
+                                f"Retroactive {bonus_type} (10x TAE) for existing {wallet_type} wallet", "system"
                             )
                         return success
                 else:
                     logger.info(f"Wallet {wallet_id} already exists with balance {existing.get('balance', 0)}")
                     return True
             
-            # Calculate opening bonus (10x TAE) for user wallets
+            # Calculate opening bonus (10x TAE) for user wallets and dice game pot
             initial_balance = 0
             if wallet_type == 'user':
                 tae = self.get_tae(self.server_id)
                 initial_balance = tae * 10
                 logger.info(f"💰 Applying opening bonus of {initial_balance} coins (10x TAE={tae}) to new wallet {wallet_id}")
+            elif wallet_id == "dice_game_pot":
+                tae = self.get_tae(self.server_id)
+                initial_balance = tae * 10
+                logger.info(f"🎲 Initializing dice game pot with {initial_balance} coins (10x TAE={tae})")
             
             # Create wallet with initial balance
             success = self.roles_db.save_banker_wallet(

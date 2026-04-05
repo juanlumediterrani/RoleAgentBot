@@ -90,8 +90,11 @@ class BeggarConfig:
     def save_config(self, config: Dict[str, Any]) -> bool:
         """Save beggar configuration to roles_config."""
         try:
+            logger.info(f"Saving beggar config for server {self.server_id}")
             # Extract config data (everything except enabled)
             config_data = {k: v for k, v in config.items() if k != 'enabled'}
+            logger.info(f"Config data to save: {config_data}")
+            logger.info(f"Enabled status to save: {config.get('enabled', False)}")
             
             success = self.roles_db.save_role_config(
                 'beggar', 
@@ -101,11 +104,13 @@ class BeggarConfig:
             
             if success:
                 logger.info(f"Saved beggar config for server {self.server_id}")
+            else:
+                logger.error(f"Failed to save beggar config for server {self.server_id}")
             
             return success
             
         except Exception as e:
-            logger.error(f"Error saving beggar config: {e}")
+            logger.error(f"Error saving beggar config: {e}", exc_info=True)
             return False
     
     def is_enabled(self) -> bool:
@@ -115,9 +120,14 @@ class BeggarConfig:
     
     def set_enabled(self, enabled: bool) -> bool:
         """Enable or disable beggar."""
+        logger.info(f"Setting beggar enabled to {enabled} for server {self.server_id}")
         config = self.get_config()
+        logger.info(f"Current config before change: {config}")
         config['enabled'] = enabled
-        return self.save_config(config)
+        logger.info(f"Config after change: {config}")
+        result = self.save_config(config)
+        logger.info(f"save_config returned: {result}")
+        return result
     
     def get_frequency_hours(self) -> int:
         """Get task execution frequency in hours."""

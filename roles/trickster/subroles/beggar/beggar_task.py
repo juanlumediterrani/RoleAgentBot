@@ -30,17 +30,10 @@ logger = get_logger('beggar_task')
 class BeggarDonationView(View):
     """View with donation buttons for beggar messages."""
     
-    def __init__(self, current_reason: str):
+    def __init__(self, current_reason: str, server_id: str):
         super().__init__(timeout=300)  # 5 minutes timeout
         self.current_reason = current_reason
-        
-        # Get server name from runtime context
-        try:
-            from agent_runtime import get_active_server_name
-            server_name = get_active_server_name()
-            self.server_id = server_name if server_name else "default"
-        except Exception:
-            self.server_id = "default"
+        self.server_id = str(server_id)
             
         self.config = get_beggar_config(self.server_id)
         
@@ -76,8 +69,7 @@ class BeggarDonationView(View):
             banker_db = get_banker_db_instance(self.server_id) if get_banker_db_instance else None
             
             if banker_db:
-                # For now, use fixed amounts since get_current_tae doesn't exist
-                # TODO: Implement TAE rate system in banker_db if needed
+                # Use fixed multiplier amounts - TAE rate system not implemented yet
                 base_amounts = {1: 1, 3: 3}
                 return base_amounts.get(multiplier, 1)
             else:
@@ -179,15 +171,9 @@ class BeggarDonationView(View):
 class BeggarTask:
     """Automated task system for beggar public messages."""
     
-    def __init__(self, bot_instance=None):
+    def __init__(self, server_id: str, bot_instance=None):
         self.bot_instance = bot_instance
-        # Get server name from runtime context
-        try:
-            from agent_runtime import get_active_server_name
-            server_name = get_active_server_name()
-            self.server_id = server_name if server_name else "default"
-        except Exception:
-            self.server_id = "default"
+        self.server_id = str(server_id)
         
         self.config = get_beggar_config(self.server_id)
         self.roles_db = get_roles_db_instance(self.server_id)
@@ -238,12 +224,13 @@ class BeggarTask:
                 async_mode=True,
                 call_type="beggar_task",
                 critical=False,
-                temperature=0.95
+                temperature=0.95,
+                server_id=self.server_id
             )
             
             if response and len(response.strip()) > 5:
                 # Create donation view
-                view = BeggarDonationView(current_reason)
+                view = BeggarDonationView(current_reason, self.server_id)
                 
                 # Send message to channel with buttons
                 await target_channel.send(response, view=view)
@@ -480,11 +467,11 @@ class BeggarTask:
 
 
 # Task execution interface for agent_engine.py
-async def execute_beggar_task(bot_instance=None) -> bool:
+async def execute_beggar_task(server_id: str, bot_instance=None) -> bool:
     """Interface function for agent_engine.py to execute beggar task."""
     try:
-        task = BeggarTask(bot_instance=bot_instance)
+        task = BeggarTask(server_id=server_id, bot_instance=bot_instance)
         return await task.execute_task()
     except Exception as e:
-        logger.error(f"Error in execute_beggar_task: {e}")
+        logger.error(f"Error in execute_beggar_task for server {server_id}: {e}")
         return False

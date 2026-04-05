@@ -102,7 +102,8 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
                 "interaction_type": "taboo",
                 "is_public": True
             },
-            logger=logger
+            logger=logger,
+            server_id=server_id
         )
         
         # If LLM response is good, use it, otherwise fallback to taboo function

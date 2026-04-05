@@ -24,14 +24,14 @@ def init_roles_config_for_server(server_id: str):
         roles_db = get_roles_db_instance(server_id)
         
         # First, ensure default roles exist
-        success = roles_db.ensure_default_roles(server_id)
+        success = roles_db.ensure_default_roles()
         if success:
             logger.info("✅ Default roles ensured")
         else:
             logger.error("❌ Failed to ensure default roles")
         
         # Then, migrate from behavior.db if available
-        success = roles_db.migrate_roles_from_behavior(server_id)
+        success = roles_db.migrate_roles_from_behavior()
         if success:
             logger.info("✅ Migration from behavior.db completed")
         else:
@@ -61,12 +61,15 @@ def init_roles_config_for_server(server_id: str):
         return False
 
 def main():
-    """Initialize roles_config for all known servers."""
+    """Initialize roles_config for specified server or all known servers."""
     try:
-        # Default server ID (from the bot)
-        default_server_id = "0"
+        # Get server ID from command line argument or use default
+        if len(sys.argv) > 1:
+            default_server_id = sys.argv[1]
+        else:
+            default_server_id = "0"
         
-        logger.info("🚀 Starting roles_config initialization")
+        logger.info(f"🚀 Starting roles_config initialization for server {default_server_id}")
         
         success = init_roles_config_for_server(default_server_id)
         

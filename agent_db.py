@@ -35,6 +35,27 @@ def get_active_server_id() -> str | None:
     return None
 
 
+def get_all_server_ids() -> list[str]:
+    """Get all server IDs that have databases."""
+    try:
+        db_dir = Path("databases")
+        if not db_dir.exists():
+            return []
+        
+        server_ids = []
+        for server_dir in db_dir.iterdir():
+            if server_dir.is_dir() and server_dir.name.isdigit():
+                # Check if this server has an agent database
+                agent_db_path = server_dir / f"agent_{get_personality_name().lower()}.db"
+                if agent_db_path.exists():
+                    server_ids.append(server_dir.name)
+        
+        return sorted(server_ids)
+    except Exception as e:
+        logger.error(f"Error getting all server IDs: {e}")
+        return []
+
+
 def get_user_last_server_id(user_id: str) -> str | None:
     """Get the last server ID where the user had interactions."""
     try:

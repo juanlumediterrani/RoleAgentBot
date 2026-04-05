@@ -308,36 +308,24 @@ async def on_ready():
 
     _commands_registered = True
 
-    # Choose active server
-    preferred_guild = os.getenv("DISCORD_ACTIVE_GUILD", "").strip().lower()
-    active_guild = None
-    if preferred_guild:
-        for g in bot.guilds:
-            if g.name.lower() == preferred_guild:
-                active_guild = g
-                break
-    if active_guild is None and bot.guilds:
-        active_guild = bot.guilds[0]
-
-    if active_guild is not None:
-        from discord_bot.discord_utils import get_server_key
-        server_key = get_server_key(active_guild)
-        set_current_server(server_key)
-        update_log_file_path(server_key, _personality_name)
-        logger = get_logger('discord')
-        logger.info(f"📁 Active server: '{active_guild.name}' ({server_key})")
+    # Initialize all servers on startup
+    from discord_bot.db_init import initialize_server_complete
+    
+    if bot.guilds:
+        logger.info(f"🚀 Initializing {len(bot.guilds)} servers on startup...")
         
-        # Load default roles for this server
-        try:
-            from agent_roles_db import RolesDatabase
-            roles_db = RolesDatabase(server_key)
-            default_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
-            for role_name in default_roles:
-                # Enable each default role if not already configured
-                roles_db.save_role_config(role_name, True, '{}')
-            logger.info(f"🎭 Default roles loaded for server '{active_guild.name}'")
-        except Exception as e:
-            logger.warning(f"Failed to load default roles for server '{active_guild.name}': {e}")
+        for guild in bot.guilds:
+            logger.info(f"🚀 Initializing server: '{guild.name}' ({guild.id})")
+            init_success = await initialize_server_complete(guild, agent_config, is_startup=True)
+            
+            if init_success:
+                logger.info(f"✅ Server initialization completed successfully for '{guild.name}'")
+            else:
+                logger.warning(f"⚠️ Some initialization tasks failed for '{guild.name}'")
+                
+        logger.info(f"🎯 All {len(bot.guilds)} servers initialization completed")
+    else:
+        logger.warning("⚠️ No guilds available for initialization")
 
     logger.info(f"🤖 Bot {_bot_display_name} connected as {bot.user}")
     logger.info(f"🤖 Prefix: {_cmd_prefix} | Intents: members={bot.intents.members}, presences={bot.intents.presences}")
@@ -355,33 +343,18 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     """Runs when the bot joins a new server."""
-    from discord_bot.discord_utils import get_server_key
-    server_key = get_server_key(guild)
-    update_log_file_path(server_key, _personality_name)
-    logger.info(f"📁 New server: '{guild.name}' ({server_key})")
+    # Use unified server initialization
+    from discord_bot.db_init import initialize_server_complete
+    
+    logger.info(f"🏰 Joining new guild: '{guild.name}'")
+    init_success = await initialize_server_complete(guild, agent_config, is_startup=False)
+    
+    if init_success:
+        logger.info(f"🎉 New guild initialization completed successfully for '{guild.name}'")
+    else:
+        logger.warning(f"⚠️ Some initialization tasks failed for '{guild.name}'")
 
-    # Initialize news watcher feeds for this server
-    if is_role_enabled_check("news_watcher", agent_config):
-        try:
-            from roles.news_watcher.db_role_news_watcher import DatabaseRoleNewsWatcher
-            news_db = DatabaseRoleNewsWatcher(server_key)
-            # Run feed health check when joining a new server
-            news_db._ensure_feed_health()
-            logger.info(f"📡 News watcher feeds initialized and health-checked for server {guild.name}")
-        except Exception as e:
-            logger.error(f"❌ Error initializing news watcher for server {guild.name}: {e}")
-
-    if is_role_enabled_check("mc", agent_config):
-        for channel in guild.text_channels:
-            if channel.permissions_for(guild.me).send_messages:
-                mc_cfg = _discord_cfg.get("mc_messages", {})
-                msg = mc_cfg.get("welcome_message",
-                    "🎵 **MC has arrived!** 🎵\n"
-                    "• `!mc play <song>` - Play music\n"
-                    "• `!mc help` - Show all commands\n"
-                    "🎤 **Join a voice channel to begin!**")
-                await channel.send(msg)
-                break
+    # MC welcome message removed - no longer sends message when joining new servers
 
 
 @bot.event
@@ -472,11 +445,11 @@ async def on_message(message):
             from discord_bot.discord_core_commands import is_taboo_triggered
             taboo_hit, taboo_keyword = is_taboo_triggered(int(message.guild.id), message.content)
             if taboo_hit:
-                server_name = get_server_key(message.guild)
+                server_id = get_server_key(message.guild)
                 
                 # Process taboo trigger using extracted function
                 from behavior.taboo.taboo import process_taboo_trigger
-                await process_taboo_trigger(message, taboo_keyword, server_name)
+                await process_taboo_trigger(message, taboo_keyword, server_id)
                 return
         except Exception as e:
             logger.exception(f"Error processing taboo trigger: {e}")
@@ -530,7 +503,7 @@ def _clean_message_content(message):
         return message.content
 
 
-async def _process_accuse_flag(message, llm_response: str, server_name: str, is_public: bool) -> str | None:
+async def _process_accuse_flag(message, llm_response: str, server_id: str, is_public: bool) -> str | None:
     """Process ACCUSE <USERNAME> flag from LLM response."""
     try:
         # Import the ring extraction function
@@ -564,6 +537,9 @@ async def _process_accuse_flag(message, llm_response: str, server_name: str, is_
             logger.info("ACCUSE flag ignored - no suitable server found")
             return
             
+        # Get server ID for logging
+        server_id = str(guild.id)
+            
         logger.info(f"🎯 Processing ACCUSE flag in server: {guild.name}")
         
         # Validate the username against server members
@@ -579,17 +555,17 @@ async def _process_accuse_flag(message, llm_response: str, server_name: str, is_
                 
         if target_member:
             logger.info(f"✅ User '{accused_username}' found in server: {target_member.name}")
-            return await _handle_valid_accusation(message, target_member, guild, server_name, is_public)
+            return await _handle_valid_accusation(message, target_member, guild, server_id, is_public)
         else:
             logger.info(f"❌ User '{accused_username}' not found in server")
-            return await _handle_false_accusation(message, accused_username, guild, server_name, is_public)
+            return await _handle_false_accusation(message, accused_username, guild, server_id, is_public)
             
     except Exception as e:
         logger.exception(f"Error processing ACCUSE flag: {e}")
         return None
 
 
-async def _handle_valid_accusation(message, target_member, guild, server_name: str, is_public: bool) -> str:
+async def _handle_valid_accusation(message, target_member, guild, server_id: str, is_public: bool) -> str:
     """Handle accusation when the user exists in the server."""
     try:
         server_id = str(guild.id)
@@ -619,14 +595,14 @@ async def _handle_valid_accusation(message, target_member, guild, server_name: s
         from agent_db import get_global_db
         
         # Get database instance for memory retrieval
-        db_instance = get_global_db(server_name) if server_name else get_global_db()
+        db_instance = get_global_db(server_id) if server_id else get_global_db()
         
         # Build memory sections using existing functions (for the user who sent the message)
-        memory_block = _build_prompt_memory_block(server=server_name)
+        memory_block = _build_prompt_memory_block(server=server_id)
         relationship_block = _build_prompt_relationship_block(
             user_id=message.author.id, 
             user_name=message.author.display_name, 
-            server=server_name
+            server=server_id
         )
         
         # Get recent interactions for context (for the user who sent the message)
@@ -679,7 +655,8 @@ async def _handle_valid_accusation(message, target_member, guild, server_name: s
             critical=True,
             logger=logger,
             user_id=str(message.author.id),
-            user_name=message.author.display_name
+            user_name=message.author.display_name,
+            server_id=server_id
         )
         
         if response and response.strip():
@@ -692,7 +669,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_name: s
         return f"GRAAAH! {target_member.display_name}! Don't lie to me, I know you have the ring! Leave it alone or I'll rip your fingers off!"
 
 
-async def _handle_false_accusation(message, accused_username: str, guild, server_name: str, is_public: bool) -> str:
+async def _handle_false_accusation(message, accused_username: str, guild, server_id: str, is_public: bool) -> str:
     """Handle accusation when the user doesn't exist in the server."""
     try:
         # Build false accusation prompt for LLM
@@ -715,20 +692,20 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
         from agent_db import get_global_db
         
         # Get database instance for memory retrieval
-        db_instance = get_global_db(server_name) if server_name else get_global_db()
+        db_instance = get_global_db(server_id) if server_id else get_global_db()
         
         # Build memory sections using proper functions
-        memory_block = _build_prompt_memory_block(server=server_name)
+        memory_block = _build_prompt_memory_block(server=server_id)
         
         # Use message.author for relationship context
         relationship_block = _build_prompt_relationship_block(
             user_id=message.author.id,
             user_name=message.author.display_name,
-            server=server_name
+            server=server_id
         )
         last_interactions_block = _build_prompt_last_interactions_block(
             user_id=message.author.id,
-            server=server_name
+            server=server_id
         )
         
         # Build the prompt with proper memory sections
@@ -779,7 +756,8 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
             critical=True,
             logger=logger,
             user_id=str(message.author.id),
-            user_name=message.author.display_name
+            user_name=message.author.display_name,
+            server_id=server_id
         )
         
         if response and response.strip():
@@ -806,11 +784,11 @@ async def _process_chat_message(message):
         clean_content = _clean_message_content(message)
 
         server_context = ""
-        server_name = None
+        server_id = None
         if message.guild:
             from discord_bot.discord_utils import get_server_key
-            server_name = get_server_key(message.guild)
-            server_context = f"Server: {message.guild.name} ({server_name})"
+            server_id = get_server_key(message.guild)
+            server_context = f"Server: {message.guild.name} ({server_id})"
 
         active_roles = []
         roles_config = AGENT_CFG.get("roles", {})
@@ -826,7 +804,7 @@ async def _process_chat_message(message):
             from agent_mind import _build_conversation_channel_prompt
             contextual_prompt = _build_conversation_channel_prompt(
                 user_content=clean_content,
-                server=server_name,
+                server=server_id,
                 user_id=message.author.id,
                 user_name=message.author.name,
                 channel_id=message.channel.id,
@@ -837,7 +815,7 @@ async def _process_chat_message(message):
             contextual_prompt = _build_conversation_user_prompt(
                 user_id=message.author.id,
                 user_content=clean_content,
-                server=server_name,
+                server=server_id,
                 user_name=message.author.name,
             )
 
@@ -852,13 +830,14 @@ async def _process_chat_message(message):
                 "is_public": is_public,
                 "user_id": message.author.id,
                 "role": _bot_display_name,
-                "server": server_name,
+                "server": server_id,
                 "channel_id": message.channel.id if is_public else None,
                 "is_mention": is_mention
             },
             logger=logger,
             user_id=str(message.author.id),
-            user_name=message.author.display_name
+            user_name=message.author.display_name,
+            server_id=server_id
         )
 
         # Check if this is a README response (deprecated is_help_request removed)
@@ -883,14 +862,15 @@ async def _process_chat_message(message):
                         "is_public": is_public,
                         "user_id": message.author.id,
                         "role": _bot_display_name,
-                        "server": server_name,
+                        "server": server_id,
                         "channel_id": message.channel.id if is_public else None,
                         "is_mention": is_mention,
                         "readme_enhanced": True
                     },
                     logger=logger,
                     user_id=str(message.author.id),
-                    user_name=message.author.display_name
+                    user_name=message.author.display_name,
+                    server_id=server_id
                 )
                 
                 logger.info(f"✅ README enhanced response generated")
@@ -916,8 +896,8 @@ async def _process_chat_message(message):
             # Server message - use guild context
             from behavior.db_behavior import get_behavior_db_instance
             from discord_bot.discord_utils import get_server_key
-            server_name = get_server_key(message.guild)
-            behavior_db = get_behavior_db_instance(server_name)
+            server_id = get_server_key(message.guild)
+            behavior_db = get_behavior_db_instance(server_id)
             await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, message.guild.id)
         else:
             # DM message - check all guilds where user might have received greetings
@@ -930,19 +910,19 @@ async def _process_chat_message(message):
             for db_path in db_paths:
                 try:
                     # Extract server name from path
-                    server_name = os.path.basename(os.path.dirname(db_path))
-                    behavior_db = get_behavior_db_instance(server_name)
+                    server_id = os.path.basename(os.path.dirname(db_path))
+                    behavior_db = get_behavior_db_instance(server_id)
                     # Try to mark user as replied in this server
                     replied = await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, "dm_context")
                     if replied:
-                        logger.info(f"Marked user {message.author.name} as replied via DM for server {server_name}")
+                        logger.info(f"Marked user {message.author.name} as replied via DM for server {server_id}")
                 except Exception as e:
-                    logger.debug(f"Could not mark user replied for server {server_name}: {e}")
+                    logger.debug(f"Could not mark user replied for server {server_id}: {e}")
 
         # Check for ACCUSE flag in LLM response
         accusation_response = None
         if response and "ACCUSE" in response:
-            accusation_response = await _process_accuse_flag(message, response, server_name, is_public)
+            accusation_response = await _process_accuse_flag(message, response, server_id, is_public)
 
         # Send response to user (either original LLM response or accusation-specific response)
         if accusation_response:

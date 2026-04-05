@@ -791,9 +791,9 @@ def check_keywords_regex(title: str, keywords: str) -> bool:
         logger.exception(f"Error checking keywords with regex: {e}")
         return False
 
-# Legacy helper kept for reference. Unused callers should prefer the newer pipeline.
+# Helper function for RSS feed retrieval - maintained for compatibility
 async def get_latest_news(url: str, name_feed: str, limite: int = 5) -> list:
-    """Get the latest news from an RSS feed (legacy path)."""
+    """Get the latest news from an RSS feed."""
     try:
         headers = {"User-Agent": "RoleAgentBot/1.0"}
         async with aiohttp.ClientSession(headers=headers) as session:
@@ -837,7 +837,7 @@ async def get_latest_news(url: str, name_feed: str, limite: int = 5) -> list:
         logger.exception(f"❌ Could not get feed {name_feed}: {e}")
         return []
 
-# Load environment variables // Legacy?
+# Load environment variables from multiple possible locations
 _env_candidates = [
     (os.getenv("ROLE_AGENT_ENV_FILE") or "").strip(),
     os.path.expanduser("~/.roleagentbot.env"),
@@ -1222,7 +1222,8 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
                 user_prompt=user_prompt,
                 role="news_watcher",
                 server=server_name,
-                metadata=metadata
+                metadata=metadata,
+                server_id=server_name
             )
         except Exception as e:
             logger.warning(f"Could not log prompt to prompts.log: {e}")
@@ -1259,7 +1260,8 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
             log_prompt(
                 prompt_type="cohere_response",
                 content=result,
-                metadata=response_metadata
+                metadata=response_metadata,
+                server_id=server_name
             )
         except Exception as e:
             logger.warning(f"Could not log Cohere response to prompts.log: {e}")

@@ -287,7 +287,7 @@ class NordicRunes:
         
         return interpretation
     
-    def interpret_runes_with_ai(self, reading_type: str, rune_keys: List[str], question: str = "") -> str:
+    def interpret_runes_with_ai(self, reading_type: str, rune_keys: List[str], question: str = "", server_id: str = None) -> str:
         """Interpret runes using AI for precise contextual analysis."""
         logger.info(f"🔮 [NORDIC_RUNES] interpret_runes_with_ai called with reading_type={reading_type}, rune_keys={rune_keys}, question='{question}'")
         
@@ -524,25 +524,36 @@ class NordicRunes:
                 guidance_data=guidance_data_text
             )
             
-            # Step 6: Get AI response using call_llm function
-            # Log the prompt being sent to AI
-            logger.info(f" [NORDIC_RUNES_AI] Prompt sent to LLM for {reading_type} reading:")
-            logger.info(f"Question: {question}")
-            logger.info(f"Prompt length: {len(formatted_prompt)} characters")
-            logger.info(f"Role context: nordic_runes_interpreter")
-            logger.info(f"Mission prompt key: nordic_runes")
-            logger.info(f"Full prompt:\n{formatted_prompt}")
-            
-            # Build system instruction
+            # Step 6: Build system instruction first
             from agent_engine import _build_system_prompt, PERSONALITY
             system_instruction = _build_system_prompt(PERSONALITY)
             
+            # Step 7: Log the prompt being sent to AI using the proper prompt logging system
+            from prompts_logger import log_final_llm_prompt
+            from agent_db import get_active_server_id
+            
+            log_final_llm_prompt(
+                provider="gemini",
+                call_type="nordic_runes_reading",
+                system_instruction=system_instruction,
+                user_prompt=formatted_prompt,
+                role="nordic_runes",
+                server_id=server_id or get_active_server_id(),
+                metadata={
+                    "reading_type": reading_type,
+                    "question": question,
+                    "prompt_length": len(formatted_prompt)
+                }
+            )
+            
+            # Step 8: Get AI response using call_llm function
             ai_response = call_llm(
                 system_instruction=system_instruction,
                 prompt=formatted_prompt,
                 async_mode=False,
                 call_type="nordic_runes",
                 critical=True,
+                server_id=server_id,
                 metadata={
                     "interaction_type": "role_command",
                     "role_context": "nordic_runes_interpreter",
@@ -561,10 +572,7 @@ class NordicRunes:
             logger.error(f"Error getting AI interpretation: {e}")
             # Fallback to traditional interpretation
             if reading_type == 'single':
-                # Get the full rune data for single interpretation
-                rune_key = rune_keys[0]
-                rune_data = get_rune(rune_key)
-                return self.interpret_single_rune(rune_data, question)
+                return self.interpret_single_rune(rune_keys[0], question)
             elif reading_type == 'three':
                 return self.interpret_three_runes(rune_keys, question)
             elif reading_type == 'cross':
@@ -715,7 +723,7 @@ class NordicRunes:
         """Get guidance for seven-rune cross."""
         return "The runic cross provides comprehensive insight into your situation, from spiritual guidance to practical considerations. All aspects are interconnected."
     
-    def get_reading(self, reading_type: str, question: str = "") -> Dict[str, Any]:
+    def get_reading(self, reading_type: str, question: str = "", server_id: str = None) -> Dict[str, Any]:
         """Perform a complete rune reading."""
         try:
             # Cast the runes
@@ -744,7 +752,7 @@ class NordicRunes:
             
             # Get interpretation - use AI if available, fallback to traditional
             if AI_AVAILABLE:
-                interpretation = self.interpret_runes_with_ai(reading_type, [r['key'] for r in drawn_runes], question)
+                interpretation = self.interpret_runes_with_ai(reading_type, [r['key'] for r in drawn_runes], question, server_id)
             else:
                 # Traditional interpretation
                 if reading_type == 'single':

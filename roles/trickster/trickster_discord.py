@@ -142,7 +142,7 @@ def register_trickster_commands(bot, personality, agent_config):
                 # Send first message immediately
                 try:
                     from .subroles.beggar.beggar_task import execute_beggar_task
-                    success = await execute_beggar_task(bot_instance=ctx.bot)
+                    success = await execute_beggar_task(server_id=server_id, bot_instance=ctx.bot)
                     if success:
                         await ctx.send(f"🙏 **Beggar enabled for the server** - First message sent with reason: '{selected_reason}'")
                         logger.info(f"🎭 {ctx.author.name} enabled beggar for {ctx.guild.name} - Reason: {selected_reason} - First message sent")

@@ -874,7 +874,7 @@ class RolesDatabase:
                                         if subrole_name == 'beggar' and subrole_enabled:
                                             try:
                                                 from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
-                                                beggar_config = get_beggar_config(server_id)
+                                                beggar_config = get_beggar_config(self.server_id)
 
                                                 if not beggar_config.get_current_reason():
                                                     selected_reason = beggar_config.select_new_reason()
@@ -893,7 +893,7 @@ class RolesDatabase:
                                     if subrole_name == 'beggar' and subrole_enabled:
                                         try:
                                             from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
-                                            beggar_config = get_beggar_config(server_id)
+                                            beggar_config = get_beggar_config(self.server_id)
                                             
                                             # Check if reason is not already set
                                             if not beggar_config.get_current_reason():
@@ -973,7 +973,7 @@ class RolesDatabase:
             return False
     
     def migrate_legacy_beggar_data(self, server_id: str) -> bool:
-        """Migrate legacy beggar data from the dedicated beggar database into roles.db."""
+        """Migrate beggar data from the dedicated beggar database into roles.db."""
         legacy_path = Path(get_database_path(server_id, 'beggar'))
         if not legacy_path.exists():
             return False
