@@ -147,8 +147,22 @@ async def _cleanup_canvas_view_on_timeout(view, context_name: str = "Canvas") ->
     max_attempts = 3
     for attempt in range(max_attempts):
         try:
+            # Delete the Canvas view message first
             if view.message:
                 await view.message.delete()
+            
+            # Also delete the original command message if it exists
+            if hasattr(view, 'original_command_message') and view.original_command_message:
+                try:
+                    await view.original_command_message.delete()
+                except discord.NotFound:
+                    # Original command message already deleted, that's fine
+                    pass
+                except discord.Forbidden:
+                    logger.debug(f"Could not delete original command message due to missing permissions.")
+                except discord.HTTPException as e:
+                    logger.debug(f"Could not delete original command message: {e}")
+            
             view.stop()
             return  # Success, exit the method
         except discord.NotFound:
@@ -531,6 +545,9 @@ class CanvasSmartBackButton(discord.ui.Button):
             if not _build_canvas_home or not _build_canvas_embed:
                 raise ImportError("Home view functions not available")
             
+            # Get correct server_id from guild
+            server_id = get_server_key(view.guild) if view.guild else "default"
+            
             # Build home content
             content = _build_canvas_home(
                 view.agent_config,
@@ -541,7 +558,7 @@ class CanvasSmartBackButton(discord.ui.Button):
                 "!canvas",
                 "!talk",
                 view.admin_visible,
-                "default",
+                server_id,
                 view.author_id,
                 view.guild,
                 False
@@ -563,7 +580,7 @@ class CanvasSmartBackButton(discord.ui.Button):
                 "!canvas", 
                 "!talk", 
                 view.admin_visible,
-                "default",
+                server_id,
                 view.author_id,
                 view.guild,
                 False
@@ -971,7 +988,7 @@ class CanvasRoleDetailSelect(discord.ui.Select):
             admin_visible=view.admin_visible,
             sections=view.sections,
             current_detail=detail_name,
-            guild=view.guild,
+            guild=view.guild or interaction.guild,  # Fallback to interaction guild if view guild is None
             message=interaction.message,  # Add message reference
             watcher_selected_method=getattr(view, 'watcher_selected_method', None),
             watcher_last_action=getattr(view, 'watcher_last_action', None)
@@ -1234,12 +1251,13 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
 class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, discord.ui.View):
     """Interactive button-based Canvas navigation for top-level sections."""
 
-    def __init__(self, author_id: int, sections: dict[str, str], admin_visible: bool, agent_config: dict, message=None, show_dropdown=True):
+    def __init__(self, author_id: int, sections: dict[str, str], admin_visible: bool, agent_config: dict, guild=None, message=None, show_dropdown=True):
         super().__init__(timeout=600)  # 10 minutes instead of 10
         self.author_id = author_id
         self.sections = sections
         self.admin_visible = admin_visible
         self.agent_config = agent_config
+        self.guild = guild  # Store guild for role detail views
         self.message = message  # Store the message to delete it later
         if show_dropdown:
             self.add_item(CanvasSectionSelect(admin_visible))
@@ -1783,26 +1801,49 @@ async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_s
         if messages_source is None:
             messages_source = _personality_descriptions.get("canvas_home_messages", {})
         
-        # Get the first available guild as default
+        # Get the user's last server or first available as default
         try:
+            from agent_db import get_user_last_server_id
             bot = interaction.client
-            if bot and bot.guilds:
-                guild = bot.guilds[0]  # Use first guild as default
-                logger.info(f"Using default server '{guild.name}' for Canvas action from DM")
-                
-                # Add DM notification
-                content_parts.extend([
-                    messages_source.get("dm_default_server_title", "🔔 **Using default server: {server_name}**").format(server_name=guild.name),
-                    messages_source.get("dm_default_server_message", "*You're navigating from DM, using the first available server.*"),
-                    messages_source.get("dm_default_server_separator", "─────────────────────────────────────────────"),
-                    ""
-                ])
+            
+            # Try to get user's last server first
+            user_id = str(interaction.user.id)
+            last_server_id = get_user_last_server_id(user_id)
+            
+            if last_server_id:
+                # Find the guild object for this server ID
+                guild = discord.utils.get(bot.guilds, id=int(last_server_id))
+                if guild:
+                    logger.info(f"Using user's last server '{guild.name}' ({guild.id}) for Canvas action from DM")
+                    dm_message = messages_source.get("dm_default_server_message", "*Continuing from your last server interaction.*")
+                else:
+                    # Server not found in bot's guilds, fall back to first available
+                    if bot.guilds:
+                        guild = bot.guilds[0]
+                        logger.info(f"User's last server not found, using default server '{guild.name}' for Canvas action from DM")
+                        dm_message = messages_source.get("dm_default_server_message", "*Your last server is unavailable, using the first available server.*")
+                    else:
+                        await interaction.response.send_message("❌ No servers available.", ephemeral=True)
+                        return None, []
             else:
-                error_msg = messages_source.get("dm_no_servers_available", "❌ No servers available. Please execute actions from a server.")
-                await interaction.response.send_message(error_msg, ephemeral=True)
-                return None, []
+                # No last server found, use first available
+                if bot and bot.guilds:
+                    guild = bot.guilds[0]
+                    logger.info(f"No user history found, using default server '{guild.name}' for Canvas action from DM")
+                    dm_message = messages_source.get("dm_default_server_message", "*No previous server found, using the first available server.*")
+                else:
+                    await interaction.response.send_message("❌ No servers available.", ephemeral=True)
+                    return None, []
+                
+            # Add DM notification
+            content_parts.extend([
+                messages_source.get("dm_default_server_title", "🔔 **Using server: {server_name}**").format(server_name=guild.name),
+                dm_message,
+                messages_source.get("dm_default_server_separator", "─────────────────────────────────────────────"),
+                ""
+            ])
         except Exception as e:
-            logger.error(f"Could not get default server for DM Canvas action: {e}")
+            logger.error(f"Could not get server for DM Canvas action: {e}")
             error_msg = messages_source.get("dm_server_access_error", "❌ Could not access a server. Please execute actions from a server.")
             await interaction.response.send_message(error_msg, ephemeral=True)
             return None, []
@@ -1856,11 +1897,11 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
             # Get or create player wallet
             player_id = str(interaction.user.id)
             player_name = interaction.user.display_name
-            db_banker_roles.create_wallet(player_id, player_name, server_id, server_name, 'user')
-            db_banker_roles.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name, wallet_type='system')
+            db_banker_roles.create_wallet(player_id, player_name, 'user')
+            db_banker_roles.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
             
             # Check balance
-            player_balance = db_banker_roles.get_balance(player_id, server_id)
+            player_balance = db_banker_roles.get_balance(player_id)
             bet_amount = dice_state.get("bet", 1)  # Default to 1 if not set
             
             if player_balance < bet_amount:
@@ -1873,7 +1914,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     f"Required: {bet_amount:,} gold",
                 ])
             else:
-                result = process_play(player_id, player_name, server_id, server_name, dice_state['pot_balance']) if process_play else {"success": False, "message": "Dice game unavailable."}
+                result = process_play(player_id, player_name, guild.name, dice_state['pot_balance']) if process_play else {"success": False, "message": "Dice game unavailable."}
                 
                 if result.get('success', False):
                     # Parse result
@@ -1909,7 +1950,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     
                     # Get updated balances for display with +/- indicators
                     old_player_balance = player_balance
-                    new_player_balance = db_banker_roles.get_balance(player_id, server_id)
+                    new_player_balance = db_banker_roles.get_balance(player_id)
                     player_diff = new_player_balance - old_player_balance
                     
                     # Format player balance with +/- indicator
@@ -1980,7 +2021,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         # Show recent history
         try:
             db_dice = get_roles_db_instance(server_key)
-            history = db_dice.get_dice_game_history(server_id, 10)
+            history = db_dice.get_dice_game_history(10)
             historytitle = descriptions.get("history", "**📜 DICE HISTORY**")
             content_parts.append(historytitle)
             content_parts.append("─" * 45)
