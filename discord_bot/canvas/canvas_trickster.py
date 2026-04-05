@@ -67,6 +67,18 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     dice_state = _get_canvas_dice_state(guild)
     ring_state = _get_canvas_ring_state(guild)
     beggar_state = _get_canvas_beggar_state(guild)
+    
+    # Check ring status from roles_config database (independent from agent_config)
+    ring_enabled_from_db = False
+    try:
+        if get_roles_db_instance:
+            server_key = get_server_key(guild)
+            roles_db = get_roles_db_instance(server_key)
+            ring_config = roles_db.get_role_config('ring')
+            if ring_config:
+                ring_enabled_from_db = ring_config.get('enabled', False)
+    except Exception as e:
+        logger.warning(f"Error checking ring status from roles_config: {e}")
 
     separator = _trickster_text("canvas_trickster_overview_separator", "──────────────────────────────")
     subrole_descriptions = trickster_messages.get("canvas_trickster_subrole_descriptions", {})
@@ -75,6 +87,10 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     for subrole in active_subroles:
         if subrole in subrole_descriptions:
             active_descriptions.append(subrole_descriptions[subrole])
+    
+    # Add ring description if enabled from database (independent check)
+    if ring_enabled_from_db and 'ring' in subrole_descriptions:
+        active_descriptions.append(subrole_descriptions['ring'])
 
     parts = [
         _build_canvas_intro_block(
@@ -90,7 +106,7 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     parts += [
         "",
         "**Live state**",
-        f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,} | ring {'On' if ring_state['enabled'] else 'Off'} | beggar {'On' if beggar_state['enabled'] else 'Off'}",
+        f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,} | ring {'On' if ring_enabled_from_db else 'Off'} | beggar {'On' if beggar_state['enabled'] else 'Off'}",
     ]
 
     return "\n".join(parts)
@@ -159,7 +175,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
             parts.append(_trickster_text("dice_game.historyvoid", "📊 Any play in the game. Be the first!"))
             return "\n".join(parts)
         db_dice = get_roles_db_instance(server_key)
-        history = db_dice.get_dice_game_history(server_id, 10)
+        history = db_dice.get_dice_game_history(10)
         history_title = _trickster_text("dice_game.history", "**📜 DICE HISTORY**")
         parts.append(history_title)
 
@@ -483,6 +499,7 @@ class RuneCastingModal(discord.ui.Modal):
         self.author_id = author_id
         self.guild = guild
         self.reading_type = reading_type
+        self.title_map = title_map
 
         self.add_item(discord.ui.TextInput(
             label=messages.get('question', 'Question'),
@@ -532,8 +549,11 @@ class RuneCastingModal(discord.ui.Modal):
 
             try:
                 # Create embed for main response to avoid 2000 character limit
+                # Reuse the title_map from __init__ method
+                embed_title = self.title_map.get(self.action_name, "🔮 Rune Reading")
+                
                 embed = discord.Embed(
-                    title="🔮 Rune Reading",
+                    title=embed_title,
                     description=response,
                     color=discord.Color.purple()
                 )
@@ -555,7 +575,7 @@ class RuneCastingModal(discord.ui.Modal):
                     response = response[:1900] + "...\n\n*Message truncated due to length*"
                 
                 embed = discord.Embed(
-                    title="🔮 Rune Reading",
+                    title=embed_title,
                     description=response,
                     color=discord.Color.purple()
                 )
@@ -577,7 +597,7 @@ class RuneCastingModal(discord.ui.Modal):
                 try:
                     # Create embed for direct DM as well
                     embed = discord.Embed(
-                        title="🔮 Rune Reading",
+                        title=embed_title,
                         description=response,
                         color=discord.Color.purple()
                     )
@@ -598,7 +618,7 @@ class RuneCastingModal(discord.ui.Modal):
                         try:
                             # Create embed for channel message as well
                             embed = discord.Embed(
-                                title=f"🔮 {interaction.user.mention} Your rune reading is ready!",
+                                title=f"🔮 {interaction.user.mention} {embed_title.replace('🔮', '').replace('**', '').strip()}!",
                                 description=response,
                                 color=discord.Color.purple()
                             )
@@ -817,6 +837,10 @@ class TricksterActionModal(discord.ui.Modal):
 
 
 async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction, action_name: str, raw_value: str, guild, author_id: int, admin_visible: bool, view=None) -> None:
+    # Defer immediately to prevent interaction timeout
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
+    
     server_key = get_server_key(guild)
     server_id = str(guild.id)
     server_name = guild.name
@@ -835,7 +859,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         "roleputre",
         "talkputre",
         admin_visible,
-        server_name,
+        server_id,
         author_id,
     )
 
@@ -845,7 +869,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
 
             ring_state = _get_ring_state(server_id)
             if not ring_state.get("enabled", False):
-                await interaction.response.send_message("❌ Ring is not enabled on this server.", ephemeral=True)
+                await interaction.followup.send("❌ Ring is not enabled on this server.", ephemeral=True)
                 return
 
             raw_target = raw_value.strip()
@@ -882,7 +906,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                             break
 
             if mentioned_user is None:
-                await interaction.response.send_message("❌ Enter a valid user mention, id, or visible name.", ephemeral=True)
+                await interaction.followup.send("❌ Enter a valid user mention, id, or visible name.", ephemeral=True)
                 return
 
             target_name = mentioned_user.display_name if hasattr(mentioned_user, "display_name") else mentioned_user.name
@@ -910,9 +934,9 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             ring_subrole = trickster_role.get("subroles", {}).get("ring", {})
             target_change_msg = ring_subrole.get("target_change", "Changed ring target to")
             
-            db_instance = AgentDatabase(server_name=server_name)
+            db_instance = AgentDatabase(server_id=server_id)
             await asyncio.to_thread(
-                db_instance.registrar_interaccion,
+                db_instance.register_interaction,
                 interaction.user.id,
                 interaction.user.name,
                 "RING_TARGET_CHANGE",
@@ -934,19 +958,19 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 message=interaction.message,
             )
             next_view.auto_response_preview = f"New target: {target_name}\nThe next investigation will focus on this user."
+            # Import the helper function
+            from discord_bot.canvas.ui import _safe_edit_interaction_message
+            
             role_embed = _build_canvas_role_embed("trickster", content or "", admin_visible, "ring", None, next_view.auto_response_preview)
-            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
+            await _safe_edit_interaction_message(interaction, embed=role_embed, view=next_view)
         except Exception as e:
             logger.exception(f"Canvas ring accuse failed: {e}")
-            if not interaction.response.is_done():
-                await interaction.response.send_message("❌ Could not submit accusation.", ephemeral=True)
-            else:
-                try:
-                    await interaction.followup.send("❌ Could not submit accusation.", ephemeral=True)
-                except discord.NotFound:
-                    logger.warning("Canvas ring accuse interaction expired - unable to send error followup")
-                except Exception as followup_e:
-                    logger.exception(f"Failed to send canvas ring accuse error followup: {followup_e}")
+            try:
+                await interaction.followup.send("❌ Could not submit accusation.", ephemeral=True)
+            except discord.NotFound:
+                logger.warning("Canvas ring accuse interaction expired - unable to send error followup")
+            except Exception as followup_e:
+                logger.exception(f"Failed to send canvas ring accuse error followup: {followup_e}")
         return
 
     if action_name == "beggar_donate":
@@ -971,8 +995,8 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         from roles.banker.banker_db import get_banker_roles_db_instance
         from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
         db_banker_roles = get_banker_roles_db_instance(server_key)
-        db_banker_roles.create_wallet(donor_id, donor_name, server_id, server_name, "user")
-        wallet = db_banker.get_banker_wallet(donor_id, server_id)
+        db_banker_roles.create_wallet(donor_id, donor_name, "user")
+        wallet = db_banker.get_banker_wallet(donor_id)
         current_balance = wallet.get("balance", 0) if wallet else 0
         if current_balance < amount:
             await interaction.followup.send(f"❌ Solo tienes {current_balance:,} de oro disponible.", ephemeral=True)
@@ -988,47 +1012,46 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         try:
             # Update user balance (deduct donation)
             user_update_success = db_banker_roles.update_balance(
-                donor_id, donor_name, server_id, server_name, 
-                -amount, "BEGGAR_DONATION_OUT", "Donación enviada al limosnero"
+                donor_id, donor_name, 
+                -amount, "BEGGAR_DONATION_OUT", "Donation sent to beggar"
             )
             
             if not user_update_success:
-                error_message = "Error al deducir oro de tu cuenta."
+                error_message = "Error deducting gold from your account."
                 logger.error(f"Failed to deduct {amount} gold from user {donor_id}")
                 raise RuntimeError("User balance update failed")
             
             # Update beggar fund (add donation)
             fund_update_success = db_banker_roles.update_balance(
-                "beggar_fund", "Beggar Fund", server_id, server_name, 
-                amount, "BEGGAR_DONATION_IN", f"Donación recibida de {donor_name}"
+                "beggar_fund", "Beggar Fund", 
+                amount, "BEGGAR_DONATION_IN", f"Donation received from {donor_name}"
             )
             
             if not fund_update_success:
-                error_message = "Error al añadir oro al fondo del limosnero."
+                error_message = "Error adding gold to beggar fund."
                 logger.error(f"Failed to add {amount} gold to beggar fund")
                 # Rollback user balance
                 db_banker_roles.update_balance(
-                    donor_id, donor_name, server_id, server_name, 
-                    amount, "BEGGAR_DONATION_ROLLBACK", "Reversión - donación fallida"
+                    donor_id, donor_name, 
+                    amount, "BEGGAR_DONATION_ROLLBACK", "Reversal - failed donation"
                 )
                 raise RuntimeError("Fund balance update failed")
             
             # Update beggar statistics
             roles_db = get_roles_db_instance(server_key)
-            stats_update_success = roles_db.update_beggar_donation(server_id, donor_id, donor_name, amount, reason)
+            stats_update_success = roles_db.update_beggar_donation(donor_id, donor_name, amount, reason)
             
             if not stats_update_success:
-                error_message = "Error al actualizar estadísticas de donación."
+                error_message = "Error updating donation statistics."
                 logger.error(f"Failed to update beggar statistics for {donor_id}")
                 # This is non-critical, donation still processed
             
             # Save donation request
             roles_db.save_beggar_request(
-                server_id,
                 donor_id,
                 donor_name,
                 "BEGGAR_DONATION",
-                f"Donó {amount} de oro",
+                f"Donated {amount} gold",
                 str(interaction.channel.id) if interaction.channel else None,
                 None,
             )
@@ -1038,16 +1061,16 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         except Exception as e:
             logger.error(f"Donation processing error for {donor_id}: {e}")
             if not error_message:
-                error_message = "Error en la base de datos durante el procesamiento de la donación."
+                error_message = "Database error during donation processing."
         
         if not donation_success:
             await interaction.followup.send(
-                f"❌ {error_message} Por favor intenta más tarde.",
+                f"❌ {error_message} Please try again later.",
                 ephemeral=True
             )
             return
 
-        fund_balance = db_banker_roles.get_balance("beggar_fund", server_id)
+        fund_balance = db_banker_roles.get_balance("beggar_fund")
         
         # Try to refresh the view, but don't let it prevent the success message
         try:
@@ -1075,33 +1098,60 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         return
 
     if not admin_visible or not is_admin(interaction):
-        await interaction.response.send_message("❌ This trickster option is admin-only.", ephemeral=True)
+        await interaction.followup.send("❌ This trickster option is admin-only.", ephemeral=True)
         return
 
     if action_name in {"ring_frequency", "beggar_frequency"}:
         try:
             hours = int(raw_value)
         except ValueError:
-            await interaction.response.send_message("❌ Enter a valid number of hours.", ephemeral=True)
+            await interaction.followup.send("❌ Enter a valid number of hours.", ephemeral=True)
             return
         if hours < 1 or hours > 168:
-            await interaction.response.send_message("❌ Frequency must be between 1 and 168 hours.", ephemeral=True)
+            await interaction.followup.send("❌ Frequency must be between 1 and 168 hours.", ephemeral=True)
             return
         try:
             if action_name == "ring_frequency":
-                from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
-                state = _get_ring_state(server_id)
-                state["frequency_hours"] = hours
-                state["base_frequency_hours"] = hours
-                state["current_frequency_hours"] = hours
-                state["frequency_iteration"] = 0
-                _save_ring_state(server_id, "canvas_admin")
-                message = (
-                    f"✅ Ring base frequency updated to `{hours}` hours.\n"
-                    f"🔥 Hot potato counter reset.\n"
-                    f"Current state: {'On' if state.get('enabled', False) else 'Off'}\n"
-                    f"Next accusation will use {hours}h frequency."
-                )
+                # Use roles_config database for independent ring subrole management
+                if get_roles_db_instance is None:
+                    await interaction.followup.send("❌ Ring configuration system is not available.", ephemeral=True)
+                    return
+                    
+                roles_db = get_roles_db_instance(server_key)
+                
+                # Get current ring config
+                ring_config = roles_db.get_role_config("ring") or {}
+                config_data = {}
+                if ring_config.get('config_data'):
+                    try:
+                        config_data = json.loads(ring_config['config_data'])
+                    except json.JSONDecodeError:
+                        config_data = {}
+                
+                # Update frequency in roles_config
+                config_data['frequency_hours'] = hours
+                config_data['base_frequency_hours'] = hours
+                config_data['current_frequency_hours'] = hours
+                config_data['frequency_iteration'] = 0
+                ok = roles_db.save_role_config("ring", True, json.dumps(config_data))
+                
+                if ok:
+                    # Also update ring state for immediate effect
+                    from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+                    state = _get_ring_state(server_id)
+                    state["frequency_hours"] = hours
+                    state["base_frequency_hours"] = hours
+                    state["current_frequency_hours"] = hours
+                    state["frequency_iteration"] = 0
+                    _save_ring_state(server_id, "canvas_admin")
+                    
+                    message = (
+                        f"✅ Ring frequency updated to `{hours}` hours in roles_config.\n"
+                        f"🔥 Hot potato counter reset.\n"
+                        f"Next accusation will use {hours}h frequency."
+                    )
+                else:
+                    message = "❌ Failed to update ring frequency in roles_config database."
             else:
                 from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
                 beggar_config = get_beggar_config(server_id)
@@ -1115,30 +1165,30 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 )
         except Exception as e:
             logger.exception(f"Canvas trickster frequency update failed: {e}")
-            await interaction.response.send_message("❌ Could not update frequency.", ephemeral=True)
+            await interaction.followup.send("❌ Could not update frequency.", ephemeral=True)
             return
-        await interaction.response.send_message(message, ephemeral=True)
+        await interaction.followup.send(message, ephemeral=True)
         return
 
     if action_name in {"dice_fixed_bet", "dice_pot_value"}:
         if get_roles_db_instance is None or get_roles_db_instance is None:
-            await interaction.response.send_message("❌ Dice game systems are not available.", ephemeral=True)
+            await interaction.followup.send("❌ Dice game systems are not available.", ephemeral=True)
             return
         try:
             amount = int(raw_value)
         except ValueError:
-            await interaction.response.send_message("❌ Enter a valid gold amount.", ephemeral=True)
+            await interaction.followup.send("❌ Enter a valid gold amount.", ephemeral=True)
             return
         if amount < 0:
-            await interaction.response.send_message("❌ Amount must be zero or greater.", ephemeral=True)
+            await interaction.followup.send("❌ Amount must be zero or greater.", ephemeral=True)
             return
         try:
             if action_name == "dice_fixed_bet":
                 if amount < 1 or amount > 1000:
-                    await interaction.response.send_message("❌ Fixed bet must be between 1 and 1000 gold.", ephemeral=True)
+                    await interaction.followup.send("❌ Fixed bet must be between 1 and 1000 gold.", ephemeral=True)
                     return
                 roles_db = get_roles_db_instance(server_key)
-                ok = roles_db.save_role_config("dice_game", server_id, True, json.dumps({"fixed_bet": amount}))
+                ok = roles_db.save_role_config("dice_game", True, json.dumps({"fixed_bet": amount}))
                 if not ok:
                     raise RuntimeError("Could not update fixed bet")
                 state = _get_canvas_dice_state(guild)
@@ -1149,10 +1199,10 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             else:
                 from roles.banker.banker_db import get_banker_roles_db_instance
                 db_banker = get_banker_roles_db_instance(server_key)
-                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name, wallet_type="system")
-                current_balance = db_banker.get_balance("dice_game_pot", server_id)
+                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type="system")
+                current_balance = db_banker.get_balance("dice_game_pot")
                 delta = amount - current_balance
-                ok = db_banker.update_balance("dice_game_pot", "Dice Game Pot", server_id, server_name, delta, "DICE_POT_ADMIN_SET", "Canvas pot update", str(interaction.user.id), interaction.user.display_name)
+                ok = db_banker.update_balance("dice_game_pot", "Dice Game Pot", delta, "DICE_POT_ADMIN_SET", "Canvas pot update", str(interaction.user.id), interaction.user.display_name)
                 if not ok:
                     raise RuntimeError("Could not update pot balance")
                 state = _get_canvas_dice_state(guild)
@@ -1162,9 +1212,9 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 )
         except Exception as e:
             logger.exception(f"Canvas trickster dice update failed: {e}")
-            await interaction.response.send_message("❌ Could not update dice settings.", ephemeral=True)
+            await interaction.followup.send("❌ Could not update dice settings.", ephemeral=True)
             return
-        await interaction.response.send_message(message, ephemeral=True)
+        await interaction.followup.send(message, ephemeral=True)
 
 
 async def handle_canvas_trickster_action(interaction: discord.Interaction, action_name: str, view) -> None:
@@ -1180,26 +1230,45 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
                 return
             enabled = action_name == "announcements_on"
             roles_db = get_roles_db_instance(server_key)
-            ok = roles_db.save_role_config("dice_game", server_id, True, json.dumps({"announcements_active": enabled}))
+            ok = roles_db.save_role_config("dice_game", True, json.dumps({"announcements_active": enabled}))
             current_detail = "dice_admin"
             applied_text = f"Dice announcements {'enabled' if enabled else 'disabled'}."
         elif action_name in {"ring_on", "ring_off"}:
             from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
 
             enabled = action_name == "ring_on"
-            success = set_role_enabled(interaction.guild, "trickster", enabled, None, getattr(interaction.user, "name", "canvas_admin"))
-
-            if success:
+            
+            # Use roles_config database for independent ring subrole management
+            if get_roles_db_instance is None:
+                await interaction.response.send_message("❌ Ring configuration system is not available.", ephemeral=True)
+                return
+                
+            roles_db = get_roles_db_instance(server_key)
+            
+            # Get current ring config
+            ring_config = roles_db.get_role_config("ring") or {}
+            config_data = {}
+            if ring_config.get('config_data'):
+                try:
+                    config_data = json.loads(ring_config['config_data'])
+                except json.JSONDecodeError:
+                    config_data = {}
+            
+            # Update ring enabled status in roles_config
+            config_data['enabled'] = enabled
+            ok = roles_db.save_role_config("ring", enabled, json.dumps(config_data))
+            
+            if ok:
+                # Also update ring state for immediate effect
                 state = _get_ring_state(server_id)
                 state["enabled"] = enabled
                 _save_ring_state(server_id, "canvas_admin")
-                ok = True
+                
                 current_detail = "ring_admin"
-                applied_text = f"Ring {'enabled' if state['enabled'] else 'disabled'}."
+                applied_text = f"Ring {'enabled' if enabled else 'disabled'} as independent subrole."
             else:
-                ok = False
                 current_detail = "ring_admin"
-                applied_text = "Failed to update ring status in database."
+                applied_text = "Failed to update ring status in roles_config database."
         elif action_name in {"beggar_on", "beggar_off"}:
             try:
                 from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
@@ -1213,7 +1282,7 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
                     if enabled:
                         selected_reason = beggar_config.select_new_reason()
                         try:
-                            success = await execute_beggar_task(server_id_str, bot_instance=interaction.client)
+                            success = await execute_beggar_task(bot_instance=interaction.client)
                             if success:
                                 applied_text = f"🙏 **Beggar enabled** - First message sent with reason: '{selected_reason}'"
                             else:
@@ -1281,7 +1350,7 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
                 if get_roles_db_instance is not None:
                     db_roles = get_roles_db_instance(server_key)
                     config_data = json.dumps({"enabled": enabled})
-                    ok = db_roles.save_role_config("nordic_runes", server_id_str, enabled, config_data)
+                    ok = db_roles.save_role_config("nordic_runes", enabled, config_data)
                 else:
                     ok = True
 

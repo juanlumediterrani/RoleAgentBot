@@ -18,11 +18,11 @@ except Exception:
 
 from agent_db import get_server_db_path_fallback, get_personality_name
 
-def get_db_path(server_name: str = "default") -> Path:
+def get_db_path(server_id: str = "default") -> Path:
     """Generate database path for news watcher with personality name."""
     personality_name = get_personality_name()
     db_name = f"watcher_{personality_name}"
-    return get_server_db_path_fallback(server_name, db_name)
+    return get_server_db_path_fallback(server_id, db_name)
 
 
 class DatabaseRoleNewsWatcher:
@@ -30,9 +30,9 @@ class DatabaseRoleNewsWatcher:
     Manages read news and sent notifications.
     """
     
-    def __init__(self, server_name: str = "default", db_path: Path = None):
+    def __init__(self, server_id: str = "default", db_path: Path = None):
         if db_path is None:
-            self.db_path = get_db_path(server_name)
+            self.db_path = get_db_path(server_id)
         else:
             self.db_path = db_path
         self._lock = threading.Lock()
@@ -1068,7 +1068,7 @@ class DatabaseRoleNewsWatcher:
             return []
     
     def subscribe_channel_category(self, channel_id: str, channel_name: str, server_id: str, 
-                                 server_name: str, category: str, feed_id: int = None) -> bool:
+                                 category: str, feed_id: int = None) -> bool:
         """Subscribe a channel to a specific category or feed."""
         try:
             with self._lock:
@@ -1109,7 +1109,7 @@ class DatabaseRoleNewsWatcher:
             return False
     
     def subscribe_channel_category_ai(self, channel_id: str, channel_name: str, server_id: str, 
-                                   server_name: str, category: str, feed_id: int = None, premises: str = None, user_id: str = None) -> bool:
+                                   category: str, feed_id: int = None, premises: str = None, user_id: str = None) -> bool:
         """Subscribe a channel to a category with AI analysis."""
         try:
             with self._lock:
@@ -1121,7 +1121,7 @@ class DatabaseRoleNewsWatcher:
                         INSERT OR REPLACE INTO subscriptions_channels 
                         (channel_id, channel_name, server_id, server_name, category, feed_id, subscribed_at, is_active, channel_premises, user_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-                    ''', (channel_id, channel_name, server_id, server_name, category, feed_id, datetime.now().isoformat(), premises, user_id))
+                    ''', (channel_id, channel_name, server_id, server_id, category, feed_id, datetime.now().isoformat(), premises, user_id))
                     
                     conn.commit()
                     return True
@@ -2500,8 +2500,8 @@ class DatabaseRoleNewsWatcher:
 # Dictionary to maintain instances per server
 _db_news_watcher_instances = {}
 
-def get_news_watcher_db_instance(server_name: str = "default") -> DatabaseRoleNewsWatcher:
+def get_news_watcher_db_instance(server_id: str = "default") -> DatabaseRoleNewsWatcher:
     """Get or create a news watcher database instance for a specific server."""
-    if server_name not in _db_news_watcher_instances:
-        _db_news_watcher_instances[server_name] = DatabaseRoleNewsWatcher(server_name)
-    return _db_news_watcher_instances[server_name]
+    if server_id not in _db_news_watcher_instances:
+        _db_news_watcher_instances[server_id] = DatabaseRoleNewsWatcher(server_id)
+    return _db_news_watcher_instances[server_id]

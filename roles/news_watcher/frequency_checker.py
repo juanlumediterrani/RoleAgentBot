@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 class NewsFrequencyChecker:
     """Handles periodic news checking and delivery."""
     
-    def __init__(self, bot_instance, server_name: str = "default"):
+    def __init__(self, bot_instance, server_id: str = "default"):
         self.bot = bot_instance
-        self.server_name = server_name
+        self.server_id=server_name
         self.db = get_news_watcher_db_instance(server_name)
         self.processor = NewsProcessor(self.db)
         self.last_check_time: Optional[datetime] = None
@@ -184,7 +184,7 @@ class NewsFrequencyChecker:
 # Global instance for the bot
 _frequency_checker_instance: Optional[NewsFrequencyChecker] = None
 
-def get_frequency_checker(bot_instance, server_name: str = "default") -> NewsFrequencyChecker:
+def get_frequency_checker(bot_instance, server_id: str = "default") -> NewsFrequencyChecker:
     """Get or create the frequency checker instance."""
     global _frequency_checker_instance
     if _frequency_checker_instance is None:

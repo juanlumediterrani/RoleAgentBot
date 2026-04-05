@@ -142,7 +142,7 @@ def register_trickster_commands(bot, personality, agent_config):
                 # Send first message immediately
                 try:
                     from .subroles.beggar.beggar_task import execute_beggar_task
-                    success = await execute_beggar_task(server_id, bot_instance=ctx.bot)
+                    success = await execute_beggar_task(bot_instance=ctx.bot)
                     if success:
                         await ctx.send(f"🙏 **Beggar enabled for the server** - First message sent with reason: '{selected_reason}'")
                         logger.info(f"🎭 {ctx.author.name} enabled beggar for {ctx.guild.name} - Reason: {selected_reason} - First message sent")
@@ -215,7 +215,7 @@ def register_trickster_commands(bot, personality, agent_config):
             # Get fund balance from banker
             from roles.banker.banker_db import get_banker_db_instance
             banker_db = get_banker_db_instance(server_id)
-            fund_balance = banker_db.get_balance("beggar_fund", server_id) if banker_db else 0
+            fund_balance = banker_db.get_balance("beggar_fund") if banker_db else 0
 
             status_msg = f"📊 **Beggar Status in {ctx.guild.name}**\n\n"
             status_msg += f"🔧 **Status:** {'✅ Enabled' if is_active else '❌ Disabled'}\n"
@@ -264,7 +264,7 @@ def register_trickster_commands(bot, personality, agent_config):
             return
 
         server_id = str(ctx.guild.id)
-        server_name = ctx.guild.name
+        server_id = ctx.guild.name
         donor_id = str(ctx.author.id)
         donor_name = ctx.author.display_name
         
@@ -272,10 +272,10 @@ def register_trickster_commands(bot, personality, agent_config):
         beggar_config = get_beggar_config(server_id)
         roles_db = get_roles_db_instance(server_id)
 
-        db_banker.create_wallet(donor_id, donor_name, server_id, server_name)
-        db_banker.create_wallet("beggar_fund", "Beggar Fund", server_id, server_name)
+        db_banker.create_wallet(donor_id, donor_name)
+        db_banker.create_wallet("beggar_fund", "Beggar Fund", wallet_type='system')
 
-        current_balance = db_banker.get_balance(donor_id, server_id)
+        current_balance = db_banker.get_balance(donor_id)
         if current_balance < amount:
             await ctx.send(f"❌ You only have {current_balance:,} gold available.")
             return
@@ -283,14 +283,13 @@ def register_trickster_commands(bot, personality, agent_config):
         reason = beggar_config.get_current_reason() or "the current group project"
         
         # Process donation
-        db_banker.update_balance(donor_id, donor_name, server_id, server_name, -amount, "BEGGAR_DONATION_OUT", "Donation sent to beggar")
-        db_banker.update_balance("beggar_fund", "Beggar Fund", server_id, server_name, amount, "BEGGAR_DONATION_IN", f"Donation received from {donor_name}")
+        db_banker.update_balance(donor_id, donor_name, -amount, "BEGGAR_DONATION_OUT", "Donation sent to beggar")
+        db_banker.update_balance("beggar_fund", "Beggar Fund", amount, "BEGGAR_DONATION_IN", f"Donation received from {donor_name}")
         
         # Update user donation record in roles database
-        roles_db.update_beggar_donation(server_id, donor_id, donor_name, amount, reason)
+        roles_db.update_beggar_donation(donor_id, donor_name, amount, reason)
         
         roles_db.save_beggar_request(
-            server_id=server_id,
             user_id=donor_id,
             user_name=donor_name,
             request_type="BEGGAR_DONATION",
@@ -299,7 +298,7 @@ def register_trickster_commands(bot, personality, agent_config):
             metadata=json.dumps({"amount": amount, "reason": reason}),
         )
         
-        fund_balance = db_banker.get_balance("beggar_fund", server_id)
+        fund_balance = db_banker.get_balance("beggar_fund")
         await ctx.send(
             f"🙏 **Donation accepted** - {amount:,} gold sent to beggar.\n"
             f"🪙 Current fund: {fund_balance:,} gold\n"

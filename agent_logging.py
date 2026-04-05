@@ -8,9 +8,9 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 _ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 
 
-def _get_active_server_name() -> str | None:
+def _get_active_server_id() -> str | None:
     import os
-    env_active = os.getenv("ACTIVE_SERVER_NAME")
+    env_active = os.getenv("ACTIVE_SERVER_ID")
     if env_active:
         value = env_active.strip()
         return value or None
@@ -71,22 +71,22 @@ def get_server_log_path(server_name: str, personality_name: str = None) -> Path:
     return log_file
 
 
-_active_server = _get_active_server_name()
+_active_server = _get_active_server_id()
 if _active_server:
     _current_log_file = get_server_log_path(_active_server, get_personality_name())
 else:
     _current_log_file = LOG_DIR / f'{get_personality_name()}.log'
 
-def update_log_file_path(server_name: str, personality_name: str = None):
+def update_log_file_path(server_id: str, personality_name: str = None):
     """
     Update the current log file path for a specific server.
 
     Args:
-        server_name: Server name
+        server_id: Server ID
         personality_name: Optional personality name
     """
     global _current_log_file
-    _current_log_file = get_server_log_path(server_name, personality_name)
+    _current_log_file = get_server_log_path(server_id, personality_name)
 
 def get_logger(name='agent'):
     global _current_log_file

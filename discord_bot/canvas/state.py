@@ -74,8 +74,8 @@ def _get_canvas_dice_state(guild) -> dict:
         db_banker = get_banker_roles_db_instance(server_key)
         server_id = str(guild.id)
         config = roles_db.get_role_config('dice_game', server_id)
-        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, guild.name if guild else "Unknown Server", wallet_type='system')
-        state["pot_balance"] = db_banker.get_balance("dice_game_pot", server_id)
+        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
+        state["pot_balance"] = db_banker.get_balance("dice_game_pot")
         state["bet"] = config.get("fixed_bet", 1)
         state["announcements_active"] = config.get("announcements_active", True)
     except Exception as e:
@@ -89,7 +89,7 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
     try:
         server_key = get_server_key(guild)
         roles_db = get_roles_db_instance(server_key)
-        history = roles_db.get_dice_game_history(str(guild.id), 1000)
+        history = roles_db.get_dice_game_history(1000)
         
         # Aggregate stats by user like in dice_game_discord.py
         player_stats = {}
@@ -148,15 +148,15 @@ def _get_canvas_dice_history(guild, limit: int = 5) -> list[dict]:
     try:
         server_key = get_server_key(guild)
         roles_db = get_roles_db_instance(server_key)
-        history = roles_db.get_dice_game_history(str(guild.id), limit)
+        history = roles_db.get_dice_game_history(limit)
         rows: list[dict] = []
         for play in history:
             rows.append({
                 'id': play['id'],
                 'user_id': play['user_id'],
                 'user_name': play['user_name'],
-                'server_id': play['server_id'],
-                'server_name': play['server_name'],
+                'server_id': guild.id if guild else 'default',
+                'server_name': guild.name if guild else 'Default Server',
                 'bet': play['bet'],
                 'dice': play['dice'],
                 'combination': play['combination'],
@@ -165,6 +165,7 @@ def _get_canvas_dice_history(guild, limit: int = 5) -> list[dict]:
                 'pot_after': play['pot_after'],
                 'date': play['created_at']
             })
+        return rows
     except Exception as e:
         logger.warning(f"Could not load dice history for Canvas: {e}")
         return []
@@ -200,25 +201,25 @@ def _get_canvas_beggar_state(guild) -> dict:
         try:
             from roles.banker.banker_db import get_banker_roles_db_instance
             db_banker = get_banker_roles_db_instance(server_key)
-            db_banker.create_wallet("beggar_fund", "Beggar Fund", server_id, guild.name, wallet_type='system')
-            state["fund_balance"] = db_banker.get_balance("beggar_fund", server_id)
+            db_banker.create_wallet("beggar_fund", "Beggar Fund", wallet_type='system')
+            state["fund_balance"] = db_banker.get_balance("beggar_fund")
         except ImportError:
             # Fallback to regular roles_db if banker_roles_db not available
             if get_roles_db_instance is not None:
                 db_banker = get_roles_db_instance(server_key)
-                db_banker.save_banker_wallet("beggar_fund", server_id, "Beggar Fund", server_id, guild.name, 0, 'system')
-                wallet = db_banker.get_banker_wallet("beggar_fund", server_id)
+                db_banker.save_banker_wallet("beggar_fund", "Beggar Fund", 0, 'system')
+                wallet = db_banker.get_banker_wallet("beggar_fund")
                 state["fund_balance"] = wallet.get('balance', 0) if wallet else 0
         if get_roles_db_instance is not None:
             roles_db = get_roles_db_instance(server_key)
-            state["recent_donations"] = roles_db.get_recent_beggar_donations(server_id, limit=5)
+            state["recent_donations"] = roles_db.get_recent_beggar_donations(limit=5)
     except Exception as e:
         logger.warning(f"Could not load beggar state for Canvas: {e}")
     return state
 
 
 def _get_canvas_ring_state(guild) -> dict:
-    """Get ring state from trickster subrole."""
+    """Get ring state from roles_config database."""
     state = {
         "enabled": False,
         "frequency_hours": 24,
@@ -231,14 +232,66 @@ def _get_canvas_ring_state(guild) -> dict:
         logger.warning(f"Canvas ring state: invalid guild parameter (type: {type(guild)}, value: {guild})")
         return state
     try:
-        from roles.trickster.subroles.ring.ring_discord import _get_ring_state
-        if _get_ring_state is None:
-            return state
-        current = _get_ring_state(str(guild.id))
-        if current:
-            state["enabled"] = current.get("enabled", False)
-            state["frequency_hours"] = int(current.get("frequency_hours", 24))
-            state["target_user_name"] = current.get("target_user_name", "Unknown bearer")
+        server_id = str(guild.id)
+        
+        # PRIMARY: Check ring subrole directly in roles_config
+        ring_enabled = False
+        ring_config = {}
+        
+        try:
+            if get_roles_db_instance:
+                roles_db = get_roles_db_instance(server_id)
+                ring_config_data = roles_db.get_role_config('ring')
+                if ring_config_data:
+                    ring_enabled = ring_config_data.get('enabled', False)
+                    if ring_config_data.get('config_data'):
+                        import json
+                        try:
+                            ring_config = json.loads(ring_config_data['config_data'])
+                        except json.JSONDecodeError:
+                            ring_config = {}
+        except Exception as e:
+            logger.warning(f"Error checking ring enabled in roles_config: {e}")
+        
+        # SECONDARY: Use ring_discord state as fallback
+        if not ring_config:
+            from roles.trickster.subroles.ring.ring_discord import _get_ring_state
+            if _get_ring_state is not None:
+                current = _get_ring_state(server_id)
+                if current:
+                    ring_enabled = current.get("enabled", False)
+                    ring_config['frequency_hours'] = current.get("frequency_hours", 24)
+                    ring_config['accused_user_id'] = current.get("target_user_id", "")
+                    ring_config['accused_user_name'] = current.get("target_user_name", "Unknown bearer")
+        
+        # Update state with gathered information
+        state["enabled"] = ring_enabled
+        state["frequency_hours"] = int(ring_config.get('frequency_hours', 24))
+        
+        # Get user ID and name for display (check both locations for compatibility)
+        accused_user_id = ring_config_data.get('accused_user_id', '') if ring_config_data else ''
+        if not accused_user_id:
+            accused_user_id = ring_config.get('accused_user_id', '')
+        if not accused_user_id:
+            accused_user_id = ring_config.get('target_user_id', '')
+        
+        accused_user_name = ring_config_data.get('accused_user_name', '') if ring_config_data else ''
+        if not accused_user_name:
+            accused_user_name = ring_config.get('accused_user_name', '')
+        if not accused_user_name:
+            accused_user_name = ring_config.get('target_user_name', "Unknown bearer")
+        
+        # Log what Canvas loaded for debugging
+        logger.info(f"🎭 [CANVAS RING] Server {server_id} - Canvas loaded: accused_user_id='{accused_user_id}', accused_user_name='{accused_user_name}'")
+        
+        # For display purposes, show the name if available, otherwise show ID
+        if accused_user_name and accused_user_name != "Unknown bearer":
+            state["target_user_name"] = accused_user_name
+        elif accused_user_id:
+            state["target_user_name"] = f"ID: {accused_user_id}"
+        else:
+            state["target_user_name"] = "Unknown bearer"
+        
         # Load description from personality
         subrole_cfg = (PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}) or {}).get("ring", {})
         state["description"] = str(subrole_cfg.get("description", "")).strip()

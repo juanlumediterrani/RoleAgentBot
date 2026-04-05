@@ -326,9 +326,9 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
             if interaction.guild:
-                server_name = str(interaction.guild.id)
+                server_id = str(interaction.guild.id)
                 watcher_commands = WatcherCommands(self.bot)
-                db_instance = get_news_watcher_db_instance(server_name)
+                db_instance = get_news_watcher_db_instance(server_id)
                 if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
                     db_instance._init_db()
                 watcher_commands.db_watcher = db_instance
@@ -364,7 +364,7 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
                         )
 
                     if db_watcher.subscribe_channel_category_ai(
-                        channel_id, channel_name, server_id, server_name, category, feed_id_num, default_premises
+                        channel_id, channel_name, server_id, server_id, category, feed_id_num, default_premises
                     ):
                         result_msg = f"✅ General channel subscription created for {category}"
                         if feed_id:
@@ -461,9 +461,9 @@ class CanvasWatcherAddModal(discord.ui.Modal):
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
             if interaction.guild:
-                server_name = str(interaction.guild.id)
+                server_id = str(interaction.guild.id)
                 watcher_commands = WatcherCommands(self.bot)
-                db_instance = get_news_watcher_db_instance(server_name)
+                db_instance = get_news_watcher_db_instance(server_id)
                 if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
                     db_instance._init_db()
                 watcher_commands.db_watcher = db_instance
@@ -529,9 +529,9 @@ class CanvasWatcherDeleteModal(discord.ui.Modal):
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
             if interaction.guild:
-                server_name = str(interaction.guild.id)
+                server_id = str(interaction.guild.id)
                 watcher_commands = WatcherCommands(self.bot)
-                db_instance = get_news_watcher_db_instance(server_name)
+                db_instance = get_news_watcher_db_instance(server_id)
                 if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
                     db_instance._init_db()
                 watcher_commands.db_watcher = db_instance
@@ -596,9 +596,9 @@ class CanvasWatcherListModal(discord.ui.Modal):
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
             if interaction.guild:
-                server_name = str(interaction.guild.id)
+                server_id = str(interaction.guild.id)
                 watcher_commands = WatcherCommands(self.bot)
-                db_instance = get_news_watcher_db_instance(server_name)
+                db_instance = get_news_watcher_db_instance(server_id)
                 if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
                     db_instance._init_db()
                 watcher_commands.db_watcher = db_instance
@@ -701,7 +701,7 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                         global_feed_id = feeds[feed_id - 1][0]
                         ok = False
                         if method == "flat":
-                            ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_name, category, global_feed_id)
+                            ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_id, category, global_feed_id)
                         elif method == "keyword":
                             user_id = str(interaction.user.id)
                             user_keywords = db.get_user_keywords(user_id)
@@ -725,7 +725,7 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                                 except Exception:
                                     # English fallback
                                     premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
-                            ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, global_feed_id, premises_str)
+                            ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_id, category, global_feed_id, premises_str)
                         if ok:
                             successful_subscriptions += 1
                         else:
@@ -735,7 +735,7 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
             else:
                 ok = False
                 if method == "flat":
-                    ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_name, category, None)
+                    ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_id, category, None)
                 elif method == "keyword":
                     user_id = str(interaction.user.id)
                     user_keywords = db.get_user_keywords(user_id)
@@ -759,7 +759,7 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                         except Exception:
                             # English fallback
                             premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
-                    ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, None, premises_str)
+                    ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_id, category, None, premises_str)
 
                 if ok:
                     successful_subscriptions = 1
@@ -870,9 +870,9 @@ class CanvasWatcherPersonalUnsubscribeModal(discord.ui.Modal):
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
             if interaction.guild:
-                server_name = str(interaction.guild.id)
+                server_id = str(interaction.guild.id)
                 watcher_commands = WatcherCommands(self.bot)
-                db_instance = get_news_watcher_db_instance(server_name)
+                db_instance = get_news_watcher_db_instance(server_id)
                 if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
                     db_instance._init_db()
                 watcher_commands.db_watcher = db_instance
@@ -970,9 +970,9 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
             mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
             if interaction.guild:
-                server_name = str(interaction.guild.id)
+                server_id = str(interaction.guild.id)
                 watcher_commands = WatcherCommands(self.bot)
-                db_instance = get_news_watcher_db_instance(server_name)
+                db_instance = get_news_watcher_db_instance(server_id)
                 if not db_instance.db_path.exists() or db_instance.db_path.stat().st_size == 0:
                     db_instance._init_db()
                 watcher_commands.db_watcher = db_instance
@@ -1143,8 +1143,8 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
                 return
 
             http = DiscordHTTP(get_discord_token())
-            server_name = str(view.guild.id)
-            await process_subscriptions(http, server_name)
+            server_id = str(view.guild.id)
+            await process_subscriptions(http, server_id)
         except Exception as error:
             logger.exception(f"Canvas watcher force run failed for {action_name}: {error}")
             message = "❌ Could not run watcher now." if action_name == "watcher_run_now" else "❌ Could not run personal subscriptions now."

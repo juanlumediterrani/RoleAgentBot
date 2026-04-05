@@ -50,10 +50,10 @@ class NordicRunesCommands:
         """Get Nordic Runes database instance for a server."""
         try:
             if self.guild:
-                server_name = str(self.guild.id)
+                server_id = str(self.guild.id)
             else:
-                server_name = "default"
-            return get_nordic_runes_db_instance(server_name)
+                server_id = "default"
+            return get_nordic_runes_db_instance(server_id)
         except Exception as e:
             logger.error(f"Failed to get Nordic Runes database: {e}")
             return get_nordic_runes_db_instance("default")
@@ -121,14 +121,12 @@ class NordicRunesCommands:
             # Perform the reading
             reading = self.runes.get_reading(reading_type, question)
             
-            # Get user and server info
+            # Get user info
             user_id = str(ctx.author.id) if hasattr(ctx, 'author') else 'unknown'
-            server_id = str(ctx.guild.id) if hasattr(ctx, 'guild') and ctx.guild else None
             
             # Save to database
             reading_id = self.db.save_reading(
                 user_id=user_id,
-                server_id=server_id,
                 question=question,
                 runes_drawn=reading['runes_drawn'],
                 interpretation=reading['interpretation'],
@@ -311,7 +309,6 @@ class NordicRunesCommands:
             # Save to database
             reading_id = self.db.save_reading(
                 user_id=user_id,
-                server_id=None,  # Canvas doesn't have server context
                 question=question,
                 runes_drawn=reading['runes_drawn'],
                 interpretation=reading['interpretation'],

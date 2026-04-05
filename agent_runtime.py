@@ -10,7 +10,7 @@ try:
 except ImportError:
     MISTRAL_AVAILABLE = False
 
-from agent_db import get_active_server_name, increment_fatigue_count, get_fatigue_stats
+from agent_db import get_active_server_id, increment_fatigue_count, get_fatigue_stats
 from agent_logging import get_logger
 
 load_dotenv()
@@ -62,19 +62,19 @@ def get_daily_usage(personality_name: str, user_id: str = None, user_name: str =
     if _SIMULATION_MODE:
         return 0
 
-    server_name = get_active_server_name()
-    if not server_name:
+    server_id = get_active_server_id()
+    if not server_id:
         return 0
 
     try:
         if user_id:
             # Get specific user stats
-            stats = get_fatigue_stats(server_name, user_id)
+            stats = get_fatigue_stats(server_id, user_id)
             return stats.get('daily_requests', 0)
         else:
             # Get server total stats
-            server_id = f"server_{server_name}"
-            stats = get_fatigue_stats(server_name, server_id)
+            server_user_id = f"server_{server_id}"
+            stats = get_fatigue_stats(server_id, server_user_id)
             return stats.get('daily_requests', 0)
     except Exception as e:
         logger.warning(f"Error getting daily usage: {e}")
@@ -86,16 +86,16 @@ def increment_usage(personality_name: str, user_id: str = None, user_name: str =
     if _SIMULATION_MODE:
         return 1
 
-    server_name = get_active_server_name()
-    if not server_name:
+    server_id = get_active_server_id()
+    if not server_id:
         return 1
 
     try:
         # Use server_id if no user_id provided (for backward compatibility)
-        target_user_id = user_id or f"server_{server_name}"
-        target_user_name = user_name or f"Server_{server_name}"
+        target_user_id = user_id or f"server_{server_id}"
+        target_user_name = user_name or f"Server_{server_id}"
         
-        daily, total = increment_fatigue_count(server_name, target_user_id, target_user_name)
+        daily, total = increment_fatigue_count(server_id, target_user_id, target_user_name)
         return daily
     except Exception as e:
         logger.warning(f"Error incrementing usage: {e}")

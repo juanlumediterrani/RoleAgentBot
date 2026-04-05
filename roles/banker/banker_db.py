@@ -13,39 +13,39 @@ logger = get_logger('banker_roles_db')
 class BankerRolesDB:
     """Database handler for banker using centralized roles.db."""
     
-    def __init__(self, server_name: str = "default"):
+    def __init__(self, server_id: str = "default"):
         """Initialize database connection using centralized roles.db."""
-        self.server_name = server_name
-        self.roles_db = get_roles_db_instance(server_name)
+        self.server_id = server_id
+        self.roles_db = get_roles_db_instance(server_id)
         self.db_path = self.roles_db.db_path
     
     def is_enabled(self) -> bool:
         """Check if banker role is enabled for this server."""
-        return self.roles_db.is_role_enabled("banker", self.server_name)
+        return self.roles_db.is_role_enabled("banker", self.server_id)
     
     def set_enabled(self, enabled: bool) -> bool:
         """Enable or disable banker role for this server."""
-        return self.roles_db.set_role_enabled("banker", self.server_name, enabled)
+        return self.roles_db.set_role_enabled("banker", self.server_id, enabled)
     
-    def create_wallet(self, wallet_id: str, user_name: str, server_id: str, server_name: str, wallet_type: str = 'user') -> bool:
+    def create_wallet(self, wallet_id: str, user_name: str, wallet_type: str = 'user') -> bool:
         """Create a new wallet with opening bonus (10x TAE) for user wallets."""
         try:
             # Check if wallet already exists
-            existing = self.roles_db.get_banker_wallet(wallet_id, server_id)
+            existing = self.roles_db.get_banker_wallet(wallet_id)
             if existing:
                 # If wallet exists but has 0 balance and is a user wallet, apply opening bonus
                 if wallet_type == 'user' and existing.get('balance', 0) == 0:
-                    tae = self.get_tae(server_id)
+                    tae = self.get_tae(self.server_id)
                     initial_balance = tae * 10
                     if initial_balance > 0:
                         logger.info(f"💰 Applying retroactive opening bonus of {initial_balance} coins (10x TAE={tae}) to existing wallet {wallet_id}")
                         # Add the opening bonus
-                        success = self.add_balance(wallet_id, server_id, initial_balance)
+                        success = self.add_balance(wallet_id, initial_balance)
                         if success:
                             # Record bonus transaction
                             self.roles_db.save_banker_transaction(
                                 "system", wallet_id, initial_balance, "opening_bonus", 
-                                f"Retroactive opening bonus (10x TAE) for existing {wallet_type} wallet", server_id, "system"
+                                f"Retroactive opening bonus (10x TAE) for existing {wallet_type} wallet", "system"
                             )
                         return success
                 else:
@@ -55,20 +55,20 @@ class BankerRolesDB:
             # Calculate opening bonus (10x TAE) for user wallets
             initial_balance = 0
             if wallet_type == 'user':
-                tae = self.get_tae(server_id)
+                tae = self.get_tae(self.server_id)
                 initial_balance = tae * 10
                 logger.info(f"💰 Applying opening bonus of {initial_balance} coins (10x TAE={tae}) to new wallet {wallet_id}")
             
             # Create wallet with initial balance
             success = self.roles_db.save_banker_wallet(
-                wallet_id, wallet_id, user_name, server_id, server_name, initial_balance, wallet_type
+                wallet_id, user_name, initial_balance, wallet_type
             )
             
             if success and initial_balance > 0:
                 # Record bonus transaction
                 self.roles_db.save_banker_transaction(
                     "system", wallet_id, initial_balance, "opening_bonus", 
-                    f"Opening bonus (10x TAE) for new {wallet_type} wallet", server_id, "system"
+                    f"Opening bonus (10x TAE) for new {wallet_type} wallet", "system"
                 )
             
             return success
@@ -76,62 +76,62 @@ class BankerRolesDB:
             logger.error(f"Failed to create wallet: {e}")
             return False
     
-    def get_balance(self, wallet_id: str, server_id: str) -> int:
+    def get_balance(self, wallet_id: str) -> int:
         """Get wallet balance."""
         try:
-            wallet = self.roles_db.get_banker_wallet(wallet_id, server_id)
+            wallet = self.roles_db.get_banker_wallet(wallet_id)
             return wallet['balance'] if wallet else 0
         except Exception as e:
             logger.error(f"Failed to get balance: {e}")
             return 0
     
-    def set_balance(self, wallet_id: str, server_id: str, balance: int) -> bool:
+    def set_balance(self, wallet_id: str, balance: int) -> bool:
         """Set wallet balance."""
         try:
-            return self.roles_db.update_banker_balance(wallet_id, server_id, balance)
+            return self.roles_db.update_banker_balance(wallet_id, balance)
         except Exception as e:
             logger.error(f"Failed to set balance: {e}")
             return False
     
-    def add_balance(self, wallet_id: str, server_id: str, amount: int) -> bool:
+    def add_balance(self, wallet_id: str, amount: int) -> bool:
         """Add amount to wallet balance."""
         try:
-            current_balance = self.get_balance(wallet_id, server_id)
+            current_balance = self.get_balance(wallet_id)
             new_balance = current_balance + amount
-            return self.set_balance(wallet_id, server_id, new_balance)
+            return self.set_balance(wallet_id, new_balance)
         except Exception as e:
             logger.error(f"Failed to add balance: {e}")
             return False
     
-    def subtract_balance(self, wallet_id: str, server_id: str, amount: int) -> bool:
+    def subtract_balance(self, wallet_id: str, amount: int) -> bool:
         """Subtract amount from wallet balance."""
         try:
-            current_balance = self.get_balance(wallet_id, server_id)
+            current_balance = self.get_balance(wallet_id)
             if current_balance < amount:
                 return False
             new_balance = current_balance - amount
-            return self.set_balance(wallet_id, server_id, new_balance)
+            return self.set_balance(wallet_id, new_balance)
         except Exception as e:
             logger.error(f"Failed to subtract balance: {e}")
             return False
     
-    def transfer(self, from_wallet: str, to_wallet: str, amount: int, server_id: str, description: str = None, created_by: str = None) -> bool:
+    def transfer(self, from_wallet: str, to_wallet: str, amount: int, description: str = None, created_by: str = None) -> bool:
         """Transfer amount between wallets."""
         try:
             # Check if from_wallet has sufficient balance
-            if not self.subtract_balance(from_wallet, server_id, amount):
+            if not self.subtract_balance(from_wallet, amount):
                 return False
             
             # Add to to_wallet
-            if not self.add_balance(to_wallet, server_id, amount):
+            if not self.add_balance(to_wallet, amount):
                 # Rollback if failed
-                self.add_balance(from_wallet, server_id, amount)
+                self.add_balance(from_wallet, amount)
                 return False
             
             # Record transaction
             self.roles_db.save_banker_transaction(
                 from_wallet, to_wallet, amount, 'transfer', 
-                description, server_id, created_by
+                description, created_by
             )
             
             return True
@@ -142,9 +142,9 @@ class BankerRolesDB:
     def obtener_todas_wallets(self) -> List[tuple]:
         """Get all wallets (for compatibility with original interface)."""
         try:
-            wallets = self.roles_db.get_all_banker_wallets(self.server_name)
+            wallets = self.roles_db.get_all_banker_wallets()
             return [
-                (w['wallet_id'], w['user_name'], w['server_id'], w['server_name'])
+                (w['wallet_id'], w['user_name'], w['wallet_type'])
                 for w in wallets
             ]
         except Exception as e:
@@ -154,7 +154,7 @@ class BankerRolesDB:
     def get_tae(self, server_id: str) -> int:
         """Get TAE (interest rate) from role config."""
         try:
-            config = self.roles_db.get_role_config("banker", server_id)
+            config = self.roles_db.get_role_config("banker")
             config_data = config.get('config_data', '{}')
             if config_data:
                 import json
@@ -169,7 +169,7 @@ class BankerRolesDB:
         """Set TAE (interest rate) in role config."""
         try:
             import json
-            config = self.roles_db.get_role_config("banker", server_id)
+            config = self.roles_db.get_role_config("banker")
             config_data = config.get('config_data', '{}')
             if config_data:
                 data = json.loads(config_data)
@@ -178,7 +178,7 @@ class BankerRolesDB:
             
             data['tae'] = tae
             return self.roles_db.save_role_config(
-                "banker", server_id, True, json.dumps(data)
+                "banker", True, json.dumps(data)
             )
         except Exception as e:
             logger.error(f"Failed to set TAE: {e}")
@@ -187,18 +187,18 @@ class BankerRolesDB:
     def get_transaction_history(self, wallet_id: str = None, limit: int = 50) -> List[Dict[str, Any]]:
         """Get transaction history."""
         try:
-            return self.roles_db.get_banker_transactions(self.server_name, wallet_id, limit)
+            return self.roles_db.get_banker_transactions(wallet_id, limit)
         except Exception as e:
             logger.error(f"Failed to get transaction history: {e}")
             return []
     
-    def update_balance(self, wallet_id: str, user_name: str, server_id: str, server_name: str, 
+    def update_balance(self, wallet_id: str, user_name: str, 
                       amount: int, transaction_type: str, description: str, 
                       category: str = "general", created_by: str = "system") -> bool:
         """Update wallet balance with transaction recording."""
         try:
             # Get current balance
-            current_balance = self.get_balance(wallet_id, server_id)
+            current_balance = self.get_balance(wallet_id)
             new_balance = current_balance + amount
             
             # Check for insufficient funds
@@ -206,12 +206,12 @@ class BankerRolesDB:
                 return False
             
             # Update balance
-            if self.set_balance(wallet_id, server_id, new_balance):
+            if self.set_balance(wallet_id, new_balance):
                 # Record transaction
                 self.roles_db.save_banker_transaction(
                     wallet_id if amount < 0 else "system",
                     wallet_id if amount > 0 else wallet_id,
-                    abs(amount), transaction_type, description, server_id, created_by
+                    abs(amount), transaction_type, description, created_by
                 )
                 return True
             return False
@@ -221,6 +221,6 @@ class BankerRolesDB:
 
 
 # Global database instance
-def get_banker_roles_db_instance(server_name: str = "default") -> BankerRolesDB:
+def get_banker_roles_db_instance(server_id: str = "default") -> BankerRolesDB:
     """Get the banker database instance using centralized roles.db."""
-    return BankerRolesDB(server_name)
+    return BankerRolesDB(server_id)

@@ -15,6 +15,109 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 logger = get_logger('mc_commands')
 
 
+def _build_youtube_options(base_format: str = 'bestaudio/best', noplaylist: bool = True) -> dict:
+    """Build YouTube download options with optional cookie support."""
+    ydl_opts = {
+        'format': base_format,
+        'quiet': True,
+        'no_warnings': True,
+        'noplaylist': noplaylist,
+        # Enhanced authentication and bypass options
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        },
+        # Enhanced options for VPS environments
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+                'player_skip': ['configs', 'webpage'],
+                # Disable features that require JavaScript runtime
+                'skip': ['dash', 'hls'],
+            }
+        },
+        'socket_timeout': 30,
+        'retries': 3,
+        'fragment_retries': 3,
+        # Additional bypass options for VPS
+        'extract_flat': False,
+        'no_check_certificate': True,
+    }
+    
+    # Check for JavaScript runtime availability
+    has_js_runtime = _check_js_runtime_available()
+    
+    # Add cookie file if it exists and works (check multiple locations)
+    cookie_paths = [
+        '/app/cookies.txt',  # Docker environment
+        'cookies.txt',       # Local development - same directory
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'cookies.txt'),  # Project root
+    ]
+    
+    for cookie_path in cookie_paths:
+        if os.path.exists(cookie_path):
+            if has_js_runtime:
+                # Test if cookies work properly when JS runtime is available
+                if _test_cookies_work(cookie_path):
+                    ydl_opts['cookiefile'] = cookie_path
+                    logger.info(f"MC: Using working cookies from {cookie_path} (JS runtime available)")
+                else:
+                    logger.warning(f"MC: Cookies found at {cookie_path} but not working properly, using without cookies")
+            else:
+                # Without JS runtime, cookies will cause issues
+                logger.warning(f"MC: Cookies found at {cookie_path} but no JS runtime available, using without cookies")
+                logger.info("MC: Install Node.js for cookie support: 'sudo apt install nodejs'")
+            break
+    
+    return ydl_opts
+
+
+def _check_js_runtime_available() -> bool:
+    """Check if JavaScript runtime is available for YouTube challenges."""
+    try:
+        import subprocess
+        runtimes = ['node', 'nodejs', 'deno', 'bun']
+        for runtime in runtimes:
+            try:
+                result = subprocess.run([runtime, '--version'], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    logger.debug(f"MC: JavaScript runtime found: {runtime} {result.stdout.strip()}")
+                    return True
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                continue
+        return False
+    except Exception:
+        return False
+
+
+def _test_cookies_work(cookie_path: str) -> bool:
+    """Test if cookies work properly with YouTube."""
+    try:
+        import yt_dlp
+        test_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'cookiefile': cookie_path,
+            'format': 'bestaudio/best',
+        }
+        
+        with yt_dlp.YoutubeDL(test_opts) as ydl:
+            # Try a simple video extraction
+            info = ydl.extract_info('https://www.youtube.com/watch?v=dQw4w9WgXcQ', download=False)
+            # Check if we got actual audio/video formats (not just images)
+            formats = info.get('formats', [])
+            audio_formats = [f for f in formats if f.get('acodec') != 'none']
+            return len(audio_formats) > 0
+    except Exception as e:
+        logger.debug(f"MC: Cookie test failed: {e}")
+        return False
+
+
 def _load_mc_answers() -> dict:
     try:
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -182,35 +285,8 @@ class MCCommands:
         
         try:
             # Configure yt-dlp with enhanced options to bypass bot detection
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'quiet': True,
-                'no_warnings': True,
-                'extract_flat': False,
-                'noplaylist': True,
-                # YouTube cookies for authentication
-                'cookiefile': '/app/cookies.txt',
-                # Enhanced authentication and bypass options
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                },
-                # Additional options to bypass restrictions
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android', 'web'],
-                        'player_skip': ['configs', 'webpage'],
-                    }
-                },
-                'socket_timeout': 30,
-                'retries': 3,
-                'fragment_retries': 3,
-            }
+            ydl_opts = _build_youtube_options('bestaudio/best', noplaylist=True)
+            ydl_opts['extract_flat'] = False
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 # Determine if URL or search
@@ -338,36 +414,9 @@ class MCCommands:
         
         try:
             # Configure yt-dlp with enhanced options to bypass bot detection
-            ydl_opts = {
-                'format': 'bestaudio[ext=m4a]/bestaudio/best',
-                'noplaylist': True,
-                'quiet': True,
-                'no_warnings': True,
-                'default_search': 'ytsearch',
-                'source_address': '0.0.0.0',
-                # YouTube cookies for authentication
-                'cookiefile': '/app/cookies.txt',
-                # Enhanced authentication and bypass options
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                },
-                # Additional options to bypass restrictions
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android', 'web'],
-                        'player_skip': ['configs', 'webpage'],
-                    }
-                },
-                'socket_timeout': 30,
-                'retries': 3,
-                'fragment_retries': 3,
-            }
+            ydl_opts = _build_youtube_options('bestaudio[ext=m4a]/bestaudio/best', noplaylist=True)
+            ydl_opts['default_search'] = 'ytsearch'
+            ydl_opts['source_address'] = '0.0.0.0'
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(query, download=False)
@@ -728,33 +777,7 @@ class MCCommands:
             
             pos, title, url, duration, artist, user_id, fecha = queue[0]
             
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'quiet': True,
-                'no_warnings': True,
-                # YouTube cookies for authentication
-                'cookiefile': '/app/cookies.txt',
-                # Enhanced authentication and bypass options
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                },
-                # Additional options to bypass restrictions
-                'extractor_args': {
-                    'youtube': {
-                        'player_client': ['android', 'web'],
-                        'player_skip': ['configs', 'webpage'],
-                    }
-                },
-                'socket_timeout': 30,
-                'retries': 3,
-                'fragment_retries': 3,
-            }
+            ydl_opts = _build_youtube_options('bestaudio/best', noplaylist=True)
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)

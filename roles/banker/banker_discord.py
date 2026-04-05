@@ -63,7 +63,7 @@ def _initialize_dice_game_account(user_id: str, user_name: str, server_id: str, 
 
         roles_db = get_roles_db_instance(server_key)
         if roles_db:
-            ok = roles_db.save_dice_game_stats(user_id, server_id)
+            ok = roles_db.save_dice_game_stats(user_id, 0, 0, 0, 0, 0, None)
             if ok:
                 logger.info(f"🎲 Dice game account initialized for {user_name}")
             return bool(ok)
@@ -134,7 +134,7 @@ def register_banker_commands(bot, personality, agent_config):
             return
 
         server_id = str(ctx.guild.id)
-        server_name = ctx.guild.name
+        server_id=ctx.guild.name
 
         # No args or "help" → show help
         if not args or (args and args[0].lower() == "help"):
@@ -147,11 +147,11 @@ def register_banker_commands(bot, personality, agent_config):
         subargs = args[1:] if len(args) > 1 else []
 
         if subcommand == "balance":
-            await _cmd_banker_balance(ctx, db_banker, server_id, server_name)
+            await _cmd_banker_balance(ctx, db_banker, server_id)
         elif subcommand == "tae":
-            await _cmd_banker_tae(ctx, db_banker, server_id, server_name, subargs)
+            await _cmd_banker_tae(ctx, db_banker, server_id, subargs)
         elif subcommand == "bonus":
-            await _cmd_banker_bonus(ctx, db_banker, server_id, server_name, subargs)
+            await _cmd_banker_bonus(ctx, db_banker, server_id, subargs)
         else:
             await ctx.send(get_message("command_not_recognized", subcommand=subcommand))
 
@@ -160,7 +160,7 @@ def register_banker_commands(bot, personality, agent_config):
 
 # --- SUBCOMMANDS ---
 
-async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
+async def _cmd_banker_balance(ctx, db_banker, server_id):
     """Show user's gold balance."""
     user_id = str(ctx.author.id)
     user_name = ctx.author.display_name
@@ -172,11 +172,11 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
                 continue
             member_id = str(member.id)
             member_name = member.display_name
-            db_banker.create_wallet(member_id, member_name, server_id, server_name)
+            db_banker.create_wallet(member_id, member_name)
 
         db_dice_game = _get_dice_game_db(ctx.guild)
         if db_dice_game is not None:
-            db_banker.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_name)
+            db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
             for member in getattr(ctx.guild, "members", []) or []:
                 if getattr(member, "bot", False):
                     continue
@@ -185,13 +185,13 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
         logger.warning(f"Bulk initialization failed: {e}")
     
     # Create wallet if it doesn't exist (with opening bonus)
-    was_created = db_banker.create_wallet(user_id, user_name, server_id, server_name)
+    was_created = db_banker.create_wallet(user_id, user_name)
     
     # Initialize dice game account for new and existing users
     dice_game_initialized = _initialize_dice_game_account(user_id, user_name, server_id, server_key)
     
-    balance = db_banker.get_balance(user_id, server_id)
-    history = db_banker.get_transaction_history(user_id, server_id, limit=5)
+    balance = db_banker.get_balance(user_id)
+    history = db_banker.get_transaction_history(user_id, limit=5)
     
     embed = discord.Embed(
         title=_get_banker_description_text("balance_title", get_message("balance_title")),
@@ -200,7 +200,7 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
     )
     embed.add_field(name=_get_banker_description_text("current_balance", get_message("current_balance")), value=f"{balance:,} gold coins", inline=False)
     embed.add_field(name=_get_banker_description_text("account_holder", get_message("account_holder")), value=user_name, inline=True)
-    embed.add_field(name=_get_banker_description_text("bank", get_message("bank")), value=server_name, inline=True)
+    embed.add_field(name=_get_banker_description_text("bank", get_message("bank")), value=server_id, inline=True)
 
     # Add dice game status information
     if dice_game_initialized:
@@ -222,7 +222,7 @@ async def _cmd_banker_balance(ctx, db_banker, server_id, server_name):
     await send_embed_dm_or_channel(ctx, embed, confirm)
 
 
-async def _cmd_banker_tae(ctx, db_banker, server_id, server_name, subargs):
+async def _cmd_banker_tae(ctx, db_banker, server_id, subargs):
     """Configure or view TAE (admins only)."""
     if not is_admin(ctx):
         await ctx.send(get_message("error_admin_daily_gold"))
@@ -264,7 +264,7 @@ async def _cmd_banker_tae(ctx, db_banker, server_id, server_name, subargs):
                 )
                 embed.add_field(name=_get_banker_description_text("new_daily_gold", get_message("new_daily_gold")), value=f"{amount:,} coins per day", inline=True)
                 embed.add_field(name=_get_banker_description_text("administrator", get_message("administrator")), value=ctx.author.display_name, inline=True)
-                embed.add_field(name=_get_banker_description_text("server", get_message("server")), value=server_name, inline=True)
+                embed.add_field(name=_get_banker_description_text("server", get_message("server")), value=server_id, inline=True)
                 
                 if amount > 0:
                     embed.add_field(name=_get_banker_description_text("next_distribution", get_message("next_distribution")), value="Will be distributed automatically every day", inline=False)
@@ -276,7 +276,7 @@ async def _cmd_banker_tae(ctx, db_banker, server_id, server_name, subargs):
             await ctx.send(get_message("error_invalid_amount"))
 
 
-async def _cmd_banker_bonus(ctx, db_banker, server_id, server_name, subargs):
+async def _cmd_banker_bonus(ctx, db_banker, server_id, subargs):
     """Show opening bonus information (calculated as 10x TAE)."""
     if not is_admin(ctx):
         await ctx.send(get_message("error_admin_account_bonus"))
@@ -293,7 +293,7 @@ async def _cmd_banker_bonus(ctx, db_banker, server_id, server_name, subargs):
     )
     embed.add_field(name="Current TAE", value=f"{current_tae:,} coins", inline=True)
     embed.add_field(name="Opening Bonus", value=f"{current_bonus:,} coins (10x TAE)", inline=True)
-    embed.add_field(name=_get_banker_description_text("server", get_message("server")), value=server_name, inline=True)
+    embed.add_field(name=_get_banker_description_text("server", get_message("server")), value=server_id, inline=True)
     embed.add_field(name="How to change", value="Use `!banker tae <amount>` to change the TAE rate", inline=False)
     embed.set_footer(text="New accounts automatically receive 10x TAE as opening bonus")
     await ctx.send(embed=embed)

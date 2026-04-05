@@ -15,11 +15,11 @@ except Exception:
 
 from agent_db import get_server_db_path_fallback, get_personality_name
 
-def get_db_path(server_name: str = "default") -> Path:
+def get_db_path(server_id: str = "default") -> Path:
     """Generate database path for MC role using centralized roles.db."""
     # MC role now uses the centralized roles.db system with personality-specific naming
     from agent_roles_db import get_roles_db_path
-    return get_roles_db_path(server_name)
+    return get_roles_db_path(server_id)
 
 
 class DatabaseRoleMC:
@@ -27,9 +27,9 @@ class DatabaseRoleMC:
     Gestiona colas de música, playlists y preferencias.
     """
     
-    def __init__(self, server_name: str = "default", db_path: Path = None):
+    def __init__(self, server_id: str = "default", db_path: Path = None):
         if db_path is None:
-            self.db_path = get_db_path(server_name)
+            self.db_path = get_db_path(server_id)
         else:
             self.db_path = db_path
         self._lock = threading.Lock()
@@ -411,6 +411,6 @@ class DatabaseRoleMC:
             return {}
 
 
-def get_mc_db_instance(server_name: str = "default") -> DatabaseRoleMC:
+def get_mc_db_instance(server_id: str = "default") -> DatabaseRoleMC:
     """Obtiene una instancia de la base de datos del MC."""
-    return DatabaseRoleMC(server_name)
+    return DatabaseRoleMC(server_id)

@@ -94,7 +94,7 @@ class DiceGame:
             return 0
     
     def play_game(self, player_id: str, player_name: str, server_id: str, 
-                  server_name: str, pot_balance: int) -> Dict[str, any]:
+                  pot_balance: int) -> Dict[str, any]:
         """Play a complete dice game round."""
         try:
             # Roll dice
@@ -172,9 +172,12 @@ def get_dice_game_instance(fixed_bet: int = 1) -> DiceGame:
         _game_instance = DiceGame(fixed_bet)
     return _game_instance
 
-def process_play(player_id: str, player_name: str, server_id: str,
-                 server_display_name: str, current_pot: int) -> Dict[str, Any]:
+def process_play(player_id: str, player_name: str, server_display_name: str, current_pot: int) -> Dict[str, Any]:
     try:
+        # Get server_id from the active server environment
+        from agent_db import get_active_server_id
+        server_id = get_active_server_id() or "default"
+        
         # Try to get banker database
         try:
             from agent_roles_db import get_roles_db_instance
@@ -184,7 +187,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
             roles_db = get_banker_roles_db_instance(server_id)
         
         if roles_db:
-            config = roles_db.get_role_config('dice_game', server_id)
+            config = roles_db.get_role_config('dice_game')
             fixed_bet = config.get('fixed_bet', 1)
             announcements_active = config.get('announcements_active', True)
             logger.info(f"🔧 DB Config - Server: {server_id}, Bet: {fixed_bet}, Announcements: {announcements_active}")
@@ -193,9 +196,19 @@ def process_play(player_id: str, player_name: str, server_id: str,
             announcements_active = True
             logger.warning(f"⚠️ No DB config found, using defaults - Bet: {fixed_bet}, Announcements: {announcements_active}")
         
-        # Play the game
+        # Get current pot balance from banker database for consistency
+        actual_current_pot = current_pot
+        try:
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            banker_roles_db = get_banker_roles_db_instance(server_id)
+            banker_roles_db.create_wallet("dice_game_pot", "Dice Game Pot", 'system')
+            actual_current_pot = banker_roles_db.get_balance("dice_game_pot")
+        except Exception:
+            pass
+        
+        # Play the game with actual pot balance
         game = get_dice_game_instance(fixed_bet)
-        result = game.play_game(player_id, player_name, server_id, server_display_name, current_pot)
+        result = game.play_game(player_id, player_name, server_id, actual_current_pot)
         result['announcements'] = []
         
         # Integrate with banker system for gold transactions
@@ -212,22 +225,22 @@ def process_play(player_id: str, player_name: str, server_id: str,
                 # Use BankerRolesDB for wallet operations
                 from roles.banker.banker_db import get_banker_roles_db_instance
                 banker_roles_db = get_banker_roles_db_instance(server_id)
-                banker_roles_db.create_wallet("dice_game_pot", "Dice Game Pot", server_id, server_display_name)
-                banker_roles_db.create_wallet(player_id, player_name, server_id, server_display_name, 'user')
-                current_pot = banker_roles_db.get_balance("dice_game_pot", server_id)
-                result['pot_before'] = current_pot
+                banker_roles_db.create_wallet("dice_game_pot", "Dice Game Pot", 'system')
+                banker_roles_db.create_wallet(player_id, player_name, 'user')
+                # Use the actual_current_pot we already obtained
+                result['pot_before'] = actual_current_pot
                 prize = result.get('prize', 0)
-                if prize > 0 and current_pot < prize:
+                if prize > 0 and actual_current_pot < prize:
                     result['success'] = False
                     result['message'] = "❌ The pot does not have enough gold to pay that prize."
                     return result
-                result['pot_after'] = 0 if result.get('jackpot') else (current_pot + result['bet'] - prize)
+                result['pot_after'] = 0 if result.get('jackpot') else (actual_current_pot + fixed_bet - prize)
                 result['message'] = game._format_result_message(result['dice'], result['combination'], prize, result['pot_after'])
 
                 # Deduct the bet amount from player's wallet
                 bet_deducted = banker_roles_db.update_balance(
-                    player_id, player_name, server_id, server_display_name,
-                    -result['bet'], "dice_game_bet", 
+                    player_id, player_name,
+                    -fixed_bet, "dice_game_bet", 
                     f"Dice game bet: {result['dice']}", 
                     "dice_game", "Dice Game System"
                 )
@@ -240,7 +253,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
                     # If player won, add the prize to their wallet
                     if result['prize'] > 0:
                         prize_added = banker_roles_db.update_balance(
-                            player_id, player_name, server_id, server_display_name,
+                            player_id, player_name,
                             result['prize'], "dice_game_win", 
                             f"Dice game winnings: {result['combination']}", 
                             "dice_game", "Dice Game System"
@@ -258,7 +271,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
                     if result['success']:
                         pot_delta = result['pot_after'] - result['pot_before']
                         pot_updated = banker_roles_db.update_balance(
-                            "dice_game_pot", "Dice Game Pot", server_id, server_display_name,
+                            "dice_game_pot", "Dice Game Pot",
                             pot_delta, "dice_game_pot_update",
                             f"Dice game pot update: {result['dice']}",
                             "dice_game", "Dice Game System"
@@ -273,7 +286,7 @@ def process_play(player_id: str, player_name: str, server_id: str,
                             opening_bonus = tae * 15
                             if opening_bonus > 0:
                                 refill_result = banker_roles_db.update_balance(
-                                    "dice_game_pot", "Dice Game Pot", server_id, server_display_name,
+                                    "dice_game_pot", "Dice Game Pot",
                                     opening_bonus, "dice_game_pot_refill",
                                     f"Jackpot refill with opening bonus (15x TAE)",
                                     "dice_game", "Dice Game System"
@@ -290,13 +303,49 @@ def process_play(player_id: str, player_name: str, server_id: str,
                 banker_message = f"⚠️ Banker integration failed: {str(e)}"
         
         if result['success']:
+            # Update player statistics
+            try:
+                from agent_roles_db import get_roles_db_instance
+                roles_db = get_roles_db_instance(server_id)
+                if roles_db:
+                    # Get current stats
+                    current_stats = roles_db.get_dice_game_stats(player_id)
+                    
+                    # Calculate new stats
+                    new_total_plays = current_stats.get('total_plays', 0) + 1
+                    new_total_bet = current_stats.get('total_bet', 0) + result['bet']
+                    new_total_won = current_stats.get('total_won', 0) + result['prize']
+                    new_pots_won = current_stats.get('pots_won', 0) + (1 if result.get('jackpot') else 0)
+                    new_biggest_prize = max(current_stats.get('biggest_prize', 0), result['prize'])
+                    last_play_info = f"{result['dice']} → {result['combination']} | {'💰' if result['prize'] > 0 else '💸'} {result['prize']}"
+                    
+                    # Update stats
+                    stats_updated = roles_db.save_dice_game_stats(
+                        player_id, 
+                        new_total_plays,
+                        new_total_bet, 
+                        new_total_won, 
+                        new_pots_won, 
+                        new_biggest_prize, 
+                        last_play_info
+                    )
+                    
+                    if stats_updated:
+                        logger.info(f"📊 Updated stats for {player_name}: plays={new_total_plays}, won={new_total_won}, biggest={new_biggest_prize}")
+                    else:
+                        logger.warning(f"⚠️ Failed to update stats for {player_name}")
+                else:
+                    logger.warning("⚠️ Could not update dice game stats - no database connection")
+            except Exception as e:
+                logger.error(f"❌ Failed to update dice game stats: {e}")
+            
             # Save the game to database
             try:
                 from agent_roles_db import get_roles_db_instance
                 roles_db = get_roles_db_instance(server_id)
                 if roles_db:
                     play_id = roles_db.save_dice_game_play(
-                        player_id, player_name, server_id, server_display_name,
+                        player_id, player_name,
                         result['bet'], result['dice'], result['combination'], 
                         result['prize'], result['pot_before'], result['pot_after']
                     )

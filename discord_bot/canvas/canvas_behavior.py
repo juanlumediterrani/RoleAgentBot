@@ -321,7 +321,7 @@ def build_canvas_behavior_detail(
                 # Use default server for Canvas (no guild context available)
                 server_id = "default"
                 roles_db = get_roles_db_instance(server_id)
-                config = roles_db.get_role_config(role_name, server_id)
+                config = roles_db.get_role_config(role_name)
                 if config:
                     enabled = config.get('enabled', False)
             except Exception as e:

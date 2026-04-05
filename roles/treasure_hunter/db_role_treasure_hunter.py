@@ -15,7 +15,7 @@ except Exception:
 
 from agent_db import get_shared_data_path
 
-def get_db_path(server_name: str = "default", liga: str = "Standard") -> Path:
+def get_db_path(server_id: str = "default", liga: str = "Standard") -> Path:
     """Generate the database path based on the league name."""
     if liga.lower() == "fate of the vaal":
         db_name = "PoE2FOTV.db"
@@ -33,7 +33,7 @@ class DatabaseRolePoe:
     Manages price history with retention of 720 entries (30 days).
     """
     
-    def __init__(self, server_name: str = "default", liga: str = "Standard", db_path: Path = None):
+    def __init__(self, server_id: str = "default", liga: str = "Standard", db_path: Path = None):
         if db_path is None:
             self.db_path = get_db_path(server_name, liga)
         else:
@@ -399,7 +399,7 @@ class DatabaseRolePoe:
 # Dictionary to maintain instances per server and league
 _db_poe_instances = {}
 
-def get_poe_db_instance(server_name: str = "default", liga: str = "Standard") -> DatabaseRolePoe:
+def get_poe_db_instance(server_id: str = "default", liga: str = "Standard") -> DatabaseRolePoe:
     """Get or create a POE database instance for a specific server and league."""
     key = liga
     if key not in _db_poe_instances:

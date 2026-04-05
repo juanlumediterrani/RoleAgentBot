@@ -99,13 +99,13 @@ def _get_behavior_db_for_guild(guild):
 
 
 def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: str, welcome_name: str, nowelcome_name: str,
-                           role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_name: str = "default",
+                           role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_id: str = "default",
                            author_id: int = 0, guild=None, is_dm: bool = False) -> dict[str, str]:
     """Build the top-level Canvas sections for the current user context."""
     return {
         "home": _build_canvas_home(
             agent_config, greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name,
-            admin_visible, server_name, author_id, guild, is_dm
+            admin_visible, server_id, author_id, guild, is_dm
         ),
         "behavior": build_canvas_behavior(
             greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name, admin_visible
@@ -789,13 +789,11 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("roles_view_messages", {})
             trickster = roles_view.get("trickster", {})
-            dice_game = trickster.get("dice_game", {})
+            ring_descriptions = trickster.get("ring", {})
             
             # Ensure ring_descriptions is a dict
-            if not isinstance(dice_game, dict):
+            if not isinstance(ring_descriptions, dict):
                 ring_descriptions = {}
-            else:
-                ring_descriptions = dice_game
             
             def _ring_text(key: str, fallback: str) -> str:
                 value = ring_descriptions.get(key)
@@ -1009,7 +1007,7 @@ def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int =
 
 
 def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, welcome_name: str, nowelcome_name: str,
-                       role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_name: str = "default",
+                       role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_id: str = "default",
                        author_id: int = 0, guild=None, is_dm: bool = False) -> str:
     """Build the main Canvas hub view with status information."""
     enabled_roles = _get_enabled_roles(agent_config)
@@ -1050,12 +1048,12 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     # Try to get database and records
     database = None
     try:
-        database = AgentDatabase(server_name=server_name)
+        database = AgentDatabase(server_id=server_id)
         recent_record = database.get_recent_memory_record()
         relationship_record = database.get_user_relationship_memory(author_id)
         daily_record = database.get_daily_memory_record()
     except Exception as e:
-        logger.warning(f"Canvas status could not load memory data for server={server_name}: {e}")
+        logger.warning(f"Canvas status could not load memory data for server={server_id}: {e}")
         # Database error, but we still have the records (might be None)
         # Don't set fallbacks here - let the logic below handle it
     
@@ -1160,10 +1158,10 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     
     # Get roles view messages from personality with fallback
     roles_messages = _personality_descriptions.get("roles_view_messages", {})
-    server_name = "Server"  # We don't have guild context here
+    server_id= "Server"  # We don't have guild context here
     
     # Title and description from descriptions.json with fallback
-    title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_name} 🎭")
+    title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_id} 🎭")
     description = roles_messages.get("description", f"🌟 {core._bot_display_name} the role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.")
     
     # Replace {_bot_display_name} placeholder in main title and description

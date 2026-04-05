@@ -33,7 +33,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
 
     balance = 0
     user_name = "Unknown"
-    server_name = "Unknown Server"
+    server_id = "Unknown Server"
     history = []
 
     if guild is not None and get_roles_db_instance is not None:
@@ -49,7 +49,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
 
                 from roles.banker.banker_db import get_banker_roles_db_instance
                 db_banker_roles = get_banker_roles_db_instance(server_key)
-                db_banker_roles.create_wallet(user_id, user_name, server_id, server_name, 'user')
+                db_banker_roles.create_wallet(user_id, user_name, 'user')
 
                 try:
                     from roles.banker.banker_discord import _initialize_dice_game_account
@@ -57,9 +57,9 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
                 except Exception:
                     pass
 
-                balance = db_banker_roles.get_balance(user_id, server_id)
+                balance = db_banker_roles.get_balance(user_id)
                 # Get transaction history from the banker database
-                history = db_banker_roles.roles_db.get_banker_transactions(server_id, user_id, limit=5)
+                history = db_banker_roles.roles_db.get_banker_transactions(user_id, limit=5)
 
                 tae = db_banker_roles.get_tae(server_id)
         except Exception as error:
@@ -73,16 +73,22 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
         ),
         _banker_text("wallet_status_title", "**Wallet status**"),
         f":coin: {_banker_text('gold_coins', '{amount} monedas de oro').replace('{amount}', f'{balance:,}')}",
-        f":bank: {_banker_text('server_label', 'Server')}: {server_name}",
+        f":bank: {_banker_text('server_label', 'Server')}: {server_id}",
         f":bust_in_silhouette: {_banker_text('user_label', 'User')}: {user_name}",
         _banker_text("recent_transactions_title", "**Recent transactions**"),
     ]
 
     if history:
         for transaction in history[:3]:
-            transaction_type, amount, *_rest = transaction
-            emoji = ":inbox_tray:" if amount > 0 else ":outbox_tray:"
-            content_parts.append(f"{emoji} {amount:,} ({transaction_type})")
+            # transaction is a dictionary, not a tuple
+            transaction_type = transaction.get('transaction_type', 'Unknown')
+            amount = transaction.get('amount', 0)
+            try:
+                amount_int = int(amount)
+                emoji = ":inbox_tray:" if amount_int > 0 else ":outbox_tray:"
+            except (ValueError, TypeError):
+                emoji = ":question:"  # Default emoji for invalid amounts
+            content_parts.append(f"{emoji} {amount_int:,} ({transaction_type})")
     else:
         content_parts.append(_banker_text("no_transactions_yet", "No transactions yet"))
 
@@ -169,19 +175,19 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
         server_key = get_server_key(interaction.guild)
         db_banker = get_roles_db_instance(server_key)
         server_id = str(interaction.guild.id)
+        server_name = interaction.guild.name
         user_id = str(view.author_id)
 
         user_name = interaction.user.display_name
-        server_name = interaction.guild.name
         content_parts = [f"🏦 **BANKER - {action_name.upper()}** 🏦", ""]
 
         if action_name == "balance":
-            wallet = db_banker.get_banker_wallet(user_id, server_id)
+            wallet = db_banker.get_banker_wallet(user_id)
             balance = wallet.get("balance", 0) if wallet else 0
             content_parts.extend([
                 f"💰 **Your Balance:** {balance:,} :coin:",
                 f"👤 **Account:** {user_name}",
-                f"🏛️ **Server:** {server_name}",
+                f"🏛️ **Server:** {server_id}",
             ])
         elif action_name == "tae":
             try:
@@ -193,7 +199,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
                     "📊 **TAE Configuration**",
                     f"📈 **Rate:** {tae_rate:.2%}",
                     f"🔧 **Status:** {'✅ Enabled' if tae_enabled else '❌ Disabled'}",
-                    f"🏛️ **Server:** {server_name}",
+                    f"🏛️ **Server:** {server_id}",
                 ])
             except Exception:
                 content_parts.extend([
@@ -210,7 +216,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
                     "🎁 **Bonus Configuration**",
                     f"💎 **Rate:** {bonus_rate}%",
                     f"🔧 **Status:** {'✅ Enabled' if bonus_enabled else '❌ Disabled'}",
-                    f"🏛️ **Server:** {server_name}",
+                    f"🏛️ **Server:** {server_id}",
                 ])
             except Exception:
                 content_parts.extend([

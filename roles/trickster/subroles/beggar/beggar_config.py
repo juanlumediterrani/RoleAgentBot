@@ -47,7 +47,7 @@ class BeggarConfig:
     def get_config(self) -> Dict[str, Any]:
         """Get beggar configuration from roles_config."""
         try:
-            config = self.roles_db.get_role_config('beggar', self.server_id)
+            config = self.roles_db.get_role_config('beggar')
             
             if config and config.get('config_data'):
                 config_data = json.loads(config['config_data'])
@@ -95,7 +95,6 @@ class BeggarConfig:
             
             success = self.roles_db.save_role_config(
                 'beggar', 
-                self.server_id, 
                 config.get('enabled', False),
                 json.dumps(config_data)
             )

@@ -15,21 +15,21 @@ from agent_db import get_server_db_path_fallback, get_database_path
 logger = get_logger('agent_roles_db')
 
 
-def get_roles_db_path(server_name: str = "default") -> Path:
+def get_roles_db_path(server_id: str = "default") -> Path:
     """Generate database path for roles configuration."""
     from agent_db import get_personality_name
     personality_name = get_personality_name()
     db_name = f"roles_{personality_name}"
-    return get_server_db_path_fallback(server_name, db_name)
+    return get_server_db_path_fallback(server_id, db_name)
 
 
 class RolesDatabase:
     """Centralized database handler for all roles configuration."""
     
-    def __init__(self, server_name: str = "default"):
+    def __init__(self, server_id: str = "default"):
         """Initialize database connection using roles.db."""
-        self.server_name = server_name
-        self.db_path = get_roles_db_path(server_name)
+        self.server_id = server_id
+        self.db_path = get_roles_db_path(server_id)
         self._lock = threading.RLock()
         self._init_tables()
     
@@ -49,7 +49,6 @@ class RolesDatabase:
                         CREATE TABLE IF NOT EXISTS nordic_runes (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id TEXT NOT NULL,
-                            server_id TEXT,
                             question TEXT,
                             runes_drawn TEXT NOT NULL,
                             interpretation TEXT NOT NULL,
@@ -62,7 +61,6 @@ class RolesDatabase:
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS ring_accusations (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            server_id TEXT NOT NULL,
                             accuser_id TEXT,
                             accused_id TEXT,
                             accusation TEXT,
@@ -74,8 +72,7 @@ class RolesDatabase:
                     # Dice Game statistics table
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS dice_game_stats (
-                            user_id TEXT NOT NULL,
-                            server_id TEXT NOT NULL,
+                            user_id TEXT NOT NULL PRIMARY KEY,
                             total_plays INTEGER DEFAULT 0,
                             total_bet INTEGER DEFAULT 0,
                             total_won INTEGER DEFAULT 0,
@@ -83,8 +80,7 @@ class RolesDatabase:
                             biggest_prize INTEGER DEFAULT 0,
                             last_play TEXT,
                             created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL,
-                            PRIMARY KEY (user_id, server_id)
+                            updated_at TEXT NOT NULL
                         )
                     """)
                     
@@ -92,16 +88,12 @@ class RolesDatabase:
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS banker_wallets (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            wallet_id TEXT NOT NULL,
-                            user_id TEXT NOT NULL,
+                            wallet_id TEXT NOT NULL UNIQUE,
                             user_name TEXT NOT NULL,
-                            server_id TEXT NOT NULL,
-                            server_name TEXT NOT NULL,
                             balance INTEGER DEFAULT 0,
                             wallet_type TEXT DEFAULT 'user',
                             created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL,
-                            UNIQUE(wallet_id, server_id)
+                            updated_at TEXT NOT NULL
                         )
                     """)
                     
@@ -114,7 +106,6 @@ class RolesDatabase:
                             amount INTEGER NOT NULL,
                             transaction_type TEXT NOT NULL,
                             description TEXT,
-                            server_id TEXT NOT NULL,
                             created_by TEXT,
                             created_at TEXT NOT NULL
                         )
@@ -124,13 +115,11 @@ class RolesDatabase:
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS roles_config (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            role_name TEXT NOT NULL,
-                            server_id TEXT NOT NULL,
+                            role_name TEXT NOT NULL UNIQUE,
                             enabled BOOLEAN DEFAULT 1,
                             config_data TEXT,
                             created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL,
-                            UNIQUE(role_name, server_id)
+                            updated_at TEXT NOT NULL
                         )
                     """)
 
@@ -153,8 +142,6 @@ class RolesDatabase:
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id TEXT NOT NULL,
                             user_name TEXT NOT NULL,
-                            server_id TEXT NOT NULL,
-                            server_name TEXT NOT NULL,
                             bet INTEGER NOT NULL,
                             dice TEXT NOT NULL,
                             combination TEXT NOT NULL,
@@ -168,9 +155,7 @@ class RolesDatabase:
                     # Beggar subrole table
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS beggar_subrole (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            server_id TEXT NOT NULL,
-                            user_id TEXT NOT NULL,
+                            user_id TEXT NOT NULL PRIMARY KEY,
                             user_name TEXT NOT NULL,
                             total_donated INTEGER DEFAULT 0,
                             weekly_donated INTEGER DEFAULT 0,
@@ -181,8 +166,7 @@ class RolesDatabase:
                             last_donation_amount INTEGER DEFAULT 0,
                             last_reason TEXT DEFAULT '',
                             created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL,
-                            UNIQUE(server_id, user_id)
+                            updated_at TEXT NOT NULL
                         )
                     """)
                     
@@ -190,7 +174,6 @@ class RolesDatabase:
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS beggar_request_history (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            server_id TEXT NOT NULL,
                             user_id TEXT NOT NULL,
                             user_name TEXT NOT NULL,
                             request_type TEXT NOT NULL,
@@ -216,33 +199,26 @@ class RolesDatabase:
                     # Create indexes for nordic_runes
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_nordic_runes_user_id ON nordic_runes(user_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_nordic_runes_created_at ON nordic_runes(created_at)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nordic_runes_server_id ON nordic_runes(server_id)")
                     
                     # Create indexes for ring tables
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_ring_accusations_server_id ON ring_accusations(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_ring_accusations_created_at ON ring_accusations(created_at)")
                     
                     # Create indexes for dice game tables
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_history_server_id ON dice_game_history(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_history_user_id ON dice_game_history(user_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_history_created_at ON dice_game_history(created_at)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_stats_server_id ON dice_game_stats(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_stats_user_id ON dice_game_stats(user_id)")
                     
                     # Create indexes for beggar subrole table
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_server_id ON beggar_subrole(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_user_id ON beggar_subrole(user_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_total_donated ON beggar_subrole(total_donated)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_weekly_donated ON beggar_subrole(weekly_donated)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_created_at ON beggar_subrole(created_at)")
                     
                     # Create indexes for beggar request history table
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_request_history_server_id ON beggar_request_history(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_request_history_request_type ON beggar_request_history(request_type)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_request_history_created_at ON beggar_request_history(created_at)")
                     
                     # Create indexes for roles config table
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_roles_config_server_id ON roles_config(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_roles_config_role_name ON roles_config(role_name)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_roles_config_enabled ON roles_config(enabled)")
 
@@ -251,10 +227,7 @@ class RolesDatabase:
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_poe2_subscriptions_league ON poe2_subscriptions(league)")
                     
                     # Create indexes for banker tables
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_wallets_server_id ON banker_wallets(server_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_wallets_user_id ON banker_wallets(user_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_wallets_wallet_id ON banker_wallets(wallet_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_server_id ON banker_transactions(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_from_wallet ON banker_transactions(from_wallet)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_to_wallet ON banker_transactions(to_wallet)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_created_at ON banker_transactions(created_at)")
@@ -266,8 +239,7 @@ class RolesDatabase:
             logger.error(f"Failed to initialize roles database: {e}")
             raise
     
-    def save_nordic_runes_reading(self, user_id: str, server_id: Optional[str], 
-                                 question: str, runes_drawn: List[str], 
+    def save_nordic_runes_reading(self, user_id: str, question: str, runes_drawn: List[str], 
                                  interpretation: str, reading_type: str) -> int:
         """Save a rune reading to the database."""
         try:
@@ -277,10 +249,10 @@ class RolesDatabase:
                     
                     cursor.execute("""
                         INSERT INTO nordic_runes 
-                        (user_id, server_id, question, runes_drawn, interpretation, reading_type, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (user_id, question, runes_drawn, interpretation, reading_type, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     """, (
-                        user_id, server_id, question, 
+                        user_id, question, 
                         json.dumps(runes_drawn), interpretation, 
                         reading_type, datetime.now().isoformat()
                     ))
@@ -359,7 +331,7 @@ class RolesDatabase:
             logger.error(f"Failed to get reading stats: {e}")
             return {'total_readings': 0, 'favorite_type': None}
     
-    def save_ring_accusation(self, server_id: str, accuser_id: str, accused_id: str, 
+    def save_ring_accusation(self, accuser_id: str, accused_id: str, 
                            accusation: str, evidence: str = None) -> int:
         """Save a ring accusation to the database."""
         try:
@@ -369,25 +341,25 @@ class RolesDatabase:
                     
                     cursor.execute("""
                         INSERT INTO ring_accusations 
-                        (server_id, accuser_id, accused_id, accusation, evidence, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (accuser_id, accused_id, accusation, evidence, created_at)
+                        VALUES (?, ?, ?, ?, ?)
                     """, (
-                        server_id, accuser_id, accused_id, accusation, 
-                        evidence, datetime.now().isoformat()
+                        accuser_id, accused_id, accusation, evidence, 
+                        datetime.now().isoformat()
                     ))
                     
                     accusation_id = cursor.lastrowid
                     conn.commit()
                     
-                    logger.info(f"Saved ring accusation {accusation_id} for server {server_id}")
+                    logger.info(f"Saved ring accusation {accusation_id} for accuser {accuser_id}")
                     return accusation_id
                     
         except Exception as e:
             logger.error(f"Failed to save ring accusation: {e}")
             raise
     
-    def get_ring_accusations(self, server_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent ring accusations for a server."""
+    def get_ring_accusations(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent ring accusations."""
         try:
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
@@ -396,10 +368,9 @@ class RolesDatabase:
                     cursor.execute("""
                         SELECT id, accuser_id, accused_id, accusation, evidence, created_at
                         FROM ring_accusations
-                        WHERE server_id = ?
                         ORDER BY created_at DESC
                         LIMIT ?
-                    """, (server_id, limit))
+                    """, (limit,))
                     
                     accusations = []
                     for row in cursor.fetchall():
@@ -418,7 +389,7 @@ class RolesDatabase:
             logger.error(f"Failed to get ring accusations: {e}")
             return []
     
-    def save_dice_game_stats(self, user_id: str, server_id: str, total_plays: int = 0, 
+    def save_dice_game_stats(self, user_id: str, total_plays: int = 0, 
                             total_bet: int = 0, total_won: int = 0, pots_won: int = 0, 
                             biggest_prize: int = 0, last_play: str = None) -> bool:
         """Save or update dice game statistics for a user."""
@@ -429,24 +400,24 @@ class RolesDatabase:
                     
                     cursor.execute("""
                         INSERT OR REPLACE INTO dice_game_stats 
-                        (user_id, server_id, total_plays, total_bet, total_won, pots_won, 
+                        (user_id, total_plays, total_bet, total_won, pots_won, 
                          biggest_prize, last_play, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
-                        user_id, server_id, total_plays, total_bet, total_won, 
+                        user_id, total_plays, total_bet, total_won, 
                         pots_won, biggest_prize, last_play, 
                         datetime.now().isoformat(), datetime.now().isoformat()
                     ))
                     
                     conn.commit()
-                    logger.info(f"Saved dice game stats for user {user_id} in server {server_id}")
+                    logger.info(f"Saved dice game stats for user {user_id}")
                     return True
                     
         except Exception as e:
             logger.error(f"Failed to save dice game stats: {e}")
             return False
     
-    def get_dice_game_stats(self, user_id: str, server_id: str) -> Dict[str, Any]:
+    def get_dice_game_stats(self, user_id: str) -> Dict[str, Any]:
         """Get dice game statistics for a user."""
         try:
             with self._lock:
@@ -456,8 +427,8 @@ class RolesDatabase:
                     cursor.execute("""
                         SELECT total_plays, total_bet, total_won, pots_won, biggest_prize, last_play, created_at, updated_at
                         FROM dice_game_stats
-                        WHERE user_id = ? AND server_id = ?
-                    """, (user_id, server_id))
+                        WHERE user_id = ?
+                    """, (user_id,))
                     
                     result = cursor.fetchone()
                     if result:
@@ -487,9 +458,9 @@ class RolesDatabase:
             logger.error(f"Failed to get dice game stats: {e}")
             return {}
     
-    def save_dice_game_play(self, user_id: str, user_name: str, server_id: str, server_name: str,
-                           bet: int, dice: str, combination: str, prize: int, 
-                           pot_before: int, pot_after: int) -> int:
+    def save_dice_game_play(self, user_id: str, user_name: str, bet: int, 
+                            dice: str, combination: str, prize: int, 
+                            pot_before: int, pot_after: int) -> int:
         """Save a dice game play to the database."""
         try:
             with self._lock:
@@ -498,11 +469,11 @@ class RolesDatabase:
                     
                     cursor.execute("""
                         INSERT INTO dice_game_history 
-                        (user_id, user_name, server_id, server_name, bet, dice, combination, 
+                        (user_id, user_name, bet, dice, combination, 
                          prize, pot_before, pot_after, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
-                        user_id, user_name, server_id, server_name, bet, dice, 
+                        user_id, user_name, bet, dice, 
                         combination, prize, pot_before, pot_after, datetime.now().isoformat()
                     ))
                     
@@ -516,21 +487,20 @@ class RolesDatabase:
             logger.error(f"Failed to save dice game play: {e}")
             raise
     
-    def get_dice_game_history(self, server_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent dice game plays for a server."""
+    def get_dice_game_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent dice game plays."""
         try:
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     
                     cursor.execute("""
-                        SELECT id, user_id, user_name, server_id, server_name, bet, dice, 
+                        SELECT id, user_id, user_name, bet, dice, 
                                combination, prize, pot_before, pot_after, created_at
                         FROM dice_game_history
-                        WHERE server_id = ?
                         ORDER BY created_at DESC
                         LIMIT ?
-                    """, (server_id, limit))
+                    """, (limit,))
                     
                     plays = []
                     for row in cursor.fetchall():
@@ -538,15 +508,13 @@ class RolesDatabase:
                             'id': row[0],
                             'user_id': row[1],
                             'user_name': row[2],
-                            'server_id': row[3],
-                            'server_name': row[4],
-                            'bet': row[5],
-                            'dice': row[6],
-                            'combination': row[7],
-                            'prize': row[8],
-                            'pot_before': row[9],
-                            'pot_after': row[10],
-                            'created_at': row[11]
+                            'bet': row[3],
+                            'dice': row[4],
+                            'combination': row[5],
+                            'prize': row[6],
+                            'pot_before': row[7],
+                            'pot_after': row[8],
+                            'created_at': row[9]
                         })
                     
                     return plays
@@ -555,7 +523,7 @@ class RolesDatabase:
             logger.error(f"Failed to get dice game history: {e}")
             return []
     
-    def save_role_config(self, role_name: str, server_id: str, enabled: bool, config_data: str = None) -> bool:
+    def save_role_config(self, role_name: str, enabled: bool, config_data: str = None) -> bool:
         """Save role configuration and toggle status - same pattern as behavior.db."""
         try:
             with self._lock:
@@ -564,22 +532,22 @@ class RolesDatabase:
                     
                     cursor.execute('''
                         INSERT OR REPLACE INTO roles_config 
-                        (role_name, server_id, enabled, config_data, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (role_name, enabled, config_data, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?)
                     ''', (
-                        role_name, server_id, enabled, config_data,
+                        role_name, enabled, config_data,
                         datetime.now().isoformat(), datetime.now().isoformat()
                     ))
                     
                     conn.commit()
-                    logger.info(f"Saved role config for {role_name} in server {server_id}")
+                    logger.info(f"Saved role config for {role_name}")
                     return True
                     
         except Exception as e:
             logger.error(f"Failed to save role config: {e}")
             return False
     
-    def get_role_config(self, role_name: str, server_id: str, default_enabled: bool = False) -> Dict[str, Any]:
+    def get_role_config(self, role_name: str, default_enabled: bool = False) -> Dict[str, Any]:
         """Get role configuration and toggle status - same pattern as behavior.db."""
         try:
             with self._lock:
@@ -589,8 +557,8 @@ class RolesDatabase:
                     cursor.execute("""
                         SELECT enabled, config_data, created_at, updated_at
                         FROM roles_config
-                        WHERE role_name = ? AND server_id = ?
-                    """, (role_name, server_id))
+                        WHERE role_name = ?
+                    """, (role_name,))
                     
                     result = cursor.fetchone()
                     if result is not None:
@@ -602,7 +570,7 @@ class RolesDatabase:
                         }
                     else:
                         # If role doesn't exist in database, create it with default value
-                        self.save_role_config(role_name, server_id, default_enabled, '{}')
+                        self.save_role_config(role_name, default_enabled, '{}')
                         return {
                             'enabled': default_enabled,
                             'config_data': '{}',
@@ -621,12 +589,12 @@ class RolesDatabase:
     
     def is_role_enabled(self, role_name: str, server_id: str) -> bool:
         """Check if a role is enabled for a server."""
-        config = self.get_role_config(role_name, server_id)
+        config = self.get_role_config(role_name)
         return config.get('enabled', True)
     
     def set_role_enabled(self, role_name: str, server_id: str, enabled: bool) -> bool:
         """Enable or disable a role for a server."""
-        return self.save_role_config(role_name, server_id, enabled)
+        return self.save_role_config(role_name, enabled)
 
     def save_poe2_subscription(self, user_id: str, server_id: str, league: str = "Standard", tracked_items: Optional[List[str]] = None) -> bool:
         """Create or update a POE2 subscription for a user on a server."""
@@ -721,11 +689,11 @@ class RolesDatabase:
             logger.error(f"Failed to delete POE2 subscription for user {user_id} in server {server_id}: {e}")
             return False
 
-    def migrate_roles_from_behavior(self, server_id: str) -> bool:
+    def migrate_roles_from_behavior(self) -> bool:
         """Migrate roles from behavior.db to roles_config - create new roles and update existing ones."""
         try:
             from behavior.db_behavior import get_behavior_db_instance
-            behavior_db = get_behavior_db_instance(server_id)
+            behavior_db = get_behavior_db_instance(self.server_id)
             
             # Get all roles from behavior.db
             conn_behavior = sqlite3.connect(behavior_db.db_path)
@@ -745,7 +713,7 @@ class RolesDatabase:
             
             for role_name, enabled in behavior_roles:
                 # Check if role already exists in roles_config
-                existing_config = self.get_role_config(role_name, server_id)
+                existing_config = self.get_role_config(role_name)
                 
                 if existing_config and existing_config.get('created_at'):
                     # Role exists, update if different
@@ -765,7 +733,7 @@ class RolesDatabase:
                         data['migration_date'] = datetime.now().isoformat()
                         data['original_enabled'] = bool(enabled)
                         
-                        success = self.save_role_config(role_name, server_id, bool(enabled), json.dumps(data))
+                        success = self.save_role_config(role_name, bool(enabled), json.dumps(data))
                         if success:
                             updated += 1
                             logger.info(f"Updated role {role_name} from behavior.db: enabled={bool(enabled)}")
@@ -781,7 +749,7 @@ class RolesDatabase:
                         'original_enabled': bool(enabled)
                     }
                     
-                    success = self.save_role_config(role_name, server_id, bool(enabled), json.dumps(config_data))
+                    success = self.save_role_config(role_name, bool(enabled), json.dumps(config_data))
                     if success:
                         migrated += 1
                         logger.info(f"Migrated role {role_name} from behavior.db: enabled={bool(enabled)}")
@@ -795,7 +763,7 @@ class RolesDatabase:
             logger.error(f"Error migrating roles from behavior.db: {e}")
             return False
     
-    def ensure_default_roles(self, server_id: str) -> bool:
+    def ensure_default_roles(self) -> bool:
         """Ensure all default roles exist in roles_config."""
         try:
             default_roles = {
@@ -810,7 +778,7 @@ class RolesDatabase:
             
             created = 0
             for role_name, default_enabled in default_roles.items():
-                config = self.get_role_config(role_name, server_id, default_enabled)
+                config = self.get_role_config(role_name, default_enabled)
                 if config and config.get('created_at'):
                     # Role exists
                     continue
@@ -819,7 +787,7 @@ class RolesDatabase:
                     created += 1
             
             if created > 0:
-                logger.info(f"Ensured {created} default roles exist in roles_config for server {server_id}")
+                logger.info(f"Ensured {created} default roles exist in roles_config")
             
             return True
             
@@ -827,7 +795,7 @@ class RolesDatabase:
             logger.error(f"Error ensuring default roles: {e}")
             return False
     
-    def migrate_roles_from_agent_config(self, server_id: str, agent_config_path: str = None) -> bool:
+    def migrate_roles_from_agent_config(self, agent_config_path: str = None) -> bool:
         """Migrate roles from agent_config.json to roles_config - first time initialization."""
         try:
             import json
@@ -872,9 +840,8 @@ class RolesDatabase:
                 
                 # Add specific configurations for different roles
                 if role_name == 'trickster' and 'subroles' in role_config:
-                    # Handle trickster subroles
+                    # Handle trickster subroles - create separate entries only
                     subroles = role_config.get('subroles', {})
-                    config_data['subroles'] = subroles
                     
                     # Create separate entries for subroles
                     for subrole_name, subrole_config in subroles.items():
@@ -887,7 +854,7 @@ class RolesDatabase:
                                 'subrole_config': subrole_config,
                                 'original_enabled': subrole_enabled
                             }
-                            existing_subrole_config = self.get_role_config(subrole_name, server_id)
+                            existing_subrole_config = self.get_role_config(subrole_name)
                             if existing_subrole_config and existing_subrole_config.get('created_at'):
                                 if existing_subrole_config.get('enabled') != subrole_enabled:
                                     existing_subrole_config_data = existing_subrole_config.get('config_data', '{}')
@@ -899,7 +866,7 @@ class RolesDatabase:
                                     existing_subrole_data.update(subrole_data)
                                     existing_subrole_data['updated_from_agent_config'] = True
 
-                                    success = self.save_role_config(subrole_name, server_id, subrole_enabled, json.dumps(existing_subrole_data))
+                                    success = self.save_role_config(subrole_name, subrole_enabled, json.dumps(existing_subrole_data))
                                     if success:
                                         updated += 1
                                         logger.info(f"Updated subrole {subrole_name} from agent_config: enabled={subrole_enabled}")
@@ -917,7 +884,7 @@ class RolesDatabase:
                                 else:
                                     logger.info(f"Subrole {subrole_name} already exists with same enabled state")
                             else:
-                                success = self.save_role_config(subrole_name, server_id, subrole_enabled, json.dumps(subrole_data))
+                                success = self.save_role_config(subrole_name, subrole_enabled, json.dumps(subrole_data))
                                 if success:
                                     migrated += 1
                                     logger.info(f"Migrated subrole {subrole_name} from agent_config: enabled={subrole_enabled}")
@@ -935,9 +902,28 @@ class RolesDatabase:
                                                 logger.info(f"Initialized beggar reason during migration: {selected_reason}")
                                         except Exception as e:
                                             logger.warning(f"Failed to initialize beggar reason during migration: {e}")
+                                    
+                                    # Special initialization for ring subrole
+                                    elif subrole_name == 'ring' and subrole_enabled:
+                                        try:
+                                            from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+                                            
+                                            # Initialize ring state with frequency from agent_config
+                                            frequency_hours = subrole_config.get('frequency_hours', 24)
+                                            state = _get_ring_state(server_id)
+                                            state["frequency_hours"] = frequency_hours
+                                            state["base_frequency_hours"] = frequency_hours
+                                            state["current_frequency_hours"] = frequency_hours
+                                            state["frequency_iteration"] = 0
+                                            state["enabled"] = True
+                                            _save_ring_state(server_id, "agent_config_migration")
+                                            
+                                            logger.info(f"Initialized ring state during migration: frequency={frequency_hours}h, enabled=True")
+                                        except Exception as e:
+                                            logger.warning(f"Failed to initialize ring state during migration: {e}")
                 
                 # Check if role already exists
-                existing_config = self.get_role_config(role_name, server_id)
+                existing_config = self.get_role_config(role_name)
                 if existing_config and existing_config.get('created_at'):
                     # Role exists, update if different
                     if existing_config.get('enabled') != enabled:
@@ -952,7 +938,7 @@ class RolesDatabase:
                         existing_data.update(config_data)
                         existing_data['updated_from_agent_config'] = True
                         
-                        success = self.save_role_config(role_name, server_id, enabled, json.dumps(existing_data))
+                        success = self.save_role_config(role_name, enabled, json.dumps(existing_data))
                         if success:
                             updated += 1
                             logger.info(f"Updated role {role_name} from agent_config: enabled={enabled}")
@@ -974,7 +960,7 @@ class RolesDatabase:
                         logger.info(f"Role {role_name} already exists with same enabled state")
                 else:
                     # Role doesn't exist, create it
-                    success = self.save_role_config(role_name, server_id, enabled, json.dumps(config_data))
+                    success = self.save_role_config(role_name, enabled, json.dumps(config_data))
                     if success:
                         migrated += 1
                         logger.info(f"Migrated role {role_name} from agent_config: enabled={enabled}")
@@ -1048,7 +1034,7 @@ class RolesDatabase:
                             """, (server_id,))
                             config_row = legacy_cursor.fetchone()
                             if config_row:
-                                role_config = self.get_role_config('beggar', server_id)
+                                role_config = self.get_role_config('beggar')
                                 config_data_raw = role_config.get('config_data') or '{}'
                                 try:
                                     config_data = json.loads(config_data_raw)
@@ -1068,7 +1054,7 @@ class RolesDatabase:
                                         WHERE server_id = ?
                                     """, (server_id,))
                                     enabled = (legacy_cursor.fetchone() or [0])[0] > 0
-                                self.save_role_config('beggar', server_id, enabled, json.dumps(config_data))
+                                self.save_role_config('beggar', enabled, json.dumps(config_data))
                                 migrated_any = True
                     conn.commit()
             if migrated_any:
@@ -1078,9 +1064,8 @@ class RolesDatabase:
             logger.error(f"Failed to migrate legacy beggar data: {e}")
             return False
     
-    def save_banker_wallet(self, wallet_id: str, user_id: str, user_name: str, 
-                           server_id: str, server_name: str, balance: int = 0, 
-                           wallet_type: str = 'user') -> bool:
+    def save_banker_wallet(self, wallet_id: str, user_name: str, 
+                           balance: int = 0, wallet_type: str = 'user') -> bool:
         """Save or update a banker wallet."""
         try:
             with self._lock:
@@ -1089,12 +1074,11 @@ class RolesDatabase:
                     
                     cursor.execute("""
                         INSERT OR REPLACE INTO banker_wallets 
-                        (wallet_id, user_id, user_name, server_id, server_name, balance, 
-                         wallet_type, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (wallet_id, user_name, balance, wallet_type, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     """, (
-                        wallet_id, user_id, user_name, server_id, server_name, 
-                        balance, wallet_type, datetime.now().isoformat(), datetime.now().isoformat()
+                        wallet_id, user_name, balance, wallet_type, 
+                        datetime.now().isoformat(), datetime.now().isoformat()
                     ))
                     
                     conn.commit()
@@ -1105,32 +1089,28 @@ class RolesDatabase:
             logger.error(f"Failed to save banker wallet: {e}")
             return False
     
-    def get_banker_wallet(self, wallet_id: str, server_id: str) -> Dict[str, Any]:
-        """Get a banker wallet by ID and server."""
+    def get_banker_wallet(self, wallet_id: str) -> Dict[str, Any]:
+        """Get a banker wallet by ID."""
         try:
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     
                     cursor.execute("""
-                        SELECT wallet_id, user_id, user_name, server_id, server_name, 
-                               balance, wallet_type, created_at, updated_at
+                        SELECT wallet_id, user_name, balance, wallet_type, created_at, updated_at
                         FROM banker_wallets
-                        WHERE wallet_id = ? AND server_id = ?
-                    """, (wallet_id, server_id))
+                        WHERE wallet_id = ?
+                    """, (wallet_id,))
                     
                     result = cursor.fetchone()
                     if result:
                         return {
                             'wallet_id': result[0],
-                            'user_id': result[1],
-                            'user_name': result[2],
-                            'server_id': result[3],
-                            'server_name': result[4],
-                            'balance': result[5],
-                            'wallet_type': result[6],
-                            'created_at': result[7],
-                            'updated_at': result[8]
+                            'user_name': result[1],
+                            'balance': result[2],
+                            'wallet_type': result[3],
+                            'created_at': result[4],
+                            'updated_at': result[5]
                         }
                     else:
                         return None
@@ -1139,7 +1119,7 @@ class RolesDatabase:
             logger.error(f"Failed to get banker wallet: {e}")
             return None
     
-    def update_banker_balance(self, wallet_id: str, server_id: str, new_balance: int) -> bool:
+    def update_banker_balance(self, wallet_id: str, new_balance: int) -> bool:
         """Update banker wallet balance."""
         try:
             with self._lock:
@@ -1149,8 +1129,8 @@ class RolesDatabase:
                     cursor.execute("""
                         UPDATE banker_wallets 
                         SET balance = ?, updated_at = ?
-                        WHERE wallet_id = ? AND server_id = ?
-                    """, (new_balance, datetime.now().isoformat(), wallet_id, server_id))
+                        WHERE wallet_id = ?
+                    """, (new_balance, datetime.now().isoformat(), wallet_id))
                     
                     conn.commit()
                     logger.info(f"Updated balance for wallet {wallet_id} to {new_balance}")
@@ -1161,8 +1141,7 @@ class RolesDatabase:
             return False
     
     def save_banker_transaction(self, from_wallet: str, to_wallet: str, amount: int, 
-                                transaction_type: str, server_id: str, 
-                                description: str = None, created_by: str = None) -> int:
+                                transaction_type: str, description: str = None, created_by: str = None) -> int:
         """Save a banker transaction."""
         try:
             with self._lock:
@@ -1171,12 +1150,10 @@ class RolesDatabase:
                     
                     cursor.execute("""
                         INSERT INTO banker_transactions 
-                        (from_wallet, to_wallet, amount, transaction_type, server_id, 
-                         description, created_by, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        (from_wallet, to_wallet, amount, transaction_type, description, created_by, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     """, (
-                        from_wallet, to_wallet, amount, transaction_type, server_id,
-                        description, created_by, datetime.now().isoformat()
+                        from_wallet, to_wallet, amount, transaction_type, description, created_by, datetime.now().isoformat()
                     ))
                     
                     transaction_id = cursor.lastrowid
@@ -1189,8 +1166,8 @@ class RolesDatabase:
             logger.error(f"Failed to save banker transaction: {e}")
             raise
     
-    def get_banker_transactions(self, server_id: str, wallet_id: str = None, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get banker transactions for a server (optionally filtered by wallet)."""
+    def get_banker_transactions(self, wallet_id: str = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get banker transactions (optionally filtered by wallet)."""
         try:
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
@@ -1199,21 +1176,20 @@ class RolesDatabase:
                     if wallet_id:
                         cursor.execute("""
                             SELECT id, from_wallet, to_wallet, amount, transaction_type, 
-                                   description, server_id, created_by, created_at
+                                   description, created_by, created_at
                             FROM banker_transactions
-                            WHERE server_id = ? AND (from_wallet = ? OR to_wallet = ?)
+                            WHERE from_wallet = ? OR to_wallet = ?
                             ORDER BY created_at DESC
                             LIMIT ?
-                        """, (server_id, wallet_id, wallet_id, limit))
+                        """, (wallet_id, wallet_id, limit))
                     else:
                         cursor.execute("""
                             SELECT id, from_wallet, to_wallet, amount, transaction_type, 
-                                   description, server_id, created_by, created_at
+                                   description, created_by, created_at
                             FROM banker_transactions
-                            WHERE server_id = ?
                             ORDER BY created_at DESC
                             LIMIT ?
-                        """, (server_id, limit))
+                        """, (limit,))
                     
                     transactions = []
                     for row in cursor.fetchall():
@@ -1224,9 +1200,8 @@ class RolesDatabase:
                             'amount': row[3],
                             'transaction_type': row[4],
                             'description': row[5],
-                            'server_id': row[6],
-                            'created_by': row[7],
-                            'created_at': row[8]
+                            'created_by': row[6],
+                            'created_at': row[7]
                         })
                     
                     return transactions
@@ -1235,33 +1210,28 @@ class RolesDatabase:
             logger.error(f"Failed to get banker transactions: {e}")
             return []
     
-    def get_all_banker_wallets(self, server_id: str) -> List[Dict[str, Any]]:
-        """Get all banker wallets for a server."""
+    def get_all_banker_wallets(self) -> List[Dict[str, Any]]:
+        """Get all banker wallets."""
         try:
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     
                     cursor.execute("""
-                        SELECT wallet_id, user_id, user_name, server_id, server_name, 
-                               balance, wallet_type, created_at, updated_at
+                        SELECT wallet_id, user_name, balance, wallet_type, created_at, updated_at
                         FROM banker_wallets
-                        WHERE server_id = ?
                         ORDER BY created_at DESC
-                    """, (server_id,))
+                    """)
                     
                     wallets = []
                     for row in cursor.fetchall():
                         wallets.append({
                             'wallet_id': row[0],
-                            'user_id': row[1],
-                            'user_name': row[2],
-                            'server_id': row[3],
-                            'server_name': row[4],
-                            'balance': row[5],
-                            'wallet_type': row[6],
-                            'created_at': row[7],
-                            'updated_at': row[8]
+                            'user_name': row[1],
+                            'balance': row[2],
+                            'wallet_type': row[3],
+                            'created_at': row[4],
+                            'updated_at': row[5]
                         })
                     
                     return wallets
@@ -1271,7 +1241,7 @@ class RolesDatabase:
             return []
     
     # Beggar subrole methods
-    def update_beggar_donation(self, server_id: str, user_id: str, user_name: str, amount: int, reason: str = "") -> bool:
+    def update_beggar_donation(self, user_id: str, user_name: str, amount: int, reason: str = "") -> bool:
         """Update beggar donation record for a user."""
         try:
             with self._lock:
@@ -1282,8 +1252,8 @@ class RolesDatabase:
                     cursor.execute("""
                         SELECT total_donated, weekly_donated, donation_count, weekly_donation_count
                         FROM beggar_subrole
-                        WHERE server_id = ? AND user_id = ?
-                    """, (server_id, user_id))
+                        WHERE user_id = ?
+                    """, (user_id,))
                     
                     result = cursor.fetchone()
                     now = datetime.now().isoformat()
@@ -1299,19 +1269,19 @@ class RolesDatabase:
                             UPDATE beggar_subrole 
                             SET total_donated = ?, weekly_donated = ?, donation_count = ?, weekly_donation_count = ?,
                                 user_name = ?, last_donation = ?, last_donation_amount = ?, last_reason = ?, updated_at = ?
-                            WHERE server_id = ? AND user_id = ?
-                        """, (new_total, new_weekly_total, new_count, new_weekly_count, user_name, now, amount, reason, now, server_id, user_id))
+                            WHERE user_id = ?
+                        """, (new_total, new_weekly_total, new_count, new_weekly_count, user_name, now, amount, reason, now, user_id))
                         
                         logger.info(f"Updated beggar donation for {user_name}: +{amount} (weekly: {new_weekly_total}, total: {new_total})")
                     else:
                         # Insert new record
                         cursor.execute("""
                             INSERT INTO beggar_subrole 
-                            (server_id, user_id, user_name, total_donated, weekly_donated, donation_count,
+                            (user_id, user_name, total_donated, weekly_donated, donation_count,
                              weekly_donation_count, first_donation, last_donation, last_donation_amount, last_reason,
                              created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (server_id, user_id, user_name, amount, amount, 1, 1, now, now, amount, reason, now, now))
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (user_id, user_name, amount, amount, 1, 1, now, now, amount, reason, now, now))
                         
                         logger.info(f"Created beggar record for {user_name}: {amount}")
                     
@@ -1322,7 +1292,7 @@ class RolesDatabase:
             logger.error(f"Failed to update beggar donation: {e}")
             return False
     
-    def save_beggar_request(self, server_id: str, user_id: str, user_name: str, request_type: str,
+    def save_beggar_request(self, user_id: str, user_name: str, request_type: str,
                             message: str, channel_id: Optional[str] = None,
                             metadata: Optional[str] = None) -> bool:
         """Save a beggar request event to roles.db."""
@@ -1333,11 +1303,10 @@ class RolesDatabase:
                     cursor.execute(
                         """
                         INSERT INTO beggar_request_history
-                        (server_id, user_id, user_name, request_type, message, channel_id, metadata, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        (user_id, user_name, request_type, message, channel_id, metadata, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
-                            server_id,
                             user_id,
                             user_name,
                             request_type,
@@ -1345,7 +1314,7 @@ class RolesDatabase:
                             channel_id,
                             metadata,
                             datetime.now().isoformat(),
-                        ),
+                        )
                     )
                     conn.commit()
                     return True
@@ -1384,7 +1353,7 @@ class RolesDatabase:
             logger.error(f"Failed to count beggar requests: {e}")
             return 0
     
-    def get_beggar_user_stats(self, server_id: str, user_id: str) -> Dict[str, Any]:
+    def get_beggar_user_stats(self, user_id: str) -> Dict[str, Any]:
         """Get beggar statistics for a specific user."""
         try:
             with self._lock:
@@ -1396,8 +1365,8 @@ class RolesDatabase:
                                first_donation, last_donation, last_donation_amount, last_reason,
                                created_at, updated_at
                         FROM beggar_subrole
-                        WHERE server_id = ? AND user_id = ?
-                    """, (server_id, user_id))
+                        WHERE user_id = ?
+                    """, (user_id,))
                     
                     result = cursor.fetchone()
                     if result:
@@ -1431,7 +1400,7 @@ class RolesDatabase:
             logger.error(f"Failed to get beggar user stats: {e}")
             return {}
     
-    def get_weekly_donations_summary(self, server_id: str) -> List[Dict[str, Any]]:
+    def get_weekly_donations_summary(self) -> List[Dict[str, Any]]:
         """Get summary of users who donated this week with their amounts."""
         try:
             with self._lock:
@@ -1441,9 +1410,9 @@ class RolesDatabase:
                     cursor.execute("""
                         SELECT user_id, user_name, weekly_donated, weekly_donation_count, last_donation
                         FROM beggar_subrole
-                        WHERE server_id = ? AND weekly_donated > 0
+                        WHERE weekly_donated > 0
                         ORDER BY weekly_donated DESC, datetime(last_donation) DESC
-                    """, (server_id,))
+                    """)
                     
                     weekly_donors = []
                     for row in cursor.fetchall():
@@ -1461,8 +1430,8 @@ class RolesDatabase:
             logger.error(f"Failed to get weekly donations summary: {e}")
             return []
 
-    def get_recent_beggar_donations(self, server_id: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Get most recent beggar donations for a server."""
+    def get_recent_beggar_donations(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get recent beggar donations."""
         try:
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
@@ -1472,10 +1441,10 @@ class RolesDatabase:
                         SELECT user_id, user_name, last_donation_amount, donation_count, last_donation, last_reason,
                                weekly_donated, weekly_donation_count, total_donated
                         FROM beggar_subrole
-                        WHERE server_id = ? AND (weekly_donated > 0 OR total_donated > 0)
-                        ORDER BY datetime(last_donation) DESC, id DESC
+                        WHERE (weekly_donated > 0 OR total_donated > 0)
+                        ORDER BY datetime(last_donation) DESC, user_id DESC
                         LIMIT ?
-                    """, (server_id, limit))
+                    """, (limit,))
                     
                     recent_donations = []
                     for row in cursor.fetchall():
@@ -1606,9 +1575,9 @@ class RolesDatabase:
 # Global database instance
 _roles_db_instance = None
 
-def get_roles_db_instance(server_name: str = "default") -> RolesDatabase:
+def get_roles_db_instance(server_id: str = "default") -> RolesDatabase:
     """Get the roles database instance for a specific server."""
     global _roles_db_instance
-    if _roles_db_instance is None or _roles_db_instance.server_name != server_name:
-        _roles_db_instance = RolesDatabase(server_name)
+    if _roles_db_instance is None or _roles_db_instance.server_id != server_id:
+        _roles_db_instance = RolesDatabase(server_id)
     return _roles_db_instance

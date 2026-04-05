@@ -98,17 +98,39 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
             guild = ctx.guild
             is_dm = not guild
             
+            # Try to get user's last server or first available as default
             if is_dm:
                 try:
+                    from agent_db import get_user_last_server_id
                     bot = ctx.bot
-                    if bot and bot.guilds:
-                        guild = bot.guilds[0]  # Use first guild as default
-                        logger.info(f"Using default server '{guild.name}' for Canvas command from DM")
+                    
+                    # Try to get user's last server first
+                    user_id = str(ctx.author.id)
+                    last_server_id = get_user_last_server_id(user_id)
+                    
+                    if last_server_id:
+                        # Find the guild object for this server ID
+                        guild = discord.utils.get(bot.guilds, id=int(last_server_id))
+                        if guild:
+                            logger.info(f"Using user's last server '{guild.name}' ({guild.id}) for Canvas command from DM")
+                        else:
+                            # Server not found in bot's guilds, fall back to first available
+                            if bot.guilds:
+                                guild = bot.guilds[0]
+                                logger.info(f"User's last server not found, using default server '{guild.name}' for Canvas command from DM")
+                            else:
+                                await ctx.send("❌ No servers available. Please execute Canvas commands from a server.")
+                                return
                     else:
-                        await ctx.send("❌ No servers available. Please execute Canvas commands from a server.")
-                        return
+                        # No last server found, use first available
+                        if bot and bot.guilds:
+                            guild = bot.guilds[0]
+                            logger.info(f"No user history found, using default server '{guild.name}' for Canvas command from DM")
+                        else:
+                            await ctx.send("❌ No servers available. Please execute Canvas commands from a server.")
+                            return
                 except Exception as e:
-                    logger.error(f"Could not get default server for DM Canvas command: {e}")
+                    logger.error(f"Could not get server for DM Canvas command: {e}")
                     await ctx.send("❌ Could not access a server. Please execute Canvas commands from a server.")
                     return
             
@@ -133,7 +155,7 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 )
                 return
 
-            view = core.CanvasNavigationView(ctx.author.id, sections, admin_visible, agent_config, show_dropdown=(section_name not in {"home", "behavior"}))
+            view = core.CanvasNavigationView(ctx.author.id, sections, admin_visible, agent_config, guild, show_dropdown=(section_name not in {"home", "behavior"}))
             view.update_visibility()
             logger.info(
                 f"Canvas top-level view prepared for {ctx.author.name}: section={section_name}, "
@@ -148,12 +170,8 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
             else:
                 message = await ctx.send(sections[section_name], view=view)
             view.message = message
-            try:
-                await ctx.message.delete()
-            except discord.Forbidden:
-                logger.debug("Could not delete original !canvas command message due to missing permissions.")
-            except discord.HTTPException as e:
-                logger.debug(f"Could not delete original !canvas command message: {e}")
+            # Store reference to original command message for timeout cleanup
+            view.original_command_message = ctx.message
             logger.info(
                 f"Canvas top-level view sent: message_id={message.id}, components={len(getattr(message, 'components', []))}"
             )

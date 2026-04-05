@@ -9,7 +9,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 from agent_logging import get_logger
-from agent_db import get_db_instance, set_current_server, get_active_server_name
+from agent_db import get_db_instance, set_current_server, get_active_server_id
 
 logger = get_logger('discord_utils')
 
@@ -21,7 +21,7 @@ def get_server_key(guild) -> str:
     """Get a stable unique server key (Discord guild id) for per-server resources."""
     if guild is None:
         # Always use the active server ID from .active_server file
-        active = get_active_server_name()
+        active = get_active_server_id()
         if active and active.isdigit():
             return active  # Return the guild ID
         return "0"  # Fallback to default server ID
@@ -81,7 +81,7 @@ def initialize_roles_from_database(agent_config=None) -> bool:
                         temp_config_path = f.name
                     
                     # Migrate from agent_config to roles_config
-                    migrated = roles_db.migrate_roles_from_agent_config(default_server_id, temp_config_path)
+                    migrated = roles_db.migrate_roles_from_agent_config(temp_config_path)
                     if migrated:
                         logger.info("Successfully migrated roles from agent_config to roles_config")
                 finally:
@@ -90,7 +90,7 @@ def initialize_roles_from_database(agent_config=None) -> bool:
                         os.unlink(temp_config_path)
             
             # Then ensure all default roles exist
-            roles_db.ensure_default_roles(default_server_id)
+            roles_db.ensure_default_roles()
             
         except Exception as e:
             logger.error(f"Error initializing roles_config: {e}")
@@ -112,7 +112,7 @@ def initialize_roles_from_database(agent_config=None) -> bool:
                         default_enabled = True
                     
                     # This will create role in roles_config if it doesn't exist
-                    config = roles_db.get_role_config(role_name, "0", default_enabled)
+                    config = roles_db.get_role_config(role_name, default_enabled)
                 except Exception as e:
                     logger.error(f"Error verifying role {role_name} in roles_config: {e}")
                     
@@ -140,7 +140,7 @@ def is_role_enabled_check(role_name, agent_config=None, guild=None):
         roles_db = get_roles_db_instance(server_id)
         
         # Use default_enabled=True for auto-creation (like behavior.db)
-        config = roles_db.get_role_config(role_name, server_id, default_enabled=True)
+        config = roles_db.get_role_config(role_name, default_enabled=True)
         if config:
             return config.get('enabled', True)
     except Exception as e:
@@ -167,7 +167,7 @@ def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, up
         
         # Get existing config or create new one
         try:
-            existing_config = roles_db.get_role_config(role_name, server_id)
+            existing_config = roles_db.get_role_config(role_name)
             if existing_config and existing_config.get('config_data'):
                 config_data = json.loads(existing_config['config_data'])
             else:
@@ -179,7 +179,7 @@ def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, up
         config_data['updated_by'] = updated_by
         config_data['updated_at'] = '2026-03-28T01:28:00'
         
-        success = roles_db.save_role_config(role_name, server_id, enabled, json.dumps(config_data))
+        success = roles_db.save_role_config(role_name, enabled, json.dumps(config_data))
         if success:
             logger.info(f"Role {role_name} set to {enabled} in roles_config for server {getattr(guild, 'name', 'unknown')}")
     except Exception as e:

@@ -521,3 +521,268 @@ The current Canvas structure is:
 - `help`
 - `help/personal` (Help overview)
 - `help/admin`
+
+## 15. Fatigue Limit System
+
+### 15.1 Purpose and Overview
+
+The Fatigue Limit System provides comprehensive LLM usage management and rate limiting to prevent abuse while maintaining service availability. It implements multi-level tracking (daily, hourly, burst) with intelligent exemptions and user-friendly limit enforcement.
+
+### 15.2 Architecture Components
+
+#### 15.2.1 Configuration Layer (`agent_config.json`)
+```json
+{
+  "fatigue_limits": {
+    "user": {
+      "daily_max": 50,      // Daily requests per user
+      "hourly_max": 10,     // Hourly requests per user  
+      "burst_max": 5        // 5-minute burst limit per user
+    },
+    "server": {
+      "daily_max": 500,     // Daily requests per server
+      "hourly_max": 100,    // Hourly requests per server
+      "burst_max": 20       // 5-minute burst limit per server
+    },
+    "exemptions": {
+      "admin_users": [],                    // Exempt user IDs
+      "critical_tasks": ["daily_memory", "relationship_memory", "recent_memory"]
+    },
+    "behavior": {
+      "strict_mode": false,     // true=hard block, false=warning message
+      "grace_period": 3,         // First N requests always allowed
+      "cooldown_minutes": 15     // Suggested wait time when limited
+    }
+  }
+}
+```
+
+#### 15.2.2 Database Layer (`agent_db.py`)
+- **Enhanced Schema**: SQLite with automatic migration support
+- **Tracking Fields**:
+  - `daily_requests` - Resets at 00:00 UTC
+  - `hourly_requests` - Resets every hour
+  - `burst_requests` - Resets every 5 minutes
+  - `last_*_timestamp` - Controls reset logic
+- **Dual Tracking**: User-specific + server-wide counters
+- **Migration**: Automatic schema updates for existing databases
+
+#### 15.2.3 Validation Layer (`agent_fatigue_limits.py`)
+- **Multi-level Validation**: burst → hourly → daily (in order of strictness)
+- **Intelligent Exemptions**: Admin users + critical system tasks
+- **Grace Period**: First 3 daily requests always allowed
+- **User-friendly Responses**: Clear messages with reset times
+
+#### 15.2.4 Integration Layer (`agent_mind.py`)
+- **Central Checkpoint**: All LLM calls pass through `call_llm()`
+- **Pre-call Validation**: Fatigue check before LLM invocation
+- **Seamless Integration**: No changes needed to existing LLM call sites
+
+#### 15.2.5 Administration Layer (`discord_bot/fatigue_commands.py`)
+- **Slash Commands**:
+  - `/fatigue_stats [@user]` - Usage statistics
+  - `/fatigue_limits` - Current configuration
+  - `/fatigue_check @user` - Test user limit status
+- **Admin-only**: Requires administrator permissions
+- **Rich Embeds**: Visual representation of usage data
+
+### 15.3 Request Flow
+
+```text
+User Message → Discord Event → Rate Limit (3s) → Fatigue Check → LLM Call → Response
+                                                        ↓
+                                              [If Limited] → Friendly Message → No LLM Call
+```
+
+### 15.4 Limit Enforcement Logic
+
+#### 15.4.1 Validation Order (Most to Least Strict)
+1. **Burst Limit** (5-minute window) - Prevents rapid-fire requests
+2. **Hourly Limit** - Controls sustained usage
+3. **Daily Limit** - Prevents daily quota exhaustion
+
+#### 15.4.2 Exemption Logic
+```python
+# Critical system tasks always exempt
+if call_type in ["daily_memory", "relationship_memory", "recent_memory"]:
+    return ALLOWED
+
+# Admin users exempt (configurable)
+if user_id in config["exemptions"]["admin_users"]:
+    return ALLOWED
+
+# Grace period for new users
+if daily_requests <= config["behavior"]["grace_period"]:
+    return ALLOWED
+```
+
+#### 15.4.3 Reset Mechanisms
+- **Daily**: Calendar day reset at 00:00 UTC
+- **Hourly**: Top of the hour reset (XX:00:00)
+- **Burst**: 5-minute sliding window (last_request > now - 5min)
+
+### 15.5 Database Schema Evolution
+
+#### 15.5.1 Original Schema
+```sql
+CREATE TABLE fatigue (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT UNIQUE,
+    user_name TEXT,
+    daily_requests INTEGER DEFAULT 0,
+    total_requests INTEGER DEFAULT 0,
+    last_request_date TEXT
+);
+```
+
+#### 15.5.2 Enhanced Schema (with Migration)
+```sql
+CREATE TABLE fatigue (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT UNIQUE,
+    user_name TEXT,
+    daily_requests INTEGER DEFAULT 0,
+    total_requests INTEGER DEFAULT 0,
+    last_request_date TEXT,
+    hourly_requests INTEGER DEFAULT 0,        -- NEW
+    last_hour_timestamp TEXT,                  -- NEW
+    burst_requests INTEGER DEFAULT 0,         -- NEW
+    last_burst_timestamp TEXT,                 -- NEW
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- NEW
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP  -- NEW
+);
+```
+
+### 15.6 Message Examples
+
+#### 15.6.1 Burst Limit Exceeded
+```
+⚡ **Límite de ráfaga alcanzado** (Username).
+
+Demasiadas solicitudes rápidas. Espera **5 minutos** para continuar.
+
+💡 **Consejos:**
+• Usa comandos específicos en vez de conversación general
+• Espera a que se reinicie el contador
+• Contacta a un admin si necesitas más solicitudes
+```
+
+#### 15.6.2 Daily Limit Exceeded
+```
+📅 **Límite diario alcanzado** (Username).
+
+Has alcanzado tu límite de solicitudes diarias. El contador se reinicia a las **00:00 UTC**.
+
+💡 **Consejos:**
+• Usa comandos específicos en vez de conversación general
+• Espera a que se reinicie el contador
+• Contacta a un admin si necesitas más solicitudes
+```
+
+### 15.7 Performance Considerations
+
+#### 15.7.1 Database Optimization
+- **Connection Pooling**: Reuse database connections
+- **Indexing**: `user_id` indexed for fast lookups
+- **Batch Operations**: Server stats updated with user stats
+
+#### 15.7.2 Memory Efficiency
+- **Lazy Loading**: Configuration loaded on demand
+- **Minimal State**: No in-memory counters (database-backed)
+- **Error Handling**: Graceful degradation on database errors
+
+#### 15.7.3 Scalability
+- **Per-server Isolation**: Separate databases per Discord server
+- **Horizontal Scaling**: Multiple bot instances can share same database
+- **Monitoring**: Built-in logging for performance tracking
+
+### 15.8 Security Features
+
+#### 15.8.1 Abuse Prevention
+- **Rate Limiting**: 3-second cooldown between messages
+- **Burst Detection**: Rapid-fire request detection
+- **Daily Quotas**: Prevent sustained abuse
+
+#### 15.8.2 Privacy Protection
+- **Per-server Data**: User data isolated by server
+- **Minimal Logging**: No prompt content stored
+- **Data Retention**: Configurable cleanup policies
+
+### 15.9 Monitoring and Maintenance
+
+#### 15.9.1 Built-in Monitoring
+```python
+# Usage statistics available via commands
+/fatigue_stats @user    # Individual user usage
+/fatigue_stats          # Server-wide usage
+/fatigue_check @user    # Test limit status
+```
+
+#### 15.9.2 Administrative Tools
+- **Dynamic Configuration**: Edit `agent_config.json` without restart
+- **User Management**: Add/remove admin exemptions
+- **Usage Analytics**: Track patterns and optimize limits
+
+#### 15.9.3 Troubleshooting
+- **Comprehensive Logging**: All limit checks logged
+- **Error Recovery**: Graceful fallback on database errors
+- **Debug Commands**: Test validation logic without affecting users
+
+### 15.10 Integration Points
+
+#### 15.10.1 LLM Call Integration (`agent_mind.py`)
+```python
+def call_llm(system_instruction, prompt, user_id=None, user_name=None, call_type="default"):
+    # Fatigue check before LLM call
+    if user_id:
+        fatigue_check = check_fatigue_limit(user_id, user_name, call_type)
+        if not fatigue_check.allowed:
+            return format_limit_exceeded_message(fatigue_check, user_name)
+    
+    # Proceed with LLM call...
+```
+
+#### 15.10.2 Discord Command Registration
+```python
+# Auto-registered in discord_bot/fatigue_commands.py
+await bot.add_cog(FatigueCommands(bot))
+```
+
+#### 15.10.3 Database Migration
+```python
+# Automatic schema upgrade in agent_db.py
+if 'hourly_requests' not in columns:
+    db.execute('ALTER TABLE fatigue ADD COLUMN hourly_requests INTEGER DEFAULT 0')
+```
+
+### 15.11 Future Enhancements
+
+#### 15.11.1 Planned Features
+- **Adaptive Limits**: Machine learning for dynamic limit adjustment
+- **User Tiers**: Different limits for different user roles
+- **Global Dashboard**: Web interface for cross-server monitoring
+- **API Integration**: External monitoring system hooks
+
+#### 15.11.2 Configuration Extensions
+- **Time-based Limits**: Different limits for different times of day
+- **Channel-specific Limits**: Vary limits by Discord channel
+- **Custom Exemptions**: Role-based exemption rules
+
+### 15.12 Best Practices
+
+#### 15.12.1 Configuration Management
+- **Conservative Defaults**: Start with lower limits, increase as needed
+- **Regular Review**: Monitor usage patterns quarterly
+- **User Communication**: Clear documentation of limits
+
+#### 15.12.2 Operational Guidelines
+- **Monitor Performance**: Track database query times
+- **Backup Strategy**: Regular database backups
+- **Incident Response**: Clear escalation procedures for limit breaches
+
+#### 15.12.3 User Experience
+- **Clear Messaging**: User-friendly limit exceeded messages
+- **Fair Enforcement**: Consistent application of rules
+- **Appeal Process**: Method for users to request limit increases
+
+This fatigue limit system provides robust protection against LLM abuse while maintaining excellent user experience through intelligent exemptions and clear communication.

@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from agent_engine import get_discord_token
 from agent_mind import call_llm
-from agent_db import get_global_db, get_active_server_name
+from agent_db import get_global_db, get_active_server_id
 from dotenv import load_dotenv
 from agent_logging import get_logger
 from discord_bot.discord_http import DiscordHTTP
@@ -87,11 +87,11 @@ async def ejecutar_mision_treasure_hunter(config, server_name=None):
         discord_http = DiscordHTTP(token)
         
         # Get active servers from database
-        active_server_name = get_active_server_name()
+        active_server_name = get_active_server_id()
         if not active_server_name:
             logger.warning("No active server configured for treasure hunter execution")
             return
-        db_global = get_global_db(server_name=active_server_name)
+        db_global = get_global_db(server_id=active_server_name)
         servidores_activos = db_global.get_active_servers()
         
         if not servidores_activos:
@@ -377,7 +377,7 @@ async def enviar_senal_discord(discord_http, server_id, mensaje, item_name, prec
     """Send trading signal to Discord."""
     try:
         # Get server channel for treasure hunter notifications
-        db_global = get_global_db(server_name=server_id)
+        db_global = get_global_db(server_id=server_id)
         canal_id = db_global.get_role_channel(server_id, "treasure_hunter")
         
         if not canal_id:

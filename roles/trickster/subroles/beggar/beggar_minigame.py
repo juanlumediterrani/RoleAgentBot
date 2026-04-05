@@ -75,7 +75,7 @@ class BeggarMinigame:
             
             banker_db = get_banker_roles_db_instance(self.server_id)
             if banker_db:
-                return banker_db.get_balance("beggar_fund", self.server_id)
+                return banker_db.get_balance("beggar_fund")
         except Exception as e:
             logger.error(f"Error getting fund balance: {e}")
         
@@ -321,12 +321,12 @@ class BeggarMinigame:
                 if total_received > 0:
                     # Transfer gold from beggar_fund to user
                     banker_db.update_balance(
-                        "beggar_fund", "Beggar Fund", self.server_id, "Server",
+                        "beggar_fund", "Beggar Fund",
                         -total_received, "BEGGAR_MINIGAME_PAYOUT", "Minigame payout to user"
                     )
                     
                     banker_db.update_balance(
-                        user_id, user_name, self.server_id, "Server",
+                        user_id, user_name,
                         total_received, "BEGGAR_MINIGAME_PAYOUT", "Minigame winnings"
                     )
                     
@@ -336,20 +336,20 @@ class BeggarMinigame:
                     logger.info(f"{user_name} received nothing (general {result_type} multiplier)")
             
             # Now empty the remaining fund balance completely
-            remaining_balance = banker_db.get_balance("beggar_fund", self.server_id)
+            remaining_balance = banker_db.get_balance("beggar_fund")
             if remaining_balance > 0:
                 logger.info(f"Emptying remaining {remaining_balance} gold from beggar fund (reason change reset)")
                 
                 # Remove all remaining gold from the fund (it disappears from the system)
                 banker_db.update_balance(
-                    "beggar_fund", "Beggar Fund", self.server_id, "Server",
+                    "beggar_fund", "Beggar Fund",
                     -remaining_balance, "BEGGAR_FUND_RESET", "Fund emptied on reason change"
                 )
                 
                 logger.info(f"Beggar fund emptied: {remaining_balance} gold removed from system")
                 
                 # Verify fund is empty
-                final_balance = banker_db.get_balance("beggar_fund", self.server_id)
+                final_balance = banker_db.get_balance("beggar_fund")
                 logger.info(f"Final beggar fund balance after reset: {final_balance}")
                 
         except Exception as e:
@@ -361,14 +361,14 @@ class BeggarMinigame:
             from agent_mind import call_llm
             from agent_engine import _build_system_prompt, PERSONALITY
             from agent_db import get_global_db
-            from agent_runtime import get_active_server_name
+            from agent_runtime import get_active_server_id
             
-            server_name = get_active_server_name()
-            if not server_name:
+            server_id= get_active_server_id()
+            if not server_id:
                 logger.warning("No server context available for relationship updates")
                 return
             
-            db_instance = get_global_db(server_name=server_name)
+            db_instance = get_global_db(server_id=server_id)
             
             for participant in participants:
                 user_id = participant['user_id']

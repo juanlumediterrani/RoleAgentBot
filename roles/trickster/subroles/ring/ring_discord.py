@@ -23,7 +23,11 @@ logger = get_logger('ring_discord')
 _ring_state_by_server_id: dict[str, dict] = {}
 
 
-def _get_ring_state(server_id: str) -> dict:
+def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
+    # Clear cache if force_refresh is requested
+    if force_refresh and server_id in _ring_state_by_server_id:
+        del _ring_state_by_server_id[server_id]
+    
     state = _ring_state_by_server_id.get(server_id)
     if state is None:
         defaults = {
@@ -41,29 +45,39 @@ def _get_ring_state(server_id: str) -> dict:
             "current_accusation": "",
         }
         try:
-            # Check if trickster role is enabled in roles_config (PRIMARY) or behavior roles (SECONDARY)
-            trickster_enabled = False
+            # PRIMARY: Check ring subrole directly in roles_config
+            ring_enabled = False
             
-            # PRIMARY: Check roles_config
             try:
                 from agent_roles_db import get_roles_db_instance
                 roles_db = get_roles_db_instance(server_id)
-                trickster_config = roles_db.get_role_config('trickster', server_id)
-                if trickster_config:
-                    trickster_enabled = trickster_config.get('enabled', False)
+                ring_config = roles_db.get_role_config('ring')
+                if ring_config:
+                    ring_enabled = ring_config.get('enabled', False)
             except Exception as e:
-                logger.warning(f"Error checking trickster enabled in roles_config: {e}")
+                logger.warning(f"Error checking ring enabled in roles_config: {e}")
             
-            # SECONDARY: Check behavior roles table
-            if not trickster_enabled:
+            # SECONDARY: Check if trickster role is enabled (fallback)
+            trickster_enabled = False
+            if not ring_enabled:
                 try:
-                    db = get_behavior_db_instance(server_id)
-                    trickster_enabled = db.get_role_enabled('trickster')
+                    trickster_config = roles_db.get_role_config('trickster')
+                    if trickster_config:
+                        trickster_enabled = trickster_config.get('enabled', False)
                 except Exception as e:
-                    logger.warning(f"Error checking trickster enabled in behavior: {e}")
+                    logger.warning(f"Error checking trickster enabled in roles_config: {e}")
+                
+                # TERTIARY: Check behavior roles table (final fallback)
+                if not trickster_enabled:
+                    try:
+                        db = get_behavior_db_instance(server_id)
+                        trickster_state = db.get_behavior_state('trickster')
+                        trickster_enabled = trickster_state.get('enabled', False)
+                    except Exception as e:
+                        logger.warning(f"Error checking trickster enabled in behavior: {e}")
             
             # Get ring config from roles_config
-            ring_config_data = roles_db.get_role_config('ring', server_id)
+            ring_config_data = roles_db.get_role_config('ring')
             
             # Parse ring configuration
             ring_config = {}
@@ -74,22 +88,35 @@ def _get_ring_state(server_id: str) -> dict:
                     ring_config = json.loads(ring_config_data['config_data'])
                 except json.JSONDecodeError:
                     ring_config = {}
-                
-                current_accusation = ring_config.get('current_accusation', '')
+            
+            # Set accused_user_id from ring config (check both locations for compatibility)
+            accused_user_id = ring_config_data.get('accused_user_id', '') if ring_config_data else ''
+            if not accused_user_id:
+                accused_user_id = ring_config.get('accused_user_id', '')
+            if not accused_user_id:
+                accused_user_id = ring_config.get('target_user_id', defaults["target_user_id"])
+            
+            # Set accused_user_name from ring config (check both locations for compatibility)
+            accused_user_name = ring_config_data.get('accused_user_name', '') if ring_config_data else ''
+            if not accused_user_name:
+                accused_user_name = ring_config.get('accused_user_name', defaults["target_user_name"])
+            
+            # Log what we loaded for debugging
+            logger.info(f"🎭 [RING LOAD] Server {server_id} - Loaded from DB: accused_user_id='{accused_user_id}', accused_user_name='{accused_user_name}'")
             
             state = {
-                "enabled": trickster_enabled and ring_config_data.get('enabled', defaults["enabled"]),
+                "enabled": ring_enabled,
                 "frequency_hours": int(ring_config.get('frequency_hours', defaults["frequency_hours"])),
                 "base_frequency_hours": int(ring_config.get('base_frequency_hours', defaults["base_frequency_hours"])),
                 "current_frequency_hours": int(ring_config.get('current_frequency_hours', defaults["current_frequency_hours"])),
                 "frequency_iteration": int(ring_config.get('frequency_iteration', defaults["frequency_iteration"])),
                 "last_accusation": ring_config.get('last_accusation', defaults["last_accusation"]),
                 "last_accusation_time": ring_config.get('last_accusation_time', defaults["last_accusation_time"]),
-                "target_user_name": str(ring_config.get('target_user_name', defaults["target_user_name"])),
-                "target_user_id": str(ring_config.get('target_user_id', defaults["target_user_id"])),
+                "target_user_id": accused_user_id,  # Use accused_user_id as target_user_id for compatibility
+                "target_user_name": accused_user_name,  # Use the correctly loaded accused_user_name
                 "title": str(ring_config.get('title', defaults["title"])),
                 "description": str(ring_config.get('description', defaults["description"])),
-                "current_accusation": current_accusation,
+                "current_accusation": "",  # Don't store accusation text in state
             }
         except Exception as e:
             logger.warning(f"Error loading ring state for server {server_id}: {e}")
@@ -101,23 +128,30 @@ def _get_ring_state(server_id: str) -> dict:
 def _save_ring_state(server_id: str, updated_by: str | None = None) -> bool:
     state = _get_ring_state(server_id)
     try:
-        # Save all ring config to roles.db using centralized adapter
+        # Log what we're about to save for debugging
+        logger.info(f"🎭 [RING SAVE] Server {server_id} - Saving state: target_user_id='{state.get('target_user_id', 'None')}', target_user_name='{state.get('target_user_name', 'None')}', enabled={state.get('enabled', False)}")
+        
+        # Save ring config to roles.db using centralized adapter
         ring_db = RingDB(server_id)
         
-        # Convert state to config_data JSON
+        # Convert state to config_data JSON - only save essential configuration
         config_data = json.dumps({
-            'target_user_id': state['target_user_id'],
-            'target_user_name': state['target_user_name'],
-            'frequency': state['frequency_hours'],
-            'additional_rules': [],
+            'frequency_hours': state['frequency_hours'],
+            'base_frequency_hours': state['base_frequency_hours'],
+            'current_frequency_hours': state['current_frequency_hours'],
+            'frequency_iteration': state['frequency_iteration'],
+            'accused_user_id': state['target_user_id'],  # Save user ID, not username
+            'accused_user_name': state['target_user_name'],  # Also save username for display
             'updated_by': updated_by
         })
         
-        # Save to roles.db
+        # Save to roles.db - only pass accused_user_id if we have a valid target
+        accused_user_id = state['target_user_id'] if state['target_user_id'] and state['target_user_id'] != "" else None
+        
         success = ring_db.save_config(
             enabled=state['enabled'],
-            current_accusation=state['current_accusation'],
-            accused_user=state['target_user_name'],
+            current_accusation=None,  # Don't save accusation text in config
+            accused_user=accused_user_id,  # Pass user ID, not username
             config_data=config_data
         )
         
@@ -186,6 +220,12 @@ def _can_make_accusation(server_id: str) -> bool:
 async def _record_accusation(server_id: str, accusation_text: str, guild=None, target_user_id: str = None, target_user_name: str = None, accuser_name: str = None, accuser_id: str = None):
     """Record an accusation, update frequency, and execute immediate accusation if target provided."""
     state = _get_ring_state(server_id)
+    
+    # Update the target user information if provided
+    if target_user_id and target_user_name:
+        state["target_user_id"] = target_user_id
+        state["target_user_name"] = target_user_name
+        logger.info(f"🎭 [RING] Updated target: {target_user_name} (ID: {target_user_id})")
     
     # Check if this is a different accusation from the last one
     last_accusation = state.get("last_accusation", "")
@@ -267,21 +307,21 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         rules = base_rules + additional_rules
         
         # Get database instance for memory retrieval
-        server_name = str(guild.name) if guild else "unknown_server"
-        db_instance = get_global_db(server_name=server_name)
+        server_id= str(guild.id) if guild else "unknown_server"
+        db_instance = get_global_db(server_id=server_id)
         
         # Build memory sections using proper functions
-        memory_block = _build_prompt_memory_block(server=server_name)
+        memory_block = _build_prompt_memory_block(server=server_id)
         
         # Use target_user_id for relationship context (the accused), not the accuser
         relationship_block = _build_prompt_relationship_block(
             user_id=target_user_id,
             user_name=target_user_name,
-            server=server_name
+            server=server_id
         )
         last_interactions_block = _build_prompt_last_interactions_block(
             user_id=target_user_id,
-            server=server_name
+            server=server_id
         )
         
         # Build the prompt with proper memory sections
@@ -331,7 +371,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         )
         
         # Log the accusation and save to roles.db
-        ring_db = RingDB(server_name)
+        ring_db = RingDB(server_id)
         # Use the provided accuser_id if available, otherwise fallback to system
         accuser_id_to_save = accuser_id if accuser_id else 'system'
         logger.info(f"🔍 [RING SAVE DEBUG] Saving accusation - accuser_id: {accuser_id_to_save}, accuser_name: {user_name}")
@@ -342,30 +382,6 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
             accusation,
             f"Evidence: {accusation[:200]}..." if len(accusation) > 200 else accusation
         )
-        
-        # Save current accusation to ring state and roles table
-        server_id = str(guild.id) if guild else "unknown"
-        
-        # Record the accusation and update frequency (without executing again)
-        state = _get_ring_state(server_id)
-        
-        # Check if this is a different accusation from the last one
-        last_accusation = state.get("last_accusation", "")
-        if last_accusation != accusation:
-            # Reset frequency if accusation changed
-            logger.info(f"🔄 Ring accusation changed, resetting frequency")
-            _reset_frequency_to_base(server_id, "accusation_changed")
-        else:
-            # Calculate next frequency (hot potato effect)
-            _calculate_next_frequency(server_id)
-        
-        # Record the accusation
-        state["last_accusation"] = accusation
-        state["last_accusation_time"] = datetime.datetime.now().isoformat()
-        state["current_accusation"] = accusation
-        
-        # Save the updated state
-        _save_ring_state(server_id, "accusation_record")
         
         return accusation
         
@@ -430,8 +446,13 @@ async def _cmd_ring_toggle(ctx, action: str):
     
     if success:
         # Update ring state in roles table config_data
-        state = _get_ring_state(server_id)
+        # Force refresh to get current database state
+        state = _get_ring_state(server_id, force_refresh=True)
         state['enabled'] = enabled
+        
+        # Log current accused info for debugging
+        logger.info(f"🎭 [RING TOGGLE] Server {server_id} - Current accused: ID={state.get('target_user_id', 'None')}, Name={state.get('target_user_name', 'None')}")
+        
         _save_ring_state(server_id, getattr(ctx.author, "name", "admin_command"))
         
         if enabled:
@@ -505,7 +526,7 @@ async def cmd_accuse_ring(ctx, target: str = ''):
         await ctx.send('❌ This command only works on servers.')
         return
 
-    state = _get_ring_state(str(ctx.guild.id))
+    state = _get_ring_state(str(ctx.guild.id), force_refresh=True)
     if not state.get('enabled', False):
         await ctx.send('❌ Ring is not enabled on this server.')
         return

@@ -15,7 +15,7 @@ from discord.ext import commands, tasks
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, _build_conversation_user_prompt
 from postprocessor import postprocess_response, is_readme_response
-from agent_db import set_current_server, get_active_server_name
+from agent_db import set_current_server, get_active_server_id
 from behavior.db_behavior import get_behavior_db_instance
 from agent_logging import get_logger, update_log_file_path
 from discord_bot.discord_utils import (
@@ -145,7 +145,7 @@ def get_bot_instance():
 
 @tasks.loop(hours=24)
 async def database_cleanup():
-    active_server_key = (get_active_server_name() or "").strip()
+    active_server_key = (get_active_server_id() or "").strip()
     target_guild = None
     if active_server_key:
         active_key_lower = active_server_key.lower()
@@ -161,7 +161,7 @@ async def database_cleanup():
     if target_guild is None:
         return
     db_instance = get_db_for_server(target_guild)
-    rows = await asyncio.to_thread(db_instance.limpiar_interacciones_antiguas, 30)
+    rows = await asyncio.to_thread(db_instance.clean_old_interactions, 30)
     from discord_bot.discord_utils import get_server_key
     server_key = get_server_key(target_guild)
     logger.info(f"🧹 Cleanup in {target_guild.name} ({server_key}): {rows} records deleted.")
@@ -222,8 +222,8 @@ async def _create_banker_wallets_on_startup():
                 db_banker = get_banker_roles_db_instance(guild_id)
                 
                 # Create system accounts first
-                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", guild_id, guild_name, wallet_type='system')
-                db_banker.create_wallet("beggar_fund", "Beggar Fund", guild_id, guild_name, wallet_type='system')
+                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
+                db_banker.create_wallet("beggar_fund", "Beggar Fund", wallet_type='system')
                 
                 # Set default TAE if not configured
                 current_tae = db_banker.get_tae(guild_id)
@@ -244,12 +244,12 @@ async def _create_banker_wallets_on_startup():
                     
                     # Create wallet with opening bonus (10x TAE)
                     was_created = db_banker.create_wallet(
-                        member_id, member_name, guild_id, guild_name, wallet_type='user'
+                        member_id, member_name, wallet_type='user'
                     )
                     
                     if was_created:
                         created_count += 1
-                        initial_balance = db_banker.get_balance(member_id, guild_id)
+                        initial_balance = db_banker.get_balance(member_id)
                         logger.info(f"💰 Created wallet for {member_name} with {initial_balance} coins")
                     else:
                         existing_count += 1
@@ -260,7 +260,7 @@ async def _create_banker_wallets_on_startup():
                     if roles_db:
                         for member in guild.members:
                             if not member.bot:
-                                roles_db.save_dice_game_stats(str(member.id), guild_id)
+                                roles_db.save_dice_game_stats(str(member.id), 0, 0, 0, 0, 0, None)
                         logger.info(f"🎲 Dice game accounts initialized for {guild_name}")
                 except Exception as dice_error:
                     logger.warning(f"Could not initialize dice game accounts for {guild_name}: {dice_error}")
@@ -334,7 +334,7 @@ async def on_ready():
             default_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
             for role_name in default_roles:
                 # Enable each default role if not already configured
-                roles_db.save_role_config(role_name, server_key, True, '{}')
+                roles_db.save_role_config(role_name, True, '{}')
             logger.info(f"🎭 Default roles loaded for server '{active_guild.name}'")
         except Exception as e:
             logger.warning(f"Failed to load default roles for server '{active_guild.name}': {e}")
@@ -592,18 +592,9 @@ async def _process_accuse_flag(message, llm_response: str, server_name: str, is_
 async def _handle_valid_accusation(message, target_member, guild, server_name: str, is_public: bool) -> str:
     """Handle accusation when the user exists in the server."""
     try:
-        # Update the ring state to point to the new target
-        from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+        server_id = str(guild.id)
         
-        server_id = str(guild.id)  # Use guild parameter instead of message.guild
-        state = _get_ring_state(server_id)
-        
-        # Update target
-        state['target_user_id'] = str(target_member.id)
-        state['target_user_name'] = target_member.display_name
-        _save_ring_state(server_id, "accuse_flag")
-        
-        # Reset frequency counter since accusation target changed
+        # Record accusation and update state (this will save the target info)
         from roles.trickster.subroles.ring.ring_discord import _record_accusation
         await _record_accusation(server_id, f"ACCUSE {target_member.display_name}", guild, str(target_member.id), target_member.display_name, message.author.display_name, str(message.author.id))
         
@@ -912,7 +903,7 @@ async def _process_chat_message(message):
         db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)
         interaction_type = "CHANNEL" if is_public else "DM"
         await asyncio.to_thread(
-            db_instance.registrar_interaccion,
+            db_instance.register_interaction,
             message.author.id, message.author.name, interaction_type,
             message.content,
             message.channel.id if message.channel else None,

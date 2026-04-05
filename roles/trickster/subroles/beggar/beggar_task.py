@@ -30,11 +30,19 @@ logger = get_logger('beggar_task')
 class BeggarDonationView(View):
     """View with donation buttons for beggar messages."""
     
-    def __init__(self, server_id: str, current_reason: str):
+    def __init__(self, current_reason: str):
         super().__init__(timeout=300)  # 5 minutes timeout
-        self.server_id = server_id
         self.current_reason = current_reason
-        self.config = get_beggar_config(server_id)
+        
+        # Get server name from runtime context
+        try:
+            from agent_runtime import get_active_server_name
+            server_name = get_active_server_name()
+            self.server_id = server_name if server_name else "default"
+        except Exception:
+            self.server_id = "default"
+            
+        self.config = get_beggar_config(self.server_id)
         
     @discord.ui.button(label="Donate x1 tae", style=discord.ButtonStyle.primary, emoji="🪙")
     async def donate_x1(self, interaction: Interaction, button: discord.ui.Button):
@@ -87,7 +95,7 @@ class BeggarDonationView(View):
         try:
             user_id = str(interaction.user.id)
             user_name = interaction.user.display_name
-            server_name = interaction.guild.name if interaction.guild else "Unknown Server"
+            server_id = interaction.guild.name if interaction.guild else "Unknown Server"
             
             # Check if user has enough gold (this would need banker integration)
             try:
@@ -99,10 +107,10 @@ class BeggarDonationView(View):
             
             if banker_db:
                 # Ensure user wallet exists
-                banker_db.create_wallet(user_id, user_name, self.server_id, server_name)
-                banker_db.create_wallet("beggar_fund", "Beggar Fund", self.server_id, server_name)
+                banker_db.create_wallet(user_id, user_name, 'user')
+                banker_db.create_wallet("beggar_fund", "Beggar Fund", 'system')
                 
-                user_balance = banker_db.get_balance(user_id, self.server_id)
+                user_balance = banker_db.get_balance(user_id)
                 if user_balance < amount:
                     await interaction.response.send_message(
                         f"You don't have enough gold! You have {user_balance} gold but need {amount} gold.",
@@ -112,13 +120,13 @@ class BeggarDonationView(View):
                 
                 # Process the donation
                 success = banker_db.update_balance(
-                    user_id, user_name, self.server_id, server_name,
+                    user_id, user_name,
                     -amount, "BEGGAR_DONATION", f"Donation to {_bot_display_name}: {self.current_reason}"
                 )
                 
                 if success:
                     banker_db.update_balance(
-                        "beggar_fund", "Beggar Fund", self.server_id, server_name,
+                        "beggar_fund", "Beggar Fund",
                         amount, "BEGGAR_DONATION", f"Donation from {user_name}: {self.current_reason}"
                     )
                 else:
@@ -131,9 +139,8 @@ class BeggarDonationView(View):
                 # Update beggar statistics
                 from agent_roles_db import get_roles_db_instance
                 roles_db = get_roles_db_instance(self.server_id)
-                roles_db.update_beggar_donation(self.server_id, user_id, user_name, amount, self.current_reason)
+                roles_db.update_beggar_donation(user_id, user_name, amount, self.current_reason)
                 roles_db.save_beggar_request(
-                    server_id=self.server_id,
                     user_id=user_id,
                     user_name=user_name,
                     request_type="BEGGAR_DONATION",
@@ -144,7 +151,7 @@ class BeggarDonationView(View):
                  
                 # Get donation success message from personality descriptions (Spanish) with English fallback
                 from discord_bot.discord_core_commands import _personality_descriptions
-                donation_msg_template = _personality_descriptions.get("trickster", {}).get("beggar", {}).get("beggar_donation_success", 
+                donation_msg_template = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {}).get("beggar_donation_success", 
                     "Thank you for donating {amount} gold to the cause: {reason}! 🪙")
                 
                 await interaction.response.send_message(
@@ -172,11 +179,18 @@ class BeggarDonationView(View):
 class BeggarTask:
     """Automated task system for beggar public messages."""
     
-    def __init__(self, server_id: str, bot_instance=None):
-        self.server_id = server_id
+    def __init__(self, bot_instance=None):
         self.bot_instance = bot_instance
-        self.config = get_beggar_config(server_id)
-        self.roles_db = get_roles_db_instance(server_id)
+        # Get server name from runtime context
+        try:
+            from agent_runtime import get_active_server_name
+            server_name = get_active_server_name()
+            self.server_id = server_name if server_name else "default"
+        except Exception:
+            self.server_id = "default"
+        
+        self.config = get_beggar_config(self.server_id)
+        self.roles_db = get_roles_db_instance(self.server_id)
     
     def should_execute(self) -> bool:
         """Check if the beggar task should execute."""
@@ -229,14 +243,13 @@ class BeggarTask:
             
             if response and len(response.strip()) > 5:
                 # Create donation view
-                view = BeggarDonationView(self.server_id, current_reason)
+                view = BeggarDonationView(current_reason)
                 
                 # Send message to channel with buttons
                 await target_channel.send(response, view=view)
                 
                 # Register the task execution
                 self.roles_db.save_beggar_request(
-                    server_id=self.server_id,
                     user_id="system",
                     user_name="Beggar Task",
                     request_type="BEGGAR_PUBLIC",
@@ -268,38 +281,62 @@ class BeggarTask:
                 pass
         
         # Auto-select channel if enabled
-        if self.config.is_auto_channel_selection() and self.bot_instance:
-            return await self._auto_select_channel()
-        
-        return None
-    
-    async def _auto_select_channel(self) -> Optional[Any]:
-        """Automatically select the best channel for begging."""
         try:
-            guild = self.bot_instance.get_guild(int(self.server_id))
-            if not guild:
+            # If we have a specific server_id (numeric), try to get that guild
+            if self.server_id and self.server_id != "default" and self.server_id.isdigit():
+                guild = self.bot_instance.get_guild(int(self.server_id))
+                if not guild:
+                    return None
+                guilds = [guild]
+            else:
+                # Use all available guilds when server_id is 'default' or not numeric
+                guilds = [guild for guild in self.bot_instance.guilds if guild.me.guild_permissions.send_messages]
+            
+            if not guilds:
                 return None
             
-            # Prefer text channels where bot can speak
-            text_channels = [
-                channel for channel in guild.text_channels
-                if channel.permissions_for(guild.me).send_messages
-                and not channel.is_nsfw()
-                and channel.name not in ['bot-commands', 'admin', 'moderation', 'staff']
-            ]
+            # For each guild, find suitable channels and pick the best one
+            best_channel = None
+            best_score = -1
             
-            if not text_channels:
-                return None
+            for guild in guilds:
+                # Prefer text channels where bot can speak
+                text_channels = [
+                    channel for channel in guild.text_channels
+                    if channel.permissions_for(guild.me).send_messages
+                    and not channel.is_nsfw()
+                    and channel.name not in ['bot-commands', 'admin', 'moderation', 'staff']
+                ]
+                
+                if not text_channels:
+                    continue
+                
+                # Prioritize general chat channels
+                priority_keywords = ['general', 'chat', 'main', 'lobby', 'comunidad', 'hablar']
+                
+                for channel in text_channels:
+                    score = 0
+                    # Higher score for priority keywords
+                    if any(keyword in channel.name.lower() for keyword in priority_keywords):
+                        score += 10
+                    # Higher score for more members (assuming more active)
+                    if hasattr(channel, 'member_count') and channel.member_count:
+                        score += min(channel.member_count // 10, 5)
+                    
+                    # Update best channel if this one scores higher
+                    if score > best_score:
+                        best_channel = channel
+                        best_score = score
+                        # If we found a priority channel, that's probably good enough
+                        if score >= 10:
+                            break
+                
+                # If we found a priority channel in this guild, no need to check other guilds
+                if best_score >= 10:
+                    break
             
-            # Prioritize general chat channels
-            priority_keywords = ['general', 'chat', 'main', 'lobby', 'comunidad', 'hablar']
-            
-            for channel in text_channels:
-                if any(keyword in channel.name.lower() for keyword in priority_keywords):
-                    return channel
-            
-            # Fallback to first available channel
-            return text_channels[0]
+            # Return the best channel found, or None if none found
+            return best_channel if best_channel else (guilds[0].text_channels[0] if guilds[0].text_channels else None)
             
         except Exception as e:
             logger.error(f"Error auto-selecting channel for server {self.server_id}: {e}")
@@ -359,7 +396,7 @@ class BeggarTask:
     def _get_weekly_donations_context(self) -> str:
         """Get minimal context about users who donated this week using Putre's personality."""
         try:
-            weekly_donors = self.roles_db.get_weekly_donations_summary(self.server_id)
+            weekly_donors = self.roles_db.get_weekly_donations_summary()
             
             # Get messages from Putre's personality
             weekly_messages = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('weekly_donations', {})
@@ -443,11 +480,11 @@ class BeggarTask:
 
 
 # Task execution interface for agent_engine.py
-async def execute_beggar_task(server_id: str, bot_instance=None) -> bool:
+async def execute_beggar_task(bot_instance=None) -> bool:
     """Interface function for agent_engine.py to execute beggar task."""
     try:
-        task = BeggarTask(server_id, bot_instance)
+        task = BeggarTask(bot_instance=bot_instance)
         return await task.execute_task()
     except Exception as e:
-        logger.error(f"Error in execute_beggar_task for server {server_id}: {e}")
+        logger.error(f"Error in execute_beggar_task: {e}")
         return False

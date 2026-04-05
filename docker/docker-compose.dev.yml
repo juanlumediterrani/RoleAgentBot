@@ -5,17 +5,13 @@
 # - Bot único con TODOS los roles activados
 # - Personalidad Kronk para desarrollo
 # - Recursos limitados para desarrollo
-# - Logging detallado para debugging
-#
-# Uso:
-#   docker compose -f docker-compose.dev.yml up --build -d
-# ─────────────────────────────────────────────────────────────────────────────
-services:
+# Development Bot - Hans con todos los roles
   bot-dev:
     build:
       context: ..
       dockerfile: docker/Dockerfile
       args:
+        ENABLE_MC: "true"
         PERSONALITY: hans
         HOST_UID: ${HOST_UID:-1001}
         HOST_GID: ${HOST_GID:-1001}
@@ -29,17 +25,17 @@ services:
       - ../databases:/app/databases
       - ../logs:/app/logs
       - ../fatiga:/app/fatiga
-      - ../cookies.txt:/app/cookies.txt:ro  # YouTube cookies for authentication
-    restart: "no"  # No reiniciar automáticamente en desarrollo
+      - ../cookies.txt:/app/cookies.txt
+    restart: "no"  # Do not auto-restart in development
     
-    # Logging detallado para depuración
+    # Detailed logging for debugging
     logging:
       driver: "json-file"
       options:
         max-size: "20m"
         max-file: "5"
     
-    # Limitar recursos en desarrollo
+    # Limit resources in development
     deploy:
       resources:
         limits:

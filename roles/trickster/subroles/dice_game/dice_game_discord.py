@@ -115,39 +115,34 @@ async def cmd_dice_play(ctx):
     try:
         from discord_bot.discord_utils import get_server_key
         from agent_roles_db import get_roles_db_instance
-        server_name = get_server_key(ctx.guild)
-        db_banker = get_roles_db_instance(server_name) if get_roles_db_instance else None
-        roles_db = get_roles_db_instance(server_name)
+        server_id = get_server_key(ctx.guild)
+        db_banker = get_roles_db_instance(server_id) if get_roles_db_instance else None
+        roles_db = get_roles_db_instance(server_id)
         if not db_banker or not roles_db:
             await ctx.send(get_message("error_database_access"))
             return
 
-        try:
-            if hasattr(roles_db, "save_dice_game_stats"):
-                roles_db.save_dice_game_stats(str(ctx.author.id))
-        except Exception as e:
-            logger.warning(f"Could not ensure player stats: {e}")
+        # Stats are now updated in the dice_game.py process_play function
 
         # Get current pot balance from banker database
         pot_balance = 0
         if get_banker_db_instance is not None:
             try:
-                db_banker = get_roles_db_instance(server_name) if get_roles_db_instance else None
+                db_banker = get_roles_db_instance(server_id) if get_roles_db_instance else None
                 if db_banker:
                     try:
-                        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", str(ctx.guild.id), server_name)
+                        db_banker.create_wallet("dice_game_pot", "Dice Game Pot", 'system')
                     except Exception:
                         pass
-                    pot_balance = db_banker.get_balance("dice_game_pot", str(ctx.guild.id))
+                    pot_balance = db_banker.get_balance("dice_game_pot")
             except Exception as e:
                 logger.warning(f"Could not get pot balance: {e}")
                 pot_balance = 0
 
         result = await asyncio.to_thread(
-            _process_play,
+            process_play,
             str(ctx.author.id),
             ctx.author.display_name,
-            str(ctx.guild.id),
             ctx.guild.name,
             pot_balance,
         )
@@ -226,22 +221,18 @@ async def cmd_dice_balance(ctx, _personality):
     try:
         from discord_bot.discord_utils import get_server_key
         from agent_roles_db import get_roles_db_instance
-        server_name = get_server_key(ctx.guild)
-        db_banker = get_roles_db_instance(server_name) if get_roles_db_instance else None
-        roles_db = get_roles_db_instance(server_name)
+        server_id = get_server_key(ctx.guild)
+        db_banker = get_roles_db_instance(server_id) if get_roles_db_instance else None
+        roles_db = get_roles_db_instance(server_id)
 
-        try:
-            if roles_db is not None and hasattr(roles_db, "save_dice_game_stats"):
-                roles_db.save_dice_game_stats(str(ctx.author.id))
-        except Exception as e:
-            logger.warning(f"Could not ensure player stats: {e}")
+        # Stats are now updated in the dice_game.py process_play function
 
         # In dice game implementation, the pot is a special banker wallet
         try:
-            db_banker.create_wallet("dice_game_pot", "Dice Game Pot", str(ctx.guild.id), server_name)
+            db_banker.create_wallet("dice_game_pot", "Dice Game Pot", 'system')
         except Exception:
             pass
-        pot_balance = db_banker.get_balance("dice_game_pot", str(ctx.guild.id))
+        pot_balance = db_banker.get_balance("dice_game_pot")
         config = roles_db.get_role_config('dice_game', str(ctx.guild.id))
         fixed_bet = config.get("bet_fija", 1)
 
@@ -274,13 +265,13 @@ async def cmd_dice_stats(ctx):
     try:
         from discord_bot.discord_utils import get_server_key
         from agent_roles_db import get_roles_db_instance
-        server_name = get_server_key(ctx.guild)
-        roles_db = get_roles_db_instance(server_name)
+        server_id = get_server_key(ctx.guild)
+        roles_db = get_roles_db_instance(server_id)
         if not roles_db:
             await ctx.send(get_message("error_game_database_access"))
             return
 
-        stats = roles_db.get_dice_game_stats(str(ctx.author.id), str(ctx.guild.id))
+        stats = roles_db.get_dice_game_stats(str(ctx.author.id))
         total_plays = stats.get('total_plays', 0)
         total_bet = stats.get('total_bet', 0)
         total_won = stats.get('total_won', 0)
@@ -319,14 +310,14 @@ async def cmd_dice_ranking(ctx):
     try:
         from discord_bot.discord_utils import get_server_key
         from agent_roles_db import get_roles_db_instance
-        server_name = get_server_key(ctx.guild)
-        roles_db = get_roles_db_instance(server_name)
+        server_id = get_server_key(ctx.guild)
+        roles_db = get_roles_db_instance(server_id)
         if not roles_db:
             await ctx.send(get_message("error_game_database_access"))
             return
 
-        # Get all player stats for this server and sort by prize
-        history = roles_db.get_dice_game_history(str(ctx.guild.id), 1000)
+        # Get all player stats and sort by prize
+        history = roles_db.get_dice_game_history(1000)
         if not history:
             await ctx.send(get_message("ranking_no_players"))
             return
@@ -372,13 +363,13 @@ async def cmd_dice_history(ctx):
     try:
         from discord_bot.discord_utils import get_server_key
         from agent_roles_db import get_roles_db_instance
-        server_name = get_server_key(ctx.guild)
-        roles_db = get_roles_db_instance(server_name)
+        server_id = get_server_key(ctx.guild)
+        roles_db = get_roles_db_instance(server_id)
         if not roles_db:
             await ctx.send(get_message("error_game_database_access"))
             return
 
-        history = roles_db.get_dice_game_history(str(ctx.guild.id), 15)
+        history = roles_db.get_dice_game_history(15)
         if not history:
             await ctx.send(get_message("history_no_games"))
             return
@@ -421,8 +412,8 @@ async def cmd_dice_config(ctx, _personality):
     try:
         from discord_bot.discord_utils import get_server_key
         from agent_roles_db import get_roles_db_instance
-        server_name = get_server_key(ctx.guild)
-        roles_db = get_roles_db_instance(server_name)
+        server_id = get_server_key(ctx.guild)
+        roles_db = get_roles_db_instance(server_id)
         if not roles_db:
             await ctx.send(get_message("error_game_database_access"))
             return
@@ -437,7 +428,7 @@ async def cmd_dice_config(ctx, _personality):
                 if amount < 1 or amount > 1000:
                     await ctx.send(get_message("error_bet_range"))
                     return
-                if roles_db.save_role_config('dice_game', str(ctx.guild.id), True, json.dumps({"bet_fija": amount})):
+                if roles_db.save_role_config('dice_game', True, json.dumps({"bet_fija": amount})):
                     await ctx.send(get_message("fixed_bet_configured", amount=amount))
                     logger.info(f"🎲 {ctx.author.name} configured the fixed bet to {amount} in {ctx.guild.name}")
                 else:
@@ -454,7 +445,7 @@ async def cmd_dice_config(ctx, _personality):
                 await ctx.send(get_message("error_announcement_value"))
                 return
             announcements_enabled = state == "on"
-            if roles_db.save_role_config('dice_game', str(ctx.guild.id), True, json.dumps({"announcements_active": announcements_enabled})):
+            if roles_db.save_role_config('dice_game', True, json.dumps({"announcements_active": announcements_enabled})):
                 await ctx.send(get_message("announcements_configured", enabled=announcements_enabled))
                 logger.info(f"🎲 {ctx.author.name} {'enabled' if announcements_enabled else 'disabled'} dice game announcements in {ctx.guild.name}")
             else:

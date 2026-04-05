@@ -13,7 +13,7 @@ import time
 import datetime
 import discord
 from dotenv import load_dotenv
-from agent_db import get_active_server_name
+from agent_db import get_active_server_id
 from agent_logging import get_logger
 from agent_engine import get_discord_token
 from discord_bot.discord_http import DiscordHTTP
@@ -718,9 +718,9 @@ async def _generate_personality_opinion(
     """Generate personality opinion about a news headline."""
     try:
         from agent_mind import call_llm
-        from agent_db import get_active_server_name
+        from agent_db import get_active_server_id
         
-        server_to_use = server_id or get_active_server_name()
+        server_to_use = server_id or get_active_server_id()
         if not server_to_use:
             logger.warning("⚠️ No active server available for watcher prompt generation")
             return None
@@ -1206,9 +1206,9 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
         # Log the prompt to prompts.log
         try:
             from prompts_logger import log_final_llm_prompt
-            from agent_db import get_active_server_name
+            from agent_db import get_active_server_id
             
-            server_name = get_active_server_name()
+            server_name = get_active_server_id()
             metadata = {
                 "articles_count": len(articles),
                 "premises_count": len(premises),
@@ -1241,9 +1241,9 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
         # Log Cohere's response to prompts.log
         try:
             from prompts_logger import log_prompt
-            from agent_db import get_active_server_name
+            from agent_db import get_active_server_id
             
-            server_name = get_active_server_name()
+            server_name = get_active_server_id()
             response_metadata = {
                 "provider": "cohere",
                 "call_type": "news_watcher_batch_analysis_response",
@@ -1290,11 +1290,11 @@ async def main():
         logger.info("🚀 Starting News Watcher...")
         
         # Get server configuration
-        server_name = get_active_server_name()
-        if not server_name:
+        server_id = get_active_server_id()
+        if not server_id:
             logger.warning("⚠️ No active server configured, skipping News Watcher execution")
             return
-        logger.info(f"📡 Server: {server_name}")
+        logger.info(f"📡 Server: {server_id}")
         
         # Initialize HTTP client for Discord
         discord_token = get_discord_token()
@@ -1305,7 +1305,7 @@ async def main():
         http = DiscordHTTP(discord_token)
         
         # Process all subscriptions
-        await process_subscriptions(http, server_name)
+        await process_subscriptions(http, server_id)
         
         logger.info("✅ News Watcher completed")
         

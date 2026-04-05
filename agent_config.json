@@ -4,6 +4,31 @@
   "llm": {
     "max_tokens": 2048
   },
+  "fatigue_limits": {
+    "user": {
+      "daily_max": 50,
+      "hourly_max": 10,
+      "burst_max": 5,
+      "reset_times": {
+        "daily": "00:00 UTC",
+        "hourly": "cada hora"
+      }
+    },
+    "server": {
+      "daily_max": 500,
+      "hourly_max": 100,
+      "burst_max": 20
+    },
+    "exemptions": {
+      "admin_users": [],
+      "critical_tasks": ["daily_memory", "relationship_memory", "recent_memory"]
+    },
+    "behavior": {
+      "strict_mode": false,
+      "grace_period": 3,
+      "cooldown_minutes": 15
+    }
+  },
   "roles": {
     "news_watcher": {
       "enabled": true,

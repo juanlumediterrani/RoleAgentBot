@@ -1,18 +1,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Dockerfile.armv7 - Imagen optimizada para Raspberry Pi 32 bits (ARMv7)
 #
-# Construir:
+# Build:
 #   docker build --platform=linux/arm/v7 -f docker/armv7/Dockerfile.armv7 \
 #                --build-arg PERSONALITY=putre \
 #                --build-arg ACTIVE_ROLES="news_watcher,treasure_hunter,trickster,banker,mc" \
 #                -t roleagentbot:putre-armv7 .
 #
-# Si no se pasan argumentos se usa la personalidad y los roles definidos en
-# agent_config.json tal cual está en el repositorio.
+# If no arguments are passed, the personality and roles defined in
+# agent_config.json are used as-is in the repository.
 # ─────────────────────────────────────────────────────────────────────────────
 FROM --platform=linux/arm/v7 python:3.11-slim-bullseye
 
-# Instalar dependencias del sistema optimizadas para ARM
+# Install system dependencies optimized for ARM
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
@@ -27,34 +27,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copiar requirements y instalar dependencias Python
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Instalar PyNaCl para voz de Discord
+# Install PyNaCl for Discord voice
 RUN pip install --no-cache-dir PyNaCl
 
-# Copiar código fuente principal
+# Copy main source code
 COPY agent_config.json .
 COPY run.py .
 COPY agent_*.py .
 COPY *.py .
 
-# Copiar discord_bot y otros módulos
+# Copy discord_bot and other modules
 COPY discord_bot/ discord_bot/
 COPY personalities/ personalities/
 COPY roles/ roles/
 COPY postprocessor.py .
 
-# ── Script que aplica los ARG al agent_config.json en tiempo de arranque ──────
+# ── Script that applies ARG to agent_config.json at startup ──────
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# ── Directorios con estado persistente (montados como volúmenes) ──────────────
+# ── Directories with persistent state (mounted as volumes) ──────────────
 RUN mkdir -p databases logs fatiga
 
-# ── Argumentos de construcción ────────────────────────────────────────────────
+# ── Build arguments ────────────────────────────────────────────────
 ARG PERSONALITY=""
 ARG ACTIVE_ROLES=""
 

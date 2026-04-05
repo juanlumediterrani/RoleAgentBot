@@ -8,7 +8,7 @@ import asyncio
 from agent_logging import get_logger
 from agent_engine import PERSONALITY
 from roles.banker.banker_db import get_banker_roles_db_instance
-from agent_db import get_active_server_name
+from agent_db import get_active_server_id
 
 logger = get_logger('banker')
 
@@ -41,7 +41,7 @@ async def create_wallets_for_all_server_members():
     logger.info("💰 Starting wallet creation for all server members...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_name()
+    server_key = get_active_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping wallet creation")
         return
@@ -79,7 +79,7 @@ async def create_wallets_for_all_server_members():
                         
                         # Create wallet with opening bonus (10x TAE)
                         was_created = db_banker.create_wallet(
-                            member_id, member_name, guild_id, guild_name, wallet_type='user'
+                            member_id, member_name, guild_id, wallet_type='user'
                         )
                         
                         if was_created:
@@ -104,11 +104,11 @@ async def create_wallets_for_all_server_members():
                     
                     # Create system accounts
                     was_created_pot = db_banker.create_wallet(
-                        "dice_game_pot", "Dice Game Pot", server_key, server_key, wallet_type='system'
+                        "dice_game_pot", "Dice Game Pot", wallet_type='system'
                     )
                     
                     was_created_beggar = db_banker.create_wallet(
-                        "beggar_fund", "Beggar Fund", server_key, server_key, wallet_type='system'
+                        "beggar_fund", "Beggar Fund", wallet_type='system'
                     )
                     
                     if was_created_pot:
@@ -135,7 +135,7 @@ async def distribute_daily_tae():
     logger.info("💰 Starting daily TAE distribution...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_name()
+    server_key = get_active_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping TAE distribution")
         return
@@ -176,24 +176,23 @@ async def distribute_daily_tae():
         distributed_count = 0
         total_distributed = 0
         
-        for user_id, user_name, server_id, server_name in wallets:
+        for wallet_id, user_name, wallet_type in wallets:
             try:
                 # Skip dice_game_pot for TAE distribution
-                if user_id == "dice_game_pot":
+                if wallet_id == "dice_game_pot":
                     continue
                     
                 # Distribute TAE
                 success = db_banker.add_balance(
-                    wallet_id=user_id,
-                    server_id=server_id,
+                    wallet_id=wallet_id,
                     amount=tae_amount
                 )
                 
                 if success:
                     # Record transaction
                     db_banker.roles_db.save_banker_transaction(
-                        "system", user_id, tae_amount, "TAE_DAILY", 
-                        f"Daily TAE distribution for {today}", server_id, "system"
+                        "system", wallet_id, tae_amount, "TAE_DAILY", 
+                        f"Daily TAE distribution for {today}", "system"
                     )
                     distributed_count += 1
                     total_distributed += tae_amount
@@ -204,7 +203,7 @@ async def distribute_daily_tae():
         # Update last distribution timestamp
         data['last_tae_distribution'] = today
         db_banker.roles_db.save_role_config(
-            "banker", server_key, True, json.dumps(data)
+            "banker", True, json.dumps(data)
         )
         
         logger.info(f"💰 TAE distribution completed: {distributed_count} users, {total_distributed:,} total coins")
@@ -218,7 +217,7 @@ async def initialize_dice_game_accounts():
     logger.info("💰 Starting dice game account initialization for existing users...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_name()
+    server_key = get_active_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping dice game account initialization")
         return
@@ -246,14 +245,14 @@ async def initialize_dice_game_accounts():
         
         initialized_count = 0
         
-        for user_id, user_name, server_id, server_name in wallets:
+        for wallet_id, user_name, wallet_type in wallets:
             try:
                 # Skip system accounts like dice_game_pot
-                if user_id == "dice_game_pot":
+                if wallet_id == "dice_game_pot":
                     continue
                     
                 # Check if user already has dice game stats
-                stats = roles_db.get_dice_game_stats(user_id, server_id)
+                stats = roles_db.get_dice_game_stats(wallet_id)
                 
                 if stats.get('total_plays', 0) == 0:
                     # User doesn't have dice game account yet
@@ -275,7 +274,7 @@ async def initialize_dice_game_pot():
     logger.info("💰 Starting dice game pot initialization...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_name()
+    server_key = get_active_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping dice game pot initialization")
         return
@@ -291,22 +290,25 @@ async def initialize_dice_game_pot():
         
         # Get unique server IDs from wallets
         server_ids = set()
-        for user_id, user_name, server_id, server_name in wallets:
-            server_ids.add((server_id, server_name))
+        for wallet_id, user_name, wallet_type in wallets:
+            # For dice game pot, we need to handle it differently since it's a system wallet
+            # We'll use the active server for system wallets
+            if wallet_type == 'system':
+                server_ids.add((server_key, f"Server_{server_key}"))
         
         for server_id, server_name in server_ids:
             try:
                 # Check if dice game pot wallet exists
-                pot_balance = db_banker.get_balance("dice_game_pot", server_id)
+                pot_balance = db_banker.get_balance("dice_game_pot")
                 
                 if pot_balance == 0:
                     # Create pot wallet (it will get opening bonus if configured)
                     was_created = db_banker.create_wallet(
-                        "dice_game_pot", "Dice Game Pot", server_id, server_name
+                        "dice_game_pot", "Dice Game Pot"
                     )
                     
                     if was_created:
-                        initial_balance = db_banker.get_balance("dice_game_pot", server_id)
+                        initial_balance = db_banker.get_balance("dice_game_pot")
                         logger.info(f"💰 Dice game pot created for {server_name} with {initial_balance} coins")
                     else:
                         logger.info(f"💰 Dice game pot already exists for {server_name}")

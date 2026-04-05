@@ -59,14 +59,14 @@ def get_taboo_fallback_message() -> str:
     return "TABOO WARNING: Careful human, that word is sacred for the orcs! Only tribe members can use it. Better use it with respect or I'll smash your face!"
 
 
-async def process_taboo_trigger(message, taboo_keyword: str, server_name: str) -> bool:
+async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> bool:
     """
     Process taboo word trigger and send response.
     
     Args:
         message: Discord message object
         taboo_keyword: The forbidden word that was detected
-        server_name: Server name for context
+        server_id: Server name for context
         
     Returns:
         True if taboo was processed, False otherwise
@@ -98,7 +98,7 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_name: str) -
             metadata={
                 "user_id": message.author.id,
                 "user_name": message.author.name,
-                "server_name": server_name,
+                "server_id": server_id,
                 "interaction_type": "taboo",
                 "is_public": True
             },
@@ -115,14 +115,17 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_name: str) -
         
         # Register the taboo interaction in the database
         try:
-            from agent_db import register_interaction
-            register_interaction(
-                user_id=message.author.id,
-                user_name=message.author.display_name,
-                server_id=server_name,
-                interaction_type="TABOO",
-                context=f"Taboo word detected: '{taboo_keyword}'",
-                metadata={
+            from agent_db import get_db_for_server
+            db_instance = get_db_for_server(message.guild)
+            await asyncio.to_thread(
+                db_instance.register_interaction,
+                message.author.id,
+                message.author.display_name,
+                "TABOO",
+                f"Taboo word detected: '{taboo_keyword}'",
+                message.channel.id,
+                server_id,
+                {
                     "taboo_keyword": taboo_keyword,
                     "message_content": message.content,
                     "channel_id": message.channel.id,

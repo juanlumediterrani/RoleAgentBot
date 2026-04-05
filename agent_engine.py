@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta
 from agent_logging import get_logger
 from postprocessor import postprocess_response, is_blocked_response
-from agent_db import get_active_server_name, get_global_db
+from agent_db import get_active_server_id, get_global_db
 from prompts_logger import log_system_prompt, log_agent_response, log_final_llm_prompt
 from agent_runtime import increment_usage as runtime_increment_usage
 from pathlib import Path
@@ -265,8 +265,8 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
             # Fallback to a generic name if ring state is not available
             duty_text = duty_text.replace("<accusated_user>", "el usuario sospechoso")
     
-    # Handle beggar subrole special case: inject current gold collection task after "para:"
-    if subrole_name == "beggar" and server_id and duty_text.rstrip().endswith(":"):
+    # Handle beggar subrole special case: always append current reason regardless of format
+    if subrole_name == "beggar" and server_id:
         try:
             from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
             beggar_config = get_beggar_config(server_id)
@@ -274,7 +274,17 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
             if beggar_config.is_enabled():
                 current_reason = beggar_config.get_current_reason()
                 if current_reason:
-                    duty_text = duty_text + " " + current_reason
+                    # Always append the reason, regardless of whether duty_text ends with colon
+                    if duty_text.strip():
+                        # If duty_text ends with colon, append directly, otherwise add separator
+                        if duty_text.rstrip().endswith(":"):
+                            duty_text = duty_text + " " + current_reason
+                        else:
+                            duty_text = duty_text + ": " + current_reason
+                    else:
+                        # If duty_text is empty, just use the reason
+                        duty_text = current_reason
+                    
                     logger.debug(f"🎭 [BEGGAR] Injected current reason '{current_reason}' in system prompt")
                 else:
                     logger.debug("🎭 [BEGGAR] No current reason available, leaving base line unchanged")
@@ -375,14 +385,8 @@ def _get_active_roles_section() -> str:
             subrole_prompt_cfg = role_subroles_cfg.get(subrole_name, {})
             
             # Get server_id for subrole injection (ring needs it)
+            # Note: We now use runtime context instead of server_id for database operations
             server_id = None
-            try:
-                from agent_runtime import get_active_server_name
-                server_name = get_active_server_name()
-                if server_name:
-                    server_id = str(server_name)
-            except Exception:
-                pass
             
             subrole_duty = _get_active_duty_text(subrole_prompt_cfg, server_id, subrole_name)
             
@@ -841,14 +845,8 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         system_instruction = _build_system_prompt(PERSONALITY)
         
         # Try to get server_id for ring subrole to replace accused user placeholder
+        # Note: We now use runtime context instead of server_id for database operations
         server_id = None
-        try:
-            from agent_runtime import get_active_server_name
-            server_name = get_active_server_name()
-            if server_name:
-                server_id = str(server_name)  # Use server name as ID for now
-        except Exception as e:
-            logger.debug(f"🎭 [SUBROLE] Could not get server_id for ring replacement: {e}")
         
         mission_prompt = _get_active_duty_text(subrole_config, server_id, subrole_name)
         
@@ -861,21 +859,13 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             # Use the new beggar task system
             from roles.trickster.subroles.beggar.beggar_task import execute_beggar_task
             
-            # Get active server name for context
+            # Execute the beggar task with runtime context
             try:
-                from agent_runtime import get_active_server_name
-                server_name = get_active_server_name()
-                if server_name:
-                    server_id = str(server_name)
-                    
-                    # Execute the beggar task
-                    success = await execute_beggar_task(server_id, bot_instance)
-                    if success:
-                        logger.info(f"🎭 [BEGGAR] Task executed successfully for server {server_name}")
-                    else:
-                        logger.warning(f"🎭 [BEGGAR] Task execution failed for server {server_name}")
+                success = await execute_beggar_task(bot_instance=bot_instance)
+                if success:
+                    logger.info(f"🎭 [BEGGAR] Task executed successfully")
                 else:
-                    logger.warning(f"🎭 [BEGGAR] No active server found")
+                    logger.warning(f"🎭 [BEGGAR] Task execution failed")
             except Exception as e:
                 logger.error(f"🎭 [BEGGAR] Error in task execution: {e}")
             
@@ -898,11 +888,9 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                 if server_name:
                     db = AgentDatabase(server_name)
                     
-                    # Get server ID from database or use server name as fallback
-                    server_id = str(server_name)  # Use server name as ID for now
-                    
                     # Check if we can make an accusation based on frequency
-                    if not _can_make_accusation(server_id):
+                    # Note: We pass server_name for now but should migrate to runtime context
+                    if not _can_make_accusation(server_name):
                         logger.info(f"🎭 [RING] Frequency check passed - time for next accusation")
                         
                         # Get recent interactions to find a target

@@ -9,13 +9,20 @@ from agent_logging import get_logger
 
 logger = get_logger('db')
 
+# Import needed for get_user_last_server_id
+try:
+    from agent_engine import get_personality_name
+except ImportError:
+    def get_personality_name():
+        return "HANS"  # fallback
+
 _ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 DB_DIR = Path(__file__).parent / 'databases'
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def get_active_server_name() -> str | None:
-    env_active = os.getenv("ACTIVE_SERVER_NAME")
+def get_active_server_id() -> str | None:
+    env_active = os.getenv("ACTIVE_SERVER_ID")
     if env_active:
         value = env_active.strip()
         return value or None
@@ -28,9 +35,31 @@ def get_active_server_name() -> str | None:
     return None
 
 
-def persist_active_server_name(server_name: str) -> None:
+def get_user_last_server_id(user_id: str) -> str | None:
+    """Get the last server ID where the user had interactions."""
     try:
-        _ACTIVE_SERVER_FILE.write_text(server_name.strip(), encoding="utf-8")
+        # Try to find the user's last server from any available database
+        db_dir = Path("databases")
+        if not db_dir.exists():
+            return None
+            
+        # Look through all server databases to find the most recent interaction
+        for server_dir in db_dir.iterdir():
+            if server_dir.is_dir():
+                # Check for agent database
+                agent_db_path = server_dir / f"agent_{get_personality_name().lower()}.db"
+                if agent_db_path.exists():
+                    # The server directory name is the server ID
+                    return server_dir.name
+        return None
+    except Exception as e:
+        logger.warning(f"Could not get user's last server: {e}")
+        return None
+
+
+def persist_active_server_id(server_id: str) -> None:
+    try:
+        _ACTIVE_SERVER_FILE.write_text(server_id.strip(), encoding="utf-8")
     except Exception:
         pass
 
@@ -51,41 +80,41 @@ def get_shared_data_path(file_name: str, subdir: str = None) -> Path:
 
 # --- UTILITIES FOR SERVER-SPECIFIC DATABASE MANAGEMENT ---
 
-def _resolve_server_storage_id(server_name: str | None) -> str | None:
-    candidate = str(server_name).strip() if server_name is not None else ""
+def _resolve_server_storage_id(server_id: str | None) -> str | None:
+    candidate = str(server_id).strip() if server_id is not None else ""
     if candidate and candidate.isdigit():
         return candidate
 
-    active = get_active_server_name()
+    active = get_active_server_id()
     if active and active.isdigit():
         return active
 
     return None
 
-def get_server_db_path(server_name: str, db_name: str = None) -> Path:
+def get_server_db_path(server_id: str, db_name: str = None) -> Path:
     """
-    Genera ruta de base de datos para un servidor específico.
+    Generate database path for a specific server.
     
     Args:
-        server_name: Nombre del servidor (sanitizado)
-        db_name: Nombre de la base de datos (opcional)
+        server_id: Server ID (sanitized)
+        db_name: Database name (optional)
     
     Returns:
-        Path: Ruta completa al archivo de base de datos
+        Path: Full path to database file
     """
-    server_storage_id = _resolve_server_storage_id(server_name)
+    server_storage_id = _resolve_server_storage_id(server_id)
     
-    # Directorio base
+    # Base directory
     server_dir = DB_DIR / server_storage_id if server_storage_id else DB_DIR
     try:
         server_dir.mkdir(parents=True, exist_ok=True)
     except (PermissionError, OSError) as e:
-        # Si no podemos crear el directorio del servidor, usar el directorio base
-        print(f"⚠️ No se puede crear directorio de BD {server_dir}: {e}")
-        print(f"🗄️ Usando directorio base: {DB_DIR}")
+        # If we can't create server directory, use base directory
+        print(f"⚠️ Cannot create DB directory {server_dir}: {e}")
+        print(f"🗄️ Using base directory: {DB_DIR}")
         server_dir = DB_DIR
     
-    # Usar nombre de BD si se proporciona, si no el global
+    # Use provided DB name or global default
     db_filename = db_name or get_personality_name()
     db_file_name = db_filename if str(db_filename).endswith('.db') else f'{db_filename}.db'
     db_path = server_dir / db_file_name
@@ -101,15 +130,15 @@ def get_server_db_path(server_name: str, db_name: str = None) -> Path:
     
     return db_path
 
-def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
+def get_server_db_path_fallback(server_id: str, db_name: str) -> Path:
     """
     Version with fallback for Docker environments or restricted permissions.
     """
-    server_storage_id = _resolve_server_storage_id(server_name)
-    resolved_server_name = server_storage_id or server_name
+    server_storage_id = _resolve_server_storage_id(server_id)
+    resolved_server_id = server_storage_id or server_id
 
     # Try local path first
-    local_path = get_server_db_path(resolved_server_name, db_name)
+    local_path = get_server_db_path(resolved_server_id, db_name)
     
     try:
         # Test if we can write
@@ -143,18 +172,18 @@ def get_server_db_path_fallback(server_name: str, db_name: str) -> Path:
         
         return fallback_path
 
-def get_server_log_path(server_name: str, log_name: str) -> Path:
+def get_server_log_path(server_id: str, log_name: str) -> Path:
     """
     Generate log path for a specific server.
     
     Args:
-        server_name: Server name (sanitized)
+        server_id: Server ID (sanitized)
         log_name: Log file name
     
     Returns:
         Path: Full path to the log file
     """
-    server_storage_id = _resolve_server_storage_id(server_name)
+    server_storage_id = _resolve_server_storage_id(server_id)
     
     # Base directory
     base_dir = Path(__file__).parent
@@ -186,13 +215,13 @@ BASE_DIR = Path(__file__).parent
 HISTORIAL_LIMITE = 5
 
 class AgentDatabase:
-    def __init__(self, server_name: str = "default", db_path: Path = None):
-        self.server_name = server_name
+    def __init__(self, server_id: str = "default", db_path: Path = None):
+        self.server_id = server_id
         if db_path is None:
             # Use personality-specific database name
             personality_name = get_personality_name()
             db_name = f"agent_{personality_name}"
-            self.db_path = get_server_db_path_fallback(server_name, db_name)
+            self.db_path = get_server_db_path_fallback(server_id, db_name)
         else:
             self.db_path = db_path
         self._lock = threading.Lock()
@@ -219,7 +248,7 @@ class AgentDatabase:
         except Exception as e:
             logger.warning(f"⚠️ [DB] No write access to {self.db_path}: {e}. Using fallback in home directory.")
             fallback_dir = Path.home() / '.roleagentbot' / 'databases'
-            server_storage_id = _resolve_server_storage_id(self.server_name)
+            server_storage_id = _resolve_server_storage_id(self.server_id)
             if server_storage_id:
                 fallback_dir = fallback_dir / server_storage_id
             fallback_dir.mkdir(parents=True, exist_ok=True)
@@ -252,79 +281,66 @@ class AgentDatabase:
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_uid_fecha ON interacciones (usuario_id, fecha)')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS daily_memory (
-                        memory_date TEXT NOT NULL,
-                        server_name TEXT NOT NULL,
+                        memory_date TEXT NOT NULL PRIMARY KEY,
                         summary TEXT NOT NULL,
                         metadata TEXT,
-                        updated_at DATETIME NOT NULL,
-                        PRIMARY KEY (memory_date, server_name)
+                        updated_at DATETIME NOT NULL
                     )
                 ''')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS recent_memory (
-                        memory_date TEXT NOT NULL,
-                        server_name TEXT NOT NULL,
+                        memory_date TEXT NOT NULL PRIMARY KEY,
                         summary TEXT NOT NULL,
                         metadata TEXT,
                         updated_at DATETIME NOT NULL,
-                        last_interaction_at DATETIME,
-                        PRIMARY KEY (memory_date, server_name)
+                        last_interaction_at DATETIME
                     )
                 ''')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS user_relationship_memory (
-                        usuario_id TEXT NOT NULL,
-                        server_name TEXT NOT NULL,
+                        usuario_id TEXT NOT NULL PRIMARY KEY,
                         summary TEXT NOT NULL,
                         metadata TEXT,
                         updated_at DATETIME NOT NULL,
-                        last_interaction_at DATETIME,
-                        PRIMARY KEY (usuario_id, server_name)
+                        last_interaction_at DATETIME
                     )
                 ''')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS user_relationship_daily_memory (
                         memory_date TEXT NOT NULL,
                         usuario_id TEXT NOT NULL,
-                        server_name TEXT NOT NULL,
                         summary TEXT NOT NULL,
                         metadata TEXT,
                         updated_at DATETIME NOT NULL,
-                        PRIMARY KEY (memory_date, usuario_id, server_name)
+                        UNIQUE(memory_date, usuario_id)
                     )
                 ''')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS pending_relationship_updates (
-                        usuario_id TEXT NOT NULL,
-                        server_name TEXT NOT NULL,
+                        usuario_id TEXT NOT NULL PRIMARY KEY,
                         scheduled_for DATETIME NOT NULL,
                         status TEXT NOT NULL,
-                        updated_at DATETIME NOT NULL,
-                        PRIMARY KEY (usuario_id, server_name)
+                        updated_at DATETIME NOT NULL
                     )
                 ''')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS pending_recent_memory_updates (
-                        server_name TEXT NOT NULL,
-                        scheduled_for DATETIME NOT NULL,
+                        scheduled_for DATETIME NOT NULL PRIMARY KEY,
                         status TEXT NOT NULL,
-                        updated_at DATETIME NOT NULL,
-                        PRIMARY KEY (server_name)
+                        updated_at DATETIME NOT NULL
                     )
                 ''')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS notable_recollections (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        server_name TEXT NOT NULL,
                         memory_date TEXT NOT NULL,
                         recollection_text TEXT NOT NULL,
                         source_paragraph TEXT,
-                        extracted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        extracted_at DATETIME NOT NULL,
                         used_count INTEGER DEFAULT 0,
                         last_used_at DATETIME
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_recollections_server ON notable_recollections (server_name)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_recollections_date ON notable_recollections (memory_date)')
                 conn.commit()
                 
@@ -345,8 +361,7 @@ class AgentDatabase:
                 # Check if recollections table is empty
                 cursor.execute(f'''
                     SELECT COUNT(*) FROM notable_recollections
-                    WHERE server_name = ?
-                ''', (self.server_name,))
+                ''')
                 count = cursor.fetchone()[0]
                 
                 if count == 0:
@@ -368,9 +383,9 @@ class AgentDatabase:
                         for recollection_text in all_recollections:
                             cursor.execute('''
                                 INSERT INTO notable_recollections
-                                (server_name, memory_date, recollection_text, source_paragraph, extracted_at)
-                                VALUES (?, ?, ?, ?, ?)
-                            ''', (self.server_name, date.today().isoformat(), recollection_text, 
+                                (memory_date, recollection_text, source_paragraph, extracted_at)
+                                VALUES (?, ?, ?, ?)
+                            ''', (date.today().isoformat(), recollection_text, 
                                   "Initial recollection from personality JSON", extracted_at))
                         
                         conn.commit()
@@ -382,7 +397,7 @@ class AgentDatabase:
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error initializing notable recollections: {e}")
 
-    def registrar_interaccion(self, usuario_id, usuario_nombre, tipo_interaccion, contexto, canal_id=None, servidor_id=None, metadata=None):
+    def register_interaction(self, user_id, user_name, interaction_type, context, channel_id=None, server_id=None, metadata=None):
         fecha = datetime.datetime.now().isoformat()
         meta_json = json.dumps(metadata) if metadata else None
         scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=60)).isoformat()
@@ -393,14 +408,14 @@ class AgentDatabase:
                 with sqlite3.connect(db_path_str, timeout=30) as conn:
                     cursor = conn.cursor()
                     params = (
-                        str(usuario_id),
-                        usuario_nombre,
-                        str(canal_id) if canal_id is not None else None,
-                        tipo_interaccion,
-                        contexto,
+                        str(user_id),
+                        user_name,
+                        str(channel_id) if channel_id is not None else None,
+                        interaction_type,
+                        context,
                         meta_json,
                         fecha,
-                        str(servidor_id) if servidor_id is not None else None,
+                        str(server_id) if server_id is not None else None,
                     )
                     cursor.execute('''
                         INSERT INTO interacciones
@@ -410,9 +425,9 @@ class AgentDatabase:
                     # Programar actualización de recent memory con lógica anti-atasco
                     cursor.execute('''
                         INSERT INTO pending_recent_memory_updates
-                        (server_name, scheduled_for, status, updated_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(server_name) DO UPDATE SET
+                        (scheduled_for, status, updated_at)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(scheduled_for) DO UPDATE SET
                             scheduled_for = CASE
                                 WHEN pending_recent_memory_updates.status = 'pending' 
                                      AND datetime(pending_recent_memory_updates.scheduled_for) < datetime('now', '-2 hours')
@@ -425,7 +440,7 @@ class AgentDatabase:
                                 THEN excluded.updated_at
                                 ELSE pending_recent_memory_updates.updated_at
                             END
-                    ''', (self.server_name, scheduled_for, "pending", updated_at))
+                    ''', (scheduled_for, "pending", updated_at))
                     
                     # Programar actualización de relationship con retraso para evitar solapamiento
                     # Recent memory tiene prioridad, relationship se ejecuta 5 minutos después
@@ -435,9 +450,9 @@ class AgentDatabase:
                     
                     cursor.execute('''
                         INSERT INTO pending_relationship_updates
-                        (usuario_id, server_name, scheduled_for, status, updated_at)
-                        VALUES (?, ?, ?, ?, ?)
-                        ON CONFLICT(usuario_id, server_name) DO UPDATE SET
+                        (usuario_id, scheduled_for, status, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(usuario_id) DO UPDATE SET
                             scheduled_for = CASE
                                 WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.scheduled_for
                                 ELSE excluded.scheduled_for
@@ -447,16 +462,16 @@ class AgentDatabase:
                                 ELSE excluded.status
                             END,
                             updated_at = excluded.updated_at
-                    ''', (str(usuario_id), self.server_name, relationship_scheduled_for, "pending", updated_at))
+                    ''', (str(user_id), relationship_scheduled_for, "pending", updated_at))
                     
-                    logger.info(f"✅ Interaction registered: user_id={usuario_id}, type={tipo_interaccion}, channel_id={canal_id}")
+                    logger.info(f"✅ Interaction registered: user_id={user_id}, type={interaction_type}, channel_id={channel_id}")
                     logger.info(f"🧠 [SCHEDULING] Recent memory: {scheduled_for}, Relationship: {relationship_scheduled_for} (5min delay)")
                     return True
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error registering interaction (user_id={usuario_id}, type={tipo_interaccion}): {e}")
+            logger.exception(f"⚠️ [DB] Error registering interaction (user_id={user_id}, type={interaction_type}): {e}")
             return False
 
-    def get_user_history(self, usuario_id, limite=HISTORIAL_LIMITE):
+    def get_user_history(self, user_id, limite=HISTORIAL_LIMITE):
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
@@ -465,7 +480,7 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT contexto, metadata FROM interacciones
                     WHERE usuario_id = ? ORDER BY fecha DESC LIMIT ?
-                ''', (str(usuario_id), limite))
+                ''', (str(user_id), limite))
 
                 res = cursor.fetchall()
                 historial = []
@@ -480,9 +495,9 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving history: {e}")
             return []
 
-    def get_recent_user_history(self, usuario_id, minutos=3):
+    def get_recent_user_history(self, user_id, minutes=3):
         """Get history from the last N minutes for temporal context."""
-        fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=minutos)).isoformat()
+        fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=minutes)).isoformat()
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
@@ -490,8 +505,8 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT contexto, metadata FROM interacciones
-                    WHERE usuario_id = ? AND fecha > ? ORDER BY fecha DESC
-                ''', (str(usuario_id), fecha_limite))
+                    WHERE usuario_id = ? AND fecha >= ? ORDER BY fecha DESC
+                ''', (str(user_id), fecha_limite))
 
                 res = cursor.fetchall()
                 historial = []
@@ -507,7 +522,7 @@ class AgentDatabase:
             return []
 
     
-    def get_last_dialogue_window(self, usuario_id, max_messages=10):
+    def get_last_dialogue_window(self, user_id, max_messages=10):
         """Return last 10 human/bot dialogue pairs for prompt injection regardless of time window."""
         try:
             with self._lock:
@@ -515,12 +530,9 @@ class AgentDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT contexto, metadata, fecha
-                    FROM interacciones
-                    WHERE usuario_id = ?
-                    ORDER BY fecha DESC
-                    LIMIT ?
-                ''', (str(usuario_id), max_messages))
+                    SELECT contexto, metadata, fecha FROM interacciones
+                    WHERE usuario_id = ? ORDER BY fecha DESC LIMIT ?
+                ''', (str(user_id), max_messages * 2))
 
                 rows = cursor.fetchall()
                 dialogue = []
@@ -652,16 +664,20 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT summary
                     FROM daily_memory
-                    WHERE memory_date = ? AND server_name = ?
-                ''', (target_date, self.server_name))
+                    WHERE memory_date = ?
+                ''', (target_date,))
                 row = cursor.fetchone()
                 conn.close()
-                return row[0] if row else ""
+                
+                if row:
+                    return row[0] or ""
+                else:
+                    return ""
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving daily memory: {e}")
             return ""
 
-    def get_last_interaction(self, usuario_id):
+    def get_last_interaction(self, user_id):
         """Get the last interaction for a user to check if bot or human spoke last."""
         try:
             with self._lock:
@@ -674,7 +690,7 @@ class AgentDatabase:
                     WHERE usuario_id = ?
                     ORDER BY fecha DESC
                     LIMIT 1
-                ''', (str(usuario_id),))
+                ''', (str(user_id),))
 
                 row = cursor.fetchone()
                 conn.close()
@@ -702,10 +718,10 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT memory_date, summary, metadata, updated_at
                     FROM daily_memory
-                    WHERE server_name = ? AND summary IS NOT NULL AND summary != ''
+                    WHERE summary IS NOT NULL AND summary != ''
                     ORDER BY updated_at DESC
                     LIMIT 1
-                ''', (self.server_name,))
+                ''')
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -732,8 +748,8 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT memory_date, summary, metadata, updated_at
                     FROM daily_memory
-                    WHERE memory_date = ? AND server_name = ?
-                ''', (target_date, self.server_name))
+                    WHERE memory_date = ?
+                ''', (target_date,))
                 row = cursor.fetchone()
                 conn.close()
                 return dict(row) if row else None
@@ -751,10 +767,10 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT memory_date, summary, metadata, updated_at, last_interaction_at
                     FROM recent_memory
-                    WHERE server_name = ?
+                    WHERE 1=1
                     ORDER BY updated_at DESC
                     LIMIT 1
-                ''', (self.server_name,))
+                ''', ())
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -782,8 +798,8 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT memory_date, summary, metadata, updated_at, last_interaction_at
                     FROM recent_memory
-                    WHERE memory_date = ? AND server_name = ?
-                ''', (target_date, self.server_name))
+                    WHERE memory_date = ?
+                ''', (target_date,))
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -809,9 +825,9 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO pending_recent_memory_updates
-                    (server_name, scheduled_for, status, updated_at)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(server_name) DO UPDATE SET
+                    (scheduled_for, status, updated_at)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(scheduled_for) DO UPDATE SET
                         scheduled_for = CASE
                             WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.scheduled_for
                             ELSE excluded.scheduled_for
@@ -821,7 +837,7 @@ class AgentDatabase:
                             ELSE excluded.status
                         END,
                         updated_at = excluded.updated_at
-                ''', (self.server_name, scheduled_for, "pending", updated_at))
+                ''', (scheduled_for, "pending", updated_at))
                 conn.commit()
                 conn.close()
                 return scheduled_for
@@ -838,8 +854,8 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT scheduled_for, status, updated_at
                     FROM pending_recent_memory_updates
-                    WHERE server_name = ?
-                ''', (self.server_name,))
+                    WHERE 1=1
+                ''', ())
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -858,8 +874,8 @@ class AgentDatabase:
                 cursor.execute('''
                     UPDATE pending_recent_memory_updates
                     SET status = ?, updated_at = ?
-                    WHERE server_name = ?
-                ''', ("completed", updated_at, self.server_name))
+                    WHERE 1=1
+                ''', ("completed", updated_at))
                 conn.commit()
                 conn.close()
                 return True
@@ -875,10 +891,10 @@ class AgentDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT server_name, scheduled_for, status, updated_at
+                    SELECT scheduled_for, status, updated_at
                     FROM pending_recent_memory_updates
-                    WHERE server_name = ? AND status = ? AND scheduled_for <= ?
-                ''', (self.server_name, "pending", current_time))
+                    WHERE status = ? AND scheduled_for <= ?
+                ''', ("pending", current_time))
                 rows = cursor.fetchall()
                 conn.close()
                 return [dict(row) for row in rows]
@@ -972,13 +988,13 @@ class AgentDatabase:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 cursor.execute('''
-                    INSERT INTO daily_memory (memory_date, server_name, summary, metadata, updated_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(memory_date, server_name) DO UPDATE SET
+                    INSERT INTO daily_memory (memory_date, summary, metadata, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(memory_date) DO UPDATE SET
                         summary = excluded.summary,
                         metadata = excluded.metadata,
                         updated_at = excluded.updated_at
-                ''', (target_date, self.server_name, summary, metadata_json, updated_at))
+                ''', (target_date, summary, metadata_json, updated_at))
                 conn.commit()
                 conn.close()
                 return True
@@ -997,20 +1013,19 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO recent_memory
-                    (memory_date, server_name, summary, metadata, updated_at, last_interaction_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(memory_date, server_name) DO UPDATE SET
+                    (memory_date, summary, metadata, updated_at, last_interaction_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(memory_date) DO UPDATE SET
                         summary = excluded.summary,
                         metadata = excluded.metadata,
                         updated_at = excluded.updated_at,
                         last_interaction_at = excluded.last_interaction_at
                 ''', (
                     target_date,
-                    self.server_name,
                     summary,
                     metadata_json,
                     updated_at,
-                    last_interaction_at,
+                    last_interaction_at
                 ))
                 conn.commit()
                 conn.close()
@@ -1019,7 +1034,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error upserting recent memory: {e}")
             return False
 
-    def get_user_relationship_memory(self, usuario_id):
+    def get_user_relationship_memory(self, user_id):
         """Return the stored relationship summary for a user."""
         try:
             with self._lock:
@@ -1029,8 +1044,8 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT summary, metadata, updated_at, last_interaction_at
                     FROM user_relationship_memory
-                    WHERE usuario_id = ? AND server_name = ?
-                ''', (str(usuario_id), self.server_name))
+                    WHERE usuario_id = ?
+                ''', (str(user_id),))
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -1045,7 +1060,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving relationship memory: {e}")
             return {"summary": "", "updated_at": None, "last_interaction_at": None, "metadata": {}}
 
-    def get_user_relationship_daily_memory(self, usuario_id, memory_date=None):
+    def get_user_relationship_daily_memory(self, user_id, memory_date=None):
         """Return the stored daily relationship summary for a user."""
         target_date = memory_date or date.today().isoformat()
         try:
@@ -1056,8 +1071,8 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT summary, metadata, updated_at
                     FROM user_relationship_daily_memory
-                    WHERE memory_date = ? AND usuario_id = ? AND server_name = ?
-                ''', (target_date, str(usuario_id), self.server_name))
+                    WHERE memory_date = ? AND usuario_id = ?
+                ''', (target_date, str(user_id)))
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -1071,7 +1086,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving daily relationship memory: {e}")
             return None
 
-    def get_latest_user_relationship_daily_memory(self, usuario_id, before_date=None):
+    def get_latest_user_relationship_daily_memory(self, user_id, before_date=None):
         """Return the most recent daily relationship snapshot for a user."""
         try:
             with self._lock:
@@ -1082,18 +1097,18 @@ class AgentDatabase:
                     cursor.execute('''
                         SELECT memory_date, summary, metadata, updated_at
                         FROM user_relationship_daily_memory
-                        WHERE usuario_id = ? AND server_name = ? AND memory_date <= ?
+                        WHERE usuario_id = ? AND memory_date <= ?
                         ORDER BY memory_date DESC
                         LIMIT 1
-                    ''', (str(usuario_id), self.server_name, before_date))
+                    ''', (str(user_id), before_date))
                 else:
                     cursor.execute('''
                         SELECT memory_date, summary, metadata, updated_at
                         FROM user_relationship_daily_memory
-                        WHERE usuario_id = ? AND server_name = ?
+                        WHERE usuario_id = ?
                         ORDER BY memory_date DESC
                         LIMIT 1
-                    ''', (str(usuario_id), self.server_name))
+                    ''', (str(user_id),))
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -1108,7 +1123,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving latest daily relationship memory: {e}")
             return None
 
-    def upsert_user_relationship_memory(self, usuario_id, summary, last_interaction_at=None, metadata=None):
+    def upsert_user_relationship_memory(self, user_id, summary, last_interaction_at=None, metadata=None):
         """Create or update temporary relationship memory state for a user."""
         updated_at = datetime.datetime.now().isoformat()
         metadata_json = json.dumps(metadata) if metadata else None
@@ -1118,16 +1133,15 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO user_relationship_memory
-                    (usuario_id, server_name, summary, metadata, updated_at, last_interaction_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(usuario_id, server_name) DO UPDATE SET
+                    (usuario_id, summary, metadata, updated_at, last_interaction_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(usuario_id) DO UPDATE SET
                         summary = excluded.summary,
                         metadata = excluded.metadata,
                         updated_at = excluded.updated_at,
                         last_interaction_at = excluded.last_interaction_at
                 ''', (
-                    str(usuario_id),
-                    self.server_name,
+                    str(user_id),
                     summary,
                     metadata_json,
                     updated_at,
@@ -1140,7 +1154,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error upserting relationship memory: {e}")
             return False
 
-    def upsert_user_relationship_daily_memory(self, usuario_id, summary, memory_date=None, metadata=None):
+    def upsert_user_relationship_daily_memory(self, user_id, summary, memory_date=None, metadata=None):
         """Create or update daily relationship memory snapshot for a user."""
         target_date = memory_date or date.today().isoformat()
         updated_at = datetime.datetime.now().isoformat()
@@ -1151,16 +1165,15 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO user_relationship_daily_memory
-                    (memory_date, usuario_id, server_name, summary, metadata, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(memory_date, usuario_id, server_name) DO UPDATE SET
+                    (memory_date, usuario_id, summary, metadata, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(memory_date, usuario_id) DO UPDATE SET
                         summary = excluded.summary,
                         metadata = excluded.metadata,
                         updated_at = excluded.updated_at
                 ''', (
                     target_date,
-                    str(usuario_id),
-                    self.server_name,
+                    str(user_id),
                     summary,
                     metadata_json,
                     updated_at,
@@ -1172,7 +1185,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error upserting daily relationship memory: {e}")
             return False
 
-    def clear_user_relationship_memory_state(self, usuario_id):
+    def clear_user_relationship_memory_state(self, user_id):
         """Delete the temporary relationship memory state for a user."""
         try:
             with self._lock:
@@ -1180,8 +1193,8 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     DELETE FROM user_relationship_memory
-                    WHERE usuario_id = ? AND server_name = ?
-                ''', (str(usuario_id), self.server_name))
+                    WHERE usuario_id = ?
+                ''', (str(user_id),))
                 conn.commit()
                 conn.close()
                 return True
@@ -1189,7 +1202,34 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error clearing relationship memory state: {e}")
             return False
 
-    def get_user_interactions_since(self, usuario_id, since_iso=None, limit=25):
+    def get_user_last_server_id(self, user_id: str) -> str | None:
+        """Get the last server ID where the user had interactions."""
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                # Look for the most recent interaction from this user
+                cursor.execute('''
+                    SELECT servidor_id 
+                    FROM interacciones 
+                    WHERE usuario_id = ? 
+                    ORDER BY fecha DESC 
+                    LIMIT 1
+                ''', (str(user_id),))
+                
+                row = cursor.fetchone()
+                conn.close()
+                
+                if row and row['servidor_id']:
+                    return str(row['servidor_id'])
+                return None
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error getting user's last server: {e}")
+            return None
+
+    def get_user_interactions_since(self, user_id, since_iso=None, limit=25):
         """Return user interactions after a given timestamp."""
         try:
             with self._lock:
@@ -1203,7 +1243,7 @@ class AgentDatabase:
                         WHERE usuario_id = ? AND fecha > ?
                         ORDER BY fecha ASC
                         LIMIT ?
-                    ''', (str(usuario_id), since_iso, limit))
+                    ''', (str(user_id), since_iso, limit))
                 else:
                     cursor.execute('''
                         SELECT contexto, metadata, fecha, tipo_interaccion, usuario_nombre
@@ -1211,7 +1251,7 @@ class AgentDatabase:
                         WHERE usuario_id = ?
                         ORDER BY fecha DESC
                         LIMIT ?
-                    ''', (str(usuario_id), limit))
+                    ''', (str(user_id), limit))
                 rows = cursor.fetchall()
                 conn.close()
                 interactions = []
@@ -1230,7 +1270,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving user interactions since: {e}")
             return []
 
-    def schedule_relationship_refresh(self, usuario_id, delay_minutes=60):
+    def schedule_relationship_refresh(self, user_id, delay_minutes=60):
         """Mark a user relationship summary for refresh after inactivity."""
         scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=delay_minutes)).isoformat()
         updated_at = datetime.datetime.now().isoformat()
@@ -1240,9 +1280,9 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO pending_relationship_updates
-                    (usuario_id, server_name, scheduled_for, status, updated_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(usuario_id, server_name) DO UPDATE SET
+                    (usuario_id, scheduled_for, status, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(usuario_id) DO UPDATE SET
                         scheduled_for = CASE
                             WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.scheduled_for
                             ELSE excluded.scheduled_for
@@ -1252,7 +1292,7 @@ class AgentDatabase:
                             ELSE excluded.status
                         END,
                         updated_at = excluded.updated_at
-                ''', (str(usuario_id), self.server_name, scheduled_for, "pending", updated_at))
+                ''', (str(user_id), scheduled_for, "pending", updated_at))
                 conn.commit()
                 conn.close()
                 return scheduled_for
@@ -1260,7 +1300,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error scheduling relationship refresh: {e}")
             return None
 
-    def get_pending_relationship_refresh(self, usuario_id):
+    def get_pending_relationship_refresh(self, user_id):
         """Return scheduled relationship refresh state for a user."""
         try:
             with self._lock:
@@ -1270,8 +1310,8 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT scheduled_for, status, updated_at
                     FROM pending_relationship_updates
-                    WHERE usuario_id = ? AND server_name = ?
-                ''', (str(usuario_id), self.server_name))
+                    WHERE usuario_id = ?
+                ''', (str(user_id),))
                 row = cursor.fetchone()
                 conn.close()
                 if not row:
@@ -1281,7 +1321,7 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error getting pending relationship refresh: {e}")
             return None
 
-    def mark_relationship_refresh_completed(self, usuario_id):
+    def mark_relationship_refresh_completed(self, user_id):
         """Mark a pending relationship refresh as completed."""
         updated_at = datetime.datetime.now().isoformat()
         try:
@@ -1291,8 +1331,8 @@ class AgentDatabase:
                 cursor.execute('''
                     UPDATE pending_relationship_updates
                     SET status = ?, updated_at = ?
-                    WHERE usuario_id = ? AND server_name = ?
-                ''', ("completed", updated_at, str(usuario_id), self.server_name))
+                    WHERE usuario_id = ?
+                ''', ("completed", updated_at, str(user_id)))
                 conn.commit()
                 conn.close()
                 return True
@@ -1311,9 +1351,9 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT usuario_id, scheduled_for, status, updated_at
                     FROM pending_relationship_updates
-                    WHERE server_name = ? AND status = ? AND scheduled_for <= ?
+                    WHERE 1=1 AND status = ? AND scheduled_for <= ?
                     ORDER BY scheduled_for ASC
-                ''', (self.server_name, "pending", current_time))
+                ''', ( "pending", current_time))
                 rows = cursor.fetchall()
                 conn.close()
                 return [dict(row) for row in rows]
@@ -1328,12 +1368,12 @@ class AgentDatabase:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
-                cursor.execute('''
+                # Simple approach: use string formatting for date comparison (safe as target_date is controlled)
+                cursor.execute(f'''
                     DELETE FROM user_relationship_memory
-                    WHERE server_name = ?
-                    AND last_interaction_at IS NOT NULL
-                    AND date(last_interaction_at) < ?
-                ''', (self.server_name, target_date))
+                    WHERE last_interaction_at IS NOT NULL
+                    AND date(last_interaction_at) < date('{target_date}')
+                ''')
                 deleted = cursor.rowcount
                 conn.commit()
                 conn.close()
@@ -1352,71 +1392,71 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT COUNT(*) FROM interacciones
                     WHERE usuario_id = ? AND tipo_interaccion LIKE ? AND fecha > ?
-                ''', (str(usuario_id), f'%{tipo_like}%', fecha_limite))
+                ''', (str(user_id), f'%{tipo_like}%', fecha_limite))
                 return cursor.fetchone()[0] > 0
         except Exception:
             logger.exception("⚠️ [DB] Error comprobando interacciones recientes por tipo")
             return False
 
-    def limpiar_interacciones_antiguas(self, dias=30):
-        fecha_limite = (datetime.datetime.now() - datetime.timedelta(days=dias)).isoformat()
+    def clean_old_interactions(self, days=30):
+        deadline = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat()
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute('DELETE FROM interacciones WHERE fecha < ?', (fecha_limite,))
+                cursor.execute('DELETE FROM interacciones WHERE fecha < ?', (deadline,))
                 cursor.execute('DROP TABLE IF EXISTS peticiones_oro')
                 cursor.execute('DROP TABLE IF EXISTS busquedas_anillo')
                 cursor.execute('DROP TABLE IF EXISTS noticias_leidas')
                 conn.commit()
-                logger.info(f"🧹 Cleaned interactions before {fecha_limite} and duplicate tables")
+                logger.info(f"🧹 Cleaned interactions before {deadline} and duplicate tables")
                 return cursor.rowcount
 
-    def contar_interacciones_tipo_ultimo_dia(self, tipo_interaccion, servidor_id=None):
-        """Count how many interactions of `tipo_interaccion` occurred today."""
+    def count_interactions_by_type_last_day(self, interaction_type, server_id=None):
+        """Count how many interactions of `interaction_type` occurred today."""
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
-                if servidor_id is not None:
+                if server_id is not None:
                     cursor.execute('''
                         SELECT COUNT(*) FROM interacciones
                         WHERE tipo_interaccion = ? AND servidor_id = ? AND date(fecha) = date('now','localtime')
-                    ''', (tipo_interaccion, str(servidor_id)))
+                    ''', (interaction_type, str(server_id)))
                 else:
                     cursor.execute('''
                         SELECT COUNT(*) FROM interacciones
                         WHERE tipo_interaccion = ? AND date(fecha) = date('now','localtime')
-                    ''', (tipo_interaccion,))
+                    ''', (interaction_type,))
                 return cursor.fetchone()[0]
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error contando interacciones (tipo={tipo_interaccion}): {e}")
+            logger.exception(f"⚠️ [DB] Error counting interactions (type={interaction_type}): {e}")
             return 0
 
-    def usuario_ha_interactuado_recientemente(self, usuario_id, horas=12, tipos=None):
-        """Verifica si un usuario ha tenido interacciones recientemente."""
+    def user_has_recent_interactions(self, user_id, hours=12, types=None):
+        """Check if a user has had recent interactions."""
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
 
-                if tipos:
-                    placeholders = ','.join(['?' for _ in tipos])
+                if types:
+                    placeholders = ','.join(['?' for _ in types])
                     cursor.execute(f'''
                         SELECT COUNT(*) FROM interacciones
-                        WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{horas} hours')
+                        WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{hours} hours')
                         AND tipo_interaccion IN ({placeholders})
-                    ''', [usuario_id] + tipos)
+                    ''', [user_id] + types)
                 else:
                     cursor.execute(f'''
                         SELECT COUNT(*) FROM interacciones
-                        WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{horas} hours')
-                    ''', (usuario_id,))
+                        WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{hours} hours')
+                    ''', (user_id,))
 
                 count = cursor.fetchone()[0]
                 conn.close()
                 return count > 0
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error verificando interacciones recientes: {e}")
+            logger.exception(f"⚠️ [DB] Error checking recent interactions: {e}")
             return False
 
     def add_notable_recollection(self, recollection_text: str, memory_date: str = None, source_paragraph: str = None) -> int:
@@ -1429,13 +1469,13 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO notable_recollections
-                    (server_name, memory_date, recollection_text, source_paragraph, extracted_at)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (self.server_name, target_date, recollection_text, source_paragraph, extracted_at))
+                    (memory_date, recollection_text, source_paragraph, extracted_at)
+                    VALUES (?, ?, ?, ?)
+                ''', (target_date, recollection_text, source_paragraph, extracted_at))
                 recollection_id = cursor.lastrowid
                 conn.commit()
                 conn.close()
-                logger.info(f"🧠 [MEMORY] Added notable recollection id={recollection_id} for server={self.server_name}")
+                logger.info(f"🧠 [MEMORY] Added notable recollection id={recollection_id}")
                 return recollection_id
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error adding notable recollection: {e}")
@@ -1451,10 +1491,10 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT id, recollection_text, memory_date, used_count
                     FROM notable_recollections
-                    WHERE server_name = ?
+                    WHERE 1=1
                     ORDER BY RANDOM()
                     LIMIT 1
-                ''', (self.server_name,))
+                ''', ())
                 row = cursor.fetchone()
                 conn.close()
                 if row:
@@ -1480,8 +1520,8 @@ class AgentDatabase:
                     UPDATE notable_recollections
                     SET used_count = used_count + 1,
                         last_used_at = ?
-                    WHERE id = ? AND server_name = ?
-                ''', (used_at, recollection_id, self.server_name))
+                    WHERE id = ?
+                ''', (used_at, recollection_id))
                 conn.commit()
                 updated = cursor.rowcount > 0
                 conn.close()
@@ -1498,8 +1538,8 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT COUNT(*) FROM notable_recollections
-                    WHERE server_name = ?
-                ''', (self.server_name,))
+                    WHERE 1=1
+                ''', ())
                 count = cursor.fetchone()[0]
                 conn.close()
                 return count
@@ -1518,8 +1558,8 @@ class AgentDatabase:
                 cursor.execute('''
                     SELECT id, recollection_text, source_paragraph, extracted_at
                     FROM notable_recollections
-                    WHERE server_name = ? AND memory_date = ?
-                ''', (self.server_name, target_date))
+                    WHERE 1=1 AND memory_date = ?
+                ''', ( target_date))
                 rows = cursor.fetchall()
                 conn.close()
                 return [
@@ -1555,65 +1595,61 @@ class AgentDatabase:
                 
                 # If no servers in interactions, return current server
                 if not servers:
-                    return [self.server_name]
+                    return [self.server_id]
                 
                 return servers
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error getting active servers: {e}")
-            return [self.server_name]  # Fallback to current server
+            return [self.server_id]  # Fallback to current server
 
 # Dictionary to maintain instances per server
 _db_instances = {}
 
-def get_db_instance(server_name: str = "default") -> AgentDatabase:
+def get_db_instance(server_id: str = "default") -> AgentDatabase:
     """Get or create a database instance for a specific server."""
-    if server_name == "default":
-        active = get_active_server_name()
+    if server_id == "default":
+        active = get_active_server_id()
         if active:
-            server_name = active
-    if server_name not in _db_instances:
-        _db_instances[server_name] = AgentDatabase(server_name)
-    return _db_instances[server_name]
-
-# Global default instance (for compatibility) - lazy initialization
+            server_id = active
+    if server_id not in _db_instances:
+        _db_instances[server_id] = AgentDatabase(server_id)
+    return _db_instances[server_id]
 db = None
-_current_server_name = None
+_current_server_id = None
 
-def get_global_db(server_name: str = None, use_default_for_roles: bool = False) -> AgentDatabase:
+def get_global_db(server_id: str = None, use_default_for_roles: bool = False) -> AgentDatabase:
     """Get the global DB instance for the current server."""
-    global db, _current_server_name
+    global db, _current_server_id
     
-    # If it's a role process and no specific server, use default
-    if server_name is None:
-        active = _current_server_name or get_active_server_name()
+    if server_id is None:
+        active = _current_server_id or get_active_server_id()
         if active:
-            server_name = active
+            server_id = active
         elif use_default_for_roles and os.getenv("ROLE_AGENT_PROCESS"):
-            server_name = "default"
+            server_id = "default"
         else:
-            server_name = "default"
+            server_id = "default"
     
-    if db is None or _current_server_name != server_name:
-        db = get_db_instance(server_name)
-        _current_server_name = server_name
-        logger.info(f"🗄️ [DB] Global database initialized for server: {server_name}")
+    if db is None or _current_server_id != server_id:
+        db = get_db_instance(server_id)
+        _current_server_id = server_id
+        logger.info(f"🗄️ [DB] Global database initialized for server: {server_id}")
     
     return db
 
-def set_current_server(server_name: str):
+def set_current_server(server_id: str):
     """Set the current server for the global DB."""
-    global _current_server_name
-    resolved_server_id = _resolve_server_storage_id(server_name)
-    _current_server_name = resolved_server_id or _current_server_name or "default"
-    if resolved_server_id:
-        persist_active_server_name(resolved_server_id)
+    global _current_server_id
+    _current_server_id = server_id
+    if server_id:
+        persist_active_server_id(server_id)
 
-def get_database_path(server_name: str, db_type: str) -> str:
+def get_database_path(server_id: str, db_type: str) -> str:
     """
     Get database path for role-specific databases.
     
     Args:
-        server_name: Server name
+        server_id: Server ID
         db_type: Database type (banker, news_watcher, dice_game, etc.)
     
     Returns:
@@ -1625,7 +1661,7 @@ def get_database_path(server_name: str, db_type: str) -> str:
     if db_type in centralized_roles:
         # Return path to the centralized roles.db with personality-specific naming
         from agent_roles_db import get_roles_db_path
-        return str(get_roles_db_path(server_name))
+        return str(get_roles_db_path(server_id))
     
     personality_name = get_personality_name()
     
@@ -1635,97 +1671,143 @@ def get_database_path(server_name: str, db_type: str) -> str:
     }
     
     db_name = db_filenames.get(db_type, f'{db_type}_{personality_name}')
-    return str(get_server_db_path_fallback(server_name, db_name))
+    return str(get_server_db_path_fallback(server_id, db_name))
 
 # --- FATIGUE DATABASE SYSTEM ---
 
-def get_fatigue_db_path(server_name: str) -> str:
+def get_fatigue_db_path(server_id: str) -> str:
     """
     Get path for fatigue database.
     
     Args:
-        server_name: Server name
+        server_id: Server ID
         
     Returns:
         str: Full path to fatigue database
     """
     personality_name = get_personality_name()
     db_name = f"fatigue_{personality_name}"
-    return str(get_server_db_path(server_name, db_name))
+    return str(get_server_db_path(server_id, db_name))
 
-def init_fatigue_db(server_name: str) -> sqlite3.Connection:
+def init_fatigue_db(server_id: str) -> sqlite3.Connection:
     """
     Initialize fatigue database for a server.
     
     Args:
-        server_name: Server name
+        server_id: Server ID
         
     Returns:
         sqlite3.Connection: Database connection
     """
-    db_path = get_fatigue_db_path(server_name)
+    db_path = get_fatigue_db_path(server_id)
     db = sqlite3.connect(db_path, timeout=30.0)
     
-    # Create fatigue table if it doesn't exist
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS fatigue (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            user_name TEXT,
-            daily_requests INTEGER DEFAULT 0,
-            total_requests INTEGER DEFAULT 0,
-            last_request_date TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id)
-        )
-    ''')
+    # Check if table exists and needs migration
+    cursor = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fatigue'")
+    table_exists = cursor.fetchone() is not None
+    
+    if table_exists:
+        # Check if new columns exist
+        cursor = db.execute("PRAGMA table_info(fatigue)")
+        columns = [col[1] for col in cursor.fetchall()]
+        
+        # Add new columns if they don't exist
+        if 'hourly_requests' not in columns:
+            db.execute('ALTER TABLE fatigue ADD COLUMN hourly_requests INTEGER DEFAULT 0')
+        if 'last_hour_timestamp' not in columns:
+            db.execute('ALTER TABLE fatigue ADD COLUMN last_hour_timestamp TEXT')
+        if 'burst_requests' not in columns:
+            db.execute('ALTER TABLE fatigue ADD COLUMN burst_requests INTEGER DEFAULT 0')
+        if 'last_burst_timestamp' not in columns:
+            db.execute('ALTER TABLE fatigue ADD COLUMN last_burst_timestamp TEXT')
+        if 'created_at' not in columns:
+            db.execute('ALTER TABLE fatigue ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP')
+        if 'updated_at' not in columns:
+            db.execute('ALTER TABLE fatigue ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP')
+    else:
+        # Create fatigue table if it doesn't exist
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS fatigue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                user_name TEXT,
+                daily_requests INTEGER DEFAULT 0,
+                total_requests INTEGER DEFAULT 0,
+                last_request_date TEXT,
+                hourly_requests INTEGER DEFAULT 0,
+                last_hour_timestamp TEXT,
+                burst_requests INTEGER DEFAULT 0,
+                last_burst_timestamp TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id)
+            )
+        ''')
     
     # Create server row if it doesn't exist
-    server_id = f"server_{server_name}"
+    server_row_id = f"server_{server_id}"
     today = str(date.today())
     
     db.execute('''
         INSERT OR IGNORE INTO fatigue 
-        (user_id, user_name, daily_requests, total_requests, last_request_date)
-        VALUES (?, ?, 0, 0, ?)
-    ''', (server_id, f"Server_{server_name}", today))
+        (user_id, user_name, daily_requests, total_requests, last_request_date, hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
+        VALUES (?, ?, 0, 0, ?, 0, ?, 0, ?)
+    ''', (server_row_id, f"Server_{server_id}", today, today, today))
     
     db.commit()
     return db
 
-def increment_fatigue_count(server_name: str, user_id: str, user_name: str = None) -> tuple[int, int]:
+def increment_fatigue_count(server_id: str, user_id: str, user_name: str = None) -> tuple[int, int]:
     """
     Increment fatigue count for a user and server.
     
     Args:
-        server_name: Server name
-        user_id: User ID (or "server_{server_name}" for server total)
+        server_id: Server ID
+        user_id: User ID (or "server_{server_id}" for server total)
         user_name: User name (optional)
         
     Returns:
         tuple[int, int]: (daily_requests, total_requests) after increment
     """
-    db = init_fatigue_db(server_name)
+    db = init_fatigue_db(server_id)
     today = str(date.today())
     
     try:
         # Get current stats
         cursor = db.execute('''
-            SELECT daily_requests, total_requests, last_request_date 
+            SELECT daily_requests, total_requests, last_request_date,
+                   hourly_requests, last_hour_timestamp,
+                   burst_requests, last_burst_timestamp
             FROM fatigue WHERE user_id = ?
         ''', (user_id,))
         
         row = cursor.fetchone()
         
+        # Get current timestamps for tracking
+        now = datetime.datetime.now()
+        current_hour = now.replace(minute=0, second=0, microsecond=0).isoformat()
+        five_min_ago = (now - datetime.timedelta(minutes=5)).isoformat()
+        
         if row:
-            current_daily, current_total, last_date = row
+            current_daily, current_total, last_date, current_hourly, last_hour_ts, current_burst, last_burst_ts = row
             
             # Reset daily count if date changed
             if last_date != today:
                 new_daily = 1
             else:
                 new_daily = current_daily + 1
+                
+            # Reset hourly count if hour changed
+            if last_hour_ts != current_hour:
+                new_hourly = 1
+            else:
+                new_hourly = current_hourly + 1
+                
+            # Reset burst count if more than 5 minutes since last burst
+            if last_burst_ts and last_burst_ts > five_min_ago:
+                new_burst = current_burst + 1
+            else:
+                new_burst = 1
                 
             new_total = current_total + 1
             
@@ -1734,80 +1816,108 @@ def increment_fatigue_count(server_name: str, user_id: str, user_name: str = Non
                 UPDATE fatigue 
                 SET daily_requests = ?, total_requests = ?, 
                     last_request_date = ?, updated_at = CURRENT_TIMESTAMP,
+                    hourly_requests = ?, last_hour_timestamp = ?,
+                    burst_requests = ?, last_burst_timestamp = ?,
                     user_name = COALESCE(?, user_name)
                 WHERE user_id = ?
-            ''', (new_daily, new_total, today, user_name, user_id))
+            ''', (new_daily, new_total, today, new_hourly, current_hour, 
+                  new_burst, now.isoformat(), user_name, user_id))
         else:
             # Insert new user record
             new_daily = 1
             new_total = 1
+            new_hourly = 1
+            new_burst = 1
             
             db.execute('''
                 INSERT INTO fatigue 
-                (user_id, user_name, daily_requests, total_requests, last_request_date)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (user_id, user_name or f"User_{user_id}", new_daily, new_total, today))
+                (user_id, user_name, daily_requests, total_requests, last_request_date,
+                 hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, user_name or f"User_{user_id}", new_daily, new_total, today,
+                  new_hourly, current_hour, new_burst, now.isoformat()))
         
         # Also increment server total if this is a user request (avoid recursion)
         if not user_id.startswith("server_"):
-            server_id = f"server_{server_name}"
+            server_row_id = f"server_{server_id}"
             # Direct server increment without recursion
             cursor = db.execute('''
-                SELECT daily_requests, total_requests, last_request_date 
+                SELECT daily_requests, total_requests, last_request_date,
+                       hourly_requests, last_hour_timestamp,
+                       burst_requests, last_burst_timestamp
                 FROM fatigue WHERE user_id = ?
-            ''', (server_id,))
+            ''', (server_row_id,))
             
             server_row = cursor.fetchone()
-            
             if server_row:
-                server_daily, server_total, server_last_date = server_row
+                srv_daily, srv_total, srv_last_date, srv_hourly, srv_last_hour, srv_burst, srv_last_burst = server_row
                 
-                # Reset server daily count if date changed
-                if server_last_date != today:
-                    new_server_daily = 1
+                # Reset server daily if date changed
+                if srv_last_date != today:
+                    new_srv_daily = 1
                 else:
-                    new_server_daily = server_daily + 1
+                    new_srv_daily = srv_daily + 1
                     
-                new_server_total = server_total + 1
+                # Reset server hourly if hour changed
+                if srv_last_hour != current_hour:
+                    new_srv_hourly = 1
+                else:
+                    new_srv_hourly = srv_hourly + 1
+                    
+                # Reset server burst if more than 5 minutes
+                if srv_last_burst and srv_last_burst > five_min_ago:
+                    new_srv_burst = srv_burst + 1
+                else:
+                    new_srv_burst = 1
+                    
+                new_srv_total = srv_total + 1
                 
                 db.execute('''
                     UPDATE fatigue 
                     SET daily_requests = ?, total_requests = ?, 
-                        last_request_date = ?, updated_at = CURRENT_TIMESTAMP
+                        last_request_date = ?, updated_at = CURRENT_TIMESTAMP,
+                        hourly_requests = ?, last_hour_timestamp = ?,
+                        burst_requests = ?, last_burst_timestamp = ?
                     WHERE user_id = ?
-                ''', (new_server_daily, new_server_total, today, server_id))
+                ''', (new_srv_daily, new_srv_total, today, new_srv_hourly, current_hour,
+                      new_srv_burst, now.isoformat(), server_id))
             else:
                 # Insert server record if it doesn't exist
                 db.execute('''
                     INSERT INTO fatigue 
-                    (user_id, user_name, daily_requests, total_requests, last_request_date)
-                    VALUES (?, ?, 1, 1, ?)
-                ''', (server_id, f"Server_{server_name}", today))
+                    (user_id, user_name, daily_requests, total_requests, last_request_date,
+                     hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
+                    VALUES (?, ?, 1, 1, ?, 1, ?, 1, ?)
+                ''', (server_row_id, f"Server_{server_id}", today, current_hour, now.isoformat()))
+            
+            db.commit()
+        return new_daily, new_total
         
-        db.commit()
-        return (new_daily, new_total)
-        
+    except Exception as e:
+        logger.error(f"Error incrementing fatigue count: {e}")
+        return 0, 0
     finally:
         db.close()
 
-def get_fatigue_stats(server_name: str, user_id: str = None) -> dict:
+def get_fatigue_stats(server_id: str, user_id: str = None) -> dict:
     """
     Get fatigue statistics.
     
     Args:
-        server_name: Server name
+        server_id: Server ID
         user_id: User ID (optional, if None gets all users)
         
     Returns:
         dict: Fatigue statistics
     """
-    db = init_fatigue_db(server_name)
+    db = init_fatigue_db(server_id)
     
     try:
         if user_id:
             # Get specific user stats
             cursor = db.execute('''
-                SELECT user_id, user_name, daily_requests, total_requests, last_request_date
+                SELECT user_id, user_name, daily_requests, total_requests, last_request_date,
+                       hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp
                 FROM fatigue WHERE user_id = ?
             ''', (user_id,))
             
@@ -1818,14 +1928,19 @@ def get_fatigue_stats(server_name: str, user_id: str = None) -> dict:
                     'user_name': row[1],
                     'daily_requests': row[2],
                     'total_requests': row[3],
-                    'last_request_date': row[4]
+                    'last_request_date': row[4],
+                    'hourly_requests': row[5],
+                    'last_hour_timestamp': row[6],
+                    'burst_requests': row[7],
+                    'last_burst_timestamp': row[8]
                 }
             else:
                 return {}
         else:
             # Get all users stats
             cursor = db.execute('''
-                SELECT user_id, user_name, daily_requests, total_requests, last_request_date
+                SELECT user_id, user_name, daily_requests, total_requests, last_request_date,
+                       hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp
                 FROM fatigue ORDER BY total_requests DESC
             ''')
             
@@ -1836,7 +1951,11 @@ def get_fatigue_stats(server_name: str, user_id: str = None) -> dict:
                     'user_name': row[1],
                     'daily_requests': row[2],
                     'total_requests': row[3],
-                    'last_request_date': row[4]
+                    'last_request_date': row[4],
+                    'hourly_requests': row[5],
+                    'last_hour_timestamp': row[6],
+                    'burst_requests': row[7],
+                    'last_burst_timestamp': row[8]
                 })
             
             return {'users': stats}
@@ -1844,18 +1963,18 @@ def get_fatigue_stats(server_name: str, user_id: str = None) -> dict:
     finally:
         db.close()
 
-def reset_daily_fatigue(server_name: str) -> int:
+def reset_daily_fatigue(server_id: str) -> int:
     """
     Reset daily fatigue counts for all users in a server.
     This should be called when the date changes.
     
     Args:
-        server_name: Server name
+        server_id: Server ID
         
     Returns:
         int: Number of users whose daily count was reset
     """
-    db = init_fatigue_db(server_name)
+    db = init_fatigue_db(server_id)
     
     try:
         cursor = db.execute('''
@@ -1870,18 +1989,18 @@ def reset_daily_fatigue(server_name: str) -> int:
     finally:
         db.close()
 
-def cleanup_old_fatigue_data(server_name: str, days_to_keep: int = 30) -> int:
+def cleanup_old_fatigue_data(server_id: str, days_to_keep: int = 30) -> int:
     """
     Clean up old fatigue data (users with no activity for specified days).
     
     Args:
-        server_name: Server name
+        server_id: Server ID
         days_to_keep: Number of days to keep inactive users
         
     Returns:
         int: Number of users removed
     """
-    db = init_fatigue_db(server_name)
+    db = init_fatigue_db(server_id)
     
     try:
         cutoff_date = (date.today() - datetime.timedelta(days=days_to_keep)).isoformat()
@@ -1890,7 +2009,7 @@ def cleanup_old_fatigue_data(server_name: str, days_to_keep: int = 30) -> int:
             DELETE FROM fatigue 
             WHERE user_id NOT LIKE 'server_%' 
             AND last_request_date < ?
-            AND total_requests < 10  # Keep users with some activity
+            AND total_requests < 10
         ''', (cutoff_date,))
         
         db.commit()

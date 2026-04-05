@@ -16,7 +16,7 @@ except ImportError:
     GEMINI_AVAILABLE = False
 
 from agent_logging import get_logger
-from agent_db import get_active_server_name, get_global_db
+from agent_db import get_active_server_id, get_global_db
 from agent_runtime import is_simulation_mode, increment_usage as runtime_increment_usage
 from postprocessor import postprocess_response, is_blocked_response
 from prompts_logger import log_agent_response, log_final_llm_prompt
@@ -343,14 +343,14 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
     )
 
 
-def generate_recent_memory_summary(server_name: str | None = None, target_date: str | None = None, force: bool = False) -> str:
+def generate_recent_memory_summary(server_id: str | None = None, target_date: str | None = None, force: bool = False) -> str:
     engine = _engine()
-    resolved_server = server_name or get_active_server_name()
+    resolved_server = server_id or get_active_server_id()
     if not resolved_server:
         logger.warning("🧠 [RECENT_MEMORY] No server context available, skipping summary generation")
         return ""
     resolved_date = target_date or date.today().isoformat()
-    db_instance = get_global_db(server_name=resolved_server)
+    db_instance = get_global_db(server_id=resolved_server)
     existing_record = db_instance.get_recent_memory_record(memory_date=resolved_date)
     previous_summary = (existing_record or {}).get("summary", "").strip()
     last_interaction_at = (existing_record or {}).get("last_interaction_at")
@@ -439,17 +439,17 @@ def generate_recent_memory_summary(server_name: str | None = None, target_date: 
     return summary_text
 
 
-def refresh_due_recent_memories(server_name: str | None = None) -> int:
-    resolved_server = server_name or get_active_server_name()
+def refresh_due_recent_memories(server_id: str | None = None) -> int:
+    resolved_server = server_id or get_active_server_id()
     if not resolved_server:
         logger.warning("🧠 [RECENT_MEMORY] No server context available, skipping refresh")
         return 0
-    db_instance = get_global_db(server_name=resolved_server)
+    db_instance = get_global_db(server_id=resolved_server)
     due_refreshes = db_instance.get_due_pending_recent_memory_refreshes()
     if not due_refreshes:
         return 0
     
-    # Obtener última síntesis para verificar si hay interacciones nuevas
+    # Get last synthesis to check for new interactions
     existing_record = db_instance.get_recent_memory_record(memory_date=date.today().isoformat())
     last_interaction_at = (existing_record or {}).get("last_interaction_at")
     new_interactions = db_instance.get_daily_interactions_since(
@@ -463,9 +463,9 @@ def refresh_due_recent_memories(server_name: str | None = None) -> int:
         db_instance.mark_recent_memory_refresh_completed()
         return 0
     
-    # Ejecutar síntesis solo si hay interacciones nuevas
+    # Execute synthesis only if there are new interactions
     logger.info(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {resolved_server}")
-    generate_recent_memory_summary(server_name=resolved_server)
+    generate_recent_memory_summary(server_id=resolved_server)
     return 1
 
 
@@ -609,14 +609,14 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
     return "", None
 
 
-def generate_daily_memory_summary(server_name: str | None = None, target_date: str | None = None, force: bool = False) -> str:
+def generate_daily_memory_summary(server_id: str | None = None, target_date: str | None = None, force: bool = False) -> str:
     engine = _engine()
-    resolved_server = server_name or get_active_server_name()
+    resolved_server = server_id or get_active_server_id()
     if not resolved_server:
         logger.warning("🧠 [DAILY_MEMORY] No server context available, skipping summary generation")
         return ""
     resolved_date = target_date or date.today().isoformat()
-    db_instance = get_global_db(server_name=resolved_server)
+    db_instance = get_global_db(server_id=resolved_server)
     
     # Get the most recent daily memory (not just today's)
     most_recent_daily = db_instance.get_most_recent_daily_memory_record()
@@ -741,18 +741,18 @@ def _build_recent_memory_text(db_instance) -> str:
 def generate_user_relationship_memory_summary(
     user_id,
     user_name: str | None = None,
-    server_name: str | None = None,
+    server_id: str | None = None,
     target_date: str | None = None,
     force: bool = False,
 ) -> str:
     import datetime
     engine = _engine()
-    resolved_server = server_name or get_active_server_name()
+    resolved_server = server_id or get_active_server_id()
     if not resolved_server:
         logger.warning(f"🧠 [RELATIONSHIP_MEMORY] No server context available for user={user_id}")
         return ""
     resolved_date = target_date or date.today().isoformat()
-    db_instance = get_global_db(server_name=resolved_server)
+    db_instance = get_global_db(server_id=resolved_server)
     temporary_state = db_instance.get_user_relationship_memory(user_id)
     daily_record = db_instance.get_user_relationship_daily_memory(user_id, memory_date=resolved_date)
     previous_summary = (temporary_state.get("summary") or "").strip()
@@ -858,12 +858,12 @@ def generate_user_relationship_memory_summary(
     return summary_text
 
 
-def refresh_due_relationship_memories(server_name: str | None = None) -> int:
-    resolved_server = server_name or get_active_server_name()
+def refresh_due_relationship_memories(server_id: str | None = None) -> int:
+    resolved_server = server_id or get_active_server_id()
     if not resolved_server:
         logger.warning("🧠 [RELATIONSHIP_MEMORY] No server context available, skipping refresh")
         return 0
-    db_instance = get_global_db(server_name=resolved_server)
+    db_instance = get_global_db(server_id=resolved_server)
     due_refreshes = db_instance.get_due_pending_relationship_refreshes()
     processed = 0
     for item in due_refreshes:
@@ -881,7 +881,7 @@ def refresh_due_relationship_memories(server_name: str | None = None) -> int:
             generate_user_relationship_memory_summary(
                 user_id=user_id,
                 user_name=user_name,
-                server_name=resolved_server,
+                server_id=resolved_server,
             )
             processed += 1
         except Exception as e:
@@ -939,15 +939,15 @@ def _apply_role_specific_content_overrides(prompt_final: str, user_message: str)
         # News Watcher specific patterns
         "## NEWS WATCHER GOLDEN RULES": {
             "skip_patterns": [
-                "## REGLAS DE ORO DE ESTA RESPUESTA:",
-                "MISION ACTIVA - BEGGAR",
-                "DETECCIÓN EN CHARLA - BEGGAR"
+                "## GOLDEN RULES OF THIS RESPONSE:",
+                "ACTIVE MISSION - BEGGAR",
+                "CHAT DETECTION - BEGGAR"
             ],
             "description": "News Watcher has its own golden rules"
         },
         # Add more roles here as needed
         # "## BANKER RULES": {
-        #     "skip_patterns": ["## REGLAS DE ORO DE ESTA RESPUESTA:", "OTHER_MISSION"],
+        #     "skip_patterns": ["## GOLDEN RULES OF THIS RESPONSE:", "OTHER_MISSION"],
         #     "description": "Banker has its own rules"
         # }
     }
@@ -1011,11 +1011,13 @@ def _build_prompt_memory_block(server=None):
     Build only the MEMORIES block with daily and recent memory.
     This function is now focused solely on basic memory construction.
     """
-    server_name = server or get_active_server_name()
-    if not server_name:
+    # Use the server parameter or get the active server
+    server_id = server or get_active_server_id()
+    if not server_id:
         logger.warning("🧠 [MIND] No server context available, skipping memory-backed prompt enrichment")
-        server_name = None
-    db_instance = get_global_db(server_name=server_name) if server_name else None
+        return ""
+    
+    db_instance = get_global_db(server_id=server_id)
     
     daily_memory = ""
     recent_memory = ""
@@ -1052,8 +1054,8 @@ def _build_prompt_relationship_block(user_id: str, user_name: str | None = None,
     Build only the RELATIONSHIP block with user relationship memory.
     This function is now focused solely on relationship construction.
     """
-    server_name = server or get_active_server_name()
-    db_instance = get_global_db(server_name=server_name) if server_name else None
+    server_id = server or get_active_server_id()
+    db_instance = get_global_db(server_id=server_id) if server_id else None
     
     if not db_instance:
         return ""
@@ -1089,8 +1091,8 @@ def _build_conversation_user_prompt(
     memories_block = _build_prompt_memory_block(server=server)
     
     # Get database instance for memory retrieval
-    server_name = server or get_active_server_name()
-    db_instance = get_global_db(server_name=server_name) if server_name else None
+    server_id = server or get_active_server_id()
+    db_instance = get_global_db(server_id=server_id) if server_id else None
     
     # Build the complete prompt sections
     prompt_sections = []
@@ -1158,8 +1160,8 @@ def _build_prompt_last_interactions_block(
     Build only the LAST INTERACTIONS block with user's last 15 dialogue messages.
     This function is now focused solely on last interactions construction regardless of time window.
     """
-    server_name = server or get_active_server_name()
-    db_instance = get_global_db(server_name=server_name) if server_name else None
+    server_id = server or get_active_server_id()
+    db_instance = get_global_db(server_id=server_id) if server_id else None
     
     if not db_instance:
         return ""
@@ -1193,8 +1195,8 @@ def _build_prompt_channel_messages_block(
     Build only the CHANNEL MESSAGES block with recent channel interactions.
     This function is now focused solely on channel messages construction.
     """
-    server_name = server or get_active_server_name()
-    db_instance = get_global_db(server_name=server_name) if server_name else None
+    server_id = server or get_active_server_id()
+    db_instance = get_global_db(server_id=server_id) if server_id else None
     
     if not db_instance or not channel_id:
         return ""
@@ -1243,11 +1245,11 @@ def _build_conversation_channel_prompt(
     engine = _engine()
     bot_name = engine.PERSONALITY.get("name", "Bot")
     content = (user_content or "").strip()
-    server_name = server or get_active_server_name()
-    if not server_name:
+    server_id = server or get_active_server_id()
+    if not server_id:
         logger.warning("🧠 [MIND] No server context available, skipping memory-backed prompt enrichment")
-        server_name = None
-    db_instance = get_global_db(server_name=server_name) if server_name else None
+        server_id = None
+    db_instance = get_global_db(server_id=server_id) if server_id else None
     
     # Build the contextual prompt sections
     prompt_sections = []
@@ -1604,8 +1606,8 @@ def _call_gemini_sync(
             
             # Log the response
             try:
-                server_name = get_active_server_name()
-                log_agent_response(postprocessed, role=call_type, server=server_name, response_length=len(postprocessed))
+                server_id = get_active_server_id()
+                log_agent_response(postprocessed, role=call_type, server=server_id, response_length=len(postprocessed))
             except Exception as log_error:
                 logger.warning(f"Failed to log response: {log_error}")
             
@@ -1672,8 +1674,8 @@ def _call_gemini_async(
             
             # Log the response
             try:
-                server_name = get_active_server_name()
-                log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
+                server_id = get_active_server_id()
+                log_agent_response(postprocessed, role="subrole", server=server_id, response_length=len(postprocessed))
             except Exception as log_error:
                 logger.warning(f"Failed to log subrole response: {log_error}")
             
@@ -1735,8 +1737,8 @@ def _call_groq_fallback(
         
         # Log the response
         try:
-            server_name = get_active_server_name()
-            log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
+            server_id = get_active_server_id()
+            log_agent_response(postprocessed, role="subrole", server=server_id, response_length=len(postprocessed))
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
         
@@ -1792,8 +1794,8 @@ def _call_mistral_fallback(
         
         # Log the response
         try:
-            server_name = get_active_server_name()
-            log_agent_response(postprocessed, role="subrole", server=server_name, response_length=len(postprocessed))
+            server_id = get_active_server_id()
+            log_agent_response(postprocessed, role="subrole", server=server_id, response_length=len(postprocessed))
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
         

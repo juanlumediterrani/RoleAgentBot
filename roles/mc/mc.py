@@ -5,8 +5,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 import asyncio
 from agent_logging import get_logger
 from agent_engine import PERSONALITY
-from db_role_mc import get_mc_db_instance
-from agent_db import get_active_server_name
+from .db_role_mc import get_mc_db_instance
+from agent_db import get_active_server_id
 
 logger = get_logger('mc')
 
@@ -40,7 +40,7 @@ async def mc_task():
     logger.info("🎵 Starting MC role tasks...")
     
     # Get active server from environment or fallback
-    server_name = get_active_server_name()
+    server_name = get_active_server_id()
     if not server_name:
         logger.warning("🎵 No active server found, MC tasks limited")
         return

@@ -101,8 +101,15 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
     # Rate limiting - 1 hour between greetings per user
     current_time = time.time()
     last_greeting_key = f"presence_greeting_{after.id}"
+    
+    # Check both in-memory cache and database for recent greetings
     if current_time - _last_greetings.get(last_greeting_key, 0) < 3600:
         logger.info(f"Presence greeting skipped due to cooldown for user={after.name} guild={after.guild.name}")
+        return
+    
+    # Additional check: prevent multiple greetings within 10 seconds
+    if current_time - _last_greetings.get(f"{last_greeting_key}_recent", 0) < 10:
+        logger.info(f"Presence greeting skipped due to recent duplicate prevention for user={after.name}")
         return
     
     try:
@@ -136,6 +143,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         await after.send(f"👋 {saludo}")
         logger.info(f"🔄 Presence DM sent to {after.name}")
         _last_greetings[last_greeting_key] = current_time
+        _last_greetings[f"{last_greeting_key}_recent"] = current_time
         
         # Record greeting in behavior database for reply tracking
         behavior_db = get_behavior_db_instance(server_name)
@@ -145,16 +153,21 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         )
         
         # Register interaction in database
-        db_instance = get_db_for_server(after.guild)
-        greetings_cfg = PERSONALITY.get("behaviors", {}).get("greetings", {})
-        interaction_message = greetings_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
-        await asyncio.to_thread(
-            db_instance.registrar_interaccion,
-            after.id, after.name, "PRESENCE_DM",
-            interaction_message,
-            None, after.guild.id,
-            metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
-        )
+        try:
+            db_instance = get_db_for_server(after.guild)
+            greetings_cfg = PERSONALITY.get("behaviors", {}).get("greetings", {})
+            interaction_message = greetings_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
+            await asyncio.to_thread(
+                db_instance.register_interaction,
+                after.id, after.name, "PRESENCE_DM",
+                interaction_message,
+                None, after.guild.id,
+                metadata={"response": saludo, "greeting": saludo, "respuesta": saludo, "saludo": saludo}
+            )
+        except Exception as db_error:
+            logger.warning(f"Could not register interaction in database: {db_error}")
+            # Don't send fallback greeting - we already sent the main greeting
+            pass
         
         return  # Exit after successful greeting to prevent fallback
         
@@ -167,6 +180,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
             await after.send(f"👋 {fallback_msg}")
             # Set cooldown and record greeting for fallback too
             _last_greetings[last_greeting_key] = current_time
+            _last_greetings[f"{last_greeting_key}_recent"] = current_time
             behavior_db = get_behavior_db_instance(server_name)
             await asyncio.to_thread(
                 behavior_db.record_greeting_sent,
@@ -184,6 +198,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
             await after.send(f"👋 {fallback_msg}")
             # Set cooldown and record greeting for fallback too
             _last_greetings[last_greeting_key] = current_time
+            _last_greetings[f"{last_greeting_key}_recent"] = current_time
             behavior_db = get_behavior_db_instance(server_name)
             await asyncio.to_thread(
                 behavior_db.record_greeting_sent,
