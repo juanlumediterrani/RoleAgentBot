@@ -4,6 +4,8 @@ include/
 lib/
 pyvenv.cfg
 venv/
+.vscode/
+.windsurf/
 
 # Caché de Python
 __pycache__/
@@ -38,7 +40,12 @@ start_clean.sh
 # Configuración sensible
 old/
 .env
+.env.tmp
+cookies.txt
 
 # Archivos de backup
 *.backup
 *.bak
+
+setup-bot.sh
+start_clean.sh
