@@ -2,6 +2,19 @@
 
 Welcome! RoleAgentBot is a multi-personality Discord bot that provides various entertainment and utility functions. Each personality has unique characteristics and speech patterns.
 
+## 📜 License and Terms of Service
+
+**IMPORTANT:** Before using RoleAgentBot, please review:
+- **License:** See [LICENSE](LICENSE) file for usage rights and commercial use requirements
+- **Terms of Service:** See [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md) for usage guidelines, privacy policy, and important restrictions
+
+**Key Points:**
+- Free for non-commercial use
+- Commercial use requires prior consent
+- Software is in development - use at your own risk
+- Adult use only (18+)
+- Not recommended for individuals with mental health conditions
+
 ## 🎭 Available Personalities
 
 - **Putre** - An aggressive orc character who speaks directly and simply
