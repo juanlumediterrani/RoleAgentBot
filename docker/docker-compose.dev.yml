@@ -5,7 +5,8 @@
 # - Bot único con TODOS los roles activados
 # - Personalidad Kronk para desarrollo
 # - Recursos limitados para desarrollo
-# Development Bot - Hans con todos los roles
+services:
+  # Development Bot - Hans con todos los roles
   bot-dev:
     build:
       context: ..

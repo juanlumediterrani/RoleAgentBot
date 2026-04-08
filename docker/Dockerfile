@@ -23,6 +23,11 @@ WORKDIR /app
 # Cambiar a root para instalar paquetes
 USER root
 
+# ARG definitions must come before they are used
+ARG ENABLE_MC=false
+ARG PERSONALITY=""
+ARG ACTIVE_ROLES=""
+
 # Instalar dependencias del sistema (configuración mínima para VPS sin puertos hacia afuera)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         # Compiladores y desarrollo (siempre necesarios)
@@ -69,16 +74,6 @@ RUN pip install PyNaCl
 # Volver a usuario normal (usará root para manejar volúmenes)
 USER root
 
-# ── Argumentos de construcción (inyectables) ──────────────────────────────────
-# ENABLE_MC: Whether to install MC-specific packages (ffmpeg, nodejs, etc.)
-# PERSONALITY : filename without extension inside personalities/
-#               e.g. "kronk" → personalities/kronk.json
-# ACTIVE_ROLES: comma-separated list of roles to enable
-#               e.g. "news_watcher,treasure_hunter,trickster,banker,mc"
-#               If empty, values from agent_config.json are respected.
-ARG ENABLE_MC=false
-ARG PERSONALITY=""
-ARG ACTIVE_ROLES=""
 
 # ── Código fuente principal ───────────────────────────────────────────────────
 COPY agent_config.json .
