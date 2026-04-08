@@ -17,6 +17,24 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 f"in_guild={bool(ctx.guild)}"
             )
             
+            # Check if this is a name-filtered command
+            # If section matches a bot name, treat it as name filter and shift parameters
+            bot_name = ctx.bot.user.name.lower()
+            section_lower = (section or "").strip().lower()
+            valid_sections = {"home", "role", "roles", "personal", "help", "behavior"}
+            
+            if section_lower == bot_name:
+                # This is a name-filtered command: !canvas <bot_name> [section] [target] [detail]
+                logger.info(f"Canvas command targeted to bot '{section}' - name filter activated")
+                # Shift parameters: section becomes target, target becomes detail, detail becomes empty
+                section = target or "home"
+                target = detail or ""
+                detail = ""
+            elif section_lower and section_lower not in valid_sections:
+                # Check if this might be a name filter for a different bot
+                logger.info(f"Canvas command with unknown name '{section}' - ignoring as it's for another bot")
+                return  # Don't respond, let the targeted bot handle it
+            
             # Auto-initialize news watcher premises on first canvas use
             if ctx.guild:
                 try:
@@ -39,6 +57,9 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
             target_name = (target or "").strip().lower()
             detail_name = (detail or "").strip().lower()
             admin_visible = bool(ctx.guild and core.is_admin(ctx))
+            
+            # Log the final parameter values after name filtering
+            logger.info(f"Canvas command parameters after processing: section='{section_name}', target='{target_name}', detail='{detail_name}'")
 
             if section_name == "role":
                 if detail_name:
@@ -75,7 +96,7 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 )
                 if role_view is None:
                     await ctx.send(
-                        "❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hunter`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, or detailed views like `!canvas role trickster dice`."
+                        "❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hunter`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, or detailed views like `!canvas role trickster dice`. You can also use `!canvas <bot_name> role <name>` to target a specific bot."
                     )
                     return
 
@@ -151,7 +172,7 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
 
             if section_name not in sections:
                 await ctx.send(
-                    "❌ Unknown canvas section. Use: `!canvas home`, `!canvas roles`, `!canvas role <name>`, `!canvas personal`, or `!canvas help`."
+                    "❌ Unknown canvas section. Use: `!canvas home`, `!canvas roles`, `!canvas role <name>`, `!canvas personal`, `!canvas help`, or `!canvas <bot_name> [section]` to target a specific bot."
                 )
                 return
 

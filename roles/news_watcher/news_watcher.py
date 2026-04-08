@@ -116,8 +116,8 @@ class CohereRateLimiter:
 cohere_limiter = CohereRateLimiter()
 
 
-async def process_subscriptions(http, server_name: str = "default"):
-    """Process all subscription types using the correct logic."""
+async def process_subscriptions(http, server_name: str = "default", include_channels: bool = True):
+    """Process all subscriptions (or only personal if include_channels=False)."""
     from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
     from roles.news_watcher.global_news_db import get_global_news_db
 
@@ -125,216 +125,76 @@ async def process_subscriptions(http, server_name: str = "default"):
     global_db = get_global_news_db()
     
     try:
-        logger.info("🚀 Starting subscription processing...")
+        scope = "all" if include_channels else "personal"
+        logger.info(f"Starting {scope} subscription processing...")
         
-        # 1. Process flat subscriptions (all news with opinion) - includes channels
-        await process_flat_subscriptions(http, db_watcher, global_db, server_name)
+        # Get subscriptions based on scope
+        if include_channels:
+            # Get all subscriptions (user + channel)
+            subscriptions = db_watcher.get_all_active_subscriptions()
+        else:
+            # Get only user subscriptions (no channels)
+            subscriptions = []
+            for user_id in db_watcher.get_users_with_active_subscriptions():
+                user_subs = db_watcher.get_user_subscriptions(user_id)
+                for sub in user_subs:
+                    # sub[2] is channel_id - skip if not None
+                    if sub[2] is None:
+                        subscriptions.append(sub)
         
-        # 2. Process keyword subscriptions (regex) - includes channels
-        await process_keyword_subscriptions(http, db_watcher, global_db, server_name)
+        logger.info(f"Processing {len(subscriptions)} subscriptions...")
         
-        # 3. Process AI subscriptions (premise detection) - includes channels
-        await process_ai_subscriptions(http, db_watcher, global_db, server_name)
+        # Process each subscription
+        for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in subscriptions:
+            category_normalized = category.lower()
+            
+            if method == "flat":
+                if feed_id:
+                    feed_data = db_watcher.get_feed_by_id(feed_id)
+                    if feed_data:
+                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "flat")
+                else:
+                    feeds = db_watcher.get_active_feeds(category_normalized)
+                    if feeds:
+                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "flat")
+                    else:
+                        logger.warning(f"No feeds found for category '{category}'")
+                        
+            elif method == "keyword":
+                if not keywords:
+                    continue
+                if feed_id:
+                    feed_data = db_watcher.get_feed_by_id(feed_id)
+                    if feed_data:
+                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "keyword", keywords)
+                else:
+                    feeds = db_watcher.get_active_feeds(category_normalized)
+                    if feeds:
+                        target = f"channel {channel_id}" if channel_id else f"user {user_id}"
+                        logger.info(f"Processing keywords '{keywords}' for {target} in {category}")
+                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "keyword", keywords)
+                    else:
+                        logger.warning(f"No feeds found for category '{category}'")
+                        
+            elif method == "general":
+                if not premises:
+                    continue
+                if feed_id:
+                    feed_data = db_watcher.get_feed_by_id(feed_id)
+                    if feed_data:
+                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "general", premises)
+                else:
+                    feeds = db_watcher.get_active_feeds(category_normalized)
+                    if feeds:
+                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "general", premises)
+                    else:
+                        logger.warning(f"No feeds found for category '{category}'")
         
-        logger.info("✅ Subscription processing completed")
+        logger.info(f"{scope.capitalize()} subscription processing completed")
         
     except Exception as e:
-        logger.exception(f"❌ General error in subscription processing: {e}")
+        logger.exception(f"Error in {scope} subscription processing: {e}")
 
-
-async def process_flat_subscriptions(http, db_watcher, global_db, server_name: str):
-    """Process flat subscriptions for both channels and users."""
-    try:
-        logger.info("📰 Processing flat subscriptions...")
-        
-        # Get user flat subscriptions
-        user_subscriptions = db_watcher.get_all_active_subscriptions()
-        
-        # Get channel flat subscriptions
-        channel_subscriptions = db_watcher.get_all_channel_subscriptions_flat()
-        
-        # Process user subscriptions
-        for user_id, category, feed_id, fecha in user_subscriptions:
-            # Convert category to lowercase for database query
-            category_normalized = category.lower()
-            
-            if feed_id:
-                # Specific feed
-                feed_data = db_watcher.get_feed_by_id(feed_id)
-                if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, None, server_name, "flat")
-            else:
-                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
-                feeds = db_watcher.get_active_feeds(category_normalized)
-                if feeds:
-                    # Take only the first feed (highest priority)
-                    first_feed = feeds[0]
-                    logger.info(f"📰 Processing first feed in {category} category for user {user_id}: {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, None, server_name, "flat")
-                else:
-                    logger.warning(f"📰 No feeds found for category '{category}' (normalized: '{category_normalized}')")
-        
-        # Process channel subscriptions
-        for channel_id, category, feed_id in channel_subscriptions:
-            # Convert category to lowercase for database query
-            category_normalized = category.lower()
-            
-            # Use channel_id as user_id prefix for channel subscriptions
-            prefixed_user_id = f"channel_{channel_id}"
-            
-            if feed_id:
-                # Specific feed
-                feed_data = db_watcher.get_feed_by_id(feed_id)
-                if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, prefixed_user_id, channel_id, server_name, "flat")
-            else:
-                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
-                feeds = db_watcher.get_active_feeds(category_normalized)
-                if feeds:
-                    # Take only the first feed (highest priority)
-                    first_feed = feeds[0]
-                    logger.info(f"📰 Processing first feed in {category} category for channel {channel_id}: {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, prefixed_user_id, channel_id, server_name, "flat")
-                else:
-                    logger.warning(f"📰 No feeds found for category '{category}' (normalized: '{category_normalized}')")
-                    
-    except Exception as e:
-        logger.exception(f"❌ Error processing flat subscriptions: {e}")
-
-
-async def process_keyword_subscriptions(http, db_watcher, global_db, server_name: str):
-    """Process keyword subscriptions for both channels and users."""
-    try:
-        logger.info("🔍 Processing keyword subscriptions...")
-        
-        # Get user keyword subscriptions
-        user_subscriptions = db_watcher.get_all_active_keyword_subscriptions()
-        
-        # Get channel keyword subscriptions
-        channel_subscriptions = db_watcher.get_all_channel_subscriptions_keywords()
-        
-        # Process user subscriptions
-        for user_id, channel_id, keywords, category, feed_id in user_subscriptions:
-            # Convert category to lowercase for database query
-            category_normalized = category.lower()
-            
-            if feed_id:
-                # Specific feed - use absolute database ID
-                feed_data = db_watcher.get_feed_by_id(feed_id)
-                if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "keyword", keywords)
-                else:
-                    logger.warning(f"Feed ID {feed_id} not found. Skipping keyword subscription.")
-            else:
-                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
-                feeds = db_watcher.get_active_feeds(category_normalized)
-                if feeds:
-                    # Take only the first feed (highest priority)
-                    first_feed = feeds[0]
-                    logger.info(f"🔍 Processing first feed for keywords '{keywords}' in {category} category for user {user_id}: {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, channel_id, server_name, "keyword", keywords)
-                else:
-                    logger.warning(f"🔍 No feeds found for category '{category}' (normalized: '{category_normalized}')")
-        
-        # Process channel subscriptions
-        for channel_id, category, feed_id, keywords, user_id in channel_subscriptions:
-            # Convert category to lowercase for database query
-            category_normalized = category.lower()
-            
-            if feed_id:
-                # Specific feed - use absolute database ID
-                feed_data = db_watcher.get_feed_by_id(feed_id)
-                if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "keyword", keywords)
-                else:
-                    logger.warning(f"Feed ID {feed_id} not found. Skipping keyword subscription.")
-            else:
-                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
-                feeds = db_watcher.get_active_feeds(category_normalized)
-                if feeds:
-                    # Take only the first feed (highest priority)
-                    first_feed = feeds[0]
-                    logger.info(f"🔍 Processing first feed for keywords '{keywords}' in {category} category for channel {channel_id} (created by user {user_id}): {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, channel_id, server_name, "keyword", keywords)
-                else:
-                    logger.warning(f"🔍 No feeds found for category '{category}' (normalized: '{category_normalized}')")
-                    
-    except Exception as e:
-        logger.exception(f"❌ Error processing keyword subscriptions: {e}")
-
-
-async def process_ai_subscriptions(http, db_watcher, global_db, server_name: str):
-    """Process AI subscriptions for both channels and users."""
-    try:
-        logger.info("🤖 Processing AI subscriptions...")
-        
-        # Get user AI subscriptions
-        user_subscriptions = db_watcher.get_all_active_category_subscriptions()
-        
-        # Get channel AI subscriptions
-        channel_subscriptions = db_watcher.get_all_channel_subscriptions_ai()
-        
-        # Process user subscriptions
-        for user_id, category, feed_id, fecha in user_subscriptions:
-            # Get user's premises for AI analysis
-            user_premises, context = db_watcher.get_premises_with_context(user_id)
-            
-            if not user_premises:
-                logger.info(f"🤖 User {user_id} has no premises, skipping AI subscription")
-                continue
-                
-            logger.info(f"🤖 User {user_id} has {len(user_premises)} premises, context: {context}")
-            
-            # Convert category to lowercase for database query
-            category_normalized = category.lower()
-            
-            if feed_id:
-                # Specific feed
-                feed_data = db_watcher.get_feed_by_id(feed_id)
-                if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, None, server_name, "general", user_premises)
-            else:
-                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
-                feeds = db_watcher.get_active_feeds(category_normalized)
-                if feeds:
-                    # Take only the first feed (highest priority)
-                    first_feed = feeds[0]
-                    logger.info(f"🤖 Processing first feed in {category} category for user {user_id} with {len(user_premises)} premises: {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, None, server_name, "general", user_premises)
-                else:
-                    logger.warning(f"🤖 No feeds found for category '{category}' (normalized: '{category_normalized}')")
-        
-        # Process channel subscriptions
-        for channel_id, category, feed_id, premises, user_id in channel_subscriptions:
-            # Channel premises are already provided as comma-separated string
-            if premises:
-                channel_premises = [p.strip() for p in premises.split(',') if p.strip()]
-                logger.info(f"🤖 Channel {channel_id} has {len(channel_premises)} premises from subscription (created by user {user_id})")
-            else:
-                logger.info(f"🤖 Channel {channel_id} has no premises, skipping AI subscription")
-                continue
-            
-            # Convert category to lowercase for database query
-            category_normalized = category.lower()
-            
-            if feed_id:
-                # Specific feed
-                feed_data = db_watcher.get_feed_by_id(feed_id)
-                if feed_data:
-                    await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "general", channel_premises)
-            else:
-                # NEW BEHAVIOR: Get only first available feed (highest priority) when feed_id is NULL
-                feeds = db_watcher.get_active_feeds(category_normalized)
-                if feeds:
-                    # Take only the first feed (highest priority)
-                    first_feed = feeds[0]
-                    logger.info(f"🤖 Processing first feed in {category} category for channel {channel_id} (created by user {user_id}) with {len(channel_premises)} premises: {first_feed[1]} (id={first_feed[0]})")
-                    await _process_feed_unified(http, db_watcher, global_db, first_feed, user_id, channel_id, server_name, "general", channel_premises)
-                else:
-                    logger.warning(f"🤖 No feeds found for category '{category}' (normalized: '{category_normalized}')")
-                    
-    except Exception as e:
-        logger.exception(f"❌ Error processing AI subscriptions: {e}")
 
 async def _process_feed_unified(http, db_watcher, global_db, feed_record, user_id, channel_id, server_name: str, method: str = "flat", filter_criteria: str = None):
     """Unified feed processor for flat, keyword, and AI subscriptions."""
@@ -345,13 +205,17 @@ async def _process_feed_unified(http, db_watcher, global_db, feed_record, user_i
 
         feed_unique_key = f"feed:{feed_id}:{category or 'unknown'}"
 
-        # Check if already processed recently
-        if db_watcher.is_news_read(feed_unique_key):
-            logger.debug(f"Feed {name} ({category}) already processed recently")
-            return
+        # Check if feed was processed recently (using timestamp-based cooldown)
+        # Don't use news title tracking for feed processing cooldown
+        # if db_watcher.is_news_read(feed_unique_key):
+        #     logger.debug(f"Feed {name} ({category}) already processed recently")
+        #     return
 
-        # Mark as read to avoid duplicate processing
-        db_watcher.mark_news_as_read(feed_unique_key, url)
+        # Note: Feed cooldown tracking should be separate from news title tracking
+        # For now, we process feeds every time and rely on global news tracking
+        # to prevent duplicate news processing
+        
+        logger.info(f"📡 About to fetch feed from URL: {url}")
 
         # Fetch and process news items
         headers = {"User-Agent": "RoleAgentBot/1.0"}
@@ -422,7 +286,14 @@ async def _process_feed_flat_opinion(http, feed, name, url, global_db, db_watche
 
 async def _process_feed_keyword_filter(http, feed, name, url, global_db, db_watcher, user_id, channel_id, server_name, keywords):
     """Process keyword subscription - filter by keywords then generate opinion."""
-    keyword_list = [k.strip().lower() for k in keywords.split(',') if k.strip()]
+    # Handle both string and list inputs for keywords
+    if isinstance(keywords, list):
+        keyword_list = [str(k).strip().lower() for k in keywords if k and str(k).strip()]
+    elif isinstance(keywords, str):
+        keyword_list = [k.strip().lower() for k in keywords.split(',') if k.strip()]
+    else:
+        logger.warning(f"Invalid keywords type: {type(keywords)} for user {user_id}")
+        return
     matched_articles = []
     
     for entry in feed.entries[:20]:  # Limit to 20 latest items
@@ -751,9 +622,9 @@ async def _generate_personality_opinion(
         opinion = call_llm(
             system_instruction=system_instruction,
             prompt=prompt,
-            async_mode=False,
+            async_mode=True,
             call_type="news_watcher",
-            critical=True,
+            critical=False,
             metadata={
                 "interaction_type": "mission",
                 "role_context": "news_watcher",
@@ -777,7 +648,14 @@ def check_keywords_regex(title: str, keywords: str) -> bool:
     """Check if a news headline matches keywords using regex."""
     try:
         title_lower = title.lower()
-        keywords_list = [p.strip().lower() for p in keywords.split(',')]
+        # Handle both string and list inputs for keywords
+        if isinstance(keywords, list):
+            keywords_list = [str(p).strip().lower() for p in keywords if p and str(p).strip()]
+        elif isinstance(keywords, str):
+            keywords_list = [p.strip().lower() for p in keywords.split(',')]
+        else:
+            logger.warning(f"Invalid keywords type: {type(keywords)} in headline matching")
+            return False
         
         # Create regex pattern for each keyword
         for keyword in keywords_list:
@@ -851,8 +729,6 @@ for _p in _env_candidates:
 
 logger = get_logger('watcher')
 
-
-
 def _get_alert_title() -> str:
     """Get alert title from descriptions.json or fallback."""
     try:
@@ -890,35 +766,6 @@ def _get_personality_name() -> str:
         return "Watcher"  # Fallback
 
 
-def _build_news_embed(article: dict, color: int = 0x3498db) -> dict:
-    """Build a Discord embed for a news article.
-    
-    Args:
-        article: Dict with 'title', 'summary', 'link' keys
-        color: Embed color (default blue)
-        
-    Returns:
-        Discord embed dict
-    """
-    embed = {
-        "title": article.get('title', 'No title'),
-        "description": article.get('summary', '')[:400] + '...' if len(article.get('summary', '')) > 400 else article.get('summary', ''),
-        "url": article.get('link', ''),
-        "color": color,
-        "footer": {
-            "text": "🐺 RoleAgentBot News Watcher"
-        }
-    }
-    
-    # Try to extract image from article if available
-    # Note: This would require additional processing to extract images from the article content
-    # For now, Discord will automatically fetch the Open Graph image from the URL
-    
-    return embed
-
-
-
-
 def _build_news_components(articles: list[dict], method: str = "general", keywords: str = None) -> list:
     """Build Discord components (buttons) for news articles.
     
@@ -940,8 +787,11 @@ def _build_news_components(articles: list[dict], method: str = "general", keywor
     buttons = []
     for i, article in enumerate(articles[:max_articles], start=1):
         article_title = article.get('title', 'No title')
-        if len(article_title) > 80:  # Discord button label limit
-            article_title = article_title[:77] + "..."
+        # Account for prefix "N. " (up to 4 chars for numbers 1-25) in the 80 char limit
+        prefix_len = len(f"{i}. ")
+        max_title_len = 80 - prefix_len
+        if len(article_title) > max_title_len:
+            article_title = article_title[:max_title_len - 3] + "..."
         
         button = {
             "type": 2,  # Button component type
@@ -985,7 +835,7 @@ async def _send_notification(http, user_id: str, channel_id: str, messages: str 
                 await http.send_channel_message(channel_id, first_message)
             else:
                 logger.info(f"📩 Sending first message to DM for user {user_id}")
-                await http.send_dm(user_id, first_message)
+                await http.send_dm(int(user_id), first_message)
             
             # Wait a moment between messages for better UX
             await asyncio.sleep(0.5)
@@ -1000,24 +850,31 @@ async def _send_notification(http, user_id: str, channel_id: str, messages: str 
                 
                 if components:
                     # Send message with components
-                    from discord_bot.canvas.content import _bot_display_name
                     buttons_title = _personality_descriptions.get("news_buttons_title", "📰 **Click on any article to open it:**")
                     
                     if channel_id:
                         logger.info(f"📢 Sending buttons to channel {channel_id}")
-                        await http.send_channel_message(channel_id, buttons_title, components=components)
+                        success = await http.send_channel_message(channel_id, buttons_title, components=components)
                     else:
                         logger.info(f"📩 Sending buttons to DM for user {user_id}")
-                        await http.send_dm(user_id, buttons_title, components=components)
+                        success = await http.send_dm(int(user_id), buttons_title, components=components)
+                    
+                    # If buttons failed (e.g. Discord API error), fall back to plain text
+                    if not success and second_message:
+                        logger.warning("⚠️ Button send failed, falling back to plain text links")
+                        if channel_id:
+                            await http.send_channel_message(channel_id, second_message)
+                        else:
+                            await http.send_dm(int(user_id), second_message)
                 else:
-                    # Fallback if components failed
-                    fallback_msg = _personality_descriptions.get("news_components_unavailable", "📰 **News components unavailable**\n\nPlease try again later.")
-                    if channel_id:
-                        logger.info(f"📢 Sending fallback message to channel {channel_id}")
-                        await http.send_channel_message(channel_id, fallback_msg)
-                    else:
-                        logger.info(f"📩 Sending fallback message to DM for user {user_id}")
-                        await http.send_dm(user_id, fallback_msg)
+                    # No components built - send plain text article list as fallback
+                    if second_message:
+                        if channel_id:
+                            logger.info(f"📢 Sending plain text links to channel {channel_id}")
+                            await http.send_channel_message(channel_id, second_message)
+                        else:
+                            logger.info(f"📩 Sending plain text links to DM for user {user_id}")
+                            await http.send_dm(int(user_id), second_message)
             else:
                 logger.warning("� Invalid news_data format, expected (articles, method, keywords)")
         else:
@@ -1026,143 +883,12 @@ async def _send_notification(http, user_id: str, channel_id: str, messages: str 
     except Exception as e:
         logger.exception(f"Error sending notification: {e}")
 
-
-async def send_critical_news(http, user_id: str, channel_id: str, title: str, summary: str, link: str, opinion: str = None):
-    """Send critical news notification with proper formatting using split messages."""
-    try:
-        # Clean the summary to remove any remaining HTML
-        from news_processor import NewsProcessor
-        from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
-        db_watcher = get_news_watcher_db_instance()
-        processor = NewsProcessor(db_watcher)
-        clean_summary = processor._clean_html(summary)
-        
-        # Get alert title and personality name
-        alert_title = _get_alert_title()
-        personality_name = _get_personality_name()
-        
-        # Format the opinion
-        rendered_opinion = opinion or "Watcher opinion unavailable"
-        
-        # Build first message (title and opinion)
-        first_message = f"**{alert_title}**\n\n💭 {personality_name}: {rendered_opinion}"
-        
-        # Build second message (details and links)
-        second_message_parts = []
-        
-        if title:
-            second_message_parts.append(f"📰 **{title}**")
-        
-        if clean_summary:
-            # Limit summary length
-            max_summary_length = 800
-            if len(clean_summary) > max_summary_length:
-                clean_summary = clean_summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
-            second_message_parts.append(clean_summary)
-        
-        # Add the link
-        second_message_parts.append(f"🔗 {link}")
-        
-        second_message = "\n\n".join(second_message_parts)
-        
-        # Send as split messages
-        await _send_notification(http, user_id, channel_id, (first_message, second_message))
-        
-        # Mark as sent in local database
-        db_watcher = get_news_watcher_db_instance()
-        if db_watcher:
-            db_watcher.mark_notification_sent(title, "ai", rendered_opinion, link)
-        
-        logger.info(f"✅ Critical news found and sent: {title[:50]}...")
-        
-    except Exception as e:
-        logger.exception(f"Error sending critical news: {e}")
-
-
-async def send_multiple_critical_news(http, user_id: str, channel_id: str, articles: list[dict], opinion: str = None):
-    """Send multiple critical news notifications with proper formatting using split messages and components.
-    
-    Args:
-        articles: List of dicts with 'title', 'summary', 'link' keys
-        opinion: Shared opinion for all articles
-    """
-    try:
-        if not articles:
-            logger.info("📝 No articles to send in send_multiple_critical_news")
-            return
-        
-        # Get alert title and personality name
-        alert_title = _get_alert_title()
-        personality_name = _get_personality_name()
-        
-        # Format the opinion
-        rendered_opinion = opinion or "Watcher opinion unavailable"
-        
-        # Build first message (title and opinion)
-        if len(articles) == 1:
-            first_message = f"**{alert_title}**\n\n💭 {personality_name}: {rendered_opinion}"
-        else:
-            first_message = f"**{alert_title}** ({len(articles)} news)\n\n💭 {personality_name}: {rendered_opinion}"
-        
-        # Return articles data for components
-        news_data = (articles, "general", None)
-        
-        # Limit number of articles to prevent exceeding Discord's 2000 character limit
-        max_articles = 12 if len(articles) > 12 else len(articles)
-        
-        for index, article in enumerate(articles[:max_articles], start=1):
-            # Clean summary
-            from news_processor import NewsProcessor
-            from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
-            db_watcher = get_news_watcher_db_instance()
-            processor = NewsProcessor(db_watcher)
-            clean_summary = processor._clean_html(article.get('summary', ''))
-            
-            # Add article title
-            second_message_parts.append(f"📰 **{article['title']}**")
-            
-            # Add summary if available
-            if clean_summary:
-                # Limit summary length
-                max_summary_length = 300 if len(articles) > 2 else 500
-                if len(clean_summary) > max_summary_length:
-                    clean_summary = clean_summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
-                second_message_parts.append(clean_summary)
-            
-            # Add link
-            second_message_parts.append(f"🔗 {article['link']}")
-            
-            # Add spacing between articles (except last one)
-            if index < len(articles[:max_articles]):
-                second_message_parts.append("")
-        
-        # Add note if articles were truncated
-        if len(articles) > max_articles:
-            second_message_parts.append(f"... and {len(articles) - max_articles} more news")
-        
-        second_message = "\n".join(second_message_parts)
-        
-        # Send as split messages with news data for components
-        await _send_notification(http, user_id, channel_id, (first_message, second_message, news_data))
-        
-        # Mark all as sent in local database
-        db_watcher = get_news_watcher_db_instance()
-        if db_watcher:
-            for article in articles:
-                db_watcher.mark_notification_sent(article['title'], "ai", rendered_opinion, article['link'])
-        
-        logger.info(f"✅ {len(articles)} critical news sent with single quote")
-        
-    except Exception as e:
-        logger.exception(f"Error sending multiple critical news: {e}")
-
-
-async def _analyze_critical_news_batch(articles: list, premises: list) -> list:
+async def _analyze_critical_news_batch(articles: list, premises: list | str) -> list:
     """Analyze multiple news articles at once against user premises.
     
     Args:
         articles: List of dicts with 'title', 'summary', 'link' keys
-        premises: List of user premises
+        premises: List of user premises (or comma-separated string)
         
     Returns:
         List of indices (0-based) of articles that match premises
@@ -1178,7 +904,20 @@ async def _analyze_critical_news_batch(articles: list, premises: list) -> list:
         
         client = cohere.Client(api_key=api_key, timeout=60)  # Longer timeout for batch
         
-        premises_text = "\n".join([f"{i}. {premise}" for i, premise in enumerate(premises, 1)])
+        # Convert premises to list if it's a string (comma-separated from DB)
+        if isinstance(premises, str):
+            premises_list = [p.strip() for p in premises.split(',') if p.strip()]
+        elif isinstance(premises, list):
+            premises_list = [str(p).strip() for p in premises if p and str(p).strip()]
+        else:
+            logger.warning(f"Invalid premises type: {type(premises)}")
+            return []
+        
+        if not premises_list:
+            logger.warning("No valid premises to analyze")
+            return []
+        
+        premises_text = "\n".join([f"{i}. {premise}" for i, premise in enumerate(premises_list, 1)])
         
         # Build articles text for batch analysis
         articles_text = ""
@@ -1211,7 +950,7 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
             server_name = get_active_server_id()
             metadata = {
                 "articles_count": len(articles),
-                "premises_count": len(premises),
+                "premises_count": len(premises_list),
                 "analysis_type": "batch_critical_news"
             }
             

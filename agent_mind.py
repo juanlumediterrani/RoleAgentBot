@@ -441,33 +441,41 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
 
 
 def refresh_due_recent_memories(server_id: str | None = None) -> int:
-    resolved_server = server_id or get_active_server_id()
-    if not resolved_server:
-        logger.warning("🧠 [RECENT_MEMORY] No server context available, skipping refresh")
-        return 0
-    db_instance = get_global_db(server_id=resolved_server)
-    due_refreshes = db_instance.get_due_pending_recent_memory_refreshes()
-    if not due_refreshes:
-        return 0
-    
-    # Get last synthesis to check for new interactions
-    existing_record = db_instance.get_recent_memory_record(memory_date=date.today().isoformat())
-    last_interaction_at = (existing_record or {}).get("last_interaction_at")
-    new_interactions = db_instance.get_daily_interactions_since(
-        since_iso=last_interaction_at,
-        limit=100,
-        target_date=date.today().isoformat(),
-    )
-    
-    if not new_interactions:
-        logger.info(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {resolved_server}")
-        db_instance.mark_recent_memory_refresh_completed()
-        return 0
-    
-    # Execute synthesis only if there are new interactions
-    logger.info(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {resolved_server}")
-    generate_recent_memory_summary(server_id=resolved_server)
-    return 1
+    """Refresh recent memories for a server or all servers if none specified."""
+    if server_id:
+        # Process specific server
+        resolved_server = server_id
+        db_instance = get_global_db(server_id=resolved_server)
+        due_refreshes = db_instance.get_due_pending_recent_memory_refreshes()
+        if not due_refreshes:
+            return 0
+        
+        # Get last synthesis to check for new interactions
+        existing_record = db_instance.get_recent_memory_record(memory_date=date.today().isoformat())
+        last_interaction_at = (existing_record or {}).get("last_interaction_at")
+        new_interactions = db_instance.get_daily_interactions_since(
+            since_iso=last_interaction_at,
+            limit=100,
+            target_date=date.today().isoformat(),
+        )
+        
+        if not new_interactions:
+            logger.info(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {resolved_server}")
+            db_instance.mark_recent_memory_refresh_completed()
+            return 0
+        
+        # Execute synthesis only if there are new interactions
+        logger.info(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {resolved_server}")
+        generate_recent_memory_summary(server_id=resolved_server)
+        return 1
+    else:
+        # Process all servers
+        from agent_db import get_all_server_ids
+        server_ids = get_all_server_ids()
+        total_processed = 0
+        for sid in server_ids:
+            total_processed += refresh_due_recent_memories(sid)
+        return total_processed
 
 
 def _should_trigger_dreaming(db_instance) -> bool:
@@ -680,7 +688,8 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         # LLM succeeded, use the new memory
         summary_text = llm_response
         
-        db_instance.upsert_daily_memory(
+        # Attempt to save to database
+        save_success = db_instance.upsert_daily_memory(
             summary_text,
             memory_date=resolved_date,
             metadata={
@@ -692,7 +701,11 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
                 "memory_extracted": False,  # Daily memory no longer extracts memories
             },
         )
-        logger.info(f"🧠 [DAILY_MEMORY] Updated summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, dreaming: {bool(dreaming_recollection)})")
+        
+        if save_success:
+            logger.info(f"🧠 [DAILY_MEMORY] Updated summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, dreaming: {bool(dreaming_recollection)})")
+        else:
+            logger.error(f"🧠 [DAILY_MEMORY] FAILED to save summary for {resolved_server} on {resolved_date} - database error occurred")
     else:
         # LLM failed or returned error, keep existing summary unchanged
         if previous_summary:
@@ -863,37 +876,45 @@ def generate_user_relationship_memory_summary(
 
 
 def refresh_due_relationship_memories(server_id: str | None = None) -> int:
-    resolved_server = server_id or get_active_server_id()
-    if not resolved_server:
-        logger.warning("🧠 [RELATIONSHIP_MEMORY] No server context available, skipping refresh")
-        return 0
-    db_instance = get_global_db(server_id=resolved_server)
-    due_refreshes = db_instance.get_due_pending_relationship_refreshes()
-    processed = 0
-    for item in due_refreshes:
-        user_id = item.get("usuario_id")
-        if not user_id:
-            continue
-        relationship_state = db_instance.get_user_relationship_memory(user_id)
-        user_name = relationship_state.get("metadata", {}).get("user_name") or None
-        last_interaction_at = relationship_state.get("last_interaction_at")
-        new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=last_interaction_at, limit=100)
-        if not new_interactions:
-            db_instance.mark_relationship_refresh_completed(user_id)
-            continue
-        try:
-            generate_user_relationship_memory_summary(
-                user_id=user_id,
-                user_name=user_name,
-                server_id=resolved_server,
-            )
-            processed += 1
-        except Exception as e:
-            logger.warning(f"⚠️ [RELATIONSHIP_MEMORY] Scheduled refresh failed for user={user_id}: {e}")
-    deleted = db_instance.clear_stale_relationship_memory_states()
-    if deleted:
-        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Cleared {deleted} stale temporary states for server={resolved_server}")
-    return processed
+    """Refresh relationship memories for a server or all servers if none specified."""
+    if server_id:
+        # Process specific server
+        resolved_server = server_id
+        db_instance = get_global_db(server_id=resolved_server)
+        due_refreshes = db_instance.get_due_pending_relationship_refreshes()
+        processed = 0
+        for item in due_refreshes:
+            user_id = item.get("usuario_id")
+            if not user_id:
+                continue
+            relationship_state = db_instance.get_user_relationship_memory(user_id)
+            user_name = relationship_state.get("metadata", {}).get("user_name") or None
+            last_interaction_at = relationship_state.get("last_interaction_at")
+            new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=last_interaction_at, limit=100)
+            if not new_interactions:
+                db_instance.mark_relationship_refresh_completed(user_id)
+                continue
+            try:
+                generate_user_relationship_memory_summary(
+                    user_id=user_id,
+                    user_name=user_name,
+                    server_id=resolved_server,
+                )
+                processed += 1
+            except Exception as e:
+                logger.warning(f" [RELATIONSHIP_MEMORY] Scheduled refresh failed for user={user_id}: {e}")
+        deleted = db_instance.clear_stale_relationship_memory_states()
+        if deleted:
+            logger.info(f" [RELATIONSHIP_MEMORY] Cleaned up {deleted} stale relationship memory states")
+        return processed
+    else:
+        # Process all servers
+        from agent_db import get_all_server_ids
+        server_ids = get_all_server_ids()
+        total_processed = 0
+        for sid in server_ids:
+            total_processed += refresh_due_relationship_memories(sid)
+        return total_processed
 
 
 def _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_dialogue: list[dict]) -> str:
@@ -1191,23 +1212,91 @@ def _build_prompt_last_interactions_block(
     return "\n".join(interactions_block)
 
 
-def _build_prompt_channel_messages_block(
+async def _build_prompt_channel_messages_block(
     channel_id: str,
     server: str | None = None,
+    discord_channel=None,
+    bot_id: str | None = None,
 ):
     """
     Build only the CHANNEL MESSAGES block with recent channel interactions.
-    This function is now focused solely on channel messages construction.
+    This function now fetches messages directly from Discord API.
     """
+    logger.info(f"🧠 [MIND] _build_prompt_channel_messages_block called with channel_id={channel_id}, discord_channel={'provided' if discord_channel else 'None'}")
+    
+    # If we have a Discord channel object, fetch messages directly from Discord
+    if discord_channel and hasattr(discord_channel, 'history'):
+        logger.info(f"🧠 [MIND] Loading recent messages from Discord channel {channel_id}")
+        logger.info(f"🧠 [MIND] Discord channel object: {type(discord_channel)}, name: {getattr(discord_channel, 'name', 'Unknown')}")
+        
+        try:
+            # Fetch last 20 messages from Discord (more than we need to filter)
+            messages = []
+            message_count = 0
+            logger.info(f"🧠 [MIND] Starting to fetch Discord messages from {getattr(discord_channel, 'name', 'Unknown')} channel")
+            
+            async for message in discord_channel.history(limit=20):
+                message_count += 1
+                logger.info(f"🧠 [MIND] Processing message #{message_count}: {message.author.display_name} - {message.content[:50]}...")
+                
+                # Only include messages from last hour
+                import datetime
+                message_age = (datetime.datetime.now(datetime.timezone.utc) - message.created_at).total_seconds()
+                logger.info(f"🧠 [MIND] Message age: {message_age:.0f} seconds")
+                if message_age > 3600:
+                    logger.info(f"🧠 [MIND] Skipping message older than 1 hour")
+                    continue
+                    
+                # Skip only commands, but include bot messages for context
+                if message.content.strip().startswith('!'):
+                    logger.info(f"🧠 [MIND] Skipping command message")
+                    continue
+                    
+                logger.info(f"🧠 [MIND] Including message from {message.author.display_name} (bot: {message.author.bot})")
+                    
+                # Format message and clean mentions
+                content = message.content
+                # Replace user mentions with display names
+                for mention in message.mentions:
+                    content = content.replace(f"<@{mention.id}>", f"@{mention.display_name}")
+                
+                message_text = f"{message.author.display_name}: {content}"
+                messages.append(message_text)
+            
+            logger.info(f"🧠 [MIND] Discord message fetch completed. Total messages processed: {message_count}, Messages included: {len(messages)}")
+            
+            logger.info(f"🧠 [MIND] Found {len(messages)} messages from Discord channel")
+            
+            if not messages:
+                logger.info(f"🧠 [MIND] No Discord messages found for channel {channel_id}")
+                return ""
+            
+            # Get label from prompts.json or fallback
+            engine = _engine()
+            channel_label = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("recent_interactions_from_channel_label", "RECENT MESSAGES FROM CHANNEL:")
+            
+            # Build channel messages block
+            channel_block = [channel_label]
+            channel_block.extend(messages[-10:])  # Take last 10 messages
+            
+            return "\n".join(channel_block)
+            
+        except Exception as e:
+            logger.error(f"🧠 [MIND] Error fetching Discord messages: {e}")
+            logger.info(f"🧠 [MIND] Discord API failed, falling back to database method")
+    else:
+        logger.info(f"🧠 [MIND] No Discord channel object provided, using database method")
+    
+    # Fallback: Use database method
     server_id = server or get_active_server_id()
     db_instance = get_global_db(server_id=server_id) if server_id else None
     
     if not db_instance or not channel_id:
         return ""
     
-    logger.info(f"🧠 [MIND] Loading recent messages from channel {channel_id}")
+    logger.info(f"🧠 [MIND] Loading recent messages from database channel {channel_id}")
     channel_messages = db_instance.get_recent_channel_interactions(channel_id, within_minutes=60, max_interactions=10)
-    logger.info(f"🧠 [MIND] Found {len(channel_messages)} messages from channel")
+    logger.info(f"🧠 [MIND] Found {len(channel_messages)} messages from database")
     
     if not channel_messages:
         logger.info(f"🧠 [MIND] No channel messages found for channel {channel_id}")
@@ -1221,13 +1310,39 @@ def _build_prompt_channel_messages_block(
     channel_block = [channel_label]
     
     # Format channel messages (exclude commands, include bot responses)
+    # Reverse messages to show chronological order (oldest first)
     bot_name = engine.PERSONALITY.get("name", "Bot")
-    for message in channel_messages:
+    for message in reversed(channel_messages):
         # Skip if it's a command (starts with !)
         if message['content'].strip().startswith('!'):
             continue
             
-        message_text = f"{message['user_name']}: {message['content']}"
+        # Clean mentions from content
+        content = message['content']
+        import re
+        # Replace user mentions with actual usernames from database
+        for match in re.finditer(r'<@(\d+)>', content):
+            user_id = match.group(1)
+            try:
+                # Check if it's the bot's ID
+                if bot_id and user_id == bot_id:
+                    content = content.replace(f"<@{user_id}>", f"@{bot_name}")
+                else:
+                    # Try to get username from database
+                    user_rows = db_instance.execute_query(
+                        "SELECT usuario_nombre FROM interacciones WHERE usuario_id = ? LIMIT 1",
+                        (user_id,)
+                    )
+                    if user_rows:
+                        username = user_rows[0][0]
+                        content = content.replace(f"<@{user_id}>", f"@{username}")
+                    else:
+                        # Fallback to @ID if username not found
+                        content = content.replace(f"<@{user_id}>", f"@{user_id}")
+            except:
+                content = content.replace(f"<@{user_id}>", f"@{user_id}")
+        
+        message_text = f"{message['user_name']}: {content}"
         if message['response']:
             message_text += f"\n{bot_name}: {message['response']}"
         channel_block.append(message_text)
@@ -1235,12 +1350,14 @@ def _build_prompt_channel_messages_block(
     return "\n".join(channel_block)
 
 
-def _build_conversation_channel_prompt(
+async def _build_conversation_channel_prompt(
     user_content: str = "",
     server: str | None = None,
     user_id: str | None = None,
     user_name: str | None = None,
     channel_id: str | None = None,
+    bot_id: str | None = None,
+    discord_channel=None,
 ) -> str:
     """
     Build a contextual user prompt for channel conversations.
@@ -1266,7 +1383,12 @@ def _build_conversation_channel_prompt(
     
     # Add recent channel messages block
     if channel_id:
-        channel_messages_block = _build_prompt_channel_messages_block(channel_id=channel_id, server=server)
+        channel_messages_block = await _build_prompt_channel_messages_block(
+            channel_id=channel_id, 
+            server=server, 
+            bot_id=bot_id,
+            discord_channel=discord_channel
+        )
         if channel_messages_block:
             prompt_sections.append(channel_messages_block)
     
@@ -1588,10 +1710,10 @@ def _call_gemini_sync(
 
     gemini_thread = threading.Thread(target=call_gemini)
     gemini_thread.start()
-    gemini_thread.join(timeout=5.0)
+    gemini_thread.join(timeout=30.0)
 
     if gemini_thread.is_alive():
-        logger.error("🤖 [SYNC] Gemini call timed out after 5 seconds")
+        logger.error("🤖 [SYNC] Gemini call timed out after 30 seconds")
         if critical:
             raise TimeoutError("Gemini API call timed out")
         else:
@@ -1671,7 +1793,7 @@ def _call_gemini_async(
 
     gemini_thread = threading.Thread(target=call_gemini)
     gemini_thread.start()
-    gemini_thread.join(timeout=60.0)
+    gemini_thread.join(timeout=120.0)
 
     if not gemini_thread.is_alive() and exception_queue.empty():
         res = result_queue.get()

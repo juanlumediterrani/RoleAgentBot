@@ -43,8 +43,8 @@ class DatabaseRoleMC:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             self._fix_permissions(self.db_path.parent)
             
-            # Conectar y forzar permisos del archivo
-            conn = sqlite3.connect(str(self.db_path))
+            # Conectar y forzar permisos del archivo con timeout extendido
+            conn = sqlite3.connect(str(self.db_path), timeout=30.0)
             cursor = conn.cursor()
             cursor.execute('PRAGMA journal_mode=DELETE;')
             conn.close()
@@ -84,7 +84,7 @@ class DatabaseRoleMC:
     def _init_db(self):
         """Inicializa la base de datos con configuración DELETE."""
         try:
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute("PRAGMA journal_mode=DELETE;")
                 conn.commit()
@@ -102,7 +102,7 @@ class DatabaseRoleMC:
     def _init_playlists_table(self):
         """Inicializa tabla de playlists."""
         try:
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS playlists (
@@ -127,7 +127,7 @@ class DatabaseRoleMC:
     def _init_queue_table(self):
         """Inicializa tabla de cola de reproducción."""
         try:
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS queue (
@@ -154,7 +154,7 @@ class DatabaseRoleMC:
     def _init_history_table(self):
         """Inicializa tabla de historial de reproducción."""
         try:
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS history (
@@ -178,7 +178,7 @@ class DatabaseRoleMC:
     def _init_preferences_table(self):
         """Inicializa tabla de preferencias de usuarios."""
         try:
-            with sqlite3.connect(str(self.db_path)) as conn:
+            with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS preferences (
@@ -200,7 +200,7 @@ class DatabaseRoleMC:
         """Crea una nueva playlist."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT OR IGNORE INTO playlists 
@@ -240,7 +240,7 @@ class DatabaseRoleMC:
         """
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     
                     if posicion is None or posicion == -1:
@@ -299,7 +299,7 @@ class DatabaseRoleMC:
         """Remueve una canción específica de la cola."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     
                     # Marcar como inactiva la canción
@@ -324,7 +324,7 @@ class DatabaseRoleMC:
         """Limpia toda la cola de reproducción."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         UPDATE queue SET activo = 0 
@@ -341,7 +341,7 @@ class DatabaseRoleMC:
         """Registra una canción en el historial de reproducción."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT INTO history 

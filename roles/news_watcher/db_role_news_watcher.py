@@ -94,14 +94,9 @@ class DatabaseRoleNewsWatcher:
                 # Initialize tables
                 self._init_read_news_table()
                 self._init_sent_notifications_table()
-                self._init_subscriptions_table()
+                self._init_unified_subscriptions_table()  # New unified table
                 self._init_feeds_table()
-                self._init_subscriptions_categories_table()
-                self._init_subscriptions_channels_table()
-                self._init_subscriptions_keywords_table()
                 self._init_user_premises_table()
-                self._init_channel_premises_table()
-                self._init_method_config_table()
                 self._init_configuracion_table()
                 self.insert_default_feeds()
                 # Feed health check moved to on_guild_join event to avoid running on every !canvas command
@@ -248,6 +243,14 @@ class DatabaseRoleNewsWatcher:
                 cursor.execute('SELECT COUNT(*) FROM sent_notifications')
                 sent_notifications = cursor.fetchone()[0]
                 
+                # Count active subscriptions
+                cursor.execute('SELECT COUNT(*) FROM subscriptions WHERE is_active = 1')
+                active_subscriptions = cursor.fetchone()[0]
+                
+                # Count subscriptions by method
+                cursor.execute('SELECT method, COUNT(*) FROM subscriptions WHERE is_active = 1 GROUP BY method')
+                subscriptions_by_method = dict(cursor.fetchall())
+                
                 # Last activity
                 cursor.execute('SELECT MAX(read_date) FROM read_news')
                 last_news = cursor.fetchone()[0]
@@ -258,6 +261,8 @@ class DatabaseRoleNewsWatcher:
                 return {
                     'read_news': read_news,
                     'sent_notifications': sent_notifications,
+                    'active_subscriptions': active_subscriptions,
+                    'subscriptions_by_method': subscriptions_by_method,
                     'last_news': last_news,
                     'last_notification': last_notification
                 }
@@ -265,6 +270,36 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error getting statistics: {e}")
             return {}
 
+
+    def _init_unified_subscriptions_table(self):
+        """Initialize unified subscriptions table."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS subscriptions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT,
+                        channel_id TEXT,
+                        category TEXT NOT NULL,
+                        feed_id INTEGER,
+                        premises TEXT,
+                        keywords TEXT,
+                        method TEXT NOT NULL DEFAULT 'general',
+                        is_active INTEGER DEFAULT 1,
+                        subscribed_at TEXT NOT NULL,
+                        created_by TEXT,
+                        UNIQUE(user_id, channel_id, category, method)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions (user_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_channel ON subscriptions (channel_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_category ON subscriptions (category)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_method ON subscriptions (method)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_active ON subscriptions (is_active)')
+                conn.commit()
+        except Exception as e:
+            logger.exception(f"❌ Error creating unified subscriptions table: {e}")
 
     def _init_subscriptions_table(self):
         """Initialize watcher subscriptions table."""
@@ -336,94 +371,6 @@ class DatabaseRoleNewsWatcher:
         except Exception as e:
             logger.exception(f"❌ Error creating feeds_config table: {e}")
 
-    def _init_subscriptions_categories_table(self):
-        """Initialize category subscriptions table (for AI-based subscriptions)."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS subscriptions_categories (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        category TEXT NOT NULL,
-                        feed_id INTEGER DEFAULT NULL,
-                        subscribed_at TEXT NOT NULL,
-                        is_active INTEGER DEFAULT 1,
-                        user_premises TEXT DEFAULT NULL,  -- JSON with user custom premises
-                        UNIQUE(user_id, category, feed_id)
-                    )
-                ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_categories_user ON subscriptions_categories (user_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_categorys_category ON subscriptions_categories (category)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_categorys_is_active ON subscriptions_categories (is_active)')
-                conn.commit()
-        except Exception as e:
-            logger.exception(f"❌ Error creating subscriptions_categories table: {e}")
-    
-    def _init_subscriptions_channels_table(self):
-        """Initialize channel subscriptions table."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS subscriptions_channels (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        channel_id TEXT NOT NULL UNIQUE,
-                        channel_name TEXT NOT NULL,
-                        server_id TEXT NOT NULL,
-                        server_name TEXT NOT NULL,
-                        category TEXT NOT NULL,
-                        feed_id INTEGER DEFAULT NULL,
-                        subscribed_at TEXT NOT NULL,
-                        is_active INTEGER DEFAULT 1,
-                        channel_premises TEXT DEFAULT NULL,
-                        UNIQUE(channel_id, category, feed_id)
-                    )
-                ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_channels_channel_id ON subscriptions_channels (channel_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_channels_server_id ON subscriptions_channels (server_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_channels_category ON subscriptions_channels (category)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_channels_is_active ON subscriptions_channels (is_active)')
-                
-                # Add channel_premises column if it doesn't exist (migration)
-                cursor.execute('PRAGMA table_info(subscriptions_channels)')
-                columns = cursor.fetchall()
-                column_names = [col[1] for col in columns]
-                if 'channel_premises' not in column_names:
-                    cursor.execute('ALTER TABLE subscriptions_channels ADD COLUMN channel_premises TEXT DEFAULT NULL')
-                    logger.info("✅ Added channel_premises column to subscriptions_channels table")
-                
-                conn.commit()
-        except Exception as e:
-            logger.exception(f"❌ Error creating subscriptions_channels table: {e}")
-    
-    def _init_subscriptions_keywords_table(self):
-        """Initialize keyword subscriptions table."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS subscriptions_keywords (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        channel_id TEXT DEFAULT NULL,
-                        keywords TEXT NOT NULL,
-                        category TEXT DEFAULT NULL,
-                        feed_id INTEGER DEFAULT NULL,
-                        subscribed_at TEXT NOT NULL,
-                        is_active INTEGER DEFAULT 1,
-                        UNIQUE(user_id, channel_id, keywords, category, feed_id)
-                    )
-                ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_user ON subscriptions_keywords (user_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_channel ON subscriptions_keywords (channel_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_is_active ON subscriptions_keywords (is_active)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_category ON subscriptions_keywords (category)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_keywords_feed ON subscriptions_keywords (feed_id)')
-                conn.commit()
-        except Exception as e:
-            logger.exception(f"❌ Error creating subscriptions_keywords table: {e}")
-    
     def _init_user_premises_table(self):
         """Initialize user premises table for standalone premise storage."""
         try:
@@ -838,18 +785,19 @@ class DatabaseRoleNewsWatcher:
             return False
     
     def subscribe_user_category_ai(self, user_id: str, category: str, feed_id: int = None, premises: str = None) -> bool:
-        """Subscribe a user to a category with AI analysis."""
+        """Subscribe a user to a category with AI analysis using unified system."""
         try:
-            with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO subscriptions_categories 
-                        (user_id, category, feed_id, subscribed_at, is_active, user_premises)
-                        VALUES (?, ?, ?, ?, 1, ?)
-                    ''', (user_id, category.lower(), feed_id, datetime.now().isoformat(), premises))
-                    conn.commit()
-                    return True
+            # Use the unified create_subscription method
+            result = self.create_subscription(
+                user_id=user_id,
+                channel_id=None,
+                category=category.lower(),
+                feed_id=feed_id,
+                premises=premises,
+                method="general",
+                created_by=user_id
+            )
+            return result is not None
         except Exception as e:
             logger.exception(f"Error subscribing user to category with AI analysis: {e}")
             return False
@@ -922,18 +870,24 @@ class DatabaseRoleNewsWatcher:
             return []
     
     def subscribe_keywords(self, user_id: str, keywords: str, channel_id: str = None, category: str = None, feed_id: int = None) -> bool:
-        """Subscribe user or channel to specific keywords (optionally in category/feed)."""
+        """Subscribe user or channel to specific keywords (optionally in category/feed) using unified system."""
         try:
-            with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO subscriptions_keywords 
-                        (user_id, channel_id, keywords, category, feed_id, subscribed_at, is_active)
-                        VALUES (?, ?, ?, ?, ?, ?, 1)
-                    ''', (user_id, channel_id, keywords, category, feed_id, datetime.now().isoformat()))
-                    conn.commit()
-                    return True
+            # Require category for keyword subscriptions - no more global_keywords
+            if category is None:
+                logger.warning(f"subscribe_keywords called without category for user {user_id} - rejecting")
+                return False
+            
+            # Use the unified create_subscription method
+            result = self.create_subscription(
+                user_id=user_id if not channel_id else None,
+                channel_id=channel_id,
+                category=category,
+                feed_id=feed_id,
+                keywords=keywords,
+                method="keyword",
+                created_by=user_id
+            )
+            return result is not None
         except Exception as e:
             logger.exception(f"Error subscribing keywords: {e}")
             return False
@@ -993,7 +947,14 @@ class DatabaseRoleNewsWatcher:
             title_lower = titulo.lower()
 
             for user_id, channel_id, keywords in keyword_subscribers:
-                keyword_list = [p.strip().lower() for p in keywords.split(',')]
+                # Handle both string and list inputs for keywords
+                if isinstance(keywords, list):
+                    keyword_list = [str(p).strip().lower() for p in keywords if p and str(p).strip()]
+                elif isinstance(keywords, str):
+                    keyword_list = [p.strip().lower() for p in keywords.split(',')]
+                else:
+                    logger.warning(f"Invalid keywords type: {type(keywords)} for user {user_id}")
+                    continue
                 
                 # Check if any keyword is in the title
                 if any(keyword in title_lower for keyword in keyword_list):
@@ -1024,6 +985,25 @@ class DatabaseRoleNewsWatcher:
                     return True
         except Exception as e:
             logger.exception(f"Error subscribing channel to category: {e}")
+            return False
+    
+    def subscribe_channel_category_keywords(self, channel_id: str, channel_name: str, server_id: str, 
+                                       category: str, feed_id: int = None, keywords: str = None, user_id: str = None) -> bool:
+        """Subscribe a channel to keywords in a specific category or feed."""
+        try:
+            # Use the unified create_subscription method
+            result = self.create_subscription(
+                user_id=None,
+                channel_id=channel_id,
+                category=category,
+                feed_id=feed_id,
+                keywords=keywords,
+                method="keyword",
+                created_by=user_id
+            )
+            return result is not None
+        except Exception as e:
+            logger.exception(f"Error subscribing channel to keywords: {e}")
             return False
     
     def cancel_channel_subscription(self, channel_id: str, category: str, feed_id: int = None) -> bool:
@@ -1108,51 +1088,7 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error getting channel subscriptions: {e}")
             return []
     
-    def get_all_channel_subscriptions_flat(self) -> list:
-        """Get all active flat channel subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT NULL as user_id, category, feed_id, channel_id, subscribed_at
-                    FROM subscriptions_channels 
-                    WHERE is_active = 1 AND (channel_premises IS NULL OR channel_premises = '')
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all channel flat subscriptions: {e}")
-            return []
-    
-    def get_all_channel_subscriptions_ai(self) -> list:
-        """Get all active AI channel subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT channel_id, category, feed_id, channel_premises, user_id
-                    FROM subscriptions_channels 
-                    WHERE is_active = 1 AND channel_premises IS NOT NULL AND channel_premises != ''
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all channel AI subscriptions: {e}")
-            return []
-    
-    def get_all_channel_subscriptions_keywords(self) -> list:
-        """Get all active keyword channel subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT user_id, channel_id, keywords, category, feed_id
-                    FROM subscriptions_keywords 
-                    WHERE is_active = 1 AND channel_id IS NOT NULL
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all channel keyword subscriptions: {e}")
-            return []
-    
+        
     def get_all_channels_with_subscriptions(self) -> list:
         """Get all channels with active subscriptions."""
         try:
@@ -1306,21 +1242,6 @@ class DatabaseRoleNewsWatcher:
         except Exception as e:
             logger.exception(f"Error checking subscription: {e}")
             return False
-    
-    def get_all_active_category_subscriptions(self) -> list:
-        """Get all active AI subscriptions (with premises)."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT DISTINCT user_id, category, feed_id, subscribed_at
-                    FROM subscriptions_categories 
-                    WHERE is_active = 1 AND user_premises IS NOT NULL AND user_premises != ''
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all category subscriptions: {e}")
-            return []
     
     def get_all_active_keyword_subscriptions(self) -> list:
         """Get all active keyword subscriptions (user subscriptions only)."""
@@ -2016,33 +1937,46 @@ class DatabaseRoleNewsWatcher:
             return []
     
     def get_user_keywords(self, user_id: str) -> str:
-        """Get the configured keywords of a user."""
+        """Get the configured keywords of a user from user_premises table."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT keywords FROM subscriptions_keywords 
-                    WHERE user_id = ? AND is_active = 1
-                    ORDER BY id DESC LIMIT 1
+                    SELECT premise_text FROM user_premises 
+                    WHERE user_id = ? AND premise_text LIKE 'KEYWORDS:%'
+                    ORDER BY created_at DESC LIMIT 1
                 ''', (user_id,))
                 result = cursor.fetchone()
-                return result[0] if result else None
+                if result and result[0]:
+                    # Extract keywords from "KEYWORDS:iran,crypto" format
+                    return result[0].replace('KEYWORDS:', '', 1)
+                return None
         except Exception as e:
             logger.exception(f"Error getting user keywords: {e}")
             return None
     
     def update_user_keywords(self, user_id: str, keywords: str) -> bool:
-        """Update the keywords of a user."""
+        """Update the keywords of a user in the user_premises table (renamed for keywords)."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE subscriptions_keywords 
-                    SET keywords = ?
-                    WHERE user_id = ? AND is_active = 1
-                ''', (keywords, user_id))
+                
+                if keywords:
+                    # Store keywords in user_premises table (reuse existing infrastructure)
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO user_premises 
+                        (user_id, premise_text, created_at)
+                        VALUES (?, ?, ?)
+                    ''', (user_id, f"KEYWORDS:{keywords}", datetime.now().isoformat()))
+                else:
+                    # Remove keywords if empty
+                    cursor.execute('''
+                        DELETE FROM user_premises 
+                        WHERE user_id = ? AND premise_text LIKE 'KEYWORDS:%'
+                    ''', (user_id,))
+                
                 conn.commit()
-                return cursor.rowcount > 0
+                return True
         except Exception as e:
             logger.exception(f"Error updating user keywords: {e}")
             return False
@@ -2096,27 +2030,7 @@ class DatabaseRoleNewsWatcher:
             return []
 
 
-    def _init_method_config_table(self):
-        """Initialize table for method configuration."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS method_config (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        server_id TEXT NOT NULL,
-                        method_type TEXT NOT NULL CHECK(method_type IN ('flat', 'keyword', 'general')),
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(server_id)
-                    )
-                ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_method_config_server ON method_config (server_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_method_config_type ON method_config (method_type)')
-                conn.commit()
-        except Exception as e:
-            logger.exception(f"❌ Error creating method_config table: {e}")
-
+    
     def _init_configuracion_table(self):
         """Initialize configuration table."""
         try:
@@ -2134,68 +2048,20 @@ class DatabaseRoleNewsWatcher:
         except Exception as e:
             logger.exception(f"❌ Error creating configuracion table: {e}")
 
-    def set_method_config(self, server_id: str, method_type: str) -> bool:
-        """Set the method configuration for a server."""
-        if method_type not in ['flat', 'keyword', 'general']:
-            logger.error(f"Invalid method_type: {method_type}")
-            return False
-        
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT OR REPLACE INTO method_config (server_id, method_type, updated_at)
-                    VALUES (?, ?, datetime('now'))
-                ''', (server_id, method_type))
-                conn.commit()
-                return True
-        except Exception as e:
-            logger.exception(f"Error setting method config: {e}")
-            return False
-
-    def get_method_config(self, server_id: str) -> str:
-        """Get the method configuration for a server."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT method_type FROM method_config WHERE server_id = ?', (server_id,))
-                result = cursor.fetchone()
-                return result[0] if result else 'general'  # Default to general
-        except Exception as e:
-            logger.exception(f"Error getting method config: {e}")
-            return 'general'  # Default to general on error
-
     def count_user_subscriptions(self, user_id: str) -> int:
-        """Count total active subscriptions for a user across all methods."""
+        """Count total active subscriptions for a user across all methods using unified system."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 
-                # Count flat subscriptions
+                # Count all active user subscriptions from unified table
                 cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_categories 
-                    WHERE user_id = ? AND is_active = 1
+                    SELECT COUNT(*) FROM subscriptions 
+                    WHERE user_id = ? AND channel_id IS NULL AND is_active = 1
                 ''', (user_id,))
-                flat_count = cursor.fetchone()[0]
+                total_count = cursor.fetchone()[0]
                 
-                # Count keyword subscriptions
-                cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_keywords 
-                    WHERE user_id = ? AND is_active = 1
-                ''', (user_id,))
-                keyword_count = cursor.fetchone()[0]
-                
-                # Count AI subscriptions (already counted in flat, but with premises)
-                # We need to subtract those already counted in flat to avoid double counting
-                cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_categories 
-                    WHERE user_id = ? AND is_active = 1 AND user_premises IS NOT NULL AND user_premises != ''
-                ''', (user_id,))
-                ai_count = cursor.fetchone()[0]
-                
-                # Total unique subscriptions = flat (including AI) + keyword
-                return flat_count + keyword_count
-                
+                return total_count
         except Exception as e:
             logger.exception(f"Error counting user subscriptions: {e}")
             return 0
@@ -2345,21 +2211,7 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error getting all flat user subscriptions: {e}")
             return []
 
-    def get_all_user_subscriptions_keywords(self) -> List[tuple]:
-        """Get all active keyword user subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT user_id, category, feed_id, keywords
-                    FROM subscriptions_keywords
-                    WHERE is_active = 1 AND user_id IS NOT NULL
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all keyword user subscriptions: {e}")
-            return []
-
+    
     def get_all_user_subscriptions_ai(self) -> List[tuple]:
         """Get all active AI user subscriptions."""
         try:
@@ -2375,32 +2227,6 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error getting all AI user subscriptions: {e}")
             return []
 
-    
-    def get_all_channel_subscriptions_ai(self) -> List[tuple]:
-        """Get all active AI channel subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                
-                # Ensure user_id column exists
-                cursor.execute('PRAGMA table_info(subscriptions_channels)')
-                columns = cursor.fetchall()
-                column_names = {col[1] for col in columns}
-                
-                if 'user_id' not in column_names:
-                    cursor.execute('ALTER TABLE subscriptions_channels ADD COLUMN user_id TEXT')
-                    conn.commit()
-                    logger.info("Added user_id column to subscriptions_channels")
-                
-                cursor.execute('''
-                    SELECT channel_id, category, feed_id, channel_premises, user_id
-                    FROM subscriptions_channels
-                    WHERE is_active = 1 AND channel_premises IS NOT NULL AND channel_premises != ''
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all AI channel subscriptions: {e}")
-            return []
     
     def get_frequency_setting(self) -> int:
         """Get the frequency setting in hours."""
@@ -2435,6 +2261,127 @@ class DatabaseRoleNewsWatcher:
         except Exception as e:
             logger.exception(f"Error setting frequency: {e}")
             return False
+
+
+# ===== UNIFIED SUBSCRIPTIONS MANAGEMENT =====
+    
+    def create_subscription(self, user_id: str = None, channel_id: str = None, 
+                          category: str = None, feed_id: int = None,
+                          premises: str = None, keywords: str = None,
+                          method: str = 'general', created_by: str = None) -> int:
+        """Create a new subscription with unified structure."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO subscriptions 
+                    (user_id, channel_id, category, feed_id, premises, keywords, method, is_active, subscribed_at, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), ?)
+                ''', (user_id, channel_id, category, feed_id, premises, keywords, method, created_by))
+                return cursor.lastrowid
+        except Exception as e:
+            logger.exception(f"Error creating subscription: {e}")
+            return None
+    
+    def get_all_active_subscriptions(self) -> list:
+        """Get all active subscriptions (unified method)."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by
+                    FROM subscriptions 
+                    WHERE is_active = 1
+                    ORDER BY subscribed_at DESC
+                ''')
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting all subscriptions: {e}")
+            return []
+    
+    def get_user_subscriptions(self, user_id: str) -> list:
+        """Get all active subscriptions for a specific user."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by
+                    FROM subscriptions 
+                    WHERE user_id = ? AND is_active = 1
+                    ORDER BY subscribed_at DESC
+                ''', (user_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting user subscriptions: {e}")
+            return []
+    
+    def get_channel_subscriptions(self, channel_id: str) -> list:
+        """Get all active subscriptions for a specific channel."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by
+                    FROM subscriptions 
+                    WHERE channel_id = ? AND is_active = 1
+                    ORDER BY subscribed_at DESC
+                ''', (channel_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting channel subscriptions: {e}")
+            return []
+
+    def get_users_with_active_subscriptions(self) -> list:
+        """Get all users who have active personal subscriptions."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT DISTINCT user_id 
+                    FROM subscriptions 
+                    WHERE user_id IS NOT NULL AND channel_id IS NULL AND is_active = 1
+                ''')
+                results = cursor.fetchall()
+                return [row[0] for row in results]
+        except Exception as e:
+            logger.exception(f"Error getting users with active subscriptions: {e}")
+            return []
+
+    def update_subscription(self, subscription_id: int, **kwargs) -> bool:
+        """Update subscription fields."""
+        try:
+            if not kwargs:
+                return False
+                
+            # Build dynamic update query
+            set_clauses = []
+            values = []
+            
+            for key, value in kwargs.items():
+                if key in ['category', 'feed_id', 'premises', 'keywords', 'method', 'is_active']:
+                    set_clauses.append(f"{key} = ?")
+                    values.append(value)
+            
+            if not set_clauses:
+                return False
+                
+            values.append(subscription_id)
+            
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute(f'''
+                    UPDATE subscriptions 
+                    SET {', '.join(set_clauses)}
+                    WHERE id = ?
+                ''', values)
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.exception(f"Error updating subscription: {e}")
+            return False
+    
+    def delete_subscription(self, subscription_id: int) -> bool:
+        """Delete a subscription (soft delete by setting is_active=0)."""
+        return self.update_subscription(subscription_id, is_active=0)
 
 
 # Dictionary to maintain instances per server

@@ -67,7 +67,7 @@ async def launch_role(name: str, script_rel: str, persistent: bool = False):
         env = os.environ.copy()
         env["ROLE_AGENT_PROCESS"] = "1"
 
-        # Propagate active server to subprocess if it exists
+        # Propagate active server to subprocess if it exists (for compatibility)
         try:
             if ACTIVE_SERVER_FILE.exists():
                 active_server = ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip()
@@ -185,26 +185,24 @@ async def execute_daily_memory_summary_all_servers():
     logger.info(f"[run] 🧠 Daily memory generation completed for all servers")
 
 
+async def execute_recent_memory_summary_all_servers():
+    """Execute recent memory summary for all servers."""
+    try:
+        refreshed = await asyncio.to_thread(refresh_due_recent_memories)
+        if refreshed:
+            logger.info(f"[run] 🧠 Recent memory refresh: {refreshed} server(s) updated")
+    except Exception as e:
+        logger.error(f"[run] ❌ Error in recent memory refresh: {e}")
+
+
 async def execute_relationship_memory_refresh_all_servers():
-    from agent_db import get_all_server_ids
-
-    server_ids = get_all_server_ids()
-    if not server_ids:
-        logger.info("[run] 🧠 No servers found for relationship memory refresh")
-        return
-
-    total_refreshed = 0
-    for server_id in server_ids:
-        try:
-            refreshed = await asyncio.to_thread(refresh_due_relationship_memories, server_id)
-            if refreshed:
-                total_refreshed += refreshed
-                logger.info(f"[run] 🧠 Relationship memories refreshed for '{server_id}': {refreshed} (PRIORITY: 2)")
-        except Exception as e:
-            logger.error(f"[run] ❌ Error refreshing relationship memory for server '{server_id}': {e}")
-
-    if total_refreshed:
-        logger.info(f"[run] 🧠 Relationship memory refresh completed across servers: {total_refreshed} update(s)")
+    """Execute relationship memory refresh for all servers."""
+    try:
+        refreshed = await asyncio.to_thread(refresh_due_relationship_memories)
+        if refreshed:
+            logger.info(f"[run] 🧠 Relationship memory refresh: {refreshed} user relationship(s) updated")
+    except Exception as e:
+        logger.error(f"[run] ❌ Error in relationship memory refresh: {e}")
 
 
 def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
@@ -299,15 +297,6 @@ async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dic
     await execute_relationship_memory_refresh_all_servers()
 
 
-async def _wait_for_active_server_publish(next_run: dict[str, datetime]):
-    if not next_run:
-        return
-    for _ in range(60):
-        if ACTIVE_SERVER_FILE.exists() and ACTIVE_SERVER_FILE.stat().st_size > 0:
-            break
-        await asyncio.sleep(1)
-
-
 # ── Role scheduler ────────────────────────────────────────────────────────────
 
 async def scheduler(config: dict):
@@ -318,9 +307,11 @@ async def scheduler(config: dict):
     if not next_run:
         logger.info("[run] ℹ️  No active roles. Only the main bot is running.")
 
-    await _wait_for_active_server_publish(next_run)
+    # No longer waiting for active server - process all servers immediately
 
-    next_daily_memory_run = datetime.now()
+    # Schedule daily memory 24h from now - the bootstrap in db_init.py handles the first
+    # generation at startup so we avoid a race condition between the two.
+    next_daily_memory_run = datetime.now() + timedelta(hours=24)
     logger.info(f"[run] 🧠 Next global daily memory sweep scheduled for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
 
     next_non_role_run = {

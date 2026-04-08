@@ -152,6 +152,22 @@ class BeggarDonationView(View):
                     delete_after=300  # Delete after 5 minutes
                 )
                 
+                # Register donation as server interaction
+                try:
+                    from agent_db import get_db_for_server
+                    import asyncio
+                    db_instance = get_db_for_server(interaction.guild)
+                    await asyncio.to_thread(
+                        db_instance.register_interaction,
+                        interaction.user.id, interaction.user.name, "BEGGAR_DONATION",
+                        f"Donated {amount} gold for: {self.current_reason}",
+                        interaction.channel.id if interaction.channel else None,
+                        interaction.guild.id if interaction.guild else None,
+                        {"amount": amount, "reason": self.current_reason, "server_id": self.server_id}
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not register beggar donation interaction: {e}")
+                
                 logger.info(f"{user_name} donated {amount} gold to beggar fund in server {self.server_id}")
                 
             else:

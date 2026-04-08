@@ -447,6 +447,15 @@ class BehaviorDB:
                     ORDER BY greeting_sent_at DESC
                     LIMIT 1
                 ''', (user_id,))
+            elif guild_id == "any_guild":
+                # Any guild context - search across all guilds for this user (same as dm_context)
+                cursor.execute('''
+                    SELECT needs_reply, replied, greeting_sent_at, replied_at, greeting_type, guild_id
+                    FROM greetings
+                    WHERE user_id = ?
+                    ORDER BY greeting_sent_at DESC
+                    LIMIT 1
+                ''', (user_id,))
             else:
                 # Specific guild context
                 cursor.execute('''

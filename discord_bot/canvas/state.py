@@ -36,8 +36,8 @@ def _get_canvas_watcher_method_label(guild_id: str) -> str:
     if get_news_watcher_db_instance is None:
         return "Unknown"
     try:
-        db_watcher = get_news_watcher_db_instance(guild_id)
-        method = db_watcher.get_method_config(guild_id)
+        # Method configuration per server is no longer available - default to general
+        method = "general"
     except Exception:
         return "Unknown"
     labels = {

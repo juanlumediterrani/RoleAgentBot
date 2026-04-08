@@ -17,6 +17,44 @@ logger = get_logger('greet_behavior')
 # Track last greetings per user to avoid spam
 _last_greetings = {}
 
+async def _has_unreplied_greeting_any_server(user_id: str) -> bool:
+    """
+    Check if user has an unreplied greeting in ANY server database.
+    
+    Args:
+        user_id: Discord user ID to check
+        
+    Returns:
+        True if user has unreplied greeting in any server, False otherwise
+    """
+    try:
+        # Import here to avoid circular imports
+        from agent_db import get_all_server_keys
+        from behavior.db_behavior import get_behavior_db_instance
+        
+        # Get all server keys
+        server_keys = await asyncio.to_thread(get_all_server_keys)
+        
+        # Check each server's behavior database
+        for server_key in server_keys:
+            behavior_db = get_behavior_db_instance(server_key)
+            greeting_status = await asyncio.to_thread(
+                behavior_db.get_last_greeting_status, 
+                user_id, 
+                "any_guild"  # Use special marker to check across all guilds in this server
+            )
+            
+            if greeting_status.get('has_unreplied_greeting', False):
+                logger.info(f"Found unreplied greeting for user {user_id} in server {server_key}")
+                return True
+        
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error checking unreplied greetings across servers for {user_id}: {e}")
+        # If we can't check properly, err on the side of not sending duplicate greetings
+        return False
+
 def build_greeting_prompt(user_display_name: str, user_id: str, guild) -> str:
     """
     Build a comprehensive contextual prompt for user greetings.
@@ -98,9 +136,9 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
     if before_status != discord.Status.offline or after_status != discord.Status.online:
         return
     
-    # Rate limiting - 1 hour between greetings per user
+    # Rate limiting - 1 hour between greetings per user (across all servers)
     current_time = time.time()
-    last_greeting_key = f"presence_greeting_{after.id}"
+    last_greeting_key = f"presence_greeting_{after.id}"  # User-only key for cross-server tracking
     
     # Check both in-memory cache and database for recent greetings
     if current_time - _last_greetings.get(last_greeting_key, 0) < 3600:
@@ -113,14 +151,12 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         return
     
     try:
-        # Check if user has an unreplied greeting from before
+        # Check if user has an unreplied greeting from ANY server
         server_name = get_server_key(after.guild)
-        behavior_db = get_behavior_db_instance(server_name)
-        greeting_status = await asyncio.to_thread(behavior_db.get_last_greeting_status, after.id, after.guild.id)
         
-        # Skip greeting if user has an unreplied greeting
-        if greeting_status.get('has_unreplied_greeting', False):
-            logger.info(f"Presence greeting skipped for {after.name} - user has unreplied greeting from before")
+        # Check across all server databases for unreplied greetings
+        if await _has_unreplied_greeting_any_server(after.id):
+            logger.info(f"Presence greeting skipped for {after.name} - user has unreplied greeting from another server")
             return
         
         # Build comprehensive contextual prompt for greeting

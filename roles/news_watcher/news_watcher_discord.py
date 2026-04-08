@@ -219,8 +219,8 @@ def register_news_watcher_commands(bot, personality, agent_config):
             if ctx.guild:
                 db_watcher = _get_news_watcher_db(ctx.guild)
                 if db_watcher:
-                    server_id = str(ctx.guild.id)
-                    current_method = db_watcher.get_method_config(server_id)
+                    # Method config per server is no longer available - default to general
+                    current_method = 'general'
                     watcher_help = _build_watcher_help_text_method_specific(current_method)
                 else:
                     watcher_help = _build_watcher_help_text()
@@ -250,9 +250,8 @@ def register_news_watcher_commands(bot, personality, agent_config):
                 await ctx.send("❌ Error accessing News Watcher database.")
                 return
 
-            # Get method-specific help
-            server_id = str(ctx.guild.id)
-            current_method = db_watcher.get_method_config(server_id)
+            # Get method-specific help - method config per server is no longer available
+            current_method = 'general'  # Default method
             help_msg = _build_watcher_channel_help_text_method_specific(current_method)
             await ctx.send(help_msg[:2000])
 

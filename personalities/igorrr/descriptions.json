@@ -1,0 +1,146 @@
+{
+  "discord": {
+    "general": {
+      "status": "Estado de la masa:",
+      "active": "✅ Horneando",
+      "inactive": "❌ Frío como un cadáver",
+      "none": "Nada... SSSSS",
+      "every": "cada",
+      "for": "para",
+      "base_frequency": "Ritmo del Amo:",
+      "current_frequency": "Ritmo actual:",
+      "current_settings": "🔧 **Configuración de la mugre:**",
+      "frequency_format": "Cada {hours}h"
+    },
+    "help_menu": {
+      "title": "📚 ** {_bot_display_name} - Manual de Supervivencia en el Horno**",
+      "description": "**Descripción**\nIgorrr es el servidor jorobado que te vigila mientras duermes. Tiene memoria para tus pecados y puede escupirte comandos si el Amo lo permite.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Labores**\nLos módulos de Labores son las cadenas que Igorrr arrastra para servir al Amo y vigilar a los sacos de harina.",
+      "behavior_section": "**Tics Nerviosos**\nAquí se configuran los caprichos del Amo. Solo para los que mandan en la panadería.",
+      "tips_section": "**Susurros útiles**\n-Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir...\n-Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
+    },
+    "canvas_home_messages": {
+      "title": "🧭 {_bot_display_name} - El Callejón Mugriento",
+      "button_home": "🧭 El Horno",
+      "button_back": "← Atrás (al sótano)",
+      "button_roles": "🎪 Labores",
+      "button_behavior": "🤖 Tics",
+      "button_help": "❓ ¿Khé?",
+      "button_memory": "🧠 Amnesia",
+      "generic_option_label": "Elige tu veneno...",
+      "personalitystatus": "Mugre Cargada:",
+      "description": "-Toca mis herramientas si te atreves. El panel te deja manejar mis hilos... SSSSS.",
+      "recentsynthesistitle": "**Murmullos del Horno**",
+      "dailymemorytitle": "**Memoria de Rata**",
+      "personalsynthesistitle": "**Tu Rastro de Hollín**",
+      "dm_default_server_title": "🔔 **Usando el horno de: {server_name}**",
+      "dm_default_server_message": "*Susurrando desde el privado, usando el primer sótano disponible.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────",
+      "dm_no_servers_available": "❌ No hay sótanos abiertos. Vete al callejón.",
+      "dm_server_access_error": "❌ No puedo entrar al horno desde aquí. SSSSS..."
+    },
+    "canvas_behavior_messages": {
+      "conversation": {
+        "title": "**💬 {_bot_display_name} - Murmullos del Sótano**",
+        "description": "**Descripción:**\n -Igorrr responde a susurros y menciones.\n -Tiene memoria de tus pecados y puede recordarlos cuando quieras.\n -Reacciona a palabras prohibidas si el Amo lo permite.",
+        "button": "💬 Murmullos"
+      },
+      "greetings": {
+        "title": "**👋 {_bot_display_name} - Siseos de Bienvenida**",
+        "description": "**Descripción:**\n -Igorrr sisea cuando los sacos de harina se conectan.\n -Espera 5 min antes de decir que se fue.\n -(Por implementar):\n Reconoce si no le responden y deja de saludar.",
+        "button": "👋 Siseos"
+      },
+      "welcome": {
+        "title": "**🍺 {_bot_display_name} - Bienvenida al Horno**",
+        "description": "**Descripción:**\n -Da la bienvenida a los sacos de harina nuevos al sótano.",
+        "button": "🍺 Bienvenida"
+      },
+      "taboo": {
+        "title": "**🚫 {_bot_display_name} - Palabras Prohibidas**",
+        "description": "**Como funciona:**\n -Configura a Igorrr para que reaccione al leer una palabra.\n -Se puede activar/desactivar o configurar las palabras que huelen mal.",
+        "title_keywords": "Palabras que huelen mal:",
+        "button": "🚫 Prohibido"
+      },
+      "comentary": {
+        "title": "**🗣️ {_bot_display_name} - Comentarios del Horno**",
+        "description": "**Descripción**\n -Igorrr habla solo sobre lo que ve en el horno y los chismes del callejón.",
+        "button": "🗣️ Comentarios"
+      },
+      "role_control": {
+        "title": "**🎛️ {_bot_display_name} - Control de Cadenas**",
+        "description": "**Descripción**\n -Activa o apaga las labores del sótano desde aquí.",
+        "button": "🎛️ Control"
+      }
+    },
+    "canvas_role_messages": {
+      "title": "🎪 **Labores del Horno**",
+      "description": "Elige qué cadena quieres que Igorrr tire hoy. El Amo vigila."
+    },
+    "canvas_memory_messages": {
+      "title": "🧠 **Cerebro Lleno de Hollín**",
+      "description": "Borra mis recuerdos si quieres que olvide cuánto asco me das. O mírame recordar tus pecados."
+    },
+    "roles_view_messages": {
+      "title": "🎭 Labores de {_bot_display_name} 🎭",
+      "description": "🌟 Mira qué cadenas arrastra Igorrr hoy para complacer al Amo.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "TRABAJANDO... SSSSS",
+      "inactive_status": "❌ DURMIENDO",
+      "interval_info": "//⏰ Cada {interval}h",
+      "subroles_info": "🎪 **Sub-labores:** {subroles}",
+      "admin_note": "🔧 **PARA EL AMO:**",
+      "user_note": "👤 **PARA LOS LEPROSOS:**",
+      "help_commands": "💡 **PARA LOS TONTOS:**",
+      "canvas_details": "🎨 **MUGRE EN CANVAS:**",
+      "navigation_help": "Usa los botones grasientos para moverte.",
+      "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA**\n\nIgorrr está rascándose la sarna. Pide al Amo que active algo.\n\n**Labores posibles:**\n• 📡 News Watcher - Vigilante\n• 💎 Treasure Hunter - Buscador de chatarra\n• 🎭 Trickster - Mendigo y cenizas\n• 💰 Banker - El tesoro del Amo\n• 🎵 MC - El gramófono oxidado",
+      "role_list_title": "☠️ Tareas y Castigos",
+      "role_available": "✅ {role} - SIBILANTE Y LISTO",
+      "role_unavailable": "❌ {role} - RASCÁNDOSE LA SARNA"
+    },
+    "settings_labels": {
+      "taboo": {
+        "title": "No digas esto ante el Amo:",
+        "title_keywords": "Palabras prohibidas (huelen mal):",
+        "button": "🚫 Prohibido"
+      },
+      "comentary": {
+        "title": "**🗣️ {_bot_display_name} - Murmullos**",
+        "description": "**Descripción**\\n -Igorrr habla solo sobre lo que ve en el horno y los chismes del callejón.",
+        "button": "🗣️ Murmurar"
+      },
+      "role_control": {
+        "title": "**🎛️ {_bot_display_name} - Control de Cadenas**",
+        "description": "**Descripción**\\n -Activa o apaga mis labores. No me hagas trabajar de más... SSSSS.",
+        "button": "🎛️ Control"
+      }
+    },
+    "readme": {
+      "label_user_question": "Duda del saco de harina:",
+      "task": "Por favor, busca en los papeles manchados la respuesta para este tonto.",
+      "label_documentation": "Papeles del sótano:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "te acuerdas de",
+        "recuerdas",
+        "haz memoria",
+        "acuérdate",
+        "te acuerdas que",
+        "recuerda cuando",
+        "acuérdese",
+        "¿te acuerdas",
+        "¿recuerdas",
+        "haz memoria de",
+        "acuérdate de",
+        "recuerda algo",
+        "te suena",
+        "¿khé recuerdas?",
+        "memoria de rata",
+        "saca el carbón",
+        "mira en el hollín"
+      ]
+    }
+  }
+}

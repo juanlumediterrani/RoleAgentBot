@@ -22,8 +22,8 @@ class NewsFrequencyChecker:
     
     def __init__(self, bot_instance, server_id: str = "default"):
         self.bot = bot_instance
-        self.server_id=server_name
-        self.db = get_news_watcher_db_instance(server_name)
+        self.server_id = server_id
+        self.db = get_news_watcher_db_instance(server_id)
         self.processor = NewsProcessor(self.db)
         self.last_check_time: Optional[datetime] = None
         self.check_interval_hours = 4  # Default to 4 hours

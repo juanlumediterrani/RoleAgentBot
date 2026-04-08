@@ -880,11 +880,10 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             # Try to get a server context (this is tricky in subprocess mode)
             # For now, we'll use a generic approach - in the future this should be server-aware
             try:
-                # Get active server name from runtime
-                from agent_runtime import get_active_server_name
-                from agent_db import AgentDatabase
+                # Get active server ID from database
+                from agent_db import get_active_server_id, AgentDatabase
                 
-                server_name = get_active_server_name()
+                server_name = get_active_server_id()
                 if server_name:
                     db = AgentDatabase(server_name)
                     

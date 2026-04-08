@@ -528,25 +528,7 @@ class NordicRunes:
             from agent_engine import _build_system_prompt, PERSONALITY
             system_instruction = _build_system_prompt(PERSONALITY)
             
-            # Step 7: Log the prompt being sent to AI using the proper prompt logging system
-            from prompts_logger import log_final_llm_prompt
-            from agent_db import get_active_server_id
-            
-            log_final_llm_prompt(
-                provider="gemini",
-                call_type="nordic_runes_reading",
-                system_instruction=system_instruction,
-                user_prompt=formatted_prompt,
-                role="nordic_runes",
-                server_id=server_id or get_active_server_id(),
-                metadata={
-                    "reading_type": reading_type,
-                    "question": question,
-                    "prompt_length": len(formatted_prompt)
-                }
-            )
-            
-            # Step 8: Get AI response using call_llm function
+            # Step 7: Get AI response using call_llm function (logging handled centrally in agent_mind.py)
             ai_response = call_llm(
                 system_instruction=system_instruction,
                 prompt=formatted_prompt,

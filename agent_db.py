@@ -16,12 +16,13 @@ except ImportError:
     def get_personality_name():
         return "HANS"  # fallback
 
-_ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 DB_DIR = Path(__file__).parent / 'databases'
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
+_ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 
 def get_active_server_id() -> str | None:
+    """Get the active server ID from environment or file."""
     env_active = os.getenv("ACTIVE_SERVER_ID")
     if env_active:
         value = env_active.strip()
@@ -33,7 +34,6 @@ def get_active_server_id() -> str | None:
     except Exception:
         return None
     return None
-
 
 def get_all_server_ids() -> list[str]:
     """Get all server IDs that have databases."""
@@ -79,6 +79,7 @@ def get_user_last_server_id(user_id: str) -> str | None:
 
 
 def persist_active_server_id(server_id: str) -> None:
+    """Persist the active server ID to file."""
     try:
         _ACTIVE_SERVER_FILE.write_text(server_id.strip(), encoding="utf-8")
     except Exception:
@@ -102,6 +103,7 @@ def get_shared_data_path(file_name: str, subdir: str = None) -> Path:
 # --- UTILITIES FOR SERVER-SPECIFIC DATABASE MANAGEMENT ---
 
 def _resolve_server_storage_id(server_id: str | None) -> str | None:
+    """Resolve server storage ID with fallback to active server."""
     candidate = str(server_id).strip() if server_id is not None else ""
     if candidate and candidate.isdigit():
         return candidate
@@ -444,24 +446,21 @@ class AgentDatabase:
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ''', params)
                     # Programar actualización de recent memory con lógica anti-atasco
+                    # Solo programar si no hay tareas pendientes existentes
                     cursor.execute('''
-                        INSERT INTO pending_recent_memory_updates
-                        (scheduled_for, status, updated_at)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(scheduled_for) DO UPDATE SET
-                            scheduled_for = CASE
-                                WHEN pending_recent_memory_updates.status = 'pending' 
-                                     AND datetime(pending_recent_memory_updates.scheduled_for) < datetime('now', '-2 hours')
-                                THEN excluded.scheduled_for
-                                ELSE pending_recent_memory_updates.scheduled_for
-                            END,
-                            updated_at = CASE
-                                WHEN pending_recent_memory_updates.status = 'pending' 
-                                     AND datetime(pending_recent_memory_updates.scheduled_for) < datetime('now', '-2 hours')
-                                THEN excluded.updated_at
-                                ELSE pending_recent_memory_updates.updated_at
-                            END
-                    ''', (scheduled_for, "pending", updated_at))
+                        SELECT COUNT(*) FROM pending_recent_memory_updates 
+                        WHERE status = 'pending'
+                    ''')
+                    pending_count = cursor.fetchone()[0]
+                    
+                    if pending_count == 0:
+                        cursor.execute('''
+                            INSERT INTO pending_recent_memory_updates
+                            (scheduled_for, status, updated_at)
+                            VALUES (?, ?, ?)
+                        ''', (scheduled_for, "pending", updated_at))
+                    else:
+                        logger.info(f"[DB] Recent memory update already pending, skipping new task")
                     
                     # Programar actualización de relationship con retraso para evitar solapamiento
                     # Recent memory tiene prioridad, relationship se ejecuta 5 minutos después
@@ -470,20 +469,23 @@ class AgentDatabase:
                     relationship_scheduled_for = (datetime.datetime.fromisoformat(scheduled_for.replace('Z', '+00:00')) + relationship_delay).isoformat()
                     
                     cursor.execute('''
-                        INSERT INTO pending_relationship_updates
-                        (usuario_id, scheduled_for, status, updated_at)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT(usuario_id) DO UPDATE SET
-                            scheduled_for = CASE
-                                WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.scheduled_for
-                                ELSE excluded.scheduled_for
-                            END,
-                            status = CASE
-                                WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.status
-                                ELSE excluded.status
-                            END,
-                            updated_at = excluded.updated_at
-                    ''', (str(user_id), relationship_scheduled_for, "pending", updated_at))
+                        SELECT COUNT(*) FROM pending_relationship_updates 
+                        WHERE usuario_id = ? AND status = 'pending'
+                    ''', (str(user_id),))
+                    relationship_pending_count = cursor.fetchone()[0]
+                    
+                    if relationship_pending_count == 0:
+                        cursor.execute('''
+                            INSERT INTO pending_relationship_updates
+                            (usuario_id, scheduled_for, status, updated_at)
+                            VALUES (?, ?, ?, ?)
+                            ON CONFLICT(usuario_id) DO UPDATE SET
+                                scheduled_for = excluded.scheduled_for,
+                                status = excluded.status,
+                                updated_at = excluded.updated_at
+                        ''', (str(user_id), relationship_scheduled_for, "pending", updated_at))
+                    else:
+                        logger.info(f"[DB] Relationship memory update already pending for user {user_id}, skipping new task")
                     
                     logger.info(f"✅ Interaction registered: user_id={user_id}, type={interaction_type}, channel_id={channel_id}")
                     logger.info(f"🧠 [SCHEDULING] Recent memory: {scheduled_for}, Relationship: {relationship_scheduled_for} (5min delay)")
@@ -571,7 +573,6 @@ class AgentDatabase:
 
     def get_recent_channel_interactions(self, channel_id, within_minutes=60, max_interactions=10):
         """Return recent messages from a specific channel for prompt injection."""
-        fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=within_minutes)).isoformat()
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
@@ -588,20 +589,20 @@ class AgentDatabase:
                     cursor.execute('''
                         SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
                         FROM interacciones
-                        WHERE canal_id = ? AND fecha >= ?
+                        WHERE canal_id = ? AND fecha >= datetime('now', '-{} minutes')
                         ORDER BY fecha DESC
                         LIMIT ?
-                    ''', (str(channel_id), fecha_limite, max_interactions))
+                    '''.format(within_minutes), (str(channel_id), max_interactions))
                 else:
                     logger.info(f"🧠 [DB] No canal_id column, using fallback for channel {channel_id}")
                     # Fallback: try without channel_id filter (older databases)
                     cursor.execute('''
                         SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
                         FROM interacciones
-                        WHERE fecha >= ?
+                        WHERE fecha >= datetime('now', '-{} minutes')
                         ORDER BY fecha DESC
                         LIMIT ?
-                    ''', (fecha_limite, max_interactions))
+                    '''.format(within_minutes), (max_interactions,))
                 
                 rows = cursor.fetchall()
                 logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
@@ -1628,6 +1629,8 @@ _db_instances = {}
 
 def get_db_instance(server_id: str = "default") -> AgentDatabase:
     """Get or create a database instance for a specific server."""
+    global db
+    # Only use active server if no specific server_id provided
     if server_id == "default":
         active = get_active_server_id()
         if active:
@@ -1635,6 +1638,11 @@ def get_db_instance(server_id: str = "default") -> AgentDatabase:
     if server_id not in _db_instances:
         _db_instances[server_id] = AgentDatabase(server_id)
     return _db_instances[server_id]
+
+def get_all_server_keys() -> list[str]:
+    """Get all server keys from the database instances cache."""
+    return list(_db_instances.keys())
+
 db = None
 _current_server_id = None
 
@@ -1654,7 +1662,7 @@ def get_global_db(server_id: str = None, use_default_for_roles: bool = False) ->
     if db is None or _current_server_id != server_id:
         db = get_db_instance(server_id)
         _current_server_id = server_id
-        logger.info(f"🗄️ [DB] Global database initialized for server: {server_id}")
+        logger.debug(f"🗄️ [DB] Global database initialized for server: {server_id}")
     
     return db
 

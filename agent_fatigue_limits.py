@@ -36,8 +36,8 @@ def get_fatigue_limits() -> Dict[str, Any]:
         logger.warning(f"Error loading fatigue limits config: {e}")
         # Return default limits
         return {
-            'user': {'daily_max': 50, 'hourly_max': 10, 'burst_max': 5},
-            'server': {'daily_max': 500, 'hourly_max': 100, 'burst_max': 20},
+            'user': {'daily_max': 50, 'hourly_max': 25, 'burst_max': 10},
+            'server': {'daily_max': 500, 'hourly_max': 200, 'burst_max': 100},
             'exemptions': {'admin_users': [], 'critical_tasks': []},
             'behavior': {'strict_mode': False, 'grace_period': 3, 'cooldown_minutes': 15}
         }

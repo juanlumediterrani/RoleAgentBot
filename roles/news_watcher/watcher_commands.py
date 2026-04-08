@@ -67,8 +67,8 @@ class WatcherCommands:
             if server_name:
                 self.db_watcher = get_news_watcher_db_instance(server_name)
             else:
-                from agent_db import get_active_server_name
-                server_name = get_active_server_name()
+                from agent_db import get_active_server_id
+                server_name = get_active_server_id()
                 if not server_name:
                     raise RuntimeError("No active server configured for watcher commands")
                 self.db_watcher = get_news_watcher_db_instance(server_name)
@@ -239,7 +239,7 @@ class WatcherCommands:
             await message.channel.send(get_message('error_general', error=e))
 
     async def cmd_subscribe(self, message, args):
-        """Subscribe the user to a category or a specific feed (flat subscription)."""
+        """Subscribe the user to a category or specific feed (auto-detects keywords vs flat)."""
         if not args:
             await message.channel.send(get_message('uso_suscribir'))
             return
@@ -250,13 +250,20 @@ class WatcherCommands:
             category = self._normalize_category(args[0])
             feed_id = None
             
+            # Check if user has keywords configured
+            keywords = db.get_user_keywords(user_id)
+            
             # Validate category and feed
             feed_id = await self._validate_category_and_feed(message, category, args, db)
             if feed_id is None and len(args) > 1:  # Validation failed
                 return
             
-            # Handle flat subscription using unified handler
-            await self._handle_flat_subscribe(message, user_id, category, feed_id)
+            if keywords:
+                # User has keywords - use keyword subscription
+                await self._handle_keyword_subscribe(message, user_id, category, feed_id)
+            else:
+                # No keywords - use flat subscription
+                await self._handle_flat_subscribe(message, user_id, category, feed_id)
                 
         except Exception as e:
             logger.exception(f"Error in cmd_subscribe: {e}")
@@ -730,6 +737,9 @@ class WatcherCommands:
         if sub == "list":
             await self.cmd_keywords_list(message, subargs)
             return
+        if sub == "del":
+            await self.cmd_keywords_del(message, subargs)
+            return
         if sub == "mod":
             await self.cmd_keywords_mod(message, subargs)
             return
@@ -740,64 +750,63 @@ class WatcherCommands:
             await self.cmd_keywords_unsubscribe(message, subargs)
             return
 
-        # Default: treat first arg as "kw1,kw2" payload
+        # Default: treat first arg as "kw1,kw2" payload - requires category
         try:
             db = self._get_db()
             user_id = str(message.author.id)
 
-            keywords = args[0].strip('"\'')
-            category = None
-            feed_id = None
-
-            if len(args) > 1:
-                category = self._normalize_category(args[1])
-                if len(args) > 2:
-                    try:
-                        feed_id = int(args[2])
-                        feeds = db.get_active_feeds(category)
-                        feed_exists = any(f[0] == feed_id for f in feeds)
-                        if not feed_exists:
-                            await message.channel.send(get_message('feed_id_not_found', feed_id=feed_id, category=category))
-                            return
-                    except ValueError:
-                        await message.channel.send(get_message('feed_id_must_be_number'))
-                        return
-                else:
-                    categories = db.get_available_categories()
-                    if not any(cat[0] == category for cat in categories):
-                        await message.channel.send(get_message('error_categoria_no_encontrada', category=category))
-                        return
-
-            if not keywords:
-                await message.channel.send(get_message('debes_proporcionar_palabras'))
+            if len(args) < 2:
+                await message.channel.send("Usage: `!watcher keywords 'kw1,kw2' <category> [feed_id]`")
                 return
 
+            keywords = args[0].strip('"\'')
+            category = self._normalize_category(args[1])
+            feed_id = None
+
+            if len(args) > 2:
+                try:
+                    feed_id = int(args[2])
+                    feeds = db.get_active_feeds(category)
+                    feed_exists = any(f[0] == feed_id for f in feeds)
+                    if not feed_exists:
+                        await message.channel.send(f"Feed ID {feed_id} not found in category '{category}'")
+                        return
+                except ValueError:
+                    await message.channel.send("Feed ID must be a number")
+                    return
+            else:
+                categories = db.get_available_categories()
+                if not any(cat[0] == category for cat in categories):
+                    await message.channel.send(f"Category '{category}' not found")
+                    return
+
+            if not keywords:
+                await message.channel.send("You must provide keywords")
+                return
+
+            # Check subscription type
             current_subscription_type = db.check_user_subscription_type(user_id)
             if current_subscription_type == 'keywords':
-                await message.channel.send(get_message('already_have_keywords_subscription'))
+                await message.channel.send("You already have a keywords subscription")
                 return
             if current_subscription_type in ['flat', 'ai']:
                 await message.channel.send(
-                    f"⚠️ You have an active '{current_subscription_type}' subscription. You can only have ONE subscription type at a time. Use `!watcher reset` to clear all subscriptions."
+                    f"You have an active '{current_subscription_type}' subscription. Use `!watcher reset` to clear all subscriptions."
                 )
                 return
 
-            if db.subscribe_keywords(user_id, keywords, None, category, feed_id):
-                if feed_id:
-                    await message.channel.send(f"🔍 **Keywords subscription** to feed {feed_id} in '{category}' - Searching: '{keywords}'")
-                elif category:
-                    await message.channel.send(f"🔍 **Keywords subscription** to '{category}' - Searching: '{keywords}'")
-                else:
-                    await message.channel.send(f"🔍 **Global keywords subscription** - Searching: '{keywords}'")
-            else:
-                await message.channel.send(get_message('error_suscribiendo_palabras_clave'))
+            # Save keywords first
+            db.update_user_keywords(user_id, keywords)
+            
+            # Use unified handler for subscription
+            await self._handle_keyword_subscribe(message, user_id, category, feed_id)
 
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_subscribe: {e}")
-            await message.channel.send(get_message('error_suscribiendo_palabras_clave'))
+            await message.channel.send("Error subscribing keywords")
     
     async def cmd_keywords_add(self, message, args):
-        """Add a keyword to the user's saved keyword list."""
+        """Add a keyword to the user's keyword list (max 7)."""
         if not args:
             await message.channel.send(get_message('uso_keywords_add'))
             return
@@ -805,40 +814,90 @@ class WatcherCommands:
         try:
             db = self._get_db()
             user_id = str(message.author.id)
-            keyword = args[0]
+            new_keyword = args[0].strip('"\'')
+            
+            if not new_keyword:
+                await message.channel.send("You must provide a keyword")
+                return
             
             # Get current keywords
             current_keywords = db.get_user_keywords(user_id)
             
             if not current_keywords:
-                # If there are no keywords yet, create a new list
-                if db.subscribe_keywords(user_id, keyword, None, None, None):
-                    await message.channel.send(get_message('keyword_added_list', keyword=keyword, keywords=keyword))
+                # If there are no keywords yet, create new list with this keyword
+                if db.update_user_keywords(user_id, new_keyword):
+                    await message.channel.send(f"Keyword list created: '{new_keyword}' (1/7)")
                 else:
-                    await message.channel.send(get_message('error_adding_keyword'))
+                    await message.channel.send("Error creating keyword list")
             else:
                 # Add to the existing list
                 keywords_list = current_keywords.split(',')
-                if keyword in keywords_list:
-                    await message.channel.send(f"ℹ️ Keyword '{keyword}' is already in your list")
+                if len(keywords_list) >= 7:
+                    await message.channel.send("Maximum 7 keywords allowed. Use `!watcher keywords del <index>` to remove some first.")
                     return
                 
-                keywords_list.append(keyword)
+                if new_keyword in keywords_list:
+                    await message.channel.send(f"Keyword '{new_keyword}' is already in your list")
+                    return
+                
+                keywords_list.append(new_keyword)
                 updated_keywords = ','.join(keywords_list)
                 
                 if db.update_user_keywords(user_id, updated_keywords):
-                    await message.channel.send(get_message('keyword_added_list', keyword=keyword, keywords=updated_keywords))
+                    await message.channel.send(f"Keyword added: '{new_keyword}' ({len(keywords_list)}/7)")
                 else:
-                    await message.channel.send(get_message('error_adding_keyword'))
+                    await message.channel.send("Error adding keyword")
                     
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_add: {e}")
-            await message.channel.send(get_message('error_adding_keyword'))
+            await message.channel.send("Error adding keyword")
+    
+    async def cmd_keywords_del(self, message, args):
+        """Delete a keyword by index."""
+        if not args:
+            await message.channel.send("Usage: !watcher keywords del <index>")
+            return
+        
+        try:
+            db = self._get_db()
+            user_id = str(message.author.id)
+            
+            try:
+                index = int(args[0]) - 1  # Convert to 0-based index
+            except ValueError:
+                await message.channel.send("Index must be a number")
+                return
+            
+            keywords = db.get_user_keywords(user_id)
+            if not keywords:
+                await message.channel.send("You have no keywords configured")
+                return
+            
+            keywords_list = keywords.split(',')
+            
+            if index < 0 or index >= len(keywords_list):
+                await message.channel.send(f"Invalid index. You have {len(keywords_list)} keywords (1-{len(keywords_list)})")
+                return
+            
+            removed_keyword = keywords_list.pop(index)
+            
+            if keywords_list:
+                updated_keywords = ','.join(keywords_list)
+                db.update_user_keywords(user_id, updated_keywords)
+                await message.channel.send(f"Keyword removed: '{removed_keyword}' ({len(keywords_list)}/7 remaining)")
+            else:
+                # Remove all keywords if list is empty
+                db.update_user_keywords(user_id, "")
+                await message.channel.send(f"Keyword removed: '{removed_keyword}' (0/7 remaining)")
+                
+        except Exception as e:
+            logger.exception(f"Error in cmd_keywords_del: {e}")
+            await message.channel.send("Error removing keyword")
     
     async def cmd_keywords_add_canvas(self, message, args):
         """Canvas-compatible version of cmd_keywords_add that returns a string."""
         if not args:
-            return "❌ No keyword provided"
+            return "No keyword provided"
         
         try:
             db = self._get_db()
@@ -849,28 +908,28 @@ class WatcherCommands:
             current_keywords = db.get_user_keywords(user_id)
             
             if not current_keywords:
-                # If there are no keywords yet, create a new list
-                if db.subscribe_keywords(user_id, keyword, None, None, None):
-                    return f"✅ Keyword '{keyword}' added. Current list: {keyword}"
+                # If there are no keywords yet, create new list with this keyword
+                if db.update_user_keywords(user_id, keyword):
+                    return f"Keyword '{keyword}' added. Current list: {keyword}"
                 else:
-                    return "❌ Error adding keyword"
+                    return "Error adding keyword"
             else:
                 # Add to the existing list
                 keywords_list = current_keywords.split(',')
                 if keyword in keywords_list:
-                    return f"ℹ️ Keyword '{keyword}' is already in your list"
+                    return f"Keyword '{keyword}' is already in your list"
                 
                 keywords_list.append(keyword)
                 updated_keywords = ','.join(keywords_list)
                 
                 if db.update_user_keywords(user_id, updated_keywords):
-                    return f"✅ Keyword '{keyword}' added. Current list: {updated_keywords}"
+                    return f"Keyword '{keyword}' added. Current list: {updated_keywords}"
                 else:
-                    return "❌ Error adding keyword"
+                    return "Error adding keyword"
                     
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_add_canvas: {e}")
-            return "❌ Error adding keyword"
+            return "Error adding keyword"
     
     async def cmd_keywords_list(self, message, args):
         """List the user's saved keywords."""
@@ -1071,38 +1130,52 @@ class WatcherCommands:
     async def cmd_mixed_subscribe(self, message, args):
         """Subscribe to specialized + general feeds in a category."""
         if not args:
-            await message.channel.send(get_message('usage_mixto'))
+            await message.channel.send("Usage: !watcher subscribe mixed <category>")
             return
         
         try:
             db = self._get_db()
+            user_id = str(message.author.id)
             category = self._normalize_category(args[0])
             
             # Verify that the category exists
             categories = db.get_available_categories()
             if not any(cat[0] == category for cat in categories):
-                await message.channel.send(get_message('error_categoria_no_encontrada', category=category))
+                await message.channel.send(f"Category '{category}' not found")
                 return
             
-            # Subscribe to specialized feeds (without feed_id)
-            if db.subscribe_user_category(str(message.author.id), category):
-                # Also subscribe to general feeds if they exist
-                feeds = db.get_active_feeds(category)
-                general_feeds = [f for f in feeds if f[8] == 'general']
-                
-                for feed in general_feeds:
-                    db.subscribe_user_category(str(message.author.id), category, feed[0])
-                
-                if general_feeds:
-                    await message.channel.send(f"✅ Subscribed to mixed coverage for '{category}' (specialized + general)")
+            # Get all feeds in category
+            feeds = db.get_active_feeds(category)
+            general_feeds = [f for f in feeds if f[8] == 'general']
+            specialized_feeds = [f for f in feeds if f[8] != 'general']
+            
+            # Subscribe to all feeds using unified create_subscription
+            success_count = 0
+            for feed in feeds:
+                subscription_id = db.create_subscription(
+                    user_id=user_id,
+                    channel_id=None,
+                    category=category,
+                    feed_id=feed[0],
+                    method="flat",
+                    created_by=user_id
+                )
+                if subscription_id:
+                    success_count += 1
+            
+            if success_count > 0:
+                if general_feeds and specialized_feeds:
+                    await message.channel.send(f"Subscribed to mixed coverage for '{category}': {len(specialized_feeds)} specialized + {len(general_feeds)} general feeds")
+                elif general_feeds:
+                    await message.channel.send(f"Subscribed to {len(general_feeds)} general feeds in '{category}'")
                 else:
-                    await message.channel.send(f"✅ Subscribed to specialized coverage for '{category}'")
+                    await message.channel.send(f"Subscribed to {len(specialized_feeds)} specialized feeds in '{category}'")
             else:
-                await message.channel.send("❌ Error creating mixed subscription")
+                await message.channel.send("Error creating mixed subscriptions")
                 
         except Exception as e:
             logger.exception(f"Error in cmd_mixed_subscribe: {e}")
-            await message.channel.send("❌ Error subscribing to mixed coverage")
+            await message.channel.send("Error creating mixed subscription")
     
     async def cmd_keywords_status(self, message, args):
         """Show the user's keyword subscriptions."""
@@ -1134,33 +1207,28 @@ class WatcherCommands:
             await message.channel.send("❌ Error getting keywords")
     
     async def cmd_channel_keywords(self, message, args):
-        """Subscribe the current channel to keywords."""
+        """Subscribe the current channel to keywords in a category or feed."""
         if not args:
-            await message.channel.send(get_message('usage_canal_palabras'))
-            return
-
-        if args and args[0].lower() == "unsubscribe":
-            await self.cmd_channel_keywords_unsubscribe(message, args[1:] if len(args) > 1 else [])
-            return
-        
-        # Check permissions
-        if not message.author.guild_permissions.manage_channels:
-            await message.channel.send(get_message('permisos_gestionar_canales'))
+            await message.channel.send("Usage: !watcher channel keywords <category> [feed_id|all]")
             return
         
         try:
             db = self._get_db()
-            keywords = " ".join(args).strip('"\'')
-            channel = message.channel
+            category = self._normalize_category(args[0])
+            user_id = str(message.author.id)
+            channel_id = str(message.channel.id)
             
-            if db.subscribe_keywords(str(message.author.id), keywords, str(channel.id)):
-                await message.channel.send(get_message('channel_keywords_subscription_successful', keywords=keywords))
-            else:
-                await message.channel.send(get_message('error_subscribing_channel_keywords'))
-                
+            # Validate category and feed
+            feed_id = await self._validate_category_and_feed(message, category, args[1:], db)
+            if feed_id is None and len(args) > 2:  # Validation failed
+                return
+            
+            # Use unified handler with channel_id
+            await self._handle_keyword_subscribe(message, user_id, category, feed_id, channel_id)
+            
         except Exception as e:
             logger.exception(f"Error in cmd_channel_keywords: {e}")
-            await message.channel.send(get_message('error_suscribir_canal_palabras'))
+            await message.channel.send("Error processing channel keywords subscription")
     
     async def cmd_channel_keywords_unsubscribe(self, message, args):
         """Cancel a channel keywords subscription."""
@@ -1448,67 +1516,37 @@ class WatcherCommands:
     async def cmd_channel_general_subscribe(self, message, args):
         """AI subscription for a channel: analyze news using channel premises."""
         if not args:
-            await message.channel.send(get_message('usage_canal_suscribir'))
+            await message.channel.send("Usage: !watcher channel general <category> [feed_id|all]")
             return
         
         try:
             # Check admin permissions
             if not message.author.guild_permissions.administrator:
-                await message.channel.send(get_message('permisos_gestionar_canales'))
+                await message.channel.send("You need Administrator permission to subscribe this channel with premises.")
                 return
             
             db = self._get_db()
-            channel_id = str(message.channel.id)
-            channel_name = message.channel.name
-            server_id = str(message.guild.id)
-            server_name = message.guild.name
             category = self._normalize_category(args[0])
+            user_id = str(message.author.id)
+            channel_id = str(message.channel.id)
             
-            # Validate category and feed using the validation function
+            # Check whether the channel has configured premises
+            premises, context = db.get_premises_with_context(channel_id)
+            if not premises:
+                await message.channel.send("This channel has no premises configured. Use channel premise commands first.")
+                return
+            
+            # Validate category and feed
             feed_id = await self._validate_category_and_feed(message, category, args, db)
             if feed_id is None and len(args) > 1:  # Validation failed
                 return
             
-            # Check whether the channel has configured premises
-            premises, context = db.get_channel_premises_with_context(channel_id)
-            if not premises:
-                await message.channel.send(get_message('no_premisas_canal_configuradas'))
-                return
+            # Use unified handler with channel_id
+            await self._handle_general_subscribe(message, user_id, category, feed_id, channel_id)
             
-            # Handle 'all' parameter for channel AI subscriptions
-            if feed_id == 'all':
-                feeds = db.get_active_feeds(category)
-                if not feeds:
-                    await message.channel.send(f"❌ No feeds found in category '{category}'")
-                    return
-                
-                success_count = 0
-                premises_str = ",".join(premises) if premises else ""
-                user_id = str(message.author.id)  # Get the user who is creating the subscription
-                for feed in feeds:
-                    if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed[0], premises_str, user_id):
-                        success_count += 1
-                
-                if success_count > 0:
-                    await message.channel.send(f"🤖 **AI channel subscription** to ALL {success_count} feeds in '{category}' - I will analyze critical news based on the channel premises")
-                else:
-                    await message.channel.send(get_message('error_creando_suscripcion_ia'))
-                return
-            
-            # Create single AI channel subscription
-            premises_str = ",".join(premises) if premises else ""
-            user_id = str(message.author.id)  # Get the user who is creating the subscription
-            if db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_name, category, feed_id, premises_str, user_id):
-                if feed_id:
-                    await message.channel.send(f"🤖 **AI channel subscription** to feed {feed_id} in '{category}' - I will analyze critical news based on the channel premises")
-                else:
-                    await message.channel.send(f"🤖 **AI channel subscription** to '{category}' - I will analyze critical news based on the channel premises")
-            else:
-                await message.channel.send(get_message('error_creando_suscripcion_ia'))
-                
         except Exception as e:
             logger.exception(f"Error in cmd_channel_general_subscribe: {e}")
-            await message.channel.send(get_message('error_procesando_suscripcion_ia'))
+            await message.channel.send("Error creating channel AI subscription")
     
     async def cmd_channel_general_unsubscribe(self, message, args):
         """Cancel a channel AI subscription for category/feed."""
@@ -1566,87 +1604,34 @@ class WatcherCommands:
         return category_icons.get(category, '📰')
     
     async def cmd_channel_subscribe(self, message, args):
-        """Subscribe the current channel to a category or feed."""
+        """Subscribe the current channel to a category or feed using AI analysis."""
         if not args:
-            await message.channel.send(get_message('usage_canal_suscribir'))
+            await message.channel.send("Usage: !watcher channel subscribe <category> [feed_id|all]")
             return
         
         # Check permissions (requires manage channel)
         if not message.author.guild_permissions.manage_channels:
-            await message.channel.send(get_message('permisos_gestionar_canales'))
+            await message.channel.send("You need 'Manage Channels' permission to subscribe this channel.")
             return
         
         try:
             db = self._get_db(str(message.guild.id))
             category = self._normalize_category(args[0])
-            
-            # Check subscription limits
+            user_id = str(message.author.id)
             channel_id = str(message.channel.id)
-            can_channel_sub, channel_msg = db.can_channel_subscribe(channel_id)
-            if not can_channel_sub:
-                await message.channel.send(f"❌ {channel_msg}")
-                return
             
-            can_server_sub, server_msg = db.can_server_accept_subscription()
-            if not can_server_sub:
-                await message.channel.send(f"❌ {server_msg}")
-                return
-            
-            # Validate category and feed using the validation function
+            # Validate category and feed
             feed_id = await self._validate_category_and_feed(message, category, args, db)
             if feed_id is None and len(args) > 1:  # Validation failed
                 return
             
-            # Perform AI channel subscription by default
-            channel = message.channel
-            server = message.guild
+            # Use unified handler with channel_id
+            await self._handle_general_subscribe(message, user_id, category, feed_id, channel_id)
             
-            # Use AI subscription with role-specific default premises
-            try:
-                db_watcher = get_news_watcher_db_instance(str(server.id))
-                default_premises_list = db_watcher._get_default_premises()
-                default_premises = ", ".join(default_premises_list)
-            except Exception:
-                # Fallback to generic premises if there's an error
-                default_premises = "interesting news, relevant events, important developments"
-            
-            # Handle 'all' parameter for channel subscriptions
-            if feed_id == 'all':
-                feeds = db.get_active_feeds(category)
-                if not feeds:
-                    await message.channel.send(f"❌ No feeds found in category '{category}'")
-                    return
-                
-                success_count = 0
-                user_id = str(message.author.id)  # Get the user who is creating the subscription
-                for feed in feeds:
-                    if db.subscribe_channel_category_ai(
-                        str(channel.id), channel.name, str(server.id), server.name, category, feed[0], default_premises, user_id
-                    ):
-                        success_count += 1
-                
-                if success_count > 0:
-                    await message.channel.send(f"✅ **Channel subscription** to ALL {success_count} feeds in '{category}' - AI analysis enabled")
-                else:
-                    await message.channel.send(get_message('error_creando_suscripcion_ia'))
-                return
-            
-            # Create single channel subscription
-            user_id = str(message.author.id)  # Get the user who is creating the subscription
-            if db.subscribe_channel_category_ai(
-                str(channel.id), channel.name, str(server.id), server.name, category, feed_id, default_premises, user_id
-            ):
-                if feed_id:
-                    await message.channel.send(get_message('channel_subscription_successful_feed', feed_id=feed_id, category=category))
-                else:
-                    await message.channel.send(get_message('channel_subscription_successful_category', category=category))
-            else:
-                await message.channel.send(get_message('error_creando_suscripcion_ia'))
-                
         except Exception as e:
             logger.exception(f"Error in cmd_channel_subscribe: {e}")
-            await message.channel.send(get_message('error_procesando_suscripcion_ia'))
-    
+            await message.channel.send("Error creating channel subscription")
+                
     async def _validate_channel_category_and_feed(self, message, category: str, args: list, db) -> int | None:
         """Validate category and optional feed_id for channel commands, returns feed_id or None."""
         # Check if it's a specific feed_id
@@ -2272,8 +2257,8 @@ class WatcherCommands:
             server_id = str(message.guild.id)
             
             if not args:
-                # Show current method
-                current_method = db.get_method_config(server_id)
+                # Show current method - now defaults to 'general' since method_config table is removed
+                current_method = 'general'  # Default method
                 method_names = {
                     'flat': 'Flat (all news with opinion)',
                     'keyword': 'Keywords (filtered news)',
@@ -2310,28 +2295,33 @@ class WatcherCommands:
                 await message.channel.send("❌ Invalid method. Use: `flat`, `keyword`, or `general`")
                 return
             
-            if db.set_method_config(server_id, new_method):
-                method_names = {
-                    'flat': 'Flat (all news with opinion)',
-                    'keyword': 'Keywords (filtered news)',
-                    'general': 'AI (critical news analysis)'
-                }
-                
-                embed = discord.Embed(
-                    title="✅ **Method Configuration Updated**",
-                    description=f"**New Method:** {method_names.get(new_method, new_method)}",
-                    color=discord.Color.green()
-                )
-                
-                embed.add_field(
-                    name="What this means:",
-                    value=self._get_method_description(new_method),
-                    inline=False
-                )
-                
-                await message.channel.send(embed=embed)
-            else:
-                await message.channel.send("❌ Error updating method configuration")
+            # Method configuration per server is no longer supported with unified subscription system
+            # Each subscription now has its own method
+            method_names = {
+                'flat': 'Flat (all news with opinion)',
+                'keyword': 'Keywords (filtered news)',
+                'general': 'AI (critical news analysis)'
+            }
+            
+            embed = discord.Embed(
+                title="ℹ️ **Method Configuration Information**",
+                description=f"**Requested Method:** {method_names.get(new_method, new_method)}",
+                color=discord.Color.orange()
+            )
+            
+            embed.add_field(
+                name="⚠️ **System Update**",
+                value="Server-wide method configuration has been replaced with individual subscription methods. Each subscription now has its own method (flat/keyword/general).",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="What this means:",
+                value=self._get_method_description(new_method),
+                inline=False
+            )
+            
+            await message.channel.send(embed=embed)
                 
         except Exception as e:
             logger.exception(f"Error in cmd_method: {e}")
@@ -2540,126 +2530,190 @@ class WatcherCommands:
             if feed_id is None and len(args) > 2:  # Validation failed
                 return
             
+            # Determine if this is a channel subscription (command used in channel) or user subscription (DM)
+            # For now, default to user subscription - channel commands have their own handlers
+            channel_id = None
+            
             # Route to appropriate method handler
             if method == 'flat':
-                await self._handle_flat_subscribe(message, user_id, category, feed_id)
+                await self._handle_flat_subscribe(message, user_id, category, feed_id, channel_id)
             elif method == 'keyword':
-                await self._handle_keyword_subscribe(message, user_id, category, feed_id)
+                await self._handle_keyword_subscribe(message, user_id, category, feed_id, channel_id)
             elif method == 'general':
-                await self._handle_general_subscribe(message, user_id, category, feed_id)
+                await self._handle_general_subscribe(message, user_id, category, feed_id, channel_id)
                 
         except Exception as e:
             logger.exception(f"Error in cmd_unified_subscribe: {e}")
             await message.channel.send("❌ Error processing subscription")
 
-    async def _handle_flat_subscribe(self, message, user_id: str, category: str, feed_id):
-        """Handle flat subscription."""
+    async def _handle_flat_subscribe(self, message, user_id: str, category: str, feed_id, channel_id: str = None):
+        """Handle flat subscription using unified create_subscription."""
         try:
             db = self._get_db()
             
             # Check subscription limits
-            can_user_sub, user_msg = db.can_user_subscribe(user_id)
-            if not can_user_sub:
-                await message.channel.send(f"❌ {user_msg}")
+            if channel_id:
+                can_sub, msg = db.can_channel_subscribe(channel_id)
+            else:
+                can_sub, msg = db.can_user_subscribe(user_id)
+            if not can_sub:
+                await message.channel.send(f"Error: {msg}")
                 return
             
             # Handle 'all' parameter
             if feed_id == 'all':
                 feeds = db.get_active_feeds(category)
                 if not feeds:
-                    await message.channel.send(f"❌ No feeds found in category '{category}'")
+                    await message.channel.send(f"No feeds found in category '{category}'")
                     return
                 
                 success_count = 0
                 for feed in feeds:
-                    if db.subscribe_user_category(user_id, category, feed[0]):
+                    subscription_id = db.create_subscription(
+                        user_id=user_id if not channel_id else None,
+                        channel_id=channel_id,
+                        category=category,
+                        feed_id=feed[0],
+                        method="flat",
+                        created_by=user_id
+                    )
+                    if subscription_id:
                         success_count += 1
                 
                 if success_count > 0:
-                    await message.channel.send(f"✅ **Flat subscription** to ALL {success_count} feeds in '{category}' - You will receive ALL news with AI opinions")
+                    target = f"channel {channel_id}" if channel_id else "you"
+                    await message.channel.send(f"Flat subscription created for {target}: {success_count} feeds in '{category}'")
                 else:
-                    await message.channel.send("❌ Error creating flat subscriptions")
+                    await message.channel.send("Error creating flat subscriptions")
                 return
             
             # Create single subscription
-            if db.subscribe_user_category(user_id, category, feed_id):
+            subscription_id = db.create_subscription(
+                user_id=user_id if not channel_id else None,
+                channel_id=channel_id,
+                category=category,
+                feed_id=feed_id,
+                method="flat",
+                created_by=user_id
+            )
+            
+            if subscription_id:
+                target = f"channel {channel_id}" if channel_id else "you"
                 if feed_id:
-                    await message.channel.send(f"✅ **Flat subscription** to feed {feed_id} in '{category}' - You will receive ALL news with AI opinions")
+                    await message.channel.send(f"Flat subscription created for {target}: feed {feed_id} in '{category}'")
                 else:
-                    await message.channel.send(f"✅ **Flat subscription** to '{category}' - You will receive ALL news with AI opinions")
+                    await message.channel.send(f"Flat subscription created for {target}: '{category}'")
             else:
-                await message.channel.send("❌ Error creating flat subscription")
+                await message.channel.send("Error creating flat subscription")
                 
         except Exception as e:
             logger.exception(f"Error in flat subscribe: {e}")
             await message.channel.send("❌ Error processing flat subscription")
 
-    async def _handle_keyword_subscribe(self, message, user_id: str, category: str, feed_id):
-        """Handle keyword subscription."""
+    async def _handle_keyword_subscribe(self, message, user_id: str, category: str, feed_id, channel_id: str = None):
+        """Handle keyword subscription using unified create_subscription."""
         try:
             db = self._get_db()
             
-            # Check if user has keywords configured
-            keywords = db.get_user_keywords(user_id)
+            # Get keywords from user_premises (for users) or channel storage (for channels)
+            if channel_id:
+                keywords = db.get_channel_keywords(channel_id)
+            else:
+                keywords = db.get_user_keywords(user_id)
+            
             if not keywords:
-                await message.channel.send("⚠️ You have no keywords configured. Use `!watcher keywords add <keyword>` first.")
+                if channel_id:
+                    await message.channel.send("This channel has no keywords configured.")
+                else:
+                    await message.channel.send("You have no keywords configured. Use `!watcher keywords add <keyword>` first.")
                 return
             
             # Check subscription limits
-            can_user_sub, user_msg = db.can_user_subscribe(user_id)
-            if not can_user_sub:
-                await message.channel.send(f"❌ {user_msg}")
+            if channel_id:
+                can_sub, msg = db.can_channel_subscribe(channel_id)
+            else:
+                can_sub, msg = db.can_user_subscribe(user_id)
+            if not can_sub:
+                await message.channel.send(f"Error: {msg}")
                 return
             
             # Handle 'all' parameter
             if feed_id == 'all':
                 feeds = db.get_active_feeds(category)
                 if not feeds:
-                    await message.channel.send(f"❌ No feeds found in category '{category}'")
+                    await message.channel.send(f"No feeds found in category '{category}'")
                     return
                 
                 success_count = 0
                 for feed in feeds:
-                    if db.subscribe_keywords(user_id, keywords, None, category, feed[0]):
+                    subscription_id = db.create_subscription(
+                        user_id=user_id if not channel_id else None,
+                        channel_id=channel_id,
+                        category=category,
+                        feed_id=feed[0],
+                        keywords=keywords,
+                        method="keyword",
+                        created_by=user_id
+                    )
+                    if subscription_id:
                         success_count += 1
                 
                 if success_count > 0:
-                    await message.channel.send(f"✅ **Keyword subscription** to ALL {success_count} feeds in '{category}' - Filtering: '{keywords}'")
+                    target = f"channel {channel_id}" if channel_id else "you"
+                    await message.channel.send(f"Keyword subscription created for {target}: {success_count} feeds in '{category}' with keywords: {keywords}")
                 else:
-                    await message.channel.send("❌ Error creating keyword subscriptions")
+                    await message.channel.send("Error creating keyword subscriptions")
                 return
             
             # Create single subscription
-            if db.subscribe_keywords(user_id, keywords, None, category, feed_id):
+            subscription_id = db.create_subscription(
+                user_id=user_id if not channel_id else None,
+                channel_id=channel_id,
+                category=category,
+                feed_id=feed_id,
+                keywords=keywords,
+                method="keyword",
+                created_by=user_id
+            )
+            
+            if subscription_id:
+                target = f"channel {channel_id}" if channel_id else "you"
                 if feed_id:
-                    await message.channel.send(f"✅ **Keyword subscription** to feed {feed_id} in '{category}' - Filtering: '{keywords}'")
+                    await message.channel.send(f"Keyword subscription created for {target}: feed {feed_id} in '{category}' with keywords: {keywords}")
                 else:
-                    await message.channel.send(f"✅ **Keyword subscription** to '{category}' - Filtering: '{keywords}'")
+                    await message.channel.send(f"Keyword subscription created for {target}: '{category}' with keywords: {keywords}")
             else:
-                await message.channel.send("❌ Error creating keyword subscription")
+                await message.channel.send("Error creating keyword subscription")
                 
         except Exception as e:
             logger.exception(f"Error in keyword subscribe: {e}")
-            await message.channel.send("❌ Error processing keyword subscription")
+            await message.channel.send("Error processing keyword subscription")
 
-    async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id, return_result: bool = False):
-        """Handle general (AI) subscription."""
+    async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id, channel_id: str = None, return_result: bool = False):
+        """Handle general (AI) subscription using unified create_subscription."""
         try:
             db = self._get_db()
             
-            # Ensure the user has premises configured
-            premises, context = db.get_premises_with_context(user_id)
+            # Get premises from user_premises (for users) or channel storage (for channels)
+            if channel_id:
+                premises, context = db.get_premises_with_context(channel_id)
+            else:
+                premises, context = db.get_premises_with_context(user_id)
+            
             if not premises:
-                error_msg = "⚠️ You have no premises configured. Use `!watcher premises add <premise>` before subscribing."
+                error_msg = "You have no premises configured. Use `!watcher premises add <premise>` before subscribing."
                 if return_result:
                     return False, error_msg
                 await message.channel.send(error_msg)
                 return None if return_result else None
             
             # Check subscription limits
-            can_user_sub, user_msg = db.can_user_subscribe(user_id)
-            if not can_user_sub:
-                error_msg = f"❌ {user_msg}"
+            if channel_id:
+                can_sub, msg = db.can_channel_subscribe(channel_id)
+            else:
+                can_sub, msg = db.can_user_subscribe(user_id)
+            if not can_sub:
+                error_msg = f"Error: {msg}"
                 if return_result:
                     return False, error_msg
                 await message.channel.send(error_msg)
@@ -2669,7 +2723,7 @@ class WatcherCommands:
             if feed_id == 'all':
                 feeds = db.get_active_feeds(category)
                 if not feeds:
-                    error_msg = f"❌ No feeds found in category '{category}'"
+                    error_msg = f"No feeds found in category '{category}'"
                     if return_result:
                         return False, error_msg
                     await message.channel.send(error_msg)
@@ -2678,16 +2732,26 @@ class WatcherCommands:
                 success_count = 0
                 premises_str = ",".join(premises) if premises else ""
                 for feed in feeds:
-                    if db.subscribe_user_category_ai(user_id, category, feed[0], premises_str):
+                    subscription_id = db.create_subscription(
+                        user_id=user_id if not channel_id else None,
+                        channel_id=channel_id,
+                        category=category,
+                        feed_id=feed[0],
+                        premises=premises_str,
+                        method="general",
+                        created_by=user_id
+                    )
+                    if subscription_id:
                         success_count += 1
                 
                 if success_count > 0:
-                    success_msg = f"🤖 **AI subscription** to ALL {success_count} feeds in '{category}' - I'll analyze critical news using your premises"
+                    target = f"channel {channel_id}" if channel_id else "you"
+                    success_msg = f"AI subscription created for {target}: {success_count} feeds in '{category}' - I'll analyze critical news using premises"
                     if return_result:
                         return True, success_msg
                     await message.channel.send(success_msg)
                 else:
-                    error_msg = "❌ Error creating AI subscriptions"
+                    error_msg = "Error creating AI subscriptions"
                     if return_result:
                         return False, error_msg
                     await message.channel.send(error_msg)
@@ -2695,11 +2759,22 @@ class WatcherCommands:
             
             # Create single subscription
             premises_str = ",".join(premises) if premises else ""
-            if db.subscribe_user_category_ai(user_id, category, feed_id, premises_str):
+            subscription_id = db.create_subscription(
+                user_id=user_id if not channel_id else None,
+                channel_id=channel_id,
+                category=category,
+                feed_id=feed_id,
+                premises=premises_str,
+                method="general",
+                created_by=user_id
+            )
+            
+            if subscription_id:
+                target = f"channel {channel_id}" if channel_id else "you"
                 if feed_id:
-                    success_msg = f"🤖 **AI subscription** to feed {feed_id} in '{category}' - I'll analyze critical news using your premises"
+                    success_msg = f"AI subscription created for {target}: feed {feed_id} in '{category}' - I'll analyze critical news using premises"
                 else:
-                    success_msg = f"🤖 **AI subscription** to '{category}' - I'll analyze critical news using your premises"
+                    success_msg = f"AI subscription created for {target}: '{category}' - I'll analyze critical news using premises"
                 
                 if return_result:
                     return True, success_msg

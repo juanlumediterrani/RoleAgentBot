@@ -54,7 +54,14 @@ def generate_keywords_hash(keywords: str) -> str:
         return ""
     
     # Normalize keywords: sort, lowercase, remove extra whitespace
-    keyword_list = [k.strip().lower() for k in keywords.split(',') if k.strip()]
+    # Handle both string and list inputs for keywords
+    if isinstance(keywords, list):
+        keyword_list = [str(k).strip().lower() for k in keywords if k and str(k).strip()]
+    elif isinstance(keywords, str):
+        keyword_list = [k.strip().lower() for k in keywords.split(',') if k.strip()]
+    else:
+        logger.warning(f"Invalid keywords type: {type(keywords)} in normalization")
+        return ""
     keyword_list.sort()  # Sort for consistent ordering
     normalized = ",".join(keyword_list)
     
@@ -158,9 +165,13 @@ class NewsProcessor:
         all_subscriptions = []
         
         try:
-            # Get flat subscriptions
-            flat_subs = self.db.get_all_user_subscriptions_flat()
-            for user_id, category, feed_id in flat_subs:
+            # Get flat subscriptions from unified system
+            unified_subs = self.db.get_all_active_subscriptions()
+            for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
+                # Only include user flat subscriptions
+                if channel_id or method != "flat":
+                    continue
+                    
                 all_subscriptions.append({
                     'user_id': user_id,
                     'channel_id': None,
@@ -170,9 +181,13 @@ class NewsProcessor:
                     'filter_criteria': None
                 })
             
-            # Get keyword subscriptions
-            keyword_subs = self.db.get_all_user_subscriptions_keywords()
-            for user_id, category, feed_id, keywords in keyword_subs:
+            # Get keyword subscriptions from unified system
+            unified_subs = self.db.get_all_active_subscriptions()
+            for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
+                # Only include user keyword subscriptions
+                if channel_id or method != "keyword":
+                    continue
+                    
                 all_subscriptions.append({
                     'user_id': user_id,
                     'channel_id': None,
@@ -182,9 +197,13 @@ class NewsProcessor:
                     'filter_criteria': keywords
                 })
             
-            # Get AI subscriptions
-            ai_subs = self.db.get_all_user_subscriptions_ai()
-            for user_id, category, feed_id, premises in ai_subs:
+            # Get AI subscriptions from unified system
+            unified_subs = self.db.get_all_active_subscriptions()
+            for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
+                # Only include user AI subscriptions
+                if channel_id or method != "general":
+                    continue
+                    
                 all_subscriptions.append({
                     'user_id': user_id,
                     'channel_id': None,
@@ -204,40 +223,28 @@ class NewsProcessor:
         all_subscriptions = []
         
         try:
-            # Get flat channel subscriptions
-            flat_subs = self.db.get_all_channel_subscriptions_flat()
-            for channel_id, category, feed_id in flat_subs:
+            # Get unified subscriptions (includes both user and channel subscriptions)
+            unified_subs = self.db.get_all_active_subscriptions()
+            for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
+                # Only include channel subscriptions in this function
+                if not channel_id:
+                    continue
+                    
+                # Determine filter criteria based on method
+                if method == 'general' and premises:
+                    filter_criteria = premises
+                elif method == 'keyword' and keywords:
+                    filter_criteria = keywords
+                else:
+                    filter_criteria = None
+                    
                 all_subscriptions.append({
-                    'user_id': None,
+                    'user_id': user_id,
                     'channel_id': channel_id,
                     'category': category,
                     'feed_id': feed_id,
-                    'method': 'flat',
-                    'filter_criteria': None
-                })
-            
-            # Get keyword channel subscriptions
-            keyword_subs = self.db.get_all_channel_subscriptions_keywords()
-            for channel_id, category, feed_id, keywords in keyword_subs:
-                all_subscriptions.append({
-                    'user_id': None,
-                    'channel_id': channel_id,
-                    'category': category,
-                    'feed_id': feed_id,
-                    'method': 'keyword',
-                    'filter_criteria': keywords
-                })
-            
-            # Get AI channel subscriptions
-            ai_subs = self.db.get_all_channel_subscriptions_ai()
-            for channel_id, category, feed_id, premises in ai_subs:
-                all_subscriptions.append({
-                    'user_id': None,
-                    'channel_id': channel_id,
-                    'category': category,
-                    'feed_id': feed_id,
-                    'method': 'general',
-                    'filter_criteria': premises
+                    'method': method,
+                    'filter_criteria': filter_criteria
                 })
                 
         except Exception as e:
@@ -548,8 +555,14 @@ class NewsProcessor:
             return message
         
         # Perform keyword matching
-        keyword_list = [k.strip().lower() for k in keywords.split(',')]
-        text_to_check = f"{news_item.title} {news_item.content}".lower()
+        # Handle both string and list inputs for keywords
+        if isinstance(keywords, list):
+            keyword_list = [str(k).strip().lower() for k in keywords if k and str(k).strip()]
+        elif isinstance(keywords, str):
+            keyword_list = [k.strip().lower() for k in keywords.split(',')]
+        else:
+            logger.warning(f"Invalid keywords type: {type(keywords)} in news processing")
+            return message
         
         matched_keywords = [k for k in keyword_list if k in text_to_check]
         

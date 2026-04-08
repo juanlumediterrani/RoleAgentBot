@@ -793,3 +793,158 @@ if 'hourly_requests' not in columns:
 - **Appeal Process**: Method for users to request limit increases
 
 This fatigue limit system provides robust protection against LLM abuse while maintaining excellent user experience through intelligent exemptions and clear communication.
+
+## 16. Canvas Command Name Filtering
+
+### 16.1 Purpose and Overview
+
+The Canvas command system supports bot name filtering to allow multiple bots with different personalities and configurations to coexist in the same Discord server without command conflicts.
+
+### 16.2 Command Syntax
+
+#### Basic Usage (responds to any bot)
+```
+!canvas [section] [target] [detail]
+```
+
+#### Name-Filtered Usage (responds only to specific bot)
+```
+!canvas <bot_name> [section] [target] [detail]
+```
+
+### 16.3 Implementation Logic
+
+#### Parameter Processing
+1. **Name Detection**: Bot name extracted from `ctx.bot.user.name`
+2. **Case Insensitive Matching**: Bot names compared in lowercase
+3. **Parameter Shifting**: When name filter activated, parameters shift left:
+   - Input: `!canvas bot_name section target`
+   - Processed as: `section target`
+
+#### Response Logic
+| Command Pattern | Bot Response Behavior |
+|-----------------|---------------------|
+| `!canvas` | All bots respond |
+| `!canvas <valid_section>` | All bots respond |
+| `!canvas <bot_name>` | Only matching bot responds |
+| `!canvas <unknown_name>` | No bots respond |
+
+#### Valid Sections
+```python
+valid_sections = {"home", "role", "roles", "personal", "help", "behavior"}
+```
+
+### 16.4 Multi-Bot Server Examples
+
+#### Scenario: Three bots in one server
+- **Herr Hans** - German personality bot
+- **Putre** - Spanish personality bot  
+- **Kronk** - Friendly assistant bot
+
+#### Command Behaviors
+| Command | Herr Hans | Putre | Kronk |
+|---------|-----------|-------|-------|
+| `!canvas home` | ✅ Responds | ✅ Responds | ✅ Responds |
+| `!canvas herr hans role news_watcher` | ✅ Responds | ❌ Ignores | ❌ Ignores |
+| `!canvas putre role news_watcher` | ❌ Ignores | ✅ Responds | ❌ Ignores |
+| `!canvas kronk role news_watcher` | ❌ Ignores | ❌ Ignores | ✅ Responds |
+| `!canvas unknownbot role news_watcher` | ❌ Ignores | ❌ Ignores | ❌ Ignores |
+
+### 16.5 Technical Implementation
+
+#### Core Function Location
+- **File**: `discord_bot/canvas/command.py`
+- **Function**: `cmd_canvas()`
+- **Lines**: 20-35 (name filtering logic)
+
+#### Key Code Components
+```python
+# Bot name detection and matching
+bot_name = ctx.bot.user.name.lower()
+section_lower = (section or "").strip().lower()
+
+# Name filter activation
+if section_lower == bot_name:
+    logger.info(f"Canvas command targeted to bot '{section}' - name filter activated")
+    # Shift parameters left
+    section = target or "home"
+    target = detail or ""
+    detail = ""
+elif section_lower and section_lower not in valid_sections:
+    logger.info(f"Canvas command with unknown name '{section}' - ignoring as it's for another bot")
+    return  # Don't respond
+```
+
+### 16.6 Bot-Specific Configurations
+
+Each bot can maintain independent:
+- **Personalities**: Different character traits and response styles
+- **Enabled Roles**: Different sets of available commands and features
+- **Database Instances**: Separate data storage per bot
+- **Configurations**: Individual settings and preferences
+
+### 16.7 Logging and Monitoring
+
+#### Log Messages
+- **Name Filter Activation**: `Canvas command targeted to bot '{name}' - name filter activated`
+- **Command Ignored**: `Canvas command with unknown name '{name}' - ignoring as it's for another bot`
+- **Parameter Processing**: `Canvas command parameters after processing: section='{section}', target='{target}', detail='{detail}'`
+
+#### Debugging Information
+- Original command parameters logged
+- Final processed parameters logged
+- Bot name matching decisions logged
+
+### 16.8 Error Handling and User Experience
+
+#### Updated Help Messages
+- **Section Help**: Includes name filtering examples
+- **Role Help**: Shows bot-specific targeting options
+- **Error Messages**: Clear guidance on proper syntax
+
+#### Examples of Updated Messages
+```
+❌ Unknown canvas section. Use: `!canvas home`, `!canvas roles`, `!canvas role <name>`, 
+`!canvas personal`, `!canvas help`, or `!canvas <bot_name> [section]` to target a specific bot.
+```
+
+### 16.9 Backward Compatibility
+
+#### Maintained Functionality
+- All existing `!canvas` commands continue to work unchanged
+- No breaking changes to current command syntax
+- Name filtering is purely additive enhancement
+
+#### Migration Path
+- **Immediate**: Existing commands work without modification
+- **Optional**: Users can gradually adopt name filtering for specific bot targeting
+- **Seamless**: No configuration changes required
+
+### 16.10 Use Cases and Benefits
+
+#### Multi-Bot Environments
+1. **Specialized Bots**: Different bots for different purposes (news, gaming, administration)
+2. **Language Variants**: Same functionality with different language personalities
+3. **Testing Environments**: Production and test bots running simultaneously
+4. **Role Separation**: Different bots with different permission levels
+
+#### Operational Benefits
+1. **Conflict Prevention**: No command interference between bots
+2. **User Control**: Precise bot targeting when needed
+3. **Scalability**: Easy addition of new bots to existing servers
+4. **Maintainability**: Clear separation of bot responsibilities
+
+### 16.11 Future Enhancements
+
+#### Potential Improvements
+- **Bot Aliases**: Multiple names for same bot
+- **Priority Systems**: Bot response ordering when multiple bots could respond
+- **Dynamic Bot Discovery**: Automatic detection of available bots in server
+- **Configuration-Driven Names**: Bot names configurable per server
+
+#### Extension Points
+- **Custom Name Matching**: Regex patterns for complex name filtering
+- **Bot Groups**: Target multiple bots with similar characteristics
+- **Conditional Filtering**: Different behavior based on user permissions or context
+
+This Canvas name filtering system provides a robust foundation for multi-bot environments while maintaining full backward compatibility and excellent user experience.

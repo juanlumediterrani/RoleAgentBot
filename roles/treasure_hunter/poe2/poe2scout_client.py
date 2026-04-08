@@ -56,13 +56,12 @@ class Poe2ScoutClient:
             return
         
         try:
-            logger.info(f"🔄 Downloading items database for league: {league}")
+            logger.info(f"Downloading items database for league: {league}")
             
-            # Use the endpoint /items?league={league}
-            url = f"{self.BASE}/items"
-            params = {'league': league}
+            # Use correct endpoint structure: /api/{Realm}/Leagues/{LeagueName}/Items
+            url = f"{self.BASE}/poe2/Leagues/{league}/Items"
             
-            response = self.session.get(url, params=params, timeout=self.timeout)
+            response = self.session.get(url, timeout=self.timeout)
             response.raise_for_status()
             
             items_data = response.json()
@@ -71,11 +70,11 @@ class Poe2ScoutClient:
             items_dict = {}
             
             for item in items_data:
-                item_id = item.get('itemId')
+                item_id = item.get('ItemId')
                 
                 # Search in different name fields
-                name_fields = [item.get('text', ''), item.get('name', '')]
-                api_id = item.get('apiId', '')
+                name_fields = [item.get('Text', ''), item.get('Name', '')]
+                api_id = item.get('ApiId', '')
                 
                 for name in name_fields:
                     if name and item_id:
@@ -90,7 +89,7 @@ class Poe2ScoutClient:
                         items_dict[api_id_lower] = item_id
             
             Poe2ScoutClient._items_cache[league] = items_dict
-            logger.info(f"✅ Items database loaded for {league}: {len(items_dict)} items")
+            logger.info(f"Items database loaded for {league}: {len(items_dict)} items")
             
         except Exception as e:
             logger.error(f"❌ Error loading items database for {league}: {e}")
@@ -219,7 +218,7 @@ class Poe2ScoutClient:
 
         return None
 
-    def get_item_history(self, item_id: int, league: str = 'Standard',
+    def _get_item_history_internal(self, item_id: int, league: str = 'Standard',
                          log_count: int = None, days: int = None,
                          reference_currency: str = 'divine') -> List[PriceEntry]:
         """Retrieve item price history from poe2scout API.
@@ -245,7 +244,8 @@ class Poe2ScoutClient:
                 return 4
             return n if n % 4 == 0 else n + (4 - (n % 4))
 
-        url = f"{self.BASE}/items/{item_id}/history"
+        # Use correct endpoint: /api/{Realm}/Leagues/{LeagueName}/Items/{ItemId}/History
+        url = f"{self.BASE}/poe2/Leagues/{league}/Items/{item_id}/History"
         adjusted_log_count = _round_up_to_4(log_count)
         if adjusted_log_count != log_count:
             logger.debug(f"Adjusting log_count {log_count} -> {adjusted_log_count} (multiple of 4)")
@@ -255,10 +255,9 @@ class Poe2ScoutClient:
         end_time = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         
         params = {
-            'league': league,
-            'logCount': adjusted_log_count,
-            'referenceCurrency': reference_currency,
-            'endTime': end_time,
+            'LogCount': adjusted_log_count,
+            'ReferenceCurrency': reference_currency,
+            'EndTime': end_time,
         }
 
 
@@ -381,8 +380,8 @@ class Poe2ScoutClient:
         
         if item_id:
             try:
-                # Use correct parameters according to API: 720 entries, current endTime, divine currency
-                entries = self.get_item_history(
+                # Use correct endpoint: /api/{Realm}/Leagues/{LeagueName}/Items/{ItemId}/History
+                entries = self._get_item_history_internal(
                     item_id, 
                     league=league, 
                     log_count=720,  # 24h * 30d = 720 entries

@@ -158,7 +158,7 @@
         "instructions":" - Haga clic donar en el menú desplegable de abajo.\n - Espere los resultados semanales al final de esta.\n - Participe con cualquier cantidad y Hans lo tendrá en cuenta.\n",
         "title_donations":"📊 ** Donaciones:**",
         "no_donations":" No hay donaciones todavía. ¡Sea el primero en contribuir!",
-        "beggar_donation_success": "¡Gracias por donar {amount} de marcos para la causa: {reason}! 🪙",
+        "beggar_donation_success": "¡Se ha anotado tu contribución de {amount} marcos para la causa: {reason}! 🪙",
         "dropdown":{
             "beggar_donate": "Recaudar: Donar",
             "beggar_donate_description": "Hacer una donación para proyectos del regimiento",

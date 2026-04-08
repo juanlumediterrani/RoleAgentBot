@@ -1,0 +1,122 @@
+{
+  "discord": {
+    "command_prefix": "!",
+    "member_greeting": {
+      "welcome_channel": "general",
+      "prompt": "Sisea como una serpiente y saluda al nuevo saco de harina {member_name} que ha entrado en la panadería {server_name}. Dile que no toque nada con sus manos limpias y que el horno tiene hambre.",
+      "fallback": "¡SSSSS! ¡Olemos carne fresca y harina blanca! ¿Viene a servir al Amo o terminará alimentando el fuego, {member_name}?",
+      "greetings_enabled": "¡SSSSS! Igorrr vigilará la puerta. Avisaré cuando un nuevo saco de harina asome la cabeza.",
+      "greetings_disabled": "¡KHÉ! Pues que entren solos. Menos trabajo para mi espalda torcida...",
+      "welcome_enabled": "¡JEJEJE! Igorrr dará la bienvenida. ¡Más leña para que el horno nunca se apague!",
+      "welcome_disabled": "¡PUAJ! Cerraré la trampilla. Demasiada gente limpia por aquí hoy."
+    },
+    "member_presence": {
+      "fallback": "¡SSSSS! ¿Khé hace {user_name}? Me distrae de mi rascado de sarna..."
+    },
+    "general_messages": {
+      "help_sent_private": "¡SSSSS! Te he tirado un pergamino grasiento al privado. Léelo o úsalo para prender el fuego.",
+      "readme_sent_private": "¡KHÉ! Te mando el mapa del sótano por privado. No te pierdas o el Amo te usará de relleno de empanadilla.",
+      "voice_leave_empty": "¡SSSSS! Igorrr se larga del canal. No hay sacos de harina que me escuchen susurrar."
+    },
+    "subrole_messages": {
+      "beggar_task_success": "¡SSSSS! Ya he pedido monedas a los leprosos. ¡A ver si sueltan algo!",
+      "beggar_task_error": "¡KHÉ! No pude pedir monedas. El Amo me azotará...",
+      "ring_task_success": "¡JEJEJE! Ya he preguntado por el anillo. Alguien sabe algo... lo huelo.",
+      "ring_task_error": "¡PUAJ! Los secretos están más cerrados que el horno en invierno.",
+      "beggar_donation_request": "¡SSSSS! ¡Saco de harina! Igorrr necesita monedas para {reason}. ¡Dame o te escupo!",
+      "ring_investigation": "¡KHÉ! Busco el anillo del Amo. ¿Lo tienes tú? ¡No mientas o te horneo vivo!",
+      "beggar_keyword_detected": "¡SSSSS! ¿Hablas de monedas? ¡Igorrr también quiere! ¡Suelta la bolsa!",
+      "ring_keyword_detected": "¡KHÉ! ¿Dices anillos? Busco uno especial... ¡Dime dónde está, pedazo de tonto!",
+      "beggar_donation_success": "Gracias por las monedas para {reason}... SSSSS... las guardaré bien. 🪙"
+    },
+    "dice_game_messages": {
+      "invitation": "🎲 ¡Ven a jugar con los dientes de rata de Igorrr! 🎲 ¡Apuesta tus monedas si quieres acabar en el horno!",
+      "winner": "¡¡¡KHÉ!!! ¡Maldita suerte de cara limpia tenéis algunos! Me habéis desplumado.",
+      "loser": "¡JEJEJE! Tu suerte es tan negra como mi pulmón. 🎲 ¡Tus monedas ahora son para mi ungüento!",
+      "big_pot_announcement": "🔥 **¡EL BOTE QUEMA MÁS QUE EL PAN!** 🔥\n¡Robad estas monedas antes de que el Amo las vea! {balance:,} :coin:\n",
+      "animation": "🎲🎲🎲 ¡TIRA LOS DIENTES DE RATA! 🎲🎲🎲",
+      "insufficient_balance": "¡SSSSS! No tienes ni para un mendrugo. Necesitas {bet:,} monedas. Tu saco está vacío.",
+      "pot_won": "🎉🎉🎉 ¡EL SACO DE HARINA SE LLEVA EL BOTE! 🎉🎉🎉",
+      "prize_multiplier": "🎊 ¡GANASTE! Tiraste {combination} - Botín: {prize:,} monedas mugrientas!",
+      "sin_premio": "{combination} - ¡PUAJ! ¡Nada para ti! ¡Más monedas para Igorrr, lárgate!",
+      "error_jugada": "¡Maldición! El horno ha escupido ceniza... algo falló: {error}",
+      "jackpot_won_announcement": "🎉 ¡SSSSS! **{player}** se llevó el bote y nos robó **{prize:,}** monedas en **{server}**!",
+      "error_admin_only": "¡KHÉ! Solo el Amo puede mandarme eso, saco de harina.",
+      "error_config_parameter": "¡SSSSS! Di qué quieres cambiar. `!dice config bet <cantidad>` o `on/off`.",
+      "error_specify_amount": "¡KHÉ! Di cuánto. Ejemplo: `!dice config bet 15`.",
+      "error_bet_range": "¡SSSSS! Entre 1 y 1000, no seas tonto.",
+      "fixed_bet_configured": "✅ **Tarifa del horno lista** - Cada juego costará {amount:,} monedas.",
+      "error_configuring_bet": "❌ ¡KHÉ! No pude cambiar el precio.",
+      "error_announcement_value": "❌ ¡SSSSS! Valor malo. Usa 'on' u 'off'.",
+      "announcements_configured": "✅ **Gritos listos** - Avisos de bote ahora en modo: {enabled}.",
+      "error_configuring_announcements": "❌ ¡KHÉ! Error con los gritos."
+    },
+    "dice_game_balance_messages": {
+      "big_pot": "🔥 **¡EL BOTE QUEMA COMO EL INFIERNO!** 🔥\n¡Un saco de harina listo robaría estas {balance:,} monedas ahora mismo!\n",
+      "medium_pot": "📈 **Bote tibio** - Ya huele bien, ¡tira los dados! SSSSS.",
+      "small_pot": "📉 **Bote frío** - Pocas cenizas aún, deja que crezca.",
+      "sent_private": "📩 Te he susurrado el estado del tesoro al privado.",
+      "balance_error": "❌ ¡KHÉ! El humo no me deja ver el cofre del oro."
+    },
+    "watcher_messages": {
+      "subscription_successful_category": "¡SSSSS! Igorrr olfateará '{category}' para ti. ¡Te avisaré cuando huela a quemado!",
+      "subscription_successful_feed": "¡KHÉ! He clavado el ojo en {feed_id} de '{category}'. ¡Nada escapará!",
+      "channel_subscription_successful_category": "🤖 ¡Este horno ahora tiene el ojo de Igorrr! Analizaré '{category}' con mis cenizas.",
+      "channel_subscription_successful_feed": "🤖 ¡Traeré la mugre de {feed_id} de '{category}' a este canal!",
+      "subscription_cancelled_category": "¡SSSSS! Dejo de mirar '{category}'. ¡Ya olía a rancio!",
+      "subscription_cancelled_feed": "¡KHÉ! Saqué el ojo de {feed_id} de '{category}'. ¡Se acabó!",
+      "channel_subscription_cancelled_category": "¡PUAJ! Limpié el hollín de aquí. No más avisos sobre '{category}'.",
+      "channel_subscription_cancelled_feed": "¡SSSSS! Quemé el rastro de {feed_id} de '{category}' en este sótano.",
+      "general_error": "¡KHÉ! La magia del horno está rota. Error: {error}",
+      "subscription_error": "¡SSSSS! No quiero oler esa basura. ¡Púdrete!",
+      "cancellation_error": "¡PUAJ! No puedo borrar esa marca. El horno falla..."
+    },
+    "nordic_runes_messages": {
+      "welcome": "🔮 ¡SSSSS! Igorrr y sus trozos de carbón están listos. El destino es amargo como el centeno, ¿quieres probar?",
+      "casting": "🔮 ¡KHÉ! Lanzo las brasas al suelo... ¡mira cómo bailan!",
+      "success": "🔮 ¡JEJEJE! Las cenizas han hablado. Escucha, si no eres sordo...",
+      "error": "🔮 ¡PUAJ! Una rata me ha movido los carbones. Intenta otra vez.",
+      "no_question": "🔮 ¡SSSSS! ¿Qué quieres saber? No hablo por hablar, saco de harina.",
+      "invalid_type": "🔮 ¡KHÉ! Tipo de lectura malo. Usa: single, three, cross...",
+      "history_empty": "🔮 Tu historial está limpio... demasiado limpio para mi gusto.",
+      "reading_saved": "🔮 Guardé este susurro en mis papeles grasientos."
+    },
+    "mc_messages": {
+      "voice_join_empty": "¡SSSSS! Igorrr entra en la cueva de ruido. ¡Oid mi gramófono oxidado!",
+      "song_added": "¡JEJEJE! Metí {song} en el saco. ¡Qué ruido tan delicioso!",
+      "song_skipped": "¡PUAJ! Ese ruido no me gusta. ¡A la basura! ¡El siguiente!",
+      "volume_set": "¡KHÉ! Puse el estruendo al {volume}. ¡Que os sangren los oídos!",
+      "no_permissions": "¡SSSSS! No tengo la llave de esa puerta. Está cerrada.",
+      "queue_end_disconnect": "¡KHÉ! Se acabó el ruido. Me vuelvo al horno si no ponéis nada en 5 minutos.",
+      "inactive_disconnect": "¡SSSSS! Me aburro. Me voy a mi rincón a rascarme la sarna.",
+      "timeout_connecting": "¡PUAJ! La magia del Amo va lenta hoy. Me tropecé al entrar.",
+      "voice_connection_error": "¡KHÉ! Me pegué en la joroba al entrar. ¡Qué dolor!",
+      "discord_connect_error": "¡SSSSS! El gran ojo no deja pasar a Igorrr.",
+      "volume_range_error": "¡KHÉ! Entre 0 y 100, pedazo de tonto.",
+      "volume_adjust_error": "¡PUAJ! La manivela del volumen está rota.",
+      "dm_help_blocked": "¡SSSSS! Tu puerta está cerrada. Abre los privados para que Igorrr entre.",
+      "no_voice_connection": "¡KHÉ! No estoy atado a ningún sitio todavía.",
+      "voice_disconnected": "¡PUAJ! Alguien cortó la cuerda. Me echaron.",
+      "critical_voice_error": "¡GRAAAH! ¡Mis oídos! ¡Error crítico en el sótano!",
+      "connected_to_voice": "🎤 Igorrr arrastra los pies hasta {channel_name}...",
+      "no_dm_permission": "📭 No puedo lanzarte el pergamino. ¡Quita los cerrojos de tus mensajes!",
+      "presence_status": "Usa !canvas o te horneo... SSSSS.",
+      "canvas_mc_overview_title": "🎵 El Gramófono de Igorrr"
+    },
+    "poe2_hunter_messages": {
+      "poe2_activated": "✅ ¡KHÉ! El ojo de Igorrr ya vigila los granos de PoE2.",
+      "poe2_already_active": "¡SSSSS! Ya estoy mirando, no me agobies.",
+      "poe2_not_active": "¡PUAJ! No estoy mirando nada de eso ahora.",
+      "poe2_deactivated": "❌ Cerré el ojo. Menos trabajo para mi espalda.",
+      "dm_only": "❌ ¡KHÉ! Solo en el sótano privado, saco de harina.",
+      "no_active_servers": "❌ No hay hornos activos. Enciende uno primero.",
+      "invalid_league": "❌ ¡SSSSS! Esa liga no existe. Elige una de estas: {leagues}",
+      "downloading_league_items": "🔄 Igorrr busca tesoros en la nueva liga...",
+      "league_changed": "✅ ¡KHÉ! Ahora miro en: {league}.",
+      "item_added": "✅ ¡JEJEJE! Apunté '{item}' en mi lista de deseos.",
+      "item_removed": "❌ ¡PUAJ! Borré '{item}' de mis papeles.",
+      "item_not_found": "❌ ¿KHÉ? Eso no está en mi lista, fíjate bien.",
+      "list_empty": "🌫️ Mi lista está más vacía que mi estómago."
+    }
+  }
+}

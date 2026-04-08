@@ -689,80 +689,7 @@ class RolesDatabase:
             logger.error(f"Failed to delete POE2 subscription for user {user_id} in server {server_id}: {e}")
             return False
 
-    def migrate_roles_from_behavior(self) -> bool:
-        """Migrate roles from behavior.db to roles_config - create new roles and update existing ones."""
-        try:
-            from behavior.db_behavior import get_behavior_db_instance
-            behavior_db = get_behavior_db_instance(self.server_id)
-            
-            # Get all roles from behavior.db
-            conn_behavior = sqlite3.connect(behavior_db.db_path)
-            cursor_behavior = conn_behavior.cursor()
-            
-            cursor_behavior.execute("SELECT role_name, enabled FROM roles ORDER BY role_name")
-            behavior_roles = cursor_behavior.fetchall()
-            
-            conn_behavior.close()
-            
-            if not behavior_roles:
-                logger.info(f"No roles found in behavior.db for server {server_id}")
-                return False
-            
-            migrated = 0
-            updated = 0
-            
-            for role_name, enabled in behavior_roles:
-                # Check if role already exists in roles_config
-                existing_config = self.get_role_config(role_name)
-                
-                if existing_config and existing_config.get('created_at'):
-                    # Role exists, update if different
-                    if existing_config.get('enabled') != bool(enabled):
-                        config_data = existing_config.get('config_data', '{}')
-                        if not config_data:
-                            config_data = '{}'
-                        
-                        # Add migration info to config_data
-                        try:
-                            import json
-                            data = json.loads(config_data) if config_data else {}
-                        except:
-                            data = {}
-                        
-                        data['migrated_from_behavior'] = True
-                        data['migration_date'] = datetime.now().isoformat()
-                        data['original_enabled'] = bool(enabled)
-                        
-                        success = self.save_role_config(role_name, bool(enabled), json.dumps(data))
-                        if success:
-                            updated += 1
-                            logger.info(f"Updated role {role_name} from behavior.db: enabled={bool(enabled)}")
-                        else:
-                            logger.error(f"Failed to update role {role_name} from behavior.db")
-                    else:
-                        logger.info(f"Role {role_name} already exists with same state")
-                else:
-                    # Role doesn't exist, create it
-                    config_data = {
-                        'migrated_from_behavior': True,
-                        'migration_date': datetime.now().isoformat(),
-                        'original_enabled': bool(enabled)
-                    }
-                    
-                    success = self.save_role_config(role_name, bool(enabled), json.dumps(config_data))
-                    if success:
-                        migrated += 1
-                        logger.info(f"Migrated role {role_name} from behavior.db: enabled={bool(enabled)}")
-                    else:
-                        logger.error(f"Failed to migrate role {role_name} from behavior.db")
-            
-            logger.info(f"Migration completed: {migrated} new roles, {updated} updated roles from behavior.db to roles_config")
-            return (migrated + updated) > 0
-            
-        except Exception as e:
-            logger.error(f"Error migrating roles from behavior.db: {e}")
-            return False
-    
+        
     def ensure_default_roles(self) -> bool:
         """Ensure all default roles exist in roles_config."""
         try:
@@ -876,9 +803,12 @@ class RolesDatabase:
                                                 from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
                                                 beggar_config = get_beggar_config(self.server_id)
 
+                                                # Only initialize if reason is not already set
                                                 if not beggar_config.get_current_reason():
                                                     selected_reason = beggar_config.select_new_reason()
                                                     logger.info(f"Initialized beggar reason during subrole update: {selected_reason}")
+                                                else:
+                                                    logger.debug(f"Beggar reason already exists: {beggar_config.get_current_reason()}")
                                             except Exception as e:
                                                 logger.warning(f"Failed to initialize beggar reason during subrole update: {e}")
                                 else:

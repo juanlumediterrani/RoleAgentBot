@@ -316,7 +316,7 @@ class Poe2SubroleBot(discord.Client):
             user = await self.fetch_user(MI_ID)
             
             # Get DB instance for the active server
-            server_name = get_active_server_name()
+            server_name = get_active_server_id()
             if not server_name:
                 logger.warning("⚠️ No active server configured for POE2 subrole startup")
                 await self.close()

@@ -363,14 +363,22 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
                             mock_message, category, [method, feed_id], db_watcher
                         )
 
-                    if db_watcher.subscribe_channel_category_ai(
-                        channel_id, channel_name, server_id, server_id, category, feed_id_num, default_premises
-                    ):
-                        result_msg = f"✅ General channel subscription created for {category}"
+                    subscription_id = db_watcher.create_subscription(
+                        user_id=None,
+                        channel_id=channel_id,
+                        category=category,
+                        feed_id=feed_id_num,
+                        premises=default_premises,
+                        method="general",
+                        created_by=str(view.author_id)
+                    )
+                    
+                    if subscription_id:
+                        result_msg = f"General channel subscription created for {category}"
                         if feed_id:
                             result_msg += f" (feed #{feed_id})"
                     else:
-                        result_msg = "❌ Failed to create channel subscription"
+                        result_msg = "Failed to create channel subscription"
                 else:
                     args = [category] + ([feed_id] if feed_id else [])
                     await watcher_commands.cmd_channel_subscribe(mock_message, args)
@@ -700,15 +708,32 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                     if 1 <= feed_id <= len(feeds):
                         global_feed_id = feeds[feed_id - 1][0]
                         ok = False
+                        
                         if method == "flat":
-                            ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_id, category, global_feed_id)
+                            # Create flat subscription
+                            ok = db.create_subscription(
+                                channel_id=channel_id,
+                                category=category,
+                                feed_id=global_feed_id,
+                                method="flat",
+                                created_by=str(self.view.author_id)
+                            ) is not None
                         elif method == "keyword":
                             user_id = str(interaction.user.id)
                             user_keywords = db.get_user_keywords(user_id)
                             if user_keywords:
-                                ok = db.subscribe_keywords(user_id, user_keywords, channel_id, category, global_feed_id)
+                                # Create keyword subscription
+                                ok = db.create_subscription(
+                                    channel_id=channel_id,
+                                    category=category,
+                                    feed_id=global_feed_id,
+                                    keywords=",".join(user_keywords),
+                                    method="keyword",
+                                    created_by=str(self.view.author_id)
+                                ) is not None
                         elif method == "general":
-                            premises, _ = db.get_channel_premises_with_context(channel_id)
+                            # Get premises for channel
+                            premises, _ = db.get_premises_with_context(str(self.view.author_id))
                             if premises:
                                 premises_str = ",".join(premises)
                             else:
@@ -725,7 +750,16 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                                 except Exception:
                                     # English fallback
                                     premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
-                            ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_id, category, global_feed_id, premises_str)
+                            
+                            # Create general subscription
+                            ok = db.create_subscription(
+                                channel_id=channel_id,
+                                category=category,
+                                feed_id=global_feed_id,
+                                premises=premises_str,
+                                method="general",
+                                created_by=str(self.view.author_id)
+                            ) is not None
                         if ok:
                             successful_subscriptions += 1
                         else:
@@ -735,14 +769,30 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
             else:
                 ok = False
                 if method == "flat":
-                    ok = db.subscribe_channel_category(channel_id, channel_name, server_id, server_id, category, None)
+                    # Create flat subscription for all feeds
+                    ok = db.create_subscription(
+                        channel_id=channel_id,
+                        category=category,
+                        feed_id=None,
+                        method="flat",
+                        created_by=str(self.view.author_id)
+                    ) is not None
                 elif method == "keyword":
                     user_id = str(interaction.user.id)
                     user_keywords = db.get_user_keywords(user_id)
                     if user_keywords:
-                        ok = db.subscribe_keywords(user_id, user_keywords, channel_id, category, None)
+                        # Create keyword subscription for all feeds
+                        ok = db.create_subscription(
+                            channel_id=channel_id,
+                            category=category,
+                            feed_id=None,
+                            keywords=",".join(user_keywords),
+                            method="keyword",
+                            created_by=str(self.view.author_id)
+                        ) is not None
                 elif method == "general":
-                    premises, _ = db.get_channel_premises_with_context(channel_id)
+                    # Get premises for channel
+                    premises, _ = db.get_premises_with_context(str(self.view.author_id))
                     if premises:
                         premises_str = ",".join(premises)
                     else:
@@ -759,7 +809,16 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                         except Exception:
                             # English fallback
                             premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
-                    ok = db.subscribe_channel_category_ai(channel_id, channel_name, server_id, server_id, category, None, premises_str)
+                    
+                    # Create general subscription for all feeds
+                    ok = db.create_subscription(
+                        channel_id=channel_id,
+                        category=category,
+                        feed_id=None,
+                        premises=premises_str,
+                        method="general",
+                        created_by=str(self.view.author_id)
+                    ) is not None
 
                 if ok:
                     successful_subscriptions = 1
@@ -817,16 +876,20 @@ class CanvasWatcherChannelUnsubscribeModal(discord.ui.Modal):
             db = get_news_watcher_db_instance(str(interaction.guild.id))
             channel_id = str(interaction.channel.id)
             index = int(str(self.number_input.value).strip())
-            all_subs = [("channel", category, feed_id) for category, feed_id, _ in db.get_channel_subscriptions(channel_id)]
-
-            if index < 1 or index > len(all_subs):
+            
+            # Get unified channel subscriptions
+            channel_subscriptions = db.get_channel_subscriptions(channel_id)
+            
+            if index < 1 or index > len(channel_subscriptions):
                 logger.warning(f"Invalid subscription number: {index}")
                 return
 
-            _method, category, feed_id = all_subs[index - 1]
-            ok = db.cancel_channel_subscription(channel_id, category, feed_id)
-            if not ok:
-                ok = db.cancel_category_subscription(f"channel_{channel_id}", category, feed_id)
+            # Get the subscription to delete
+            sub_id, sub_user_id, sub_channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by = channel_subscriptions[index - 1]
+            
+            # Delete using the new unified system
+            ok = db.delete_subscription(sub_id)
+            
             if not ok:
                 logger.warning("Could not cancel channel subscription")
                 return
@@ -888,31 +951,23 @@ class CanvasWatcherPersonalUnsubscribeModal(discord.ui.Modal):
                 return
 
             user_id = str(interaction.user.id)
-            flat_subs = watcher_commands.db_watcher.get_user_subscriptions(user_id)
-            keyword_subs = watcher_commands.db_watcher.get_user_keyword_subscriptions(user_id)
-            ai_subs = watcher_commands.db_watcher.get_user_ai_subscriptions(user_id)
-            all_subscriptions = []
-
-            for category, feed_id, _ in flat_subs:
-                all_subscriptions.append((category, feed_id, "flat"))
-            for category, _keywords, _ in keyword_subs:
-                all_subscriptions.append((category, None, "keyword"))
-            for category, feed_id, _ in ai_subs:
-                all_subscriptions.append((category, feed_id, "ai"))
-
-            if not all_subscriptions:
+            
+            # Get unified subscriptions
+            subscriptions = watcher_commands.db_watcher.get_user_subscriptions(user_id)
+            
+            if not subscriptions:
                 await interaction.response.send_message("❌ You have no active subscriptions to unsubscribe from.", ephemeral=True)
                 return
-            if index > len(all_subscriptions):
-                await interaction.response.send_message(f"❌ Invalid subscription number. You only have {len(all_subscriptions)} subscription(s).", ephemeral=True)
+            
+            if index > len(subscriptions):
+                await interaction.response.send_message(f"❌ Invalid subscription number. You only have {len(subscriptions)} subscription(s).", ephemeral=True)
                 return
-
-            category, feed_id, sub_type = all_subscriptions[index - 1]
-            success = False
-            if sub_type == "keyword":
-                success = watcher_commands.db_watcher.cancel_user_keyword_subscription(user_id, category)
-            else:
-                success = watcher_commands.db_watcher.cancel_category_subscription(user_id, category, feed_id)
+            
+            # Get the subscription to delete
+            sub_id, sub_user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by = subscriptions[index - 1]
+            
+            # Delete using the new unified system
+            success = watcher_commands.db_watcher.delete_subscription(sub_id)
 
             if success:
                 self.view.watcher_last_action = "unsubscribe"
@@ -1065,8 +1120,9 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
     if action_name in {"method_flat", "method_keyword", "method_general"}:
         method_name = action_name.replace("method_", "")
         try:
-            db_watcher = get_news_watcher_db_instance(guild_id)
-            ok = db_watcher.set_method_config(guild_id, method_name)
+            # Method configuration per server is no longer supported with unified subscription system
+            # Each subscription now has its own method
+            ok = True  # Always succeed, but show informational message
         except Exception as error:
             logger.exception(f"Canvas watcher method update failed: {error}")
             ok = False
@@ -1077,8 +1133,11 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
         view.watcher_selected_method = method_name
         view.watcher_last_action = None
         current_detail = "admin" if view.current_detail == "admin" else "personal"
+        
+        # Add informational message about system update
+        info_message = f"Method `{method_name}` noted. Note: Server-wide method configuration has been replaced with individual subscription methods."
         content = build_canvas_role_news_watcher_detail(current_detail, view.admin_visible, view.guild, view.author_id, selected_method=view.watcher_selected_method, last_action=view.watcher_last_action)
-        next_view = _build_watcher_next_view(view, interaction, current_detail, f"Method set to `{method_name}`.")
+        next_view = _build_watcher_next_view(view, interaction, current_detail, info_message)
         embed = _build_watcher_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
         await interaction.response.edit_message(content=None, embed=embed, view=next_view)
         return
@@ -1132,49 +1191,39 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
         await interaction.response.edit_message(content=None, embed=embed, view=next_view)
         return
 
-    if action_name in {"watcher_run_now", "watcher_run_personal"}:
+    if action_name == "watcher_run_now":
         try:
             from roles.news_watcher.news_watcher import process_subscriptions
             from discord_bot.discord_http import DiscordHTTP
             from agent_engine import get_discord_token
 
             if not view.guild:
-                await interaction.response.send_message("❌ Guild context is required to run watcher actions.", ephemeral=True)
+                await interaction.response.send_message("Guild context is required to run watcher actions.", ephemeral=True)
                 return
 
             http = DiscordHTTP(get_discord_token())
             server_id = str(view.guild.id)
             await process_subscriptions(http, server_id)
         except Exception as error:
-            logger.exception(f"Canvas watcher force run failed for {action_name}: {error}")
-            message = "❌ Could not run watcher now." if action_name == "watcher_run_now" else "❌ Could not run personal subscriptions now."
-            await interaction.response.send_message(message, ephemeral=True)
-            return
-
-        current_detail = "admin" if view.current_detail == "admin" else "personal"
-        view.watcher_last_action = action_name
-        content = build_canvas_role_news_watcher_detail(
-            current_detail,
-            view.admin_visible,
-            view.guild,
-            view.author_id,
-            selected_method=view.watcher_selected_method,
-            last_action=view.watcher_last_action,
-        )
-        success_message = "Watcher run completed." if action_name == "watcher_run_now" else "Personal subscriptions run completed."
-        next_view = _build_watcher_next_view(view, interaction, current_detail, success_message)
-        embed = _build_watcher_role_embed("news_watcher", content or "", view.admin_visible, current_detail, None, next_view.auto_response_preview)
-        # Defensive check to avoid Unknown interaction error
+            logger.exception(f"Canvas watcher run now failed: {error}")
+            await interaction.response.send_message("Failed to run watcher. Check logs.", ephemeral=True)
+        return
+    elif action_name == "watcher_run_personal":
         try:
-            if not interaction.response.is_done():
-                await interaction.response.edit_message(content=None, embed=embed, view=next_view)
-        except Exception as e:
-            logger.warning(f"Could not edit interaction message: {e}")
-            # Try to send a new message as fallback
-            try:
-                await interaction.followup.send("✅ Action completed successfully", ephemeral=True)
-            except Exception:
-                pass  # Silent fail if we can't even send followup
+            from roles.news_watcher.news_watcher import process_subscriptions
+            from discord_bot.discord_http import DiscordHTTP
+            from agent_engine import get_discord_token
+
+            if not view.guild:
+                await interaction.response.send_message("Guild context is required to run watcher actions.", ephemeral=True)
+                return
+
+            http = DiscordHTTP(get_discord_token())
+            server_id = str(view.guild.id)
+            await process_subscriptions(http, server_id, include_channels=False)
+        except Exception as error:
+            logger.exception(f"Canvas watcher run personal failed: {error}")
+            await interaction.response.send_message("Failed to run personal subscriptions. Check logs.", ephemeral=True)
         return
 
     await interaction.response.send_message("❌ Unknown watcher action.", ephemeral=True)
@@ -1207,26 +1256,29 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
 
         db = get_news_watcher_db_instance(str(guild.id))
         
-        # Get all channel subscriptions with proper 5-value format
+        # Get all channel subscriptions with unified system
         all_channel_subs = []
         
-        # Get flat subscriptions (user_id, category, feed_id, channel_id, subscribed_at)
-        flat_subs = db.get_all_channel_subscriptions_flat()
-        for user_id, category, feed_id, channel_id, subscribed_at in flat_subs:
+        # Get all unified subscriptions and filter for channel subscriptions
+        unified_subs = db.get_all_active_subscriptions()
+        for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
+            # Only include channel subscriptions
+            if not channel_id:
+                continue
+                
             channel_name = f"#{channel_id}"  # Fallback name
-            all_channel_subs.append((channel_id, channel_name, category, "", feed_id is None))
-        
-        # Get keyword subscriptions (user_id, channel_id, keywords, category, feed_id)
-        keyword_subs = db.get_all_channel_subscriptions_keywords()
-        for user_id, channel_id, keywords, category, feed_id in keyword_subs:
-            channel_name = f"#{channel_id}"  # Fallback name
-            all_channel_subs.append((channel_id, channel_name, category, keywords, feed_id is None))
-        
-        # Get AI subscriptions (channel_id, category, feed_id, premises, user_id)
-        ai_subs = db.get_all_channel_subscriptions_ai()
-        for channel_id, category, feed_id, premises, user_id in ai_subs:
-            channel_name = f"#{channel_id}"  # Fallback name
-            all_channel_subs.append((channel_id, channel_name, category, "AI premises", feed_id is None))
+            
+            # Determine content based on method
+            if method == "flat":
+                content = ""
+            elif method == "keyword":
+                content = keywords or ""
+            elif method == "general":
+                content = premises or ""
+            else:
+                content = ""
+            
+            all_channel_subs.append((channel_id, channel_name, category, content, feed_id is None))
         
         total_count = len(all_channel_subs)
         max_subs = 5
@@ -1255,13 +1307,14 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
         except Exception:
             config_info += f"- ⏰ **{_watcher_text('watcher_frequency_title', 'Check frequency')}**: Not configured\n"
 
-        method = db.get_method_config(str(guild.id))
+        # Method configuration per server is no longer available - use default
+        method = "general"
         method_labels = {
             "flat": "Flat (All news)",
             "keyword": "Keyword (Filtered)",
             "general": "General (AI-critical)",
         }
-        config_info += f"- 🔧 **Default method**: {method_labels.get(method, 'Unknown')}\n"
+        config_info += f"- 🔧 **Default method**: {method_labels.get(method, 'Unknown')} (individual subscription methods)\n"
 
         return usage_info + config_info
 
@@ -1279,34 +1332,44 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
         db = get_news_watcher_db_instance(str(guild.id))
         user_id = str(author_id)
 
-        current_count = db.count_user_subscriptions(user_id)
-        max_subs = 3
+        # Get unified subscriptions
+        subscriptions = db.get_user_subscriptions(user_id)
+        current_count = len(subscriptions)
+        max_subs = 10  # Increased limit for unified system
+        
         title_active_subscriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("title_active_subscriptions", "**Active subscriptions**")
         usage_info = f"{title_active_subscriptions} ({current_count}/{max_subs})\n"
         title_no_active_subscriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("title_no_active_subscriptions", "- No active subscriptions")
+        
         if current_count == 0:
             usage_info += f"{title_no_active_subscriptions}\n"
         else:
             title_your_subscriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("title_your_subscriptions", "- **Your subscriptions:**")
             subscriptions_info = f"{title_your_subscriptions}\n"
 
-            flat_subs = db.get_user_subscriptions(user_id)
-            for i, (category, feed_id, _) in enumerate(flat_subs, 1):
-                if feed_id:
-                    subscriptions_info += f"  {i}. 📰 Flat: {category} (feed #{feed_id})\n"
+            # Display unified subscriptions with method-specific formatting
+            for i, (sub_id, sub_user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by) in enumerate(subscriptions, 1):
+                if method == "flat":
+                    icon = "📰"
+                    method_name = "Flat"
+                    content = ""
+                elif method == "keyword":
+                    icon = "🔍"
+                    method_name = "Keywords"
+                    content = f" - {keywords}" if keywords else ""
+                elif method == "general":
+                    icon = "🤖"
+                    method_name = "AI"
+                    content = f" - {premises[:30]}..." if premises and len(premises) > 30 else f" - {premises}" if premises else ""
                 else:
-                    subscriptions_info += f"  {i}. 📰 Flat: {category} (all feeds)\n"
-
-            keyword_subs = db.get_user_keyword_subscriptions(user_id)
-            for i, (category, keywords, _) in enumerate(keyword_subs, len(flat_subs) + 1):
-                subscriptions_info += f"  {i}. 🔍 Keywords: {category} - {keywords}\n"
-
-            ai_subs = db.get_user_ai_subscriptions(user_id)
-            for i, (category, feed_id, _) in enumerate(ai_subs, len(flat_subs) + len(keyword_subs) + 1):
+                    icon = "❓"
+                    method_name = method.title()
+                    content = ""
+                
                 if feed_id:
-                    subscriptions_info += f"  {i}. 🤖 AI: {category} (feed #{feed_id})\n"
+                    subscriptions_info += f"  {i}. {icon} {method_name}: {category} (feed #{feed_id}){content}\n"
                 else:
-                    subscriptions_info += f"  {i}. 🤖 AI: {category} (all feeds)\n"
+                    subscriptions_info += f"  {i}. {icon} {method_name}: {category} (all feeds){content}\n"
 
             usage_info += subscriptions_info
 
@@ -1315,17 +1378,7 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
         config_info += "-" * 45
         config_info += f"\n {title_configuration_status}\n"
 
-        title_keyword = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("keywords_title", "🔍**Keywords:**")
-        no_keywords = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("no_keywords", "None configured")
-        keywords = db.get_user_keywords(user_id)
-        if keywords:
-            config_info += f"-  {title_keyword} {', '.join(keywords[:5])}"
-            if len(keywords) > 5:
-                config_info += f" (+{len(keywords) - 5} ..."
-            config_info += "\n"
-        else:
-            config_info += f"- {title_keyword} {no_keywords}\n"
-
+        # Get user premises (standalone premises, not subscription-specific)
         title_premises = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("premises_title", "🤖**Premises:**")
         no_premises = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("no_premises", "None configured")
         patch_premises_configured = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("premises_configured", "configured")
@@ -1405,6 +1458,9 @@ def build_canvas_role_news_watcher_detail(
         try:
             db = get_news_watcher_db_instance(str(guild.id))
 
+            # Initialize lines list
+            lines = []
+
             if category:
                 feeds = db.get_active_feeds(category)
                 if not feeds:
@@ -1460,7 +1516,7 @@ def build_canvas_role_news_watcher_detail(
             return "- Error loading keywords"
 
     def _format_premises() -> str:
-        if not guild or not author_id or get_news_watcher_db_instance is None:
+        if not guild or not author_id:
             return "- No premises configured"
         try:
             db = get_news_watcher_db_instance(str(guild.id))
@@ -1473,10 +1529,10 @@ def build_canvas_role_news_watcher_detail(
                 premises, scope = db.get_premises_with_context(str(author_id))
 
             if not premises:
-                lines = ["- Scope: No custom premises", "", "- 💡 **No custom premises configured**", "- 💡 Use 'Add Premises' to create custom premises", "- 💡 Or use !canvas to auto-initialize with defaults"]
+                lines = ["- **No custom premises configured**", "- Use 'Add Premises' to create custom premises", "- Or use !canvas to auto-initialize with defaults"]
                 return "\n".join(lines)
 
-            lines = [f"- Scope: {scope}"]
+            lines = []
             for i, premise in enumerate(premises[:8], 1):
                 lines.append(f"- {i}. {premise}")
 
@@ -1581,16 +1637,25 @@ def build_canvas_role_news_watcher_detail(
             "- `!watcher premises del <number>` - Remove a premise",
             "- `!watcher premises list` - Review premises",
             "",
-            "**Best next actions**",
-            "- Add only a few strong keywords first",
-            "- Use premises when raw keywords are too noisy",
-            "",
-            "**Concrete choices**",
-            "- Text input: keyword or premise text",
-            "- Number input: premise index to delete",
-            "",
             "**Routing**",
             "- These settings shape your personal watcher filtering",
+            "- Use `!canvas role news_watcher` to return to the role overview",
+        ])
+
+    if detail_name == "feeds":
+        return "\n".join([
+            _build_canvas_intro_block(
+                f"📡 {_bot_display_name} Canvas - News Watcher Feeds",
+                "Browse and manage available news sources",
+            ),
+            "**Available feeds**",
+            _format_feeds(),
+            "",
+            "**Feed categories**",
+            _format_categories(),
+            "",
+            "**Routing**",
+            "- Use category filters to browse specific feed types",
             "- Use `!canvas role news_watcher` to return to the role overview",
         ])
 

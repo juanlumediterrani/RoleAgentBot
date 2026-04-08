@@ -2,19 +2,19 @@
   "discord": {
     "general":{
       "status": "**ESTADO DE OPERACIONES:**",
-      "active": "✅ ¡EN MARCHA!",
-      "inactive": "❌ ¡FUERA DE SERVICIO!",
+      "active": "✅ ¡EN MARCHA! 🦅⚖️",
+      "inactive": "❌ ¡FUERA DE SERVICIO! 📉💥",
       "none": "NINGUNO",
       "every": "CADA",
       "for":"PARA",
       "base_frequency": "**FRECUENCIA BASE:**",
       "current_frequency": "**FRECUENCIA ACTUAL:**",
-      "current_settings": "🔧 **CONFIGURACIÓN OFICIAL:**",
+      "current_settings": "🔧 **CONFIGURACIÓN OFICIAL:** 🦅⚖️",
       "frequency_format": "Cada {hours}h"
     },
     "help_menu": {
       "title": "📚 ** {_bot_display_name} - MANUAL DE INSTRUCCIONES**",
-      "description": "**DESCRIPCIÓN OFICIAL**\n¡ACHTUNG! {_bot_display_name} es un agente disciplinario con memoria persistente y autoridad absoluta. ¡Sigue las reglas o sufrirás las consecuencias, Zivilist!",
+      "description": "**DESCRIPCIÓN OFICIAL** 🦅⚖️\n¡ACHTUNG! {_bot_display_name} es un agente disciplinario con memoria persistente y autoridad absoluta. ¡Sigue las reglas o sufrirás las consecuencias, Zivilist! ✍️🚫",
       "separator": "═══════════════════════════════════════",
       "roles_section": "**MÓDULOS DE OPERACIÓN**\nLos módulos son capacidades autorizadas para mantener el orden y la disciplina entre los reclutas.",
       "behavior_section": "**PROTOCOLOS DE COMPORTAMIENTO**\n¡SCHNELL! Configura los protocolos de comportamiento. ¡SOLO PARA OFICIALES SUPERIORES!",
@@ -30,65 +30,65 @@
       "generic_option_label": "¡SELECCIONAR OPCIÓN, RECLUTA!",
       "personalitystatus": "**Personalidad cargada:**",
       "description": "-¡Interactuar con todas las funciones autorizadas de {_bot_display_name} desde aquí!\n-¡El panel Canvas permite control total sobre todas las operaciones!",
-      "recentsynthesistitle": "**Reporte actual**",
-      "dailymemorytitle": "**Análisis del frente**",
-      "personalsynthesistitle": "**Informe personal del recluta**",
+      "recentsynthesistitle": "🧐 **Reporte actual**",
+      "dailymemorytitle": "🗺️ **Análisis del frente**",
+      "personalsynthesistitle": "👞 **Informe personal del recluta**",
       "dm_default_server_title": "🔔 **USANDO SERVIDOR POR DEFECTO: {server_name}**",
       "dm_default_server_message": "*¡Navegando desde DM, usando el primer servidor disponible!*",
       "dm_default_server_separator": "═══════════════════════════════════════",
-      "dm_no_servers_available": "❌ ¡NO HAY SERVIDORES DISPONIBLES! ¡Ejecutar acciones desde un servidor, Schweinehund!",
-      "dm_server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL SERVIDOR! ¡Ejecutar acciones desde un servidor!"
+      "dm_no_servers_available": "❌ ¡NO HAY SERVIDORES DISPONIBLES! 📉💥 ¡Ejecutar acciones desde un servidor, Schweinehund! ✍️🚫",
+      "dm_server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL SERVIDOR! 📉💥 ¡Ejecutar acciones desde un servidor! ✍️🚫"
     },
     "roles_view_messages": {
       "title": "🎭  UNIDADES ESPECIALES DE {_bot_display_name} 🎭",
       "description": "🌟 ¡Navegar por las diferentes unidades operativas desplegadas para {_bot_display_name}!",
       "role_categories": "═════════════════════════════════",
-      "enabled_status": "ACTIVO",
-      "inactive_status": "❌ FUERA DE SERVICIO",
+      "enabled_status": "ACTIVO 🦅⚖️",
+      "inactive_status": "❌ FUERA DE SERVICIO 📉💥",
       "interval_info": "//⏰ CADA {interval}h",
       "subroles_info": "🎪 **SUBMÓDULOS ACTIVOS:** {subroles}",
-      "admin_note": "🔧 **CONFIGURACIÓN OFICIAL:**",
+      "admin_note": "🔧 **CONFIGURACIÓN OFICIAL:** 🦅⚖️",
       "user_note": "👤 **FUNCIONES DE RECLUTA:**",
       "help_commands": "💡 **COMANDOS DE AYUDA:**",
       "canvas_details": "🎨 **DETALLES EN CANVAS:**",
       "navigation_help": "",
-      "no_roles_active": "🌫️ **NINGUNA UNIDAD DESPLEGADA**\n\n¡No hay unidades especializadas activas! ¡Pedir a un oficial que despliegue unidades usando `!canvas setup`!\n\n**Unidades disponibles para despliegue:**\n• 📡 News Watcher - Vigía de noticias\n• 💎 Treasure Hunter - Cazador de tesoros\n• 🎭 Trickster - División de Operaciones Especiales\n• 💰 Banker - Economía del clan\n• 🎵 MC - Música militar",
+      "no_roles_active": "🌫️ **NINGUNA UNIDAD DESPLEGADA** 📉💥\n\n¡No hay unidades especializadas activas! ¡Pedir a un oficial que despliegue unidades usando `!canvas setup`!\n\n**Unidades disponibles para despliegue:**\n• 📡 News Watcher - Vigía de noticias\n• 💎 Treasure Hunter - Cazador de tesoros\n• 🎭 Trickster - División de Operaciones Especiales\n• 💰 Banker - Economía del clan\n• 🎵 MC - Música militar",
       "role_list_title": "☠️ UNIDADES MILITARES Y OPERACIONES",
-      "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA!",
-      "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO!",
+      "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA! 🦅⚖️",
+      "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO! 📉💥",
       "frequency_help": "📝 ¡Usar comando: `!{role}frequency <horas>` (de 1 a 168 horas)\n¡Ejemplo: `!watcherfrequency 2` para vigilar cada 2 horas, ¡SCHNELL!",
       "music_help": "🎵 **MÚSICA DE {_bot_display_name}** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!"
     },
     "behavior_messages": {
       "conversation": {
         "title": "**💬 {_bot_display_name} - INTERROGATORIO MILITAR**",
-        "description": "**PROTOCOLO DE INTELIGENCIA:**\n -¡{_bot_display_name} ejecuta protocolos de interrogatorio en DM y menciones!\n -¡Memoria operativa persistente para registrar todas las misiones anteriores!\n -¡Reacciona según parámetros tácticos y palabras clave prohibidas! ¡Configurar en protocolos de seguridad!",
+        "description": "**PROTOCOLO DE INTELIGENCIA:** 🦅⚖️\n -¡{_bot_display_name} ejecuta protocolos de interrogatorio en DM y menciones!\n -¡Memoria operativa persistente para registrar todas las misiones anteriores!\n -¡Reacciona según parámetros tácticos y palabras clave prohibidas! ¡Configurar en protocolos de seguridad! ✍️🚫",
         "button": "💬 Interrogatorio"
       },
       "greetings": {
         "title": "**👋 {_bot_display_name} - PROTOCOLO DE SALUDO MILITAR**",
-        "description": "**REGLAMENTO DE FORMACIONES:**\n -¡Ejecuta saludos reglamentarios al detectar reclutas en línea!\n -¡Tiempo de espera táctico: 5 minutos antes de declarar ausencia!\n -¡(En desarrollo): Sistema de respuesta obligatoria al saludo militar!",
+        "description": "**REGLAMENTO DE FORMACIONES:** 🦅⚖️\n -¡Ejecuta saludos reglamentarios al detectar reclutas en línea!\n -¡Tiempo de espera táctico: 5 minutos antes de declarar ausencia!\n -¡(En desarrollo): Sistema de respuesta obligatoria al saludo militar! ✍️🚫",
         "button": "👋 Formación"
       },
       "welcome": {
         "title": "**🍺 {_bot_display_name} - PROTOCOLO DE INDUCCIÓN**",
-        "description": "**PROCEDIMIENTO DE RECLUTAMIENTO:**\n -¡Ejecuta ceremonia oficial de inducción para nuevos reclutas!\n -¡Registra presencia en el cuartel y asigna número de identificación!",
+        "description": "**PROCEDIMIENTO DE RECLUTAMIENTO:** 🦅⚖️\n -¡Ejecuta ceremonia oficial de inducción para nuevos reclutas!\n -¡Registra presencia en el cuartel y asigna número de identificación! ✍️🚫",
         "button": "🍺 Inducción"
       },
       "taboo": {
         "title": "**🚫 {_bot_display_name} - PROTOCOLO DE SEGURIDAD**",
-        "description": "**REGLAMENTO DE DISCIPLINA:**\n -¡Configurar sistema de respuesta automática a palabras prohibidas en canales y DM!\n -¡Activar/desactivar alertas de seguridad y palabras clave restringidas!",
+        "description": "**REGLAMENTO DE DISCIPLINA:** 🦅⚖️\n -¡Configurar sistema de respuesta automática a palabras prohibidas en canales y DM!\n -¡Activar/desactivar alertas de seguridad y palabras clave restringidas! ✍️🚫",
         "title_keywords": "**VOCABULARIO RESTRINGIDO ACTUAL:**",
         "button": "🚫 Seguridad"
       },
       "comentary": {
         "title": "**🗣️ {_bot_display_name} - COMUNICADOS TÁCTICOS**",
-        "description": "**SISTEMA DE INTELIGENCIA:**\n -¡Emite comunicados oficiales sobre estado de misiones y operaciones activas!\n -¡Analiza rendimiento de unidades y reporta al comando superior!",
+        "description": "**SISTEMA DE INTELIGENCIA:** 🦅⚖️\n -¡Emite comunicados oficiales sobre estado de misiones y operaciones activas!\n -¡Analiza rendimiento de unidades y reporta al comando superior! 📉💥",
         "button": "🗣️ Comunicados"
       },
       "role_control": {
         "title": "**🎛️ {_bot_display_name} - COMANDO DE UNIDADES**",
-        "description": "**CENTRO DE CONTROL TÁCTICO:**\n -¡Activar y desactivar unidades operativas desde el puesto de mando!\n -¡Supervisar estado de todas las fuerzas desplegadas en el campo!",
+        "description": "**CENTRO DE CONTROL TÁCTICO:** 🦅⚖️\n -¡Activar y desactivar unidades operativas desde el puesto de mando!\n -¡Supervisar estado de todas las fuerzas desplegadas en el campo! ✍️🚫",
         "button": "🎛️ Comando"
       }
     },

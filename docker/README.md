@@ -15,6 +15,7 @@ Este proyecto contiene múltiples configuraciones de Docker Compose para diferen
   - Personalidades diferentes para cada bot
   - Volúmenes compartidos para persistencia
   - Reinicio automático
+  - Sistema de límites de fatiga integrado
 
 **Roles Activos**:
 - ✅ news_watcher
@@ -30,13 +31,14 @@ docker compose -f docker/docker-compose.production.yml up --build -d
 
 ### 2. **Desarrollo** (`docker-compose.dev.yml`)
 - **Propósito**: Entorno de desarrollo y pruebas
-- **Contenedores**: 1 bot (Kronk)
+- **Contenedores**: 1 bot (Hans)
 - **Características**:
   - Todos los roles activos
-  - Personalidad Kronk
+  - Personalidad Hans (nueva personalidad mejorada)
   - Recursos limitados (512MB RAM, 0.5 CPU)
   - Logging detallado para debugging
   - Sin reinicio automático
+  - Sistema de límites de fatiga activo
 
 **Uso**:
 ```bash
@@ -62,16 +64,86 @@ DISCORD_TOKEN_KRONK=tu_token_kronk
 DISCORD_TOKEN_PUTRE=tu_token_putre
 ```
 
-## � Comparación de Entornos
+##  Personalidades Disponibles
+
+### Personalidades Principales
+- **Putre**: Personalidad principal del proyecto (español)
+- **Putre(English)**: Versión en inglés de Putre
+- **Hans**: Nueva personalidad mejorada (alemán)
+- **Igorrr**: Personalidad experimental (ruso)
+- **Kronk**: Personalidad en desarrollo (incompleta)
+
+### Configuración de Personalidades
+Las personalidades se configuran mediante:
+- Variable de entorno `PERSONALITY` en docker-compose
+- Archivo `agent_config.json` 
+- Estructura: `personalities/[nombre]/personality.json`
+
+##  Sistema de Límites de Fatiga
+
+### Características
+- **Protección contra abuso**: Limita el uso excesivo del LLM
+- **Configuración multi-nivel**: Diario, horario y ráfaga
+- **Exenciones automáticas**: Tareas críticas y administradores
+- **Mensajes amigables**: Informa tiempos de reset
+
+### Umbrales Por Defecto
+| Tipo | Diario | Horario | Ráfaga (5min) |
+|------|--------|---------|---------------|
+| **Usuario** | 50 | 10 | 5 |
+| **Servidor** | 500 | 100 | 20 |
+
+### Configuración
+Los límites se configuran en `agent_config.json`:
+```json
+{
+  "fatigue_limits": {
+    "user": {
+      "daily_max": 50,
+      "hourly_max": 10,
+      "burst_max": 5
+    },
+    "exemptions": {
+      "admin_users": [],
+      "critical_tasks": ["daily_memory", "relationship_memory"]
+    }
+  }
+}
+```
+
+## 📁 Estructura de Volúmenes
+
+```
+../databases/     # Bases de datos SQLite
+../logs/          # Logs de ejecución
+../fatiga/        # Sistema de fatiga
+../personalities/ # Personalidades
+```
+
+## 🔧 Dependencias Incluidas
+
+El Dockerfile incluye:
+- **FFmpeg**: Requerido para el rol MC (Master of Ceremonies)
+- **yt-dlp**: Para streaming de audio desde YouTube
+- **ffmpeg-python**: Interfaz Python para FFmpeg
+- **PyNaCl**: Requerido para conexiones de voz de Discord
+
+## 📄 Archivos Docker
+
+- `Dockerfile` - Imagen principal con todas las dependencias
+- `docker-entrypoint.sh` - Script de entrada para contenedores
+
+## 📋 Comparación de Entornos
 
 | Característica | Producción | Desarrollo | Por Defecto |
 |---------------|------------|-------------|-------------|
-| Contenedores | 2 (Kronk + Putre) | 1 (Kronk) | 1 |
-| Personalidades | Diferentes | Kronk | JSON |
+| Contenedores | 2 (Kronk + Putre) | 1 (Hans) | 1 |
+| Personalidades | Diferentes | Hans | JSON |
 | Librerías Python | Compartidas | Individuales | Individuales |
 | Recursos | Ilimitados | Limitados | Ilimitados |
 | Reinicio | Automático | Manual | Manual |
 | Logging | Estándar | Detallado | Estándar |
+| Fatiga Limits | Integrado | Activo | Configurable |
 
 ## 🎭 Roles y Comandos
 

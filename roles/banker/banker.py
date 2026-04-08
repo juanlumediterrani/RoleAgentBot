@@ -377,9 +377,12 @@ async def banker_task():
     
     logger.info(f"💰 Found {len(server_dirs)} server directories")
     
-    # Run tasks for each server
+    # Run tasks for each server (skip server 0 as it's for initialization only)
     for server_dir in server_dirs:
         server_id = server_dir.name
+        if server_id == "0":
+            continue
+            
         try:
             await banker_task_for_server(server_id)
         except Exception as e:

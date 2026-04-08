@@ -62,35 +62,40 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
             value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
-    subroles = (agent_config or {}).get("roles", {}).get("trickster", {}).get("subroles", {})
-    active_subroles = [name for name, cfg in subroles.items() if isinstance(cfg, dict) and cfg.get("enabled", False)]
-    dice_state = _get_canvas_dice_state(guild)
-    ring_state = _get_canvas_ring_state(guild)
-    beggar_state = _get_canvas_beggar_state(guild)
-    
-    # Check ring status from roles_config database (independent from agent_config)
-    ring_enabled_from_db = False
+    # Load all subroles from roles_config database (single source of truth)
+    active_subroles = []
     try:
         if get_roles_db_instance:
             server_key = get_server_key(guild)
             roles_db = get_roles_db_instance(server_key)
-            ring_config = roles_db.get_role_config('ring')
-            if ring_config:
-                ring_enabled_from_db = ring_config.get('enabled', False)
+            
+            # Check trickster role is enabled
+            trickster_config = roles_db.get_role_config('trickster')
+            if trickster_config and trickster_config.get('enabled', False):
+                # Get all enabled trickster subroles from database
+                trickster_subroles = ['beggar', 'dice_game', 'ring', 'nordic_runes']
+                for subrole in trickster_subroles:
+                    subrole_config = roles_db.get_role_config(subrole)
+                    if subrole_config and subrole_config.get('enabled', False):
+                        active_subroles.append(subrole)
+                
     except Exception as e:
-        logger.warning(f"Error checking ring status from roles_config: {e}")
-
-    separator = _trickster_text("canvas_trickster_overview_separator", "──────────────────────────────")
+        logger.warning(f"Error loading subroles from roles_config: {e}")
+        # Fallback to agent_config if database fails
+        subroles = (agent_config or {}).get("roles", {}).get("trickster", {}).get("subroles", {})
+        active_subroles = [name for name, cfg in subroles.items() if isinstance(cfg, dict) and cfg.get("enabled", False)]
+    
+    dice_state = _get_canvas_dice_state(guild)
+    ring_state = _get_canvas_ring_state(guild)
+    beggar_state = _get_canvas_beggar_state(guild)
+    
+    separator = _trickster_text("canvas_trickster_overview_separator", "---------")
     subrole_descriptions = trickster_messages.get("canvas_trickster_subrole_descriptions", {})
-
+    
     active_descriptions = []
     for subrole in active_subroles:
         if subrole in subrole_descriptions:
             active_descriptions.append(subrole_descriptions[subrole])
-    
-    # Add ring description if enabled from database (independent check)
-    if ring_enabled_from_db and 'ring' in subrole_descriptions:
-        active_descriptions.append(subrole_descriptions['ring'])
 
     parts = [
         _build_canvas_intro_block(
@@ -106,7 +111,7 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     parts += [
         "",
         "**Live state**",
-        f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,} | ring {'On' if ring_enabled_from_db else 'Off'} | beggar {'On' if beggar_state['enabled'] else 'Off'}",
+        f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,} | ring {'On' if ring_state['enabled'] else 'Off'} | beggar {'On' if beggar_state['enabled'] else 'Off'}",
     ]
 
     return "\n".join(parts)

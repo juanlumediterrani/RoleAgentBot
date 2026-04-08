@@ -802,12 +802,14 @@ async def _process_chat_message(message):
         if is_public:
             # Channel message - use channel prompt builder
             from agent_mind import _build_conversation_channel_prompt
-            contextual_prompt = _build_conversation_channel_prompt(
+            contextual_prompt = await _build_conversation_channel_prompt(
                 user_content=clean_content,
                 server=server_id,
                 user_id=message.author.id,
                 user_name=message.author.name,
                 channel_id=message.channel.id,
+                bot_id=str(bot.user.id),
+                discord_channel=message.channel
             )
         else:
             # DM message - use user prompt builder
