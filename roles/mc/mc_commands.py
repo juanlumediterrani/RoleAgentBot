@@ -1,11 +1,16 @@
 import discord
 import asyncio
+import json
+import logging
+import os
+import random
+import subprocess
+import time
 import re
 import yt_dlp
 import sys
-import os
-import json
 from urllib.parse import urlparse
+from typing import Optional, Dict, List, Tuple
 from agent_logging import get_logger
 from agent_engine import PERSONALITY
 
@@ -59,21 +64,30 @@ def _build_youtube_options(base_format: str = 'bestaudio/best', noplaylist: bool
         os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'cookies.txt'),  # Project root
     ]
     
+    cookie_found = False
     for cookie_path in cookie_paths:
         if os.path.exists(cookie_path):
+            cookie_found = True
             if has_js_runtime:
                 # Test if cookies work properly when JS runtime is available
                 if _test_cookies_work(cookie_path):
                     ydl_opts['cookiefile'] = cookie_path
                     logger.info(f"MC: Using working cookies from {cookie_path} (JS runtime available)")
+                    return ydl_opts  # Return immediately with cookies
                 else:
-                    logger.warning(f"MC: Cookies found at {cookie_path} but not working properly, using without cookies")
+                    logger.warning(f"MC: Cookies found at {cookie_path} but not working properly, falling back to method without cookies")
             else:
                 # Without JS runtime, cookies will cause issues
-                logger.warning(f"MC: Cookies found at {cookie_path} but no JS runtime available, using without cookies")
+                logger.warning(f"MC: Cookies found at {cookie_path} but no JS runtime available, falling back to method without cookies")
                 logger.info("MC: Install Node.js for cookie support: 'sudo apt install nodejs'")
             break
-    
+
+    # No valid cookies found or cookies failed - using method without cookies
+    if not cookie_found:
+        logger.info("MC: No cookies file found, using YouTube method without cookie authentication")
+    else:
+        logger.info("MC: Using YouTube method without cookies (fallback mode)")
+
     return ydl_opts
 
 
@@ -98,21 +112,38 @@ def _check_js_runtime_available() -> bool:
 def _test_cookies_work(cookie_path: str) -> bool:
     """Test if cookies work properly with YouTube."""
     try:
-        import yt_dlp
-        test_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'cookiefile': cookie_path,
-            'format': 'bestaudio/best',
-        }
-        
-        with yt_dlp.YoutubeDL(test_opts) as ydl:
-            # Try a simple video extraction
-            info = ydl.extract_info('https://www.youtube.com/watch?v=dQw4w9WgXcQ', download=False)
-            # Check if we got actual audio/video formats (not just images)
-            formats = info.get('formats', [])
-            audio_formats = [f for f in formats if f.get('acodec') != 'none']
-            return len(audio_formats) > 0
+        # First, check if the cookies file is properly formatted
+        if not os.path.exists(cookie_path):
+            return False
+
+        # Read entire file content
+        with open(cookie_path, 'r', encoding='utf-8') as f:
+            cookie_content = f.read()
+            lines = cookie_content.split('\n')
+
+        # Check for Netscape format header in first few lines
+        header_lines = lines[:5]
+        has_header = any(line.strip().startswith('# Netscape HTTP Cookie File') for line in header_lines)
+        if not has_header:
+            logger.debug("MC: Cookies file doesn't have Netscape format header")
+            return False
+
+        # Check if we have at least one valid cookie line in ENTIRE file (not just first 5)
+        valid_cookie_lines = [line for line in lines if line.strip() and not line.strip().startswith('#') and '\t' in line]
+        if len(valid_cookie_lines) < 1:  # Need at least one valid cookie entry
+            logger.debug(f"MC: Cookies file doesn't have valid cookie entries (found {len(valid_cookie_lines)} valid lines)")
+            return False
+
+        # Check if cookies contain YouTube domains
+        has_youtube_cookies = 'youtube.com' in cookie_content or 'google.com' in cookie_content
+        if not has_youtube_cookies:
+            logger.debug("MC: Cookies file doesn't contain YouTube/Google domains")
+            return False
+
+        # If we have a properly formatted file with YouTube cookies, assume it works
+        logger.debug(f"MC: Cookies file valid - {len(valid_cookie_lines)} cookie entries found")
+        return True
+
     except Exception as e:
         logger.debug(f"MC: Cookie test failed: {e}")
         return False
