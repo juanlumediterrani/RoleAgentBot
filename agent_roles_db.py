@@ -123,6 +123,12 @@ class RolesDatabase:
                         )
                     """)
 
+                    # Migration: add next_run_at column if it doesn't exist
+                    cursor.execute("PRAGMA table_info(roles_config)")
+                    columns = [row[1] for row in cursor.fetchall()]
+                    if "next_run_at" not in columns:
+                        cursor.execute("ALTER TABLE roles_config ADD COLUMN next_run_at TEXT")
+
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS poe2_subscriptions (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -587,6 +593,45 @@ class RolesDatabase:
                 'updated_at': datetime.now().isoformat()
             }
     
+    def get_subrole_next_run(self, subrole_name: str) -> Optional[datetime]:
+        """Return the persisted next_run_at datetime for a subrole, or None if not set."""
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT next_run_at FROM roles_config WHERE role_name = ?",
+                        (subrole_name,)
+                    )
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        return datetime.fromisoformat(row[0])
+                    return None
+        except Exception as e:
+            logger.error(f"Failed to get next_run_at for {subrole_name}: {e}")
+            return None
+
+    def set_subrole_next_run(self, subrole_name: str, next_run: datetime) -> bool:
+        """Persist next_run_at for a subrole, upserting the roles_config row."""
+        try:
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    now = datetime.now().isoformat()
+                    cursor.execute(
+                        """
+                        INSERT INTO roles_config (role_name, enabled, config_data, created_at, updated_at, next_run_at)
+                        VALUES (?, 1, '{}', ?, ?, ?)
+                        ON CONFLICT(role_name) DO UPDATE SET next_run_at = excluded.next_run_at, updated_at = excluded.updated_at
+                        """,
+                        (subrole_name, now, now, next_run.isoformat())
+                    )
+                    conn.commit()
+                    return True
+        except Exception as e:
+            logger.error(f"Failed to set next_run_at for {subrole_name}: {e}")
+            return False
+
     def is_role_enabled(self, role_name: str, server_id: str) -> bool:
         """Check if a role is enabled for a server."""
         config = self.get_role_config(role_name)

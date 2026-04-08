@@ -791,8 +791,6 @@ def _build_system_prompt(personalidad: dict) -> str:
 import random
 from datetime import datetime, timedelta
 
-_subrole_task_cache = {}
-
 def get_active_subroles():
     """Get active subroles from personality prompts.json."""
     try:
@@ -817,29 +815,37 @@ def get_active_subroles():
         logger.error(f"Error loading subroles: {e}")
         return {}
 
-def should_execute_subrole_task(subrole_name, frequency_hours):
-    """Check if subrole task should execute based on frequency."""
-    global _subrole_task_cache
-    
-    now = datetime.now()
-    last_run = _subrole_task_cache.get(subrole_name)
-    
-    if not last_run or (now - last_run) >= timedelta(hours=frequency_hours):
-        _subrole_task_cache[subrole_name] = now
+def should_execute_subrole_task(subrole_name: str, frequency_hours: int) -> bool:
+    """Check if subrole task should execute based on next_run_at persisted in roles_config."""
+    try:
+        from agent_roles_db import RolesDatabase
+        server_id = get_active_server_id() or "default"
+        db = RolesDatabase(server_id)
+        next_run = db.get_subrole_next_run(subrole_name)
+        now = datetime.now()
+        if next_run is None or now >= next_run:
+            return True
+        return False
+    except Exception as e:
+        logger.warning(f"Could not check next_run_at for {subrole_name}, allowing execution: {e}")
         return True
-    
-    return False
+
+
+def mark_subrole_executed(subrole_name: str, next_run: datetime) -> None:
+    """Persist next_run_at for a subrole after execution."""
+    try:
+        from agent_roles_db import RolesDatabase
+        server_id = get_active_server_id() or "default"
+        db = RolesDatabase(server_id)
+        db.set_subrole_next_run(subrole_name, next_run)
+        logger.info(f"🎭 [SUBROLE] {subrole_name} next run scheduled for {next_run:%Y-%m-%d %H:%M:%S}")
+    except Exception as e:
+        logger.error(f"Failed to persist next_run_at for {subrole_name}: {e}")
 
 async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instance=None):
     """Execute internal task for a subrole."""
     try:
-        # Get frequency from agent_config.json instead of prompts.json
-        frequency = _get_subrole_frequency_from_config(subrole_name)
-        
-        if not should_execute_subrole_task(subrole_name, frequency):
-            return
-        
-        logger.info(f"🎭 [SUBROLE] Executing internal task: {subrole_name} (frequency: {frequency}h)")
+        logger.info(f"🎭 [SUBROLE] Executing internal task: {subrole_name}")
         
         # Get system prompt and base mission prompt
         system_instruction = _build_system_prompt(PERSONALITY)
@@ -856,10 +862,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         # Add specific reasons/methods at the end
         task_details = ""
         if subrole_name == "beggar":
-            # Use the new beggar task system
             from roles.trickster.subroles.beggar.beggar_task import execute_beggar_task
-            
-            # Execute the beggar task with runtime context
             try:
                 success = await execute_beggar_task(server_id=server_id, bot_instance=bot_instance)
                 if success:
@@ -868,146 +871,173 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                     logger.warning(f"🎭 [BEGGAR] Task execution failed")
             except Exception as e:
                 logger.error(f"🎭 [BEGGAR] Error in task execution: {e}")
-            
-            # Don't generate regular response for beggar, we handle it in the task
+
+            # Frequency: roles_config DB first, fallback to agent_config.json
+            frequency = None
+            try:
+                from agent_roles_db import RolesDatabase
+                _srv = get_active_server_id() or "default"
+                _rdb = RolesDatabase(_srv)
+                _cfg = _rdb.get_role_config('beggar')
+                _cd = json.loads(_cfg.get('config_data') or '{}')
+                frequency = _cd.get('frequency_hours')
+                if frequency is None:
+                    # Seed from agent_config.json so it's available next time
+                    frequency = _get_subrole_frequency_from_config('beggar')
+                    _cd['frequency_hours'] = frequency
+                    _rdb.save_role_config('beggar', _cfg.get('enabled', True), json.dumps(_cd))
+                    logger.info(f"🎭 [BEGGAR] Seeded frequency_hours={frequency} into roles_config")
+            except Exception as e:
+                logger.warning(f"🎭 [BEGGAR] Could not read frequency from roles_config: {e}")
+                frequency = _get_subrole_frequency_from_config('beggar')
+            mark_subrole_executed(subrole_name, datetime.now() + timedelta(hours=frequency))
             return
         elif subrole_name == "ring":
-            # For ring, we need to execute an actual accusation
-            # Get ring state to find target and check frequency
-            from roles.trickster.subroles.ring.ring_discord import _get_ring_state, execute_ring_accusation, _can_make_accusation
+            from roles.trickster.subroles.ring.ring_discord import (
+                _get_ring_state, execute_ring_accusation,
+                _calculate_next_frequency, _auto_reset_ring_accusation
+            )
             from roles.trickster.subroles.ring.ring_db import RingDB
-            
-            # Try to get a server context (this is tricky in subprocess mode)
-            # For now, we'll use a generic approach - in the future this should be server-aware
+            _RING_IGNORED_LIMIT = 5
+            _RING_IGNORED_MIN_FREQ = 1
             try:
-                # Get active server ID from database
                 from agent_db import get_active_server_id, AgentDatabase
-                
                 server_name = get_active_server_id()
-                if server_name:
-                    db = AgentDatabase(server_name)
-                    
-                    # Check if we can make an accusation based on frequency
-                    # Note: We pass server_name for now but should migrate to runtime context
-                    if not _can_make_accusation(server_name):
-                        logger.info(f"🎭 [RING] Frequency check passed - time for next accusation")
-                        
-                        # Get recent interactions to find a target
-                        import sqlite3
-                        try:
-                            conn = sqlite3.connect(db.db_path)
-                            cursor = conn.cursor()
-                            cursor.execute('''
-                                SELECT usuario_id, usuario_nombre, servidor_id 
-                                FROM interacciones 
-                                WHERE servidor_id IS NOT NULL 
-                                AND fecha > datetime('now', '-24 hours')
-                                ORDER BY fecha DESC 
-                                LIMIT 5
-                            ''')
-                            recent_users = cursor.fetchall()
-                            
-                            if recent_users:
-                                # Select a random recent user as target
-                                import random
-                                target_user_id, target_user_name, server_id = random.choice(recent_users)
-                                
-                                # Get the original accuser from database
-                                accuser_name = "a user"  # default fallback
-                                try:
-                                    ring_db = RingDB(server_name)
-                                    accusations = ring_db.get_accusations(limit=1)
-                                    logger.info(f"🔍 [RING DEBUG] Retrieved {len(accusations)} accusations")
-                                    if accusations and len(accusations) > 0:
-                                        latest_accusation = accusations[0]
-                                        accuser_id = latest_accusation.get('accuser_id')
-                                        logger.info(f"🔍 [RING DEBUG] accuser_id: {accuser_id} (type: {type(accuser_id)})")
-                                        if accuser_id:
-                                            # Try to get user name from recent interactions
-                                            cursor.execute('''
-                                                SELECT usuario_nombre FROM interacciones 
-                                                WHERE usuario_id = ? AND servidor_id = ?
-                                                ORDER BY fecha DESC LIMIT 1
-                                            ''', (accuser_id, server_id))
-                                            result = cursor.fetchone()
-                                            logger.info(f"🔍 [RING DEBUG] Query result: {result}")
-                                            if result:
-                                                accuser_name = result[0]
-                                                logger.info(f"🔍 [RING DEBUG] Found accuser_name: {accuser_name}")
-                                            else:
-                                                # If not found in interactions, maybe accuser_id is already a name
-                                                if isinstance(accuser_id, str) and not accuser_id.isdigit():
-                                                    accuser_name = accuser_id
-                                                    logger.info(f"🔍 [RING DEBUG] Using accuser_id as name: {accuser_name}")
-                                except Exception as e:
-                                    logger.warning(f"Could not get original accuser: {e}")
-                                
-                                # Execute ring accusation
-                                accusation = execute_ring_accusation(None, target_user_id, target_user_name, user_name=accuser_name)
-                                logger.info(f"🎭 [RING] Accusation generated for {target_user_name}: {accusation[:100]}...")
-                                
-                                # Try to send the accusation to a channel
-                                try:
-                                    # Get a channel where we can send the accusation
-                                    # Look for recent interactions to find an active channel
-                                    cursor.execute('''
-                                        SELECT canal_id, COUNT(*) as message_count
-                                        FROM interacciones 
-                                        WHERE servidor_id = ? 
-                                        AND fecha > datetime('now', '-24 hours')
-                                        AND canal_id IS NOT NULL
-                                        GROUP BY canal_id
-                                        ORDER BY message_count DESC
-                                        LIMIT 1
-                                    ''', (server_id,))
-                                    channel_result = cursor.fetchone()
-                                    
-                                    if channel_result:
-                                        channel_id = channel_result[0]
-                                        # Import the bot to send the message
-                                        from discord_bot.agent_discord import get_bot_instance
-                                        bot = get_bot_instance()
-                                        
-                                        if bot:
-                                            # Send accusation via DM only (not public channel)
-                                            try:
-                                                target_user = bot.get_user(int(target_user_id))
-                                                if target_user:
-                                                    await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
-                                                    logger.info(f"🎭 [RING] Accusation sent via DM to {target_user_name}")
-                                                else:
-                                                    logger.warning(f"🎭 [RING] Could not find target user {target_user_id} for DM")
-                                            except Exception as dm_error:
-                                                logger.error(f"🎭 [RING] Error sending DM: {dm_error}")
-                                                # Fallback: try to find a mutual server and send via system channel
-                                                channel = bot.get_channel(int(channel_id))
-                                                if channel:
-                                                    await channel.send(f"⚠️ **RING INVESTIGATION** (DM failed)\n{accusation}")
-                                                    logger.info(f"🎭 [RING] Accusation sent to channel {channel_id} as fallback")
-                                        else:
-                                            logger.warning(f"🎭 [RING] Bot instance not available")
-                                    else:
-                                        logger.warning(f"🎭 [RING] No active channel found for server {server_id}")
-                                except Exception as send_error:
-                                    logger.error(f"🎭 [RING] Error sending accusation: {send_error}")
-                                    
-                            else:
-                                logger.warning(f"🎭 [RING] No recent users found for accusation")
-                        except Exception as e:
-                            logger.error(f"🎭 [RING] Error finding target: {e}")
-                    else:
-                        logger.info(f"🎭 [RING] Frequency check failed - not time for next accusation yet")
-                else:
+                if not server_name:
                     logger.warning(f"🎭 [RING] No active server found")
-                    
+                    return
+
+                ring_state = _get_ring_state(server_name, force_refresh=True)
+
+                # Skip entirely if ring is not enabled
+                if not ring_state.get('enabled', False):
+                    logger.info(f"🎭 [RING] Ring is disabled, skipping")
+                    return
+
+                target_user_id = ring_state.get('target_user_id', '')
+                target_user_name = ring_state.get('target_user_name', '')
+
+                # No target configured — do nothing
+                if not target_user_id:
+                    logger.info(f"🎭 [RING] No target configured, skipping")
+                    return
+
+                # --- Ignored limit check ---
+                # If we're at minimum frequency (1h) and target has been sent the
+                # configured limit of unanswered DMs, auto-reset to a new target.
+                unanswered = ring_state.get('unanswered_dm_count', 0)
+                current_freq = ring_state.get('current_frequency_hours', 24)
+                if current_freq <= _RING_IGNORED_MIN_FREQ and unanswered >= _RING_IGNORED_LIMIT:
+                    logger.info(f"🔄 [RING] {target_user_name} ignored {unanswered} messages at {current_freq}h freq — auto-resetting")
+                    db_agent = AgentDatabase(server_name)
+                    import sqlite3
+                    conn = sqlite3.connect(db_agent.db_path)
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT DISTINCT usuario_id, usuario_nombre
+                        FROM interacciones
+                        WHERE servidor_id IS NOT NULL
+                        AND usuario_id != ?
+                        AND fecha > datetime('now', '-48 hours')
+                        ORDER BY fecha DESC
+                        LIMIT 10
+                    ''', (target_user_id,))
+                    candidates = [(r[0], r[1]) for r in cursor.fetchall()]
+                    conn.close()
+                    new_target = _auto_reset_ring_accusation(server_name, candidates)
+                    if new_target:
+                        ring_state = _get_ring_state(server_name, force_refresh=True)
+                        target_user_id = ring_state['target_user_id']
+                        target_user_name = ring_state['target_user_name']
+                        logger.info(f"🔄 [RING] New target after auto-reset: {target_user_name}")
+                    else:
+                        logger.warning(f"🎭 [RING] Auto-reset failed: no candidates, staying idle")
+                        base_freq = ring_state.get('base_frequency_hours', 24)
+                        mark_subrole_executed(subrole_name, datetime.now() + timedelta(hours=base_freq))
+                        return
+
+                # --- Build accusation and send ---
+                db_agent = AgentDatabase(server_name)
+                import sqlite3
+                conn = sqlite3.connect(db_agent.db_path)
+                cursor = conn.cursor()
+
+                accuser_name = "a user"
+                try:
+                    ring_db = RingDB(server_name)
+                    accusations = ring_db.get_accusations(limit=1)
+                    if accusations:
+                        accuser_id = accusations[0].get('accuser_id')
+                        if accuser_id:
+                            cursor.execute('''
+                                SELECT usuario_nombre FROM interacciones
+                                WHERE usuario_id = ? ORDER BY fecha DESC LIMIT 1
+                            ''', (accuser_id,))
+                            result = cursor.fetchone()
+                            if result:
+                                accuser_name = result[0]
+                            elif isinstance(accuser_id, str) and not accuser_id.isdigit():
+                                accuser_name = accuser_id
+                except Exception as e:
+                    logger.warning(f"Could not get original accuser: {e}")
+
+                accusation = await execute_ring_accusation(None, target_user_id, target_user_name, user_name=accuser_name)
+                logger.info(f"🎭 [RING] Accusation generated for {target_user_name}: {accusation[:100]}...")
+
+                # Find most active channel in last 24h
+                cursor.execute('''
+                    SELECT canal_id, COUNT(*) as cnt
+                    FROM interacciones
+                    WHERE servidor_id IS NOT NULL
+                    AND fecha > datetime('now', '-24 hours')
+                    AND canal_id IS NOT NULL
+                    GROUP BY canal_id ORDER BY cnt DESC LIMIT 1
+                ''')
+                channel_result = cursor.fetchone()
+                conn.close()
+
+                dm_sent = False
+                try:
+                    from discord_bot.agent_discord import get_bot_instance
+                    bot = get_bot_instance()
+                    if bot:
+                        target_user = bot.get_user(int(target_user_id))
+                        if target_user:
+                            await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
+                            logger.info(f"🎭 [RING] Accusation sent via DM to {target_user_name}")
+                            dm_sent = True
+                        else:
+                            logger.warning(f"🎭 [RING] Could not find target user {target_user_id} in cache")
+                    else:
+                        logger.warning(f"🎭 [RING] Bot instance not available")
+                except Exception as dm_error:
+                    logger.error(f"🎭 [RING] Error sending DM: {dm_error}")
+
+                if not dm_sent and channel_result:
+                    try:
+                        from discord_bot.agent_discord import get_bot_instance
+                        bot = get_bot_instance()
+                        if bot:
+                            channel = bot.get_channel(int(channel_result[0]))
+                            if channel:
+                                await channel.send(f"⚠️ **RING INVESTIGATION** (DM failed)\n{accusation}")
+                                logger.info(f"🎭 [RING] Accusation sent to channel as fallback")
+                    except Exception as ch_err:
+                        logger.error(f"🎭 [RING] Channel fallback failed: {ch_err}")
+
+                # Increment unanswered counter and persist
+                ring_state = _get_ring_state(server_name, force_refresh=True)
+                ring_state['unanswered_dm_count'] = ring_state.get('unanswered_dm_count', 0) + 1
+                from roles.trickster.subroles.ring.ring_discord import _save_ring_state
+                _save_ring_state(server_name, "scheduler_accusation")
+
+                # Schedule next run via hot-potato
+                next_freq = _calculate_next_frequency(server_name)
+                mark_subrole_executed(subrole_name, datetime.now() + timedelta(hours=next_freq))
+
             except Exception as e:
                 logger.error(f"🎭 [RING] Error in ring execution: {e}")
-                
-            # Also generate the regular response as fallback
-            methods = subrole_config.get("internal_task", {}).get("investigation_methods", [])
-            if methods:
-                selected_method = random.choice(methods)
-                task_details = f"\n\nINVESTIGATION METHOD: {selected_method}"
+            return
         
         # Construct complete prompt: mission + task + details
         complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nRespond only with what {_bot_display_name} would say, without additional explanations."
@@ -1028,6 +1058,9 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             logger.info(f"🎭 [{subrole_name.upper()}] Generated message: {response[:100]}...")
         else:
             logger.warning(f"🎭 [{subrole_name.upper()}] Empty or short response: {response}")
-        
+
+        frequency = _get_subrole_frequency_from_config(subrole_name)
+        mark_subrole_executed(subrole_name, datetime.now() + timedelta(hours=frequency))
+
     except Exception as e:
         logger.error(f"🎭 [SUBROLE] Error executing task {subrole_name}: {e}")

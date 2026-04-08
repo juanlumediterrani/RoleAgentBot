@@ -14,7 +14,7 @@ from typing import Optional, Dict, List, Tuple
 from agent_logging import get_logger
 from agent_engine import PERSONALITY
 
-# Asegurar que el path del directorio mc esté en sys.path
+# Ensure mc directory path is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 logger = get_logger('mc_commands')
@@ -347,9 +347,9 @@ class MCCommands:
                 db_mc = get_mc_db_instance(server_id)
                 
 
-                db_mc.agregar_cancion_queue(
+                db_mc.add_song_to_queue(
                     server_id, str(message.channel.id), str(message.author.id),
-                    title, url, duration_str, artist, posicion=0
+                    title, url, duration_str, artist, position=0
                 )
                 
 
@@ -473,9 +473,9 @@ class MCCommands:
                 from db_role_mc import get_mc_db_instance
                 db_mc = get_mc_db_instance(server_id)
                 
-                db_mc.agregar_cancion_queue(
+                db_mc.add_song_to_queue(
                     server_id, str(message.channel.id), str(message.author.id),
-                    title, url, duration_str, artist, posicion=-1
+                    title, url, duration_str, artist, position=-1
                 )
                 
                 # Song added silently - no automatic message
@@ -512,7 +512,7 @@ class MCCommands:
         await self._send_message(message.channel, self.get_mc_message("song_skipped", "⏭️ **Song skipped.**"))
     
     async def cmd_stop(self, message, args):
-        """Stop the reproducction and clear the queue"""
+        """Stop the reproduction and clear the queue"""
         server_id = str(message.guild.id)
         
         if server_id not in self.voice_clients or not self.voice_clients[server_id].is_connected():
@@ -524,7 +524,7 @@ class MCCommands:
         try:
             from db_role_mc import get_mc_db_instance
             db_mc = get_mc_db_instance(server_id)
-            db_mc.limpiar_queue(server_id, str(message.channel.id))
+            db_mc.clear_queue(server_id, str(message.channel.id))
         except Exception as e:
             logger.exception(f"Error cleaning the queue {e}")
         
@@ -556,14 +556,14 @@ class MCCommands:
             from db_role_mc import get_mc_db_instance
             db_mc = get_mc_db_instance(server_id)
             
-            db_mc.limpiar_queue(server_id, str(message.channel.id))
+            db_mc.clear_queue(server_id, str(message.channel.id))
             await self._send_message(message.channel, "🧹 **Queue clear**")
             return
 
         from db_role_mc import get_mc_db_instance
         db_mc = get_mc_db_instance(server_id)
         
-        queue = db_mc.obtener_queue(server_id, str(message.channel.id))
+        queue = db_mc.get_queue(server_id, str(message.channel.id))
         
         if not queue:
             await self._send_message(message.channel, "📭 **The queue is empty.**")
@@ -604,7 +604,7 @@ class MCCommands:
         from db_role_mc import get_mc_db_instance
         db_mc = get_mc_db_instance(server_id)
         
-        db_mc.limpiar_queue(server_id, str(message.channel.id))
+        db_mc.clear_queue(server_id, str(message.channel.id))
         
         await self._send_message(message.channel, self.get_mc_message("queue_cleared", "🗑️ **Playback queue cleared.**"))
     
@@ -666,7 +666,7 @@ class MCCommands:
         from db_role_mc import get_mc_db_instance
         db_mc = get_mc_db_instance(server_id)
         
-        history = db_mc.obtener_historial(server_id, str(message.channel.id), 10)
+        history = db_mc.get_history(server_id, str(message.channel.id), 10)
         
         if not history:
             await message.channel.send("📭 **The history its empty**")
@@ -789,13 +789,13 @@ class MCCommands:
             from db_role_mc import get_mc_db_instance
             db_mc = get_mc_db_instance(server_id)
             
-            queue = db_mc.obtener_queue(server_id, str(channel.id))
+            queue = db_mc.get_queue(server_id, str(channel.id))
             
             if not queue:
                 await self._send_message(channel, self.get_mc_message('queue_end_disconnect'))
                 
-                # Programar desconexión
-                await asyncio.sleep(300)  # 5 minutos
+                # Schedule disconnection
+                await asyncio.sleep(300)  # 5 minutes
                 
                 if server_id in self.voice_clients and self.voice_clients[server_id].is_connected():
                     if not self.voice_clients[server_id].is_playing():
@@ -860,8 +860,8 @@ class MCCommands:
                 'user': user_name
             }
             
-            db_mc.remover_cancion_queue(server_id, str(channel.id), pos)
-            db_mc.registrar_historial(server_id, str(channel.id), user_id, title, url, duration, artist)
+            db_mc.remove_song_from_queue(server_id, str(channel.id), pos)
+            db_mc.register_history(server_id, str(channel.id), user_id, title, url, duration, artist)
             
             # Anunciar
             await self._send_message(channel, self.get_mc_message("now_playing", f"🎵 **Now Playing**\n🎶 {title}\n👤 {artist}\n⏱️ {duration}\n🎤 Added by: {user_name}", song=title))
@@ -877,7 +877,7 @@ class MCCommands:
                 try:
                     from db_role_mc import get_mc_db_instance
                     db_mc = get_mc_db_instance(server_id)
-                    db_mc.remover_cancion_queue(server_id, str(channel.id), pos)
+                    db_mc.remove_song_from_queue(server_id, str(channel.id), pos)
                     # Try to play next song
                     await self._play_next(server_id, channel)
                 except Exception as next_e:

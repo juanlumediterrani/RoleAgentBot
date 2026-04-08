@@ -3,6 +3,7 @@ Beggar Automated Task System
 Handles automatic public channel messages for begging
 """
 
+import asyncio
 import random
 from typing import Optional, List, Dict, Any
 
@@ -231,13 +232,14 @@ class BeggarTask:
             # Build the prompt
             prompt = self._build_task_prompt(current_reason, recent_messages)
             
-            # Generate message using LLM
+            # Generate message using LLM — offload to thread to avoid blocking the event loop
             system_instruction = _build_system_prompt(PERSONALITY)
-            
-            response = call_llm(
+
+            response = await asyncio.to_thread(
+                call_llm,
                 system_instruction=system_instruction,
                 prompt=prompt,
-                async_mode=True,
+                async_mode=False,
                 call_type="beggar_task",
                 critical=False,
                 temperature=0.95,
@@ -262,6 +264,17 @@ class BeggarTask:
                 )
                 
                 logger.info(f"Beggar task with donation buttons executed in channel {target_channel.name} for server {self.server_id}")
+
+                # Persist next_run_at so the scheduler knows when to fire next
+                try:
+                    from agent_engine import mark_subrole_executed
+                    from datetime import datetime, timedelta
+                    freq = self.config.get_frequency_hours()
+                    mark_subrole_executed('beggar', datetime.now() + timedelta(hours=freq))
+                    logger.info(f"🙏 [BEGGAR] next_run_at persisted: +{freq}h from now")
+                except Exception as _e:
+                    logger.warning(f"🙏 [BEGGAR] Could not persist next_run_at: {_e}")
+
                 return True
             else:
                 logger.warning(f"Empty or short response from LLM for beggar task in server {self.server_id}")

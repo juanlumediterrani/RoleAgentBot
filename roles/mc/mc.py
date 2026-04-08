@@ -49,17 +49,17 @@ async def mc_task():
         db_mc = get_mc_db_instance(server_name)
         
         # Clean up old queue entries (maintenance task)
-        cleaned_count = db_mc.limpiar_cola_antigua()
+        cleaned_count = db_mc.clean_old_queue()
         if cleaned_count > 0:
             logger.info(f"🎵 Cleaned {cleaned_count} old queue entries")
         
         # Clean up old history entries (maintenance task)
-        cleaned_history = db_mc.limpiar_historial_antiguo()
+        cleaned_history = db_mc.clean_old_history()
         if cleaned_history > 0:
             logger.info(f"🎵 Cleaned {cleaned_history} old history entries")
         
         # Get current statistics
-        stats = db_mc.obtener_estadisticas()
+        stats = db_mc.get_statistics()
         logger.info(f"📊 MC Stats - Playlists: {stats.get('playlists_total', 0)}, "
                    f"Queue: {stats.get('queue_total', 0)}, History: {stats.get('historial_total', 0)}")
         

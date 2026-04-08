@@ -23,8 +23,8 @@ def get_db_path(server_id: str = "default") -> Path:
 
 
 class DatabaseRoleMC:
-    """Base de datos especializada para el MC (Master of Ceremonies).
-    Gestiona colas de música, playlists y preferencias.
+    """Specialized database for the MC (Master of Ceremonies).
+    Manages music queues, playlists and preferences.
     """
     
     def __init__(self, server_id: str = "default", db_path: Path = None):
@@ -37,19 +37,19 @@ class DatabaseRoleMC:
         self._init_db()
     
     def _ensure_writable_db(self):
-        """Verifica que la BD sea accesible y force permisos correctos."""
+        """Verify database is accessible and force correct permissions."""
         try:
-            # Asegurar que el directorio exista con permisos correctos
+            # Ensure directory exists with correct permissions
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             self._fix_permissions(self.db_path.parent)
             
-            # Conectar y forzar permisos del archivo con timeout extendido
-            conn = sqlite3.connect(str(self.db_path), timeout=30.0)
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA journal_mode=DELETE;')
-            conn.close()
+            # Just verify database file exists and is accessible
+            if not self.db_path.exists():
+                # Create empty database file
+                conn = sqlite3.connect(str(self.db_path), timeout=30.0)
+                conn.close()
             
-            # Forzar permisos del archivo de BD
+            # Force database file permissions
             self._fix_permissions(self.db_path)
             
         except Exception as e:
@@ -57,17 +57,17 @@ class DatabaseRoleMC:
             raise
     
     def _fix_permissions(self, path: Path):
-        """Fuerza permisos de usuario/grupo actual en archivo/directorio."""
+        """Force current user/group permissions on file/directory."""
         try:
             if path.exists():
-                # Obtener uid/gid actual
+                # Get current uid/gid
                 uid = os.getuid()
                 gid = os.getgid()
                 
-                # Cambiar owner
+                # Set owner
                 os.chown(path, uid, gid)
                 
-                # Permisos: 664 para archivos, 775 para directorios
+                # Permissions: 664 for files, 775 for directories
                 if path.is_file():
                     current_mode = path.stat().st_mode
                     new_mode = (current_mode & 0o777) | stat.S_IWUSR | stat.S_IWGRP
@@ -82,335 +82,376 @@ class DatabaseRoleMC:
             logger.warning(f"Could not fix permissions for {path}: {e}")
     
     def _init_db(self):
-        """Inicializa la base de datos con configuración DELETE."""
+        """Initialize database."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=DELETE;")
-                conn.commit()
                 
-                # Inicializar tablas
+                # Initialize tables
                 self._init_playlists_table()
                 self._init_queue_table()
                 self._init_history_table()
                 self._init_preferences_table()
                 
-                logger.info(f"✅ Base de datos MC lista en {self.db_path}")
+                logger.info(f"MC database ready at {self.db_path}")
         except Exception as e:
-            logger.exception(f"❌ Error en inicialización de DB MC: {e}")
+            logger.exception(f"Error initializing MC database: {e}")
     
+
     def _init_playlists_table(self):
-        """Inicializa tabla de playlists."""
+        """Initialize playlists table."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS playlists (
+                    CREATE TABLE IF NOT EXISTS mc_playlist (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        nombre TEXT NOT NULL,
-                        usuario_id TEXT NOT NULL,
-                        usuario_nombre TEXT NOT NULL,
-                        servidor_id TEXT NOT NULL,
-                        servidor_nombre TEXT NOT NULL,
-                        fecha_creacion TEXT NOT NULL,
-                        fecha_actualizacion TEXT DEFAULT NULL,
-                        activa INTEGER DEFAULT 1,
-                        UNIQUE(usuario_id, nombre)
+                        name TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        user_name TEXT NOT NULL,
+                        server_id TEXT NOT NULL,
+                        server_name TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT DEFAULT NULL,
+                        active INTEGER DEFAULT 1,
+                        UNIQUE(user_id, name)
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_playlists_usuario ON playlists (usuario_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_playlists_activa ON playlists (activa)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_playlist_user_id ON mc_playlist (user_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_playlist_active ON mc_playlist (active)')
                 conn.commit()
         except Exception as e:
-            logger.exception(f"❌ Error creando tabla playlists: {e}")
+            logger.exception(f"❌ Error creating mc_playlist table: {e}")
     
     def _init_queue_table(self):
-        """Inicializa tabla de cola de reproducción."""
+        """Initialize queue table."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS queue (
+                    CREATE TABLE IF NOT EXISTS mc_queue (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        servidor_id TEXT NOT NULL,
-                        canal_id TEXT NOT NULL,
-                        usuario_id TEXT NOT NULL,
-                        titulo TEXT NOT NULL,
+                        server_id TEXT NOT NULL,
+                        channel_id TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        title TEXT NOT NULL,
                         url TEXT NOT NULL,
-                        duracion TEXT DEFAULT NULL,
-                        artista TEXT DEFAULT NULL,
-                        posicion INTEGER NOT NULL,
-                        fecha_agregado TEXT NOT NULL,
-                        activo INTEGER DEFAULT 1
+                        duration TEXT DEFAULT NULL,
+                        artist TEXT DEFAULT NULL,
+                        position INTEGER NOT NULL,
+                        added_at TEXT NOT NULL,
+                        active INTEGER DEFAULT 1
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_queue_servidor ON queue (servidor_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_queue_posicion ON queue (posicion)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_queue_activo ON queue (activo)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_queue_server_id ON mc_queue (server_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_queue_position ON mc_queue (position)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_queue_active ON mc_queue (active)')
                 conn.commit()
         except Exception as e:
-            logger.exception(f"❌ Error creando tabla queue: {e}")
+            logger.exception(f"❌ Error creating mc_queue table: {e}")
     
     def _init_history_table(self):
-        """Inicializa tabla de historial de reproducción."""
+        """Initialize history table."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS history (
+                    CREATE TABLE IF NOT EXISTS mc_history (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        servidor_id TEXT NOT NULL,
-                        canal_id TEXT NOT NULL,
-                        usuario_id TEXT NOT NULL,
-                        titulo TEXT NOT NULL,
+                        server_id TEXT NOT NULL,
+                        channel_id TEXT NOT NULL,
+                        user_id TEXT NOT NULL,
+                        title TEXT NOT NULL,
                         url TEXT NOT NULL,
-                        duracion TEXT DEFAULT NULL,
-                        artista TEXT DEFAULT NULL,
-                        fecha_reproduccion TEXT NOT NULL
+                        duration TEXT DEFAULT NULL,
+                        artist TEXT DEFAULT NULL,
+                        played_at TEXT NOT NULL
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_history_servidor ON history (servidor_id)')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_history_fecha ON history (fecha_reproduccion)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_history_server_id ON mc_history (server_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_history_played_at ON mc_history (played_at)')
                 conn.commit()
         except Exception as e:
-            logger.exception(f"❌ Error creando tabla history: {e}")
+            logger.exception(f"❌ Error creating mc_history table: {e}")
     
     def _init_preferences_table(self):
-        """Inicializa tabla de preferencias de usuarios."""
+        """Initialize user preferences table."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS preferences (
+                    CREATE TABLE IF NOT EXISTS mc_preferences (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        usuario_id TEXT NOT NULL UNIQUE,
-                        volumen_default INTEGER DEFAULT 100,
-                        calidad_default TEXT DEFAULT 'medium',
+                        user_id TEXT NOT NULL UNIQUE,
+                        default_volume INTEGER DEFAULT 100,
+                        default_quality TEXT DEFAULT 'medium',
                         autoplay INTEGER DEFAULT 0,
-                        fecha_actualizacion TEXT DEFAULT NULL
+                        updated_at TEXT DEFAULT NULL
                     )
                 ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_preferences_usuario ON preferences (usuario_id)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_mc_preferences_user_id ON mc_preferences (user_id)')
                 conn.commit()
         except Exception as e:
-            logger.exception(f"❌ Error creando tabla preferences: {e}")
+            logger.exception(f"❌ Error creating mc_preferences table: {e}")
     
-    def crear_playlist(self, nombre: str, usuario_id: str, usuario_nombre: str, 
-                      servidor_id: str, servidor_nombre: str) -> bool:
-        """Crea una nueva playlist."""
+    def create_playlist(self, name: str, user_id: str, user_name: str, 
+                          server_id: str, server_name: str) -> bool:
+        """Create a new playlist."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                        INSERT OR IGNORE INTO playlists 
-                        (nombre, usuario_id, usuario_nombre, servidor_id, servidor_nombre, fecha_creacion)
+                        INSERT OR IGNORE INTO mc_playlist 
+                        (name, user_id, user_name, server_id, server_name, created_at)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (nombre, usuario_id, usuario_nombre, servidor_id, servidor_nombre, 
+                    ''', (name, user_id, user_name, server_id, server_name, 
                           datetime.now().isoformat()))
                     conn.commit()
                     return cursor.rowcount > 0
         except Exception as e:
-            logger.exception(f"Error creando playlist: {e}")
+            logger.exception(f"Error creating playlist: {e}")
             return False
     
-    def obtener_playlists_usuario(self, usuario_id: str) -> list:
-        """Obtiene todas las playlists de un usuario."""
+    def get_user_playlists(self, user_id: str) -> list:
+        """Get all playlists for a user."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT id, nombre, fecha_creacion, fecha_actualizacion
-                    FROM playlists 
-                    WHERE usuario_id = ? AND activa = 1
-                    ORDER BY fecha_creacion DESC
-                ''', (usuario_id,))
+                    SELECT id, name, created_at, updated_at
+                    FROM mc_playlist 
+                    WHERE user_id = ? AND active = 1
+                    ORDER BY created_at DESC
+                ''', (user_id,))
                 return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"Error obteniendo playlists de usuario: {e}")
+            logger.exception(f"Error getting user playlists: {e}")
             return []
     
-    def agregar_cancion_queue(self, servidor_id: str, canal_id: str, usuario_id: str,
-                             titulo: str, url: str, duracion: str = None, artista: str = None, 
-                             posicion: int = None) -> bool:
-        """Agrega una canción a la cola de reproducción.
+    def add_song_to_queue(self, server_id: str, channel_id: str, user_id: str,
+                           title: str, url: str, duration: str = None, artist: str = None, 
+                           position: int = None) -> bool:
+        """Add a song to the playback queue.
         
         Args:
-            posicion: Si es None, se agrega al final. Si es 0, al principio.
+            position: If None, add to end. If 0, add to beginning.
         """
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     
-                    if posicion is None or posicion == -1:
-                        # Agregar al final (comportamiento actual)
+                    if position is None or position == -1:
+                        # Add to end (default behavior)
                         cursor.execute('''
-                            SELECT MAX(posicion) FROM queue 
-                            WHERE servidor_id = ? AND canal_id = ? AND activo = 1
-                        ''', (servidor_id, canal_id))
+                            SELECT MAX(position) FROM mc_queue 
+                            WHERE server_id = ? AND channel_id = ? AND active = 1
+                        ''', (server_id, channel_id))
                         max_pos = cursor.fetchone()[0] or 0
-                        nueva_posicion = max_pos + 1
-                    elif posicion == 0:
-                        # Agregar al principio
+                        new_position = max_pos + 1
+                    elif position == 0:
+                        # Add to beginning
                         cursor.execute('''
-                            UPDATE queue SET posicion = posicion + 1
-                            WHERE servidor_id = ? AND canal_id = ? AND activo = 1
-                        ''', (servidor_id, canal_id))
-                        nueva_posicion = 1
+                            UPDATE mc_queue SET position = position + 1
+                            WHERE server_id = ? AND channel_id = ? AND active = 1
+                        ''', (server_id, channel_id))
+                        new_position = 1
                     else:
-                        # Posición específica
+                        # Specific position
                         cursor.execute('''
-                            UPDATE queue SET posicion = posicion + 1
-                            WHERE servidor_id = ? AND canal_id = ? AND activo = 1 
-                            AND posicion >= ?
-                        ''', (servidor_id, canal_id, posicion))
-                        nueva_posicion = posicion
+                            UPDATE mc_queue SET position = position + 1
+                            WHERE server_id = ? AND channel_id = ? AND active = 1 
+                            AND position >= ?
+                        ''', (server_id, channel_id, position))
+                        new_position = position
                     
                     cursor.execute('''
-                        INSERT INTO queue 
-                        (servidor_id, canal_id, usuario_id, titulo, url, duracion, artista, posicion, fecha_agregado)
+                        INSERT INTO mc_queue 
+                        (server_id, channel_id, user_id, title, url, duration, artist, position, added_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (servidor_id, canal_id, usuario_id, titulo, url, duracion, artista, 
-                          nueva_posicion, datetime.now().isoformat()))
+                    ''', (server_id, channel_id, user_id, title, url, duration, artist, 
+                          new_position, datetime.now().isoformat()))
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error agregando canción a queue: {e}")
+            logger.exception(f"Error adding song to queue: {e}")
             return False
     
-    def obtener_queue(self, servidor_id: str, canal_id: str) -> list:
-        """Obtiene la cola de reproducción actual."""
+    def get_queue(self, server_id: str, channel_id: str) -> list:
+        """Get current playback queue."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT posicion, titulo, url, duracion, artista, usuario_id, fecha_agregado
-                    FROM queue 
-                    WHERE servidor_id = ? AND canal_id = ? AND activo = 1
-                    ORDER BY posicion ASC
-                ''', (servidor_id, canal_id))
+                    SELECT position, title, url, duration, artist, user_id, added_at
+                    FROM mc_queue 
+                    WHERE server_id = ? AND channel_id = ? AND active = 1
+                    ORDER BY position ASC
+                ''', (server_id, channel_id))
                 return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"Error obteniendo queue: {e}")
+            logger.exception(f"Error getting queue: {e}")
             return []
     
-    def remover_cancion_queue(self, servidor_id: str, canal_id: str, posicion: int) -> bool:
-        """Remueve una canción específica de la cola."""
+    def remove_song_from_queue(self, server_id: str, channel_id: str, position: int) -> bool:
+        """Remove a specific song from queue."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     
-                    # Marcar como inactiva la canción
+                    # Mark song as inactive
                     cursor.execute('''
-                        UPDATE queue SET activo = 0 
-                        WHERE servidor_id = ? AND canal_id = ? AND posicion = ?
-                    ''', (servidor_id, canal_id, posicion))
+                        UPDATE mc_queue SET active = 0 
+                        WHERE server_id = ? AND channel_id = ? AND position = ?
+                    ''', (server_id, channel_id, position))
                     
-                    # Reordenar las posiciones restantes
+                    # Reorder remaining positions
                     cursor.execute('''
-                        UPDATE queue SET posicion = posicion - 1 
-                        WHERE servidor_id = ? AND canal_id = ? AND posicion > ? AND activo = 1
-                    ''', (servidor_id, canal_id, posicion))
+                        UPDATE mc_queue SET position = position - 1 
+                        WHERE server_id = ? AND channel_id = ? AND position > ? AND active = 1
+                    ''', (server_id, channel_id, position))
                     
                     conn.commit()
                     return cursor.rowcount > 0
         except Exception as e:
-            logger.exception(f"Error removiendo canción de queue: {e}")
+            logger.exception(f"Error removing song from queue: {e}")
             return False
     
-    def limpiar_queue(self, servidor_id: str, canal_id: str) -> bool:
-        """Limpia toda la cola de reproducción."""
+    def clear_queue(self, server_id: str, channel_id: str) -> bool:
+        """Clear entire playback queue."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                        UPDATE queue SET activo = 0 
-                        WHERE servidor_id = ? AND canal_id = ?
-                    ''', (servidor_id, canal_id))
+                        UPDATE mc_queue SET active = 0 
+                        WHERE server_id = ? AND channel_id = ?
+                    ''', (server_id, channel_id))
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error limpiando queue: {e}")
+            logger.exception(f"Error clearing queue: {e}")
             return False
     
-    def registrar_historial(self, servidor_id: str, canal_id: str, usuario_id: str,
-                          titulo: str, url: str, duracion: str = None, artista: str = None) -> bool:
-        """Registra una canción en el historial de reproducción."""
+    def register_history(self, server_id: str, channel_id: str, user_id: str,
+                         title: str, url: str, duration: str = None, artist: str = None) -> bool:
+        """Register a song in playback history."""
         try:
             with self._lock:
                 with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                        INSERT INTO history 
-                        (servidor_id, canal_id, usuario_id, titulo, url, duracion, artista, fecha_reproduccion)
+                        INSERT INTO mc_history 
+                        (server_id, channel_id, user_id, title, url, duration, artist, played_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (servidor_id, canal_id, usuario_id, titulo, url, duracion, artista,
+                    ''', (server_id, channel_id, user_id, title, url, duration, artist,
                           datetime.now().isoformat()))
                     conn.commit()
                     return True
         except Exception as e:
-            logger.exception(f"Error registrando historial: {e}")
+            logger.exception(f"Error registering history: {e}")
             return False
     
-    def obtener_historial(self, servidor_id: str, canal_id: str, limite: int = 10) -> list:
-        """Obtiene el historial de reproducción reciente."""
+    def get_history(self, server_id: str, channel_id: str, limit: int = 10) -> list:
+        """Get recent playback history."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT titulo, url, duracion, artista, usuario_id, fecha_reproduccion
-                    FROM history 
-                    WHERE servidor_id = ? AND canal_id = ?
-                    ORDER BY fecha_reproduccion DESC
+                    SELECT title, url, duration, artist, user_id, played_at
+                    FROM mc_history 
+                    WHERE server_id = ? AND channel_id = ?
+                    ORDER BY played_at DESC
                     LIMIT ?
-                ''', (servidor_id, canal_id, limite))
+                ''', (server_id, channel_id, limit))
                 return cursor.fetchall()
         except Exception as e:
-            logger.exception(f"Error obteniendo historial: {e}")
+            logger.exception(f"Error getting history: {e}")
             return []
     
-    def obtener_estadisticas(self, servidor_id: str = None) -> dict:
-        """Obtiene estadísticas básicas del MC."""
+    def get_statistics(self, server_id: str = None) -> dict:
+        """Get basic MC statistics."""
         try:
             with sqlite3.connect(str(self.db_path), timeout=30) as conn:
                 cursor = conn.cursor()
                 
-                # Estadísticas generales
-                cursor.execute('SELECT COUNT(*) FROM playlists WHERE activa = 1')
+                # General statistics
+                cursor.execute('SELECT COUNT(*) FROM mc_playlist WHERE active = 1')
                 playlists_total = cursor.fetchone()[0]
                 
-                cursor.execute('SELECT COUNT(*) FROM queue WHERE activo = 1')
+                cursor.execute('SELECT COUNT(*) FROM mc_queue WHERE active = 1')
                 queue_total = cursor.fetchone()[0]
                 
-                cursor.execute('SELECT COUNT(*) FROM history')
+                cursor.execute('SELECT COUNT(*) FROM mc_history')
                 historial_total = cursor.fetchone()[0]
                 
-                # Estadísticas por servidor si se especifica
-                if servidor_id:
-                    cursor.execute('SELECT COUNT(*) FROM queue WHERE servidor_id = ? AND activo = 1', (servidor_id,))
-                    queue_servidor = cursor.fetchone()[0]
+                # Server-specific statistics if specified
+                if server_id:
+                    cursor.execute('SELECT COUNT(*) FROM mc_queue WHERE server_id = ? AND active = 1', (server_id,))
+                    queue_server = cursor.fetchone()[0]
                     
-                    cursor.execute('SELECT COUNT(*) FROM history WHERE servidor_id = ?', (servidor_id,))
-                    historial_servidor = cursor.fetchone()[0]
+                    cursor.execute('SELECT COUNT(*) FROM mc_history WHERE server_id = ?', (server_id,))
+                    history_server = cursor.fetchone()[0]
                 else:
-                    queue_servidor = 0
-                    historial_servidor = 0
+                    queue_server = 0
+                    history_server = 0
                 
                 return {
                     'playlists_total': playlists_total,
                     'queue_total': queue_total,
                     'historial_total': historial_total,
-                    'queue_servidor': queue_servidor,
-                    'historial_servidor': historial_servidor
+                    'queue_servidor': queue_server,
+                    'historial_servidor': history_server
                 }
         except Exception as e:
-            logger.exception(f"Error obteniendo estadísticas: {e}")
+            logger.exception(f"Error getting statistics: {e}")
             return {}
+    
+    def clean_old_queue(self, days: int = 7) -> int:
+        """Clean old queue entries (older than X days)."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
+                    cursor = conn.cursor()
+                    cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+                    
+                    cursor.execute('''
+                        UPDATE mc_queue SET active = 0 
+                        WHERE added_at < ? AND active = 1
+                    ''', (cutoff_date,))
+                    
+                    cleaned_count = cursor.rowcount
+                    conn.commit()
+                    logger.info(f"Cleaned {cleaned_count} old queue entries older than {days} days")
+                    return cleaned_count
+        except Exception as e:
+            logger.exception(f"Error cleaning old queue: {e}")
+            return 0
+    
+    def clean_old_history(self, days: int = 30) -> int:
+        """Clean old history entries (older than X days)."""
+        try:
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30.0) as conn:
+                    cursor = conn.cursor()
+                    cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+                    
+                    cursor.execute('''
+                        DELETE FROM mc_history 
+                        WHERE played_at < ?
+                    ''', (cutoff_date,))
+                    
+                    cleaned_count = cursor.rowcount
+                    conn.commit()
+                    logger.info(f"Cleaned {cleaned_count} old history entries older than {days} days")
+                    return cleaned_count
+        except Exception as e:
+            logger.exception(f"Error cleaning old history: {e}")
+            return 0
 
 
 def get_mc_db_instance(server_id: str = "default") -> DatabaseRoleMC:
-    """Obtiene una instancia de la base de datos del MC."""
+    """Get an instance of the MC database."""
     return DatabaseRoleMC(server_id)

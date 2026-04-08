@@ -921,6 +921,20 @@ async def _process_chat_message(message):
                 except Exception as e:
                     logger.debug(f"Could not mark user replied for server {server_id}: {e}")
 
+        # If a DM was received, reset ring unanswered counter for this user across all servers
+        if message.guild is None:
+            try:
+                from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+                for guild in bot.guilds:
+                    _srv = str(guild.id)
+                    rstate = _get_ring_state(_srv, force_refresh=True)
+                    if rstate.get('target_user_id') == str(message.author.id) and rstate.get('unanswered_dm_count', 0) > 0:
+                        rstate['unanswered_dm_count'] = 0
+                        _save_ring_state(_srv, "target_replied")
+                        logger.info(f"🎭 [RING] {message.author.name} replied via DM — unanswered count reset for server {_srv}")
+            except Exception as e:
+                logger.debug(f"Could not reset ring unanswered count: {e}")
+
         # Check for ACCUSE flag in LLM response
         accusation_response = None
         if response and "ACCUSE" in response:

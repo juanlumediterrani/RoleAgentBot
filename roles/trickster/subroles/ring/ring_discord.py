@@ -36,6 +36,7 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
             "base_frequency_hours": 24,
             "current_frequency_hours": 24,
             "frequency_iteration": 0,
+            "unanswered_dm_count": 0,
             "last_accusation": "",
             "last_accusation_time": None,
             "target_user_name": "Unknown bearer",
@@ -110,6 +111,7 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
                 "base_frequency_hours": int(ring_config.get('base_frequency_hours', defaults["base_frequency_hours"])),
                 "current_frequency_hours": int(ring_config.get('current_frequency_hours', defaults["current_frequency_hours"])),
                 "frequency_iteration": int(ring_config.get('frequency_iteration', defaults["frequency_iteration"])),
+                "unanswered_dm_count": int(ring_config.get('unanswered_dm_count', defaults["unanswered_dm_count"])),
                 "last_accusation": ring_config.get('last_accusation', defaults["last_accusation"]),
                 "last_accusation_time": ring_config.get('last_accusation_time', defaults["last_accusation_time"]),
                 "target_user_id": accused_user_id,  # Use accused_user_id as target_user_id for compatibility
@@ -140,6 +142,7 @@ def _save_ring_state(server_id: str, updated_by: str | None = None) -> bool:
             'base_frequency_hours': state['base_frequency_hours'],
             'current_frequency_hours': state['current_frequency_hours'],
             'frequency_iteration': state['frequency_iteration'],
+            'unanswered_dm_count': state.get('unanswered_dm_count', 0),
             'accused_user_id': state['target_user_id'],  # Save user ID, not username
             'accused_user_name': state['target_user_name'],  # Also save username for display
             'updated_by': updated_by
@@ -164,6 +167,25 @@ def _save_ring_state(server_id: str, updated_by: str | None = None) -> bool:
     except Exception as e:
         logger.error(f"Error saving ring state for server {server_id}: {e}")
         return False
+
+
+def _auto_reset_ring_accusation(server_id: str, recent_users: list) -> str | None:
+    """Pick a new random target from recent_users and reset ring state to base frequency.
+    Returns the new target_user_id or None if no users available."""
+    import random as _random
+    if not recent_users:
+        return None
+    new_target_id, new_target_name = _random.choice(recent_users)
+    state = _get_ring_state(server_id, force_refresh=True)
+    state['target_user_id'] = new_target_id
+    state['target_user_name'] = new_target_name
+    state['unanswered_dm_count'] = 0
+    state['frequency_iteration'] = 0
+    state['current_frequency_hours'] = state['base_frequency_hours']
+    state['last_accusation_time'] = None
+    _save_ring_state(server_id, "auto_reset_ignored")
+    logger.info(f"🔄 [RING] Auto-reset: new target {new_target_name} ({new_target_id}), frequency back to {state['base_frequency_hours']}h")
+    return new_target_id
 
 
 def _calculate_next_frequency(server_id: str) -> int:
@@ -244,7 +266,16 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
     
     # Save the updated state
     _save_ring_state(server_id, "accusation_record")
-    
+
+    # Persist next_run_at so the scheduler picks up the correct next fire time
+    try:
+        from agent_engine import mark_subrole_executed
+        next_freq = _get_ring_state(server_id).get('current_frequency_hours', 24)
+        mark_subrole_executed('ring', datetime.datetime.now() + datetime.timedelta(hours=next_freq))
+        logger.info(f"🎭 [RING] next_run_at persisted: +{next_freq}h from now")
+    except Exception as _e:
+        logger.warning(f"🎭 [RING] Could not persist next_run_at: {_e}")
+
     # Execute immediate accusation if guild and target provided
     if guild and target_user_id and target_user_name:
         try:
@@ -359,13 +390,14 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         
         accusation_prompt = "\n".join(prompt_parts)
         
-        # Generate the accusation
+        # Generate the accusation — offload to thread to avoid blocking the event loop
         system_instruction = _build_system_prompt(PERSONALITY)
-        
-        accusation = call_llm(
+
+        accusation = await asyncio.to_thread(
+            call_llm,
             system_instruction=system_instruction,
             prompt=accusation_prompt,
-            async_mode=True,
+            async_mode=False,
             call_type="ring_accusation",
             critical=False,
             server_id=server_id
