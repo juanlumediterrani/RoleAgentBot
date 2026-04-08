@@ -51,12 +51,24 @@ if [ -n "${PERSONALITY}" ]; then
     # Fallback to legacy: personalities/putre.json
     PERSONALITY_PATH_LEGACY="personalities/${PERSONALITY}.json"
     
+    # Special handling for personalities with parentheses (e.g., putre(english))
+    if [[ "${PERSONALITY}" == *"("* ]]; then
+        # For names with parentheses, use them directly as directory names
+        PERSONALITY_PATH_SPLIT="personalities/${PERSONALITY}/personality.json"
+        # No legacy fallback for parenthesized names
+        PERSONALITY_PATH_LEGACY=""
+    fi
+    
     if [ -f "${PERSONALITY_PATH_SPLIT}" ]; then
         PERSONALITY_PATH="${PERSONALITY_PATH_SPLIT}"
-    elif [ -f "${PERSONALITY_PATH_LEGACY}" ]; then
+    elif [ -n "${PERSONALITY_PATH_LEGACY}" ] && [ -f "${PERSONALITY_PATH_LEGACY}" ]; then
         PERSONALITY_PATH="${PERSONALITY_PATH_LEGACY}"
     else
-        echo "ERROR: Personality not found '${PERSONALITY_PATH_SPLIT}' nor '${PERSONALITY_PATH_LEGACY}'" >&2
+        if [ -n "${PERSONALITY_PATH_LEGACY}" ]; then
+            echo "ERROR: Personality not found '${PERSONALITY_PATH_SPLIT}' nor '${PERSONALITY_PATH_LEGACY}'" >&2
+        else
+            echo "ERROR: Personality not found '${PERSONALITY_PATH_SPLIT}'" >&2
+        fi
         exit 1
     fi
     
