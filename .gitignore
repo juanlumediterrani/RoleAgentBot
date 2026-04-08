@@ -9,6 +9,9 @@ venv/
 __pycache__/
 *.pyc
 
+# JSON de items de POE2 (se descargan dinámicamente de la API)
+roles/buscador_tesoros/items_ID_*.json
+
 # Base de datos
 *.db
 *.db-shm
@@ -19,16 +22,23 @@ databases/
 logs/
 *.log
 
+# Configuración de IDEs
+.vscode/
+.windsurf/
+.idea/
+
+# Scripts de configuración y archivos temporales
+.ent.tmp
+cookies.txt
+www.youtube.com_cookies.txt
+setup-bot.sh
+start_clean.sh
+.active_server
+
 # Configuración sensible
 old/
 .env
-fatiga.json
-fatiga/
-fatiga_temp.json
 
 # Archivos de backup
 *.backup
 *.bak
-
-# JSON de items de POE2 (se descargan dinámicamente de la API)
-roles/buscador_tesoros/items_ID_*.json
