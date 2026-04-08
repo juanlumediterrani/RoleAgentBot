@@ -9,7 +9,7 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 ## ✨ Features
 
 ### 🎭 Multi-Personality System
-- **Multiple Personalities**: Switch between different AI personalities (Putre, Kronk, Agumon, and more)
+- **Multiple Personalities**: Switch between different AI personalities (Putre, Kronk, and more)
 - **Character Voice**: Each personality has unique speech patterns, vocabulary, and behavioral traits
 - **Dynamic Responses**: AI maintains character consistency across all interactions
 
