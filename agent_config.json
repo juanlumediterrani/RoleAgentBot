@@ -1,5 +1,5 @@
 {
-  "personality": "personalities/hans/personality.json",
+  "personality": "personalities/putre(english)/personality.json",
   "platform": "discord",
   "llm": {
     "max_tokens": 2048
