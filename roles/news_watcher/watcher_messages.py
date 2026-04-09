@@ -7,25 +7,14 @@ logger = get_logger('watcher_messages')
 def get_watcher_messages():
     """Load custom Watcher messages from personality file."""
     try:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
-        with open(config_path, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
-        answers_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            os.path.dirname(personality_rel),
-            "answers.json",
-        )
+        from agent_runtime import get_personality_file_path, get_personality_directory
+        answers_path = get_personality_file_path("answers.json")
         with open(answers_path, encoding="utf-8") as f:
             watcher_messages = json.load(f).get("discord", {}).get("watcher_messages", {})
         
         # Also load from news_watcher.json for commands section
-        news_watcher_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            os.path.dirname(personality_rel),
-            "descriptions",
-            "news_watcher.json",
-        )
+        personality_dir = get_personality_directory()
+        news_watcher_path = os.path.join(personality_dir, "descriptions", "news_watcher.json")
         
         try:
             with open(news_watcher_path, encoding="utf-8") as f:

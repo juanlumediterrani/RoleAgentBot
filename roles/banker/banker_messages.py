@@ -7,15 +7,8 @@ logger = get_logger('banker_messages')
 def get_banker_messages():
     """Load custom Banker messages from personality file."""
     try:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
-        with open(config_path, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
-        answers_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            os.path.dirname(personality_rel),
-            "answers.json",
-        )
+        from agent_runtime import get_personality_file_path
+        answers_path = get_personality_file_path("answers.json")
         with open(answers_path, encoding="utf-8") as f:
             banker_messages = json.load(f).get("discord", {}).get("banker_messages", {})
         

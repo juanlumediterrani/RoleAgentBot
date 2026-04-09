@@ -87,7 +87,25 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
         
         # Use call_llm to get full memory context and generate response
         from agent_engine import _build_system_prompt
+        from agent_mind import _build_prompt_memory_block, _build_prompt_channel_messages_block
+        
+        # Build system prompt with personality
         system_instruction = _build_system_prompt(PERSONALITY)
+        
+        # Add memory block below system prompt
+        memory_block = _build_prompt_memory_block(server=server_id)
+        if memory_block:
+            system_instruction = f"{system_instruction}\n\n{memory_block}"
+        
+        # Add channel messages block below memories
+        channel_messages_block = await _build_prompt_channel_messages_block(
+            channel_id=message.channel.id,
+            server=server_id,
+            discord_channel=message.channel,
+            bot_id=message.guild.me.id if message.guild else None
+        )
+        if channel_messages_block:
+            system_instruction = f"{system_instruction}\n\n{channel_messages_block}"
         
         taboo_response = call_llm(
             system_instruction=system_instruction,
@@ -116,7 +134,7 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
         
         # Register the taboo interaction in the database
         try:
-            from agent_db import get_db_for_server
+            from discord_bot.discord_utils import get_db_for_server
             db_instance = get_db_for_server(message.guild)
             await asyncio.to_thread(
                 db_instance.register_interaction,

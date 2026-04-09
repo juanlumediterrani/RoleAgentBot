@@ -948,3 +948,432 @@ Each bot can maintain independent:
 - **Conditional Filtering**: Different behavior based on user permissions or context
 
 This Canvas name filtering system provides a robust foundation for multi-bot environments while maintaining full backward compatibility and excellent user experience.
+
+## 17. Server-Specific Prompt Logging
+
+### 17.1 Purpose and Overview
+
+The Server-Specific Prompt Logging system provides isolated log directories for each Discord server, preventing mixed and fragmented logs across different servers. This enables easier debugging, maintenance, and privacy protection.
+
+### 17.2 Architecture Components
+
+#### 17.2.1 Directory Structure
+```
+logs/
+├── prompt.log                    # Fallback for non-server-specific logs
+├── <server_id>/                  # Server-specific directory
+│   ├── prompt.log                # Server-specific prompt logs
+│   ├── agent.log                 # Other server logs
+│   └── <PERSONALITY>.log         # Personality-specific logs
+```
+
+#### 17.2.2 Logger Configuration (`prompts_logger.py`)
+- **Function**: `get_prompts_logger(server_id=None)`
+- **Server-Specific Directories**: Creates `logs/<server_id>/prompt.log` when server_id provided
+- **Logger Naming**: Uses `prompts_<server_id>` for unique logger instances
+- **Backward Compatibility**: Falls back to `logs/prompt.log` when no server_id provided
+
+#### 17.2.3 Updated Logging Functions
+All logging functions now accept `server_id` parameter:
+- `log_prompt(prompt_type, content, metadata=None, server_id=None)`
+- `log_system_prompt(content, role=None, server=None, server_id=None)`
+- `log_user_prompt(content, user_id=None, server=None, role=None, server_id=None)`
+- `log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, role=None, server=None, metadata=None, server_id=None)`
+- `log_consolidated_context(content, role=None, server=None, interaction_count=None, server_id=None)`
+- `log_readme_enhanced_prompt(original_question, readme_content, enhanced_prompt, system_instruction=None, role=None, server=None, server_id=None)`
+- `log_subrole_prompt(subrole_name, content, role=None, server=None, server_id=None)`
+- `log_agent_response(content, role=None, server=None, response_length=None, server_id=None)`
+
+### 17.3 Integration Points
+
+#### 17.3.1 Agent Mind Integration (`agent_mind.py`)
+```python
+# All log_agent_response() calls now include server_id
+log_agent_response(content, role=role, server=server_name, response_length=len(content), server_id=server_id)
+```
+
+#### 17.3.2 Role Integration (`roles/news_watcher/news_watcher.py`)
+```python
+# News watcher logging includes server_id
+log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, role=role, server=server_name, server_id=server_name)
+log_prompt("news_analysis", analysis_content, metadata, server_id=server_name)
+```
+
+### 17.4 Benefits
+
+1. **Isolation**: Each server's prompts are logged separately
+2. **Debugging**: Easy to trace prompts to specific servers
+3. **Maintenance**: Server-specific log management
+4. **Privacy**: Better separation of data between servers
+5. **Scalability**: Supports unlimited servers with individual logging
+
+### 17.5 Usage
+
+- **Automatic**: Most calls automatically use active server ID
+- **Manual**: Can specify server_id for custom logging scenarios
+- **Fallback**: Uses global prompt.log when no server specified
+
+## 18. Server Initialization Unification
+
+### 18.1 Purpose and Overview
+
+The Server Initialization Unification consolidates multiple scattered initialization methods into a single unified entry point, ensuring consistent behavior across startup and new guild joins.
+
+### 18.2 Unified Method
+
+#### 18.2.1 Function Signature
+```python
+def initialize_server_complete(guild, agent_config: dict = None, is_startup: bool = False) -> bool:
+```
+
+#### 18.2.2 Location
+- **File**: `discord_bot/db_init.py`
+- **Lines**: 120-221
+
+#### 18.2.3 Parameters
+- **guild**: Discord guild object
+- **agent_config**: Agent configuration dictionary (optional)
+- **is_startup**: True for startup initialization, False for new guild joins
+
+### 18.3 Initialization Tasks
+
+1. **Database initialization** - All databases (agent, roles, behavior, role-specific)
+2. **Default roles loading** - news_watcher, treasure_hunter, trickster, banker
+3. **News watcher feeds** - Health check if role enabled
+4. **Roles configuration** - Migration and defaults from behavior.db
+5. **Logging setup** - Server-specific log file paths
+6. **Server activation** - Set as active server (startup only)
+
+### 18.4 Event Handler Updates
+
+#### 18.4.1 `on_ready()` in `agent_discord.py`
+- **Before**: Manual database setup, role loading, logging configuration
+- **After**: Single call to `initialize_server_complete(guild, agent_config, is_startup=True)`
+
+#### 18.4.2 `on_guild_join()` in `agent_discord.py`
+- **Before**: Manual database setup, news watcher initialization, logging
+- **After**: Single call to `initialize_server_complete(guild, agent_config, is_startup=False)`
+
+### 18.5 Context-Specific Behavior
+
+- **Startup mode**: Sets server as active server, configures global logging
+- **New guild mode**: Only initializes the new server, no global changes
+
+### 18.6 Benefits
+
+- **Code Consolidation**: -50+ lines of duplicate initialization code eliminated
+- **Consistency**: Identical initialization for startup and new guild joins
+- **Maintainability**: Easy to extend - add new initialization tasks in one location
+- **Reliability**: Comprehensive coverage with proper error handling
+
+### 18.7 Backward Compatibility
+
+- **Legacy function**: `initialize_databases_for_guild()` preserved with deprecation warning
+- **No breaking changes**: Existing code continues to work
+- **Gradual migration**: Path for any external callers
+
+## 19. LLM Function Unification
+
+### 19.1 Purpose and Overview
+
+The LLM Function Unification consolidates `think()` and `_call_llm_async()` into a single `call_llm()` function, reducing code duplication and improving maintainability.
+
+### 19.2 Unified Function Design
+
+#### 19.2.1 Function Signature
+```python
+def call_llm(
+    system_instruction: str,
+    prompt: str,
+    async_mode: bool = False,
+    call_type: str = "default",
+    temperature: float | None = None,
+    max_tokens: int = 1024,
+    critical: bool = True,
+    metadata: dict | None = None,
+    logger: logging.Logger | None = None
+) -> str:
+```
+
+#### 19.2.2 Parameters
+- **async_mode**: False for think(), True for _call_llm_async()
+- **call_type**: "think", "subrole_async", "daily_memory", etc.
+- **temperature**: Auto-detect based on call_type if None
+- **critical**: Whether errors should break execution
+- **metadata**: Additional context for logging
+
+### 19.3 Behavior
+
+- **sync mode**: Direct call, return response
+- **async mode**: Threading with queues, return response
+- **temperature**: 0.9 for missions, 0.95 for others
+- **logging**: Detailed for critical calls, simple for background
+
+### 19.4 Key Differences Preserved
+
+1. **Execution Mode**: Sync vs Async
+2. **Temperature**: 0.9/0.95 (missions) vs 0.95 (background)
+3. **Logging Level**: Detailed vs Simple
+4. **Error Criticality**: Critical vs Tolerant
+5. **Call Type Tracking**: "think" vs "subrole_async"/memory types
+
+### 19.5 Integration Points
+
+- **agent_mind.py**: All memory calls updated, old functions removed
+- **agent_engine.py**: Subrole calls updated
+
+### 19.6 Benefits
+
+- **Code Reduction**: -100+ lines of duplicate LLM logic eliminated
+- **Single Source of Truth**: Consistent error handling across all operations
+- **Unified Logging**: Centralized monitoring
+- **Easier Testing**: Single function to test
+
+## 20. Dynamic Bot Naming System
+
+### 20.1 Purpose and Overview
+
+The Dynamic Bot Naming System replaces hardcoded personality references with dynamic placeholders, allowing easy bot renaming without code changes.
+
+### 20.2 Implementation
+
+#### 20.2.1 Placeholder System
+- **Placeholder**: `{_bot_display_name}`
+- **Fallback**: Uses "Bot" if Discord not available
+- **Runtime Replacement**: All placeholders replaced with actual bot name
+
+#### 20.2.2 JSON Configuration
+- **27 placeholders** configured across personality JSON files
+- **Location**: `personalities/*/prompts.json`, `descriptions.json`, `answers.json`
+
+#### 20.2.3 Python Integration
+- **agent_mind.py**: Memory formatting functions updated
+- **agent_engine.py**: Mission prompts updated
+- **postprocessor.py**: Comment updated to generic
+- **discord_bot/canvas/**: Role manager and behavior sections updated
+- **behavior/commentary/commentary.py**: Commentary prompts updated
+- **roles/trickster/**: Donation context and transaction descriptions updated
+- **roles/trickster/subroles/nordic_runes/**: Analysis section updated
+
+### 20.3 Benefits
+
+- **No Hardcoded Names**: System uses dynamic bot name everywhere
+- **Easy Bot Renaming**: Change name once, updates everywhere
+- **Language Consistency**: English legacy code cleaned up
+- **Future-Proof**: New bot names automatically propagate
+
+## 21. Premises System Redesign
+
+### 21.1 Purpose and Overview
+
+The Premises System Redesign changes from a global/custom mixing system to a "copy defaults to user" approach, giving users full control over their premises.
+
+### 21.2 Core Principle
+
+**"Copy defaults to user, then manage only user premises"**
+
+### 21.3 Behavior Changes
+
+1. **First premise**: Automatically copies all 8 default premises to user
+2. **User control**: User can modify/delete ALL their premises (including copied defaults)
+3. **No global fallback**: System never uses global premises directly
+4. **Consistent context**: Always returns "custom" context
+
+### 21.4 Implementation Details
+
+#### 21.4.1 Modified Functions
+
+**`add_user_premise()`**:
+- Checks if user has no premises
+- If empty: Copies all 8 default premises first
+- Then adds user's new premise
+- If limit reached: Replaces last default with user's premise
+
+**`get_premises_with_context()`**:
+- **Removed**: Global premises fallback logic
+- **Now**: Returns user premises or empty list
+- **Context**: Always "custom" or "empty" (never "global")
+
+#### 21.4.2 New Helper Functions
+
+**`_get_default_premises()`**:
+- Retrieves default premises from personality file
+- Uses `PERSONALIDAD['watcher_premises']['premises']`
+- Returns list of 8 default premises
+
+**`_insert_user_premise()`**:
+- Direct insertion bypassing duplicate checks
+- Used for copying default premises efficiently
+- Handles database locking properly
+
+### 21.5 User Experience
+
+#### Before (Old System)
+- User adds "Crimson Desert" → Sees 1/7 in UI
+- AI prompt shows 8 global premises → Confusion
+- Can't modify global premises
+
+#### After (New System)
+- User adds "Crimson Desert" → System copies 8 defaults + adds user's
+- User sees 8 premises: 7 defaults + 1 custom
+- AI prompt shows user's 8 premises → Consistent
+- User can modify/delete any of the 8 premises
+
+### 21.6 Benefits
+
+- **Simplified Logic**: No more global/custom switching
+- **User Control**: Full control over all premises they see
+- **Consistent Behavior**: Always uses user premises
+- **Predictable Results**: What user sees is what AI uses
+- **Better Debugging**: Single source of truth for premises
+
+## 22. Postprocessor Simplification
+
+### 22.1 Purpose and Overview
+
+The Postprocessor Simplification removes artificial length limits and phrase cutting, allowing LLM responses to be returned in their natural form.
+
+### 22.2 Removed Features
+
+- **Character limit enforcement** (280 default)
+- **Smart truncation** at sentence boundaries
+- **Response cut-off detection** and repair
+- **Dangling preposition removal**
+- **Complex multi-step processing pipeline**
+
+### 22.3 Preserved Features
+
+- **Internal thinking detection** and rejection
+- **Basic text sanitization** (whitespace normalization)
+- **Function signature compatibility** (`max_chars` parameter kept)
+
+### 22.4 Current Simplified Function
+
+```python
+def postprocess_response(text, max_chars=None):
+    """
+    Simplified post-processing - only cleans internal thinking and blocked responses.
+    
+    Args:
+        text: Original text generated by the LLM
+        max_chars: Unused parameter kept for compatibility
+        
+    Returns:
+        Clean text without length limits
+    """
+    if not text:
+        return ""
+    
+    # First check if it's internal thinking and reject immediately
+    if is_internal_thinking(text):
+        logger.warning(f"🧠 Internal thinking detected and rejected: {text[:100]}...")
+        return ""  # Return empty so system uses fallback
+    
+    # Only sanitize text, no length limits
+    return _sanitize_text(text)
+```
+
+### 22.5 Impact
+
+- **No length limits**: Responses can be any length
+- **Only basic cleaning**: Internal thinking rejection, sanitization
+- **Simpler, faster processing**
+- **Full LLM responses preserved**
+
+## 23. YouTube Bot Detection Fix
+
+### 23.1 Purpose and Overview
+
+The YouTube Bot Detection Fix addresses VPS environment issues where YouTube blocks automated access with "Sign in to confirm you're not a bot" errors.
+
+### 23.2 Enhanced Configuration
+
+#### 23.2.1 Browser Emulation
+```python
+'http_headers': {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate',
+    'DNT': '1',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+}
+```
+
+#### 23.2.2 Authentication Options
+- **Cookie file support**: `/app/cookies.txt`
+- **Player client variants**: `['android', 'web']`
+- **Player skip**: `['configs', 'webpage']`
+- **Socket timeout**: 30 seconds
+- **Retries**: 3 attempts
+
+### 23.3 Smart Error Handling
+
+#### 23.3.1 Bot Detection Detection
+```python
+if "Sign in to confirm you're not a bot" in error_msg:
+    await self._send_message(message.channel, 
+        "🚫 **YouTube bot detection detected**\n\n"
+        "This happens when YouTube blocks automated access. Try:\n"
+        "• Using a direct YouTube URL instead of search\n"
+        "• Waiting a few minutes and trying again\n"
+        "• Using a different song or source\n\n"
+        "If this persists, consider using YouTube cookies for authentication.")
+```
+
+#### 23.3.2 Automatic Recovery
+- Automatically skips problematic songs in `_play_next()`
+- Continues with next song in queue
+- Prevents playback interruption
+
+### 23.4 Integration Points
+
+- **cmd_play()**: Immediate playback configuration
+- **cmd_add()**: Queue addition configuration
+- **_play_next()**: Continuous playback configuration
+
+### 23.5 Benefits
+
+- **Multi-layer Approach**: Browser headers + cookies + player clients
+- **Fallback Mechanism**: Works with or without cookies
+- **User-Friendly Errors**: Clear guidance when issues occur
+- **Automatic Recovery**: System continues working despite blocks
+
+## 24. Greeting DM Reply System
+
+### 24.1 Purpose and Overview
+
+The Greeting DM Reply System allows users to reset the greeting counter by sending a DM to the bot, implementing the exact behavior requested for greeting management.
+
+### 24.2 User Flow
+
+1. **User connects** → Bot sends greeting
+2. **User disconnects** → No greeting
+3. **User comes online** → Bot doesn't greet (has unreplied greeting)
+4. **User sends DM to bot** → Marks as replied, resets counter
+5. **User disconnects and returns after cooldown** → Bot greets again
+
+### 24.3 Technical Implementation
+
+#### 24.3.1 Database Schema (`behavior/db_behavior.py`)
+- **Table**: `greetings`
+- **Fields**: user_id, user_name, guild_id, greeting_sent_at, needs_reply, replied, replied_at, greeting_type, greeting_message
+
+#### 24.3.2 Database Functions
+- **`record_greeting_sent()`**: Records when a greeting is sent
+- **`mark_user_replied()`**: Marks user as replied when they message the bot
+- **`get_last_greeting_status()`**: Checks if user has unreplied greeting
+- **`cleanup_old_greetings()`**: Maintenance for old records
+
+#### 24.3.3 DM Message Processing (`discord_bot/agent_discord.py`)
+- **DM detection logic** in `_process_chat_message()`
+- For DMs: searches all server databases for unreplied greetings
+- For server messages: uses existing guild-specific logic
+
+### 24.4 Benefits
+
+- **Reliable tracking**: Dedicated table prevents data loss
+- **Clear logic**: Simple boolean flag instead of complex interaction parsing
+- **Better debugging**: Explicit greeting records with timestamps
+- **Scalable**: Can extend to different greeting types (welcome, etc.)

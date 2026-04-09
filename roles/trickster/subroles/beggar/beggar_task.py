@@ -155,7 +155,7 @@ class BeggarDonationView(View):
                 
                 # Register donation as server interaction
                 try:
-                    from agent_db import get_db_for_server
+                    from discord_bot.discord_utils import get_db_for_server
                     import asyncio
                     db_instance = get_db_for_server(interaction.guild)
                     await asyncio.to_thread(

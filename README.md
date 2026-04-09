@@ -36,10 +36,11 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 - **DM/Channel Fallback**: Respects user privacy preferences
 
 ### 🛡️ Safety & Rate Limiting
-- **Fatigue Limit System**: Configurable rate limits (burst, hourly, daily)
+- **Fatigue Limit System**: Configurable rate limits (burst, hourly, daily) with intelligent exemptions
 - **Taboo Detection**: Automatic moderation of inappropriate language
 - **Permission Controls**: Admin-only commands and restricted operations
 - **Graceful Degradation**: Fallback mechanisms for service failures
+- **Server-Specific Logging**: Isolated log directories per Discord server for better debugging and privacy
 
 ### 🔄 Reactive Behaviors
 - **Presence Greetings**: Proactive DMs when users come online
@@ -65,11 +66,11 @@ run.py (Main Orchestrator)
 ### Key Components
 - **agent_engine.py**: LLM orchestration and prompt construction
 - **agent_mind.py**: Memory system and unified LLM calls
-- **agent_db.py**: SQLite database management
+- **agent_db.py**: SQLite database management with fatigue limit tracking
 - **discord_bot/**: Discord client and command system
 - **roles/**: Modular role implementations
 - **behavior/**: Reactive behavior modules
-- **personalities/**: JSON-based personality definitions
+- **personalities/**: JSON-based personality definitions with dynamic bot naming
 
 ### Database Architecture
 - Server-scoped SQLite databases

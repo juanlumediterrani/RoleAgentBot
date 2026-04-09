@@ -1,5 +1,5 @@
 discord.py==2.7.0
-google-cloud-aiplatform
+google-genai
 groq
 mistralai
 cohere

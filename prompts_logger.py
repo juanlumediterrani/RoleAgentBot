@@ -41,8 +41,15 @@ def _get_logging_messages():
             else:
                 personality_name = "default"
         
-        # Load prompts.json from personality directory
-        prompts_path = _BASE_DIR / "personalities" / personality_name / "prompts.json"
+        # Load prompts.json from personality directory (check server-specific first)
+        try:
+            from agent_runtime import get_personality_directory
+            personality_dir = get_personality_directory()
+            prompts_path = Path(personality_dir) / "prompts.json"
+        except:
+            # Fall back to global personality directory
+            prompts_path = _BASE_DIR / "personalities" / personality_name / "prompts.json"
+        
         if prompts_path.exists():
             with open(prompts_path, 'r', encoding='utf-8') as f:
                 prompts_data = json.load(f)

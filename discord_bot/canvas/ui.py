@@ -789,6 +789,16 @@ if not _personality_descriptions:
         def _get_personality_dir():
             """Get the current personality directory dynamically."""
             try:
+                # Try to get server-specific directory first
+                try:
+                    from agent_runtime import get_personality_directory
+                    server_dir = get_personality_directory()
+                    if server_dir:
+                        return Path(server_dir)
+                except:
+                    pass
+                
+                # Fall back to global personality directory
                 personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
                 personality_path = Path(__file__).parent.parent.parent / personality_rel
                 return personality_path.parent
@@ -1211,9 +1221,9 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             guild_id = int(interaction.guild.id)
             enabled = action_name == "taboo_on"
             if update_taboo_state(guild_id, enabled=enabled):
-                content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config)
+                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
                 view.auto_response_preview = f"Taboo {'enabled' if enabled else 'disabled'} for this server."
-                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview)
+                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             else:
                 await interaction.response.send_message("❌ Failed to update taboo state. Check logs for details.", ephemeral=True)
@@ -1228,9 +1238,9 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             try:
                 from discord_bot.discord_utils import set_greeting_enabled
                 set_greeting_enabled(interaction.guild, enabled)
-                content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config)
+                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
                 view.auto_response_preview = f"Greetings {'enabled' if enabled else 'disabled'} for this server."
-                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview)
+                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             except Exception as e:
                 logger.error(f"Error updating greetings state: {e}")
@@ -1254,9 +1264,9 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                     db = get_behavior_db_instance(guild_id)
                     db.set_welcome_enabled(enabled, f"{interaction.user.name}")
                 
-                content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config)
+                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
                 view.auto_response_preview = f"Welcome messages {'enabled' if enabled else 'disabled'} for this server."
-                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview)
+                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             except Exception as e:
                 logger.error(f"Error updating welcome state: {e}")
@@ -1283,9 +1293,9 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                     }
                     db.set_commentary_state(enabled, config, f"{interaction.user.name}")
                 
-                content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config)
+                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
                 view.auto_response_preview = f"Commentary {'enabled' if enabled else 'disabled'} for this server."
-                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview)
+                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             except Exception as e:
                 logger.error(f"Error updating commentary state: {e}")
@@ -1355,11 +1365,13 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
             self.sections = refreshed_sections
             self.guild = guild
         content = self.sections.get(section_name)
-        
+
         if not content:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
-        embed = _build_canvas_embed(section_name, content, self.admin_visible)
+        title = self.sections.get("behavior_title") if section_name == "behavior" else None
+        description = self.sections.get("behavior_description") if section_name == "behavior" else None
+        embed = _build_canvas_embed(section_name, content, self.admin_visible, title, description)
         await _safe_edit_interaction_message(interaction, content=None, embed=embed, view=self)
 
     async def _check_user_permission(self, interaction: discord.Interaction) -> bool:
@@ -1734,7 +1746,7 @@ class CommentaryFrequencyModal(discord.ui.Modal):
         enabled_text = "On" if state.get("enabled", False) else "Off"
         
         # Rebuild the Canvas behavior view with updated state
-        content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild)
+        title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild) or (None, None, "")
         next_view = CanvasBehaviorView(
             author_id=self.view.author_id,
             sections=self.view.sections,
@@ -1744,7 +1756,7 @@ class CommentaryFrequencyModal(discord.ui.Modal):
             guild=self.view.guild,
         )
         next_view.auto_response_preview = f"Mission commentary interval set to `{minutes}` minutes.\nCurrent state: {enabled_text}"
-        behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, next_view.auto_response_preview)
+        behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, next_view.auto_response_preview, title, description)
         await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
 
 
@@ -1793,7 +1805,7 @@ class TabooKeywordModal(discord.ui.Modal):
                 success = True
         
         # Rebuild the Canvas behavior view with updated state
-        content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config)
+        title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config) or (None, None, "")
         next_view = CanvasBehaviorView(
             author_id=self.view.author_id,
             sections=self.view.sections,
@@ -1803,7 +1815,7 @@ class TabooKeywordModal(discord.ui.Modal):
             guild=self.view.guild,
         )
         next_view.auto_response_preview = applied_text
-        behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, next_view.auto_response_preview)
+        behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, next_view.auto_response_preview, title, description)
         
         if success:
             await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
@@ -1883,9 +1895,9 @@ class RoleControlModal(discord.ui.Modal):
             result_msg = f"✅ Role '{role_name}' {'enabled' if enabled else 'disabled'} for this server."
             
             # Update the view
-            content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config)
+            title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config) or (None, None, "")
             self.view.auto_response_preview = result_msg
-            behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, self.view.auto_response_preview)
+            behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, self.view.auto_response_preview, title, description)
             await interaction.response.edit_message(content=None, embed=behavior_embed, view=self.view)
             
         except Exception as e:
@@ -2428,11 +2440,10 @@ class CanvasBehaviorDetailButton(discord.ui.Button):
             await interaction.response.send_message("❌ Canvas behavior navigation is not available.", ephemeral=True)
             return
 
-        content = _build_canvas_behavior_detail(self.detail_name, view.admin_visible, view.guild, view.agent_config)
+        title, description, content = _build_canvas_behavior_detail(self.detail_name, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
         if not content:
             await interaction.response.send_message("❌ This behavior detail is not available.", ephemeral=True)
             return
-
         next_view = CanvasBehaviorView(
             author_id=view.author_id,
             sections=view.sections,
@@ -2442,7 +2453,7 @@ class CanvasBehaviorDetailButton(discord.ui.Button):
             guild=view.guild,
         )
         next_view.message = interaction.message
-        behavior_embed = _build_canvas_behavior_embed(content, view.admin_visible, next_view.auto_response_preview)
+        behavior_embed = _build_canvas_behavior_embed(content, view.admin_visible, next_view.auto_response_preview, title, description)
         await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
 
 

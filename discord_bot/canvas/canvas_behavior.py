@@ -83,19 +83,17 @@ def build_canvas_behavior(
     role_cmd_name: str,
     talk_cmd_name: str,
     admin_visible: bool,
-) -> str:
-    from .content import _build_canvas_intro_block
-    fallback = (
-        _build_canvas_intro_block(
-            f"💬 {_bot_display_name} General Behavior",
-            "Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles",
-        )
-        + "\n\n"
-        "**Routing**\n"
-        "- This is a shared global behavior, not a role-specific one\n"
-        "- Use `!canvas roles` for role-specific flows"
+) -> tuple[str, str, str]:
+    """Return (title, description, content) tuple for behavior overview."""
+    result = build_canvas_behavior_detail("conversation", admin_visible, None, None)
+    if result:
+        return result
+    # Fallback if build_canvas_behavior_detail returns None
+    return (
+        f"💬 {_bot_display_name} General Behavior",
+        "Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles",
+        "**Routing**\n- This is a shared global behavior, not a role-specific one\n- Use `!canvas roles` for role-specific flows"
     )
-    return build_canvas_behavior_detail("conversation", admin_visible, None, None) or fallback
 
 
 def build_canvas_behavior_detail(
@@ -105,8 +103,8 @@ def build_canvas_behavior_detail(
     agent_config: dict = None,
     setup_not_available_builder=None,
     behavior_db_loader=None,
-) -> str | None:
-    from .content import _build_canvas_intro_block
+) -> tuple[str, str, str] | None:
+    """Return (title, description, content) tuple for behavior details."""
     behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
     general_descriptions = _personality_descriptions.get("general", {})
     title_status = general_descriptions.get("status", "**Current status**")
@@ -115,7 +113,7 @@ def build_canvas_behavior_detail(
         conversations_messages = behavior_descriptions.get("conversation", {})
         conversation_title = conversations_messages.get("title", f"💬 {_bot_display_name} Canvas - General Behavior Conversation")
         conversation_description = conversations_messages.get("description", "**Conversation surface**\n- Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles\n")
-        
+
         # Reemplazar placeholders con el nombre del bot
         conversation_title = conversation_title.replace("{_bot_display_name}", _bot_display_name)
         conversation_description = conversation_description.replace("{_bot_display_name}", _bot_display_name)
@@ -131,12 +129,12 @@ def build_canvas_behavior_detail(
         state = get_taboo_state(guild_id)
         keywords = ", ".join(state.get("keywords", [])) or "(none)"
 
-        return "\n".join([
-            _build_canvas_intro_block(conversation_title, conversation_description),
+        content = "\n".join([
             f"{taboo_title_keywords}\n",
             f"- {keywords}",
             "─" * 45,
         ])
+        return (conversation_title, conversation_description, content)
 
     if detail_name in {"greetings"}:
         greeting_enabled = False
@@ -146,18 +144,18 @@ def build_canvas_behavior_detail(
         greetings_descriptions = behavior_descriptions.get("greetings", {})
         greetings_title = greetings_descriptions.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Greetings")
         greetings_description = greetings_descriptions.get("description", "**Description**\n- Presence greetings are global server behavior\n- Uses behavior/greet.py module\n- Greets users when they come online (offline → online)\n- 5-minute cooldown between greetings per user")
-        
+
         # Reemplazar placeholders con el nombre del bot
         greetings_title = greetings_title.replace("{_bot_display_name}", _bot_display_name)
         greetings_description = greetings_description.replace("{_bot_display_name}", _bot_display_name)
 
-        return "\n".join([
-            _build_canvas_intro_block(greetings_title, greetings_description),
+        content = "\n".join([
             f"{title_status}\n",
             f"- {'✅ Enabled' if greeting_enabled else '❌ Disabled'}",
             "",
             "─" * 45,
         ])
+        return (greetings_title, greetings_description, content)
 
     if detail_name in {"welcome"}:
         if not admin_visible:
@@ -182,18 +180,18 @@ def build_canvas_behavior_detail(
         welcome_messages = behavior_descriptions.get("welcome", {})
         welcome_title = welcome_messages.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Welcome Messages")
         welcome_description = welcome_messages.get("description", "Configure the bot to give a good greeting when someone joins the server for the first time.")
-        
+
         # Reemplazar placeholders con el nombre del bot
         welcome_title = welcome_title.replace("{_bot_display_name}", _bot_display_name)
         welcome_description = welcome_description.replace("{_bot_display_name}", _bot_display_name)
 
-        return "\n".join([
-            _build_canvas_intro_block(welcome_title, welcome_description),
+        content = "\n".join([
             f"{title_status}\n",
             f"- {'✅ Enabled' if welcome_enabled else '❌ Disabled'}",
             "",
             "─" * 45,
         ])
+        return (welcome_title, welcome_description, content)
 
     if detail_name in {"commentary", "talk"}:
         if not admin_visible:
@@ -235,13 +233,12 @@ def build_canvas_behavior_detail(
         commentary_messages = behavior_descriptions.get("comentary", {})
         commentary_title = commentary_messages.get("title", f"🗣️ {_bot_display_name} Canvas - General Behavior Mission Commentary")
         commentary_description = commentary_messages.get("description", "Commentary is global behavior driven by active roles")
-        
+
         # Reemplazar placeholders con el nombre del bot
         commentary_title = commentary_title.replace("{_bot_display_name}", _bot_display_name)
         commentary_description = commentary_description.replace("{_bot_display_name}", _bot_display_name)
 
-        return "\n".join([
-            _build_canvas_intro_block(commentary_title, commentary_description),
+        content = "\n".join([
             f"{title_status}\n",
             f"- {'✅ Enabled' if enabled else '❌ Disabled'}",
             f"- Interval: {interval_minutes} minutes",
@@ -249,6 +246,7 @@ def build_canvas_behavior_detail(
             "",
             "─" * 45,
         ])
+        return (commentary_title, commentary_description, content)
 
     if detail_name in {"taboo"}:
         if not admin_visible:
@@ -270,13 +268,12 @@ def build_canvas_behavior_detail(
         taboo_title = taboo_messages.get("title", f"🚫 {_bot_display_name} Canvas - General Behavior Taboo")
         taboo_description = taboo_messages.get("description", "- Taboo watches normal server chat and can trigger an in-character reply")
         taboo_title_keywords = taboo_messages.get("title_keywords", "**Current keywords**")
-        
+
         # Reemplazar placeholders con el nombre del bot
         taboo_title = taboo_title.replace("{_bot_display_name}", _bot_display_name)
         taboo_description = taboo_description.replace("{_bot_display_name}", _bot_display_name)
 
-        return "\n".join([
-            _build_canvas_intro_block(taboo_title, taboo_description),
+        content = "\n".join([
             f"{title_status}\n",
             f"- {'On' if state.get('enabled', False) else 'Off'}",
             "",
@@ -284,6 +281,7 @@ def build_canvas_behavior_detail(
             f"- {keywords}",
             "─" * 45,
         ])
+        return (taboo_title, taboo_description, content)
 
     if detail_name in {"role_control", "roles"}:
         if not admin_visible:
@@ -307,17 +305,17 @@ def build_canvas_behavior_detail(
         status_lines = []
         for role_name in all_roles:
             label = role_labels.get(role_name, role_name.replace("_", " ").title())
-            
+
             # For Canvas, always try to check roles_config regardless of db availability
             if role_name == "mc" and agent_config and agent_config.get("roles", {}).get("mc", {}).get("enabled", False):
                 status_lines.append(f"- {label}: ✅ Always enabled")
                 continue
-            
+
             # PRIMARY: Check roles_config
             enabled = False
             try:
                 from agent_roles_db import get_roles_db_instance
-                
+
                 # Use default server for Canvas (no guild context available)
                 server_id = "default"
                 roles_db = get_roles_db_instance(server_id)
@@ -327,19 +325,18 @@ def build_canvas_behavior_detail(
             except Exception as e:
                 logger.warning(f"Error checking {role_name} in roles_config: {e}")
                 enabled = False
-            
+
             status_lines.append(f"- {label}: {'✅ Enabled' if enabled else '❌ Disabled'}")
 
         role_control_messages = behavior_descriptions.get("role_control", {})
         role_control_title = role_control_messages.get("title", f"🎛️ {_bot_display_name} Canvas - General Behavior Role Control")
         role_control_description = role_control_messages.get("description", "Role activation is managed through database - primary source")
-        
+
         # Reemplazar placeholders con el nombre del bot
         role_control_title = role_control_title.replace("{_bot_display_name}", _bot_display_name)
         role_control_description = role_control_description.replace("{_bot_display_name}", _bot_display_name)
 
-        return "\n".join([
-            _build_canvas_intro_block(role_control_title, role_control_description),
+        content = "\n".join([
             f"{title_status}\n",
             *status_lines,
             "",
@@ -347,5 +344,6 @@ def build_canvas_behavior_detail(
             "🔧 If you see 'System Error', the database is unavailable",
             "─" * 45,
         ])
+        return (role_control_title, role_control_description, content)
 
     return None

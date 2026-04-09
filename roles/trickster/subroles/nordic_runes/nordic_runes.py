@@ -41,6 +41,16 @@ except ImportError:
 def _get_personality_dir() -> str:
     """Get the current personality directory dynamically."""
     try:
+        # Try to get server-specific directory first
+        try:
+            from agent_runtime import get_personality_directory
+            server_dir = get_personality_directory()
+            if server_dir:
+                return server_dir
+        except:
+            pass
+        
+        # Fall back to global personality directory
         personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
         personality_path = os.path.join(project_root, personality_rel)
         return os.path.dirname(personality_path)

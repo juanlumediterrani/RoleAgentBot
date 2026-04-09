@@ -102,35 +102,44 @@ def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: st
                            role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_id: str = "default",
                            author_id: int = 0, guild=None, is_dm: bool = False) -> dict[str, str]:
     """Build the top-level Canvas sections for the current user context."""
+    # Get behavior tuple and store separately for title/description handling
+    behavior_title, behavior_description, behavior_content = build_canvas_behavior(
+        greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name, admin_visible
+    )
+    
     return {
         "home": _build_canvas_home(
             agent_config, greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name,
             admin_visible, server_id, author_id, guild, is_dm
         ),
-        "behavior": build_canvas_behavior(
-            greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name, admin_visible
-        ),
+        "behavior": behavior_content,
+        "behavior_title": behavior_title,
+        "behavior_description": behavior_description,
         "roles": _build_canvas_roles(agent_config, admin_visible, guild),
         "personal": _build_canvas_personal(),
         "help": _build_canvas_help(),
     }
 
 
-def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) -> discord.Embed:
+def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, title: str | None = None, description: str | None = None) -> discord.Embed:
     # Get title from personality descriptions for consistency
-    
+
     help_title = _personality_descriptions.get("help_menu", {}).get("title", f"📚 {_bot_display_name} Canvas - Help & Troubleshooting")
     # Replace {_bot_display_name} placeholder if present
     help_title = help_title.replace("{_bot_display_name}", _bot_display_name)
-    
+
     if section_name == "behavior":
-        behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-        behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} General Behavior")
-        # Replace {_bot_display_name} placeholder
-        behavior_title = behavior_title.replace("{_bot_display_name}", _bot_display_name)
-        # Remove ** for embed title
-        behavior_title = behavior_title.replace("**", "")
-        
+        # Use provided title/description or fall back to personality descriptions
+        if title is None:
+            behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
+            behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} General Behavior")
+            # Replace {_bot_display_name} placeholder
+            behavior_title = behavior_title.replace("{_bot_display_name}", _bot_display_name)
+            # Remove ** for embed title
+            behavior_title = behavior_title.replace("**", "")
+        else:
+            behavior_title = title.replace("**", "")
+
         # Get home title from descriptions.json
         canvas_home_messages = _personality_descriptions.get("canvas_home_messages", {})
         home_title = canvas_home_messages.get("title", f"🧭 {_bot_display_name} Canvas Hub")
@@ -138,7 +147,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
         # Remove ** for embed title
         home_title = home_title.replace("**", "")
-        
+
         titles = {
             "home": home_title,
             "behavior": behavior_title,
@@ -154,7 +163,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
         home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
         # Remove ** for embed title
         home_title = home_title.replace("**", "")
-        
+
         titles = {
             "home": home_title,
             "behavior": f"⚙️ {_bot_display_name} Canvas - General Behavior",
@@ -201,7 +210,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
     elif section_name == "help":
         description = _personality_descriptions.get("help_menu").get("description", "Find command entry points, troubleshooting hints, and the fastest recovery paths.")
     elif section_name == "behavior":
-        description = "Shared bot behavior that sits above any individual role."
+        description = description or "Shared bot behavior that sits above any individual role."
 
     # Fallback title if none was extracted
     if titles.get(section_name) is None:
@@ -227,9 +236,11 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool) ->
             and not (section_name == "roles" and index == 0 and block_lines and line == titles.get("roles"))
         ]
         value = "\n".join(filtered_lines)[:1024]
+        # Use block_title as field name, not as part of the value
+        field_name = block_title if block_title and block_title != "\u200b" else "\u200b"
         if value:
-            embed.add_field(name=block_title or "\u200b", value=value, inline=False)
-    embed.set_footer(text=f"Canvas section: {section_name}")
+            embed.add_field(name=field_name, value=value, inline=False)
+    # Remove footer to prevent truncation issues
     return embed
 
 
@@ -454,12 +465,19 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
     return behavior_action_map.get(action_name)
 
 
-def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_response: str | None = None) -> discord.Embed:
+def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_response: str | None = None, title: str | None = None, description: str | None = None) -> discord.Embed:
     """Render a General Behavior Canvas screen with a specific embed layout."""
-    lines = [line.strip() for line in content.splitlines() if line.strip()]
-    title_line = lines[0] if lines else f"{_bot_display_name} Canvas - General Behavior"
+    # Use provided title/description or fall back to extracting from content
+    if title is None:
+        lines = [line.strip() for line in content.splitlines() if line.strip()]
+        title_line = lines[0] if lines else f"{_bot_display_name} Canvas - General Behavior"
+        title = title_line.replace("**", "")
+    else:
+        title = title.replace("**", "")
+
     embed = discord.Embed(
-        title=title_line.replace("**", ""),
+        title=title,
+        description=description or "",
         color=discord.Color.orange() if admin_visible else discord.Color.dark_orange(),
     )
     blocks = _split_canvas_blocks(content)

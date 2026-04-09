@@ -47,15 +47,8 @@ _mc_commands_instance = None
 
 def _get_mc_description_text(key: str, fallback: str) -> str:
     try:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
-        with open(config_path, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
-        descriptions_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            os.path.dirname(personality_rel),
-            "descriptions.json",
-        )
+        from agent_runtime import get_personality_file_path
+        descriptions_path = get_personality_file_path("descriptions.json")
         with open(descriptions_path, encoding="utf-8") as f:
             descriptions = json.load(f).get("discord", {}).get("role_messages", {})
         value = descriptions.get(key)

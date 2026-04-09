@@ -57,10 +57,9 @@ logger = get_logger('discord_core')
 
 def _load_personality_answers() -> dict:
     try:
-        personality_rel = AGENT_CFG.get("personality", "")
-        personality_path = Path(os.path.join(os.path.dirname(os.path.dirname(__file__)), personality_rel))
-        answers_path = personality_path.parent / "answers.json"
-        if answers_path.exists():
+        from agent_runtime import get_personality_file_path
+        answers_path = get_personality_file_path("answers.json")
+        if answers_path:
             import json
             with open(answers_path, encoding="utf-8") as f:
                 return json.load(f).get("discord", {})
@@ -69,16 +68,70 @@ def _load_personality_answers() -> dict:
     return {}
 
 
-# Import descriptions loading function from agent_engine to avoid duplication
-from agent_engine import _load_personality_descriptions
+# Dynamic personality answers with server-specific cache
+_personality_answers_cache = {}
+_personality_answers_cache_server_id = None
+
+def _get_personality_answers() -> dict:
+    """
+    Get personality answers with server-specific caching.
+    
+    This function dynamically loads answers based on the active server,
+    caching the result to avoid repeated file reads for the same server.
+    """
+    global _personality_answers_cache, _personality_answers_cache_server_id
+    
+    try:
+        from agent_db import get_active_server_id
+        current_server_id = get_active_server_id()
+    except:
+        current_server_id = None
+    
+    # Check if we need to reload (different server or no cache)
+    if current_server_id != _personality_answers_cache_server_id or not _personality_answers_cache:
+        _personality_answers_cache = _load_personality_answers()
+        _personality_answers_cache_server_id = current_server_id
+        if os.getenv('ROLE_AGENT_PROCESS') != '1':
+            logger.info(f"💬 [ANSWERS] Loaded for server: {current_server_id}")
+    
+    return _personality_answers_cache
 
 
-_discord_cfg = _load_personality_answers()
+# Create dynamic _personality_answers proxy
+class _PersonalityAnswersProxy:
+    """Proxy for dynamic personality answers loading."""
+    def __getitem__(self, key):
+        return _get_personality_answers().get(key)
+    
+    def get(self, key, default=None):
+        return _get_personality_answers().get(key, default)
+    
+    def __contains__(self, key):
+        return key in _get_personality_answers()
+    
+    def keys(self):
+        return _get_personality_answers().keys()
+    
+    def values(self):
+        return _get_personality_answers().values()
+    
+    def items(self):
+        return _get_personality_answers().items()
+    
+    def __repr__(self):
+        return repr(_get_personality_answers())
+
+
+# Import dynamic descriptions from agent_engine (server-specific loading)
+from agent_engine import _personality_descriptions
+
+
+_discord_cfg = _get_personality_answers()
 _personality_name = PERSONALITY.get("name", "bot").lower()
 _bot_display_name = PERSONALITY.get("bot_display_name", PERSONALITY.get("name", "Bot"))
 _insult_cfg = PERSONALITY.get("insult_command", {})  # Moved from discord.insult_command to prompts.json
-_personality_answers = _load_personality_answers()
-_personality_descriptions = _load_personality_descriptions()
+_personality_answers = _PersonalityAnswersProxy()
+# _personality_descriptions is now dynamic from agent_engine
 
 
 _talk_state_by_guild_id: dict[int, dict] = {}

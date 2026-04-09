@@ -41,49 +41,41 @@ def _replace_bot_display_name_placeholders(obj, bot_display_name: str):
 
 
 def _load_personality_descriptions() -> dict:
+    """Load personality descriptions from descriptions.json using server-specific directory."""
     try:
-        personality_rel = AGENT_CFG.get("personality", "")
-        personality_path = os.path.join(_BASE_DIR, personality_rel)
-        descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions.json")
+        # Use server-specific personality directory
+        personality_dir = get_personality_directory()
         descriptions = {}
         
         # Load main descriptions.json
+        descriptions_path = os.path.join(personality_dir, "descriptions.json")
         if os.path.exists(descriptions_path):
             with open(descriptions_path, encoding="utf-8") as f:
                 descriptions = json.load(f).get("discord", {})
         
         # Load news_watcher descriptions from separate file
-        news_watcher_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "news_watcher.json")
+        news_watcher_descriptions_path = os.path.join(personality_dir, "descriptions", "news_watcher.json")
         if os.path.exists(news_watcher_descriptions_path):
             with open(news_watcher_descriptions_path, encoding="utf-8") as f:
-                news_watcher_descriptions = json.load(f)
-                # Merge news_watcher descriptions into roles_view_messages
-                if "roles_view_messages" not in descriptions:
-                    descriptions["roles_view_messages"] = {}
-                descriptions["roles_view_messages"]["news_watcher"] = news_watcher_descriptions
+                news_watcher_data = json.load(f)
+                descriptions["news_watcher"] = news_watcher_data
         
         # Load treasure_hunter descriptions from separate file
-        treasure_hunter_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "treasure_hunter.json")
+        treasure_hunter_descriptions_path = os.path.join(personality_dir, "descriptions", "treasure_hunter.json")
         if os.path.exists(treasure_hunter_descriptions_path):
             with open(treasure_hunter_descriptions_path, encoding="utf-8") as f:
-                treasure_hunter_descriptions = json.load(f)
-                # Merge treasure_hunter descriptions into roles_view_messages
-                if "roles_view_messages" not in descriptions:
-                    descriptions["roles_view_messages"] = {}
-                descriptions["roles_view_messages"]["treasure_hunter"] = treasure_hunter_descriptions
+                treasure_hunter_data = json.load(f)
+                descriptions["treasure_hunter"] = treasure_hunter_data
         
         # Load trickster descriptions from separate file
-        trickster_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "trickster.json")
+        trickster_descriptions_path = os.path.join(personality_dir, "descriptions", "trickster.json")
         if os.path.exists(trickster_descriptions_path):
             with open(trickster_descriptions_path, encoding="utf-8") as f:
-                trickster_descriptions = json.load(f)
-                # Merge trickster descriptions into roles_view_messages
-                if "roles_view_messages" not in descriptions:
-                    descriptions["roles_view_messages"] = {}
-                descriptions["roles_view_messages"]["trickster"] = trickster_descriptions
+                trickster_data = json.load(f)
+                descriptions["trickster"] = trickster_data
         
         # Load banker descriptions from separate file
-        banker_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "banker.json")
+        banker_descriptions_path = os.path.join(personality_dir, "descriptions", "banker.json")
         if os.path.exists(banker_descriptions_path):
             with open(banker_descriptions_path, encoding="utf-8") as f:
                 banker_descriptions = json.load(f)
@@ -93,7 +85,7 @@ def _load_personality_descriptions() -> dict:
                 descriptions["roles_view_messages"]["banker"] = banker_descriptions
         
         # Load mc descriptions from separate file
-        mc_descriptions_path = os.path.join(os.path.dirname(personality_path), "descriptions", "mc.json")
+        mc_descriptions_path = os.path.join(personality_dir, "descriptions", "mc.json")
         if os.path.exists(mc_descriptions_path):
             with open(mc_descriptions_path, encoding="utf-8") as f:
                 mc_descriptions = json.load(f)
@@ -169,6 +161,15 @@ def _cargar_personalidad() -> dict:
     
     # Check if personality is a directory (new split structure)
     personality_dir = os.path.dirname(personality_path)
+    
+    # Use server-specific personality directory if available
+    try:
+        from agent_runtime import get_personality_directory
+        server_personality_dir = get_personality_directory()
+        if server_personality_dir != personality_dir:
+            personality_dir = server_personality_dir
+    except Exception as e:
+        logger.warning(f"Could not get server personality directory: {e}")
     if os.path.exists(os.path.join(personality_dir, 'personality.json')) and \
        os.path.exists(os.path.join(personality_dir, 'prompts.json')):
         # Load split files
@@ -208,15 +209,135 @@ def _cargar_personalidad() -> dict:
         
         return merged_personality
     else:
-        # Load single file (legacy structure)
+        # Load single file structure
         with open(personality_path, encoding="utf-8") as f:
             return json.load(f)
 
-PERSONALITY = _cargar_personalidad()
+
+# Dynamic personality loading with server-specific cache
+_personality_cache = {}
+_personality_cache_server_id = None
+
+def _get_personality() -> dict:
+    """
+    Get personality with server-specific caching.
+    
+    This function dynamically loads personality based on the active server,
+    caching the result to avoid repeated file reads for the same server.
+    """
+    global _personality_cache, _personality_cache_server_id
+    
+    try:
+        from agent_db import get_active_server_id
+        current_server_id = get_active_server_id()
+    except:
+        current_server_id = None
+    
+    # Check if we need to reload (different server or no cache)
+    if current_server_id != _personality_cache_server_id or not _personality_cache:
+        _personality_cache = _cargar_personalidad()
+        _personality_cache_server_id = current_server_id
+        if os.getenv('ROLE_AGENT_PROCESS') != '1':
+            logger.info(f"🎭 [PERSONALITY] Loaded: {_personality_cache.get('name', 'Unknown')} (server: {current_server_id})")
+    
+    return _personality_cache
+
+# Create dynamic PERSONALITY property
+class _PersonalityProxy:
+    """Proxy for dynamic personality loading."""
+    def __getitem__(self, key):
+        return _get_personality().get(key)
+    
+    def get(self, key, default=None):
+        return _get_personality().get(key, default)
+    
+    def __contains__(self, key):
+        return key in _get_personality()
+    
+    def keys(self):
+        return _get_personality().keys()
+    
+    def values(self):
+        return _get_personality().values()
+    
+    def items(self):
+        return _get_personality().items()
+    
+    def __repr__(self):
+        return repr(_get_personality())
+
+PERSONALITY = _PersonalityProxy()
 _personality_descriptions = _load_personality_descriptions()
-# Only show personality log if not in role subprocess
-if os.getenv('ROLE_AGENT_PROCESS') != '1':
-    logger.info(f"🎭 [PERSONALITY] Loaded: {PERSONALITY.get('name', 'Unknown')} from {AGENT_CFG.get('personality', 'Unknown')}")
+
+
+def reload_personality():
+    """
+    Force reload of personality cache.
+    
+    Call this when the active server changes to ensure the correct
+    server-specific personality is loaded.
+    """
+    global _personality_cache, _personality_cache_server_id
+    _personality_cache = {}
+    _personality_cache_server_id = None
+    # Force reload on next access
+    _get_personality()
+
+
+# Dynamic personality descriptions with server-specific cache
+_personality_descriptions_cache = {}
+_personality_descriptions_cache_server_id = None
+
+def _get_personality_descriptions() -> dict:
+    """
+    Get personality descriptions with server-specific caching.
+    
+    This function dynamically loads descriptions based on the active server,
+    caching the result to avoid repeated file reads for the same server.
+    """
+    global _personality_descriptions_cache, _personality_descriptions_cache_server_id
+    
+    try:
+        from agent_db import get_active_server_id
+        current_server_id = get_active_server_id()
+    except:
+        current_server_id = None
+    
+    # Check if we need to reload (different server or no cache)
+    if current_server_id != _personality_descriptions_cache_server_id or not _personality_descriptions_cache:
+        _personality_descriptions_cache = _load_personality_descriptions()
+        _personality_descriptions_cache_server_id = current_server_id
+        if os.getenv('ROLE_AGENT_PROCESS') != '1':
+            logger.info(f"📝 [DESCRIPTIONS] Loaded for server: {current_server_id}")
+    
+    return _personality_descriptions_cache
+
+
+# Create dynamic _personality_descriptions proxy
+class _PersonalityDescriptionsProxy:
+    """Proxy for dynamic personality descriptions loading."""
+    def __getitem__(self, key):
+        return _get_personality_descriptions().get(key)
+    
+    def get(self, key, default=None):
+        return _get_personality_descriptions().get(key, default)
+    
+    def __contains__(self, key):
+        return key in _get_personality_descriptions()
+    
+    def keys(self):
+        return _get_personality_descriptions().keys()
+    
+    def values(self):
+        return _get_personality_descriptions().values()
+    
+    def items(self):
+        return _get_personality_descriptions().items()
+    
+    def __repr__(self):
+        return repr(_get_personality_descriptions())
+
+_personality_descriptions = _PersonalityDescriptionsProxy()
 
 
 def get_discord_token():
@@ -304,6 +425,16 @@ def _get_role_display_name(role_name: str) -> str:
         def _get_personality_dir():
             """Get the current personality directory dynamically."""
             try:
+                # Try to get server-specific directory first
+                try:
+                    from agent_runtime import get_personality_directory
+                    server_dir = get_personality_directory()
+                    if server_dir:
+                        return Path(server_dir)
+                except:
+                    pass
+                
+                # Fall back to global personality directory
                 personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
                 personality_path = Path(__file__).parent / personality_rel
                 return personality_path.parent
@@ -535,101 +666,6 @@ def _load_active_tasks_system_additions() -> list[str]:
     
     return additions
 
-#Deprecated
-#def _load_subrole_prompts_from_json() -> list[str]:
-    """Load subrole prompts from prompts.json with fallback to Python files."""
-    is_role_process = os.getenv('ROLE_AGENT_PROCESS') == '1'
-    
-    # Get subrole prompts from personality JSON
-    subrole_prompts = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {})
-    additions = []
-    
-    if not is_role_process:
-        logger.info("🎭 [SUBROLES] Loading prompts from JSON...")
-    
-    # Only inject beggar and ring subroles for gold/ring detection
-    for subrole_name in ["beggar", "ring"]:
-        # Check if subrole is enabled in agent config
-        roles_config = AGENT_CFG.get("roles", {})
-        if not roles_config.get(subrole_name, {}).get("enabled", False):
-            if not is_role_process:
-                logger.info(f"   💤 [Subrole] '{subrole_name}' - disabled")
-            continue
-        
-        # Try to load from JSON first
-        json_prompt = subrole_prompts.get(subrole_name)
-        if json_prompt:
-            additions.append(json_prompt)
-            if not is_role_process:
-                logger.info(f"   📋 [Subrole] '{subrole_name}' - mission loaded from JSON: {json_prompt[:50]}...")
-            
-            # Add beggar reasons after the beggar prompt
-            if subrole_name == "beggar":
-                beggar_reasons = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("beggar", {}).get("reasons", [])
-                if beggar_reasons:
-                    reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
-                    additions.append(reasons_text)
-                    if not is_role_process:
-                        logger.info(f"   💰 [Beggar] Added {len(beggar_reasons)} reasons: {reasons_text[:60]}...")
-        else:
-            # Fallback to Python file
-            if not is_role_process:
-                logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' not found in JSON, trying Python fallback...")
-            
-            try:
-                # Get script path from config
-                subrole_script_path = roles_config.get(subrole_name, {}).get("script", "")
-                if not subrole_script_path:
-                    if not is_role_process:
-                        logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no script path in config")
-                    continue
-                
-                full_subrole_path = os.path.join(_BASE_DIR, subrole_script_path)
-                if not os.path.exists(full_subrole_path):
-                    if not is_role_process:
-                        logger.warning(f"   ⚠️ [Subrole] Script not found: {full_subrole_path}")
-                    continue
-                
-                # Load from Python file
-                with open(full_subrole_path, encoding="utf-8") as f:
-                    subrole_content = f.read()
-                
-                import re
-                subrole_mission_match = re.search(r'MISSION_CONFIG\s*=\s*{([^}]+)}', subrole_content, re.DOTALL)
-                if subrole_mission_match:
-                    addition_match = re.search(r'"system_prompt_addition"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', subrole_mission_match.group(1))
-                    if addition_match:
-                        addition = addition_match.group(1).strip()
-                        addition = addition.replace('\\"', '"').replace('\\\\', '\\')
-                        if addition:
-                            additions.append(addition)
-                            if not is_role_process:
-                                logger.info(f"   📋 [Subrole] '{subrole_name}' - mission loaded from Python fallback: {addition[:50]}...")
-                            
-                            # Add beggar reasons after the beggar prompt even in fallback
-                            if subrole_name == "beggar":
-                                beggar_reasons = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("beggar", {}).get("reasons", [])
-                                if beggar_reasons:
-                                    reasons_text = "CURRENT PROJECTS (razones para pedir oro): " + " | ".join(beggar_reasons)
-                                    additions.append(reasons_text)
-                                    if not is_role_process:
-                                        logger.info(f"   💰 [Beggar] Added {len(beggar_reasons)} reasons from JSON: {reasons_text[:60]}...")
-                        else:
-                            if not is_role_process:
-                                logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no system_prompt_addition found")
-                    else:
-                        if not is_role_process:
-                            logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no system_prompt_addition in MISSION_CONFIG")
-                else:
-                    if not is_role_process:
-                        logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - no MISSION_CONFIG found")
-                        
-            except Exception as e:
-                if not is_role_process:
-                    logger.warning(f"   ⚠️ [Subrole] '{subrole_name}' - fallback failed: {e}")
-    
-    return additions
-
 def increment_usage():
     return runtime_increment_usage(PERSONALITY.get("name", "unknown"))
 
@@ -682,70 +718,6 @@ def _get_response_rules_lines() -> list[str]:
         "4. Don't end sentences with single words like 'the', 'a', in'.",
     ]
 
-#Deprecated
-#def _get_mission_injection(role_context: str, mission_prompt_key: str | None, user_content: str) -> str:
-    if not mission_prompt_key:
-        logger.info(f"🎯 [MISSION] No mission_prompt_key provided")
-        return ""
-    
-    logger.info(f"🎯 [MISSION] Available keys in PERSONALITY: {list(PERSONALITY.keys())}")
-    
-    # Try direct lookup first
-    cfg = PERSONALITY.get(mission_prompt_key, {})
-    logger.info(f"🎯 [MISSION] Direct lookup for {mission_prompt_key}: {bool(cfg)}")
-    
-    # If not found, try roles.trickster.subroles structure
-    if not cfg and 'roles' in PERSONALITY:
-        role_system = PERSONALITY['roles']['trickster']['subroles']
-        logger.info(f"🎯 [MISSION] Available trickster subroles: {list(role_system.keys())}")
-        if 'subroles' in role_system:
-            subroles = role_system['subroles']
-            logger.info(f"🎯 [MISSION] Available subroles: {list(subroles.keys())}")
-            cfg = subroles.get(mission_prompt_key, {})
-            logger.info(f"🎯 [MISSION] Found in subroles: {bool(cfg)}")
-    
-    # If still not found, try prompts section
-    if not cfg and 'prompts' in PERSONALITY:
-        prompts = PERSONALITY['prompts']
-        logger.info(f"🎯 [MISSION] Available prompts: {list(prompts.keys())}")
-        cfg = prompts.get(mission_prompt_key, {})
-        logger.info(f"🎯 [MISSION] Found in prompts: {bool(cfg)}")
-    
-    logger.info(f"🎯 [MISSION] Looking for mission key: {mission_prompt_key}")
-    logger.info(f"🎯 [MISSION] Found config: {bool(cfg)}")
-    if not isinstance(cfg, dict):
-        logger.warning(f"🎯 [MISSION] Config is not a dict: {type(cfg)}")
-        return ""
-    
-    # Check for active_duty field first and keep mission_active as fallback
-    active_duty = str(cfg.get("active_duty") or cfg.get("mission_active") or "").strip()
-    if active_duty:
-        logger.info(f"🎯 [MISSION] Using active duty field: {active_duty[:100]}..." if len(active_duty) > 100 else f"🎯 [MISSION] Active duty: {active_duty}")
-        return active_duty
-    
-    # Check for task field (used in prompts section)
-    task = cfg.get("task", "")
-    if task:
-        logger.info(f"🎯 [MISSION] Using task field: {task[:100]}..." if len(task) > 100 else f"🎯 [MISSION] Task: {task}")
-        return task
-    
-    # Fall back to instructions-based system
-    instructions = cfg.get("instructions", [])
-    if not isinstance(instructions, list):
-        instructions = []
-    processed = []
-    for inst in instructions:
-        line = str(inst)
-        line = line.replace("{name}", str(role_context or "").strip())
-        line = line.replace("{user_message}", str(user_content or "").strip())
-        processed.append(line.strip())
-    closing = str(cfg.get("closing", "")).strip()
-    if closing:
-        processed.append(closing)
-    result = "\n".join([line for line in processed if line])
-    logger.info(f"🎯 [MISSION] Using instructions-based system, final injection length: {len(result)} chars")
-    return result
-
 
 from agent_mind import (
     call_llm,
@@ -794,10 +766,16 @@ from datetime import datetime, timedelta
 def get_active_subroles():
     """Get active subroles from personality prompts.json."""
     try:
-        # Use same path logic as _cargar_personalidad
-        personality_rel = AGENT_CFG.get("personality", "personalities/default.json")
-        personality_path = os.path.join(_BASE_DIR, personality_rel)
-        personality_dir = os.path.dirname(personality_path)
+        # Use server-specific personality directory if available
+        try:
+            from agent_runtime import get_personality_directory
+            personality_dir = get_personality_directory()
+        except:
+            # Fall back to global personality directory
+            personality_rel = AGENT_CFG.get("personality", "personalities/default.json")
+            personality_path = os.path.join(_BASE_DIR, personality_rel)
+            personality_dir = os.path.dirname(personality_path)
+        
         prompts_path = os.path.join(personality_dir, "prompts.json")
         
         with open(prompts_path, 'r', encoding='utf-8') as f:

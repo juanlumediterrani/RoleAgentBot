@@ -20,15 +20,11 @@ def get_dice_game_messages():
     combined_messages = {}
     
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-        config_path = os.path.join(project_root, "agent_config.json")
-        with open(config_path, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
+        from agent_runtime import get_personality_file_path, get_personality_directory
         
         # Load from answers.json
         try:
-            answers_path = os.path.join(project_root, os.path.dirname(personality_rel), "answers.json")
+            answers_path = get_personality_file_path("answers.json")
             with open(answers_path, encoding="utf-8") as f:
                 answers_cfg = json.load(f).get("discord", {})
             
@@ -42,8 +38,9 @@ def get_dice_game_messages():
         
         # Load from descriptions.json
         try:
+            personality_dir = get_personality_directory()
             # First try to load from the new separate trickster.json file
-            trickster_path = os.path.join(project_root, os.path.dirname(personality_rel), "descriptions", "trickster.json")
+            trickster_path = os.path.join(personality_dir, "descriptions", "trickster.json")
             if os.path.exists(trickster_path):
                 with open(trickster_path, encoding="utf-8") as f:
                     trickster_data = json.load(f)
@@ -51,7 +48,7 @@ def get_dice_game_messages():
                 logger.info("🎲 Loaded dice game messages from trickster.json")
             else:
                 # Fallback to old descriptions.json structure
-                descriptions_path = os.path.join(project_root, os.path.dirname(personality_rel), "descriptions.json")
+                descriptions_path = get_personality_file_path("descriptions.json")
                 with open(descriptions_path, encoding="utf-8") as f:
                     descriptions_cfg = json.load(f).get("discord", {})
                 

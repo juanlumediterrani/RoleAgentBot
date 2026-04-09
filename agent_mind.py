@@ -9,8 +9,8 @@ from typing import Any
 import json
 
 try:
-    import vertexai
-    from vertexai.generative_models import GenerativeModel, GenerationConfig
+    from google import genai
+    from google.genai import types as genai_types
     VERTEXAI_AVAILABLE = True
 except ImportError:
     VERTEXAI_AVAILABLE = False
@@ -35,6 +35,7 @@ _CONFIG_CACHE = None
 
 # Vertex AI configuration
 _VERTEXAI_INITIALIZED = False
+_VERTEXAI_CLIENT = None
 
 def _get_config() -> dict:
     """Load and cache configuration from agent_config.json"""
@@ -51,8 +52,8 @@ def _get_max_tokens() -> int:
     return config.get('llm', {}).get('max_tokens', 1024)
 
 def _init_vertexai():
-    """Initialize Vertex AI with project and location from environment"""
-    global _VERTEXAI_INITIALIZED
+    """Initialize Vertex AI client using google-genai SDK"""
+    global _VERTEXAI_INITIALIZED, _VERTEXAI_CLIENT
     if _VERTEXAI_INITIALIZED:
         return True
 
@@ -70,9 +71,13 @@ def _init_vertexai():
         return False
     
     try:
-        vertexai.init(project=project, location=location)
+        _VERTEXAI_CLIENT = genai.Client(
+            vertexai=True,
+            project=project,
+            location=location,
+        )
         _VERTEXAI_INITIALIZED = True
-        logger.info(f"✅ Vertex AI initialized: project={project}, location={location}")
+        logger.info(f"✅ Vertex AI (google-genai) initialized: project={project}, location={location}")
         return True
     except Exception as e:
         logger.error(f"❌ Failed to initialize Vertex AI: {e}")
@@ -769,6 +774,27 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
                 summary_text = _get_daily_memory_fallback()
         
         logger.info(f"🧠 [DAILY_MEMORY] LLM failed, keeping existing summary for {resolved_server} on {resolved_date}")
+        
+        # CRITICAL FIX: Save the fallback/previous summary to database even when LLM fails
+        # This ensures bootstrap processes don't fail silently
+        save_success = db_instance.upsert_daily_memory(
+            summary_text,
+            memory_date=resolved_date,
+            metadata={
+                "source": "llm_failed_fallback",
+                "recent_memory_used": bool(recent_summary),
+                "generated_at": datetime.now().isoformat(),
+                "recollection_injected": bool(dreaming_recollection),
+                "dreaming_triggered": bool(dreaming_recollection),
+                "memory_extracted": False,
+                "llm_failed": True,
+            },
+        )
+        
+        if save_success:
+            logger.info(f"🧠 [DAILY_MEMORY] Saved fallback summary for {resolved_server} on {resolved_date}")
+        else:
+            logger.error(f"🧠 [DAILY_MEMORY] FAILED to save fallback summary for {resolved_server} on {resolved_date} - database error occurred")
     
     return summary_text
 
@@ -1688,7 +1714,7 @@ def call_llm(
     
     try:
         if not is_simulation_mode():
-            logger.info(f"{log_prefix} Starting call to gemini-1.5-flash")
+            logger.info(f"{log_prefix} Starting call to gemini-3.1-flash-lite-preview")
             logger.info(f"   └─ Temp: {temperature} | Max tokens: {max_tokens}")
             logger.info("   └─ Top-p: 0.95")
 
@@ -1749,16 +1775,17 @@ def _call_vertexai_sync(
 
     def call_vertexai():
         try:
-            model = GenerativeModel("gemini-1.5-flash")
-            generation_config = GenerationConfig(
+            config = genai_types.GenerateContentConfig(
+                system_instruction=system_instruction,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
-                top_p=0.95
+                top_p=0.95,
             )
-            res = model.generate_content(
+
+            res = _VERTEXAI_CLIENT.models.generate_content(
+                model="gemini-3.1-flash-lite",#Don't touch 3.1 its okay
                 contents=prompt,
-                generation_config=generation_config,
-                system_instruction=system_instruction
+                config=config,
             )
             result_queue.put(res)
         except Exception as e:
@@ -1832,16 +1859,16 @@ def _call_vertexai_async(
 
     def call_vertexai():
         try:
-            model = GenerativeModel("gemini-1.5-flash")
-            generation_config = GenerationConfig(
+            config = genai_types.GenerateContentConfig(
+                system_instruction=system_instruction,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
-                top_p=0.95
+                top_p=0.95,
             )
-            res = model.generate_content(
+            res = _VERTEXAI_CLIENT.models.generate_content(
+                model="gemini-3.1-flash-lite",#Don't touch 3.1 its okay
                 contents=prompt,
-                generation_config=generation_config,
-                system_instruction=system_instruction
+                config=config,
             )
             result_queue.put(res)
         except Exception as e:

@@ -38,12 +38,8 @@ def get_trickster_system_prompt():
 def get_trickster_message(key):
     """Get customized messages for the trickster role from personality."""
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        config_path = os.path.join(project_root, "agent_config.json")
-        with open(config_path, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
-        answers_path = os.path.join(project_root, os.path.dirname(personality_rel), "answers.json")
+        from agent_runtime import get_personality_file_path
+        answers_path = get_personality_file_path("answers.json")
         with open(answers_path, encoding="utf-8") as f:
             messages = json.load(f).get("discord", {}).get("role_messages", {})
         return messages.get(key, f"🎭 {key}")

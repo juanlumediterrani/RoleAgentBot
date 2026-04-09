@@ -55,7 +55,41 @@ def get_runtime_base_dir() -> str:
 
 
 def get_personality_directory() -> str:
+    """
+    Get the personality directory, checking for server-specific copy first.
+    
+    Returns the server-specific personality directory if it exists,
+    otherwise falls back to the global personality directory.
+    """
+    server_id = get_active_server_id()
+    if server_id:
+        try:
+            from discord_bot.db_init import get_server_personality_dir
+            server_dir = get_server_personality_dir(server_id)
+            if server_dir:
+                return server_dir
+        except Exception as e:
+            logger.warning(f"Could not get server personality directory: {e}")
+    
+    # Fall back to global personality directory
     return _PERSONALITY_DIR
+
+
+def get_personality_file_path(filename: str) -> str:
+    """
+    Get the full path to a personality file, checking server-specific copy first.
+    
+    This is a convenience function for role files that need to access
+    personality files like answers.json, descriptions.json, etc.
+    
+    Args:
+        filename: Name of the file (e.g., "answers.json", "descriptions.json")
+        
+    Returns:
+        str: Full path to the personality file
+    """
+    personality_dir = get_personality_directory()
+    return os.path.join(personality_dir, filename)
 
 
 def get_daily_usage(personality_name: str, user_id: str = None, user_name: str = None) -> int:

@@ -30,9 +30,6 @@ def init_roles_config_for_server(server_id: str):
         else:
             logger.error("❌ Failed to ensure default roles")
         
-        # Migration from behavior.db no longer needed - roles table removed
-        logger.info("ℹ️  Migration from behavior.db skipped - legacy roles table removed")
-        
         # Verify final state
         import sqlite3
         conn = sqlite3.connect(roles_db.db_path)

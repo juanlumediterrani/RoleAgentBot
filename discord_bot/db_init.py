@@ -9,8 +9,122 @@ from agent_roles_db import get_roles_db_instance
 from behavior.db_behavior import get_behavior_db_instance
 import asyncio
 import sqlite3
+import os
+import shutil
+import json
 
 logger = get_logger('db_init')
+
+
+def copy_personality_to_server(server_id: str, personality_name: str = None) -> bool:
+    """
+    Copy personality files to server-specific directory for first-time initialization.
+    
+    This function copies the personality folder from the global personalities/ directory
+    to a server-specific location under databases/<server_id>/<personality_name>/.
+    Each server will then use its own copy, allowing for future per-server customization.
+    
+    Directory structure:
+        databases/<server_id>/<personality_name>/
+            ├── personality.json
+            ├── prompts.json
+            ├── answers.json
+            ├── descriptions.json
+            └── descriptions/
+    
+    Args:
+        server_id: Discord guild ID
+        personality_name: Name of personality folder (e.g., "putre(english)"). 
+                          If None, reads from agent_config.json
+        
+    Returns:
+        bool: True if copy successful or already exists, False on error
+    """
+    try:
+        # Get personality name from config if not provided
+        if personality_name is None:
+            import json
+            config_path = os.path.join(os.path.dirname(__file__), '..', 'agent_config.json')
+            with open(config_path, encoding='utf-8') as f:
+                config = json.load(f)
+            personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
+            personality_name = os.path.basename(os.path.dirname(personality_path))
+        
+        # Paths
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        source_dir = os.path.join(base_dir, 'personalities', personality_name)
+        target_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
+        
+        # Check if server-specific copy already exists
+        if os.path.exists(target_dir):
+            logger.info(f"📁 Server-specific personality already exists: {target_dir}")
+            return True
+        
+        # Check if source personality exists
+        if not os.path.exists(source_dir):
+            logger.error(f"❌ Source personality directory not found: {source_dir}")
+            return False
+        
+        # Create target directory
+        os.makedirs(target_dir, exist_ok=True)
+        
+        # Copy all files and directories
+        for item in os.listdir(source_dir):
+            source_item = os.path.join(source_dir, item)
+            target_item = os.path.join(target_dir, item)
+            
+            if os.path.isdir(source_item):
+                # Copy subdirectory (e.g., descriptions/)
+                shutil.copytree(source_item, target_item)
+                logger.info(f"📂 Copied directory: {item}")
+            else:
+                # Copy file (e.g., personality.json, prompts.json)
+                shutil.copy2(source_item, target_item)
+                logger.info(f"📄 Copied file: {item}")
+        
+        logger.info(f"✅ Personality copied to server-specific directory: {target_dir}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error copying personality to server {server_id}: {e}")
+        return False
+
+
+def get_server_personality_dir(server_id: str, personality_name: str = None) -> str:
+    """
+    Get the server-specific personality directory path.
+    
+    Returns the path to the server's personality copy if it exists,
+    otherwise returns None to indicate fallback to global personality.
+    
+    Args:
+        server_id: Discord guild ID
+        personality_name: Name of personality folder (e.g., "putre(english)")
+        
+    Returns:
+        str: Path to server-specific personality directory, or None if not exists
+    """
+    try:
+        # Get personality name from config if not provided
+        if personality_name is None:
+            import json
+            config_path = os.path.join(os.path.dirname(__file__), '..', 'agent_config.json')
+            with open(config_path, encoding='utf-8') as f:
+                config = json.load(f)
+            personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
+            personality_name = os.path.basename(os.path.dirname(personality_path))
+        
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        server_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
+        
+        if os.path.exists(server_dir):
+            return server_dir
+        
+        return None
+        
+    except Exception as e:
+        logger.warning(f"Could not get server personality directory: {e}")
+        return None
 
 
 async def _bootstrap_daily_memory_if_missing(server_key: str, guild_name: str, log, context_label: str) -> None:
@@ -183,6 +297,16 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
     
     success_count = 0
     total_count = 0
+    
+    # 0. Copy personality files to server-specific directory (first-time only)
+    total_count += 1
+    logger.info(f"📁 Setting up server-specific personality for {guild_name}")
+    personality_copy_success = copy_personality_to_server(server_key)
+    if personality_copy_success:
+        logger.info(f"✅ Server-specific personality ready for {guild_name}")
+        success_count += 1
+    else:
+        logger.warning(f"⚠️ Personality copy failed for {guild_name}, will use global personality")
     
     # 1. Initialize all databases
     total_count += 1

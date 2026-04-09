@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from typing import Optional, Dict, List, Tuple
 from agent_logging import get_logger
 from agent_engine import PERSONALITY
+import http.cookiejar
 
 # Ensure mc directory path is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -71,9 +72,14 @@ def _build_youtube_options(base_format: str = 'bestaudio/best', noplaylist: bool
             if has_js_runtime:
                 # Test if cookies work properly when JS runtime is available
                 if _test_cookies_work(cookie_path):
-                    ydl_opts['cookiefile'] = cookie_path
-                    logger.info(f"MC: Using working cookies from {cookie_path} (JS runtime available)")
-                    return ydl_opts  # Return immediately with cookies
+                    # Load cookies manually without setting a save path (prevents write errors on read-only filesystem)
+                    cookie_jar = _load_cookies_from_file(cookie_path)
+                    if cookie_jar:
+                        ydl_opts['cookielib'] = cookie_jar
+                        logger.info(f"MC: Using working cookies from {cookie_path} (JS runtime available, read-only)")
+                        return ydl_opts  # Return immediately with cookies
+                    else:
+                        logger.warning(f"MC: Failed to load cookies from {cookie_path}, falling back to method without cookies")
                 else:
                     logger.warning(f"MC: Cookies found at {cookie_path} but not working properly, falling back to method without cookies")
             else:
@@ -89,6 +95,18 @@ def _build_youtube_options(base_format: str = 'bestaudio/best', noplaylist: bool
         logger.info("MC: Using YouTube method without cookies (fallback mode)")
 
     return ydl_opts
+
+
+def _load_cookies_from_file(cookie_path: str) -> http.cookiejar.CookieJar:
+    """Load cookies from file without setting a save path (read-only)."""
+    cookie_jar = http.cookiejar.MozillaCookieJar()
+    try:
+        cookie_jar.load(cookie_path, ignore_discard=True, ignore_expires=True)
+        logger.debug(f"MC: Loaded {len(cookie_jar)} cookies from {cookie_path}")
+        return cookie_jar
+    except Exception as e:
+        logger.warning(f"MC: Failed to load cookies from {cookie_path}: {e}")
+        return None
 
 
 def _check_js_runtime_available() -> bool:
@@ -151,12 +169,8 @@ def _test_cookies_work(cookie_path: str) -> bool:
 
 def _load_mc_answers() -> dict:
     try:
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        config_path = os.path.join(project_root, "agent_config.json")
-        with open(config_path, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
-        answers_path = os.path.join(project_root, os.path.dirname(personality_rel), "answers.json")
+        from agent_runtime import get_personality_file_path
+        answers_path = get_personality_file_path("answers.json")
         with open(answers_path, encoding="utf-8") as f:
             return json.load(f).get("discord", {})
     except Exception:

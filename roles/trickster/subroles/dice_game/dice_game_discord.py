@@ -17,7 +17,6 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Legacy variables removed - now using roles_db directly
 
 def register_dice_commands(bot, personality, send_dm_or_channel, is_admin, 
                          get_banker_db_instance, 

@@ -23,16 +23,8 @@ logger = get_logger('treasure_hunter_discord')
 
 def _get_treasure_description(key: str, default: str) -> str:
     try:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
-        with open(config_path, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
-        personality_dir = os.path.dirname(personality_rel)
-        answers_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            personality_dir,
-            "answers.json",
-        )
+        from agent_runtime import get_personality_file_path
+        answers_path = get_personality_file_path("answers.json")
         with open(answers_path, encoding="utf-8") as f:
             answers = json.load(f).get("discord", {}).get("treasure_hunter_messages", {})
         value = answers.get(key)

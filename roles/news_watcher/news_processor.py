@@ -585,12 +585,6 @@ class NewsProcessor:
         message = f"🔍 **Keyword Match: {', '.join(matched_keywords)}**\n\n📰 **{title}**\n\n{content}\n\n🔗 [Read more]({news_item.link})"
         return message
     
-    async def _process_general(self, news_item: NewsItem, premises: str) -> str:
-        """Process general subscription - AI analysis based on premises with hash-based caching."""
-        # This function is deprecated - use news_watcher.py _analyze_critical_news_batch instead
-        logger.warning("_process_general is deprecated. Use news_watcher.py implementation.")
-        return ""
-    
     def _cleanup_old_cache(self):
         """Remove old cache entries to prevent memory leaks."""
         now = datetime.now()

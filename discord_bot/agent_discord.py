@@ -14,7 +14,7 @@ from discord.ext import commands, tasks
 
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, _build_conversation_user_prompt
-from postprocessor import postprocess_response, is_readme_response
+from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
 from agent_db import set_current_server, get_active_server_id
 from behavior.db_behavior import get_behavior_db_instance
 from agent_logging import get_logger, update_log_file_path
@@ -97,20 +97,10 @@ def _build_readme_prompt(user_question: str) -> str:
     return enhanced_prompt
 
 
-def _load_personality_answers() -> dict:
-    try:
-        personality_rel = AGENT_CFG.get("personality", "")
-        personality_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), personality_rel)
-        answers_path = os.path.join(os.path.dirname(personality_path), "answers.json")
-        if os.path.exists(answers_path):
-            with open(answers_path, encoding="utf-8") as f:
-                return json.load(f).get("discord", {})
-    except Exception as e:
-        logger.warning(f"Could not load personality answers.json: {e}")
-    return {}
+# Import dynamic _personality_answers from discord_core_commands (server-specific loading)
+from discord_bot.discord_core_commands import _personality_answers
 
-
-_discord_cfg = _load_personality_answers()
+_discord_cfg = _personality_answers
 _cmd_prefix = _discord_cfg.get("command_prefix", "!")
 _bot_display_name = PERSONALITY.get("bot_display_name", PERSONALITY.get("name", "Bot"))
 _personality_name = PERSONALITY.get("name", "bot").lower()
@@ -833,6 +823,10 @@ async def _process_chat_message(message):
             from discord_bot.discord_utils import get_server_key
             server_id = get_server_key(message.guild)
             server_context = f"Server: {message.guild.name} ({server_id})"
+            # Ensure active server is set for this message's guild
+            current_active = get_active_server_id()
+            if current_active != server_id:
+                set_current_server(server_id)
 
         active_roles = []
         roles_config = AGENT_CFG.get("roles", {})
@@ -886,7 +880,7 @@ async def _process_chat_message(message):
             server_id=server_id
         )
 
-        # Check if this is a README response (deprecated is_help_request removed)
+        # Check if this is a README response
         if is_readme_response(response):
             logger.info(f"🔍 README response detected from {message.author.name}")
             
@@ -924,6 +918,50 @@ async def _process_chat_message(message):
             except Exception as e:
                 logger.error(f"❌ Error building README prompt: {e}")
                 # Continue with original README response if README file fails
+
+        # Check if this is a NADA_QUE_DECIR response (nothing to say)
+        nothing_to_say_keyword = PERSONALITY.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")
+        nothing_to_say_description = PERSONALITY.get("behaviors", {}).get("nothing_to_say_description", "(You didn't respond to their last message)")
+        if is_nothing_to_say_response(response, keyword=nothing_to_say_keyword):
+            logger.info(f"🔇 NADA_QUE_DECIR response detected from {message.author.name} - skipping response sending")
+            
+            # Register interaction in database with description instead of literal keyword
+            db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)
+            interaction_type = "CHANNEL" if is_public else "DM"
+            await asyncio.to_thread(
+                db_instance.register_interaction,
+                message.author.id, message.author.name, interaction_type,
+                message.content,
+                message.channel.id if message.channel else None,
+                message.guild.id if message.guild else None,
+                {"response": nothing_to_say_description, "is_public": is_public, "is_mention": is_mention, "nothing_to_say": True}
+            )
+            
+            # Mark user as replied to greeting if they message the bot
+            if message.guild:
+                from behavior.db_behavior import get_behavior_db_instance
+                from discord_bot.discord_utils import get_server_key
+                server_id = get_server_key(message.guild)
+                behavior_db = get_behavior_db_instance(server_id)
+                await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, message.guild.id)
+            else:
+                import glob
+                from behavior.db_behavior import get_behavior_db_instance
+                
+                db_paths = glob.glob("databases/*/behavior*.db")
+                for db_path in db_paths:
+                    try:
+                        server_id = os.path.basename(os.path.dirname(db_path))
+                        behavior_db = get_behavior_db_instance(server_id)
+                        replied = await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, "dm_context")
+                        if replied:
+                            logger.info(f"Marked user {message.author.name} as replied via DM for server {server_id}")
+                            break
+                    except Exception as e:
+                        logger.error(f"Error marking user replied via DM: {e}")
+            
+            # Return early - don't send response
+            return
 
         # Register interaction in database
         db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)

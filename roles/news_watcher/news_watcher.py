@@ -26,30 +26,81 @@ import json
 import os
 from pathlib import Path
 
-def _load_news_watcher_descriptions():
+def _load_news_watcher_descriptions() -> dict:
     """Load news_watcher.json descriptions directly."""
     try:
         # Get personality name from configuration
         from agent_engine import PERSONALITY
         personality_name = PERSONALITY.get("name", "putre").lower()
         
-        # Get personality directory
-        personality_dir = Path(__file__).parent.parent.parent / "personalities" / personality_name / "descriptions"
-        news_watcher_path = personality_dir / "news_watcher.json"
+        # Get personality directory (server-specific)
+        from agent_runtime import get_personality_directory
+        personality_dir = get_personality_directory()
         
-        if news_watcher_path.exists():
-            with open(news_watcher_path, 'r', encoding='utf-8') as f:
+        # Try to load from the new separate news_watcher.json file
+        news_watcher_path = os.path.join(personality_dir, "descriptions", "news_watcher.json")
+        if os.path.exists(news_watcher_path):
+            with open(news_watcher_path, encoding="utf-8") as f:
                 return json.load(f)
-        else:
-            logger.warning(f"News watcher descriptions not found at {news_watcher_path}")
-            return {}
     except Exception as e:
         logger.exception(f"Error loading news_watcher descriptions: {e}")
         return {}
 
-_personality_descriptions = _load_news_watcher_descriptions()
+# Dynamic news_watcher descriptions with server-specific cache
+_news_watcher_descriptions_cache = {}
+_news_watcher_descriptions_cache_server_id = None
 
-# Personality prompt fallback legacy not normalized
+def _get_news_watcher_descriptions() -> dict:
+    """
+    Get news_watcher descriptions with server-specific caching.
+    
+    This function dynamically loads descriptions based on the active server,
+    caching the result to avoid repeated file reads for the same server.
+    """
+    global _news_watcher_descriptions_cache, _news_watcher_descriptions_cache_server_id
+    
+    try:
+        from agent_db import get_active_server_id
+        current_server_id = get_active_server_id()
+    except:
+        current_server_id = None
+    
+    # Check if we need to reload (different server or no cache)
+    if current_server_id != _news_watcher_descriptions_cache_server_id or not _news_watcher_descriptions_cache:
+        _news_watcher_descriptions_cache = _load_news_watcher_descriptions()
+        _news_watcher_descriptions_cache_server_id = current_server_id
+        if os.getenv('ROLE_AGENT_PROCESS') != '1':
+            logger.info(f"📰 [NEWS_WATCHER DESCRIPTIONS] Loaded for server: {current_server_id}")
+    
+    return _news_watcher_descriptions_cache
+
+
+# Create dynamic _personality_descriptions proxy for news_watcher
+class _NewsWatcherDescriptionsProxy:
+    """Proxy for dynamic news_watcher descriptions loading."""
+    def __getitem__(self, key):
+        return _get_news_watcher_descriptions().get(key)
+    
+    def get(self, key, default=None):
+        return _get_news_watcher_descriptions().get(key, default)
+    
+    def __contains__(self, key):
+        return key in _get_news_watcher_descriptions()
+    
+    def keys(self):
+        return _get_news_watcher_descriptions().keys()
+    
+    def values(self):
+        return _get_news_watcher_descriptions().values()
+    
+    def items(self):
+        return _get_news_watcher_descriptions().items()
+    
+    def __repr__(self):
+        return repr(_get_news_watcher_descriptions())
+
+_personality_descriptions = _NewsWatcherDescriptionsProxy()
+
 ROL_VIGIA_PERSONALITY = (
     "You are the Tower Watcher, an ancient guardian who watches the world from above. "
     "Your character is wise, direct and sometimes a bit somber. "

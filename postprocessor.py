@@ -246,3 +246,24 @@ def is_readme_response(text):
     
     # Accept if it's not a formal response
     return not is_formal
+
+def is_nothing_to_say_response(text, keyword="NADA_QUE_DECIR"):
+    """Detects if the LLM responded with the nothing-to-say keyword following the golden rule."""
+    if not text:
+        return False
+    
+    s = _sanitize_text(text).upper()
+    
+    # Check if the keyword appears as a standalone word
+    import re
+    keyword_upper = keyword.upper()
+    if not re.search(rf'\b{re.escape(keyword_upper)}\b', s):
+        return False
+    
+    # Strict detection: the response should ONLY contain the keyword
+    # Remove whitespace and check if it's just the keyword
+    s_clean = re.sub(r'\s+', '', s)
+    keyword_clean = re.sub(r'\s+', '', keyword_upper)
+    
+    # Accept if the response is essentially just the keyword (with minor variations)
+    return s_clean == keyword_clean or s_clean.startswith(keyword_clean)

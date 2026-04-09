@@ -30,12 +30,13 @@ logs/
 .idea/
 
 # Scripts de configuración y archivos temporales
-.ent.tmp
 cookies.txt
 www.youtube.com_cookies.txt
 setup-bot.sh
 start_clean.sh
 .active_server
+setup-gcloud-auth.sh
+install_system_depths.sh
 
 # Configuración sensible
 old/

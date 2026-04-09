@@ -1672,6 +1672,12 @@ def set_current_server(server_id: str):
     _current_server_id = server_id
     if server_id:
         persist_active_server_id(server_id)
+        # Reload personality to load server-specific copy if available
+        try:
+            from agent_engine import reload_personality
+            reload_personality()
+        except Exception as e:
+            logger.warning(f"Could not reload personality on server change: {e}")
 
 def get_database_path(server_id: str, db_type: str) -> str:
     """

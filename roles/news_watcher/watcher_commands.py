@@ -40,12 +40,9 @@ def _get_watcher_description_text(key: str, fallback: str) -> str:
         except FileNotFoundError:
             pass  # Continue to fallback
         
-        # Fallback to old descriptions.json
-        descriptions_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            os.path.dirname(personality_rel),
-            "descriptions.json",
-        )
+        # Fallback to old descriptions.json using server-specific helper
+        from agent_runtime import get_personality_file_path
+        descriptions_path = get_personality_file_path("descriptions.json")
         with open(descriptions_path, encoding="utf-8") as f:
             descriptions = json.load(f).get("discord", {}).get("watcher_messages", {})
         value = descriptions.get(key)

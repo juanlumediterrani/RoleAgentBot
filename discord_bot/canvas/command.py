@@ -186,7 +186,8 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 home_embed = core._build_canvas_embed("home", sections[section_name], admin_visible)
                 message = await ctx.send(embed=home_embed, view=view)
             elif section_name == "behavior":
-                behavior_embed = core._build_canvas_embed("behavior", sections[section_name], admin_visible)
+                behavior_embed = core._build_canvas_embed("behavior", sections[section_name], admin_visible,
+                                                          sections.get("behavior_title"), sections.get("behavior_description"))
                 message = await ctx.send(embed=behavior_embed, view=view)
             else:
                 message = await ctx.send(sections[section_name], view=view)
