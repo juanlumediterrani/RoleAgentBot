@@ -2347,16 +2347,205 @@ def generate_weekly_personality_evolution(
         "server_id": resolved_server,
         "week_start": week_start,
         "week_end": week_end,
-        "memories_used": len(daily_memories),
-        "identity_body_paragraphs": len(evolved_identity_body),
-        "backup_path": backup_path if os.path.exists(backup_path) else None,
-        "evolved_personality_path": server_personality_path,
     }
 
 
-
-
-
+def generate_test_personality_evolution(server_id: str | None = None) -> dict:
+    """Test personality evolution with synthetic daily memories.
+    
+    This function uses 7 synthetic daily memory paragraphs to test the evolution
+    system without requiring actual daily memory data in the database.
+    
+    Args:
+        server_id: Discord server ID (uses active server if None)
+        
+    Returns:
+        Dict with success status, message, prompt sent, and LLM response
+    """
+    import os
+    from datetime import date, timedelta
+    from agent_logging import get_logger
+    
+    test_logger = get_logger('test_evolution')
+    
+    engine = _engine()
+    resolved_server = server_id or get_active_server_id()
+    
+    if not resolved_server:
+        test_logger.warning("🧬 [TEST_EVOLUTION] No server context available")
+        return {"success": False, "error": "No server context available"}
+    
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Starting test evolution for server '{resolved_server}'")
+    
+    # Generate 7 synthetic daily memories for testing
+    today = date.today()
+    test_daily_memories = []
+    for i in range(7):
+        memory_date = (today - timedelta(days=6-i)).isoformat()
+        test_daily_memories.append({
+            "memory_date": memory_date,
+            "summary": f"Test memory day {i+1}: Putre had interesting experiences with humans and learned something new about their behavior patterns.",
+            "metadata": {},
+            "updated_at": memory_date
+        })
+    
+    # Load current personality.json from server-specific location
+    personality_name = engine.PERSONALITY.get("name", "unknown").lower()
+    server_personality_dir = os.path.join(
+        os.path.dirname(__file__), "databases", resolved_server, personality_name
+    )
+    server_personality_path = os.path.join(server_personality_dir, "personality.json")
+    
+    # Check if server personality exists
+    if not os.path.exists(server_personality_path):
+        test_logger.error(f"🧬 [TEST_EVOLUTION] Server personality not found at {server_personality_path}")
+        return {"success": False, "error": "Server personality not migrated"}
+    
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Using server-specific personality")
+    
+    try:
+        with open(server_personality_path, 'r', encoding='utf-8') as f:
+            current_personality = json.load(f)
+    except Exception as e:
+        test_logger.error(f"🧬 [TEST_EVOLUTION] Failed to load personality.json: {e}")
+        return {"success": False, "error": f"Failed to load personality: {e}"}
+    
+    # Extract current identity_body
+    current_identity_body = current_personality.get("system_prompt_template", {}).get("identity_body", [])
+    if not current_identity_body:
+        test_logger.error("🧬 [TEST_EVOLUTION] No identity_body found in personality")
+        return {"success": False, "error": "No identity_body in personality"}
+    
+    # Calculate week dates
+    week_start = test_daily_memories[0].get("memory_date", (today - timedelta(days=6)).isoformat())
+    week_end = test_daily_memories[-1].get("memory_date", today.isoformat())
+    
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Processing test week: {week_start} to {week_end}")
+    
+    # Build system prompt and evolution prompt
+    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
+    evolution_prompt = _build_weekly_personality_evolution_prompt(
+        daily_memories=test_daily_memories,
+        current_identity_body=current_identity_body,
+        week_start_date=week_start,
+        week_end_date=week_end,
+    )
+    
+    # Log the prompt to server-specific prompt.log
+    from prompts_logger import log_prompt
+    log_prompt(
+        prompt_type="test_personality_evolution",
+        content=evolution_prompt,
+        metadata={"server_id": resolved_server, "test_mode": True},
+        server_id=resolved_server
+    )
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Prompt logged to logs/{resolved_server}/prompt.log")
+    
+    # Call LLM for evolution
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Calling LLM for test personality evolution...")
+    llm_response = call_llm(
+        system_instruction=system_instruction,
+        prompt=evolution_prompt,
+        async_mode=True,
+        call_type="test_weekly_personality_evolution",
+        critical=False,
+        server_id=resolved_server,
+    )
+    
+    # Log the LLM response to server-specific prompt.log
+    log_prompt(
+        prompt_type="test_personality_evolution_response",
+        content=llm_response,
+        metadata={"server_id": resolved_server, "test_mode": True},
+        server_id=resolved_server
+    )
+    test_logger.info(f"🧬 [TEST_EVOLUTION] LLM response logged to logs/{resolved_server}/prompt.log")
+    
+    if not llm_response or llm_response.strip() == "[Error in internal task]":
+        test_logger.error("🧬 [TEST_EVOLUTION] LLM failed to generate evolution")
+        return {
+            "success": False,
+            "error": "LLM generation failed",
+            "prompt_sent": evolution_prompt,
+            "llm_response": llm_response,
+        }
+    
+    # Parse the evolved identity_body
+    evolved_identity_body = _parse_identity_body_from_llm_response(llm_response)
+    
+    if evolved_identity_body is None:
+        test_logger.error("🧬 [TEST_EVOLUTION] Failed to parse LLM response as valid identity_body")
+        return {
+            "success": False,
+            "error": "Failed to parse LLM response",
+            "raw_response": llm_response[:500],
+            "prompt_sent": evolution_prompt,
+            "llm_response": llm_response,
+        }
+    
+    if not evolved_identity_body:
+        test_logger.error("🧬 [TEST_EVOLUTION] Parsed identity_body is empty")
+        return {
+            "success": False,
+            "error": "Empty identity_body from LLM",
+            "prompt_sent": evolution_prompt,
+            "llm_response": llm_response,
+        }
+    
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Successfully parsed evolved identity_body with {len(evolved_identity_body)} paragraphs")
+    
+    # Create backup before evolution
+    backup_path = os.path.join(
+        server_personality_dir, f"personality_backup_test_{date.today().isoformat()}.json"
+    )
+    try:
+        import shutil
+        shutil.copy2(server_personality_path, backup_path)
+        test_logger.info(f"🧬 [TEST_EVOLUTION] Created test backup at {backup_path}")
+    except Exception as e:
+        test_logger.warning(f"⚠️ [TEST_EVOLUTION] Failed to create backup: {e}")
+    
+    # Update personality with evolved identity_body
+    evolved_personality = current_personality.copy()
+    if "system_prompt_template" not in evolved_personality:
+        evolved_personality["system_prompt_template"] = {}
+    evolved_personality["system_prompt_template"]["identity_body"] = evolved_identity_body
+    
+    # Add evolution metadata
+    evolved_personality["_evolution_metadata"] = {
+        "last_evolution_date": date.today().isoformat(),
+        "week_start": week_start,
+        "week_end": week_end,
+        "memories_used": 7,
+        "test_mode": True,
+        "previous_backup": backup_path if os.path.exists(backup_path) else None,
+    }
+    
+    # Write evolved personality to server-specific file
+    try:
+        with open(server_personality_path, 'w', encoding='utf-8') as f:
+            json.dump(evolved_personality, f, indent=2, ensure_ascii=False)
+        test_logger.info(f"🧬 [TEST_EVOLUTION] Successfully wrote test evolved personality to {server_personality_path}")
+    except Exception as e:
+        test_logger.error(f"🧬 [TEST_EVOLUTION] Failed to write evolved personality: {e}")
+        return {
+            "success": False,
+            "error": f"Failed to write personality: {e}",
+            "prompt_sent": evolution_prompt,
+            "llm_response": llm_response,
+        }
+    
+    return {
+        "success": True,
+        "message": f"Test personality evolution completed for week {week_start} to {week_end}",
+        "server_id": resolved_server,
+        "week_start": week_start,
+        "week_end": week_end,
+        "prompt_sent": evolution_prompt,
+        "llm_response": llm_response,
+        "evolved_paragraphs_count": len(evolved_identity_body),
+        "backup_path": backup_path,
+    }
 
 
 

@@ -441,6 +441,50 @@ def register_core_commands(bot, agent_config):
     else:
         logger.info("Command test already registered, skipping...")
 
+    # --- TEST PERSONALITY EVOLUTION ---
+
+    if bot.get_command("testpersonalityevolution") is None:
+        @bot.command(name="testpersonalityevolution")
+        async def cmd_test_personality_evolution(ctx):
+            """Test weekly personality evolution with synthetic daily memories."""
+            role_cfg = _personality_answers.get("role_messages", {})
+            if not is_admin(ctx):
+                await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can test personality evolution."))
+                return
+
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers, not in direct messages.")
+                return
+
+            server_key = get_server_key(ctx.guild)
+            logger.info(f"Test personality evolution command executed by {ctx.author.name} in {ctx.guild.name}")
+
+            await ctx.send("🧬 Starting test personality evolution... This may take a moment.")
+
+            try:
+                from agent_mind import generate_test_personality_evolution
+                result = await asyncio.to_thread(generate_test_personality_evolution, server_key)
+
+                if result.get("success"):
+                    response = (
+                        f"✅ **Test personality evolution completed**\n\n"
+                        f"📅 Week: {result.get('week_start')} to {result.get('week_end')}\n"
+                        f"📝 Evolved paragraphs: {result.get('evolved_paragraphs_count')}\n"
+                        f"💾 Backup: `{os.path.basename(result.get('backup_path', 'N/A'))}`\n"
+                        f"📄 Check `logs/{result.get('server_id')}/prompt.log` for prompt and LLM response."
+                    )
+                    await ctx.send(response)
+                else:
+                    error_msg = result.get("error", "Unknown error")
+                    await ctx.send(f"❌ Test evolution failed: {error_msg}")
+                    logger.error(f"Test personality evolution failed: {error_msg}")
+
+            except Exception as e:
+                logger.exception(f"Error in test personality evolution command: {e}")
+                await ctx.send(f"❌ Error during test evolution: {e}")
+    else:
+        logger.info("Command testpersonalityevolution already registered, skipping...")
+
     async def _start_talk_loop_for_guild(guild_id: int):
         state = _talk_state_by_guild_id.get(guild_id)
         if not state:
