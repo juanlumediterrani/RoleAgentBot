@@ -52,12 +52,14 @@ if [ -n "${PERSONALITY}" ]; then
     PERSONALITY_PATH_LEGACY="personalities/${PERSONALITY}.json"
     
     # Special handling for personalities with parentheses (e.g., putre(english))
-    if [[ "${PERSONALITY}" == *"("* ]]; then
-        # For names with parentheses, use them directly as directory names
-        PERSONALITY_PATH_SPLIT="personalities/${PERSONALITY}/personality.json"
-        # No legacy fallback for parenthesized names
-        PERSONALITY_PATH_LEGACY=""
-    fi
+    case "${PERSONALITY}" in
+        *"("*)
+            # For names with parentheses, use them directly as directory names
+            PERSONALITY_PATH_SPLIT="personalities/${PERSONALITY}/personality.json"
+            # No legacy fallback for parenthesized names
+            PERSONALITY_PATH_LEGACY=""
+            ;;
+    esac
     
     if [ -f "${PERSONALITY_PATH_SPLIT}" ]; then
         PERSONALITY_PATH="${PERSONALITY_PATH_SPLIT}"

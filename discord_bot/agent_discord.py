@@ -23,6 +23,7 @@ from discord_bot.discord_utils import (
     get_db_for_server, check_chat_rate_limit,
     set_is_connected, is_role_enabled_check,
 )
+from discord_bot.entitlement_manager import EntitlementManager, set_entitlement_manager
 
 logger = get_logger('discord')
 
@@ -133,6 +134,8 @@ intents.members = True
 intents.presences = True
 intents.message_content = True
 intents.voice_states = True
+# Note: intents.entitlements requires discord.py 2.4+ - not supported in current version
+# Premium entitlement events will not work until library is updated
 
 bot = commands.Bot(command_prefix=_cmd_prefix, intents=intents)
 
@@ -338,6 +341,11 @@ async def on_ready():
     
     # Create banker wallets for all server members
     await _create_banker_wallets_on_startup()
+    
+    # Initialize entitlement manager for premium SKU support
+    entitlement_mgr = EntitlementManager(bot)
+    set_entitlement_manager(entitlement_mgr)
+    logger.info("💎 Entitlement manager initialized for premium SKU support")
 
 
 @bot.event
@@ -414,6 +422,42 @@ async def on_voice_state_update(member, before, after):
                                 await channel.send(msg)
                     except Exception:
                         pass
+
+
+@bot.event
+async def on_entitlement_create(entitlement):
+    """Handle new entitlement creation (user subscribed to premium)."""
+    logger.info(f"💎 Entitlement created: User={entitlement.user_id}, Guild={entitlement.guild_id}, SKU={entitlement.sku_id}")
+    
+    # Get entitlement manager and handle the event
+    from discord_bot.entitlement_manager import get_entitlement_manager
+    entitlement_mgr = get_entitlement_manager()
+    if entitlement_mgr:
+        entitlement_mgr.handle_entitlement_create(entitlement)
+
+
+@bot.event
+async def on_entitlement_update(entitlement):
+    """Handle entitlement update (subscription status changed)."""
+    logger.info(f"💎 Entitlement updated: User={entitlement.user_id}, Guild={entitlement.guild_id}, SKU={entitlement.sku_id}, Ends={entitlement.ends_at}")
+    
+    # Get entitlement manager and handle the event
+    from discord_bot.entitlement_manager import get_entitlement_manager
+    entitlement_mgr = get_entitlement_manager()
+    if entitlement_mgr:
+        entitlement_mgr.handle_entitlement_update(entitlement)
+
+
+@bot.event
+async def on_entitlement_delete(entitlement):
+    """Handle entitlement deletion (subscription cancelled/expired)."""
+    logger.info(f"💎 Entitlement deleted: User={entitlement.user_id}, Guild={entitlement.guild_id}, SKU={entitlement.sku_id}")
+    
+    # Get entitlement manager and handle the event
+    from discord_bot.entitlement_manager import get_entitlement_manager
+    entitlement_mgr = get_entitlement_manager()
+    if entitlement_mgr:
+        entitlement_mgr.handle_entitlement_delete(entitlement)
 
 
 @bot.event
@@ -958,6 +1002,14 @@ async def _process_chat_message(message):
 # --- BOT STARTUP ---
 if __name__ == "__main__":
     try:
+        import sys
+        logger.info("🚀 Starting Discord bot initialization...")
+        logger.info(f"📋 Python version: {sys.version}")
+        logger.info(f"🔑 Discord token configured: {bool(get_discord_token())}")
+        logger.info(f"🎭 Personality: {PERSONALITY.get('name', 'unknown')}")
+        logger.info(f"🤖 Bot display name: {_bot_display_name}")
+        logger.info(f"🔧 Command prefix: {_cmd_prefix}")
+        logger.info("⏳ Calling bot.run()...")
         bot.run(get_discord_token())
     except KeyboardInterrupt:
         logger.info("👋 Bot stopped by user")

@@ -9,11 +9,11 @@ from typing import Any
 import json
 
 try:
-    import google.genai as genai
-    from google.genai import types
-    GEMINI_AVAILABLE = True
+    import vertexai
+    from vertexai.generative_models import GenerativeModel, GenerationConfig
+    VERTEXAI_AVAILABLE = True
 except ImportError:
-    GEMINI_AVAILABLE = False
+    VERTEXAI_AVAILABLE = False
 
 from agent_logging import get_logger
 from agent_db import get_active_server_id, get_global_db
@@ -33,6 +33,9 @@ except ImportError:
 # Global cache for config
 _CONFIG_CACHE = None
 
+# Vertex AI configuration
+_VERTEXAI_INITIALIZED = False
+
 def _get_config() -> dict:
     """Load and cache configuration from agent_config.json"""
     global _CONFIG_CACHE
@@ -46,6 +49,34 @@ def _get_max_tokens() -> int:
     """Get max_tokens from configuration or default"""
     config = _get_config()
     return config.get('llm', {}).get('max_tokens', 1024)
+
+def _init_vertexai():
+    """Initialize Vertex AI with project and location from environment"""
+    global _VERTEXAI_INITIALIZED
+    if _VERTEXAI_INITIALIZED:
+        return True
+
+    # Check if Vertex AI is explicitly disabled
+    vertex_ai_disabled = os.getenv('DISABLE_VERTEX_AI', '').strip().lower() in ('1', 'true', 'yes')
+    if vertex_ai_disabled:
+        logger.info("Vertex AI disabled by DISABLE_VERTEX_AI environment variable")
+        return False
+
+    project = os.getenv("GOOGLE_CLOUD_PROJECT")
+    location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+    if not project:
+        logger.warning("GOOGLE_CLOUD_PROJECT not set, Vertex AI will not be available")
+        return False
+    
+    try:
+        vertexai.init(project=project, location=location)
+        _VERTEXAI_INITIALIZED = True
+        logger.info(f"✅ Vertex AI initialized: project={project}, location={location}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize Vertex AI: {e}")
+        return False
 
 
 def _engine():
@@ -867,10 +898,37 @@ def generate_user_relationship_memory_summary(
         if previous_summary and previous_summary.strip():
             summary_text = previous_summary
             logger.info(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, preserving existing summary for user={user_id} server={resolved_server}")
+            # Update database with preserved summary to ensure Canvas can retrieve it
+            db_instance.upsert_user_relationship_memory(
+                user_id,
+                summary_text,
+                last_interaction_at=last_interaction_at,
+                metadata={"user_name": user_name or "", "source": "preserved_after_llm_failure"},
+            )
+            db_instance.upsert_user_relationship_daily_memory(
+                user_id,
+                summary_text,
+                memory_date=resolved_date,
+                metadata={"user_name": user_name or "", "source": "preserved_after_llm_failure"},
+            )
         else:
             # Only use fallback if there truly was no previous summary
             summary_text = _get_relationship_memory_fallback(user_name)
             logger.warning(f"🧠 [RELATIONSHIP_MEMORY] LLM failed and no existing summary, using fallback for user={user_id} server={resolved_server}")
+            # Save fallback to database so Canvas can retrieve it
+            db_instance.upsert_user_relationship_memory(
+                user_id,
+                summary_text,
+                last_interaction_at=last_interaction_at,
+                metadata={"user_name": user_name or "", "source": "fallback_after_llm_failure"},
+            )
+            db_instance.upsert_user_relationship_daily_memory(
+                user_id,
+                summary_text,
+                memory_date=resolved_date,
+                metadata={"user_name": user_name or "", "source": "fallback_after_llm_failure"},
+            )
+        db_instance.mark_relationship_refresh_completed(user_id)
     
     return summary_text
 
@@ -1620,7 +1678,7 @@ def call_llm(
     # Use provided server_id or get active server ID
     effective_server_id = server_id or get_active_server_id()
     log_final_llm_prompt(
-        provider="gemini" if not is_simulation_mode() and GEMINI_AVAILABLE else "groq",
+        provider="vertexai" if not is_simulation_mode() and VERTEXAI_AVAILABLE else "groq",
         call_type=call_type,
         system_instruction=system_instruction,
         user_prompt=prompt,
@@ -1630,50 +1688,48 @@ def call_llm(
     
     try:
         if not is_simulation_mode():
-            logger.info(f"{log_prefix} Starting call to gemini-2.5-flash-lite")
+            logger.info(f"{log_prefix} Starting call to gemini-1.5-flash")
             logger.info(f"   └─ Temp: {temperature} | Max tokens: {max_tokens}")
             logger.info("   └─ Top-p: 0.95")
 
-            if not GEMINI_AVAILABLE:
-                logger.info(f"{log_prefix} Gemini not available, skipping to fallback")
+            if not VERTEXAI_AVAILABLE:
+                logger.info(f"{log_prefix} Vertex AI not available, skipping to fallback")
                 if critical:
-                    logger.warning(f"Gemini unavailable for critical call, using fallback")
+                    logger.warning(f"Vertex AI unavailable for critical call, using fallback")
             else:
-                client_gemini = genai.Client(
-                    api_key=os.getenv("GEMINI_API_KEY"),
-                    http_options=genai.types.HttpOptions(
-                        httpx_client=httpx.Client(timeout=30.0)
-                    )
-                )
-                
-                if async_mode:
-                    try:
-                        result = _call_gemini_async(
-                            client_gemini, system_instruction, prompt, temperature, 
-                            max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
-                        )
-                        if result is not None:
-                            return result
-                    except Exception as e:
-                        logger.info(f"{log_prefix} Gemini async call failed, fallback to Groq: {e}")
-                        # Fall through to Groq fallback for all calls (critical and non-critical)
+                if not _init_vertexai():
+                    logger.info(f"{log_prefix} Vertex AI initialization failed, skipping to fallback")
+                    if critical:
+                        logger.warning(f"Vertex AI initialization failed for critical call, using fallback")
                 else:
-                    try:
-                        result = _call_gemini_sync(
-                            client_gemini, system_instruction, prompt, temperature,
-                            max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
-                        )
-                        if result is not None:
-                            return result
-                    except Exception as e:
-                        logger.info(f"{log_prefix} Gemini sync call failed, fallback to Groq: {e}")
-                        # Fall through to Groq fallback for all calls (critical and non-critical)
+                    if async_mode:
+                        try:
+                            result = _call_vertexai_async(
+                                system_instruction, prompt, temperature,
+                                max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
+                            )
+                            if result is not None:
+                                return result
+                        except Exception as e:
+                            logger.info(f"{log_prefix} Vertex AI async call failed, fallback to Groq: {e}")
+                            # Fall through to Groq fallback for all calls (critical and non-critical)
+                    else:
+                        try:
+                            result = _call_vertexai_sync(
+                                system_instruction, prompt, temperature,
+                                max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
+                            )
+                            if result is not None:
+                                return result
+                        except Exception as e:
+                            logger.info(f"{log_prefix} Vertex AI sync call failed, fallback to Groq: {e}")
+                            # Fall through to Groq fallback for all calls (critical and non-critical)
         else:
             logger.info(f"{log_prefix} Simulation mode, using Groq")
     except ImportError as e:
-        logger.info(f"{log_prefix} Gemini import failed, fallback to Groq: {e}")
+        logger.info(f"{log_prefix} Vertex AI import failed, fallback to Groq: {e}")
     except Exception as e:
-        logger.info(f"{log_prefix} Gemini failed, fallback to Groq: {e}")
+        logger.info(f"{log_prefix} Vertex AI failed, fallback to Groq: {e}")
     
     # Fallback to Groq
     return _call_groq_fallback(
@@ -1682,46 +1738,46 @@ def call_llm(
     )
 
 
-def _call_gemini_sync(
-    client_gemini, system_instruction: str, prompt: str, temperature: float,
+def _call_vertexai_sync(
+    system_instruction: str, prompt: str, temperature: float,
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
     user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
-    """Synchronous Gemini call (for critical operations)"""
+    """Synchronous Vertex AI call (for critical operations)"""
     result_queue = queue.Queue()
     exception_queue = queue.Queue()
 
-    def call_gemini():
+    def call_vertexai():
         try:
-            res = client_gemini.models.generate_content(
-                model='gemini-2.5-flash',
+            model = GenerativeModel("gemini-1.5-flash")
+            generation_config = GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                top_p=0.95
+            )
+            res = model.generate_content(
                 contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=temperature,
-                    max_output_tokens=max_tokens,
-                    top_p=0.95,
-                    safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
-                )
+                generation_config=generation_config,
+                system_instruction=system_instruction
             )
             result_queue.put(res)
         except Exception as e:
             exception_queue.put(e)
 
-    gemini_thread = threading.Thread(target=call_gemini)
-    gemini_thread.start()
-    gemini_thread.join(timeout=30.0)
+    vertexai_thread = threading.Thread(target=call_vertexai)
+    vertexai_thread.start()
+    vertexai_thread.join(timeout=30.0)
 
-    if gemini_thread.is_alive():
-        logger.error("🤖 [SYNC] Gemini call timed out after 30 seconds")
+    if vertexai_thread.is_alive():
+        logger.error("🤖 [SYNC] Vertex AI call timed out after 30 seconds")
         if critical:
-            raise TimeoutError("Gemini API call timed out")
+            raise TimeoutError("Vertex AI API call timed out")
         else:
             return None
 
     if not exception_queue.empty():
         e = exception_queue.get()
-        logger.error(f"🤖 [SYNC] Gemini call failed: {e}")
+        logger.error(f"🤖 [SYNC] Vertex AI call failed: {e}")
         if critical:
             raise
         else:
@@ -1733,7 +1789,7 @@ def _call_gemini_sync(
         if text and len(text.strip()) > 5:
             postprocessed = postprocess_response(text)
             total_time = time.time()
-            logger.info(f"🏁 [SYNC] Gemini completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+            logger.info(f"🏁 [SYNC] Vertex AI completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
             
             # Log the response
             try:
@@ -1752,56 +1808,56 @@ def _call_gemini_sync(
             
             return postprocessed
         else:
-            logger.warning("🤖 [SYNC] Gemini returned empty or too short response")
+            logger.warning("🤖 [SYNC] Vertex AI returned empty or too short response")
             if critical:
                 return _get_fallback_response(critical)
             else:
                 return None
             
     except Exception as e:
-        logger.error(f"🤖 [SYNC] Failed to process Gemini response: {e}")
+        logger.error(f"🤖 [SYNC] Failed to process Vertex AI response: {e}")
         if critical:
             raise
         else:
             return None
 
-def _call_gemini_async(
-    client_gemini, system_instruction: str, prompt: str, temperature: float,
+def _call_vertexai_async(
+    system_instruction: str, prompt: str, temperature: float,
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
     user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
-    """Asynchronous Gemini call with threading (for _call_llm_async behavior)"""
+    """Asynchronous Vertex AI call with threading (for _call_llm_async behavior)"""
     result_queue = queue.Queue()
     exception_queue = queue.Queue()
 
-    def call_gemini():
+    def call_vertexai():
         try:
-            res = client_gemini.models.generate_content(
-                model='gemini-3.1-flash-lite-preview',
+            model = GenerativeModel("gemini-1.5-flash")
+            generation_config = GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                top_p=0.95
+            )
+            res = model.generate_content(
                 contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=temperature,
-                    max_output_tokens=max_tokens,
-                    top_p=0.95,
-                    safety_settings=[types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE")]
-                )
+                generation_config=generation_config,
+                system_instruction=system_instruction
             )
             result_queue.put(res)
         except Exception as e:
             exception_queue.put(e)
 
-    gemini_thread = threading.Thread(target=call_gemini)
-    gemini_thread.start()
-    gemini_thread.join(timeout=120.0)
+    vertexai_thread = threading.Thread(target=call_vertexai)
+    vertexai_thread.start()
+    vertexai_thread.join(timeout=120.0)
 
-    if not gemini_thread.is_alive() and exception_queue.empty():
+    if not vertexai_thread.is_alive() and exception_queue.empty():
         res = result_queue.get()
         text = res.text
         if text and len(text.strip()) > 5:
             postprocessed = postprocess_response(text)
             total_time = time.time()
-            logger.info(f"🏁 [ASYNC] Gemini completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+            logger.info(f"🏁 [ASYNC] Vertex AI completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
             
             # Log the response
             try:
@@ -1820,7 +1876,7 @@ def _call_gemini_async(
             
             return postprocessed
         else:
-            logger.warning("🤖 [ASYNC] Gemini returned empty or too short response")
+            logger.warning("🤖 [ASYNC] Vertex AI returned empty or too short response")
             if critical:
                 return _get_fallback_response(critical)
             else:
@@ -1829,10 +1885,10 @@ def _call_gemini_async(
         # Check if there's an exception
         if not exception_queue.empty():
             exception = exception_queue.get()
-            logger.error(f"🤖 [ASYNC] Gemini exception: {exception}")
-            logger.info("🤖 [ASYNC] Gemini timeout/error, fallback to Groq")
+            logger.error(f"🤖 [ASYNC] Vertex AI exception: {exception}")
+            logger.info("🤖 [ASYNC] Vertex AI timeout/error, fallback to Groq")
         else:
-            logger.info("🤖 [ASYNC] Gemini timeout (thread still alive), fallback to Groq")
+            logger.info("🤖 [ASYNC] Vertex AI timeout (thread still alive), fallback to Groq")
         return _call_groq_fallback(
             system_instruction, prompt, temperature, max_tokens, start_time,
             call_type, critical, logger, user_id, user_name
@@ -1843,7 +1899,7 @@ def _call_groq_fallback(
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
     user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
-    """Fallback to Groq when Gemini fails, with Mistral as second fallback"""
+    """Fallback to Groq when Vertex AI fails, with Mistral as second fallback"""
     try:
         logger.info(f"🤖 [FALLBACK] Starting call to llama-3.3-70b-versatile")
 
@@ -1896,7 +1952,7 @@ def _call_mistral_fallback(
     max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
     user_id: str = None, user_name: str = None, server_id: str = None
 ) -> str:
-    """Second fallback to Mistral when both Gemini and Groq fail"""
+    """Second fallback to Mistral when both Vertex AI and Groq fail"""
     try:
         logger.info(f"🤖 [FALLBACK2] Starting call to Mistral")
 
@@ -1940,7 +1996,7 @@ def _call_mistral_fallback(
         
         return postprocessed
     except Exception as e:
-        logger.error(f"🤖 [FALLBACK2] All LLMs failed (Gemini, Groq, Mistral): {e}")
+        logger.error(f"🤖 [FALLBACK2] All LLMs failed (Vertex AI, Groq, Mistral): {e}")
         if critical:
             raise
         return _get_fallback_response(critical)

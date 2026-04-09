@@ -240,8 +240,9 @@ class FatigueCommands(commands.Cog):
         try:
             await interaction.response.defer()
             
-            # Test with a default call type
-            result = check_fatigue_limit(str(user.id), user.display_name, "default")
+            # Test with a default call type, passing guild_id for premium checking
+            guild_id = str(interaction.guild.id) if interaction.guild else None
+            result = await check_fatigue_limit(str(user.id), user.display_name, "default", guild_id)
             
             color = discord.Color.green() if result.allowed else discord.Color.red()
             

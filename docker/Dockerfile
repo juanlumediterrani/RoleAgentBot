@@ -91,7 +91,6 @@ COPY prompts_logger.py .
 COPY run.py .
 COPY ARCHITECTURE.md .
 COPY README_USER.md .
-COPY start_clean.sh .
 
 # Create necessary directories with correct permissions (as root)
 RUN mkdir -p /app/logs /app/databases /app/fatiga /app/cookies

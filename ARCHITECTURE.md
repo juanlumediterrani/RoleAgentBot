@@ -742,7 +742,7 @@ Has alcanzado tu límite de solicitudes diarias. El contador se reinicia a las *
 def call_llm(system_instruction, prompt, user_id=None, user_name=None, call_type="default"):
     # Fatigue check before LLM call
     if user_id:
-        fatigue_check = check_fatigue_limit(user_id, user_name, call_type)
+        fatigue_check = await check_fatigue_limit(user_id, user_name, call_type)
         if not fatigue_check.allowed:
             return format_limit_exceeded_message(fatigue_check, user_name)
     

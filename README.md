@@ -82,7 +82,7 @@ run.py (Main Orchestrator)
 ### Prerequisites
 - Python 3.8 or higher
 - Discord bot token
-- LLM API keys (Google Gemini, Groq, or others)
+- LLM API keys (Google Cloud Vertex AI, Groq, or others)
 - Docker (optional, for containerized deployment)
 
 ### Quick Start
@@ -241,7 +241,7 @@ This project is licensed under a custom license that permits free non-commercial
 This project wouldn't be possible without these amazing open-source tools:
 
 - **[discord.py](https://github.com/Rapptz/discord.py)** - Discord API wrapper for Python
-- **[Google Generative AI](https://github.com/google/generative-ai-python)** - Gemini LLM integration
+- **[Google Cloud Vertex AI](https://cloud.google.com/vertex-ai)** - Vertex AI LLM integration
 - **[Groq](https://github.com/groq/groq-python)** - Fast LLM inference
 - **[Cohere](https://github.com/cohere-ai/cohere-python)** - NLP and LLM services
 - **[Mistral AI](https://github.com/mistralai/client-python)** - LLM provider

@@ -107,7 +107,8 @@ DISCORD_TOKEN_AGUMON=your_token_here (optional)
 
 # LLM API Keys
 GROQ_API_KEY=your_key_here
-GEMINI_API_KEY=your_key_here
+GOOGLE_CLOUD_PROJECT=your_project_id
+GOOGLE_CLOUD_LOCATION=us-central1
 COHERE_API_KEY=your_key_here
 MISTRAL_API_KEY=your_key_here (NEW)
 

@@ -3,6 +3,7 @@ Fatigue Limit System for LLM Usage Management
 
 This module provides comprehensive fatigue tracking and limit enforcement
 for LLM API calls to prevent abuse and manage resource usage effectively.
+Includes support for Fatigue Reset consumable to reset user fatigue limits.
 """
 
 import datetime
@@ -14,10 +15,11 @@ logger = logging.getLogger(__name__)
 
 class FatigueLimitResult:
     """Result of fatigue limit check"""
-    def __init__(self, allowed: bool, reason: str = None, reset_time: str = None):
+    def __init__(self, allowed: bool, reason: str = None, reset_time: str = None, has_fatigue_reset: bool = False):
         self.allowed = allowed
         self.reason = reason
         self.reset_time = reset_time
+        self.has_fatigue_reset = has_fatigue_reset
 
 def get_fatigue_limits() -> Dict[str, Any]:
     """Get fatigue limits from configuration"""
@@ -42,6 +44,107 @@ def get_fatigue_limits() -> Dict[str, Any]:
             'behavior': {'strict_mode': False, 'grace_period': 3, 'cooldown_minutes': 15}
         }
 
+def has_fatigue_reset_available(user_id: str = None, guild_id: str = None) -> bool:
+    """
+    Check if user has Fatigue Reset consumable or guild has premium subscription.
+
+    Args:
+        user_id: Discord user ID (optional)
+        guild_id: Discord guild ID (optional)
+
+    Returns:
+        True if user has fatigue reset OR guild has premium subscription, False otherwise
+    """
+    try:
+        from discord_bot.entitlement_manager import get_entitlement_manager
+        entitlement_mgr = get_entitlement_manager()
+
+        if not entitlement_mgr:
+            return False
+
+        # Check if user has Fatigue Reset consumable
+        if user_id:
+            has_fatigue_reset = entitlement_mgr.has_fatigue_reset(int(user_id))
+            if has_fatigue_reset:
+                return True
+
+        # Check if guild has premium guild subscription
+        if guild_id:
+            has_guild_premium = entitlement_mgr.has_premium_guild(int(guild_id))
+            if has_guild_premium:
+                return True
+
+        return False
+
+    except Exception as e:
+        logger.warning(f"Error checking fatigue reset availability: {e}")
+        return False
+
+async def reset_fatigue(user_id: str, user_name: str = None) -> Tuple[bool, str]:
+    """
+    Reset fatigue for a user by consuming their Fatigue Reset consumable.
+
+    Args:
+        user_id: Discord user ID
+        user_name: User name for logging
+
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    try:
+        from discord_bot.entitlement_manager import get_entitlement_manager
+        from agent_db import reset_user_fatigue
+        entitlement_mgr = get_entitlement_manager()
+
+        if not entitlement_mgr:
+            return False, "Fatigue Reset system not available"
+
+        # Check if user has Fatigue Reset
+        has_reset = await entitlement_mgr.has_fatigue_reset(int(user_id))
+        if not has_reset:
+            return False, "You don't have a Fatigue Reset consumable available"
+
+        # Get the user's entitlements to find the Fatigue Reset
+        entitlements = await entitlement_mgr.bot.http.get_entitlements(
+            application_id=entitlement_mgr.bot.application_id,
+            user_id=str(user_id)
+        )
+
+        # Find the Fatigue Reset consumable
+        fatigue_reset_sku_id = entitlement_mgr.FATIGUE_RESET_SKU_ID if hasattr(entitlement_mgr, 'FATIGUE_RESET_SKU_ID') else None
+        if not fatigue_reset_sku_id:
+            return False, "Fatigue Reset SKU not configured"
+
+        entitlement_id = None
+        for entitlement in entitlements:
+            if (entitlement.get('sku_id') == fatigue_reset_sku_id and
+                entitlement.get('type') == 2 and  # Consumable
+                entitlement.get('ends_at') is None):  # Not consumed
+                entitlement_id = entitlement.get('id')
+                break
+
+        if not entitlement_id:
+            return False, "Fatigue Reset consumable not found"
+
+        # Consume the entitlement
+        consumed = await entitlement_mgr.consume_fatigue_reset(int(user_id), entitlement_id)
+        if not consumed:
+            return False, "Failed to consume Fatigue Reset"
+
+        # Reset fatigue in database
+        server_id = get_active_server_id()
+        if server_id:
+            reset_user_fatigue(server_id, user_id)
+            logger.info(f"Fatigue reset for user {user_id} ({user_name}) on server {server_id}")
+        else:
+            logger.warning(f"Fatigue reset for user {user_id} ({user_name}) - no active server")
+
+        return True, f"✅ **Fatigue Reset successful!**\n\nYour fatigue limits have been reset. You can now continue using the bot normally."
+
+    except Exception as e:
+        logger.error(f"Error resetting fatigue: {e}")
+        return False, f"Error resetting fatigue: {e}"
+
 def is_exempt_user(user_id: str, call_type: str = None) -> bool:
     """Check if user or call type is exempt from limits"""
     limits = get_fatigue_limits()
@@ -58,15 +161,16 @@ def is_exempt_user(user_id: str, call_type: str = None) -> bool:
     
     return False
 
-def check_fatigue_limit(user_id: str, user_name: str = None, call_type: str = "default") -> FatigueLimitResult:
+async def check_fatigue_limit(user_id: str, user_name: str = None, call_type: str = "default", guild_id: str = None) -> FatigueLimitResult:
     """
     Check if user/server has exceeded fatigue limits
-    
+
     Args:
         user_id: User ID (or server_id for server checks)
         user_name: User name (optional)
         call_type: Type of LLM call for exemption checks
-        
+        guild_id: Guild ID for premium entitlement checking (optional)
+
     Returns:
         FatigueLimitResult with allowed status and details
     """
@@ -88,6 +192,9 @@ def check_fatigue_limit(user_id: str, user_name: str = None, call_type: str = "d
         
         limits = get_fatigue_limits()
         
+        # Check for Fatigue Reset availability
+        has_fatigue_reset = has_fatigue_reset_available(user_id if not user_id.startswith("server_") else None, guild_id or server_id)
+        
         # Determine if this is a server or user check
         is_server = user_id.startswith("server_")
         limit_config = limits.get('server' if is_server else 'user', {})
@@ -96,41 +203,62 @@ def check_fatigue_limit(user_id: str, user_name: str = None, call_type: str = "d
         daily = stats.get('daily_requests', 0)
         hourly = stats.get('hourly_requests', 0)
         burst = stats.get('burst_requests', 0)
-        
-        # Get limits
+
+        # Get limits (standard limits for all users)
         daily_limit = limit_config.get('daily_max', 50)
         hourly_limit = limit_config.get('hourly_max', 10)
         burst_limit = limit_config.get('burst_max', 5)
-        
+
         # Check grace period
         grace_period = limits.get('behavior', {}).get('grace_period', 3)
         if daily <= grace_period:
-            return FatigueLimitResult(allowed=True, reason="grace_period")
-        
+            return FatigueLimitResult(allowed=True, reason="grace_period", has_fatigue_reset=has_fatigue_reset)
+
         # Check limits in order: burst -> hourly -> daily
         if burst >= burst_limit:
+            # Try to use Fatigue Reset if available
+            if has_fatigue_reset and not user_id.startswith("server_"):
+                reset_success, reset_message = await reset_fatigue(user_id, user_name)
+                if reset_success:
+                    logger.info(f"Fatigue Reset used automatically for user {user_id} (burst limit)")
+                    return FatigueLimitResult(allowed=True, reason="fatigue_reset_used", has_fatigue_reset=False)
             return FatigueLimitResult(
                 allowed=False,
                 reason=f"burst_limit_exceeded",
-                reset_time="5 minutes"
+                reset_time="5 minutes",
+                has_fatigue_reset=has_fatigue_reset
             )
-        
+
         if hourly >= hourly_limit:
+            # Try to use Fatigue Reset if available
+            if has_fatigue_reset and not user_id.startswith("server_"):
+                reset_success, reset_message = await reset_fatigue(user_id, user_name)
+                if reset_success:
+                    logger.info(f"Fatigue Reset used automatically for user {user_id} (hourly limit)")
+                    return FatigueLimitResult(allowed=True, reason="fatigue_reset_used", has_fatigue_reset=False)
             return FatigueLimitResult(
                 allowed=False,
                 reason=f"hourly_limit_exceeded",
-                reset_time="next hour"
+                reset_time="next hour",
+                has_fatigue_reset=has_fatigue_reset
             )
-        
+
         if daily >= daily_limit:
+            # Try to use Fatigue Reset if available
+            if has_fatigue_reset and not user_id.startswith("server_"):
+                reset_success, reset_message = await reset_fatigue(user_id, user_name)
+                if reset_success:
+                    logger.info(f"Fatigue Reset used automatically for user {user_id} (daily limit)")
+                    return FatigueLimitResult(allowed=True, reason="fatigue_reset_used", has_fatigue_reset=False)
             return FatigueLimitResult(
                 allowed=False,
                 reason=f"daily_limit_exceeded",
-                reset_time="00:00 UTC"
+                reset_time="00:00 UTC",
+                has_fatigue_reset=has_fatigue_reset
             )
-        
+
         # All checks passed
-        return FatigueLimitResult(allowed=True, reason="within_limits")
+        return FatigueLimitResult(allowed=True, reason="within_limits", has_fatigue_reset=has_fatigue_reset)
         
     except Exception as e:
         logger.error(f"Error checking fatigue limit: {e}")
@@ -186,10 +314,15 @@ def format_limit_exceeded_message(result: FatigueLimitResult, user_name: str = N
     }
     
     base_message = messages.get(result.reason, "❌ **Limit reached**. Please wait before continuing.")
-    
+
     # Add helpful tips
     tips = "\n\n💡 **Tips:**\n• Use specific commands instead of general conversation\n• Wait for the counter to reset\n• Contact an admin if you need more requests"
-    
+
+    # Add Fatigue Reset notice if user has it available
+    if result.has_fatigue_reset:
+        fatigue_reset_tip = "\n\n🔄 **Fatigue Reset Available:**\nYou have a **Fatigue Reset** consumable available! It will be used automatically to reset your fatigue limits when needed."
+        tips += fatigue_reset_tip
+
     return base_message + tips
 
 def get_usage_summary(user_id: str, user_name: str = None) -> Dict[str, Any]:
