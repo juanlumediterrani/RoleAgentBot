@@ -8,8 +8,14 @@ from .state import _get_canvas_watcher_method_label, _get_canvas_watcher_frequen
 logger = core.logger
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
 get_watcher_messages = core.get_watcher_messages
-_personality_descriptions = core._personality_descriptions
 _bot_display_name = core._bot_display_name
+
+
+def _get_nw_descriptions(guild=None) -> dict:
+    """Get news_watcher descriptions from server-specific databases path."""
+    from .content import _get_personality_descriptions
+    server_id = core.get_server_key(guild) if guild else None
+    return _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("news_watcher", {})
 
 
 def _build_watcher_role_embed(role_name: str, content: str, admin_visible: bool, surface_name: str, user=None, auto_response: str | None = None):
@@ -48,8 +54,7 @@ class CanvasWatcherMethodSelect(discord.ui.Select):
 
     def __init__(self, view):
         # Safe nested access with fallbacks
-        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
-        news_watcher = roles_view.get("news_watcher", {})
+        news_watcher = _get_nw_descriptions(getattr(view, 'guild', None))
         
         # Now dropdown is directly in news_watcher, not nested under canvas
         watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
@@ -96,8 +101,7 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
 
     def _watcher_text(self, key: str, fallback: str) -> str:
         # Safe nested access with fallbacks
-        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
-        news_watcher = roles_view.get("news_watcher", {})
+        news_watcher = _get_nw_descriptions(getattr(self, '_guild', None))
         
         # Now dropdown is directly in news_watcher, not nested under canvas
         watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
@@ -112,6 +116,7 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
         return str(value).strip() if value else fallback
 
     def __init__(self, view):
+        self._guild = getattr(view, 'guild', None)
         super().__init__(placeholder=self._watcher_text("select_action", "📋 Select action..."), options=self._build_options(view.watcher_selected_method), min_values=1, max_values=1, row=1)
         self.canvas_view = view
 
@@ -175,8 +180,7 @@ class CanvasWatcherAdminMethodSelect(discord.ui.Select):
 
     def __init__(self, view):
         # Safe nested access with fallbacks
-        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
-        news_watcher = roles_view.get("news_watcher", {})
+        news_watcher = _get_nw_descriptions(getattr(view, 'guild', None))
         
         # Now dropdown is directly in news_watcher, not nested under canvas
         watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
@@ -221,8 +225,7 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
 
     def __init__(self, view):
         # Safe nested access with fallbacks
-        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
-        news_watcher = roles_view.get("news_watcher", {})
+        news_watcher = _get_nw_descriptions(getattr(view, 'guild', None))
         
         # Now dropdown is directly in news_watcher, not nested under canvas
         watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
@@ -1238,8 +1241,7 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
     """Get formatted channel subscriptions information for canvas display."""
     try:
         # Safe nested access with fallbacks
-        roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
-        news_watcher = roles_view.get("news_watcher", {})
+        news_watcher = _get_nw_descriptions(guild)
         dropdown = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
         
         def _watcher_text(key: str, fallback: str) -> str:
@@ -1337,14 +1339,15 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
         current_count = len(subscriptions)
         max_subs = 10  # Increased limit for unified system
         
-        title_active_subscriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("title_active_subscriptions", "**Active subscriptions**")
+        _nw = _get_nw_descriptions(guild)
+        title_active_subscriptions = _nw.get("title_active_subscriptions", "**Active subscriptions**")
         usage_info = f"{title_active_subscriptions} ({current_count}/{max_subs})\n"
-        title_no_active_subscriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("title_no_active_subscriptions", "- No active subscriptions")
+        title_no_active_subscriptions = _nw.get("title_no_active_subscriptions", "- No active subscriptions")
         
         if current_count == 0:
             usage_info += f"{title_no_active_subscriptions}\n"
         else:
-            title_your_subscriptions = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("title_your_subscriptions", "- **Your subscriptions:**")
+            title_your_subscriptions = _nw.get("title_your_subscriptions", "- **Your subscriptions:**")
             subscriptions_info = f"{title_your_subscriptions}\n"
 
             # Display unified subscriptions with method-specific formatting
@@ -1373,15 +1376,15 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
 
             usage_info += subscriptions_info
 
-        title_configuration_status = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("title_configuration_status", "**Configuration status**")
+        title_configuration_status = _nw.get("title_configuration_status", "**Configuration status**")
         config_info = "\n"
         config_info += "-" * 45
         config_info += f"\n {title_configuration_status}\n"
 
         # Get user premises (standalone premises, not subscription-specific)
-        title_premises = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("premises_title", "🤖**Premises:**")
-        no_premises = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("no_premises", "None configured")
-        patch_premises_configured = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("premises_configured", "configured")
+        title_premises = _nw.get("premises_title", "🤖**Premises:**")
+        no_premises = _nw.get("no_premises", "None configured")
+        patch_premises_configured = _nw.get("premises_configured", "configured")
         premises, _ = db.get_premises_with_context(user_id)
         if premises:
             config_info += f"-  {title_premises} {len(premises)} {patch_premises_configured}"
@@ -1412,8 +1415,7 @@ def build_canvas_role_news_watcher_detail(
     watcher_messages = get_watcher_messages() if get_watcher_messages else {}
     
     # Safe nested access with fallbacks
-    roles_view = _personality_descriptions.get("roles_view_messages", {}) if _personality_descriptions else {}
-    news_watcher = roles_view.get("news_watcher", {})
+    news_watcher = _get_nw_descriptions(guild)
     
     # Ensure watcher_descriptions is a dict
     if not isinstance(news_watcher, dict):

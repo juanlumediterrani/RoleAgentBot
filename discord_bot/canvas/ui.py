@@ -246,7 +246,9 @@ class BackButtonMixin:
     
     def add_back_button(self, row=4, label=None):
         """Add a back button to this view."""
-        button_label = label or _personality_descriptions.get("canvas_home_messages", {}).get("button_back", "Back")
+        server_id = get_server_key(self.guild) if self.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        button_label = label or personality_descriptions.get("canvas_home_messages", {}).get("button_back", "Back")
         
         # Create a smart back button instance (unified navigation)
         button = CanvasSmartBackButton(label=button_label, row=row)
@@ -271,7 +273,9 @@ class SmartBackButtonMixin:
     
     def add_smart_back_button(self, row=4, label=None):
         """Add a smart back button to this view."""
-        button_label = label or _personality_descriptions.get("canvas_home_messages", {}).get("button_back", "Back")
+        server_id = get_server_key(self.guild) if self.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        button_label = label or personality_descriptions.get("canvas_home_messages", {}).get("button_back", "Back")
         
         # Create a button instance
         button = CanvasSmartBackButton(label=button_label, row=row)
@@ -596,8 +600,8 @@ class CanvasSmartBackButton(discord.ui.Button):
                 show_dropdown=False
             )
             
-            # Build embed using _build_canvas_embed
-            home_embed = _build_canvas_embed("home", content, view.admin_visible)
+            # Build embed using _build_canvas_embed (server_id already resolved above)
+            home_embed = _build_canvas_embed("home", content, view.admin_visible, server_id=server_id)
             await interaction.response.edit_message(embed=home_embed, view=home_view)
             logger.info(f"✅ Successfully navigated to home")
         except Exception as e:
@@ -623,7 +627,9 @@ class HomeButtonMixin:
     
     def add_home_button(self, row=4, label=None):
         """Add a home button to this view."""
-        button_label = label or _personality_descriptions.get("canvas_home_messages", {}).get("button_home", "Home")
+        server_id = get_server_key(self.guild) if self.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        button_label = label or personality_descriptions.get("canvas_home_messages", {}).get("button_home", "Home")
         
         # Create a button instance
         button = CanvasHomeButton(label=button_label, row=row)
@@ -754,7 +760,7 @@ try:
     _bot_display_name = core._bot_display_name
     _insult_cfg = core._insult_cfg
     _personality_answers = core._personality_answers
-    _personality_descriptions = core._personality_descriptions
+    from agent_engine import _personality_descriptions
     _talk_state_by_guild_id = core._talk_state_by_guild_id
     get_taboo_state = core.get_taboo_state
     update_taboo_state = core.update_taboo_state
@@ -779,39 +785,47 @@ except ImportError:
     _personality_answers = {}
 
 
-# Load descriptions directly if import failed
-if not _personality_descriptions:
+# Dynamic descriptions loading function
+def _get_personality_descriptions(server_id: str = None) -> dict:
+    """
+    Get personality descriptions from server-specific or global directory.
+    
+    Args:
+        server_id: Discord server ID for server-specific descriptions
+        
+    Returns:
+        dict: Personality descriptions loaded from descriptions.json
+    """
+    if not server_id:
+        return {}
     try:
         import json
         from pathlib import Path
-        import os
-        
-        def _get_personality_dir():
-            """Get the current personality directory dynamically."""
-            try:
-                # Try to get server-specific directory first
-                try:
-                    from agent_runtime import get_personality_directory
-                    server_dir = get_personality_directory()
-                    if server_dir:
-                        return Path(server_dir)
-                except:
-                    pass
-                
-                # Fall back to global personality directory
-                personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
-                personality_path = Path(__file__).parent.parent.parent / personality_rel
-                return personality_path.parent
-            except:
-                # Fallback to putre if something goes wrong
-                return Path(__file__).parent.parent.parent / "personalities" / "putre"
-        
-        descriptions_path = _get_personality_dir() / "descriptions.json"
-        if descriptions_path.exists():
-            with open(descriptions_path, 'r', encoding='utf-8') as f:
-                _personality_descriptions = json.load(f)
-    except Exception:
-        _personality_descriptions = {}
+        from discord_bot.db_init import get_server_personality_dir
+        server_dir = get_server_personality_dir(server_id)
+        if server_dir:
+            server_path = Path(server_dir)
+            descriptions_path = server_path / "descriptions.json"
+            if descriptions_path.exists():
+                with open(descriptions_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f).get("discord", {})
+                sub_dir = server_path / "descriptions"
+                if sub_dir.exists():
+                    if "roles_view_messages" not in data:
+                        data["roles_view_messages"] = {}
+                    for sub_file in sub_dir.glob("*.json"):
+                        role_key = sub_file.stem
+                        try:
+                            with open(sub_file, 'r', encoding='utf-8') as f:
+                                sub_data = json.load(f)
+                            data["roles_view_messages"][role_key] = sub_data
+                        except Exception:
+                            pass
+                return data
+    except Exception as e:
+        if logger:
+            logger.debug(f"Could not load descriptions for server {server_id}: {e}")
+    return {}
 
 try:
     from roles.trickster.subroles.dice_game.dice_game import process_play
@@ -876,9 +890,10 @@ from .canvas_banker import (
 )
 
 class CanvasSectionSelect(discord.ui.Select):
-    def __init__(self, admin_visible: bool):
-        # Get personalized labels from descriptions.json
-        canvas_home = _personality_descriptions.get("canvas_home_messages", {})
+    def __init__(self, admin_visible: bool, server_id: str = None):
+        # Get personalized labels from descriptions.json (server-specific if available)
+        personality_descriptions = _get_personality_descriptions(server_id)
+        canvas_home = personality_descriptions.get("canvas_home_messages", {})
         home_label = canvas_home.get("section_home", "Home")
         roles_label = canvas_home.get("section_roles", "Roles")
         behavior_label = canvas_home.get("section_behavior", "Behavior")
@@ -937,14 +952,15 @@ class CanvasSectionSelect(discord.ui.Select):
             roles_view.message = interaction.message
             return
         if selected == "behavior":
-            behavior_content = view.sections.get("behavior")
-            if not behavior_content:
+            guild = interaction.guild or view.guild
+            result = _build_canvas_behavior_detail("conversation", view.admin_visible, guild, view.agent_config)
+            if not result:
                 await interaction.response.send_message("❌ This Canvas section is not available.", ephemeral=True)
                 return
-            behavior_view = CanvasBehaviorView(view.author_id, view.sections, view.admin_visible, view.agent_config, current_detail="conversation", guild=interaction.guild)
-            behavior_embed = _build_canvas_behavior_embed(behavior_content, view.admin_visible)
+            b_title, b_description, b_content = result
+            behavior_view = CanvasBehaviorView(view.author_id, view.sections, view.admin_visible, view.agent_config, current_detail="conversation", guild=guild)
+            behavior_embed = _build_canvas_behavior_embed(b_content, view.admin_visible, title=b_title, description=b_description)
             await interaction.response.edit_message(content=None, embed=behavior_embed, view=behavior_view)
-            # Set the message reference for timeout deletion
             behavior_view.message = interaction.message
             return
         await view._show_section(interaction, selected)
@@ -1038,10 +1054,10 @@ class CanvasRoleSelect(discord.ui.Select):
 
 
 class CanvasRoleDetailSelect(discord.ui.Select):
-    def __init__(self, role_name: str, admin_visible: bool):
+    def __init__(self, role_name: str, admin_visible: bool, server_id: str = None):
         options = [
             discord.SelectOption(label=label, value=detail_name, description=f"Focus on {label.lower()} tasks")
-            for label, detail_name in _get_canvas_role_detail_items(role_name, admin_visible)
+            for label, detail_name in _get_canvas_role_detail_items(role_name, None, admin_visible, role_name, server_id)
         ]
         super().__init__(placeholder="Choose a role surface...", min_values=1, max_values=1, options=options[:25], row=3)
         self.role_name = role_name
@@ -1181,12 +1197,13 @@ class CanvasRoleActionSelect(discord.ui.Select):
 
 
 class CanvasBehaviorActionSelect(discord.ui.Select):
-    def __init__(self, detail_name: str, admin_visible: bool):
+    def __init__(self, detail_name: str, admin_visible: bool, guild=None):
         options = [
             discord.SelectOption(label=label, value=value, description=description)
-            for label, value, description in _get_canvas_behavior_action_items_for_detail(detail_name, admin_visible)
+            for label, value, description in _get_canvas_behavior_action_items_for_detail(detail_name, admin_visible, guild)
         ]
-        generic_option_label = _personality_descriptions.get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
+        server_id = get_server_key(guild) if guild else None
+        generic_option_label = _get_personality_descriptions(server_id).get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
         super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options[:25], row=2)
 
     async def callback(self, interaction: discord.Interaction):
@@ -1334,9 +1351,20 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
         self.agent_config = agent_config
         self.guild = guild  # Store guild for role detail views
         self.message = message  # Store the message to delete it later
+        server_id = get_server_key(guild) if guild else None
         if show_dropdown:
-            self.add_item(CanvasSectionSelect(admin_visible))
-        
+            self.add_item(CanvasSectionSelect(admin_visible, server_id))
+        # Override button labels with server-specific descriptions
+        _desc = _get_personality_descriptions(server_id).get("canvas_home_messages", {})
+        for child in self.children:
+            if hasattr(child, 'callback'):
+                cb_name = getattr(child.callback, '__name__', None)
+                if cb_name == 'roles_button' and _desc.get('button_roles'):
+                    child.label = _desc['button_roles']
+                elif cb_name == 'behavior_button' and _desc.get('button_behavior'):
+                    child.label = _desc['button_behavior']
+                elif cb_name == 'help_button' and _desc.get('button_help'):
+                    child.label = _desc['button_help']
         # Start the timeout timer
         self._reset_timeout()
 
@@ -1435,12 +1463,14 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
                 False
             )
             self.guild = guild
-        behavior_content = self.sections.get("behavior")
-        if not behavior_content:
+        guild = interaction.guild or self.guild
+        result = _build_canvas_behavior_detail("conversation", self.admin_visible, guild, self.agent_config)
+        if not result:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
-        behavior_view = CanvasBehaviorView(self.author_id, self.sections, self.admin_visible, self.agent_config, current_detail="conversation", guild=interaction.guild)
-        behavior_embed = _build_canvas_behavior_embed(behavior_content, self.admin_visible)
+        b_title, b_description, b_content = result
+        behavior_view = CanvasBehaviorView(self.author_id, self.sections, self.admin_visible, self.agent_config, current_detail="conversation", guild=guild)
+        behavior_embed = _build_canvas_behavior_embed(b_content, self.admin_visible, title=b_title, description=b_description)
         await _safe_edit_interaction_message(interaction, content=None, embed=behavior_embed, view=behavior_view)
         behavior_view.message = interaction.message
 
@@ -1489,11 +1519,13 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
 
     def _add_role_buttons(self):
         """Add a button for each enabled role."""
-        button_watcher = _personality_descriptions.get("roles_view_messages", {}).get("news_watcher", {}).get("button", "Watcher")
-        button_trickster = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("button", "Trickster")
-        button_treasure_hunter = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("button", "Hunter")
-        button_banker = _personality_descriptions.get("roles_view_messages", {}).get("banker", {}).get("button", "Banker")
-        button_mc = _personality_descriptions.get("roles_view_messages", {}).get("mc", {}).get("button", "MC")
+        server_id = get_server_key(self.guild) if self.guild else None
+        _roles_desc = _get_personality_descriptions(server_id).get("roles_view_messages", {})
+        button_watcher = _roles_desc.get("news_watcher", {}).get("button", "Watcher")
+        button_trickster = _roles_desc.get("trickster", {}).get("button", "Trickster")
+        button_treasure_hunter = _roles_desc.get("treasure_hunter", {}).get("button", "Hunter")
+        button_banker = _roles_desc.get("banker", {}).get("button", "Banker")
+        button_mc = _roles_desc.get("mc", {}).get("button", "MC")
 
         role_labels = {
             "news_watcher": button_watcher,
@@ -1932,7 +1964,7 @@ async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_s
     if not guild:
         # Get messages from descriptions.json or use defaults
         if messages_source is None:
-            messages_source = _personality_descriptions.get("canvas_home_messages", {})
+            messages_source = _get_personality_descriptions(None).get("canvas_home_messages", {})
         
         # Get the user's last server or first available as default
         try:
@@ -1991,7 +2023,8 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         return
 
     # Handle DM case by using default server
-    messages_source = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+    _g = getattr(interaction, 'guild', None)
+    messages_source = _get_personality_descriptions(get_server_key(_g) if _g else None).get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
     guild, dm_notification_parts = await _get_default_guild_for_dm(interaction, messages_source)
     if guild is None:
         return  # Error already handled by utility function
@@ -2003,7 +2036,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     # Get current dice state and personality messages
     dice_state = _get_canvas_dice_state(guild)
     answers = _personality_answers.get("dice_game_messages", {})
-    descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+    descriptions = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
     
     # Build the base content with personality title and pot balance
     title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
@@ -2303,7 +2336,7 @@ class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixi
         
         # Add behavior detail buttons
         if current_detail in ["greetings", "welcome", "commentary", "taboo", "role_control"]:
-            self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible))
+            self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible, guild))
         self._add_behavior_buttons()
         
         # Add navigation buttons using mixins
@@ -2321,7 +2354,7 @@ class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixi
 
     def _add_behavior_buttons(self):
         """Add behavior-specific detail buttons."""
-        detail_items = _get_canvas_behavior_detail_items(self.admin_visible, self.current_detail)
+        detail_items = _get_canvas_behavior_detail_items(self.admin_visible, self.current_detail, self.guild)
         for label, detail_name in detail_items:
             self.add_item(CanvasBehaviorDetailButton(label=label, detail_name=detail_name))
 
@@ -2368,7 +2401,8 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
         self.previous_view = previous_view  # Store reference to previous view for back navigation
         self.current_embed = None  # Store current embed for back navigation
         
-        role_details = _get_canvas_role_detail_items(role_name, admin_visible, current_detail)
+        server_id = get_server_key(guild) if guild else None
+        role_details = _get_canvas_role_detail_items(role_name, current_detail, admin_visible, role_name, server_id)
         current_actions = _get_canvas_role_action_items_for_detail(role_name, current_detail, admin_visible)
         if current_actions:
             # For News Watcher, create dynamic dropdowns
@@ -2402,7 +2436,8 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
         """Add role-specific buttons."""
         # Add POE2 button only for treasure_hunter main overview (not subrol views)
         if self.role_name == "treasure_hunter" and self.current_detail == "overview":
-            button_poe2 = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("button_poe2", "👺 POE2")
+            server_id = get_server_key(self.guild) if self.guild else None
+            button_poe2 = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("treasure_hunter", {}).get("button_poe2", "👺 POE2")
             self.add_item(CanvasTreasureHunterPoe2Button(label=button_poe2, style=discord.ButtonStyle.green))
         return
 

@@ -4,6 +4,49 @@ from discord_bot import discord_core_commands as core
 from roles import news_watcher
 from roles.news_watcher import watcher_messages
 
+# Dynamic descriptions loading function
+def _get_personality_descriptions(server_id: str = None) -> dict:
+    """
+    Get personality descriptions from server-specific or global directory.
+    
+    Args:
+        server_id: Discord server ID for server-specific descriptions
+        
+    Returns:
+        dict: Personality descriptions loaded from descriptions.json
+    """
+    if not server_id:
+        return {}
+    try:
+        import json
+        from pathlib import Path
+        from discord_bot.db_init import get_server_personality_dir
+        server_dir = get_server_personality_dir(server_id)
+        if server_dir:
+            server_path = Path(server_dir)
+            descriptions_path = server_path / "descriptions.json"
+            if descriptions_path.exists():
+                with open(descriptions_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f).get("discord", {})
+                # Merge sub-role description files from descriptions/ subdirectory
+                sub_dir = server_path / "descriptions"
+                if sub_dir.exists():
+                    if "roles_view_messages" not in data:
+                        data["roles_view_messages"] = {}
+                    for sub_file in sub_dir.glob("*.json"):
+                        role_key = sub_file.stem
+                        try:
+                            with open(sub_file, 'r', encoding='utf-8') as f:
+                                sub_data = json.load(f)
+                            data["roles_view_messages"][role_key] = sub_data
+                        except Exception:
+                            pass
+                return data
+    except Exception as e:
+        if logger:
+            logger.debug(f"Could not load descriptions for server {server_id}: {e}")
+    return {}
+
 os = core.os
 asyncio = core.asyncio
 discord = core.discord
@@ -16,11 +59,11 @@ AGENT_CFG = core.AGENT_CFG
 from discord_bot.discord_utils import (
     get_db_for_server,
     send_dm_or_channel, send_embed_dm_or_channel,
-    is_admin, is_duplicate_command, is_role_enabled_check,
+    is_admin, 
     get_greeting_enabled, set_greeting_enabled,
     check_chat_rate_limit, is_already_initialized, mark_as_initialized,
     acquire_connection_lock, acquire_process_lock,
-    get_server_key, set_role_enabled,
+    get_server_key, set_role_enabled, is_role_enabled_check,
 )
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
 
@@ -37,7 +80,6 @@ _personality_name = core._personality_name
 _bot_display_name = core._bot_display_name
 _insult_cfg = core._insult_cfg
 _personality_answers = core._personality_answers
-_personality_descriptions = core._personality_descriptions
 _talk_state_by_guild_id = core._talk_state_by_guild_id
 _taboo_state_by_guild_id = core._taboo_state_by_guild_id
 get_taboo_state = core.get_taboo_state
@@ -104,7 +146,7 @@ def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: st
     """Build the top-level Canvas sections for the current user context."""
     # Get behavior tuple and store separately for title/description handling
     behavior_title, behavior_description, behavior_content = build_canvas_behavior(
-        greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name, admin_visible
+        greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name, admin_visible, guild
     )
     
     return {
@@ -117,21 +159,22 @@ def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: st
         "behavior_description": behavior_description,
         "roles": _build_canvas_roles(agent_config, admin_visible, guild),
         "personal": _build_canvas_personal(),
-        "help": _build_canvas_help(),
+        "help": _build_canvas_help(guild),
     }
 
 
-def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, title: str | None = None, description: str | None = None) -> discord.Embed:
+def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, title: str | None = None, description: str | None = None, server_id: str = None) -> discord.Embed:
     # Get title from personality descriptions for consistency
+    personality_descriptions = _get_personality_descriptions(server_id)
 
-    help_title = _personality_descriptions.get("help_menu", {}).get("title", f"📚 {_bot_display_name} Canvas - Help & Troubleshooting")
+    help_title = personality_descriptions.get("help_menu", {}).get("title", f"📚 {_bot_display_name} Canvas - Help & Troubleshooting")
     # Replace {_bot_display_name} placeholder if present
     help_title = help_title.replace("{_bot_display_name}", _bot_display_name)
 
     if section_name == "behavior":
         # Use provided title/description or fall back to personality descriptions
         if title is None:
-            behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
+            behavior_descriptions = personality_descriptions.get("behavior_messages", {})
             behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} General Behavior")
             # Replace {_bot_display_name} placeholder
             behavior_title = behavior_title.replace("{_bot_display_name}", _bot_display_name)
@@ -141,7 +184,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
             behavior_title = title.replace("**", "")
 
         # Get home title from descriptions.json
-        canvas_home_messages = _personality_descriptions.get("canvas_home_messages", {})
+        canvas_home_messages = personality_descriptions.get("canvas_home_messages", {})
         home_title = canvas_home_messages.get("title", f"🧭 {_bot_display_name} Canvas Hub")
         # Replace {_bot_display_name} placeholder
         home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
@@ -157,7 +200,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
         }
     else:
         # Get home title from descriptions.json
-        canvas_home_messages = _personality_descriptions.get("canvas_home_messages", {})
+        canvas_home_messages = personality_descriptions.get("canvas_home_messages", {})
         home_title = canvas_home_messages.get("title", f"🧭 {_bot_display_name} Canvas Hub")
         # Replace {_bot_display_name} placeholder
         home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
@@ -208,7 +251,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     elif section_name == "personal":
         description = "Focus on private or user-specific workflows that continue naturally in DM."
     elif section_name == "help":
-        description = _personality_descriptions.get("help_menu").get("description", "Find command entry points, troubleshooting hints, and the fastest recovery paths.")
+        description = personality_descriptions.get("help_menu").get("description", "Find command entry points, troubleshooting hints, and the fastest recovery paths.")
     elif section_name == "behavior":
         description = description or "Shared bot behavior that sits above any individual role."
 
@@ -285,9 +328,10 @@ def _build_canvas_intro_block(title: str, description: str | None = None) -> str
 
 
 def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, surface_name: str = "overview", user=None,
-                             auto_response: str | None = None) -> discord.Embed:
+                             auto_response: str | None = None, server_id: str = None) -> discord.Embed:
     """Render a role/detail Canvas screen with a role-specific embed layout."""
-    role_descriptions = _personality_descriptions.get("roles_view_messages", {})
+    personality_descriptions = _get_personality_descriptions(server_id)
+    role_descriptions = personality_descriptions.get("roles_view_messages", {})
     role_titles = {
         "news_watcher": _normalize_canvas_title(role_descriptions.get("news_watcher", {}).get("title", "📡 News Watcher")),
         "treasure_hunter": _normalize_canvas_title(role_descriptions.get("treasure_hunter", {}).get("title", "💎 Treasure Hunter")),
@@ -490,7 +534,7 @@ def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_respons
     embed.set_footer(text=f"General Behavior • {'admin' if admin_visible else 'user'} view")
     return embed
 
-def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_detail: str | None = None) -> list[tuple[str, str]]:
+def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, admin_visible: bool, label: str, server_id: str = None) -> list[tuple[str, str]]:
     trickster_personal_map = {
         "dice": "dice",
         "dice_admin": "dice",
@@ -511,13 +555,15 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
         "runes": "runes_admin",
         "runes_admin": "runes",
     }
+    personality_descriptions = _get_personality_descriptions(server_id)
+    
     items_map: dict[str, list[tuple[str, str]]] = {
         "news_watcher": [
-            ("Personal", "personal"),
+            ("Personal", "overview"),
         ] + ([("Admin", "admin")] if admin_visible else []),
         "treasure_hunter": [
-            # Main overview shows POE2 subrole button via CanvasTreasureHunterPoe2Button, internal views show navigation
-        ] + ([("Items", "personal"), ("League", "league")] if current_detail in {"personal", "league"} else []) + ([("Admin", "admin")] if admin_visible and current_detail in {"personal", "league", "admin"} else []),
+            ("POE2", "poe2"),
+        ],
         "trickster": (
             # Regular subrole views
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
@@ -528,10 +574,10 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
             + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
         ) if current_detail in {"dice_admin", "ring_admin", "beggar_admin", "runes_admin"} else [
             # Main trickster overview - show all subroles
-            (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("dice", "Dice"), "dice"),
-            (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("ring", "Ring"), "ring"),
-            (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("beggar", "Beggar"), "beggar"),
-            (_personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("runes", "Runes"), "runes"),
+            (personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("dice", "Dice"), "dice"),
+            (personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("ring", "Ring"), "ring"),
+            (personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("beggar", "Beggar"), "beggar"),
+            (personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("subrole_buttons", {}).get("runes", "Runes"), "runes"),
         ] if current_detail not in {"dice", "ring", "beggar", "runes", "dice_admin", "ring_admin", "beggar_admin", "runes_admin"} else [],
         "banker": [
             ("Personal", "overview"),  # Personal maps to overview since they're the same view
@@ -555,7 +601,7 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
     # Specific treasure_hunter logic for POE2 subroles
     if role_name == "treasure_hunter":
         # Safe nested access with fallbacks
-        roles_view = _personality_descriptions.get("roles_view_messages", {})
+        roles_view = personality_descriptions.get("roles_view_messages", {})
         treasure_hunter = roles_view.get("treasure_hunter", {})
         poe2 = treasure_hunter.get("poe2", {})
         
@@ -588,7 +634,7 @@ def _get_canvas_role_detail_items(role_name: str, admin_visible: bool, current_d
 def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
     if role_name == "news_watcher":
         # Get news_watcher descriptions for action items with robust fallbacks
-        _personality_descriptions = core._personality_descriptions or {}
+        _personality_descriptions = _get_personality_descriptions()
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -623,7 +669,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
 
     if role_name == "treasure_hunter":
         # Get treasure_hunter descriptions for action items with robust fallbacks
-        _personality_descriptions = core._personality_descriptions or {}
+        _personality_descriptions = _get_personality_descriptions()
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -665,7 +711,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
 
     if role_name == "trickster":
         # Get trickster descriptions for action items with robust fallbacks
-        _personality_descriptions = core._personality_descriptions or {}
+        _personality_descriptions = _get_personality_descriptions()
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -771,7 +817,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
         if detail_name == "dice_admin" and admin_visible:
             # Get dice_game descriptions for action items with robust fallbacks
-            _personality_descriptions = core._personality_descriptions or {}
+            _personality_descriptions = _get_personality_descriptions()
             
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -802,7 +848,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
         if detail_name == "ring_admin" and admin_visible:
             # Get ring descriptions for action items with robust fallbacks
-            _personality_descriptions = core._personality_descriptions or {}
+            _personality_descriptions = _get_personality_descriptions()
             
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -848,7 +894,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             return []
         if detail_name == "admin" and admin_visible:
             # Get banker descriptions for action items with robust fallbacks
-            _personality_descriptions = core._personality_descriptions or {}
+            _personality_descriptions = _get_personality_descriptions()
             
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -873,7 +919,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     
     if role_name == "mc":
         # Get MC descriptions for action items with robust fallbacks
-        _personality_descriptions = core._personality_descriptions or {}
+        _personality_descriptions = _get_personality_descriptions()
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -1031,8 +1077,9 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     enabled_roles = _get_enabled_roles(agent_config)
     roles_text = ", ".join(enabled_roles) if enabled_roles else "none"
     
-    # Get home messages from personality with fallback
-    home_messages = _personality_descriptions.get("canvas_home_messages", {})
+    # Get home messages from personality with fallback (dynamic per server)
+    personality_descriptions = _get_personality_descriptions(server_id)
+    home_messages = personality_descriptions.get("canvas_home_messages", {})
     
     def _home_text(key: str, fallback: str) -> str:
         value = home_messages.get(key)
@@ -1175,8 +1222,8 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     initialize_roles_from_database(agent_config, guild)
     
     # Get roles view messages from personality with fallback
-    roles_messages = _personality_descriptions.get("roles_view_messages", {})
-    server_id= "Server"  # We don't have guild context here
+    server_id = core.get_server_key(guild) if guild else None
+    roles_messages = _get_personality_descriptions(server_id).get("roles_view_messages", {})
     
     # Title and description from descriptions.json with fallback
     title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_id} 🎭")
@@ -1354,10 +1401,11 @@ def _build_canvas_personal() -> str:
     )
 
 
-def _build_canvas_help() -> str:
+def _build_canvas_help(guild=None) -> str:
     """Build the help and troubleshooting Canvas view."""
     #2nd block for this view
-    help_messages = _personality_descriptions.get("help_menu", {})
+    server_id = get_server_key(guild) if guild else None
+    help_messages = _get_personality_descriptions(server_id).get("help_menu", {})
     separator = help_messages.get("separator", "-" * 45)
     roles = help_messages.get("roles_section", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
     behavior = help_messages.get("behavior_section", "**Behavior**\nIn this section you'll configurate some interactuable behaviors of the bot. Only for Admins")

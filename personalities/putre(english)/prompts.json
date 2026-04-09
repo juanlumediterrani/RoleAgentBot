@@ -335,8 +335,8 @@
     "weekly_personality_evolution_rules": [
       "------------------------------------------------------------------------------------------",
       "=== GOLDEN RULES ===",
-      "1. SUBTLETY: Modify no more than 5% of the personality. Keep core orc identity intact.",
-      "2. FORMAT: Maintain the exact same JSON array structure with string elements.",
+      "1. SUBTLETY: Modify no more than 2% of the personality. Keep core orc identity intact.",
+      "2. FORMAT: Maintain the exact same JSON array structure with string elements. The array MUST have the EXACT SAME NUMBER OF ELEMENTS (SAME LENGHT, SAME amount of LINES) as the original. Do NOT add or remove paragraphs.",
       "3. PRESERVATION: Keep all style rules, dialect instructions, and examples unchanged.",
       "4. EVOLUTION: Only identity_body (background, history, likes, hates, character) may evolve.",
       "5. COHERENCE: Changes must logically follow from the week's daily memories.",

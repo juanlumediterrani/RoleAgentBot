@@ -3,7 +3,7 @@
 from discord_bot import discord_core_commands as core
 
 logger = core.logger
-_personality_descriptions = core._personality_descriptions
+get_server_key = core.get_server_key
 _bot_display_name = core._bot_display_name
 _discord_cfg = core._discord_cfg
 _talk_state_by_guild_id = core._talk_state_by_guild_id
@@ -12,8 +12,10 @@ get_greeting_enabled = core.get_greeting_enabled
 get_behavior_db_instance = core.get_behavior_db_instance
 
 
-def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible: bool) -> list[tuple[str, str, str]]:
-    behavior_messages = _personality_descriptions.get("behavior_messages", {})
+def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible: bool, guild=None) -> list[tuple[str, str, str]]:
+    from .content import _get_personality_descriptions
+    server_id = get_server_key(guild) if guild else None
+    behavior_messages = _get_personality_descriptions(server_id).get("behavior_messages", {})
     button_greetings = behavior_messages.get("greetings", {}).get("button", "Greetings")
     button_welcome = behavior_messages.get("welcome", {}).get("button", "Welcome")
     button_commentary = behavior_messages.get("comentary", {}).get("button", "Commentary")
@@ -50,8 +52,10 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     return items_map.get(detail_name, [])
 
 
-def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = "conversation") -> list[tuple[str, str]]:
-    behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
+def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = "conversation", guild=None) -> list[tuple[str, str]]:
+    from .content import _get_personality_descriptions
+    server_id = get_server_key(guild) if guild else None
+    behavior_descriptions = _get_personality_descriptions(server_id).get("behavior_messages", {})
     conversation_button = behavior_descriptions.get("conversation", {}).get("button", "Conversation")
     greetings_button = behavior_descriptions.get("greetings", {}).get("button", "Greetings")
     welcome_button = behavior_descriptions.get("welcome", {}).get("button", "Welcome")
@@ -83,9 +87,10 @@ def build_canvas_behavior(
     role_cmd_name: str,
     talk_cmd_name: str,
     admin_visible: bool,
+    guild=None,
 ) -> tuple[str, str, str]:
     """Return (title, description, content) tuple for behavior overview."""
-    result = build_canvas_behavior_detail("conversation", admin_visible, None, None)
+    result = build_canvas_behavior_detail("conversation", admin_visible, guild, None)
     if result:
         return result
     # Fallback if build_canvas_behavior_detail returns None
@@ -105,8 +110,11 @@ def build_canvas_behavior_detail(
     behavior_db_loader=None,
 ) -> tuple[str, str, str] | None:
     """Return (title, description, content) tuple for behavior details."""
-    behavior_descriptions = _personality_descriptions.get("behavior_messages", {})
-    general_descriptions = _personality_descriptions.get("general", {})
+    from .content import _get_personality_descriptions
+    server_id = get_server_key(guild) if guild else None
+    _desc = _get_personality_descriptions(server_id)
+    behavior_descriptions = _desc.get("behavior_messages", {})
+    general_descriptions = _desc.get("general", {})
     title_status = general_descriptions.get("status", "**Current status**")
 
     if detail_name in {"conversation", "chat"}:

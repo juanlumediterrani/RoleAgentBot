@@ -2159,23 +2159,45 @@ def _parse_identity_body_from_llm_response(response: str) -> list[str] | None:
     code_block_match = re.search(r'```(?:json)?\s*\n?(\[[\s\S]*?\])\s*\n?```', text)
     if code_block_match:
         text = code_block_match.group(1)
+        logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Extracted JSON from code block")
     
     # Try to find array directly if no code block
     if not text.startswith('['):
         array_match = re.search(r'(\[[\s\S]*\])', text)
         if array_match:
             text = array_match.group(1)
+            logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Extracted JSON array from text")
+        else:
+            logger.warning(f"🧬 [PERSONALITY_EVOLUTION] Could not find JSON array in response")
+            logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Response text (first 500 chars): {text[:500]}")
+            return None
+    
+    # Clean the JSON text - remove potential invisible characters and normalize whitespace
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)  # Remove control characters
+    text = text.strip()
     
     try:
         parsed = json.loads(text)
         if isinstance(parsed, list):
             # Validate all elements are strings
             if all(isinstance(item, str) for item in parsed):
+                logger.info(f"🧬 [PERSONALITY_EVOLUTION] Successfully parsed JSON array with {len(parsed)} elements")
                 return [item.strip() for item in parsed if item.strip()]
         logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Parsed result is not a string array: {type(parsed)}")
         return None
     except json.JSONDecodeError as e:
         logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Failed to parse LLM response as JSON: {e}")
+        logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Text being parsed (first 1000 chars):\n{text[:1000]}")
+        # Try a more lenient approach: extract strings using regex if JSON parsing fails
+        logger.info(f"🧬 [PERSONALITY_EVOLUTION] Attempting fallback string extraction")
+        string_pattern = r'"([^"]*(?:\\.[^"]*)*)"'
+        matches = re.findall(string_pattern, text)
+        if matches:
+            logger.info(f"🧬 [PERSONALITY_EVOLUTION] Fallback extracted {len(matches)} strings")
+            # Unescape the strings
+            import codecs
+            unescaped = [codecs.decode(s, 'unicode_escape') for s in matches]
+            return [s.strip() for s in unescaped if s.strip()]
         return None
 
 
@@ -2232,7 +2254,12 @@ def generate_weekly_personality_evolution(
         }
     
     # Load current personality.json from server-specific location
-    personality_name = engine.PERSONALITY.get("name", "unknown").lower()
+    # Extract personality directory name from config path (e.g., "putre(english)")
+    config_path = os.path.join(os.path.dirname(__file__), 'agent_config.json')
+    with open(config_path, encoding='utf-8') as f:
+        config = json.load(f)
+    personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
+    personality_name = os.path.basename(os.path.dirname(personality_path))
     server_personality_dir = os.path.join(
         os.path.dirname(__file__), "databases", resolved_server, personality_name
     )
@@ -2404,7 +2431,12 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
         })
     
     # Load current personality.json from server-specific location
-    personality_name = engine.PERSONALITY.get("name", "unknown").lower()
+    # Extract personality directory name from config path (e.g., "putre(english)")
+    config_path = os.path.join(os.path.dirname(__file__), 'agent_config.json')
+    with open(config_path, encoding='utf-8') as f:
+        config = json.load(f)
+    personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
+    personality_name = os.path.basename(os.path.dirname(personality_path))
     server_personality_dir = os.path.join(
         os.path.dirname(__file__), "databases", resolved_server, personality_name
     )
@@ -2465,15 +2497,6 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
         critical=False,
         server_id=resolved_server,
     )
-    
-    # Log the LLM response to server-specific prompt.log
-    log_prompt(
-        prompt_type="test_personality_evolution_response",
-        content=llm_response,
-        metadata={"server_id": resolved_server, "test_mode": True},
-        server_id=resolved_server
-    )
-    test_logger.info(f"🧬 [TEST_EVOLUTION] LLM response logged to logs/{resolved_server}/prompt.log")
     
     if not llm_response or llm_response.strip() == "[Error in internal task]":
         test_logger.error("🧬 [TEST_EVOLUTION] LLM failed to generate evolution")

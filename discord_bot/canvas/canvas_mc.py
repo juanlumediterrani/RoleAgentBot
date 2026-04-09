@@ -6,15 +6,14 @@ import discord
 
 from discord_bot import discord_core_commands as core
 
-_personality_descriptions = core._personality_descriptions
 _bot_display_name = core._bot_display_name
 logger = core.logger
 
 
 def _build_mc_role_embed(role_name: str, content: str, admin_visible: bool, surface_name: str = "overview", user=None,
-                         auto_response: str | None = None):
+                         auto_response: str | None = None, server_id: str = None):
     from .content import _build_canvas_role_embed
-    return _build_canvas_role_embed(role_name, content, admin_visible, surface_name, user, auto_response)
+    return _build_canvas_role_embed(role_name, content, admin_visible, surface_name, user, auto_response, server_id=server_id)
 
 
 def _get_mc_action_items_for_detail(role_name: str, current_detail: str, admin_visible: bool, agent_config: dict | None = None):
@@ -22,14 +21,11 @@ def _get_mc_action_items_for_detail(role_name: str, current_detail: str, admin_v
     return _get_canvas_role_action_items_for_detail(role_name, current_detail, admin_visible, agent_config)
 
 
-def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None) -> str:
+def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None, guild=None) -> str:
     """Build the MC role view with dynamic state."""
-    from .content import _build_canvas_intro_block
-    mc_descriptions = {}
-    try:
-        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
-    except Exception:
-        pass
+    from .content import _build_canvas_intro_block, _get_personality_descriptions
+    server_id = core.get_server_key(guild) if guild else None
+    mc_descriptions = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("mc", {})
 
     def _mc_text(key: str, fallback: str) -> str:
         value = mc_descriptions.get(key)
@@ -80,7 +76,9 @@ class CanvasMCActionSelect(discord.ui.Select):
 
     def __init__(self, view):
         # Get MC descriptions for dropdown
-        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        from .content import _get_personality_descriptions
+        server_id = core.get_server_key(view.guild) if view.guild else None
+        mc_descriptions = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("mc", {})
         
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
@@ -188,7 +186,8 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
         await asyncio.sleep(0.5)
         mc_content = build_canvas_role_mc(last_action=last_action, queue_info=queue_info, mc_messages=captured_messages)
         view.auto_response_preview = last_action
-        embed = _build_mc_role_embed("mc", mc_content, view.admin_visible, "overview", None, view.auto_response_preview)
+        server_id = core.get_server_key(view.guild) if view.guild else None
+        embed = _build_mc_role_embed("mc", mc_content, view.admin_visible, "overview", None, view.auto_response_preview, server_id=server_id)
 
         try:
             await interaction.response.edit_message(content=None, embed=embed, view=view)
@@ -212,7 +211,9 @@ class CanvasMCSongModal(discord.ui.Modal):
         self.mc_commands = mc_commands
         
         # Get MC descriptions for modal titles
-        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        from .content import _get_personality_descriptions
+        server_id = core.get_server_key(view.guild) if view.guild else None
+        mc_descriptions = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("mc", {})
         
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
@@ -269,7 +270,8 @@ class CanvasMCSongModal(discord.ui.Modal):
             await asyncio.sleep(0.5)
             mc_content = build_canvas_role_mc(last_action=result_msg, queue_info=None, mc_messages=captured_messages)
             self.view.auto_response_preview = result_msg
-            embed = _build_mc_role_embed("mc", mc_content, self.view.admin_visible, "overview", None)
+            server_id = core.get_server_key(self.view.guild) if self.view.guild else None
+            embed = _build_mc_role_embed("mc", mc_content, self.view.admin_visible, "overview", None, server_id=server_id)
             try:
                 await interaction.followup.edit_message(interaction.message.id, embed=embed, view=self.view)
             except Exception:
@@ -286,7 +288,9 @@ class CanvasMCVolumeModal(discord.ui.Modal):
         self.mc_commands = mc_commands
         
         # Get MC descriptions for modal titles
-        mc_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("mc", {})
+        from .content import _get_personality_descriptions
+        server_id = core.get_server_key(view.guild) if view.guild else None
+        mc_descriptions = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("mc", {})
         
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)

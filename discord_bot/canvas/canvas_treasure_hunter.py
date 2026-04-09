@@ -7,7 +7,6 @@ from .state import _get_canvas_poe2_state
 
 _bot_display_name = core._bot_display_name
 _personality_answers = core._personality_answers
-_personality_descriptions = core._personality_descriptions
 AGENT_CFG = core.AGENT_CFG
 logger = core.logger
 is_admin = core.is_admin
@@ -39,10 +38,13 @@ async def _handle_canvas_followup_edit(interaction, embed, view, error_context="
             logger.exception(f"Failed to send error followup {error_context}: {followup_e}")
 
 
-def _get_treasure_text_factory():
+def _get_treasure_text_factory(guild=None):
     """Get treasure text factory with common initialization."""
+    from .content import _get_personality_descriptions
+    server_id = core.get_server_key(guild) if guild else None
+    personality_descriptions = _get_personality_descriptions(server_id)
     treasure_messages = _personality_answers.get("treasure_hunter_messages", {})
-    treasure_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {})
+    treasure_descriptions = personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {})
     return _treasure_text_factory(treasure_messages, treasure_descriptions)
 
 
@@ -88,7 +90,7 @@ class Poe2ItemModal(discord.ui.Modal):
 
         content = _build_canvas_role_detail_view(
             "treasure_hunter",
-            "personal",
+            "poe2",
             self.view.agent_config,
             self.view.admin_visible,
             self.view.guild,
@@ -100,7 +102,7 @@ class Poe2ItemModal(discord.ui.Modal):
             agent_config=self.view.agent_config,
             admin_visible=self.view.admin_visible,
             sections=self.view.sections,
-            current_detail="personal",
+            current_detail="poe2",
             guild=self.view.guild,
             message=interaction.message,
         )
@@ -109,7 +111,7 @@ class Poe2ItemModal(discord.ui.Modal):
             "treasure_hunter",
             content or "",
             self.view.admin_visible,
-            "personal",
+            "poe2",
             None,
             next_view.auto_response_preview,
         )
@@ -152,7 +154,7 @@ async def handle_canvas_treasure_hunter_action(interaction: discord.Interaction,
             await interaction.followup.send("❌ Could not update POE2 league.", ephemeral=True)
             return
 
-        target_detail = view.current_detail if view.current_detail == "personal" else "league"
+        target_detail = view.current_detail if view.current_detail == "poe2" else "league"
         content = _build_canvas_role_detail_view(
             "treasure_hunter",
             target_detail,
@@ -229,7 +231,7 @@ def _treasure_text_factory(treasure_messages: dict, treasure_descriptions: dict)
 def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the Treasure Hunter role view."""
     from .content import _build_canvas_intro_block
-    _treasure_text = _get_treasure_text_factory()
+    _treasure_text = _get_treasure_text_factory(guild)
 
     interval = (agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("interval_hours", 1)
     state = _get_canvas_poe2_state(guild, author_id)
@@ -268,7 +270,7 @@ def build_canvas_role_treasure_hunter_detail(
 ) -> str | None:
     """Build a detailed Treasure Hunter view based on detail_name."""
     from .content import _build_canvas_intro_block
-    _treasure_text = _get_treasure_text_factory()
+    _treasure_text = _get_treasure_text_factory(guild)
     
     if detail_name in {"personal", "poe2", "items"}:
         return build_canvas_role_treasure_hunter_poe2({}, admin_visible, guild, author_id)
@@ -339,7 +341,7 @@ def build_canvas_role_treasure_hunter_detail(
 def build_canvas_role_treasure_hunter_poe2(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str | None:
     """Build the POE2 subrole view within Treasure Hunter."""
     from .content import _build_canvas_intro_block
-    _treasure_text = _get_treasure_text_factory()
+    _treasure_text = _get_treasure_text_factory(guild)
 
     state = _get_canvas_poe2_state(guild, author_id)
     items_block = "\n".join([f"- {item}" for item in state["objectives"]]) if state["objectives"] else "- No tracked items yet"

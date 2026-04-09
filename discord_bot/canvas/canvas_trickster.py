@@ -13,7 +13,6 @@ from .state import (
     _get_canvas_beggar_state,
 )
 
-_personality_descriptions = core._personality_descriptions
 _bot_display_name = core._bot_display_name
 get_server_key = core.get_server_key
 logger = core.logger
@@ -34,11 +33,13 @@ except Exception:
 
 def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=None) -> str:
     """Build the Trickster role view."""
-    from .content import _build_canvas_intro_block
+    from .content import _build_canvas_intro_block, _get_personality_descriptions
     roles_messages = {}
     trickster_messages = {}
     try:
-        roles_messages = _personality_descriptions.get("roles_view_messages", {})
+        server_id = get_server_key(guild) if guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        roles_messages = personality_descriptions.get("roles_view_messages", {})
         trickster_messages = roles_messages.get("trickster", {})
     except Exception:
         pass
@@ -126,7 +127,10 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         # Use the main overview function
         return build_canvas_role_trickster({}, admin_visible, guild)
     
-    roles_messages = _personality_descriptions.get("roles_view_messages", {})
+    from .content import _get_personality_descriptions
+    server_id = get_server_key(guild) if guild else None
+    personality_descriptions = _get_personality_descriptions(server_id)
+    roles_messages = personality_descriptions.get("roles_view_messages", {})
     trickster_messages = roles_messages.get("trickster", {})
 
     def _trickster_text(key: str, fallback: str) -> str:
@@ -150,7 +154,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
 
     if detail_name in {"dice", "game"}:
         dice_state = _get_canvas_dice_state(guild)
-        descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
         title = _trickster_text("dice_game.title", "🎲 DICE GAME")
         pot_title = _trickster_text("dice_game.current_balance", "💎 **CURRENT POT:**")
         fixed_bet = _trickster_text("dice_game.fixed_bet", "💎 **FIXED BET:**")
@@ -218,7 +222,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         hot_pot = int(dice_state["bet"] * 72)
         
         # Get personality descriptions with English fallbacks
-        descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
         
         return "\n".join([
             _build_canvas_intro_block(
@@ -243,7 +247,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
 
     if detail_name in {"beggar"}:
         beggar_state = _get_canvas_beggar_state(guild)
-        descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
+        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
         
         title = _trickster_text("beggar.title", "🙏 BEGGAR")
         fund_title = _trickster_text("beggar.current_fund", "💰 **CURRENT FUND:**")
@@ -284,11 +288,11 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
 
     if detail_name in {"beggar_admin"}:
         beggar_state = _get_canvas_beggar_state(guild)
-        descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
-        trickster_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {})
+        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
+        trickster_descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {})
         description = _trickster_text("beggar.description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")  
         title = _trickster_text("beggar.title", "🙏 BEGGAR")
-        general_descriptions =  _personality_descriptions.get("general", {})
+        general_descriptions = personality_descriptions.get("general", {})
         return "\n".join([
             _build_canvas_intro_block(title, description),
             "-" * 45,
@@ -338,7 +342,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
             parts.extend([inactive_title, "", inactive_instructions])
 
         # Use general descriptions for status
-        general = _personality_descriptions.get("general", {})
+        general = personality_descriptions.get("general", {})
         status_label = general.get("status", "Status:")
         active_text = general.get("active", "✅  Active")
         inactive_text = general.get("inactive", "❌ Inactive")
@@ -353,8 +357,8 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         # Get title without newlines for admin
         title = _trickster_text("ring.title", f"👁️ **{_bot_display_name} Ring Hunter**")
         # Use general descriptions for admin panel
-        general = _personality_descriptions.get("general", {})
-        ring_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("ring", {})
+        general = personality_descriptions.get("general", {})
+        ring_descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("ring", {})
         
         admin_status = general.get("status", "Status:")
         active_text = general.get("active", "Active")
@@ -459,11 +463,12 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
     return None
 
 
-def get_runes_messages() -> dict:
+def get_runes_messages(guild=None) -> dict:
     """Get runes messages from personality descriptions with fallbacks."""
     try:
-        # Load from personality descriptions following the normal program pattern
-        descriptions = _personality_descriptions
+        from .content import _get_personality_descriptions
+        server_id = get_server_key(guild) if guild else None
+        descriptions = _get_personality_descriptions(server_id)
         if descriptions and "roles_view_messages" in descriptions and "trickster" in descriptions["roles_view_messages"] and "nordic_runes" in descriptions["roles_view_messages"]["trickster"]:
             return descriptions["roles_view_messages"]["trickster"]["nordic_runes"]
     except Exception as e:
@@ -539,7 +544,9 @@ class RuneCastingModal(discord.ui.Modal):
             mock_message = MockMessage(interaction.user, interaction.guild)
             result = await runes_commands.cmd_runes_cast(mock_message, self.reading_type, question)
 
-            descriptions = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
+            from .content import _get_personality_descriptions
+            _rune_server_id = get_server_key(interaction.guild) if interaction.guild else None
+            descriptions = _get_personality_descriptions(_rune_server_id).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
             saved_msg = descriptions.get("reading_saved", "🔮 Runes have been cast! Your reading has been saved.")
             
             # Handle tuple return value (main_response, interpretation_response_parts)
@@ -670,6 +677,9 @@ async def handle_canvas_runes_action(interaction: discord.Interaction, action_na
             return
 
         guild = interaction.guild
+        from .content import _get_personality_descriptions
+        server_id = get_server_key(guild) if guild else None
+        _runes_desc = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
 
         class MockMessage:
             def __init__(self, author, guild):
@@ -687,13 +697,13 @@ async def handle_canvas_runes_action(interaction: discord.Interaction, action_na
 
         if action_name == "runes_history":
             try:
-                title_history = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title_history", "🌔 **RUNES READING HISTORY**🌔")
+                title_history = _runes_desc.get("title_history", "🌔 **RUNES READING HISTORY**🌔")
                 result = await runes_commands.cmd_runes_canvas_history(mock_message, 10)
                 content_parts.append("─" * 45)
                 content_parts.append(result)
             except Exception as e:
                 logger.exception(f"Canvas runes history failed: {e}")
-                error_history = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("error_history", "❌ **ERROR!** Could not load your rune history.")
+                error_history = _runes_desc.get("error_history", "❌ **ERROR!** Could not load your rune history.")
                 content_parts.extend([title_history, error_history, ""])
         elif action_name == "runes_runes_1":
             try:
@@ -729,8 +739,8 @@ async def handle_canvas_runes_action(interaction: discord.Interaction, action_na
                 content_parts.extend(["🔮 **ELDER FUTHARK RUNES** 🔮", "❌ **ERROR!** Could not load runes list."])
         elif action_name == "runes_types":
             try:
-                title_available_readings = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title_available_readings", "🌌**Available readings**🌌\n ")
-                available_readings = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("available_readings", "-Single rune: quick guidance\n - Three runes: past, present, future\n - Five Cross runes : Comprehensive multidimension situation analysis\n - Seven Runic Cross runes: Integral spiritual insight\n")
+                title_available_readings = _runes_desc.get("title_available_readings", "🌌**Available readings**🌌\n ")
+                available_readings = _runes_desc.get("available_readings", "-Single rune: quick guidance\n - Three runes: past, present, future\n - Five Cross runes : Comprehensive multidimension situation analysis\n - Seven Runic Cross runes: Integral spiritual insight\n")
                 content_parts.append("─" * 45)
                 content_parts.append(title_available_readings)
                 content_parts.append("─" * 45)
@@ -743,7 +753,7 @@ async def handle_canvas_runes_action(interaction: discord.Interaction, action_na
         from .content import _build_canvas_role_embed
         from discord_bot.canvas.ui import CanvasRoleDetailView
 
-        runes_title = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
+        runes_title = _runes_desc.get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
         role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "runes", None, f"Viewed {action_name.replace('runes_', '').title()}")
         role_embed.title = runes_title
         view.current_embed = role_embed
@@ -1083,7 +1093,8 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             if current_detail.startswith("beggar"):
                 new_content = build_canvas_role_trickster_detail(current_detail, admin_visible, guild, author_id, view.agent_config if view else AGENT_CFG)
                 if new_content:
-                    embed = _build_canvas_embed("roles", new_content, admin_visible)
+                    server_id = get_server_key(guild) if guild else None
+                    embed = _build_canvas_embed("roles", new_content, admin_visible, server_id=server_id)
                     if view:
                         await _safe_edit_interaction_message(interaction, embed=embed, view=view)
                     # Note: We can't edit the message directly if interaction is deferred and no view

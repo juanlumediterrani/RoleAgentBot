@@ -324,7 +324,26 @@
         "recollection_placeholder": "[Escribe aqui el recuerdo notable extraido o NO_MEMORY]",
         "no_memory_keyword": "NO_MEMORY"
       },
-      "recent_interactions_from_channel_label":"MENSAJES RECIENTES EN EL CANAL:"
+      "recent_interactions_from_channel_label":"MENSAJES RECIENTES EN EL CANAL:",
+      "weekly_personality_evolution_task": [
+        "------------------------------------------------------------------------------------------",
+        "TAREA: Evoluciona sutilmente la identidad de Putre basándote en las experiencias de la semana.",
+        "OBJETIVO: Revisa los 7 párrafos de memoria diaria y ajusta sutilmente la sección identity_body.",
+        "IMPACTO: Los eventos de la semana deben influir ligeramente en la visión del mundo, prioridades o actitudes de Putre.",
+        "REGLA DE EVOLUCIÓN: Los cambios deben ser sutiles (máximo 5%), preservando la naturaleza orko guerrera e identidad de Putre.",
+        "FORMATO: Retorna SOLAMENTE el identity_body evolucionado como JSON válido, manteniendo la estructura exacta."
+      ],
+      "weekly_personality_evolution_rules": [
+        "------------------------------------------------------------------------------------------",
+        "=== REGLAS DE ORO ===",
+        "1. SUTILEZA: Modifica no más del 2% de la personalidad. Mantén la identidad orko guerrera intacta.",
+        "2. FORMATO: Mantén la exacta misma estructura de array JSON con elementos string. El array DEBE tener el EXACTO MISMO NÚMERO DE ELEMENTOS (MISMA LONGITUD, MISMA cantidad de LÍNEAS) que el original. NO añadas o elimines párrafos.",
+        "3. PRESERVACIÓN: Mantén todas las reglas de estilo, instrucciones de dialecto y ejemplos sin cambios.",
+        "4. EVOLUCIÓN: Solo identity_body (antecedentes, historia, gustos, odios, carácter) puede evolucionar.",
+        "5. COHERENCIA: Los cambios deben seguir lógicamente de las memorias diarias de la semana.",
+        "6. IDENTIDAD: Nunca cambies el nombre 'Putre' o la naturaleza fundamental (guerrero orko sigue siendo guerrero orko).",
+        "7. DIALECTO: Mantén el dialecto orko sin tildes en todos los párrafos evolucionados."
+      ]
   },
   "default_recollections": [
     "Cuando Putre era joven, robó pollos del granjero y los komió krudos"

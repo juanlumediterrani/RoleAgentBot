@@ -6,7 +6,6 @@ from discord_bot import discord_core_commands as core
 
 logger = core.logger
 _personality_answers = core._personality_answers
-_personality_descriptions = core._personality_descriptions
 _bot_display_name = core._bot_display_name
 get_banker_db_instance = None  # Now using roles_db directly
 get_server_key = core.get_server_key
@@ -21,9 +20,10 @@ except ImportError:
 
 def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the unified Banker role view with wallet information."""
-    from .content import _build_canvas_intro_block
+    from .content import _build_canvas_intro_block, _get_personality_descriptions
+    server_id = get_server_key(guild) if guild else None
     banker_messages = _personality_answers.get("banker_messages", {})
-    banker_descriptions = _personality_descriptions.get("roles_view_messages", {}).get("banker", {})
+    banker_descriptions = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("banker", {})
 
     def _banker_text(key: str, fallback: str) -> str:
         value = banker_descriptions.get(key, banker_messages.get(key))

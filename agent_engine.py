@@ -6,7 +6,7 @@ from agent_logging import get_logger
 from postprocessor import postprocess_response, is_blocked_response
 from agent_db import get_active_server_id, get_global_db
 from prompts_logger import log_system_prompt, log_agent_response, log_final_llm_prompt
-from agent_runtime import increment_usage as runtime_increment_usage
+from agent_runtime import increment_usage as runtime_increment_usage, get_personality_directory
 from pathlib import Path
 from dotenv import load_dotenv
 import logging
@@ -44,6 +44,7 @@ def _load_personality_descriptions() -> dict:
     """Load personality descriptions from descriptions.json using server-specific directory."""
     try:
         # Use server-specific personality directory
+        from agent_runtime import get_personality_directory
         personality_dir = get_personality_directory()
         descriptions = {}
         
@@ -264,7 +265,6 @@ class _PersonalityProxy:
         return repr(_get_personality())
 
 PERSONALITY = _PersonalityProxy()
-_personality_descriptions = _load_personality_descriptions()
 
 
 def reload_personality():

@@ -122,10 +122,6 @@ class _PersonalityAnswersProxy:
         return repr(_get_personality_answers())
 
 
-# Import dynamic descriptions from agent_engine (server-specific loading)
-from agent_engine import _personality_descriptions
-
-
 _discord_cfg = _get_personality_answers()
 _personality_name = PERSONALITY.get("name", "bot").lower()
 _bot_display_name = PERSONALITY.get("bot_display_name", PERSONALITY.get("name", "Bot"))

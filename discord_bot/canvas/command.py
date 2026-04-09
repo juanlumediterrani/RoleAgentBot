@@ -72,8 +72,9 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                         int(ctx.author.id),
                     )
                     if role_detail_view is not None:
+                        server_id = core.get_server_key(guild) if guild else None
                         if target_name == "banker":
-                            role_embed = core._build_canvas_role_embed("banker", role_detail_view, admin_visible, detail_name, ctx.author)
+                            role_embed = core._build_canvas_role_embed("banker", role_detail_view, admin_visible, detail_name, ctx.author, server_id=server_id)
                             canvas_sent_msg = core._personality_answers.get("general_messages", {}).get(
                                 "canvas_sent_private",
                                 "📩 Canvas guide sent by private message."
@@ -100,8 +101,9 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                     )
                     return
 
+                server_id = core.get_server_key(guild) if guild else None
                 if target_name == "banker":
-                    role_embed = core._build_canvas_role_embed("banker", role_view, admin_visible, "overview", ctx.author)
+                    role_embed = core._build_canvas_role_embed("banker", role_view, admin_visible, "overview", ctx.author, server_id=server_id)
                     canvas_sent_msg = core._personality_answers.get("general_messages", {}).get(
                         "canvas_sent_private",
                         "📩 Canvas guide sent by private message."
@@ -182,12 +184,13 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 f"Canvas top-level view prepared for {ctx.author.name}: section={section_name}, "
                 f"admin_visible={admin_visible}, buttons={len(view.children)}, in_guild={bool(ctx.guild)}"
             )
+            server_id = core.get_server_key(guild) if guild else None
             if section_name == "home":
-                home_embed = core._build_canvas_embed("home", sections[section_name], admin_visible)
+                home_embed = core._build_canvas_embed("home", sections[section_name], admin_visible, server_id=server_id)
                 message = await ctx.send(embed=home_embed, view=view)
             elif section_name == "behavior":
                 behavior_embed = core._build_canvas_embed("behavior", sections[section_name], admin_visible,
-                                                          sections.get("behavior_title"), sections.get("behavior_description"))
+                                                          sections.get("behavior_title"), sections.get("behavior_description"), server_id=server_id)
                 message = await ctx.send(embed=behavior_embed, view=view)
             else:
                 message = await ctx.send(sections[section_name], view=view)
