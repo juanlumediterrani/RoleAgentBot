@@ -2234,7 +2234,7 @@ def generate_weekly_personality_evolution(
     # Load current personality.json from server-specific location
     personality_name = engine.PERSONALITY.get("name", "unknown").lower()
     server_personality_dir = os.path.join(
-        os.path.dirname(__file__), "personalities", personality_name, f"server_{resolved_server}"
+        os.path.dirname(__file__), "databases", resolved_server, personality_name
     )
     server_personality_path = os.path.join(server_personality_dir, "personality.json")
     

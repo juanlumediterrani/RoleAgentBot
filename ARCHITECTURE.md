@@ -249,7 +249,7 @@ This lets `think(...)` combine immediate context, short-term synthesis, and dura
 - **Trigger**: Every 7 days (weekly scheduled task in `run.py`)
 - **Process**:
   1. Retrieves the last 7 days of daily memory paragraphs from the database
-  2. Loads the current server-specific `personality.json` from `personalities/{name}/server_{server_id}/`
+  2. Loads the current server-specific `personality.json` from `databases/{server_id}/{personality_name}/`
   3. Constructs a prompt containing:
      - Task instructions from `prompts.json` → `weekly_personality_evolution_task`
      - The 7 daily memory paragraphs, enumerated by date
@@ -264,7 +264,7 @@ This lets `think(...)` combine immediate context, short-term synthesis, and dura
   - Only `identity_body` section is modified (background, history, likes, hates, character)
   - Style rules, dialect instructions, examples, and other sections remain unchanged
   - If the LLM fails or parsing fails, no changes are made (safe rollback)
-- **Location**: Server-specific personalities stored at `personalities/{personality_name}/server_{server_id}/`
+- **Location**: Server-specific personalities stored at `databases/{server_id}/{personality_name}/`
 - **Migration**: When a server joins, `copy_personality_to_server()` copies all personality files (personality.json, prompts.json, descriptions.json, answers.json) from the base to the server-specific folder
 - **Fallback**: If server personality doesn't exist, evolution task fails gracefully with error "Server personality not migrated" and the bot continues running
 
