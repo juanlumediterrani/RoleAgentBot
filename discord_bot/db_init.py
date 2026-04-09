@@ -21,11 +21,11 @@ def copy_personality_to_server(server_id: str, personality_name: str = None) -> 
     Copy personality files to server-specific directory for first-time initialization.
     
     This function copies the personality folder from the global personalities/ directory
-    to a server-specific location under databases/<server_id>/<personality_name>/.
-    Each server will then use its own copy, allowing for future per-server customization.
+    to a server-specific location under personalities/<personality_name>/server_<server_id>/.
+    Each server will then use its own copy, allowing for per-server personality evolution.
     
     Directory structure:
-        databases/<server_id>/<personality_name>/
+        personalities/<personality_name>/server_<server_id>/
             ├── personality.json
             ├── prompts.json
             ├── answers.json
@@ -53,7 +53,7 @@ def copy_personality_to_server(server_id: str, personality_name: str = None) -> 
         # Paths
         base_dir = os.path.dirname(os.path.dirname(__file__))
         source_dir = os.path.join(base_dir, 'personalities', personality_name)
-        target_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
+        target_dir = os.path.join(base_dir, 'personalities', personality_name, f'server_{server_id}')
         
         # Check if server-specific copy already exists
         if os.path.exists(target_dir):
@@ -94,8 +94,8 @@ def get_server_personality_dir(server_id: str, personality_name: str = None) -> 
     """
     Get the server-specific personality directory path.
     
-    Returns the path to the server's personality copy if it exists,
-    otherwise returns None to indicate fallback to global personality.
+    Returns the path to the server's personality copy if it exists at
+    personalities/{name}/server_{id}/. This is used for per-server personality evolution.
     
     Args:
         server_id: Discord guild ID
@@ -115,9 +115,10 @@ def get_server_personality_dir(server_id: str, personality_name: str = None) -> 
             personality_name = os.path.basename(os.path.dirname(personality_path))
         
         base_dir = os.path.dirname(os.path.dirname(__file__))
-        server_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
         
-        if os.path.exists(server_dir):
+        # Check the evolved personality location
+        server_dir = os.path.join(base_dir, 'personalities', personality_name, f'server_{server_id}')
+        if os.path.exists(server_dir) and os.path.exists(os.path.join(server_dir, 'personality.json')):
             return server_dir
         
         return None

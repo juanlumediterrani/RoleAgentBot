@@ -231,7 +231,7 @@ Additional SQLite-backed stores exist for:
 
 ## 9. Memory Architecture
 
-The current memory system has four logical layers:
+The current memory system has five logical layers:
 
 | Layer | Purpose | Refresh cadence |
 |------|------|------|
@@ -239,8 +239,34 @@ The current memory system has four logical layers:
 | `recent_memory` | Rolling summary of the current day since the last cursor | Every 4 hours |
 | `daily_memory` | Daily synthesis of the server's interactions | Every 24 hours |
 | `user_relationship_memory` | Per-user relationship summary | Every 1 hour when due |
+| `weekly_personality_evolution` | Subtle personality evolution based on weekly experiences | Every 7 days |
 
-This lets `think(...)` combine immediate context, short-term synthesis, and durable relational context.
+This lets `think(...)` combine immediate context, short-term synthesis, and durable relational context, while the personality itself evolves slowly over time based on accumulated experiences.
+
+### Weekly Personality Evolution
+
+- **Purpose**: Gently evolve the bot's identity based on the week's experiences through daily memory synthesis
+- **Trigger**: Every 7 days (weekly scheduled task in `run.py`)
+- **Process**:
+  1. Retrieves the last 7 days of daily memory paragraphs from the database
+  2. Loads the current server-specific `personality.json` from `personalities/{name}/server_{server_id}/`
+  3. Constructs a prompt containing:
+     - Task instructions from `prompts.json` → `weekly_personality_evolution_task`
+     - The 7 daily memory paragraphs, enumerated by date
+     - Golden rules from `prompts.json` → `weekly_personality_evolution_rules` (max 5% change, preserve identity)
+     - The current `identity_body` array from personality
+  4. Sends the prompt to the LLM to generate an evolved `identity_body`
+  5. Parses and validates the JSON response
+  6. Creates a timestamped backup of the current personality
+  7. Writes the evolved personality back to the server-specific location
+- **Constraints**:
+  - Maximum 5% change to personality (enforced via prompt rules)
+  - Only `identity_body` section is modified (background, history, likes, hates, character)
+  - Style rules, dialect instructions, examples, and other sections remain unchanged
+  - If the LLM fails or parsing fails, no changes are made (safe rollback)
+- **Location**: Server-specific personalities stored at `personalities/{personality_name}/server_{server_id}/`
+- **Migration**: When a server joins, `copy_personality_to_server()` copies all personality files (personality.json, prompts.json, descriptions.json, answers.json) from the base to the server-specific folder
+- **Fallback**: If server personality doesn't exist, evolution task fails gracefully with error "Server personality not migrated" and the bot continues running
 
 ## 10. Role Responsibilities
 
@@ -296,6 +322,7 @@ This lets `think(...)` combine immediate context, short-term synthesis, and dura
 - Recent memory refresh
 - Daily memory refresh
 - Relationship memory refresh
+- **Weekly personality evolution**: Evolves the server-specific personality based on 7 days of daily memory (every 7 days)
 
 ### In `discord_bot/agent_discord.py`
 

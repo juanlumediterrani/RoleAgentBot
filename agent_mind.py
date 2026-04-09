@@ -2036,6 +2036,324 @@ def _get_fallback_response(critical: bool) -> str:
     return "[Error in internal task]"
 
 
+# =============================================================================
+# WEEKLY PERSONALITY EVOLUTION
+# =============================================================================
+
+def _get_weekly_personality_evolution_task_lines() -> list[str]:
+    """Get task lines for weekly personality evolution from personality config."""
+    synthesis = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    task_lines = synthesis.get("weekly_personality_evolution_task", [])
+    if isinstance(task_lines, list) and task_lines:
+        return [str(line).strip() for line in task_lines if str(line).strip()]
+    # Default fallback
+    return [
+        "TASK: Gently evolve the character's identity based on the week's experiences.",
+        "OBJECTIVE: Review the 7 daily memory paragraphs and subtly adjust the identity_body section.",
+        "IMPACT: The week's events should lightly influence the character's worldview, priorities, or attitudes.",
+        "FORMAT: Return ONLY the evolved identity_body array, maintaining exact JSON structure.",
+    ]
+
+
+def _get_weekly_personality_evolution_rules() -> list[str]:
+    """Get golden rules for weekly personality evolution."""
+    synthesis = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    rules = synthesis.get("weekly_personality_evolution_rules", [])
+    if isinstance(rules, list) and rules:
+        return [str(line).strip() for line in rules if str(line).strip()]
+    # Default fallback rules
+    return [
+        "=== GOLDEN RULES ===",
+        "1. SUBTLETY: Modify no more than 5% of the personality. Keep core identity intact.",
+        "2. FORMAT: Maintain the exact same JSON array structure with string elements.",
+        "3. PRESERVATION: Keep all style rules, dialect instructions, and examples unchanged.",
+        "4. EVOLUTION: Only identity_body (character background, history, likes, hates) may evolve.",
+        "5. COHERENCE: Changes must logically follow from the week's daily memories.",
+        "6. REVERSIBILITY: If the evolution feels wrong, the system can revert to backup.",
+        "7. IDENTITY: Never change the character name or fundamental nature (orc remains orc).",
+    ]
+
+
+def _build_weekly_personality_evolution_prompt(
+    daily_memories: list[dict],
+    current_identity_body: list[str],
+    week_start_date: str,
+    week_end_date: str,
+) -> str:
+    """Build the prompt for weekly personality evolution.
+    
+    Args:
+        daily_memories: List of 7 daily memory dicts with memory_date and summary
+        current_identity_body: Current identity_body array from personality.json
+        week_start_date: Start date of the week (YYYY-MM-DD)
+        week_end_date: End date of the week (YYYY-MM-DD)
+    
+    Returns:
+        Formatted prompt string for the LLM
+    """
+    task_lines = _get_weekly_personality_evolution_task_lines()
+    rules = _get_weekly_personality_evolution_rules()
+    
+    # Build the 7 daily memories section
+    memories_lines = ["=== WEEK'S DAILY MEMORIES ===", ""]
+    for i, mem in enumerate(daily_memories, 1):
+        date_str = mem.get("memory_date", "unknown")
+        summary = mem.get("summary", "").strip()
+        memories_lines.append(f"Day {i} ({date_str}):")
+        memories_lines.append(f"  {summary}")
+        memories_lines.append("")
+    
+    # Build current identity section
+    identity_lines = ['=== CURRENT IDENTITY_BODY ===', '', '[']
+    for line in current_identity_body:
+        escaped = line.replace('"', '\\"')
+        identity_lines.append(f'  "{escaped}",')
+    identity_lines.append(']')
+    
+    # Build the full prompt
+    prompt_parts = [
+        f"WEEKLY PERSONALITY EVOLUTION: {week_start_date} to {week_end_date}",
+        "",
+        *task_lines,
+        "",
+        *memories_lines,
+        "",
+        *identity_lines,
+        "",
+        *rules,
+        "",
+        "=== OUTPUT FORMAT ===",
+        "Return ONLY the JSON array for identity_body. Example:",
+        '[',
+        '  "First paragraph of evolved identity...",',
+        '  "Second paragraph...",',
+        '  "Third paragraph..."',
+        ']',
+        "",
+        "=== IMPORTANT ===",
+        "- Do not wrap in markdown code blocks",
+        "- Do not add explanations or comments",
+        "- Return valid JSON array only",
+        "- Each element must be a complete paragraph string",
+    ]
+    
+    return "\n".join(prompt_parts)
+
+
+def _parse_identity_body_from_llm_response(response: str) -> list[str] | None:
+    """Parse the identity_body array from LLM response.
+    
+    Args:
+        response: Raw LLM response text
+        
+    Returns:
+        List of strings if parsing succeeds, None if fails
+    """
+    if not response:
+        return None
+    
+    text = response.strip()
+    
+    # Try to extract JSON array from markdown code blocks first
+    import re
+    code_block_match = re.search(r'```(?:json)?\s*\n?(\[[\s\S]*?\])\s*\n?```', text)
+    if code_block_match:
+        text = code_block_match.group(1)
+    
+    # Try to find array directly if no code block
+    if not text.startswith('['):
+        array_match = re.search(r'(\[[\s\S]*\])', text)
+        if array_match:
+            text = array_match.group(1)
+    
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            # Validate all elements are strings
+            if all(isinstance(item, str) for item in parsed):
+                return [item.strip() for item in parsed if item.strip()]
+        logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Parsed result is not a string array: {type(parsed)}")
+        return None
+    except json.JSONDecodeError as e:
+        logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Failed to parse LLM response as JSON: {e}")
+        return None
+
+
+def generate_weekly_personality_evolution(
+    server_id: str | None = None,
+    force: bool = False,
+) -> dict:
+    """Generate weekly personality evolution based on 7 days of daily memory.
+    
+    This function:
+    1. Retrieves the last 7 days of daily memory
+    2. Loads current personality.json identity_body
+    3. Builds and sends evolution prompt to LLM
+    4. Parses and validates the evolved identity_body
+    5. Creates backup and writes evolved personality to server folder
+    
+    Args:
+        server_id: Server ID to process (uses active server if None)
+        force: Force evolution even with fewer than 7 days of memory
+        
+    Returns:
+        Dict with success status, message, and details
+    """
+    import os
+    from datetime import date, timedelta
+    
+    engine = _engine()
+    resolved_server = server_id or get_active_server_id()
+    
+    if not resolved_server:
+        logger.warning("🧬 [PERSONALITY_EVOLUTION] No server context available")
+        return {"success": False, "error": "No server context available"}
+    
+    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Starting weekly evolution for server '{resolved_server}'")
+    
+    # Get database instance
+    from agent_db import get_db_instance
+    db_instance = get_db_instance(resolved_server)
+    
+    # Retrieve last 7 days of daily memory
+    daily_memories = db_instance.get_last_7_days_daily_memory()
+    
+    if not daily_memories:
+        logger.warning("🧬 [PERSONALITY_EVOLUTION] No daily memories found in last 7 days")
+        return {"success": False, "error": "No daily memories available", "memories_count": 0}
+    
+    if len(daily_memories) < 7 and not force:
+        logger.info(f"🧬 [PERSONALITY_EVOLUTION] Only {len(daily_memories)} days of memory available, need 7 (use force=True to override)")
+        return {
+            "success": False,
+            "error": f"Insufficient memory data: {len(daily_memories)}/7 days",
+            "memories_count": len(daily_memories),
+            "memories": daily_memories,
+        }
+    
+    # Load current personality.json from server-specific location
+    personality_name = engine.PERSONALITY.get("name", "unknown").lower()
+    server_personality_dir = os.path.join(
+        os.path.dirname(__file__), "personalities", personality_name, f"server_{resolved_server}"
+    )
+    server_personality_path = os.path.join(server_personality_dir, "personality.json")
+    
+    # Check if server personality exists (migration should have happened already)
+    if not os.path.exists(server_personality_path):
+        logger.error(f"🧬 [PERSONALITY_EVOLUTION] Server personality not found at {server_personality_path}")
+        return {"success": False, "error": "Server personality not migrated"}
+    
+    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Using server-specific personality")
+    
+    try:
+        with open(server_personality_path, 'r', encoding='utf-8') as f:
+            current_personality = json.load(f)
+    except Exception as e:
+        logger.error(f"🧬 [PERSONALITY_EVOLUTION] Failed to load personality.json: {e}")
+        return {"success": False, "error": f"Failed to load personality: {e}"}
+    
+    # Extract current identity_body
+    current_identity_body = current_personality.get("system_prompt_template", {}).get("identity_body", [])
+    if not current_identity_body:
+        logger.error("🧬 [PERSONALITY_EVOLUTION] No identity_body found in personality")
+        return {"success": False, "error": "No identity_body in personality"}
+    
+    # Calculate week dates
+    today = date.today()
+    week_end = daily_memories[-1].get("memory_date", today.isoformat())
+    week_start = daily_memories[0].get("memory_date", (today - timedelta(days=6)).isoformat())
+    
+    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Processing week: {week_start} to {week_end} ({len(daily_memories)} days)")
+    
+    # Build system prompt and evolution prompt
+    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
+    evolution_prompt = _build_weekly_personality_evolution_prompt(
+        daily_memories=daily_memories,
+        current_identity_body=current_identity_body,
+        week_start_date=week_start,
+        week_end_date=week_end,
+    )
+    
+    # Call LLM for evolution
+    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Calling LLM for personality evolution...")
+    llm_response = call_llm(
+        system_instruction=system_instruction,
+        prompt=evolution_prompt,
+        async_mode=True,
+        call_type="weekly_personality_evolution",
+        critical=False,
+        server_id=resolved_server,
+    )
+    
+    if not llm_response or llm_response.strip() == "[Error in internal task]":
+        logger.error("🧬 [PERSONALITY_EVOLUTION] LLM failed to generate evolution")
+        return {"success": False, "error": "LLM generation failed"}
+    
+    # Parse the evolved identity_body
+    evolved_identity_body = _parse_identity_body_from_llm_response(llm_response)
+    
+    if evolved_identity_body is None:
+        logger.error("🧬 [PERSONALITY_EVOLUTION] Failed to parse LLM response as valid identity_body")
+        return {
+            "success": False,
+            "error": "Failed to parse LLM response",
+            "raw_response": llm_response[:500],
+        }
+    
+    if not evolved_identity_body:
+        logger.error("🧬 [PERSONALITY_EVOLUTION] Parsed identity_body is empty")
+        return {"success": False, "error": "Empty identity_body from LLM"}
+    
+    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Successfully parsed evolved identity_body with {len(evolved_identity_body)} paragraphs")
+    
+    # Create backup before evolution
+    backup_path = os.path.join(
+        server_personality_dir, f"personality_backup_{date.today().isoformat()}.json"
+    )
+    try:
+        import shutil
+        shutil.copy2(server_personality_path, backup_path)
+        logger.info(f"🧬 [PERSONALITY_EVOLUTION] Created backup at {backup_path}")
+    except Exception as e:
+        logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Failed to create backup: {e}")
+    
+    # Update personality with evolved identity_body
+    evolved_personality = current_personality.copy()
+    if "system_prompt_template" not in evolved_personality:
+        evolved_personality["system_prompt_template"] = {}
+    evolved_personality["system_prompt_template"]["identity_body"] = evolved_identity_body
+    
+    # Add evolution metadata
+    evolved_personality["_evolution_metadata"] = {
+        "last_evolution_date": date.today().isoformat(),
+        "week_start": week_start,
+        "week_end": week_end,
+        "memories_used": len(daily_memories),
+        "previous_backup": backup_path if os.path.exists(backup_path) else None,
+    }
+    
+    # Write evolved personality to server-specific file
+    try:
+        with open(server_personality_path, 'w', encoding='utf-8') as f:
+            json.dump(evolved_personality, f, indent=2, ensure_ascii=False)
+        logger.info(f"🧬 [PERSONALITY_EVOLUTION] Successfully wrote evolved personality to {server_personality_path}")
+    except Exception as e:
+        logger.error(f"🧬 [PERSONALITY_EVOLUTION] Failed to write evolved personality: {e}")
+        return {"success": False, "error": f"Failed to write personality: {e}"}
+    
+    return {
+        "success": True,
+        "message": f"Personality evolved for week {week_start} to {week_end}",
+        "server_id": resolved_server,
+        "week_start": week_start,
+        "week_end": week_end,
+        "memories_used": len(daily_memories),
+        "identity_body_paragraphs": len(evolved_identity_body),
+        "backup_path": backup_path if os.path.exists(backup_path) else None,
+        "evolved_personality_path": server_personality_path,
+    }
+
+
 
 
 

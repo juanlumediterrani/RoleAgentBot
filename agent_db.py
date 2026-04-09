@@ -779,6 +779,45 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving daily memory record: {e}")
             return None
 
+    def get_last_7_days_daily_memory(self):
+        """Return the last 7 days of daily memory summaries for weekly personality evolution.
+        
+        Returns a list of dicts with memory_date, summary, and updated_at fields,
+        ordered from oldest to newest (chronological order).
+        """
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                # Get records from last 7 days, ordered chronologically (oldest first)
+                cursor.execute('''
+                    SELECT memory_date, summary, metadata, updated_at
+                    FROM daily_memory
+                    WHERE summary IS NOT NULL 
+                        AND summary != '' 
+                        AND summary != '[Error in internal task]'
+                        AND memory_date >= date('now', '-7 days')
+                    ORDER BY memory_date ASC
+                    LIMIT 7
+                ''')
+                rows = cursor.fetchall()
+                conn.close()
+                
+                memories = []
+                for row in rows:
+                    metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+                    memories.append({
+                        "memory_date": row["memory_date"],
+                        "summary": row["summary"] or "",
+                        "metadata": metadata,
+                        "updated_at": row["updated_at"],
+                    })
+                return memories
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error retrieving last 7 days daily memory: {e}")
+            return []
+
     def get_most_recent_memory_record(self):
         """Return the most recent stored recent memory row for the current server, regardless of date."""
         try:

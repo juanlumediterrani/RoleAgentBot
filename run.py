@@ -24,6 +24,7 @@ from agent_engine import (
     refresh_due_recent_memories,
     refresh_due_relationship_memories,
 )
+from agent_mind import generate_weekly_personality_evolution
 
 logger = get_logger('run')
 
@@ -205,6 +206,33 @@ async def execute_relationship_memory_refresh_all_servers():
         logger.error(f"[run] ❌ Error in relationship memory refresh: {e}")
 
 
+async def execute_weekly_personality_evolution_all_servers():
+    """Execute weekly personality evolution for all servers."""
+    from agent_db import get_all_server_ids
+    
+    server_ids = get_all_server_ids()
+    if not server_ids:
+        logger.info("[run] 🧬 No servers found for weekly personality evolution")
+        return
+    
+    logger.info(f"[run] 🧬 Running weekly personality evolution for {len(server_ids)} servers")
+    
+    total_evolved = 0
+    for server_id in server_ids:
+        try:
+            result = await asyncio.to_thread(generate_weekly_personality_evolution, server_id)
+            if result.get("success"):
+                total_evolved += 1
+                logger.info(f"[run] 🧬 Weekly personality evolution completed for '{server_id}'")
+            else:
+                logger.warning(f"[run] ⚠️ Personality evolution skipped for '{server_id}': {result.get('error', 'Unknown')}")
+        except Exception as e:
+            logger.error(f"[run] ❌ Error in personality evolution for '{server_id}': {e}")
+    
+    if total_evolved:
+        logger.info(f"[run] 🧬 Weekly personality evolution completed: {total_evolved}/{len(server_ids)} servers evolved")
+
+
 def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
     roles_cfg = config.get("roles", {})
     next_run: dict[str, datetime] = {}
@@ -284,6 +312,7 @@ async def _execute_optional_subrole_tasks():
 async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dict[str, datetime]):
     task_specs = [
         ("daily_memory", execute_daily_memory_summary_all_servers, timedelta(days=1), "Next daily memory summary"),
+        ("weekly_personality_evolution", execute_weekly_personality_evolution_all_servers, timedelta(weeks=1), "Next weekly personality evolution"),
     ]
     for task_key, task_func, interval, log_label in task_specs:
         if now < next_non_role_run[task_key]:
@@ -314,8 +343,13 @@ async def scheduler(config: dict):
     next_daily_memory_run = datetime.now() + timedelta(hours=24)
     logger.info(f"[run] 🧠 Next global daily memory sweep scheduled for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
 
+    # Schedule weekly personality evolution 7 days from now
+    next_weekly_evolution_run = datetime.now() + timedelta(weeks=1)
+    logger.info(f"[run] 🧬 Next weekly personality evolution scheduled for {next_weekly_evolution_run:%Y-%m-%d %H:%M:%S}")
+
     next_non_role_run = {
         "daily_memory": next_daily_memory_run,
+        "weekly_personality_evolution": next_weekly_evolution_run,
     }
 
     while True:

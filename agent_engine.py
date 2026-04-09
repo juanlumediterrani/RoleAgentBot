@@ -159,55 +159,52 @@ def _cargar_personalidad() -> dict:
     personality_rel = agent_cfg.get("personality", "personalities/default.json")
     personality_path = os.path.join(_BASE_DIR, personality_rel)
     
-    # Check if personality is a directory (new split structure)
-    personality_dir = os.path.dirname(personality_path)
+    # Base personality directory
+    base_personality_dir = os.path.dirname(personality_path)
+    personality_dir = base_personality_dir
     
-    # Use server-specific personality directory if available
+    # Check for server-specific personality directory
     try:
         from agent_runtime import get_personality_directory
         server_personality_dir = get_personality_directory()
-        if server_personality_dir != personality_dir:
-            personality_dir = server_personality_dir
+        if server_personality_dir and server_personality_dir != base_personality_dir:
+            # Server-specific folder exists - use it for everything
+            if os.path.exists(os.path.join(server_personality_dir, 'personality.json')):
+                personality_dir = server_personality_dir
+                logger.debug(f"🧬 [PERSONALITY] Using server-specific personality from {server_personality_dir}")
     except Exception as e:
         logger.warning(f"Could not get server personality directory: {e}")
+    
+    # Load personality from selected directory (server or base)
+    merged_personality = {}
+    
     if os.path.exists(os.path.join(personality_dir, 'personality.json')) and \
        os.path.exists(os.path.join(personality_dir, 'prompts.json')):
         # Load split files
-        merged_personality = {}
-        
-        # Load personality.json
         personality_file = os.path.join(personality_dir, 'personality.json')
-        if os.path.exists(personality_file):
-            with open(personality_file, encoding="utf-8") as f:
-                merged_personality.update(json.load(f))
+        with open(personality_file, encoding="utf-8") as f:
+            merged_personality.update(json.load(f))
         
-        # Load prompts.json
         prompts_file = os.path.join(personality_dir, 'prompts.json')
-        if os.path.exists(prompts_file):
-            with open(prompts_file, encoding="utf-8") as f:
-                merged_personality.update(json.load(f))
+        with open(prompts_file, encoding="utf-8") as f:
+            merged_personality.update(json.load(f))
         
-        # Load descriptions.json
         descriptions_file = os.path.join(personality_dir, 'descriptions.json')
         if os.path.exists(descriptions_file):
             with open(descriptions_file, encoding="utf-8") as f:
                 descriptions_data = json.load(f)
-                # Merge descriptions data under 'discord' key to match JSON structure
                 if 'discord' not in merged_personality:
                     merged_personality['discord'] = {}
                 merged_personality['discord'].update(descriptions_data.get('discord', {}))
-                # Also store descriptions at root for backward compatibility
                 merged_personality['descriptions'] = descriptions_data.get('discord', {})
         
-        # Load answers.json
         answers_file = os.path.join(personality_dir, 'answers.json')
         if os.path.exists(answers_file):
             with open(answers_file, encoding="utf-8") as f:
-                answers_data = json.load(f)
-                # Merge answers data under 'answers' key
-                merged_personality['answers'] = answers_data
+                merged_personality['answers'] = json.load(f)
         
         return merged_personality
+    
     else:
         # Load single file structure
         with open(personality_path, encoding="utf-8") as f:
