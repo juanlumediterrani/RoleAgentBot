@@ -2377,14 +2377,28 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     
     test_logger.info(f"🧬 [TEST_EVOLUTION] Starting test evolution for server '{resolved_server}'")
     
-    # Generate 7 synthetic daily memories for testing
+    # Load 7 synthetic daily memories from test.json
+    test_memories_path = os.path.join(os.path.dirname(__file__), "personalities", "test.json")
+    try:
+        with open(test_memories_path, 'r', encoding='utf-8') as f:
+            test_data = json.load(f)
+        test_memory_paragraphs = test_data.get("test_daily_memories", [])
+    except Exception as e:
+        test_logger.error(f"🧬 [TEST_EVOLUTION] Failed to load test.json: {e}")
+        return {"success": False, "error": f"Failed to load test memories: {e}"}
+    
+    if len(test_memory_paragraphs) < 7:
+        test_logger.error(f"🧬 [TEST_EVOLUTION] Insufficient test memories in test.json: {len(test_memory_paragraphs)}/7")
+        return {"success": False, "error": f"Insufficient test memories: {len(test_memory_paragraphs)}/7"}
+    
+    # Generate daily memory entries with dates
     today = date.today()
     test_daily_memories = []
     for i in range(7):
         memory_date = (today - timedelta(days=6-i)).isoformat()
         test_daily_memories.append({
             "memory_date": memory_date,
-            "summary": f"Test memory day {i+1}: Putre had interesting experiences with humans and learned something new about their behavior patterns.",
+            "summary": test_memory_paragraphs[i],
             "metadata": {},
             "updated_at": memory_date
         })
