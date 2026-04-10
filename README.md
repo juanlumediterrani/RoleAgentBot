@@ -37,7 +37,6 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 
 ### 🛡️ Safety & Rate Limiting
 - **Fatigue Limit System**: Configurable rate limits (burst, hourly, daily) with intelligent exemptions
-- **Taboo Detection**: Automatic moderation of inappropriate language
 - **Permission Controls**: Admin-only commands and restricted operations
 - **Graceful Degradation**: Fallback mechanisms for service failures
 - **Server-Specific Logging**: Isolated log directories per Discord server for better debugging and privacy
