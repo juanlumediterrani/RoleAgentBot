@@ -16,19 +16,12 @@ except ImportError:
     VERTEXAI_AVAILABLE = False
 
 from agent_logging import get_logger
-from agent_db import get_active_server_id, get_global_db
+from agent_db import get_global_db
 from agent_runtime import is_simulation_mode, increment_usage as runtime_increment_usage
 from postprocessor import postprocess_response, is_blocked_response
 from prompts_logger import log_agent_response, log_final_llm_prompt
 
 logger = get_logger('agent_mind')
-
-# Import bot display name for dynamic replacement
-try:
-    from discord_bot.discord_core_commands import _bot_display_name
-except ImportError:
-    # Fallback if discord is not available
-    _bot_display_name = "Bot"
 
 # Global cache for config
 _CONFIG_CACHE = None
@@ -89,7 +82,20 @@ def _engine():
     return agent_engine
 
 
-def _get_daily_memory_fallback() -> str:
+def _get_daily_memory_fallback(server_id: str = None) -> str:
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            template = personality.get("synthesis_paragraphs", {})
+            fallbacks = template.get("fallbacks", {})
+            fallback = fallbacks.get("daily_memory", "")
+            if isinstance(fallback, str) and fallback.strip():
+                return fallback.strip()
+        except Exception:
+            pass
+    # Fall back to global personality
     template = _engine().PERSONALITY.get("synthesis_paragraphs", {})
     fallbacks = template.get("fallbacks", {})
     fallback = fallbacks.get("daily_memory", "")
@@ -98,7 +104,20 @@ def _get_daily_memory_fallback() -> str:
     return "The character does not remember anything important from today."
 
 
-def _get_recent_memory_fallback() -> str:
+def _get_recent_memory_fallback(server_id: str = None) -> str:
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            template = personality.get("synthesis_paragraphs", {})
+            fallbacks = template.get("fallbacks", {})
+            fallback = fallbacks.get("recent_memory", "")
+            if isinstance(fallback, str) and fallback.strip():
+                return fallback.strip()
+        except Exception:
+            pass
+    # Fall back to global personality
     template = _engine().PERSONALITY.get("synthesis_paragraphs", {})
     fallbacks = template.get("fallbacks", {})
     fallback = fallbacks.get("recent_memory", "")
@@ -107,7 +126,19 @@ def _get_recent_memory_fallback() -> str:
     return "The character feels calm, with no notable recent events."
 
 
-def _get_daily_summary_task_lines() -> list[str]:
+def _get_daily_summary_task_lines(server_id: str = None) -> list[str]:
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            synthesis = personality.get("synthesis_paragraphs", {})
+            task_lines = synthesis.get("daily_summary_task", [])
+            if isinstance(task_lines, list) and task_lines:
+                return [str(line).strip() for line in task_lines if str(line).strip()]
+        except Exception:
+            pass
+    # Fall back to global personality
     synthesis = _engine().PERSONALITY.get("synthesis_paragraphs", {})
     task_lines = synthesis.get("daily_summary_task", [])
     if isinstance(task_lines, list) and task_lines:
@@ -120,7 +151,19 @@ def _get_daily_summary_task_lines() -> list[str]:
     ]
 
 
-def _get_recent_summary_task_lines() -> list[str]:
+def _get_recent_summary_task_lines(server_id: str = None) -> list[str]:
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            synthesis = personality.get("synthesis_paragraphs", {})
+            task_lines = synthesis.get("recent_memory_summary_task", [])
+            if isinstance(task_lines, list) and task_lines:
+                return [str(line).strip() for line in task_lines if str(line).strip()]
+        except Exception:
+            pass
+    # Fall back to global personality
     synthesis = _engine().PERSONALITY.get("synthesis_paragraphs", {})
     task_lines = synthesis.get("recent_memory_summary_task", [])
     if isinstance(task_lines, list) and task_lines:
@@ -133,20 +176,45 @@ def _get_recent_summary_task_lines() -> list[str]:
     ]
 
 
-def _get_relationship_summary_task_lines() -> list[str]:
-    template = _engine()._get_user_prompt_template()
-    task_lines = template.get("relationship_summary_task", [])
+def _get_relationship_summary_task_lines(server_id: str = None) -> list[str]:
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            synthesis = personality.get("synthesis_paragraphs", {})
+            task_lines = synthesis.get("relationship_summary_task", [])
+            if isinstance(task_lines, list) and task_lines:
+                return [str(line).strip() for line in task_lines if str(line).strip()]
+        except Exception:
+            pass
+    # Fall back to global personality
+    synthesis = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    task_lines = synthesis.get("relationship_summary_task", [])
     if isinstance(task_lines, list) and task_lines:
         return [str(line).strip() for line in task_lines if str(line).strip()]
     return [
-        "TASK: Update a single paragraph of internal memory about the character's relationship with this user.",
-        "OBJECTIVE: Merge the previous synthesis with the new interactions and keep only the most important details.",
-        "FORMAT: Return only one short paragraph, with no headings, no lists, and no quotes.",
+        "TASK: Update the memory paragraph about the relationship with this user as an inner voice.",
+        "OBJECTIVE: Combine the previous summary with the new interactions and keep only the most important details of the relationship.",
+        "FORMAT: Return only a short paragraph (250 characters), no headings, no lists, and no quotes.",
         "STYLE: Stay fully in character and write as an inner voice.",
     ]
 
 
-def _get_relationship_memory_fallback(user_name: str | None = None) -> str:
+def _get_relationship_memory_fallback(user_name: str | None = None, server_id: str = None) -> str:
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            template = personality.get("synthesis_paragraphs", {})
+            fallbacks = template.get("fallbacks", {})
+            fallback = fallbacks.get("relationship_memory", "")
+            if isinstance(fallback, str) and fallback.strip():
+                return fallback.replace("{user_name}", user_name or "human").strip()
+        except Exception:
+            pass
+    # Fall back to global personality
     template = _engine().PERSONALITY.get("synthesis_paragraphs", {})
     fallbacks = template.get("fallbacks", {})
     fallback = fallbacks.get("relationship_memory", "")
@@ -171,8 +239,17 @@ def _build_configured_synthesis_prompt(
     sections: list[tuple[str, str]],
     fallback_closing: str,
     dreaming_recollection: str | None = None,
+    server_id: str = None,
 ) -> str:
-    personality = _engine().PERSONALITY
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+        except Exception:
+            personality = _engine().PERSONALITY
+    else:
+        personality = _engine().PERSONALITY
     cfg = personality.get(prompt_key, {})
     instructions = cfg.get("instructions", []) if isinstance(cfg, dict) else []
     if not isinstance(instructions, list) or not instructions:
@@ -192,7 +269,7 @@ def _build_configured_synthesis_prompt(
             line = line.replace(f"{{{key}}}", str(value))
         
         # Inject format titles and placeholders after FORMATO line for recent memory summary
-        if prompt_key == "prompt_recent_memory_summary" and line.strip().endswith("en este formato:"):
+        if prompt_key == "prompt_recent_memory_summary" and (line.strip().endswith("en este formato:") or line.strip().endswith("in this format:")):
             # Get format components from synthesis_paragraphs with English fallbacks
             synthesis = personality.get("synthesis_paragraphs", {})
             formatting = synthesis.get("formatting", {})
@@ -253,9 +330,9 @@ def _build_last_dialogue_section(last_dialogue: list[dict]) -> str:
                 lines.append(f'Umano: "{human}"')
         if bot:
             if timestamp:
-                lines.append(f'[{timestamp}] {_bot_display_name}: "{bot}"')
+                lines.append(f'[{timestamp}] Bot: "{bot}"')
             else:
-                lines.append(f'{_bot_display_name}: "{bot}"')
+                lines.append(f'Bot: "{bot}"')
     return "\n".join(lines).strip() or _get_recent_dialogue_fallback()
 
 
@@ -273,18 +350,19 @@ def _format_daily_interactions_for_summary(interactions: list[dict]) -> str:
         if context:
             lines.append(f"Human/Event: {context}")
         if response:
-            lines.append(f"{_bot_display_name}: {response}")
+            lines.append(f"Bot: {response}")
         lines.append("")
     return "\n".join(lines).strip()
 
 
-def _build_recent_memory_summary_prompt(previous_summary: str, interactions: list[dict], target_date: str) -> str:
-    previous_block = previous_summary.strip() or _get_recent_memory_fallback()
+def _build_recent_memory_summary_prompt(previous_summary: str, interactions: list[dict], target_date: str, server_id: str = None) -> str:
+    previous_block = previous_summary.strip() or _get_recent_memory_fallback(server_id)
     interactions_block = _format_daily_interactions_for_summary(interactions)
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_recent_memory_summary",
-        fallback_instructions=_get_recent_summary_task_lines(),
+        fallback_instructions=_get_recent_summary_task_lines(server_id),
         replacements={"target_date": target_date},
+        server_id=server_id,
         sections=[
             ("TARGET DATE:", target_date),
             ("PREVIOUS RECENT MEMORY:", previous_block),
@@ -300,15 +378,26 @@ def _build_daily_summary_prompt(
     target_date: str,
     injected_memory: str | None = None,  # Kept for compatibility but will be ignored
     dreaming_recollection: str | None = None,
+    server_id: str = None,
 ) -> str:
     # Get synthesis paragraph labels from personality JSON with English fallback
-    synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            synthesis_labels = personality.get("synthesis_paragraphs", {})
+        except Exception:
+            synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    else:
+        synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    
     notable_memory_label = synthesis_labels.get("notable_recollection_to_weave_in", "NOTABLE RECOLLECTION TO WEAVE IN:")
     previous_daily_label = synthesis_labels.get("previous_daily_memory", "PREVIOUS DAILY MEMORY:")
     latest_recent_label = synthesis_labels.get("latest_recent_memory_of_the_day", "LATEST RECENT MEMORY OF THE DAY:")
     
-    previous_block = previous_summary.strip() or _get_daily_memory_fallback()
-    recent_block = recent_memory.strip() or _get_recent_memory_fallback()
+    previous_block = previous_summary.strip() or _get_daily_memory_fallback(server_id)
+    recent_block = recent_memory.strip() or _get_recent_memory_fallback(server_id)
     sections = [
         (previous_daily_label, previous_block),
         (latest_recent_label, recent_block),
@@ -318,7 +407,7 @@ def _build_daily_summary_prompt(
         sections.append((notable_memory_label, dreaming_recollection.strip()))
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_daily_memory_summary",
-        fallback_instructions=_get_daily_summary_task_lines(),
+        fallback_instructions=_get_daily_summary_task_lines(server_id),
         replacements={"target_date": target_date},
         sections=sections,
         fallback_closing="",
@@ -326,9 +415,18 @@ def _build_daily_summary_prompt(
     )
 
 
-def _build_relationship_summary_prompt(previous_summary: str, new_interactions: list[dict], user_name: str | None, target_date: str) -> str:
+def _build_relationship_summary_prompt(previous_summary: str, new_interactions: list[dict], user_name: str | None, target_date: str, server_id: str = None) -> str:
     # Get synthesis paragraph labels from personality JSON with English fallback
-    synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            synthesis_labels = personality.get("synthesis_paragraphs", {})
+        except Exception:
+            synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
+    else:
+        synthesis_labels = _engine().PERSONALITY.get("synthesis_paragraphs", {})
     target_user_label = synthesis_labels.get("target_user", "TARGET USER:")
     target_date_label = synthesis_labels.get("target_date", "TARGET DATE:")
     previous_relationship_label = synthesis_labels.get("previous_relationship_summary", "PREVIOUS RELATIONSHIP SUMMARY:")
@@ -360,7 +458,7 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
             if human:
                 lines.append(f'Human: "{human}"')
             if bot:
-                lines.append(f'{_bot_display_name}: "{bot}"')
+                lines.append(f'Bot: "{bot}"')
             lines.append("")
         interactions_block = "\n".join(lines).strip()
     
@@ -372,7 +470,7 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
     ]
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_relationship_memory_summary",
-        fallback_instructions=_get_relationship_summary_task_lines(),
+        fallback_instructions=_get_relationship_summary_task_lines(server_id),
         replacements={"user_name": user_name or "human", "target_date": target_date},
         sections=sections,
         fallback_closing="Return only the new final relationship-memory paragraph.",
@@ -381,12 +479,11 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
 
 def generate_recent_memory_summary(server_id: str | None = None, target_date: str | None = None, force: bool = False) -> str:
     engine = _engine()
-    resolved_server = server_id or get_active_server_id()
-    if not resolved_server:
-        logger.warning("🧠 [RECENT_MEMORY] No server context available, skipping summary generation")
+    if not server_id:
+        logger.warning("🧠 [RECENT_MEMORY] No server_id provided, skipping summary generation")
         return ""
     resolved_date = target_date or date.today().isoformat()
-    db_instance = get_global_db(server_id=resolved_server)
+    db_instance = get_global_db(server_id=server_id)
     existing_record = db_instance.get_recent_memory_record(memory_date=resolved_date)
     previous_summary = (existing_record or {}).get("summary", "").strip()
     last_interaction_at = (existing_record or {}).get("last_interaction_at")
@@ -421,23 +518,26 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
             logger.debug(f"Could not retrieve existing recent memory: {e}")
         
         # No existing summary found, use fallback but don't save it
-        fallback = _get_recent_memory_fallback()
+        fallback = _get_recent_memory_fallback(server_id)
         logger.info(f"🧠 [RECENT_MEMORY] No interactions and no existing summary, using fallback without saving")
         return fallback
 
-    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
-    summary_prompt = _build_recent_memory_summary_prompt(previous_summary, interactions, resolved_date)
+    # Use server-specific personality for system prompt
+    from agent_engine import _get_personality
+    server_personality = _get_personality(server_id)
+    system_instruction = engine._build_system_prompt(server_personality, server_id)
+    summary_prompt = _build_recent_memory_summary_prompt(previous_summary, interactions, resolved_date, server_id)
     summary_response = call_llm(
         system_instruction=system_instruction,
         prompt=summary_prompt,
         async_mode=True,
         call_type="recent_memory",
         critical=False,
-        server_id=resolved_server
+        server_id=server_id
     )
     
     # Extract new memory and notable recollection from response
-    new_memory_text, extracted_recollection = _extract_memory_from_summary(summary_response or "")
+    new_memory_text, extracted_recollection = _extract_memory_from_summary(summary_response or "", server_id)
     
     # Only update if LLM successfully generated new content (not error messages)
     if new_memory_text and new_memory_text.strip() and new_memory_text != "[Error in internal task]":
@@ -456,11 +556,11 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
                 "recollection_extracted": bool(extracted_recollection and extracted_recollection != "NO_MEMORY"),
             },
         )
-        logger.info(f"🧠 [RECENT_MEMORY] Updated summary for {resolved_server} on {resolved_date} ({len(interactions)} interactions, extracted: {bool(extracted_recollection and extracted_recollection != 'NO_MEMORY')})")
+        logger.info(f"🧠 [RECENT_MEMORY] Updated summary for {server_id} on {resolved_date} ({len(interactions)} interactions, extracted: {bool(extracted_recollection and extracted_recollection != 'NO_MEMORY')})")
     else:
         # LLM failed or returned error, keep existing summary unchanged
-        summary_text = previous_summary or _get_recent_memory_fallback()
-        logger.info(f"🧠 [RECENT_MEMORY] LLM failed, keeping existing summary for {resolved_server} on {resolved_date}")
+        summary_text = previous_summary or _get_recent_memory_fallback(server_id)
+        logger.info(f"🧠 [RECENT_MEMORY] LLM failed, keeping existing summary for {server_id} on {resolved_date}")
     
     # Store extracted recollection if present (even if memory update failed)
     if extracted_recollection and extracted_recollection != "NO_MEMORY":
@@ -480,8 +580,7 @@ def refresh_due_recent_memories(server_id: str | None = None) -> int:
     """Refresh recent memories for a server or all servers if none specified."""
     if server_id:
         # Process specific server
-        resolved_server = server_id
-        db_instance = get_global_db(server_id=resolved_server)
+        db_instance = get_global_db(server_id=server_id)
         due_refreshes = db_instance.get_due_pending_recent_memory_refreshes()
         if not due_refreshes:
             return 0
@@ -496,13 +595,13 @@ def refresh_due_recent_memories(server_id: str | None = None) -> int:
         )
         
         if not new_interactions:
-            logger.info(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {resolved_server}")
+            logger.info(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {server_id}")
             db_instance.mark_recent_memory_refresh_completed()
             return 0
         
         # Execute synthesis only if there are new interactions
-        logger.info(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {resolved_server}")
-        generate_recent_memory_summary(server_id=resolved_server)
+        logger.info(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {server_id}")
+        generate_recent_memory_summary(server_id=server_id)
         return 1
     else:
         # Process all servers
@@ -548,12 +647,16 @@ def _get_random_recollection_for_injection(db_instance) -> tuple[str | None, int
     return recollection_text, recollection_id
 
 
-def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None]:
+def _extract_memory_from_summary(summary_response: str, server_id: str = None) -> tuple[str, str | None]:
     """Extract the new memory paragraph and notable recollection from LLM response.
     
     Uses titles from personality JSON with English fallbacks.
     Captures content AFTER each marker, not the markers themselves.
     
+    Args:
+        summary_response: The LLM response to parse
+        server_id: Optional server ID for server-specific personality
+        
     Returns:
         Tuple of (new_memory_text, extracted_recollection or None)
     """
@@ -563,7 +666,15 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
         return "", None
     
     # Get titles from personality JSON with English fallbacks
-    personality = _engine().PERSONALITY
+    # Use server-specific personality if server_id provided
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+        except Exception:
+            personality = _engine().PERSONALITY
+    else:
+        personality = _engine().PERSONALITY
     recent_cfg = personality.get("prompt_recent_memory_summary", {})
     
     # Get titles from synthesis_paragraphs or use English fallbacks
@@ -656,13 +767,12 @@ def _extract_memory_from_summary(summary_response: str) -> tuple[str, str | None
 
 def generate_daily_memory_summary(server_id: str | None = None, target_date: str | None = None, force: bool = False) -> str:
     engine = _engine()
-    resolved_server = server_id or get_active_server_id()
-    if not resolved_server:
-        logger.warning("🧠 [DAILY_MEMORY] No server context available, skipping summary generation")
+    if not server_id:
+        logger.warning("🧠 [DAILY_MEMORY] No server_id provided, skipping summary generation")
         return ""
     resolved_date = target_date or date.today().isoformat()
     from agent_db import get_db_instance
-    db_instance = get_db_instance(resolved_server)
+    db_instance = get_db_instance(server_id)
     
     # Get the most recent daily memory (not just today's)
     most_recent_daily = db_instance.get_most_recent_daily_memory_record()
@@ -674,13 +784,13 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
     
     # Apply fallback logic only for first instances
     if not previous_summary:
-        previous_summary = _get_daily_memory_fallback()
+        previous_summary = _get_daily_memory_fallback(server_id)
         logger.info(f"🧠 [DAILY_MEMORY] First instance - no daily memory found, using daily fallback")
     else:
         logger.info(f"🧠 [DAILY_MEMORY] Using previous daily memory from {most_recent_daily.get('memory_date', 'unknown')}")
     
     if not recent_summary:
-        recent_summary = _get_recent_memory_fallback()
+        recent_summary = _get_recent_memory_fallback(server_id)
         logger.info(f"🧠 [DAILY_MEMORY] First instance - no recent memory found, using recent fallback")
     else:
         logger.info(f"🧠 [DAILY_MEMORY] Using recent memory from {recent_record.get('memory_date', 'unknown')}")
@@ -705,15 +815,18 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
     else:
         logger.info(f"🧠 [DAILY_MEMORY] No dreaming triggered (recollections: {recollection_count})")
     
-    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
-    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, None, dreaming_recollection)
+    # Use server-specific personality for system prompt
+    from agent_engine import _get_personality
+    server_personality = _get_personality(server_id)
+    system_instruction = engine._build_system_prompt(server_personality, server_id)
+    summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, None, dreaming_recollection, server_id)
     summary_response = call_llm(
         system_instruction=system_instruction,
         prompt=summary_prompt,
         async_mode=True,
         call_type="daily_memory",
         critical=False,
-        server_id=resolved_server
+        server_id=server_id
     )
     
     # Extract new memory (no extraction for daily memory now)
@@ -739,9 +852,9 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         )
         
         if save_success:
-            logger.info(f"🧠 [DAILY_MEMORY] Updated summary for {resolved_server} on {resolved_date} (recollections: {recollection_count}, dreaming: {bool(dreaming_recollection)})")
+            logger.info(f"🧠 [DAILY_MEMORY] Updated summary for {server_id} on {resolved_date} (recollections: {recollection_count}, dreaming: {bool(dreaming_recollection)})")
         else:
-            logger.error(f"🧠 [DAILY_MEMORY] FAILED to save summary for {resolved_server} on {resolved_date} - database error occurred")
+            logger.error(f"🧠 [DAILY_MEMORY] FAILED to save summary for {server_id} on {resolved_date} - database error occurred")
     else:
         # LLM failed or returned error, keep existing summary unchanged
         if previous_summary:
@@ -767,13 +880,13 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
                         logger.info(f"🧠 [DAILY_MEMORY] LLM failed, using existing daily summary from history")
                     else:
                         # No existing summary found, use fallback
-                        summary_text = _get_daily_memory_fallback()
+                        summary_text = _get_daily_memory_fallback(server_id)
                         logger.info(f"🧠 [DAILY_MEMORY] LLM failed and no existing summary, using fallback")
             except Exception as e:
                 logger.debug(f"Could not retrieve existing daily memory: {e}")
-                summary_text = _get_daily_memory_fallback()
+                summary_text = _get_daily_memory_fallback(server_id)
         
-        logger.info(f"🧠 [DAILY_MEMORY] LLM failed, keeping existing summary for {resolved_server} on {resolved_date}")
+        logger.info(f"🧠 [DAILY_MEMORY] LLM failed, keeping existing summary for {server_id} on {resolved_date}")
         
         # CRITICAL FIX: Save the fallback/previous summary to database even when LLM fails
         # This ensures bootstrap processes don't fail silently
@@ -792,23 +905,27 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         )
         
         if save_success:
-            logger.info(f"🧠 [DAILY_MEMORY] Saved fallback summary for {resolved_server} on {resolved_date}")
+            logger.info(f"🧠 [DAILY_MEMORY] Saved fallback summary for {server_id} on {resolved_date}")
         else:
-            logger.error(f"🧠 [DAILY_MEMORY] FAILED to save fallback summary for {resolved_server} on {resolved_date} - database error occurred")
+            logger.error(f"🧠 [DAILY_MEMORY] FAILED to save fallback summary for {server_id} on {resolved_date} - database error occurred")
     
     return summary_text
 
 
 def _build_daily_memory_text(db_instance) -> str:
     stored = db_instance.get_daily_memory().strip()
-    return stored or _get_daily_memory_fallback()
+    # Get server_id from db_instance if available
+    server_id = getattr(db_instance, 'server_id', None)
+    return stored or _get_daily_memory_fallback(server_id)
 
 
 def _build_recent_memory_text(db_instance) -> str:
     record = db_instance.get_recent_memory_record()
     if record and record.get("summary", "").strip():
         return record["summary"].strip()
-    return _get_recent_memory_fallback()
+    # Get server_id from db_instance if available
+    server_id = getattr(db_instance, 'server_id', None)
+    return _get_recent_memory_fallback(server_id)
 
 
 def generate_user_relationship_memory_summary(
@@ -820,12 +937,11 @@ def generate_user_relationship_memory_summary(
 ) -> str:
     import datetime
     engine = _engine()
-    resolved_server = server_id or get_active_server_id()
-    if not resolved_server:
-        logger.warning(f"🧠 [RELATIONSHIP_MEMORY] No server context available for user={user_id}")
+    if not server_id:
+        logger.warning(f"🧠 [RELATIONSHIP_MEMORY] No server_id provided for user={user_id}")
         return ""
     resolved_date = target_date or date.today().isoformat()
-    db_instance = get_global_db(server_id=resolved_server)
+    db_instance = get_global_db(server_id=server_id)
     temporary_state = db_instance.get_user_relationship_memory(user_id)
     daily_record = db_instance.get_user_relationship_daily_memory(user_id, memory_date=resolved_date)
     previous_summary = (temporary_state.get("summary") or "").strip()
@@ -852,7 +968,7 @@ def generate_user_relationship_memory_summary(
         
         # If we have existing memory, preserve it - don't overwrite with fallback
         if existing_summary and existing_summary.strip():
-            logger.info(f"🧠 [RELATIONSHIP_MEMORY] Preserving existing memory for user={user_id} server={resolved_server}")
+            logger.info(f"🧠 [RELATIONSHIP_MEMORY] Preserving existing memory for user={user_id} server={server_id}")
             # Update the temporary state to ensure it's current
             db_instance.upsert_user_relationship_memory(
                 user_id,
@@ -863,8 +979,8 @@ def generate_user_relationship_memory_summary(
             return existing_summary
         
         # Only use fallback if user truly has no relationship history
-        fallback = _get_relationship_memory_fallback(user_name)
-        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Using fallback for new user={user_id} server={resolved_server}")
+        fallback = _get_relationship_memory_fallback(user_name, server_id)
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Using fallback for new user={user_id} server={server_id}")
         db_instance.upsert_user_relationship_memory(
             user_id,
             fallback,
@@ -878,15 +994,18 @@ def generate_user_relationship_memory_summary(
         one_hour_ago = (datetime.datetime.now() - datetime.timedelta(hours=1)).isoformat()
         new_interactions = db_instance.get_user_interactions_since(user_id, since_iso=one_hour_ago, limit=100)
 
-    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
-    summary_prompt = _build_relationship_summary_prompt(previous_summary, new_interactions, user_name, resolved_date)
+    # Use server-specific personality for system prompt
+    from agent_engine import _get_personality
+    server_personality = _get_personality(server_id)
+    system_instruction = engine._build_system_prompt(server_personality, server_id)
+    summary_prompt = _build_relationship_summary_prompt(previous_summary, new_interactions, user_name, resolved_date, server_id)
     summary_response = call_llm(
         system_instruction=system_instruction,
         prompt=summary_prompt,
         async_mode=True,
         call_type="relationship_memory",
         critical=False,
-        server_id=resolved_server
+        server_id=server_id
     )
     llm_response = (summary_response or "").strip()
     
@@ -918,12 +1037,12 @@ def generate_user_relationship_memory_summary(
             metadata=metadata,
         )
         db_instance.mark_relationship_refresh_completed(user_id)
-        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Updated summary for user={user_id} server={resolved_server} date={resolved_date}")
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Updated summary for user={user_id} server={server_id} date={resolved_date}")
     else:
         # LLM failed or returned error, preserve existing summary
         if previous_summary and previous_summary.strip():
             summary_text = previous_summary
-            logger.info(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, preserving existing summary for user={user_id} server={resolved_server}")
+            logger.info(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, preserving existing summary for user={user_id} server={server_id}")
             # Update database with preserved summary to ensure Canvas can retrieve it
             db_instance.upsert_user_relationship_memory(
                 user_id,
@@ -939,8 +1058,8 @@ def generate_user_relationship_memory_summary(
             )
         else:
             # Only use fallback if there truly was no previous summary
-            summary_text = _get_relationship_memory_fallback(user_name)
-            logger.warning(f"🧠 [RELATIONSHIP_MEMORY] LLM failed and no existing summary, using fallback for user={user_id} server={resolved_server}")
+            summary_text = _get_relationship_memory_fallback(user_name, server_id)
+            logger.warning(f"🧠 [RELATIONSHIP_MEMORY] LLM failed and no existing summary, using fallback for user={user_id} server={server_id}")
             # Save fallback to database so Canvas can retrieve it
             db_instance.upsert_user_relationship_memory(
                 user_id,
@@ -963,8 +1082,7 @@ def refresh_due_relationship_memories(server_id: str | None = None) -> int:
     """Refresh relationship memories for a server or all servers if none specified."""
     if server_id:
         # Process specific server
-        resolved_server = server_id
-        db_instance = get_global_db(server_id=resolved_server)
+        db_instance = get_global_db(server_id=server_id)
         due_refreshes = db_instance.get_due_pending_relationship_refreshes()
         processed = 0
         for item in due_refreshes:
@@ -982,7 +1100,7 @@ def refresh_due_relationship_memories(server_id: str | None = None) -> int:
                 generate_user_relationship_memory_summary(
                     user_id=user_id,
                     user_name=user_name,
-                    server_id=resolved_server,
+                    server_id=server_id,
                 )
                 processed += 1
             except Exception as e:
@@ -1021,7 +1139,9 @@ def _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_
     
     # Only use fallback if user truly has no relationship history
     logger.info(f"🧠 [RELATIONSHIP_MEMORY] No existing memory found, using fallback for new user={user_id}")
-    fallback = _get_relationship_memory_fallback(user_name)
+    # Get server_id from db_instance if available
+    server_id = getattr(db_instance, 'server_id', None)
+    fallback = _get_relationship_memory_fallback(user_name, server_id)
     db_instance.upsert_user_relationship_memory(
         user_id,
         fallback,
@@ -1120,11 +1240,10 @@ def _build_prompt_memory_block(server=None):
     Build only the MEMORIES block with daily and recent memory.
     This function is now focused solely on basic memory construction.
     """
-    # Use the server parameter or get the active server
-    server_id = server or get_active_server_id()
-    if not server_id:
-        logger.warning("🧠 [MIND] No server context available, skipping memory-backed prompt enrichment")
+    if not server:
+        logger.warning("🧠 [MIND] No server_id provided, skipping memory-backed prompt enrichment")
         return ""
+    server_id = server
     
     db_instance = get_global_db(server_id=server_id)
     
@@ -1135,8 +1254,9 @@ def _build_prompt_memory_block(server=None):
         recent_memory = _build_recent_memory_text(db_instance)
     
     # Get custom prompt labels from personality JSON
-    engine = _engine()
-    synthesis_labels = engine.PERSONALITY.get("synthesis_paragraphs", {})
+    from agent_engine import _get_personality
+    personality = _get_personality(server_id) if server_id else _engine().PERSONALITY
+    synthesis_labels = personality.get("synthesis_paragraphs", {})
     memory_title = synthesis_labels.get("memory_title", "MEMORY:")
     memories_label = synthesis_labels.get("memories_label", "[MEMORIES]")
     recent_memories_label = synthesis_labels.get("recent_memories_label", "[RECENT MEMORIES]")
@@ -1163,8 +1283,10 @@ def _build_prompt_relationship_block(user_id: str, user_name: str | None = None,
     Build only the RELATIONSHIP block with user relationship memory.
     This function is now focused solely on relationship construction.
     """
-    server_id = server or get_active_server_id()
-    db_instance = get_global_db(server_id=server_id) if server_id else None
+    if not server:
+        return ""
+    server_id = server
+    db_instance = get_global_db(server_id=server_id)
     
     if not db_instance:
         return ""
@@ -1174,8 +1296,9 @@ def _build_prompt_relationship_block(user_id: str, user_name: str | None = None,
         return ""
     
     # Get relationship label from personality
-    engine = _engine()
-    relationship_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("relationship_title", "[RELATIONSHIP]")
+    from agent_engine import _get_personality
+    personality = _get_personality(server_id) if server_id else _engine().PERSONALITY
+    relationship_title = personality.get("synthesis_paragraphs", {}).get("relationship_title", "[RELATIONSHIP]")
     
     # Build RELATIONSHIP block
     relationship_block = [
@@ -1200,8 +1323,10 @@ def _build_conversation_user_prompt(
     memories_block = _build_prompt_memory_block(server=server)
     
     # Get database instance for memory retrieval
-    server_id = server or get_active_server_id()
-    db_instance = get_global_db(server_id=server_id) if server_id else None
+    if not server:
+        return ""
+    server_id = server
+    db_instance = get_global_db(server_id=server_id)
     
     # Build the complete prompt sections
     prompt_sections = []
@@ -1223,7 +1348,9 @@ def _build_conversation_user_prompt(
     
     # Add golden rules from personality or fallback to English
     engine = _engine()
-    golden_rules = engine.PERSONALITY.get("behaviors", {}).get("conversation", {}).get("golden_rules", [])
+    from agent_engine import _get_personality
+    personality = _get_personality(server_id) if server_id else engine.PERSONALITY
+    golden_rules = personality.get("behaviors", {}).get("conversation", {}).get("golden_rules", [])
     if not golden_rules:
         # English fallback golden rules
         golden_rules = [
@@ -1242,7 +1369,7 @@ def _build_conversation_user_prompt(
         prompt_sections.append("-" * 45)
     
     # Add user message
-    message_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("message_title", "## A USER NAMED {user_name} TELL YOU:")
+    message_title = personality.get("synthesis_paragraphs", {}).get("message_title", "## A USER NAMED {user_name} TELL YOU:")
     message_title = message_title.replace("{user_name}", user_name)
     prompt_sections.append(message_title)
     prompt_sections.append(user_content or "")
@@ -1251,12 +1378,12 @@ def _build_conversation_user_prompt(
     if db_instance and user_content:
         retrieved_memory = _detect_and_retrieve_memory(user_content, db_instance, user_id)
         if retrieved_memory:
-            memory_retrieval_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("memory_retrieval_title", "[THIS REMINDS YOU THAT:]")
+            memory_retrieval_title = personality.get("synthesis_paragraphs", {}).get("memory_retrieval_title", "[THIS REMINDS YOU THAT:]")
             prompt_sections.append(memory_retrieval_title)
             prompt_sections.append(retrieved_memory)
             prompt_sections.append("-" * 45)
     
-    response_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
+    response_title = personality.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
     prompt_sections.append(response_title)
     return "\n".join(prompt_sections)
 
@@ -1269,8 +1396,10 @@ def _build_prompt_last_interactions_block(
     Build only the LAST INTERACTIONS block with user's last 15 dialogue messages.
     This function is now focused solely on last interactions construction regardless of time window.
     """
-    server_id = server or get_active_server_id()
-    db_instance = get_global_db(server_id=server_id) if server_id else None
+    if not server:
+        return ""
+    server_id = server
+    db_instance = get_global_db(server_id=server_id)
     
     if not db_instance:
         return ""
@@ -1284,8 +1413,9 @@ def _build_prompt_last_interactions_block(
         return ""
     
     # Get last interactions label from personality
-    engine = _engine()
-    last_interactions_label = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("last_interactions_label", "[RECENT INTERACTIONS]")
+    from agent_engine import _get_personality
+    personality = _get_personality(server_id) if server_id else _engine().PERSONALITY
+    last_interactions_label = personality.get("synthesis_paragraphs", {}).get("last_interactions_label", "[RECENT INTERACTIONS]")
     
     # Build LAST INTERACTIONS block
     interactions_block = [
@@ -1356,8 +1486,9 @@ async def _build_prompt_channel_messages_block(
                 return ""
             
             # Get label from prompts.json or fallback
-            engine = _engine()
-            channel_label = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("recent_interactions_from_channel_label", "RECENT MESSAGES FROM CHANNEL:")
+            from agent_engine import _get_personality
+            personality = _get_personality(server) if server else _engine().PERSONALITY
+            channel_label = personality.get("synthesis_paragraphs", {}).get("recent_interactions_from_channel_label", "RECENT MESSAGES FROM CHANNEL:")
             
             # Build channel messages block
             channel_block = [channel_label]
@@ -1372,8 +1503,10 @@ async def _build_prompt_channel_messages_block(
         logger.info(f"🧠 [MIND] No Discord channel object provided, using database method")
     
     # Fallback: Use database method
-    server_id = server or get_active_server_id()
-    db_instance = get_global_db(server_id=server_id) if server_id else None
+    if not server:
+        return ""
+    server_id = server
+    db_instance = get_global_db(server_id=server_id)
     
     if not db_instance or not channel_id:
         return ""
@@ -1387,15 +1520,16 @@ async def _build_prompt_channel_messages_block(
         return ""
     
     # Get label from prompts.json or fallback to English
-    engine = _engine()
-    channel_label = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("recent_interactions_from_channel_label", "MENSAJES RECIENTES EN EL CANAL:")
+    from agent_engine import _get_personality
+    personality = _get_personality(server_id) if server_id else _engine().PERSONALITY
+    channel_label = personality.get("synthesis_paragraphs", {}).get("recent_interactions_from_channel_label", "MENSAJES RECIENTES EN EL CANAL:")
     
     # Build channel messages block
     channel_block = [channel_label]
     
     # Format channel messages (exclude commands, include bot responses)
     # Reverse messages to show chronological order (oldest first)
-    bot_name = engine.PERSONALITY.get("name", "Bot")
+    bot_name = personality.get("name", "Bot")
     for message in reversed(channel_messages):
         # Skip if it's a command (starts with !)
         if message['content'].strip().startswith('!'):
@@ -1448,9 +1582,12 @@ async def _build_conversation_channel_prompt(
     This function handles channel-specific context and mentions.
     """
     engine = _engine()
-    bot_name = engine.PERSONALITY.get("name", "Bot")
     content = (user_content or "").strip()
-    server_id = server or get_active_server_id()
+    server_id = server or get_server_id()
+    # Use server-specific personality instead of global proxy
+    from agent_engine import _get_personality
+    personality = _get_personality(server_id) if server_id else engine.PERSONALITY
+    bot_name = personality.get("name", "Bot")
     if not server_id:
         logger.warning("🧠 [MIND] No server context available, skipping memory-backed prompt enrichment")
         server_id = None
@@ -1481,7 +1618,7 @@ async def _build_conversation_channel_prompt(
         prompt_sections.append("-" * 45)
     
     # Add golden rules from personality or fallback to English
-    golden_rules = engine.PERSONALITY.get("behaviors", {}).get("conversation", {}).get("golden_rules_channel", [])
+    golden_rules = personality.get("behaviors", {}).get("conversation", {}).get("golden_rules_channel", [])
     if not golden_rules:
         # English fallback golden rules
         golden_rules = [
@@ -1501,7 +1638,7 @@ async def _build_conversation_channel_prompt(
         prompt_sections.append("-" * 45)
     
     # Add user message
-    message_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("message_title", "## MESSAGE:")
+    message_title = personality.get("synthesis_paragraphs", {}).get("message_title", "## MESSAGE:")
     message_title = message_title.replace("{user_name}", user_name)
     prompt_sections.append(message_title)
     prompt_sections.append(content)
@@ -1510,12 +1647,12 @@ async def _build_conversation_channel_prompt(
     if db_instance and user_id and content:
         retrieved_memory = _detect_and_retrieve_memory(content, db_instance, user_id)
         if retrieved_memory:
-            memory_retrieval_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("memory_retrieval_title", "[THIS REMINDS YOU THAT:]")
+            memory_retrieval_title = personality.get("synthesis_paragraphs", {}).get("memory_retrieval_title", "[THIS REMINDS YOU THAT:]")
             prompt_sections.append(memory_retrieval_title)
             prompt_sections.append(retrieved_memory)
             prompt_sections.append("-" * 45)
     
-    response_title = engine.PERSONALITY.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
+    response_title = personality.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
     prompt_sections.append(response_title)
     return "\n".join(prompt_sections)
 
@@ -1702,7 +1839,7 @@ def call_llm(
     
     # Log the prompt once at the beginning
     # Use provided server_id or get active server ID
-    effective_server_id = server_id or get_active_server_id()
+    effective_server_id = server_id
     log_final_llm_prompt(
         provider="vertexai" if not is_simulation_mode() and VERTEXAI_AVAILABLE else "groq",
         call_type=call_type,
@@ -1820,7 +1957,7 @@ def _call_vertexai_sync(
             
             # Log the response
             try:
-                effective_server_id = server_id or get_active_server_id()
+                effective_server_id = server_id
                 log_agent_response(postprocessed, role=call_type, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
             except Exception as log_error:
                 logger.warning(f"Failed to log response: {log_error}")
@@ -1888,7 +2025,7 @@ def _call_vertexai_async(
             
             # Log the response
             try:
-                effective_server_id = server_id or get_active_server_id()
+                effective_server_id = server_id
                 log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
             except Exception as log_error:
                 logger.warning(f"Failed to log subrole response: {log_error}")
@@ -1951,7 +2088,7 @@ def _call_groq_fallback(
         
         # Log the response
         try:
-            effective_server_id = server_id or get_active_server_id()
+            effective_server_id = server_id
             log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
@@ -2008,7 +2145,7 @@ def _call_mistral_fallback(
         
         # Log the response
         try:
-            effective_server_id = server_id or get_active_server_id()
+            effective_server_id = server_id
             log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
@@ -2224,18 +2361,17 @@ def generate_weekly_personality_evolution(
     import os
     from datetime import date, timedelta
     
+    if not server_id:
+        logger.warning("🧬 [PERSONALITY_EVOLUTION] No server_id provided")
+        return {"success": False, "error": "No server_id provided"}
+    
     engine = _engine()
-    resolved_server = server_id or get_active_server_id()
     
-    if not resolved_server:
-        logger.warning("🧬 [PERSONALITY_EVOLUTION] No server context available")
-        return {"success": False, "error": "No server context available"}
-    
-    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Starting weekly evolution for server '{resolved_server}'")
+    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Starting weekly evolution for server '{server_id}'")
     
     # Get database instance
     from agent_db import get_db_instance
-    db_instance = get_db_instance(resolved_server)
+    db_instance = get_db_instance(server_id)
     
     # Retrieve last 7 days of daily memory
     daily_memories = db_instance.get_last_7_days_daily_memory()
@@ -2261,7 +2397,7 @@ def generate_weekly_personality_evolution(
     personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
     personality_name = os.path.basename(os.path.dirname(personality_path))
     server_personality_dir = os.path.join(
-        os.path.dirname(__file__), "databases", resolved_server, personality_name
+        os.path.dirname(__file__), "databases", server_id, personality_name
     )
     server_personality_path = os.path.join(server_personality_dir, "personality.json")
     
@@ -2293,7 +2429,7 @@ def generate_weekly_personality_evolution(
     logger.info(f"🧬 [PERSONALITY_EVOLUTION] Processing week: {week_start} to {week_end} ({len(daily_memories)} days)")
     
     # Build system prompt and evolution prompt
-    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
+    system_instruction = engine._build_system_prompt(engine.PERSONALITY, server_id)
     evolution_prompt = _build_weekly_personality_evolution_prompt(
         daily_memories=daily_memories,
         current_identity_body=current_identity_body,
@@ -2309,7 +2445,7 @@ def generate_weekly_personality_evolution(
         async_mode=True,
         call_type="weekly_personality_evolution",
         critical=False,
-        server_id=resolved_server,
+        server_id=server_id,
     )
     
     if not llm_response or llm_response.strip() == "[Error in internal task]":
@@ -2371,7 +2507,7 @@ def generate_weekly_personality_evolution(
     return {
         "success": True,
         "message": f"Personality evolved for week {week_start} to {week_end}",
-        "server_id": resolved_server,
+        "server_id": server_id,
         "week_start": week_start,
         "week_end": week_end,
     }
@@ -2395,14 +2531,13 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     
     test_logger = get_logger('test_evolution')
     
+    if not server_id:
+        test_logger.warning("🧬 [TEST_EVOLUTION] No server_id provided")
+        return {"success": False, "error": "No server_id provided"}
+    
     engine = _engine()
-    resolved_server = server_id or get_active_server_id()
     
-    if not resolved_server:
-        test_logger.warning("🧬 [TEST_EVOLUTION] No server context available")
-        return {"success": False, "error": "No server context available"}
-    
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Starting test evolution for server '{resolved_server}'")
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Starting test evolution for server '{server_id}'")
     
     # Load 7 synthetic daily memories from test.json
     test_memories_path = os.path.join(os.path.dirname(__file__), "personalities", "test.json")
@@ -2438,7 +2573,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
     personality_name = os.path.basename(os.path.dirname(personality_path))
     server_personality_dir = os.path.join(
-        os.path.dirname(__file__), "databases", resolved_server, personality_name
+        os.path.dirname(__file__), "databases", server_id, personality_name
     )
     server_personality_path = os.path.join(server_personality_dir, "personality.json")
     
@@ -2469,7 +2604,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     test_logger.info(f"🧬 [TEST_EVOLUTION] Processing test week: {week_start} to {week_end}")
     
     # Build system prompt and evolution prompt
-    system_instruction = engine._build_system_prompt(engine.PERSONALITY)
+    system_instruction = engine._build_system_prompt(engine.PERSONALITY, server_id)
     evolution_prompt = _build_weekly_personality_evolution_prompt(
         daily_memories=test_daily_memories,
         current_identity_body=current_identity_body,
@@ -2482,10 +2617,10 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     log_prompt(
         prompt_type="test_personality_evolution",
         content=evolution_prompt,
-        metadata={"server_id": resolved_server, "test_mode": True},
-        server_id=resolved_server
+        metadata={"server_id": server_id, "test_mode": True},
+        server_id=server_id
     )
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Prompt logged to logs/{resolved_server}/prompt.log")
+    test_logger.info(f"🧬 [TEST_EVOLUTION] Prompt logged to logs/{server_id}/prompt.log")
     
     # Call LLM for evolution
     test_logger.info(f"🧬 [TEST_EVOLUTION] Calling LLM for test personality evolution...")
@@ -2495,7 +2630,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
         async_mode=True,
         call_type="test_weekly_personality_evolution",
         critical=False,
-        server_id=resolved_server,
+        server_id=server_id,
     )
     
     if not llm_response or llm_response.strip() == "[Error in internal task]":
@@ -2575,7 +2710,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     return {
         "success": True,
         "message": f"Test personality evolution completed for week {week_start} to {week_end}",
-        "server_id": resolved_server,
+        "server_id": server_id,
         "week_start": week_start,
         "week_end": week_end,
         "prompt_sent": evolution_prompt,

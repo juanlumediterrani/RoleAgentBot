@@ -18,7 +18,8 @@ logger = get_logger('agent_roles_db')
 def get_roles_db_path(server_id: str = "default") -> Path:
     """Generate database path for roles configuration."""
     from agent_db import get_personality_name
-    personality_name = get_personality_name()
+    personality_name = get_personality_name(server_id)
+    logger.info(f"[get_roles_db_path] server_id={server_id}, personality_name={personality_name}")
     db_name = f"roles_{personality_name}"
     return get_server_db_path_fallback(server_id, db_name)
 
@@ -529,13 +530,26 @@ class RolesDatabase:
             logger.error(f"Failed to get dice game history: {e}")
             return []
     
+    def _ensure_roles_config_table(self):
+        """Ensure roles_config table exists, re-initialize if missing."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='roles_config'
+            """)
+            if cursor.fetchone() is None:
+                logger.warning("roles_config table missing, re-initializing database")
+                self._init_tables()
+    
     def save_role_config(self, role_name: str, enabled: bool, config_data: str = None) -> bool:
-        """Save role configuration and toggle status - same pattern as behavior.db."""
+        """Save role configuration and toggle status."""
         try:
             with self._lock:
+                self._ensure_roles_config_table()
+                
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
-                    
                     cursor.execute('''
                         INSERT OR REPLACE INTO roles_config 
                         (role_name, enabled, config_data, created_at, updated_at)
@@ -554,12 +568,13 @@ class RolesDatabase:
             return False
     
     def get_role_config(self, role_name: str, default_enabled: bool = False) -> Dict[str, Any]:
-        """Get role configuration and toggle status - same pattern as behavior.db."""
+        """Get role configuration and toggle status."""
         try:
             with self._lock:
+                self._ensure_roles_config_table()
+                
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
-                    
                     cursor.execute("""
                         SELECT enabled, config_data, created_at, updated_at
                         FROM roles_config
@@ -1547,12 +1562,52 @@ class RolesDatabase:
             return False
 
 
-# Global database instance
-_roles_db_instance = None
+# Global database instance cache
+_roles_db_instances: Dict[str, RolesDatabase] = {}
 
 def get_roles_db_instance(server_id: str = "default") -> RolesDatabase:
     """Get the roles database instance for a specific server."""
-    global _roles_db_instance
-    if _roles_db_instance is None or _roles_db_instance.server_id != server_id:
-        _roles_db_instance = RolesDatabase(server_id)
-    return _roles_db_instance
+    global _roles_db_instances
+    # Redirect "default" to "0" as placeholder for roles initialization
+    # This prevents creation of roles_agent.db when no server_id is provided
+    if server_id == "default":
+        server_id = "0"
+        logger.info("Redirecting roles_db initialization from 'default' to server 0 as placeholder")
+    
+    # Generate the current database path for this server
+    current_db_path = get_roles_db_path(server_id)
+    cache_key = f"{server_id}:{current_db_path}"
+    
+    # Check if we have a cached instance with the same database path
+    if cache_key not in _roles_db_instances:
+        _roles_db_instances[cache_key] = RolesDatabase(server_id)
+    else:
+        # Verify that the cached instance still points to the correct database path
+        # This handles personality changes where the cache might have stale paths
+        cached_instance = _roles_db_instances[cache_key]
+        if str(cached_instance.db_path) != str(current_db_path):
+            logger.warning(f"🔄 Database path changed for server {server_id}: {cached_instance.db_path} -> {current_db_path}")
+            del _roles_db_instances[cache_key]
+            _roles_db_instances[cache_key] = RolesDatabase(server_id)
+    
+    return _roles_db_instances[cache_key]
+
+def invalidate_roles_db_instance(server_id: str = None):
+    """Invalidate cached roles database instance for a server or all servers.
+    
+    Call this after personality change so the next get_roles_db_instance()
+    creates a new RolesDatabase pointing to the correct personality db file.
+    
+    Args:
+        server_id: Server ID to invalidate, or None to clear all.
+    """
+    global _roles_db_instances
+    if server_id:
+        # Invalidate all instances for this server (any personality)
+        keys_to_remove = [k for k in _roles_db_instances.keys() if k.startswith(f"{server_id}:")]
+        for key in keys_to_remove:
+            del _roles_db_instances[key]
+            logger.info(f"🗄️ [ROLES] Invalidated cached db instance for server: {server_id}")
+    else:
+        _roles_db_instances.clear()
+        logger.info("🗄️ [ROLES] Invalidated all cached db instances")

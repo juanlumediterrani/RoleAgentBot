@@ -10,7 +10,7 @@ try:
 except ImportError:
     MISTRAL_AVAILABLE = False
 
-from agent_db import get_active_server_id, increment_fatigue_count, get_fatigue_stats
+from agent_db import increment_fatigue_count, get_fatigue_stats
 from agent_logging import get_logger
 
 load_dotenv()
@@ -54,24 +54,52 @@ def get_runtime_base_dir() -> str:
     return _BASE_DIR
 
 
-def get_personality_directory() -> str:
+def get_personality_directory(server_id: str = None) -> str:
     """
     Get the personality directory, checking for server-specific copy first.
-    
+
+    Args:
+        server_id: Optional server ID to use explicitly.
+
     Returns the server-specific personality directory if it exists,
     otherwise falls back to the global personality directory.
     """
-    server_id = get_active_server_id()
+    # If server_id is explicitly provided, check for server-specific config first
     if server_id:
         try:
+            # First check server_config.json for active_personality
+            import json
+            server_config_path = os.path.join(_BASE_DIR, "databases", server_id, "server_config.json")
+            if os.path.exists(server_config_path):
+                with open(server_config_path, encoding="utf-8") as f:
+                    server_cfg = json.load(f)
+                active_personality = server_cfg.get("active_personality")
+                if active_personality:
+                    server_personality_dir = os.path.join(_BASE_DIR, "databases", server_id, active_personality)
+                    if os.path.exists(os.path.join(server_personality_dir, "personality.json")):
+                        logger.debug(f"Using server-specific personality directory: {server_personality_dir}")
+                        return server_personality_dir
+            
+            # Fall back to get_server_personality_dir from db_init
             from discord_bot.db_init import get_server_personality_dir
             server_dir = get_server_personality_dir(server_id)
             if server_dir:
                 return server_dir
         except Exception as e:
-            logger.warning(f"Could not get server personality directory: {e}")
+            logger.debug(f"Could not get server personality directory for {server_id}: {e}")
     
-    # Fall back to global personality directory
+    # Re-read global config to get current personality (not cached)
+    try:
+        with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
+            agent_cfg = json.load(f)
+        personality_rel = agent_cfg.get("personality", "personalities/default.json")
+        current_personality_path = os.path.join(_BASE_DIR, personality_rel)
+        if os.path.exists(current_personality_path):
+            return os.path.dirname(current_personality_path)
+    except Exception as e:
+        logger.debug(f"Could not read current personality from config: {e}")
+    
+    # Fall back to cached personality directory
     return _PERSONALITY_DIR
 
 
@@ -92,12 +120,11 @@ def get_personality_file_path(filename: str) -> str:
     return os.path.join(personality_dir, filename)
 
 
-def get_daily_usage(personality_name: str, user_id: str = None, user_name: str = None) -> int:
+def get_daily_usage(personality_name: str, user_id: str = None, user_name: str = None, server_id: str = None) -> int:
     """Get daily usage from database."""
     if _SIMULATION_MODE:
         return 0
 
-    server_id = get_active_server_id()
     if not server_id:
         return 0
 
@@ -116,12 +143,11 @@ def get_daily_usage(personality_name: str, user_id: str = None, user_name: str =
         return 0
 
 
-def increment_usage(personality_name: str, user_id: str = None, user_name: str = None) -> int:
+def increment_usage(personality_name: str, user_id: str = None, user_name: str = None, server_id: str = None) -> int:
     """Increment usage counter in database."""
     if _SIMULATION_MODE:
         return 1
 
-    server_id = get_active_server_id()
     if not server_id:
         return 1
 

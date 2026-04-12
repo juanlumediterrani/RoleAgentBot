@@ -8,7 +8,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 _ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 
 
-def _get_active_server_id() -> str | None:
+def _server_id() -> str | None:
     import os
     env_active = os.getenv("ACTIVE_SERVER_ID")
     if env_active:
@@ -23,12 +23,27 @@ def _get_active_server_id() -> str | None:
     return None
 
 def get_personality_name():
-    """Get the active personality name for log file naming."""
+    """Get the active personality name for database/log file naming.
+    
+    Uses the directory name (e.g., 'putre(english)') rather than the
+    'name' field from personality.json to ensure unique database names.
+    """
     import os
     env_personality = os.getenv('PERSONALITY')
     if env_personality:
         return env_personality.lower()
 
+    try:
+        # Get the personality directory path and extract the folder name
+        from agent_runtime import get_personality_directory
+        personality_dir = get_personality_directory()
+        if personality_dir:
+            # Use the directory name (e.g., 'putre(english)') not the JSON 'name' field
+            return os.path.basename(personality_dir).lower()
+    except Exception:
+        pass
+    
+    # Fallback to JSON name field
     try:
         from agent_engine import PERSONALITY
         return PERSONALITY.get("name", "agent").lower()
@@ -57,7 +72,7 @@ def get_server_log_path(server_name: str, personality_name: str = None) -> Path:
         print(f"📝 Falling back to base log directory: {LOG_DIR}")
         server_dir = LOG_DIR
 
-    log_name = personality_name or get_personality_name()
+    log_name = personality_name or get_personality_name(None)
     log_file = server_dir / f'{log_name}.log'
 
     try:
@@ -71,7 +86,7 @@ def get_server_log_path(server_name: str, personality_name: str = None) -> Path:
     return log_file
 
 
-_active_server = _get_active_server_id()
+_active_server = _server_id()
 if _active_server:
     _current_log_file = get_server_log_path(_active_server, get_personality_name())
 else:

@@ -22,17 +22,33 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 _ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 
 def get_active_server_id() -> str | None:
-    """Get the active server ID from environment or file."""
-    env_active = os.getenv("ACTIVE_SERVER_ID")
-    if env_active:
-        value = env_active.strip()
-        return value or None
+    """DEPRECATED: This function is deprecated and will be removed.
+    Always pass server_id explicitly to avoid cross-server data contamination.
+    """
+    logger.warning("🚨 get_active_server_id() is deprecated. Pass server_id explicitly.")
+    return None
+
+def get_server_id() -> str | None:
+    """Get the current server ID from databases directory.
+    
+    Reads the server ID from the numeric folder name inside databases/.
+    
+    Returns:
+        str | None: Server ID as string, or None if not found
+    """
     try:
-        if _ACTIVE_SERVER_FILE.exists():
-            value = _ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip()
-            return value or None
-    except Exception:
-        return None
+        db_dir = Path("databases")
+        if db_dir.exists():
+            server_dirs = [d for d in db_dir.iterdir() if d.is_dir() and d.name.isdigit()]
+            if len(server_dirs) == 1:
+                # Only one server directory, use it
+                return server_dirs[0].name
+            elif len(server_dirs) > 1:
+                # Multiple servers, can't determine which one
+                logger.warning(f"Multiple server directories found: {[d.name for d in server_dirs]}. Cannot determine active server.")
+    except Exception as e:
+        logger.warning(f"Error reading databases directory: {e}")
+    
     return None
 
 def get_all_server_ids() -> list[str]:
@@ -46,7 +62,7 @@ def get_all_server_ids() -> list[str]:
         for server_dir in db_dir.iterdir():
             if server_dir.is_dir() and server_dir.name.isdigit():
                 # Check if this server has an agent database
-                agent_db_path = server_dir / f"agent_{get_personality_name().lower()}.db"
+                agent_db_path = server_dir / f"agent_{get_personality_name(server_dir.name).lower()}.db"
                 if agent_db_path.exists():
                     server_ids.append(server_dir.name)
         
@@ -59,20 +75,60 @@ def get_all_server_ids() -> list[str]:
 def get_user_last_server_id(user_id: str) -> str | None:
     """Get the last server ID where the user had interactions."""
     try:
+        import sqlite3
+        from pathlib import Path
+        
         # Try to find the user's last server from any available database
         db_dir = Path("databases")
         if not db_dir.exists():
             return None
             
+        # Track the most recent interaction across all servers
+        most_recent_server = None
+        most_recent_time = None
+        
         # Look through all server databases to find the most recent interaction
         for server_dir in db_dir.iterdir():
-            if server_dir.is_dir():
-                # Check for agent database
-                agent_db_path = server_dir / f"agent_{get_personality_name().lower()}.db"
-                if agent_db_path.exists():
-                    # The server directory name is the server ID
-                    return server_dir.name
-        return None
+            if not server_dir.is_dir():
+                continue
+                
+            server_id = server_dir.name
+            # Check for agent database
+            personality = get_personality_name(server_id)
+            agent_db_path = server_dir / f"agent_{personality.lower()}.db"
+            
+            if not agent_db_path.exists():
+                continue
+                
+            try:
+                # Connect to this server's database
+                conn = sqlite3.connect(str(agent_db_path))
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                # Look for the most recent interaction from this user
+                cursor.execute('''
+                    SELECT servidor_id, fecha 
+                    FROM interacciones 
+                    WHERE usuario_id = ? 
+                    ORDER BY fecha DESC 
+                    LIMIT 1
+                ''', (str(user_id),))
+                
+                row = cursor.fetchone()
+                conn.close()
+                
+                if row:
+                    interaction_time = row['fecha']
+                    if most_recent_time is None or interaction_time > most_recent_time:
+                        most_recent_time = interaction_time
+                        most_recent_server = str(row['servidor_id']) if row['servidor_id'] else server_id
+                        
+            except Exception as e:
+                logger.debug(f"Could not check server {server_id} for user {user_id}: {e}")
+                continue
+        
+        return most_recent_server
     except Exception as e:
         logger.warning(f"Could not get user's last server: {e}")
         return None
@@ -108,7 +164,7 @@ def _resolve_server_storage_id(server_id: str | None) -> str | None:
     if candidate and candidate.isdigit():
         return candidate
 
-    active = get_active_server_id()
+    active = get_server_id()
     if active and active.isdigit():
         return active
 
@@ -138,7 +194,7 @@ def get_server_db_path(server_id: str, db_name: str = None) -> Path:
         server_dir = DB_DIR
     
     # Use provided DB name or global default
-    db_filename = db_name or get_personality_name()
+    db_filename = db_name or get_personality_name(server_id)
     db_file_name = db_filename if str(db_filename).endswith('.db') else f'{db_filename}.db'
     db_path = server_dir / db_file_name
     
@@ -219,19 +275,55 @@ def get_server_log_path(server_id: str, log_name: str) -> Path:
     
     return server_dir / log_name
 
-def get_personality_name():
-    """Get personality name from environment variable or configuration."""
-    # First try from environment variable (priority in Docker)
+def get_personality_name(server_id: str = None):
+    """Get personality name for database naming.
+
+    Uses the directory name (e.g., 'putre(english)') from runtime
+    rather than the 'name' field from personality.json to ensure
+    correct server-specific database naming.
+
+    Args:
+        server_id: Optional server ID to get personality for specific server.
+                  If not provided, uses active server detection.
+    """
+    # Server 0 is a placeholder for initialization only - skip server_config check
+    if server_id == "0":
+        env_personality = os.getenv('PERSONALITY')
+        if env_personality:
+            return env_personality.lower()
+        return "agent"  # Fallback for server 0 placeholder
+    
+    # Try to get from server-specific config (highest priority for server-specific requests)
+    if server_id:
+        try:
+            import json
+            server_config_path = Path("databases") / server_id / "server_config.json"
+            if server_config_path.exists():
+                with open(server_config_path, encoding="utf-8") as f:
+                    server_cfg = json.load(f)
+                active_personality = server_cfg.get("active_personality")
+                if active_personality:
+                    logger.info(f"[get_personality_name] Using active_personality from server_config for server {server_id}: {active_personality}")
+                    return active_personality.lower()
+                else:
+                    logger.warning(f"[get_personality_name] server_config exists but no active_personality for server {server_id}")
+            else:
+                logger.warning(f"[get_personality_name] server_config.json not found for server {server_id}")
+        except Exception as e:
+            logger.error(f"[get_personality_name] Error reading server_config for server {server_id}: {e}")
+
+    # Then try from environment variable (fallback for global operations or when server_config is missing)
     env_personality = os.getenv('PERSONALITY')
     if env_personality:
+        if server_id:
+            logger.info(f"[get_personality_name] Using PERSONALITY env var as fallback for server {server_id}: {env_personality}")
+        else:
+            logger.info(f"[get_personality_name] Using PERSONALITY env var (no server_id): {env_personality}")
         return env_personality.lower()
-    
-    # Then try from agent_engine
-    try:
-        from agent_engine import PERSONALITY
-        return PERSONALITY.get("name", "agent").lower()
-    except:
-        return "agent"
+
+    # Final fallback
+    logger.warning(f"[get_personality_name] No personality found, using fallback 'agent'")
+    return "agent"
 
 # Path and limits configuration
 BASE_DIR = Path(__file__).parent
@@ -241,8 +333,8 @@ class AgentDatabase:
     def __init__(self, server_id: str = "default", db_path: Path = None):
         self.server_id = server_id
         if db_path is None:
-            # Use personality-specific database name
-            personality_name = get_personality_name()
+            # Use personality-specific database name with explicit server_id
+            personality_name = get_personality_name(server_id)
             db_name = f"agent_{personality_name}"
             self.db_path = get_server_db_path_fallback(server_id, db_name)
         else:
@@ -275,8 +367,8 @@ class AgentDatabase:
             if server_storage_id:
                 fallback_dir = fallback_dir / server_storage_id
             fallback_dir.mkdir(parents=True, exist_ok=True)
-            
-            fallback_db = fallback_dir / f'agent_{get_personality_name()}.db'
+
+            fallback_db = fallback_dir / f'agent_{get_personality_name(self.server_id)}.db'
             self.db_path = fallback_db
             logger.info(f"ℹ️ [DB] Database relocated to {self.db_path}")
 
@@ -1671,12 +1763,36 @@ def get_db_instance(server_id: str = "default") -> AgentDatabase:
     global db
     # Only use active server if no specific server_id provided
     if server_id == "default":
-        active = get_active_server_id()
+        active = get_server_id()
         if active:
             server_id = active
     if server_id not in _db_instances:
         _db_instances[server_id] = AgentDatabase(server_id)
     return _db_instances[server_id]
+
+def invalidate_db_instance(server_id: str = None):
+    """Invalidate cached database instance for a server.
+    
+    Call this after personality change so the next get_db_instance()
+    creates a new AgentDatabase pointing to the correct personality db file.
+    
+    Args:
+        server_id: Server ID to invalidate, or None to clear all.
+    """
+    global _db_instances, db, _current_server_id
+    if server_id:
+        if server_id in _db_instances:
+            del _db_instances[server_id]
+            logger.info(f"🗄️ [DB] Invalidated cached db instance for server: {server_id}")
+        # Also reset global db if it was for this server
+        if _current_server_id == server_id:
+            db = None
+            _current_server_id = None
+    else:
+        _db_instances = {}
+        db = None
+        _current_server_id = None
+        logger.info("🗄️ [DB] Invalidated all cached db instances")
 
 def get_all_server_keys() -> list[str]:
     """Get all server keys from the database instances cache."""
@@ -1690,7 +1806,7 @@ def get_global_db(server_id: str = None, use_default_for_roles: bool = False) ->
     global db, _current_server_id
     
     if server_id is None:
-        active = _current_server_id or get_active_server_id()
+        active = _current_server_id or get_server_id()
         if active:
             server_id = active
         elif use_default_for_roles and os.getenv("ROLE_AGENT_PROCESS"):
@@ -1737,13 +1853,13 @@ def get_database_path(server_id: str, db_type: str) -> str:
         from agent_roles_db import get_roles_db_path
         return str(get_roles_db_path(server_id))
     
-    personality_name = get_personality_name()
-    
+    personality_name = get_personality_name(server_id)
+
     # Map database types to filenames (only for non-centralized roles)
     db_filenames = {
-        'news_watcher': f'watcher_{personality_name}', 
+        'news_watcher': f'watcher_{personality_name}',
     }
-    
+
     db_name = db_filenames.get(db_type, f'{db_type}_{personality_name}')
     return str(get_server_db_path_fallback(server_id, db_name))
 
@@ -1752,14 +1868,14 @@ def get_database_path(server_id: str, db_type: str) -> str:
 def get_fatigue_db_path(server_id: str) -> str:
     """
     Get path for fatigue database.
-    
+
     Args:
         server_id: Server ID
-        
+
     Returns:
         str: Full path to fatigue database
     """
-    personality_name = get_personality_name()
+    personality_name = get_personality_name(server_id)
     db_name = f"fatigue_{personality_name}"
     return str(get_server_db_path(server_id, db_name))
 

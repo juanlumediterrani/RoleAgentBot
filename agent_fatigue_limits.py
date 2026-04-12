@@ -9,7 +9,7 @@ Includes support for Fatigue Reset consumable to reset user fatigue limits.
 import datetime
 import logging
 from typing import Dict, Tuple, Optional, Any
-from agent_db import get_fatigue_stats, get_active_server_id, init_fatigue_db
+from agent_db import get_fatigue_stats, get_server_id, init_fatigue_db
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ async def reset_fatigue(user_id: str, user_name: str = None) -> Tuple[bool, str]
             return False, "Failed to consume Fatigue Reset"
 
         # Reset fatigue in database
-        server_id = get_active_server_id()
+        server_id = get_server_id()
         if server_id:
             reset_user_fatigue(server_id, user_id)
             logger.info(f"Fatigue reset for user {user_id} ({user_name}) on server {server_id}")
@@ -179,7 +179,7 @@ async def check_fatigue_limit(user_id: str, user_name: str = None, call_type: st
         if is_exempt_user(user_id, call_type):
             return FatigueLimitResult(allowed=True, reason="exempt")
         
-        server_id=get_active_server_id()
+        server_id=get_server_id()
         if not server_id:
             logger.warning("No active server found for fatigue check")
             return FatigueLimitResult(allowed=True, reason="no_server")
@@ -268,7 +268,7 @@ async def check_fatigue_limit(user_id: str, user_name: str = None, call_type: st
 def get_hourly_usage(personality_name: str, user_id: str = None) -> int:
     """Get hourly usage from database."""
     try:
-        server_id=get_active_server_id()
+        server_id=get_server_id()
         if not server_id:
             return 0
 
@@ -288,7 +288,7 @@ def get_hourly_usage(personality_name: str, user_id: str = None) -> int:
 def get_burst_usage(personality_name: str, user_id: str = None) -> int:
     """Get burst usage (last 5 minutes) from database."""
     try:
-        server_id=get_active_server_id()
+        server_id=get_server_id()
         if not server_id:
             return 0
 
@@ -328,7 +328,7 @@ def format_limit_exceeded_message(result: FatigueLimitResult, user_name: str = N
 def get_usage_summary(user_id: str, user_name: str = None) -> Dict[str, Any]:
     """Get comprehensive usage summary for a user"""
     try:
-        server_id=get_active_server_id()
+        server_id=get_server_id()
         if not server_id:
             return {}
         
