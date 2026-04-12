@@ -14,7 +14,7 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 - **Character Voice**: Each personality has unique speech patterns, vocabulary, and behavioral traits
 - **Dynamic Responses**: AI maintains character consistency across all interactions
 - **Multi-Language Support**: Personalities available in multiple languages (English, Spanish, Chinese)
-- **Per-Server Language Configuration**: Select preferred language for each server independently
+- **Per-Server Personalily configuration**: Select preferred personality for each server independently
 
 ### 🧠 Advanced Memory Architecture
 - **Four-Layer Memory System**:
