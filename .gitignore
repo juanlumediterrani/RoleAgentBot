@@ -4,20 +4,16 @@ include/
 lib/
 pyvenv.cfg
 venv/
-.vscode/
-.windsurf/
 
 # Caché de Python
 __pycache__/
 *.pyc
 
-# JSON de items de POE2 (se descargan dinámicamente de la API)
-roles/buscador_tesoros/items_ID_*.json
-
 # Base de datos
 *.db
 *.db-shm
 *.db-wal
+data/
 databases/
 
 # Logs
@@ -30,16 +26,18 @@ logs/
 .idea/
 
 # Scripts de configuración y archivos temporales
+temp/
+old/
 cookies.txt
-www.youtube.com_cookies.txt
 setup-bot.sh
 start_clean.sh
 .active_server
 setup-gcloud-auth.sh
 install_system_depths.sh
+setup-bot.sh
+start_clean.sh
 
 # Configuración sensible
-old/
 .env
 .env.tmp
 cookies.txt
@@ -48,5 +46,4 @@ cookies.txt
 *.backup
 *.bak
 
-setup-bot.sh
-start_clean.sh
+

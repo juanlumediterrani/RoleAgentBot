@@ -288,9 +288,11 @@ async def _execute_optional_role_tasks(roles_cfg: dict, next_run: dict[str, date
 
 def _get_due_subrole_tasks() -> list[tuple[str, dict]]:
     tasks_to_execute = []
-    for subrole_name, subrole_config in get_active_subroles().items():
+    from agent_db import get_server_id
+    server_id = get_server_id()
+    for subrole_name, subrole_config in get_active_subroles(server_id).items():
         frequency = _get_subrole_frequency_from_config(subrole_name)
-        if should_execute_subrole_task(subrole_name, frequency):
+        if should_execute_subrole_task(subrole_name, frequency, server_id):
             tasks_to_execute.append((subrole_name, subrole_config))
     return tasks_to_execute
 

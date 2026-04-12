@@ -282,7 +282,7 @@ This lets `think(...)` combine immediate context, short-term synthesis, and dura
 - Discord administration commands for activation, notifications, channels, and help
 - **Global RSS Feed Health System**: 
   - Feed health is checked once at startup in `run.py` via `global_feed_health.py`
-  - Healthy feeds are stored in a shared global database (`data/global_feeds_{personality}.db`)
+  - Healthy feeds are stored in a shared global database (`data/global_feeds.db`)
   - Each server syncs healthy feeds during initialization instead of checking individually
   - This prevents redundant network requests and improves startup performance
   - Feed status is tracked with health logs and automatic disabling of broken feeds
