@@ -8,7 +8,7 @@ import discord
 import asyncio
 from agent_logging import get_logger
 from agent_mind import call_llm, _build_conversation_user_prompt, _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
-from agent_engine import _build_system_prompt, PERSONALITY
+from agent_engine import _build_system_prompt, _get_personality
 from discord_bot.discord_utils import get_greeting_enabled, get_server_key, get_db_for_server
 from behavior.db_behavior import get_behavior_db_instance
 
@@ -68,9 +68,11 @@ def build_greeting_prompt(user_display_name: str, user_id: str, guild) -> str:
         Comprehensive contextual prompt with memory, relationship, and interaction history
     """
     server_name = get_server_key(guild)
-    
-    # Get greeting configuration from personality
-    greetings_cfg = PERSONALITY.get("behaviors", {}).get("greetings", {})
+
+    # Get greeting configuration from server-specific personality
+    server_id = str(guild.id) if guild else None
+    personality = _get_personality(server_id) if server_id else _get_personality()
+    greetings_cfg = personality.get("behaviors", {}).get("greetings", {})
     task_template = greetings_cfg.get("task", "Greet {username} that is already connected to the server.")
     golden_rules = greetings_cfg.get("golden_rules", [])
     response_title = greetings_cfg.get("response_title", "## WRITE ONLY THE GREET IN THE WORDS OF THE PERSONALITY:")
@@ -161,10 +163,12 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         
         # Build comprehensive contextual prompt for greeting
         greeting_prompt = build_greeting_prompt(after.display_name, after.id, after.guild)
-        
-        # Build system instruction for call_llm
-        from agent_engine import _build_system_prompt, PERSONALITY
-        system_instruction = _build_system_prompt(PERSONALITY)
+
+        # Build system instruction for call_llm (server-specific personality)
+        from agent_engine import _build_system_prompt
+        server_id = str(after.guild.id) if after.guild else None
+        server_personality = _get_personality(server_id) if server_id else _get_personality()
+        system_instruction = _build_system_prompt(server_personality, server_id)
         
         saludo = await asyncio.to_thread(
             call_llm,
@@ -191,7 +195,8 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name):
         # Register interaction in database
         try:
             db_instance = get_db_for_server(after.guild)
-            greetings_cfg = PERSONALITY.get("behaviors", {}).get("greetings", {})
+            personality = _get_personality(server_id) if server_id else _get_personality()
+            greetings_cfg = personality.get("behaviors", {}).get("greetings", {})
             interaction_message = greetings_cfg.get("interaction_message", "User went from offline to online (DM greeting)")
             await asyncio.to_thread(
                 db_instance.register_interaction,

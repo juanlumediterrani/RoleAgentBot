@@ -5,12 +5,10 @@ Generates periodic comments about active missions incorporating memories and per
 
 from agent_logging import get_logger
 
-# Import bot display name for dynamic replacement
 try:
-    from discord_bot.discord_core_commands import _bot_display_name
+    raise ImportError
 except ImportError:
-    # Fallback if discord is not available
-    _bot_display_name = "Bot"
+    pass  # Fallback not needed
 
 logger = get_logger('commentary')
 
@@ -30,7 +28,7 @@ Guidelines:
 - Be brief and entertaining (1-3 sentences)
 - Incorporate relevant memories if you have them
 - Mention at least one of your active missions
-- Maintain the personality of {_bot_display_name}
+- Maintain the bot's personality
 - Don't repeat yourself
 
 **ACTIVE ROLES:**
@@ -41,12 +39,12 @@ Guidelines:
 
 **FINAL INSTRUCTION:** Now produce your comment about the active missions.
 
-Just say the words of {_bot_display_name}:"""
+Just say the bot's words:"""
 
 def format_commentary_response(response: str) -> str:
     """Format the commentary response for Discord."""
     if not response or not str(response).strip():
-        return f"⚠️ {_bot_display_name} has nothing to say right now..."
+        return "⚠️ The bot has nothing to say right now..."
     
     # Clean up the response and add some flavor
     cleaned = str(response).strip()

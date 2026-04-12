@@ -3,7 +3,7 @@ Taboo behavior system - Handles forbidden word detection and responses.
 """
 
 import asyncio
-from agent_engine import PERSONALITY
+from agent_engine import _get_personality
 from agent_mind import call_llm
 from agent_logging import get_logger
 
@@ -72,11 +72,12 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
         True if taboo was processed, False otherwise
     """
     logger = get_logger('taboo')
-    
+
     try:
-        # Get taboo configuration from prompts.json/behaviors/taboo
-        taboo_prompt_cfg = PERSONALITY.get("behaviors", {}).get("taboo", {})
-        
+        # Get taboo configuration from server-specific personality prompts.json/behaviors/taboo
+        personality = _get_personality(server_id) if server_id else _get_personality()
+        taboo_prompt_cfg = personality.get("behaviors", {}).get("taboo", {})
+
         # Build the complete taboo prompt using the extracted function
         taboo_user_message = build_taboo_prompt(
             taboo_keyword=taboo_keyword,
@@ -84,13 +85,14 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
             message_content=message.content,
             taboo_prompt_cfg=taboo_prompt_cfg
         )
-        
+
         # Use call_llm to get full memory context and generate response
         from agent_engine import _build_system_prompt
         from agent_mind import _build_prompt_memory_block, _build_prompt_channel_messages_block
-        
-        # Build system prompt with personality
-        system_instruction = _build_system_prompt(PERSONALITY)
+
+        # Build system prompt with personality (server-specific)
+        server_personality = personality
+        system_instruction = _build_system_prompt(server_personality, server_id)
         
         # Add memory block below system prompt
         memory_block = _build_prompt_memory_block(server=server_id)

@@ -17,7 +17,7 @@ class BehaviorDB:
     def __init__(self, server_key: str):
         self.server_key = server_key
         from agent_db import get_personality_name
-        personality_name = get_personality_name()
+        personality_name = get_personality_name(server_key)
         db_name = f'behavior_{personality_name}'
         self.db_path = str(get_server_db_path_fallback(server_key, db_name))
         self._init_db()
@@ -659,6 +659,30 @@ _behavior_db_instances: dict[str, BehaviorDB] = {}
 
 def get_behavior_db_instance(server_key: str) -> BehaviorDB:
     """Get or create a behavior database instance for a server."""
+    # Redirect "default" to "0" as placeholder for behavior initialization
+    # This prevents creation of behavior_agent.db when no server_key is provided
+    if server_key == "default":
+        server_key = "0"
+        logger.info("Redirecting behavior_db initialization from 'default' to server 0 as placeholder")
+    
     if server_key not in _behavior_db_instances:
         _behavior_db_instances[server_key] = BehaviorDB(server_key)
     return _behavior_db_instances[server_key]
+
+def invalidate_behavior_db_instance(server_key: str = None):
+    """Invalidate cached behavior database instance for a server or all servers.
+    
+    Call this after personality change so the next get_behavior_db_instance()
+    creates a new BehaviorDB pointing to the correct personality db file.
+    
+    Args:
+        server_key: Server key to invalidate, or None to clear all.
+    """
+    global _behavior_db_instances
+    if server_key:
+        if server_key in _behavior_db_instances:
+            del _behavior_db_instances[server_key]
+            logger.info(f"🗄️ [BEHAVIOR] Invalidated cached db instance for server: {server_key}")
+    else:
+        _behavior_db_instances.clear()
+        logger.info("🗄️ [BEHAVIOR] Invalidated all cached db instances")

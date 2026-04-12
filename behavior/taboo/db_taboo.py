@@ -218,12 +218,3 @@ class TabooDB:
                 "total_keywords": 0,
                 "recent_additions": 0
             }
-
-# Global instance cache
-_taboo_db_instances: dict[str, TabooDB] = {}
-
-def get_taboo_db_instance(server_key: str) -> TabooDB:
-    """Get or create a taboo database instance for a server."""
-    if server_key not in _taboo_db_instances:
-        _taboo_db_instances[server_key] = TabooDB(server_key)
-    return _taboo_db_instances[server_key]
