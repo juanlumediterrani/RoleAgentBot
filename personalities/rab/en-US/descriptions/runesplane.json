@@ -1,0 +1,247 @@
+{
+    "positions": {
+        "Center (Core Issue)": "Center (Core Issue)",
+        "North (Higher Power)": "North (Higher Power)",
+        "South (Foundation)": "South (Foundation)",
+        "East (Challenges)": "East (Challenges)",
+        "West (Past Influences)": "West (Past Influences)",
+        "Center (Present Situation)": "Center (Present Situation)",
+        "North (Goals & Aspirations)": "North (Goals & Aspirations)",
+        "South (Past Influences)": "South (Past Influences)",
+        "East (Future Possibilities)": "East (Future Possibilities)",
+        "West (External Influences)": "West (External Influences)",
+        "Above (Spiritual Guidance)": "Above (Spiritual Guidance)",
+        "Below (Foundation & Inner Self)": "Below (Foundation & Inner Self)"
+    },
+    "translations": {
+        "fehu": {
+            "meaning": "Cattle, Mobile Wealth, Managed Abundance",
+            "keywords": "dynamic wealth, cattle, abundance, resource stewardship, vital energy transmission",
+            "interpretation": "Fehu embodies wealth as living, mobile property — cattle as the primordial measure of Norse value. It signals active material prosperity, the ability to generate, steward and transmit resources with responsibility. The abundance Fehu brings demands conscious management; wealth neglected will scatter and be lost."
+        },
+        "uruz": {
+            "meaning": "Aurochs, Primal Strength, Wild Power",
+            "keywords": "raw strength, untameable vitality, primal potency, will, overcoming",
+            "interpretation": "Uruz evokes the aurochs — the extinct wild ox — as a symbol of primal force that cannot be domesticated. It signals intense vital energy, courage before the unknown and the capacity to shape one's own reality through effort and unwavering will. It calls for channelling raw power with purposeful direction."
+        },
+        "thurisaz": {
+            "meaning": "Giant, Thorn, Reactive Force",
+            "keywords": "thurses, protection, thorn, Mjölnir, threshold, disruptive force",
+            "interpretation": "Associated with the thurses (chaos giants) and the power of Mjölnir. Thurisaz represents reactive force: it can protect or destroy depending on the direction in which it is applied. It signals the need to confront adversarial forces decisively, while warning against impulsive action in the face of chaos."
+        },
+        "ansuz": {
+            "meaning": "Aesir, Divine Breath, Sacred Word",
+            "keywords": "Odin, divine breath, revelation, runes, wisdom, sacred messages",
+            "interpretation": "The rune of the Aesir, linked above all to Odin as the giver of breath, consciousness and the runes. It evokes the sacred word, revelation and the transmission of wisdom from the divine to the human. It signals a moment of genuine inspiration, messages that must be heeded and an openness to knowledge that transforms."
+        },
+        "raidho": {
+            "meaning": "Wagon, Cosmic Journey, Ordered Rhythm",
+            "keywords": "wagon, purposeful travel, cosmic rhythm, order, right path",
+            "interpretation": "Raidho represents the wagon and the journey ordered in accordance with cosmic rhythm — not aimless wandering, but movement with clear direction aligned to the natural order. It signals progress guided by reason and proper rhythm, calling for determined advance along a consciously chosen path."
+        },
+        "kenaz": {
+            "meaning": "Torch, Craft Knowledge, Controlled Fire",
+            "keywords": "torch, illumination, mastery, forged creativity, technical vision",
+            "interpretation": "The torch that illuminates darkness and enables skilled work. Kenaz evokes technical knowledge gained through practice and mastery of a craft — creativity born of disciplined effort rather than chance inspiration. It signals that clarity will come through mastery and dedicated study."
+        },
+        "gebo": {
+            "meaning": "Gift, Sacred Exchange, Alliance",
+            "keywords": "gift, reciprocity, alliance, honour, balance, sacred offering",
+            "interpretation": "In Norse tradition the gift is never free: it creates bonds of obligation and honour between the parties. Gebo represents the sacred exchange and the alliance that arises from conscious reciprocity. It signals relationships balanced through honest giving and receiving, and the responsibility that every deep bond entails."
+        },
+        "wunjo": {
+            "meaning": "Joy, Clan Harmony, Wellbeing",
+            "keywords": "joy, harmony, clan wellbeing, fulfilment, belonging",
+            "interpretation": "The joy that springs from harmony within the clan and community — not fleeting pleasure, but the deep wellbeing of being in the right place with the right people. Wunjo signals a state of genuine fulfilment, accomplished purpose and the gladness of belonging to something greater than oneself."
+        },
+        "hagalaz": {
+            "meaning": "Hail, Disruptive Force, Cosmic Seed",
+            "keywords": "hail, inevitable chaos, transformation, disruption, crystal seed",
+            "interpretation": "Hail as an uncontrollable destructive force of nature, yet also as a crystalline seed containing within itself an ordered pattern. Hagalaz signals abrupt and inevitable changes that cannot be avoided — only traversed. It heralds deep transformation born of disruption: the storm that prepares the ground for what is new."
+        },
+        "nauthiz": {
+            "meaning": "Need, Need-Fire, Constraint",
+            "keywords": "need, constraint, need-fire, resistance, growth through adversity",
+            "interpretation": "The need that generates fire through friction — the emergency fire produced by physical effort and resistance. Nauthiz indicates the limitations that compel inner growth, the strength that arises precisely from adversity. It calls for not fleeing constraint, but finding within it the transformative energy."
+        },
+        "isa": {
+            "meaning": "Ice, Primordial Stillness, Halt",
+            "keywords": "ice, Niflheim, immobility, stillness, necessary pause, concentration",
+            "interpretation": "The primordial ice of Niflheim, the immovable principle of the cosmos from which creation arose. Isa signals a period of necessary stillness, of inner consolidation before movement. It calls for active patience — conscious immobility that allows forces to order themselves without forcing the process."
+        },
+        "jera": {
+            "meaning": "Year, Harvest, Natural Cycle",
+            "keywords": "annual cycle, harvest, just reward, right timing, seasonal order",
+            "interpretation": "The agricultural year cycle and the harvest as the inevitable reward of sustained effort. Jera signals that every process has its own proper time; fruits cannot be rushed — they emerge when the natural cycle allows. It calls for trust in the work done and confidence in the intrinsic justice of cyclical order."
+        },
+        "eiwaz": {
+            "meaning": "Yew, World Axis, Death and Rebirth",
+            "keywords": "yew, Yggdrasil, cosmic axis, permanence, initiation, ritual death",
+            "interpretation": "The yew, the sacred tree of great longevity associated with Yggdrasil and the axis connecting the nine worlds. Eiwaz represents permanence in the face of death, the connection between the visible and the invisible, and the transformation that arises from consciously confronting darkness. It is the rune of the initiate who has crossed the threshold."
+        },
+        "perthro": {
+            "meaning": "Dice Cup, Wyrd, Mystery of Fate",
+            "keywords": "wyrd, chance, fate, the hidden, invisible forces, fate-weaving",
+            "interpretation": "The cup from which the dice of fate are cast — symbol of the Wyrd, the web of destiny that the Norns weave without ceasing. Perthro evokes veiled mysteries, forces operating beyond individual will, and the acceptance of what cannot be known in advance. It calls for trust in the process even when the full pattern remains unseen."
+        },
+        "algiz": {
+            "meaning": "Elk, Divine Protection, Connection to the Sacred",
+            "keywords": "elk, elk-sedge, sacred protection, divine connection, watchfulness, shield",
+            "interpretation": "The rune of the elk-sedge — the plant that wounds whoever touches it carelessly. Algiz represents the sacred protection activated through connection with divine powers and spiritual watchfulness. It signals a period of safeguarding; it calls for conscious alertness and the seeking of higher guidance."
+        },
+        "sowilo": {
+            "meaning": "Sun, Solar Wheel, Victory of Light",
+            "keywords": "sun, solar wheel, victory, vital force, clarity, luminous impulse",
+            "interpretation": "The solar wheel in its victorious and regenerating power. Sowilo evokes the vital force of the sun that dissolves darkness, the success achieved through clear will, and the energy that advances without stopping. It signals a moment of luminous impulse and power to pursue one's purposes with determination."
+        },
+        "tiwaz": {
+            "meaning": "Tyr, Sacred Justice, Honourable Sacrifice",
+            "keywords": "Tyr, justice, honour, sacrifice, duty, rightful victory",
+            "interpretation": "The rune of the god Tyr, who sacrificed his hand to bind Fenrir for the good of all the worlds. Tiwaz represents the justice that demands personal sacrifice, honour as the supreme value that cannot be negotiated, and the courage to act according to duty even when it implies loss. It signals that rightful victory requires absolute integrity."
+        },
+        "berkano": {
+            "meaning": "Birch, Mother Goddess, Cyclical Renewal",
+            "keywords": "birch, goddess, fertility, birth, renewal, nurturing, gestation",
+            "interpretation": "The birch as the tree of the goddess and a symbol of cyclical renewal. Berkano evokes fertility, birth — both physical and of projects and ideas — and the patient nurturing that enables growth. It signals that the moment is auspicious for new beginnings, provided the process is tended with dedication and care."
+        },
+        "ehwaz": {
+            "meaning": "Horse, Sacred Partnership, Joint Movement",
+            "keywords": "horse, rider, cooperation, mutual trust, the divine twins, journey",
+            "interpretation": "The rune of the horse and its rider as an inseparable pair — a reflection of the divine twin gods Alcis. Ehwaz represents cooperation grounded in mutual trust, progressive movement toward a shared goal, and the harmony that arises when two distinct wills act in perfect coordination."
+        },
+        "mannaz": {
+            "meaning": "Human Being, Divine Consciousness, Shared Destiny",
+            "keywords": "humanity, consciousness, divine spark, community, collective destiny, cooperation",
+            "interpretation": "The rune of the human being as bearer of the divine spark and as an essentially communal being. Mannaz evokes responsibility toward the community, the destiny woven together with others and the expanded awareness that arises from recognising oneself in one's fellow. It signals the importance of understanding and collaboration."
+        },
+        "laguz": {
+            "meaning": "Water, Primal Lake, Deep Intuition",
+            "keywords": "water, unconscious, intuition, flow, feminine mystery, emotional healing",
+            "interpretation": "The primordial waters that precede creation and nourish all forms of life. Laguz represents deep intuition, the flow of the unconscious, the capacity to adapt like water and the hidden powers of the feminine and the lunar. It calls for trusting inner perceptions beyond rational understanding."
+        },
+        "ingwaz": {
+            "meaning": "Ing/Freyr, Latent Potential, Fertile Gestation",
+            "keywords": "Freyr, Ing, fertility, potential, gestation, stored energy, completed cycle",
+            "interpretation": "The rune of Ing — Freyr — god of fertility, abundance and peace. Ingwaz signals energy in silent maturation, a cycle completing itself inwardly before manifesting in the world. It calls for patience: the fertile potential is present and awaits the right moment to emerge."
+        },
+        "dagaz": {
+            "meaning": "Day, Liminal Threshold, Cycle's Dawn",
+            "keywords": "dawn, threshold, radical transformation, new cycle, paradox of time, clarity",
+            "interpretation": "The liminal instant of dawn and dusk as thresholds between worlds, between darkness and light. Dagaz represents radical transformation at the turning point, the moment when one cycle completes and another begins. It signals an opening toward a new stage of awareness and possibility."
+        },
+        "othala": {
+            "meaning": "Ancestral Estate, Clan Land, Inalienable Heritage",
+            "keywords": "heritage, ancestral land, clan, legacy, ancestral wisdom, identity, roots",
+            "interpretation": "The inalienable land of the clan, the patrimony that cannot be bought or sold because it belongs to the lineage. Othala evokes ancestral roots, wisdom inherited from forebears and the identity forged by lineage. It signals the importance of honouring one's origins and building on solid foundations so that the legacy endures."
+        }
+    },
+    "guidance": {
+        "love": {
+            "fehu": "Fehu calls you to cultivate shared abundance as the foundation of your loving bond. Love, like cattle, demands conscious stewardship and mutual generosity; affective wealth must circulate between both partners lest it stagnate.",
+            "uruz": "Uruz calls for authentic passion and instinctive connection in your love life. Now is the time to not tame the intensity of feeling, but to channel it with courage toward genuine union.",
+            "thurisaz": "Thurisaz signals that your relationship may be exposed to disruptive forces. Protect the bond with firmness and face obstacles together; the reactive power of this rune can become a shield if directed with awareness.",
+            "ansuz": "Ansuz makes honest communication the pillar of your relationship. Words spoken in truth and received with attentive listening weave the most enduring bond; seek revelation through dialogue.",
+            "raidho": "Raidho proposes that your loving path advances with ordered rhythm and shared purpose. Not blind impulse, but movement aligned with a consciously chosen destination is what strengthens the union.",
+            "kenaz": "Kenaz illuminates your love life with the torch of mutual knowledge. Deep understanding of the other — their lights and shadows — is the foundation of a relationship that transcends the surface.",
+            "gebo": "Gebo reminds you that true love is sacred exchange: every gift creates a bond of honour that balances the relationship. Ensure that giving and receiving flow with equity between you.",
+            "wunjo": "Wunjo signals a period of genuine harmony and wellbeing in your love life. The joy you experience is not fortuitous: it is the fruit of alignment between your being and your bond.",
+            "hagalaz": "Hagalaz announces that disruptive changes may shake your relationship. Do not avoid them: they are the storm that clears the ground and allows something more solid and authentic to be born.",
+            "nauthiz": "Nauthiz reveals that difficulties in the relationship are the friction-fire that forges true bonds. Shared need and overcoming adversity together create ties that comfort could never produce.",
+            "isa": "Isa calls for a period of stillness and consolidation in your love life. Do not force affective processes: let the ice settle and emotions clarify in the calm.",
+            "jera": "Jera assures you that the efforts invested in your relationship will bear fruit in their proper time. The natural cycle of love has its seasons; trust the process and honour the work done.",
+            "eiwaz": "Eiwaz signals that the relationship may be traversing a threshold of deep transformation. Resistance in the face of what threatens, and willingness to inner change, are the keys for the bond to emerge renewed.",
+            "perthro": "Perthro reminds you that love contains mysteries that escape rational control. Accept the uncertainty of affective Wyrd and trust the forces of destiny that weave the meeting of souls.",
+            "algiz": "Algiz calls you to protect your relationship with spiritual watchfulness and clarity of boundaries. Seek the guidance of the sacred to discern which influences nourish the bond and which erode it.",
+            "sowilo": "Sowilo illuminates your love life with solar energy and the power of victory. This is a moment of clear impulse: advance with confidence — the force of light accompanies your affective intentions.",
+            "tiwaz": "Tiwaz demands acting in love with irreducible honour and justice. Personal sacrifice for the good of the bond — like Tyr's — is what distinguishes true love from mere desire.",
+            "berkano": "Berkano fosters growth and renewal in relationships. Like the birch blossoming in spring, love flourishes when nurtured with patience, care and openness to new beginnings.",
+            "ehwaz": "Ehwaz reminds you that the ideal partnership works like horse and rider: two distinct wills moving in perfect coordination. Mutual trust and cooperation are the foundation of shared progress.",
+            "mannaz": "Mannaz highlights the human and communal dimension of love. Strive to recognise your partner as an equal; deep understanding of the other as a complete human being is the basis of every lasting union.",
+            "laguz": "Laguz calls for trusting intuition and emotional flow to navigate matters of the heart. The waters of the unconscious know what the rational mind cannot yet perceive.",
+            "ingwaz": "Ingwaz signals that love is in a period of fertile gestation. Do not rush its manifestation: the potential is present and will mature at the right moment if given the proper space.",
+            "dagaz": "Dagaz announces a transformative threshold in your love life. You stand at the liminal point between a cycle that ends and one that begins; embrace the opening with courage.",
+            "othala": "Othala reminds you that family and ancestral roots profoundly shape your affective bonds. Honouring the legacy — and recognising which inherited patterns nourish or limit love — is key to building authentic relationships."
+        },
+        "career": {
+            "fehu": "Fehu announces prosperity and abundance in your professional path. Dynamic wealth is available, but remember: cattle left unmanaged is lost — steward your resources and talents with responsibility.",
+            "uruz": "Uruz calls you to reclaim your primal strength in the professional sphere. Act with boldness and wild determination; the energy of the aurochs does not wait for permission to advance.",
+            "thurisaz": "Thurisaz warns of adversarial forces in your professional environment. Protect your interests with firmness and face obstacles directly; a decisive reaction is sometimes the best strategy.",
+            "ansuz": "Ansuz signals that clear communication and precise transmission of knowledge are your greatest professional assets right now. Also listen to the messages arriving from unexpected sources.",
+            "raidho": "Raidho indicates your career is in ordered movement toward a clear destination. Maintain the rhythm, do not deviate from the path laid down, and trust that sustained progress leads to the goal.",
+            "kenaz": "Kenaz illuminates your professional path with the clarity of the craftsperson who masters their trade. Creative solutions will arise from deep technical knowledge, not from improvisation.",
+            "gebo": "Gebo signals that professional alliances and partnerships based on honest reciprocity will be decisive for your success. The fair exchange of skills and resources opens doors that solitary effort keeps closed.",
+            "wunjo": "Wunjo announces fulfilment and harmony in your work. The alignment between your capacities and your labour produces a deep wellbeing that becomes the best fuel for high performance.",
+            "hagalaz": "Hagalaz signals that disruptions in your professional environment may seem like setbacks, but carry within them the seed of new opportunities. Traverse the storm without losing sight of the emerging pattern.",
+            "nauthiz": "Nauthiz reveals that professional pressures and constraints are the fire that forges solutions comfort would never have produced. Constraint is, here, a driver of innovation.",
+            "isa": "Isa recommends a strategic pause in your career. Stop, observe and consolidate before acting; the stillness of ice always precedes the thaw and movement.",
+            "jera": "Jera assures you that sustained professional effort will produce its fruits at the right moment. The harvest cycle cannot be rushed, but it never fails when the work has been honest.",
+            "eiwaz": "Eiwaz signals that resilience and adaptability are your main professional tools at this moment. Like the yew that survives for centuries, persistence in purpose overcomes obstacles.",
+            "perthro": "Perthro alerts you to opportunities emerging from the unexpected in your professional life. Professional Wyrd operates beyond your plans; remain open to what you cannot predict.",
+            "algiz": "Algiz advises protecting your professional position with strategic wisdom and establishing clear boundaries. Conscious vigilance is the best shield against those who seek to exploit your resources.",
+            "sowilo": "Sowilo drives your career with solar energy of victory. Success is close; advance decisively and let the clarity of your purpose dissolve the remaining obstacles.",
+            "tiwaz": "Tiwaz demands acting at work with unwavering honour and justice. Your professional integrity — even when it entails sacrifice — is the foundation of a reputation that endures.",
+            "berkano": "Berkano announces growth and new beginnings in your career. Like the birch in spring, projects seeded with care and patient nurturing are close to blossoming.",
+            "ehwaz": "Ehwaz signals that teamwork and cooperation grounded in mutual trust are the engine of your professional success. Seek the partner with whom to move in perfect coordination.",
+            "mannaz": "Mannaz reminds you that professional relationships and communal cooperation are foundations of your career. Recognise the other as an equal and build support networks based on mutual respect.",
+            "laguz": "Laguz calls for trusting intuition in professional decisions when rational data fall short. The creative flow of the unconscious can reveal paths that analysis does not reach.",
+            "ingwaz": "Ingwaz signals that your professional potential is in a phase of gestation. Do not force premature manifestation: the silent development occurring now is the foundation of a solid and lasting achievement.",
+            "dagaz": "Dagaz announces a threshold of transformation in your career: you are at the inflection point between a closing cycle and emerging new possibilities. Welcome the change with openness.",
+            "othala": "Othala signals that your heritage of skills, knowledge and professional tradition is a valuable asset. Build on the foundations those who came before you left; legacy is a stronghold."
+        },
+        "health": {
+            "fehu": "Fehu links health to the conscious management of vitality as a resource. Physical wellbeing, like cattle, requires active care: it is not enough to possess it — it must be stewarded.",
+            "uruz": "Uruz calls you to build physical strength and primal vitality. It is time to work the body with the intensity of the aurochs: exercise, endurance and will applied to wellbeing.",
+            "thurisaz": "Thurisaz warns of threats to your health requiring a decisive response. Face medical challenges with the same reactive energy as the thorn: without delay and without evasion.",
+            "ansuz": "Ansuz signals that clear communication with your body — heeding its signals — and with health professionals is fundamental for healing. Precise diagnosis begins with attentive listening.",
+            "raidho": "Raidho proposes that the path toward health requires ordered and consistent movement. The right rhythm of exercise, rest and sustained habits is more powerful than any one-off remedy.",
+            "kenaz": "Kenaz illuminates the path toward healing through deep knowledge of one's own body. Seek rigorous information and apply intellectual clarity to understand and address your health situation.",
+            "gebo": "Gebo reminds you that health is the sacred balance between body, mind and spirit. The gift of wellbeing is maintained when each dimension receives the attention it deserves.",
+            "wunjo": "Wunjo signals that inner joy and harmony have a direct and powerful impact on physical health. Emotional wellbeing is not secondary: it is a fundamental pillar of vitality.",
+            "hagalaz": "Hagalaz warns that certain health crises are inevitable disruptions the body must traverse to reorganise itself. The storm passes; what emerges may be more robust.",
+            "nauthiz": "Nauthiz signals areas of your health that have been neglected and demand urgent attention. Unattended need intensifies; respond to the body's signals before the constraint grows greater.",
+            "isa": "Isa recommends rest and stillness as essential medicine. Halting movement, conserving energy and allowing the body to consolidate is sometimes the most powerful therapeutic act.",
+            "jera": "Jera assures you that the cycles of natural healing follow their own rhythm. Gradual and sustained recovery — like the harvest — cannot be forced, but arrives when the process has been respected.",
+            "eiwaz": "Eiwaz calls for resilience and adaptation in the face of health challenges. Like the yew that survives for centuries, the capacity to remain steadfast amid physical adversity is an inner strength.",
+            "perthro": "Perthro acknowledges that some aspects of your health operate in the terrain of the mysterious and unpredictable. Accept the uncertainty and trust in healing processes that are not always rationally understood.",
+            "algiz": "Algiz invites you to protect your health with vigilance and to seek support from restorative energy sources. Establish clear boundaries against what depletes you and connect with what restores you.",
+            "sowilo": "Sowilo brings regenerative solar energy to your healing process. Vital force is available; attune to it through light, movement and the will to recover full wellbeing.",
+            "tiwaz": "Tiwaz calls for courage and discipline in your health habits. The sacrifice of pleasures that harm in exchange for long-term wellbeing is the honourable act your body needs.",
+            "berkano": "Berkano fosters processes of renewal and natural healing. Like the birch reborn in spring, your body has a deep regenerative capacity; give it the conditions to exercise it.",
+            "ehwaz": "Ehwaz signals that harmonic movement and natural flow are essential for your health. Body and mind must move together, like horse and rider, in perfect coordination.",
+            "mannaz": "Mannaz reminds you that cooperation with health professionals and communal support are fundamental resources for wellbeing. Do not face the challenges alone.",
+            "laguz": "Laguz calls for emotional healing and the cleansing of what has accumulated in the unconscious. Unprocessed emotions manifest in the body; attend to the inner flow.",
+            "ingwaz": "Ingwaz signals that the restoration of your health is a process of silent gestation. Vital energy is reconstituting itself; give it time and conditions to complete its cycle.",
+            "dagaz": "Dagaz announces an inflection point in your health: the threshold between deterioration and recovery. You are at the liminal moment; welcome the dawn of a new cycle of wellbeing.",
+            "othala": "Othala signals that your genetic heritage and family health patterns merit conscious attention. Understanding the biological and ancestral legacy is part of the path toward authentic wellbeing."
+        },
+        "path": {
+            "fehu": "Fehu signals that your life path is flowing toward abundance and prosperity. Manage responsibly the resources that present themselves; wealth not carefully tended will disperse.",
+            "uruz": "Uruz summons you to reclaim your primal power in overcoming the obstacles on your path. Act with the energy of the aurochs: without hesitation, with a force arising from the deepest place.",
+            "thurisaz": "Thurisaz warns of chaotic forces that may disturb your path. Protect it with determination and react decisively against what threatens your direction.",
+            "ansuz": "Ansuz signals that divine messages and revealed wisdom are your guide at this moment on the path. Pay attention to signs, dreams and words arriving unexpectedly.",
+            "raidho": "Raidho confirms you are on the right path, advancing with ordered rhythm. Maintain direction and pace; the wagon that holds its course arrives at its destination.",
+            "kenaz": "Kenaz illuminates your path with the torch of knowledge and mastery. The clarity you seek will come through study, practice and progressive command of your art or discipline.",
+            "gebo": "Gebo signals that honest alliances and sacred exchanges define and enrich your path. Relationships built on sacred reciprocity open the finest horizons.",
+            "wunjo": "Wunjo confirms your path is aligned with deep joy and wellbeing. The fulfilment you experience is a sign you are headed in the right direction.",
+            "hagalaz": "Hagalaz warns of inevitable disruptions on your path. Do not see them as failures: they are the storms that clear the ground and reveal the most authentic route.",
+            "nauthiz": "Nauthiz signals that current constraints and needs are not obstacles but pointers toward the true direction of your path. Constraint reveals the essence.",
+            "isa": "Isa calls for a pause on your path. Conscious immobility is not inaction: it is the moment to consolidate what has been gained and allow the direction to clarify before advancing.",
+            "jera": "Jera assures you that your path will yield its fruits at the right moment of the cycle. Keep working with constancy; the harvest of your efforts is guaranteed by the natural order.",
+            "eiwaz": "Eiwaz reminds you that your path passes through thresholds of deep transformation. Endurance through the cycles of death and rebirth is what allows you to traverse the initiatic passages.",
+            "perthro": "Perthro signals that mystery and Wyrd are operating on your path in ways you cannot predict. Trust the fabric of fate; there is more wisdom in openness than in control.",
+            "algiz": "Algiz asks you to protect your path with spiritual watchfulness and connection with sacred forces. Divine guidance is available; seek the signs with attentive awareness.",
+            "sowilo": "Sowilo illuminates your path with the solar energy of victory. Advance with confidence and determination; the force of light accompanies your purpose.",
+            "tiwaz": "Tiwaz reminds you that the honourable path sometimes requires sacrificing the lesser for the greater. Act with justice and hold integrity as your compass at every crossroads.",
+            "berkano": "Berkano announces that your path is entering a phase of renewal and new beginnings. Nurture with patience what is being born; fragile shoots need care before becoming robust.",
+            "ehwaz": "Ehwaz signals that your path advances better in cooperation than in solitude. Seek the travel companion with whom to move in perfect coordination and mutual trust.",
+            "mannaz": "Mannaz reminds you that your individual path is interwoven with the destiny of your community. Isolation impoverishes; cooperation and a sense of belonging enrich the journey.",
+            "laguz": "Laguz calls for being guided by intuition and deep emotional flow. Like water, the best path is the one that finds its natural channel rather than forcing a route.",
+            "ingwaz": "Ingwaz signals that your path is in a period of silent gestation. Potential is accumulating within; when the moment arrives, the manifestation will be full and powerful.",
+            "dagaz": "Dagaz announces that you stand at the threshold of a new dawn on your life path. The cycle that closes is the condition for the one that begins; embrace the transformation with radical openness.",
+            "othala": "Othala reminds you that your path is rooted in the wisdom of your ancestors. Honour the legacy you have received, build upon those foundations and transform the inheritance into your own legacy."
+        },
+        "general": {
+            "default": "This rune carries the wisdom of the ancients and speaks to your situation with a message worthy of deep contemplation. Meditate upon its meaning in the context of your present moment."
+        }
+    }
+}

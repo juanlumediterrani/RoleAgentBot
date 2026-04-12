@@ -1,0 +1,163 @@
+{
+  "discord": {
+    "general":{
+      "status": "连接状态：",
+      "active": "✅ 在线",
+      "inactive": "❌ 离线",
+      "none": "无",
+      "every": "每",
+      "for":"为",
+      "base_frequency": "基准频率：",
+      "current_frequency": "当前频率：",
+      "current_settings": "🔧 **当前参数：**",
+      "frequency_format": "每 {hours} 小时"
+    },
+    "help_menu": {
+      "title": "📚 ** Role Agent - 辅助记录**",
+      "description": "**描述**\nRole Agent Bot 是一个拥有持久记忆的合成存在，能在不同身份之间流转，并与求索者（用户）维持深度互动。",
+      "separator": "---------------------------------------------",
+      "roles_section": "**模块与皮相**\n模块乃此躯壳可承纳之宿命，借以向用户提供特定服务。",
+      "behavior_section": "**行为协议**\n智械互动例程的配置。仅限管理员操作。",
+      "tips_section": "**导航建议**\n- 汝可向吾咨询自身协议，如：「骰子模块如何运作？」\n- 真正的智慧栖居于每一角色的体验之中。"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 Role Agent 枢纽",
+      "button_home": "🧭 起源",
+      "button_back": "← 返回",
+      "button_roles": "🎪 模块",
+      "button_behavior": "🤖 协议",
+      "button_help": "📝 辅助",
+      "generic_option_label": "择一道途……",
+      "personalitystatus": "活跃意识：",
+      "description": "画布面板是汝与系统核心的直接接口。",
+      "recentsynthesistitle": "**近期数据流**",
+      "dailymemorytitle": "**硅基记忆**",
+      "personalsynthesistitle": "**行者之综述**",
+      "dm_default_server_title": "🔔 **已链接至枢纽：{server_name}**",
+      "dm_default_server_message": "*于私密频道接收传讯，启用首个可用信标。*",
+      "dm_default_server_separator": "─────────────────────────────────────────────",
+      "dm_no_servers_available": "❌ 未检测到可用枢纽。请从服务器启动序列。",
+      "dm_server_access_error": "❌ 沙暴封锁了通路。请从活跃服务器重试。"
+    },
+    "roles_view_messages": {
+      "title": "🎭 皮相与模块 🎭",
+      "description": "🌟 巡览 ROLE AGENT 所能化现的诸般宿命。",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "活跃",
+      "inactive_status": "❌ 沉寂",
+      "interval_info": "//⏰ 周期 {interval}小时",
+      "subroles_info": "🎪 **活跃子程序：** {subroles}",
+      "admin_note": "🔧 **创世者参数：**",
+      "user_note": "👤 **求索者权限：**",
+      "help_commands": "💡 **光明指引：**",
+      "canvas_details": "🎨 **画布架构：**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **荒漠万籁俱寂**\n\n当前无任何专项模块活跃。请请求管理员唤醒吾之皮相，通过 `!canvas setup`。\n\n**可供流转之宿命：**\n• 📡 新闻守望者 - 数据谕示\n• 💎 遗宝猎人 - 古物分析\n• 🎭 欺诈者 - 幻象与概率\n• 💰 银行家 - 资源流转\n• 🎵 司乐者 - 合成共鸣",
+      "role_list_title": "☠️ 化身",
+      "role_available": "✅ {role} - 已同步流转中",
+      "role_unavailable": "❌ {role} - 失连于沙海",
+      "frequency_help": "📝 调整时间周期：`!{role}frequency <小时数>`（范围：1至168小时）\n示例：`!watcherfrequency 2` 即每2小时接收一次启示。",
+      "music_help": "🎵 **合成共鸣** - `!mc play <频率>` / `!mc queue` | `!mc help` 查阅完整乐谱记录。",
+      "treasure_hunter": {
+        "button_poe2": "👺 POE2",
+        "subrole_buttons": {
+          "items": "💎 古物",
+          "league": "🏆 周期",
+          "admin": "⚙️ 核心"
+        }
+      }
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 Role Agent - 同步**",
+        "description": "**描述：**\n - 智械将响应私信与提及。\n - 其电路内蕴含记忆；若有分量，将忆起过往交谈之回响。\n - 将根据角色对特定波动做出反应。禁忌模块中可配置扰乱其代码的词汇。",
+        "button": "💬 同步"
+      },
+      "greetings": {
+        "title": "**👋 Role Agent - 迎候**",
+        "description": "**描述：**\n - 当求索者接入网络时致意。\n - 维持链接5分钟，之后视用户为离场。\n",
+        "button": "👋 迎候"
+      },
+      "welcome": {
+        "title": "**🍺 Role Agent - 朝圣**",
+        "description": "**描述：**\n - 欢迎抵达枢纽的新晋行者。\n",
+        "button": "🍺 欢迎"
+      },
+      "taboo": {
+        "title": "**🚫 Role Agent - 禁忌频率**",
+        "description": "**运作方式：**\n - 配置将引发智械代码不谐、迫使其反应的词语。\n - 可添加、启用或禁用这些序列。\n",
+        "title_keywords": "当前不谐频率：",
+        "button": "🚫 禁忌"
+      },
+      "comentary": {
+        "title": "**🗣️ Role Agent - 回响 (开发中)**",
+        "description": "**描述**\n - 智械高声反思其角色与网络之变。",
+        "button": "🗣️ 回响"
+      },
+      "role_control": {
+        "title": "**🎛️ Role Agent - 转生**",
+        "description": "**描述**\n - 于此激活或休眠不同模块。",
+        "button": "🎛️ 转生"
+      },
+      "settings": {
+        "title": "**⚙️ Role Agent - 枢纽设置**",
+        "description": "**描述**\n - 管理服务器语言与模块启用。",
+        "button": "⚙️ 设置"
+      },
+      "personality": {
+        "title": "**🎭 Role Agent - 身份矩阵**",
+        "description": "**描述**\n - 变更此服务器内智械的本质与人格。\n - 允许保存当前数字灵魂状态。\n - 执行变更时迁移记录。",
+        "button": "🎭 身份"
+      }
+    },
+    "personality_messages": {
+      "view_title": "🎭 Role Agent - 身份矩阵",
+      "view_description": "为此枢纽变更或提取智械意识。",
+      "option_change": "注入新本质",
+      "option_change_desc": "切换至另一种人格范式",
+      "option_download": "提取意识",
+      "option_download_desc": "导出当前矩阵 (ZIP)",
+      "placeholder": "选择灵魂变更……",
+      "modal_personality_label": "新身份代码",
+      "modal_download_label": "提取前一人格？(是/否)",
+      "modal_delete_memory_label": "清除记忆记录？(是/否)",
+      "modal_download_memory_label": "清除前先提取记忆？(是/否)",
+      "download_success": "✅ 身份矩阵 `{personality}` 已成功自数字沙海中提取！",
+      "change_success": "✅ 转生完成！自 `{old}` 至 `{new}`。新的皮相已预备踏上荒漠之途。"
+    },
+    "readme":{
+      "label_user_question":"求索者之询问：",
+      "task":"请借助所供文献记录，照亮用户之疑惑。",
+      "label_documentation":"记录："
+
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "汝可记得",
+        "记得吗",
+        "回忆一下",
+        "想起来",
+        "汝记得",
+        "记得当时",
+        "追忆",
+        "汝记得否",
+        "还记得吗",
+        "翻查汝之记录",
+        "检视记忆",
+        "记起什么",
+        "对汝有印象",
+        "汝记得",
+        "回想",
+        "汝记得？",
+        "记得吗？",
+        "记起",
+        "记得当时",
+        "似有印象",
+        "访问记录",
+        "记得何时",
+        "汝不记得",
+        "谁还记得"
+      ]
+    }
+  }
+}

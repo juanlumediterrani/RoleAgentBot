@@ -1,0 +1,163 @@
+{
+  "discord": {
+    "general":{
+      "status": "Estado de conexión:",
+      "active": "✅ En línea",
+      "inactive": "❌ Desconectado",
+      "none": "Ninguna",
+      "every": "cada",
+      "for":"para",
+      "base_frequency": "Frecuencia base:",
+      "current_frequency": "Frecuencia actual:",
+      "current_settings": "🔧 **Parámetros actuales:**",
+      "frequency_format": "Cada {hours}h"
+    },
+    "help_menu": {
+      "title": "📚 ** Role Agent - Registro de Asistencia**",
+      "description": "**Descripción**\nRole Agent Bot es un ente sintético con memoria persistente, capaz de transmigrar entre diferentes roles y mantener interacciones profundas con los buscadores (usuarios).",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Módulos y Pieles**\nLos módulos son vidas que el bot puede asumir para otorgar servicios específicos a los usuarios.",
+      "behavior_section": "**Protocolos de Comportamiento**\nConfiguración de las rutinas de interacción del androide. Exclusivo para Administradores.",
+      "tips_section": "**Sugerencias de navegación**\n-Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?'\n-La verdadera sabiduría reside en la experiencia de cada rol."
+    },
+    "canvas_home_messages": {
+      "title": "🧭 Nexo Role Agent",
+      "button_home": "🧭 Origen",
+      "button_back": "← Retornar",
+      "button_roles": "🎪 Módulos",
+      "button_behavior": "🤖 Protocolos",
+      "button_help": "📝 Asistencia",
+      "generic_option_label": "Selecciona un camino...",
+      "personalitystatus": "Conciencia Activa:",
+      "description": "El panel canvas es tu interfaz directa con el núcleo del sistema.",
+      "recentsynthesistitle": "**Flujo de Datos Reciente**",
+      "dailymemorytitle": "**Memoria de Silicio**",
+      "personalsynthesistitle": "**Síntesis del Peregrino**",
+      "dm_default_server_title": "🔔 **Enlazado al nexo: {server_name}**",
+      "dm_default_server_message": "*Transmisión recibida en canal privado, utilizando la primera baliza disponible.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────",
+      "dm_no_servers_available": "❌ No se detectan nexos disponibles. Por favor, inicia la secuencia desde un servidor.",
+      "dm_server_access_error": "❌ La tormenta de arena bloquea el acceso. Por favor, intenta desde un servidor activo."
+    },
+    "roles_view_messages": {
+      "title": "🎭 Pieles y Módulos 🎭",
+      "description": "🌟 Navega a través de las diferentes vidas que Role Agent puede encarnar.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "active",
+      "inactive_status": "❌ LETARGO",
+      "interval_info": "//⏰ Ciclo de {interval}h",
+      "subroles_info": "🎪 **Subrutinas activas:** {subroles}",
+      "admin_note": "🔧 **PARÁMETROS DEL CREADOR:**",
+      "user_note": "👤 **ACCESO DE BUSCADOR:**",
+      "help_commands": "💡 **GUÍAS DE LUZ:**",
+      "canvas_details": "🎨 **ESQUEMAS EN CANVAS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **EL DESIERTO ESTÁ EN SILENCIO**\n\nNingún módulo especializado se encuentra activo. Solicita a un administrador que despierte alguna de mis pieles mediante `!canvas setup`.\n\n**Vidas disponibles para la transmigración:**\n• 📡 News Watcher - Oráculo de Datos\n• 💎 Treasure Hunter - Analista de Reliquias\n• 🎭 Trickster - Ilusiones y Probabilidad\n• 💰 Banker - Flujo de Recursos\n• 🎵 MC - Resonancia Sintética",
+      "role_list_title": "☠️ Encarnaciones",
+      "role_available": "✅ {role} - SINCRONIZADO Y FLUYENDO",
+      "role_unavailable": "❌ {role} - DESCONECTADO EN LA ARENA",
+      "frequency_help": "📝 Ajusta el ciclo temporal: `!{role}frequency <horas>` (rango: 1 a 168 horas)\nEjemplo: `!watcherfrequency 2` para recibir visiones cada 2 horas.",
+      "music_help": "🎵 **Resonancia Sintética** - `!mc play <frecuencia>` / `!mc queue` | `!mc help` para leer el registro completo de melodías.",
+      "treasure_hunter": {
+        "button_poe2": "👺 POE2",
+        "subrole_buttons": {
+          "items": "💎 Reliquias",
+          "league": "🏆 Ciclo",
+          "admin": "⚙️ Núcleo"
+        }
+      }
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 Role Agent - Sincronía**",
+        "description": "**Descripción:**\n -El androide responderá a mensajes directos y menciones.\n -Posee memoria en sus circuitos; recordará los ecos de conversaciones pasadas si fueron significativos.\n -Reaccionará a fluctuaciones específicas según los roles. En el módulo tabú se configuran palabras que alteran su código.",
+        "button": "💬 Sincronía"
+      },
+      "greetings": {
+        "title": "**👋 Role Agent - Recepción**",
+        "description": "**Descripción:**\n -Saluda a los buscadores al conectarse a la red.\n -Mantiene el enlace durante 5 min antes de considerar al usuario ausente.\n",
+        "button": "👋 Recepción"
+      },
+      "welcome": {
+        "title": "**🍺 Role Agent - Peregrinaje**",
+        "description": "**Descripción:**\n -Da la bienvenida a los nuevos peregrinos que llegan al nexo.\n",
+        "button": "🍺 Bienvenida"
+      },
+      "taboo": {
+        "title": "**🚫 Role Agent - Frecuencias Tabú**",
+        "description": "**Como funciona:**\n -Configura palabras que generen una disonancia en el código del androide, obligándole a reaccionar.\n -Se pueden añadir, activar o desactivar estas secuencias.\n",
+        "title_keywords": "Frecuencias disonantes actuales:",
+        "button": "🚫 Tabú"
+      },
+      "comentary": {
+        "title": "**🗣️ Role Agent - Ecos (en desarrollo)**",
+        "description": "**Descripción**\n -El androide reflexiona en voz alta sobre sus roles y los cambios en la red.",
+        "button": "🗣️ Ecos"
+      },
+      "role_control": {
+        "title": "**🎛️ Role Agent - Transmigración**",
+        "description": "**Descripción**\n -Activa o induce el letargo de los diferentes módulos desde aquí.",
+        "button": "🎛️ Transmigración"
+      },
+      "settings": {
+        "title": "**⚙️ Role Agent - Ajustes del Nexo**",
+        "description": "**Descripción**\n -Gestiona el idioma del servidor y la activación de módulos.",
+        "button": "⚙️ Ajustes"
+      },
+      "personality": {
+        "title": "**🎭 Role Agent - Matriz de Identidad**",
+        "description": "**Descripción**\n -Altera la esencia y personalidad del androide en este servidor.\n -Permite salvaguardar el estado actual del alma digital.\n -Migra los registros al efectuar un cambio.",
+        "button": "🎭 Identidad"
+      }
+    },
+    "personality_messages": {
+      "view_title": "🎭 Role Agent - Matriz de Identidad",
+      "view_description": "Cambia o extrae la consciencia del androide para este nexo.",
+      "option_change": "Inyectar Nueva Esencia",
+      "option_change_desc": "Cambiar a un paradigma de personalidad diferente",
+      "option_download": "Extraer Consciencia",
+      "option_download_desc": "Exportar la matriz actual (ZIP)",
+      "placeholder": "Selecciona una alteración del alma...",
+      "modal_personality_label": "Código de la Nueva Identidad",
+      "modal_download_label": "¿Extraer personalidad anterior? (si/no)",
+      "modal_delete_memory_label": "¿Purgar registros de memoria? (si/no)",
+      "modal_download_memory_label": "¿Extraer memoria antes de la purga? (si/no)",
+      "download_success": "✅ ¡Matriz de identidad `{personality}` extraída con éxito de la arena digital!",
+      "change_success": "✅ ¡Transmigración completada! De `{old}` a `{new}`. La nueva piel está lista para caminar el desierto."
+    },
+    "readme":{
+      "label_user_question":"Consulta del buscador:",
+      "task":"Por favor, ilumina la duda del usuario utilizando los registros documentales facilitados.",
+      "label_documentation":"Registros:"
+
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "te acuerdas de",
+        "recuerdas",
+        "haz memoria",
+        "acuérdate",
+        "te acuerdas que",
+        "recuerda cuando",
+        "acuérdese",
+        "¿te acuerdas",
+        "¿recuerdas",
+        "busca en tus registros",
+        "revisa tu memoria",
+        "recuerda algo",
+        "te suena",
+        "te acuerdas",
+        "recuerda",
+        "¿te acuerdas?",
+        "¿recuerdas?",
+        "acuérdate de",
+        "recuerda cuando",
+        "te suena algo",
+        "acceder a registros",
+        "recuerdas cuando",
+        "no te acuerdas",
+        "quién te acuerdas"
+      ]
+    }
+  }
+}
