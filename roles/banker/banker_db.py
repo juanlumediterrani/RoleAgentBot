@@ -12,9 +12,12 @@ logger = get_logger('banker_roles_db')
 
 class BankerRolesDB:
     """Database handler for banker using centralized roles.db."""
-    
-    def __init__(self, server_id: str = "default"):
+
+    def __init__(self, server_id: str = None):
         """Initialize database connection using centralized roles.db."""
+        if server_id is None:
+            from agent_db import get_server_id
+            server_id = get_server_id()
         self.server_id = server_id
         self.roles_db = get_roles_db_instance(server_id)
         self.db_path = self.roles_db.db_path
@@ -226,6 +229,13 @@ class BankerRolesDB:
 
 
 # Global database instance
-def get_banker_roles_db_instance(server_id: str = "default") -> BankerRolesDB:
-    """Get the banker database instance using centralized roles.db."""
+def get_banker_roles_db_instance(server_id: str) -> BankerRolesDB:
+    """Get the banker database instance using centralized roles.db.
+    
+    Args:
+        server_id: Server ID (required, no default to prevent roles_agent.db creation)
+    """
+    if not server_id:
+        logger.error("get_banker_roles_db_instance called without server_id, this will create roles_agent.db")
+        raise ValueError("server_id is required for get_banker_roles_db_instance")
     return BankerRolesDB(server_id)

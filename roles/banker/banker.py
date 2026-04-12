@@ -8,7 +8,7 @@ import asyncio
 from agent_logging import get_logger
 from agent_engine import PERSONALITY
 from roles.banker.banker_db import get_banker_roles_db_instance
-from agent_db import get_active_server_id
+from agent_db import get_server_id
 
 logger = get_logger('banker')
 
@@ -41,7 +41,7 @@ async def create_wallets_for_all_server_members():
     logger.info("💰 Starting wallet creation for all server members...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_id()
+    server_key = get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping wallet creation")
         return
@@ -135,7 +135,7 @@ async def distribute_daily_tae():
     logger.info("💰 Starting daily TAE distribution...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_id()
+    server_key = get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping TAE distribution")
         return
@@ -217,7 +217,7 @@ async def initialize_dice_game_accounts():
     logger.info("💰 Starting dice game account initialization for existing users...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_id()
+    server_key = get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping dice game account initialization")
         return
@@ -274,7 +274,7 @@ async def initialize_dice_game_pot():
     logger.info("💰 Starting dice game pot initialization...")
     
     # Get active server from environment or fallback
-    server_key = get_active_server_id()
+    server_key = get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping dice game pot initialization")
         return
