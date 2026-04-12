@@ -11,15 +11,8 @@ import discord
 
 from agent_logging import get_logger
 from agent_mind import call_llm
-from agent_engine import _build_system_prompt, PERSONALITY
+from agent_engine import _build_system_prompt
 from agent_roles_db import get_roles_db_instance
-
-# Import bot display name for dynamic replacement
-try:
-    from discord_bot.discord_core_commands import _bot_display_name
-except ImportError:
-    # Fallback if discord is not available
-    _bot_display_name = "Bot"
 
 from .beggar_config import get_beggar_config
 
@@ -193,10 +186,16 @@ class BeggarMinigame:
     
     def _generate_minigame_narrative(self, old_reason: str, new_reason: str, participants: List[Dict[str, Any]], general_multiplier: Dict[str, Any], participant_results: List[Dict[str, Any]], server_id: str = None) -> str:
         """Generate narrative for the minigame using LLM."""
+        # Get server-specific personality
+        from agent_engine import _get_personality
+        # server_id is always passed from self.server_id in the caller
+        server_to_use = server_id or self.server_id
+        personality = _get_personality(server_to_use) if server_to_use else PERSONALITY
+        
         # Get task prompt from personality dynamically
-        task_prompt_template = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('minigame_prompt', '')
-        gold = PERSONALITY.get('general', {}).get('gold', "gold")
-        receives = PERSONALITY.get('general', {}).get('receives', "receives")
+        task_prompt_template = personality.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('minigame_prompt', '')
+        gold = personality.get('general', {}).get('gold', "gold")
+        receives = personality.get('general', {}).get('receives', "receives")
         if not task_prompt_template:
             task_prompt_template = "You are beggar recaudation. You just changed your reason for asking for gold from '{old_reason}' to '{new_reason}'. Generate a narrative message celebrating this change with participants and the general multiplier applied to everyone."
         
@@ -220,7 +219,7 @@ class BeggarMinigame:
         memory_section = _build_prompt_memory_block()
         
         # Get golden rules from personality
-        golden_rules_template = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('minigame_golden_rules', '')
+        golden_rules_template = personality.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('minigame_golden_rules', '')
         
         if not golden_rules_template:
             golden_rules_template = """
@@ -233,7 +232,7 @@ class BeggarMinigame:
                 """.strip()
         
         # Get labels from prompts.json
-        labels = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('minigame_labels', {})
+        labels = personality.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('minigame_labels', {})
         
         context_label = labels.get('context_label', '=== CONTEXT ===')
         participants_label = labels.get('participants_label', 'PARTICIPANTS (donors):')
@@ -258,7 +257,7 @@ class BeggarMinigame:
 {golden_rules_template}
 """
         
-        system_instruction = _build_system_prompt(PERSONALITY)
+        system_instruction = _build_system_prompt(personality, self.server_id)
         
         try:
             response = call_llm(
@@ -360,11 +359,10 @@ class BeggarMinigame:
         """Update relationship improvements for participants."""
         try:
             from agent_mind import call_llm
-            from agent_engine import _build_system_prompt, PERSONALITY
+            from agent_engine import _build_system_prompt
             from agent_db import get_global_db
-            from agent_runtime import get_active_server_id
             
-            server_id= get_active_server_id()
+            server_id = self.server_id
             if not server_id:
                 logger.warning("No server context available for relationship updates")
                 return
@@ -387,8 +385,10 @@ class BeggarMinigame:
                         reason_context
                     )
                     
-                    # Get system instruction
-                    system_instruction = _build_system_prompt(PERSONALITY)
+                    # Get system instruction (server-specific personality)
+                    from agent_engine import _get_personality
+                    server_personality = _get_personality(server_id) if server_id else PERSONALITY
+                    system_instruction = _build_system_prompt(server_personality, server_id)
                     
                     # Call LLM to update relationship
                     response = call_llm(
@@ -463,7 +463,7 @@ class BeggarMinigame:
         reason_context_template = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('relationship_reason_context', '')
         
         if not reason_context_template:
-            reason_context_template = f"=== BEGGAR COLLECTION REASON ===\nThis week {_bot_display_name} was collecting money for: {{reason}}"
+            reason_context_template = f"=== BEGGAR COLLECTION REASON ===\nThis week the beggar was collecting money for: {{reason}}"
         
         # Format the reason context with the previous weekly reason
         reason_context = reason_context_template.format(reason=reason_context_value)
@@ -484,6 +484,18 @@ class BeggarMinigame:
     
     def _get_relationship_memory_fallback(self, user_name: str) -> str:
         """Get fallback relationship memory when no previous summary exists."""
+        # Use server-specific personality if available
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(self.server_id)
+            template = personality.get("synthesis_paragraphs", {})
+            fallbacks = template.get("fallbacks", {})
+            fallback = fallbacks.get("relationship_memory", "")
+            if isinstance(fallback, str) and fallback.strip():
+                return fallback.replace("{user_name}", user_name or "human").strip()
+        except Exception:
+            pass
+        # Fall back to global personality
         template = PERSONALITY.get("synthesis_paragraphs", {})
         fallbacks = template.get("fallbacks", {})
         fallback = fallbacks.get("relationship_memory", "")

@@ -13,14 +13,7 @@ from discord import Interaction
 
 from agent_logging import get_logger
 from agent_mind import call_llm
-from agent_engine import _build_system_prompt, PERSONALITY
-
-# Import bot display name for dynamic replacement
-try:
-    from discord_bot.discord_core_commands import _bot_display_name
-except ImportError:
-    # Fallback if discord is not available
-    _bot_display_name = "Bot"
+from agent_engine import _build_system_prompt, _get_personality
 
 from .beggar_config import get_beggar_config
 from agent_roles_db import get_roles_db_instance
@@ -114,7 +107,7 @@ class BeggarDonationView(View):
                 # Process the donation
                 success = banker_db.update_balance(
                     user_id, user_name,
-                    -amount, "BEGGAR_DONATION", f"Donation to {_bot_display_name}: {self.current_reason}"
+                    -amount, "BEGGAR_DONATION", f"Donation: {self.current_reason}"
                 )
                 
                 if success:
@@ -142,10 +135,25 @@ class BeggarDonationView(View):
                     metadata=f"reason:{self.current_reason}",
                 )
                  
-                # Get donation success message from personality descriptions (Spanish) with English fallback
-                from discord_bot.discord_core_commands import _personality_descriptions
-                donation_msg_template = _personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {}).get("beggar_donation_success", 
-                    "Thank you for donating {amount} gold to the cause: {reason}! 🪙")
+                # Get donation success message from dynamic personality descriptions
+                import os
+                import json
+                from agent_runtime import get_personality_directory
+                
+                personality_dir = get_personality_directory(self.server_id)
+                trickster_path = os.path.join(personality_dir, "descriptions", "trickster.json")
+                
+                donation_msg_template = "Thank you for donating {amount} gold to the cause: {reason}! 🪙"
+                
+                try:
+                    if os.path.exists(trickster_path):
+                        with open(trickster_path, encoding="utf-8") as f:
+                            trickster_data = json.load(f)
+                            donation_msg_template = trickster_data.get("beggar", {}).get("beggar_donation_success",
+                                "Thank you for donating {amount} gold to the cause: {reason}! 🪙")
+                            logger.info(f"Loaded donation message from trickster.json: {donation_msg_template}")
+                except Exception as e:
+                    logger.warning(f"Could not load donation message from trickster.json: {e}")
                 
                 await interaction.response.send_message(
                     donation_msg_template.format(amount=amount, reason=self.current_reason),
@@ -231,9 +239,10 @@ class BeggarTask:
             
             # Build the prompt
             prompt = self._build_task_prompt(current_reason, recent_messages)
-            
+
             # Generate message using LLM — offload to thread to avoid blocking the event loop
-            system_instruction = _build_system_prompt(PERSONALITY)
+            server_personality = _get_personality(self.server_id) if self.server_id else _get_personality()
+            system_instruction = _build_system_prompt(server_personality, self.server_id)
 
             response = await asyncio.to_thread(
                 call_llm,
@@ -270,7 +279,7 @@ class BeggarTask:
                     from agent_engine import mark_subrole_executed
                     from datetime import datetime, timedelta
                     freq = self.config.get_frequency_hours()
-                    mark_subrole_executed('beggar', datetime.now() + timedelta(hours=freq))
+                    mark_subrole_executed('beggar', datetime.now() + timedelta(hours=freq), server_id=self.server_id)
                     logger.info(f"🙏 [BEGGAR] next_run_at persisted: +{freq}h from now")
                 except Exception as _e:
                     logger.warning(f"🙏 [BEGGAR] Could not persist next_run_at: {_e}")
@@ -379,12 +388,13 @@ class BeggarTask:
     
     def _build_task_prompt(self, reason: str, recent_messages: List[Dict[str, Any]]) -> str:
         """Build the complete prompt for the begging task."""
-        # Get task prompt from personality dynamically
-        task_prompt_template = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('prompt', '')
-        
+        # Get task prompt from server-specific personality dynamically
+        personality = _get_personality(self.server_id)
+        task_prompt_template = personality.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('prompt', '')
+
         if not task_prompt_template:
             task_prompt_template = "INTERNAL TASK - BEGGAR: You are raising gold on the server for {reason}. Be convincing but maintain your rough orc style."
-        
+
         task_prompt = task_prompt_template.format(reason=reason)
         
         # Get weekly donations summary
@@ -410,12 +420,13 @@ class BeggarTask:
         return complete_prompt
     
     def _get_weekly_donations_context(self) -> str:
-        """Get minimal context about users who donated this week using Putre's personality."""
+        """Get minimal context about users who donated this week using server-specific personality."""
         try:
             weekly_donors = self.roles_db.get_weekly_donations_summary()
-            
-            # Get messages from Putre's personality
-            weekly_messages = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('weekly_donations', {})
+
+            # Get messages from server-specific personality
+            personality = _get_personality(self.server_id)
+            weekly_messages = personality.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('weekly_donations', {})
             
             if not weekly_donors:
                 return weekly_messages.get('no_donations', '')
@@ -442,9 +453,10 @@ class BeggarTask:
     
     def _get_golden_rules(self) -> str:
         """Get golden rules for the begging task."""
-        # Get golden rules from personality dynamically
-        golden_rules_list = PERSONALITY.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('golden_rules', [])
-        
+        # Get golden rules from server-specific personality dynamically
+        personality = _get_personality(self.server_id)
+        golden_rules_list = personality.get('roles', {}).get('trickster', {}).get('subroles', {}).get('beggar', {}).get('golden_rules', [])
+
         if not golden_rules_list:
             # Use neutral English fallback from MISSION_CONFIG
             from .beggar import MISSION_CONFIG

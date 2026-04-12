@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, List
 
 from agent_logging import get_logger
 from agent_roles_db import get_roles_db_instance
-from agent_engine import PERSONALITY
+from agent_engine import _get_personality
 
 logger = get_logger('beggar_config')
 
@@ -25,23 +25,25 @@ class BeggarConfig:
         self._reasons_cache = None
     
     def get_default_reasons(self) -> List[str]:
-        """Get reasons from prompts.json dynamically."""
+        """Get reasons from prompts.json dynamically using server-specific personality."""
         if self._reasons_cache is None:
             try:
+                # Use server-specific personality
+                personality = _get_personality(self.server_id)
                 # Look in the correct location: roles -> trickster -> subroles -> beggar -> reasons
-                roles_config = PERSONALITY.get('roles', {})
+                roles_config = personality.get('roles', {})
                 trickster_config = roles_config.get('trickster', {})
                 beggar_subrole = trickster_config.get('subroles', {}).get('beggar', {})
                 self._reasons_cache = beggar_subrole.get('reasons', [])
-                
+
                 if not self._reasons_cache:
-                    logger.warning("No reasons found in prompts.json for beggar")
+                    logger.warning(f"No reasons found in prompts.json for beggar (server: {self.server_id})")
                     self._reasons_cache = ["default reason"]
-                    
+
             except Exception as e:
-                logger.error(f"Error loading reasons from prompts.json: {e}")
+                logger.error(f"Error loading reasons from prompts.json (server: {self.server_id}): {e}")
                 self._reasons_cache = ["default reason"]
-        
+
         return self._reasons_cache
     
     def get_config(self) -> Dict[str, Any]:
@@ -104,6 +106,7 @@ class BeggarConfig:
             
             if success:
                 logger.info(f"Saved beggar config for server {self.server_id}")
+                self._reasons_cache = None  # Clear reasons cache
             else:
                 logger.error(f"Failed to save beggar config for server {self.server_id}")
             
@@ -340,3 +343,29 @@ def get_beggar_config(server_id: str) -> BeggarConfig:
     if server_id not in _config_instances:
         _config_instances[server_id] = BeggarConfig(server_id)
     return _config_instances[server_id]
+
+
+def invalidate_beggar_config_cache(server_id: str = None):
+    """Invalidate cached beggar configuration instance for a server or all servers.
+    
+    Call this after personality change so the next get_beggar_config()
+    creates a new BeggarConfig pointing to the correct database.
+    
+    Args:
+        server_id: Server ID to invalidate, or None to clear all.
+    """
+    global _config_instances
+    if server_id:
+        if server_id in _config_instances:
+            # Clear reasons cache before deleting instance
+            if hasattr(_config_instances[server_id], '_reasons_cache'):
+                _config_instances[server_id]._reasons_cache = None
+            del _config_instances[server_id]
+            logger.info(f"🗄️ [BEGGAR] Invalidated cached config for server: {server_id}")
+    else:
+        # Clear reasons cache for all instances before clearing
+        for config in _config_instances.values():
+            if hasattr(config, '_reasons_cache'):
+                config._reasons_cache = None
+        _config_instances.clear()
+        logger.info(f"🗄️ [BEGGAR] Cleared all cached configs")
