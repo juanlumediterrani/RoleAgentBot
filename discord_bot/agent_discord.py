@@ -302,13 +302,33 @@ async def on_ready():
 
     # Initialize all servers on startup
     from discord_bot.db_init import initialize_server_complete
+    from discord_bot.canvas.server_config import detect_and_set_default_language
     
     if bot.guilds:
         logger.info(f"🚀 Initializing {len(bot.guilds)} servers on startup...")
         
         for guild in bot.guilds:
             logger.info(f"🚀 Initializing server: '{guild.name}' ({guild.id})")
-            init_success = await initialize_server_complete(guild, agent_config, is_startup=True)
+            server_id = str(guild.id)
+            
+            # Step 1: Detect and set default language FIRST
+            try:
+                detected_lang = detect_and_set_default_language(server_id, guild)
+                logger.info(f"🌐 Server language detected/set to: {detected_lang} for '{guild.name}'")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not detect server language for '{guild.name}': {e}")
+                detected_lang = "en-US"
+            
+            # Step 2: Initialize with detected language
+            logger.info(f"🚀 About to call initialize_server_complete for '{guild.name}' with language={detected_lang}")
+            try:
+                init_success = await initialize_server_complete(guild, agent_config, is_startup=True, language=detected_lang)
+                logger.info(f"🚀 initialize_server_complete returned: {init_success}")
+            except Exception as e:
+                logger.error(f"❌ initialize_server_complete failed with exception: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                init_success = False
             
             if init_success:
                 logger.info(f"✅ Server initialization completed successfully for '{guild.name}'")
@@ -340,10 +360,40 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     """Runs when the bot joins a new server."""
-    # Use unified server initialization
-    from discord_bot.db_init import initialize_server_complete
+    from discord_bot.db_init import initialize_server_complete, copy_personality_to_server
+    from discord_bot.canvas.server_config import detect_and_set_default_language
     
     logger.info(f"🏰 Joining new guild: '{guild.name}'")
+    server_id = str(guild.id)
+    
+    # Step 1: Detect and set default language FIRST
+    # This must happen before personality copy so the correct language version is used
+    try:
+        detected_lang = detect_and_set_default_language(server_id, guild)
+        logger.info(f"� Server language detected/set to: {detected_lang} for '{guild.name}'")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not detect server language for '{guild.name}': {e}")
+        detected_lang = "en-US"
+    
+    # Step 2: Copy "rab" personality with detected language
+    # This ensures the server gets the correct language version from the start
+    try:
+        logger.info(f"📁 Copying 'rab' personality with language '{detected_lang}' for '{guild.name}'")
+        personality_success = copy_personality_to_server(
+            server_id, 
+            personality_name="rab", 
+            language=detected_lang,
+            update_config=True
+        )
+        if personality_success:
+            logger.info(f"✅ 'rab' personality ({detected_lang}) copied for '{guild.name}'")
+        else:
+            logger.warning(f"⚠️ Failed to copy 'rab' personality for '{guild.name}'")
+    except Exception as e:
+        logger.warning(f"⚠️ Error copying personality for '{guild.name}': {e}")
+    
+    # Step 3: Continue with unified server initialization
+    # This will use the already-copied personality and detected language
     init_success = await initialize_server_complete(guild, agent_config, is_startup=False)
     
     if init_success:

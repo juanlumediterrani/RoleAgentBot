@@ -134,6 +134,7 @@ def _get_subrole_frequency_from_config(subrole_name: str) -> int:
 def _cargar_personalidad(server_id: str = None) -> dict:
     # First check for server-specific personality configuration
     personality_rel = None
+    language = "en-US"  # Default language
     if server_id:
         try:
             server_config_path = os.path.join(_BASE_DIR, "databases", server_id, "server_config.json")
@@ -142,8 +143,11 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                     server_cfg = json.load(f)
                 active_personality = server_cfg.get("active_personality")
                 if active_personality:
-                    personality_rel = f"personalities/{active_personality}/personality.json"
-                    logger.debug(f"🧬 [PERSONALITY] Using server-specific personality: {active_personality}")
+                    # Get language from server config, default to en-US
+                    language = server_cfg.get("language", "en-US")
+                    # New structure: personalities/<name>/<language>/personality.json
+                    personality_rel = f"personalities/{active_personality}/{language}/personality.json"
+                    logger.debug(f"🧬 [PERSONALITY] Using server-specific personality: {active_personality} ({language})")
         except Exception as e:
             logger.debug(f"Could not load server config for personality: {e}")
     
@@ -151,7 +155,12 @@ def _cargar_personalidad(server_id: str = None) -> dict:
     if not personality_rel:
         with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
             agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "personalities/default.json")
+        # Use new fields: default_personality and default_language
+        default_personality = agent_cfg.get("default_personality", "rab")
+        default_language = agent_cfg.get("default_language", "en-US")
+        # Construct path with language subdirectory
+        personality_rel = f"personalities/{default_personality}/{default_language}/personality.json"
+        logger.debug(f"🧬 [PERSONALITY] Using default personality from agent_config.json: {default_personality} ({default_language})")
     
     personality_path = os.path.join(_BASE_DIR, personality_rel)
     

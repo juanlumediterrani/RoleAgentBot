@@ -13,6 +13,7 @@ COMMON ERROR: NameError from using wrong variable after modifying roles.
 """
 
 import os
+import json
 import asyncio
 import discord
 from pathlib import Path
@@ -55,77 +56,45 @@ except Exception:
 
 logger = get_logger('discord_core')
 
-def _load_personality_answers() -> dict:
+def _get_discord_config(server_id: str) -> dict:
+    """
+    Get discord configuration for a specific server using the new universal loader.
+    
+    Args:
+        server_id: Server ID for server-specific configuration
+        
+    Returns:
+        dict: Discord configuration from answers.json
+    """
     try:
-        from agent_runtime import get_personality_file_path
-        answers_path = get_personality_file_path("answers.json")
-        if answers_path:
-            import json
-            with open(answers_path, encoding="utf-8") as f:
-                return json.load(f).get("discord", {})
+        from agent_runtime import get_personality_message
+        return get_personality_message("answers.json", ["discord"], server_id, {})
     except Exception as e:
-        logger.warning(f"Could not load personality answers.json: {e}")
-    return {}
+        logger.warning(f"Could not load discord config for server {server_id}: {e}")
+        return {}
 
-
-# Dynamic personality answers with server-specific cache
-_personality_answers_cache = {}
-_personality_answers_cache_server_id = None
 
 def _get_personality_answers() -> dict:
     """
-    Get personality answers with server-specific caching.
+    Legacy compatibility function for canvas.state.py.
     
-    This function dynamically loads answers based on the active server,
-    caching the result to avoid repeated file reads for the same server.
+    Returns the entire answers.json content for backward compatibility.
+    This should be replaced with specific get_personality_message() calls.
     """
-    global _personality_answers_cache, _personality_answers_cache_server_id
-    
     try:
+        from agent_runtime import get_personality_message
         from agent_db import get_server_id
-        current_server_id = get_server_id()
-    except:
-        current_server_id = None
-    
-    # Check if we need to reload (different server or no cache)
-    if current_server_id != _personality_answers_cache_server_id or not _personality_answers_cache:
-        _personality_answers_cache = _load_personality_answers()
-        _personality_answers_cache_server_id = current_server_id
-        if os.getenv('ROLE_AGENT_PROCESS') != '1':
-            logger.info(f"💬 [ANSWERS] Loaded for server: {current_server_id}")
-    
-    return _personality_answers_cache
+        server_id = get_server_id()
+        return get_personality_message("answers.json", [], server_id, {})
+    except Exception:
+        return {}
 
 
-# Create dynamic _personality_answers proxy
-class _PersonalityAnswersProxy:
-    """Proxy for dynamic personality answers loading."""
-    def __getitem__(self, key):
-        return _get_personality_answers().get(key)
-    
-    def get(self, key, default=None):
-        return _get_personality_answers().get(key, default)
-    
-    def __contains__(self, key):
-        return key in _get_personality_answers()
-    
-    def keys(self):
-        return _get_personality_answers().keys()
-    
-    def values(self):
-        return _get_personality_answers().values()
-    
-    def items(self):
-        return _get_personality_answers().items()
-    
-    def __repr__(self):
-        return repr(_get_personality_answers())
-
-
-_discord_cfg = _get_personality_answers()
+# Legacy compatibility variables for canvas imports
 _personality_name = PERSONALITY.get("name", "bot").lower()
 _insult_cfg = PERSONALITY.get("insult_command", {})  # Moved from discord.insult_command to prompts.json
-_personality_answers = _PersonalityAnswersProxy()
+_personality_answers = _get_personality_answers()  # Legacy compatibility for canvas.state.py
+_discord_cfg = PERSONALITY.get("discord", {})  # Legacy compatibility for canvas.content.py
 # _personality_descriptions is now dynamic from agent_engine
 
 
@@ -322,7 +291,9 @@ def register_core_commands(bot, agent_config):
 
     async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
         """Enable or disable roles dynamically."""
-        role_cfg = _personality_answers.get("role_messages", {})
+        server_id = str(ctx.guild.id) if ctx.guild else None
+        role_cfg = get_personality_message("answers.json", ["role_messages"], server_id, {})
+        
         if not is_admin(ctx):
             await ctx.send(role_cfg.get("role_no_permission", "❌ Only administrators can enable or disable roles."))
             return
@@ -497,7 +468,8 @@ def register_core_commands(bot, agent_config):
             help_msg += f"• {status_emoji} {display}\n"
 
         # Send help
-        help_sent_msg = _personality_answers.get("general_messages", {}).get("help_sent_private", "📩 Help sent by direct message.")
+        server_id = str(ctx.guild.id) if ctx.guild else None
+        help_sent_msg = get_personality_message("answers.json", ["general_messages", "help_sent_private"], server_id, "📩 Help sent by direct message.")
         await send_dm_or_channel(ctx, help_msg, help_sent_msg)
 
 
@@ -556,7 +528,8 @@ def register_core_commands(bot, agent_config):
                         header = f"**Part {i}/{len(chunks)}**\n\n" if len(chunks) > 1 else ""
                         await ctx.author.send(f"{header}```md\n{chunk}\n```")
 
-                readme_sent_msg = _personality_answers.get("general_messages", {}).get("readme_sent_private", "📩 Full user guide sent by direct message.")
+                server_id = str(ctx.guild.id) if ctx.guild else None
+                readme_sent_msg = get_personality_message("answers.json", ["general_messages", "readme_sent_private"], server_id, "📩 Full user guide sent by direct message.")
                 await ctx.send(readme_sent_msg)
 
                 logger.info(f"README command executed by {ctx.author.name} in {ctx.guild.name if ctx.guild else 'DM'}")
@@ -576,7 +549,8 @@ def register_core_commands(bot, agent_config):
         @bot.command(name="testpersonalityevolution")
         async def cmd_test_personality_evolution(ctx):
             """Test weekly personality evolution with synthetic daily memories."""
-            role_cfg = _personality_answers.get("role_messages", {})
+            server_id = str(ctx.guild.id) if ctx.guild else None
+            role_cfg = get_personality_message("answers.json", ["role_messages"], server_id, {})
             if not is_admin(ctx):
                 await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can test personality evolution."))
                 return
@@ -614,5 +588,191 @@ def register_core_commands(bot, agent_config):
     else:
         logger.info("Command testpersonalityevolution already registered, skipping...")
 
+    # --- BOT IDENTITY COMMANDS ---
+
+    if bot.get_command("setnickname") is None:
+        @bot.command(name="setnickname")
+        async def cmd_set_nickname(ctx, *, nickname: str = None):
+            """Set bot nickname for this server (admin only)."""
+            if not is_admin(ctx):
+                await ctx.send("❌ Only administrators can change the bot's nickname.")
+                return
+
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers.")
+                return
+
+            try:
+                from discord_bot.discord_utils import update_server_identity
+                success = await update_server_identity(ctx.guild, nickname=nickname, avatar_bytes=None)
+                if success:
+                    if nickname:
+                        await ctx.send(f"✅ Bot nickname updated to: **{nickname}**")
+                    else:
+                        await ctx.send("✅ Bot nickname reset to default.")
+                else:
+                    await ctx.send("⚠️ Could not update nickname. Check bot permissions.")
+            except Exception as e:
+                logger.error(f"Error in setnickname command: {e}")
+                await ctx.send(f"❌ Error updating nickname: {e}")
+    else:
+        logger.info("Command setnickname already registered, skipping...")
+
+    if bot.get_command("identity") is None:
+        @bot.command(name="identity")
+        async def cmd_identity(ctx):
+            """Show current bot identity configuration for this server."""
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers.")
+                return
+
+            try:
+                from discord_bot.discord_utils import (
+                    get_server_personality_display_name, 
+                    get_server_personality_avatar_path,
+                    get_server_key
+                )
+                server_id = get_server_key(ctx.guild)
+                current_nick = ctx.guild.me.nick
+                configured_name = get_server_personality_display_name(server_id)
+                avatar_path = get_server_personality_avatar_path(server_id)
+
+                # Check avatar status
+                avatar_status = "Not configured"
+                if avatar_path:
+                    avatar_size = os.path.getsize(avatar_path)
+                    avatar_ext = os.path.splitext(avatar_path)[1].upper()
+                    avatar_status = f"{avatar_ext} ({avatar_size:,} bytes)"
+
+                response = (
+                    f"🤖 **Bot Identity for this server**\n\n"
+                    f"**Nickname:**\n"
+                    f"  Current: {current_nick or '(default - no nickname)'}\n"
+                    f"  Configured: {configured_name or '(not configured)'}\n\n"
+                    f"**Avatar:**\n"
+                    f"  {avatar_status}\n\n"
+                    f"**Server ID:** {server_id}\n\n"
+                )
+
+                # Status summary
+                nick_synced = configured_name and current_nick == configured_name
+                avatar_configured = avatar_path is not None
+                
+                if nick_synced and avatar_configured:
+                    response += "✅ Identity fully synced with personality configuration."
+                elif nick_synced:
+                    response += "✅ Nickname synced. Avatar not configured."
+                elif configured_name or avatar_configured:
+                    response += "⚠️ Identity differs from configuration.\n"
+                    response += "Use `!setpersonality <name>` to change or restart to sync."
+                else:
+                    response += "ℹ️ Add 'bot_display_name' and avatar.webp/png to personality folder to customize identity."
+
+                await ctx.send(response)
+            except Exception as e:
+                logger.error(f"Error in identity command: {e}")
+                await ctx.send(f"❌ Error retrieving identity: {e}")
+    else:
+        logger.info("Command identity already registered, skipping...")
+
+    # --- SET PERSONALITY COMMAND ---
+
+    if bot.get_command("setpersonality") is None:
+        @bot.command(name="setpersonality")
+        async def cmd_set_personality(ctx, personality_name: str = None):
+            """Change server personality and sync identity (admin only)."""
+            if not is_admin(ctx):
+                await ctx.send("❌ Only administrators can change the server personality.")
+                return
+
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers.")
+                return
+
+            if not personality_name:
+                await ctx.send("❌ Please specify a personality name. Usage: `!setpersonality <name>`")
+                return
+
+            server_key = get_server_key(ctx.guild)
+            logger.info(f"Set personality command by {ctx.author.name}: {personality_name} for server {ctx.guild.name}")
+
+            try:
+                # Check if personality exists in global personalities folder
+                base_dir = os.path.dirname(os.path.dirname(__file__))
+                
+                # Get server's language to check correct subdirectory
+                from discord_bot.canvas.server_config import get_server_language
+                server_language = get_server_language(server_key)
+                
+                # New structure: personalities/<name>/<language>/
+                global_personality_path = os.path.join(base_dir, 'personalities', personality_name, server_language)
+                
+                # Fallback to old structure if language subdirectory doesn't exist
+                if not os.path.exists(global_personality_path):
+                    global_personality_path = os.path.join(base_dir, 'personalities', personality_name)
+                
+                if not os.path.exists(global_personality_path):
+                    # List available personalities
+                    available = []
+                    personalities_dir = os.path.join(base_dir, 'personalities')
+                    if os.path.exists(personalities_dir):
+                        available = [d for d in os.listdir(personalities_dir) 
+                                   if os.path.isdir(os.path.join(personalities_dir, d)) 
+                                   and not d.startswith('.')]
+                    
+                    await ctx.send(
+                        f"❌ Personality '{personality_name}' not found.\n"
+                        f"Available: {', '.join(available) if available else 'None'}"
+                    )
+                    return
+
+                # Check for required personality.json (in language subdirectory or root)
+                if not os.path.exists(os.path.join(global_personality_path, 'personality.json')):
+                    await ctx.send(f"❌ Invalid personality folder: missing personality.json (checked {global_personality_path})")
+                    return
+
+                await ctx.send(f"🔄 Changing personality to '{personality_name}' ({server_language})... This may take a moment.")
+
+                # 1. Copy personality to server-specific directory and update config
+                from discord_bot.db_init import copy_personality_to_server
+                copy_success = copy_personality_to_server(server_key, personality_name, language=server_language, update_config=True)
+                
+                if not copy_success:
+                    await ctx.send("❌ Failed to copy personality files. Check logs.")
+                    return
+
+                # 2. Sync identity (nickname + avatar) - single API call
+                from discord_bot.discord_utils import sync_bot_identity_to_server_personality
+                identity_result = await sync_bot_identity_to_server_personality(ctx.guild)
+
+                # Build success message
+                changes = []
+                if identity_result['nickname_changed']:
+                    changes.append("nickname")
+                if identity_result['avatar_changed']:
+                    changes.append("avatar")
+                
+                if identity_result['success']:
+                    change_msg = f"({', '.join(changes)} updated)" if changes else "(no visual changes)"
+                    await ctx.send(
+                        f"✅ **Personality changed to '{personality_name}'** {change_msg}\n\n"
+                        f"The bot will now use this personality's behavior, name, and avatar "
+                        f"in this server. Changes are immediate."
+                    )
+                else:
+                    await ctx.send(
+                        f"⚠️ **Personality changed to '{personality_name}'** "
+                        f"but identity sync failed.\n"
+                        f"Errors: {', '.join(identity_result['errors'])}\n\n"
+                        f"The personality behavior is active, but you may need to "
+                        f"update nickname/avatar manually with `!setnickname`."
+                    )
+
+            except Exception as e:
+                logger.exception(f"Error in setpersonality command: {e}")
+                await ctx.send(f"❌ Error changing personality: {e}")
+    else:
+        logger.info("Command setpersonality already registered, skipping...")
+
     # --- Log registered commands ---
-    logger.info(f"Core commands registered: agenthelp, canvas, {role_cmd_name}, readme, testpersonalityevolution")
+    logger.info(f"Core commands registered: agenthelp, canvas, {role_cmd_name}, readme, testpersonalityevolution, setnickname, identity, setpersonality")

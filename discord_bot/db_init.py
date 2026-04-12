@@ -16,7 +16,7 @@ import json
 logger = get_logger('db_init')
 
 
-def copy_personality_to_server(server_id: str, personality_name: str = None) -> bool:
+def copy_personality_to_server(server_id: str, personality_name: str = None, language: str = None, update_config: bool = False) -> bool:
     """
     Copy personality files to server-specific directory for first-time initialization.
     
@@ -24,7 +24,15 @@ def copy_personality_to_server(server_id: str, personality_name: str = None) -> 
     to a server-specific location under databases/<server_id>/<personality_name>/.
     Each server will then use its own copy, allowing for per-server personality evolution.
     
-    Directory structure:
+    New directory structure (with language subdirectories):
+        personalities/<personality_name>/<language>/
+            ├── personality.json
+            ├── prompts.json
+            ├── answers.json
+            ├── descriptions.json
+            └── descriptions/
+    
+    Copied to:
         databases/<server_id>/<personality_name>/
             ├── personality.json
             ├── prompts.json
@@ -34,8 +42,11 @@ def copy_personality_to_server(server_id: str, personality_name: str = None) -> 
     
     Args:
         server_id: Discord guild ID
-        personality_name: Name of personality folder (e.g., "putre(english)"). 
-                          If None, reads from agent_config.json
+        personality_name: Name of personality folder (e.g., "rab"). 
+                          If None, reads from agent_config.json or server_config.json
+        language: IETF BCP 47 language code (e.g., "es-ES", "en-US").
+                If None, tries to detect from server_config.json or uses "en-US"
+        update_config: If True, update server_config.json even if it exists (for personality changes)
         
     Returns:
         bool: True if copy successful or already exists, False on error
@@ -43,30 +54,72 @@ def copy_personality_to_server(server_id: str, personality_name: str = None) -> 
     try:
         base_dir = os.path.dirname(os.path.dirname(__file__))
         
-        # First, check if server_config.json already exists with a personality
+        # First, check if server_config.json already exists
         server_config_path = os.path.join(base_dir, 'databases', server_id, 'server_config.json')
-        if personality_name is None and os.path.exists(server_config_path):
+        existing_config = {}
+        if os.path.exists(server_config_path):
             try:
                 with open(server_config_path, encoding='utf-8') as f:
                     existing_config = json.load(f)
-                existing_personality = existing_config.get('active_personality')
-                if existing_personality:
-                    personality_name = existing_personality
-                    logger.info(f"📋 Using existing personality from server_config.json: {personality_name}")
             except Exception as e:
                 logger.warning(f"Could not read existing server_config.json: {e}")
+        
+        # Get personality_name from existing config if not provided
+        if personality_name is None:
+            existing_personality = existing_config.get('active_personality')
+            if existing_personality:
+                personality_name = existing_personality
+                logger.info(f"📋 Using existing personality from server_config.json: {personality_name}")
+        
+        # Get language from existing config if not provided
+        if language is None:
+            existing_language = existing_config.get('language')
+            if existing_language:
+                language = existing_language
+                logger.info(f"📋 Using existing language from server_config.json: {language}")
         
         # Fall back to agent_config.json if still no personality
         if personality_name is None:
             config_path = os.path.join(base_dir, 'agent_config.json')
             with open(config_path, encoding='utf-8') as f:
                 config = json.load(f)
-            personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
-            personality_name = os.path.basename(os.path.dirname(personality_path))
-            logger.info(f"📋 Using personality from agent_config.json: {personality_name}")
+            
+            # Get default personality name - hardcoded to 'rab' as system default
+            personality_name = 'rab'
+            
+            # Get default language from agent_config.json (new field 'default_language')
+            # This is the FINAL fallback language when nothing else is configured
+            config_language = config.get('default_language')
+            if config_language:
+                logger.info(f"📋 Using default_language from agent_config.json: {config_language}")
+                # Only override if no language was provided and no existing config
+                if language is None or language == 'en-US':
+                    language = config_language
+            
+            logger.info(f"📋 Using system default personality: {personality_name}")
         
-        # Paths
-        source_dir = os.path.join(base_dir, 'personalities', personality_name)
+        # Default language if still not set (final fallback)
+        if language is None:
+            language = 'en-US'
+            logger.info(f"📋 Using final fallback language: {language}")
+        
+        # Validate language format
+        language = language.strip()
+        
+        # Paths - new structure: personalities/<name>/<language>/
+        source_dir = os.path.join(base_dir, 'personalities', personality_name, language)
+        
+        # Fallback: if language subdirectory doesn't exist, try old structure (for backward compatibility)
+        if not os.path.exists(source_dir):
+            old_source_dir = os.path.join(base_dir, 'personalities', personality_name)
+            if os.path.exists(old_source_dir):
+                logger.warning(f"⚠️ Language subdirectory not found: {source_dir}")
+                logger.info(f"📁 Falling back to old structure: {old_source_dir}")
+                source_dir = old_source_dir
+            else:
+                logger.error(f"❌ Source personality directory not found: {source_dir}")
+                return False
+        
         target_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
         
         # Check if server-specific copy already exists
@@ -100,17 +153,39 @@ def copy_personality_to_server(server_id: str, personality_name: str = None) -> 
                     shutil.copy2(source_item, target_item)
                     logger.info(f"📄 Copied file: {item}")
             
-            logger.info(f"✅ Personality copied to server-specific directory: {target_dir}")
+            logger.info(f"✅ Personality copied from {source_dir} to {target_dir}")
+            
+            # Copy avatar files from global personality directory (parent of language subdir)
+            global_personality_dir = os.path.join(base_dir, 'personalities', personality_name)
+            avatar_extensions = ['.png', '.webp', '.jpg', '.jpeg']
+            for ext in avatar_extensions:
+                avatar_source = os.path.join(global_personality_dir, f'avatar{ext}')
+                avatar_target = os.path.join(target_dir, f'avatar{ext}')
+                if os.path.exists(avatar_source):
+                    shutil.copy2(avatar_source, avatar_target)
+                    logger.info(f"🖼️ Copied global avatar: avatar{ext}")
+            
+            # Also copy avatarfull if exists
+            for ext in avatar_extensions:
+                avatarfull_source = os.path.join(global_personality_dir, f'avatarfull{ext}')
+                avatarfull_target = os.path.join(target_dir, f'avatarfull{ext}')
+                if os.path.exists(avatarfull_source):
+                    shutil.copy2(avatarfull_source, avatarfull_target)
+                    logger.info(f"🖼️ Copied global avatarfull: avatarfull{ext}")
         
-        # Create server_config.json only if it doesn't exist
-        # If it exists, preserve it (personality was already read from it at the start)
-        if not os.path.exists(server_config_path):
+        # Create or update server_config.json
+        # If update_config is True, always update; otherwise only create if doesn't exist
+        should_update = update_config or not os.path.exists(server_config_path)
+        
+        if should_update:
             server_config = {
-                "active_personality": personality_name
+                "active_personality": personality_name,
+                "language": language
             }
             with open(server_config_path, 'w', encoding='utf-8') as f:
                 json.dump(server_config, f, indent=2, ensure_ascii=False)
-            logger.info(f"✅ Created server_config.json with active_personality: {personality_name}")
+            action = "Updated" if update_config and os.path.exists(server_config_path) else "Created"
+            logger.info(f"✅ {action} server_config.json with active_personality: {personality_name}, language: {language}")
         else:
             logger.info(f"✅ Preserved existing server_config.json")
         
@@ -140,7 +215,6 @@ def get_server_personality_dir(server_id: str, personality_name: str = None) -> 
         
         # Get personality name from server-specific config if not provided
         if personality_name is None:
-            import json
             # First try server-specific config (for runtime personality changes)
             server_config_path = os.path.join(base_dir, 'databases', server_id, 'server_config.json')
             if os.path.exists(server_config_path):
@@ -173,16 +247,19 @@ def get_server_personality_dir(server_id: str, personality_name: str = None) -> 
         return None
 
 
-def update_personality_files(server_id: str, personality_name: str) -> bool:
+def update_personality_files(server_id: str, personality_name: str, language: str = None) -> bool:
     """
     Update JSON config files for an existing server-specific personality.
     
     When changing personalities, call this to refresh descriptions.json,
     personality.json, prompts.json, etc. from the global personality directory.
     
+    New structure: copies from personalities/<name>/<language>/
+    
     Args:
         server_id: Discord guild ID
-        personality_name: Name of the personality folder (e.g., "putre(english)")
+        personality_name: Name of the personality folder (e.g., "rab")
+        language: IETF BCP 47 language code. If None, reads from server_config.json
         
     Returns:
         bool: True if successful, False otherwise
@@ -191,17 +268,39 @@ def update_personality_files(server_id: str, personality_name: str) -> bool:
         import shutil
         
         base_dir = os.path.dirname(os.path.dirname(__file__))
-        source_dir = os.path.join(base_dir, 'personalities', personality_name)
+        
+        # Get language from server_config.json if not provided
+        if language is None:
+            server_config_path = os.path.join(base_dir, 'databases', server_id, 'server_config.json')
+            if os.path.exists(server_config_path):
+                try:
+                    with open(server_config_path, encoding='utf-8') as f:
+                        server_config = json.load(f)
+                    language = server_config.get('language', 'en-US')
+                except Exception as e:
+                    logger.warning(f"Could not read language from server_config.json: {e}")
+                    language = 'en-US'
+            else:
+                language = 'en-US'
+        
+        # New structure: source is personalities/<name>/<language>/
+        source_dir = os.path.join(base_dir, 'personalities', personality_name, language)
         target_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
+        
+        # Fallback: if language subdirectory doesn't exist, try old structure
+        if not os.path.exists(source_dir):
+            old_source_dir = os.path.join(base_dir, 'personalities', personality_name)
+            if os.path.exists(old_source_dir):
+                logger.warning(f"⚠️ Language subdirectory not found: {source_dir}")
+                logger.info(f"📁 Falling back to old structure: {old_source_dir}")
+                source_dir = old_source_dir
+            else:
+                logger.error(f"❌ Source personality not found: {source_dir}")
+                return False
         
         # Check if target exists
         if not os.path.exists(target_dir):
             logger.warning(f"Target directory doesn't exist: {target_dir}")
-            return False
-        
-        # Check if source exists
-        if not os.path.exists(source_dir):
-            logger.error(f"Source personality not found: {source_dir}")
             return False
         
         # Update JSON and config files (not .db files)
@@ -227,7 +326,7 @@ def update_personality_files(server_id: str, personality_name: str) -> bool:
                 logger.info(f"📄 Updated file: {item}")
                 updated_count += 1
         
-        logger.info(f"✅ Updated {updated_count} files for personality {personality_name}")
+        logger.info(f"✅ Updated {updated_count} files for personality {personality_name} (language: {language})")
         return True
         
     except Exception as e:
@@ -363,7 +462,7 @@ def initialize_all_databases_for_server(server_id: str, agent_config: dict = Non
     return success_count == total_count
 
 
-async def initialize_server_complete(guild, agent_config: dict = None, is_startup: bool = False) -> bool:
+async def initialize_server_complete(guild, agent_config: dict = None, is_startup: bool = False, language: str = None) -> bool:
     """
     Complete server initialization - unified method for both startup and new guild joins.
     
@@ -379,6 +478,7 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
         guild: Discord guild object
         agent_config: Agent configuration dictionary (optional)
         is_startup: True if this is during bot startup, False for new guild joins
+        language: IETF BCP 47 language code (e.g., "es-ES", "en-US") for personality selection
         
     Returns:
         bool: True if all initialization completed successfully, False otherwise
@@ -396,6 +496,8 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
     update_log_file_path(server_key, personality_name)
     logger = get_logger('discord')
     
+    logger.info(f"🔥 ENTER initialize_server_complete for '{guild_name}' (language={language})")
+    
     if is_startup:
         logger.info(f"🚀 Initializing server on startup: '{guild_name}' ({server_key})")
         # Set as active server (only during startup)
@@ -409,12 +511,44 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
     # 0. Copy personality files to server-specific directory (first-time only)
     total_count += 1
     logger.info(f"📁 Setting up server-specific personality for {guild_name}")
-    personality_copy_success = copy_personality_to_server(server_key)
+    
+    # Use provided language or detect from server config
+    if language is None:
+        try:
+            from discord_bot.canvas.server_config import get_server_language
+            language = get_server_language(server_key)
+            logger.info(f"🌐 Using detected language '{language}' for personality setup")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not detect language, using default: {e}")
+            language = "en-US"
+    
+    personality_copy_success = copy_personality_to_server(server_key, language=language, update_config=True)
     if personality_copy_success:
         logger.info(f"✅ Server-specific personality ready for {guild_name}")
         success_count += 1
     else:
         logger.warning(f"⚠️ Personality copy failed for {guild_name}, will use global personality")
+    
+    # 0.5. Sync bot identity (nickname + avatar) to server personality
+    try:
+        from discord_bot.discord_utils import sync_bot_identity_to_server_personality
+        identity_result = await sync_bot_identity_to_server_personality(guild)
+        
+        if identity_result['success']:
+            changes = []
+            if identity_result['nickname_changed']:
+                changes.append("nickname")
+            if identity_result['avatar_changed']:
+                changes.append("avatar")
+            
+            if changes:
+                logger.info(f"✅ Bot identity synced for server '{guild_name}': {', '.join(changes)} updated")
+            else:
+                logger.info(f"✅ Bot identity already correct for server '{guild_name}'")
+        else:
+            logger.warning(f"⚠️ Could not sync bot identity for '{guild_name}': {', '.join(identity_result['errors'])}")
+    except Exception as e:
+        logger.warning(f"⚠️ Error syncing bot identity for '{guild_name}': {e}")
     
     # 1. Initialize all databases
     total_count += 1

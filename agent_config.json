@@ -1,5 +1,6 @@
 {
-  "personality": "personalities/putre/personality.json",
+  "default_personality": "rab",
+  "default_language": "en-US",
   "platform": "discord",
   "llm": {
     "max_tokens": 2048

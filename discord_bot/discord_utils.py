@@ -6,8 +6,10 @@ Per-server DB access, permission helpers, and message sending functions.
 import os
 import time
 import hashlib
+import json
 from datetime import datetime, timedelta
 
+import discord
 from agent_logging import get_logger
 from agent_db import get_db_instance, set_current_server, get_server_id
 
@@ -530,3 +532,356 @@ def get_is_connected():
 def set_is_connected(value):
     global _is_connected
     _is_connected = value
+
+
+# --- SERVER LANGUAGE DETECTION ---
+
+def detect_server_language(guild) -> str:
+    """
+    Detect the preferred language of a Discord server.
+    
+    Method 1 (Primary): Use guild.preferred_locale if available
+    Method 2 (Fallback): Analyze member locales to infer predominant language
+    
+    Returns:
+        str: Language code in IETF BCP 47 format (e.g., 'en-US', 'es-ES', 'de')
+              Defaults to 'en-US' if detection fails
+    """
+    if guild is None:
+        return 'en-US'
+    
+    # Method 1: Try guild.preferred_locale (only available for DISCOVERABLE servers)
+    if hasattr(guild, 'preferred_locale') and guild.preferred_locale:
+        locale = guild.preferred_locale
+        logger.info(f"Server '{guild.name}' preferred_locale detected: {locale}")
+        return locale
+    
+    # Method 2: Fallback - analyze member locales
+    try:
+        from collections import Counter
+        member_locales = []
+        
+        # Collect locales from members who have them set
+        for member in guild.members:
+            if hasattr(member, 'locale') and member.locale:
+                member_locales.append(member.locale)
+        
+        if member_locales:
+            # Find most common locale
+            most_common = Counter(member_locales).most_common(1)[0][0]
+            logger.info(f"Server '{guild.name}' language inferred from members: {most_common} (based on {len(member_locales)} members)")
+            return most_common
+        else:
+            logger.info(f"Server '{guild.name}' no member locales available, using default 'en-US'")
+    except Exception as e:
+        logger.warning(f"Error analyzing member locales for server '{guild.name}': {e}")
+    
+    # Default fallback
+    return 'en-US'
+
+
+# --- SERVER-SPECIFIC BOT IDENTITY ---
+
+async def update_server_identity(guild: discord.Guild, nickname: str = None, avatar_bytes: bytes = None) -> bool:
+    """
+    Update bot's server-specific identity (nickname + avatar) in a single API call.
+    
+    Uses PATCH /guilds/{guild.id}/members/@me with both nick and avatar fields
+    to minimize rate limit risk.
+    
+    Args:
+        guild: Discord guild object
+        nickname: New nickname (None to keep current)
+        avatar_bytes: Avatar image bytes (None to keep current, empty bytes to remove)
+    
+    Returns:
+        bool: True if successful
+    """
+    try:
+        bot_member = guild.me
+        
+        # Build kwargs for combined edit
+        edit_kwargs = {}
+        if nickname is not None:
+            edit_kwargs['nick'] = nickname if nickname else None
+        if avatar_bytes is not None:
+            # Empty bytes means remove avatar, otherwise set new avatar
+            edit_kwargs['avatar'] = avatar_bytes if avatar_bytes else None
+        
+        if not edit_kwargs:
+            logger.debug(f"No identity changes needed for '{guild.name}'")
+            return True
+        
+        # Single API call for both nickname and avatar
+        await bot_member.edit(**edit_kwargs)
+        
+        changes = []
+        if 'nick' in edit_kwargs:
+            changes.append(f"nick='{nickname}'")
+        if 'avatar' in edit_kwargs:
+            changes.append(f"avatar={'updated' if avatar_bytes else 'removed'}")
+        
+        logger.info(f"✅ Identity updated in '{guild.name}': {', '.join(changes)}")
+        return True
+        
+    except discord.Forbidden:
+        logger.warning(f"⚠️ No permission to change identity in '{guild.name}' (need 'Change Nickname' permission)")
+        return False
+    except discord.HTTPException as e:
+        if e.status == 429:
+            logger.error(f"❌ Rate limited while updating identity in '{guild.name}': {e}")
+        else:
+            logger.error(f"❌ Failed to update identity in '{guild.name}': {e}")
+        return False
+
+
+async def update_server_nickname(guild: discord.Guild, nickname: str = None) -> bool:
+    """
+    Update bot's nickname in a specific server.
+    
+    Wrapper around update_server_identity for backward compatibility.
+    Uses single API call optimized approach.
+    
+    Args:
+        guild: Discord guild object
+        nickname: New nickname (None to reset to default)
+    
+    Returns:
+        bool: True if successful
+    """
+    return await update_server_identity(guild, nickname=nickname, avatar_bytes=None)
+
+
+def _get_server_personality_directory(server_id: str) -> tuple[str, str] | None:
+    """
+    Get server-specific personality directory path and name.
+    
+    Helper function to avoid code duplication between display name
+    and avatar retrieval functions.
+    
+    Args:
+        server_id: Discord guild ID
+        
+    Returns:
+        tuple[str, str] | None: (directory_path, personality_name) or None
+    """
+    try:
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        server_config_path = os.path.join(base_dir, 'databases', server_id, 'server_config.json')
+        
+        if not os.path.exists(server_config_path):
+            return None
+        
+        with open(server_config_path, encoding='utf-8') as f:
+            server_config = json.load(f)
+        
+        personality_name = server_config.get('active_personality')
+        if not personality_name:
+            return None
+        
+        personality_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
+        if not os.path.exists(personality_dir):
+            return None
+        
+        return (personality_dir, personality_name)
+        
+    except Exception:
+        return None
+
+
+def get_server_personality_display_name(server_id: str) -> str | None:
+    """
+    Get bot_display_name from server-specific personality.json.
+    
+    Reads from: databases/<server_id>/<personality>/personality.json
+    Returns the 'bot_display_name' field or None if not found.
+    
+    Args:
+        server_id: Discord guild ID
+        
+    Returns:
+        str | None: The display name or None if not found
+    """
+    result = _get_server_personality_directory(server_id)
+    if not result:
+        return None
+    
+    personality_dir, _ = result
+    personality_path = os.path.join(personality_dir, 'personality.json')
+    
+    if not os.path.exists(personality_path):
+        return None
+    
+    try:
+        with open(personality_path, encoding='utf-8') as f:
+            personality_data = json.load(f)
+        
+        bot_display_name = personality_data.get('bot_display_name')
+        if bot_display_name:
+            logger.debug(f"Found bot_display_name '{bot_display_name}' for server {server_id}")
+        return bot_display_name
+        
+    except Exception as e:
+        logger.warning(f"Could not read personality display name for {server_id}: {e}")
+        return None
+
+
+def get_server_personality_avatar_path(server_id: str) -> str | None:
+    """
+    Get path to avatar image from server-specific personality directory.
+    
+    Searches for avatar files in order: .webp, .png
+    Path: databases/<server_id>/<personality>/avatar.<ext>
+    
+    Args:
+        server_id: Discord guild ID
+        
+    Returns:
+        str | None: Full path to avatar file or None if not found
+    """
+    result = _get_server_personality_directory(server_id)
+    if not result:
+        return None
+    
+    personality_dir, _ = result
+    avatar_extensions = ['.webp', '.png']
+    
+    for ext in avatar_extensions:
+        avatar_path = os.path.join(personality_dir, f'avatar{ext}')
+        if os.path.exists(avatar_path):
+            logger.debug(f"Found avatar for server {server_id}: {avatar_path}")
+            return avatar_path
+    
+    logger.debug(f"No avatar found for server {server_id}")
+    return None
+
+
+def read_avatar_bytes(avatar_path: str) -> bytes | None:
+    """
+    Read avatar image file as bytes for Discord API upload.
+    
+    Args:
+        avatar_path: Full path to avatar file
+        
+    Returns:
+        bytes | None: File contents or None if error
+    """
+    try:
+        with open(avatar_path, 'rb') as f:
+            avatar_bytes = f.read()
+        logger.debug(f"Read avatar file: {avatar_path} ({len(avatar_bytes)} bytes)")
+        return avatar_bytes
+    except Exception as e:
+        logger.error(f"Could not read avatar file {avatar_path}: {e}")
+        return None
+
+
+def translate_dice_combination(combination: str, trickster_messages: dict) -> str:
+    """Translate dice combination from stored format to personality-specific text.
+    
+    The database stores combinations with English fallback (e.g., "6-1-6 (Pair)").
+    This function translates the combination name to the current personality's language.
+    
+    Args:
+        combination: The combination string from the database (e.g., "6-1-6 (Pair)")
+        trickster_messages: Dictionary of personality-specific trickster messages
+        
+    Returns:
+        str: The combination with personality-specific text instead of English fallback
+    """
+    if not combination:
+        return combination
+    
+    # Mapping of English fallback names to message keys
+    combination_map = {
+        "(JACKPOT!)": "triple_ones",
+        "(Three of a Kind)": "three_of_a_kind",
+        "(Straight)": "straight",
+        "(Pair)": "pair",
+        "(No Prize)": "nothing",
+    }
+    
+    # Check if the combination contains any of the English fallback names
+    for english_name, message_key in combination_map.items():
+        if english_name in combination:
+            # Get the personality-specific translation
+            localized_name = trickster_messages.get(message_key)
+            if localized_name:
+                # Replace the English name with the localized version
+                return combination.replace(english_name, localized_name)
+    
+    return combination
+
+
+async def sync_bot_identity_to_server_personality(guild: discord.Guild) -> dict:
+    """
+    Synchronize bot's server identity (nickname + avatar) with server personality.
+    
+    This function reads the bot_display_name and avatar from the server-specific 
+    personality configuration and updates both in a single API call to minimize 
+    rate limit risk.
+    
+    Args:
+        guild: Discord guild object
+        
+    Returns:
+        dict: Status with keys 'success' (bool), 'nickname_changed' (bool), 
+              'avatar_changed' (bool), 'errors' (list)
+    """
+    server_id = str(guild.id)
+    
+    # Get desired name from personality
+    desired_name = get_server_personality_display_name(server_id)
+    
+    # Get avatar path and read bytes
+    avatar_path = get_server_personality_avatar_path(server_id)
+    avatar_bytes = None
+    if avatar_path:
+        avatar_bytes = read_avatar_bytes(avatar_path)
+    
+    # Check current state
+    current_nick = guild.me.nick
+    needs_nick_update = desired_name and current_nick != desired_name
+    needs_avatar_update = avatar_bytes is not None
+    
+    if not needs_nick_update and not needs_avatar_update:
+        if not desired_name and not avatar_path:
+            logger.info(f"No identity configuration for server '{guild.name}', skipping update")
+        else:
+            logger.debug(f"Identity already correct in '{guild.name}'")
+        return {
+            'success': True,
+            'nickname_changed': False,
+            'avatar_changed': False,
+            'errors': []
+        }
+    
+    # Prepare parameters for combined update
+    new_nick = desired_name if needs_nick_update else None
+    new_avatar = avatar_bytes if needs_avatar_update else None
+    
+    # Log changes
+    changes = []
+    if needs_nick_update:
+        changes.append(f"nick: '{current_nick}' → '{desired_name}'")
+    if needs_avatar_update:
+        changes.append(f"avatar: updated ({len(avatar_bytes)} bytes)")
+    logger.info(f"🔄 Updating bot identity in '{guild.name}': {', '.join(changes)}")
+    
+    # Single API call for both nickname and avatar
+    success = await update_server_identity(guild, new_nick, new_avatar)
+    
+    if success:
+        return {
+            'success': True,
+            'nickname_changed': needs_nick_update,
+            'avatar_changed': needs_avatar_update,
+            'errors': []
+        }
+    else:
+        return {
+            'success': False,
+            'nickname_changed': False,
+            'avatar_changed': False,
+            'errors': ['Failed to update identity (check permissions)']
+        }
