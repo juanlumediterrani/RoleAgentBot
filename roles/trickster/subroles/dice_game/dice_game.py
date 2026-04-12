@@ -174,11 +174,12 @@ def get_dice_game_instance(fixed_bet: int = 1) -> DiceGame:
 
 def process_play(player_id: str, player_name: str, server_display_name: str, current_pot: int, server_id: str = None) -> Dict[str, Any]:
     try:
-        # Use provided server_id or get from active server environment
+        # server_id is always passed from Discord context (ctx.guild.id)
         if server_id is None:
-            from agent_db import get_active_server_id
-            server_id = get_active_server_id() or "default"
-        
+            from agent_db import get_server_id
+            server_id = get_server_id()
+            logger.warning(f"process_play called without server_id, using active server: {server_id}")
+
         # Try to get banker database
         try:
             from agent_roles_db import get_roles_db_instance
