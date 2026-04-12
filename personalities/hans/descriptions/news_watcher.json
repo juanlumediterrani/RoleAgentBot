@@ -2,9 +2,9 @@
     "title": "**📡 Servicio de Inteligencia Militar**",
     "description": "Suscríbase a categorías de inteligencia estratégica y reciba alertas según el método de análisis autorizado.",
     "button": "📡 Inteligencia",
-    "alert_title": "**:eagle: Águilas de Reconocimiento de {_bot_display_name} :eagle:**",
+    "alert_title": "**:eagle: Águilas de Reconocimiento de Her Hans :eagle:**",
     "embed_footer": ":eagle: Águilas de Reconocimiento de Herr Hans :eagle:",
-    "feeds_available_title": "📡 Águilas de Reconocimiento de {_bot_display_name}",
+    "feeds_available_title": "📡 Águilas de Reconocimiento de Her Hans",
     "categories_available_title": "📂 Teatros de Operaciones",
     "available_feeds_title": "**Fuentes disponibles**",
     "category_feeds_title": "**{category} Fuentes**",
@@ -97,14 +97,14 @@
     "commands":{
         "usage_subscribe": "📝 Use las órdenes: `!watcher subscribe <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
         "usage_unsubscribe": "📝 Use las órdenes: `!watcher unsubscribe <teatro> [numero_de_fuente]`",
-        "uso_general": "📝 Use las órdenes: `!watcher general <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
-        "uso_palabras": "📝 Use las órdenes: `!watcher keywords \"palabra1,palabra2\" [teatro] [numero_de_fuente|all]`",
-        "usage_cancelar_palabras": "📝 Use las órdenes: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
+        "usage_general": "📝 Use las órdenes: `!watcher general <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
+        "usage_keywords": "📝 Use las órdenes: `!watcher keywords \"palabra1,palabra2\" [teatro] [numero_de_fuente|all]`",
+        "usage_cancel_keywords": "📝 Use las órdenes: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
         "usage_mixto": "📝 Use las órdenes: `!watcher mixed <teatro>`",
-        "usage_agregar_feed": "📝 Solo oficiales: `!watcher add_feed <nombre> <url> <teatro> [pais] [idioma]`",
-        "usage_canal_suscribir": "📝 Solo oficiales: `!watcherchannel subscribe <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
-        "usage_canal_cancelar": "📝 Solo oficiales: `!watcherchannel unsubscribe <teatro> [numero_de_fuente]`",
-        "usage_canal_palabras": "📝 Solo oficiales: `!watcherchannel keywords \"palabra1,palabra2\"`"
+        "usage_add_feed": "📝 Solo oficiales: `!watcher add_feed <nombre> <url> <teatro> [pais] [idioma]`",
+        "usage_channel_subscribe": "📝 Solo oficiales: `!watcherchannel subscribe <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
+        "usage_channel_cancel": "📝 Solo oficiales: `!watcherchannel unsubscribe <teatro> [numero_de_fuente]`",
+        "usage_channel_keywords": "📝 Solo oficiales: `!watcherchannel keywords \"palabra1,palabra2\"`"
     }
 }
 

@@ -1,6 +1,6 @@
 {
-    "title": "**💎 {_bot_display_name} Cazador de Recursos Estratégicos**",
-    "description": "Haga que {_bot_display_name} monitoree precios de objetos estratégicos en diferentes juegos y le envíe alertas cuando el precio esté en zona máxima/mínima.",
+    "title": "**💎 Her Hans Cazador de Recursos Estratégicos**",
+    "description": "Haga que Her Hans monitoree precios de objetos estratégicos en diferentes juegos y le envíe alertas cuando el precio esté en zona máxima/mínima.",
     "button": "💎 Recursos",
     "user_flows_title": "Procedimiento para el personal",
     "user_flows_1": "Seleccione el campo de operaciones que desea monitorear",
@@ -13,10 +13,10 @@
     "admin_flows_1": "Navegue dentro de los subroles para activarlos y configurarlos, desde la vista de oficial.",
     "poe2": {
         "title": "**💎 {_bot} Recursos en Path of Exile 2**",
-        "description": "Haga que {_bot_display_name} monitoree precios y le envíe alertas estratégicas",
-        "game_description": "Pon a prueba tu estrategia con el bote de {_bot_display_name}! 🎲 Lanza tres dados contra la banca y llévate todo el oro al lanzar un trío de unos!\n -Parejas:x1\n -Tríos:x3\n -Escalera alta:x5\n",
+        "description": "Haga que Her Hans monitoree precios y le envíe alertas estratégicas",
+        "game_description": "Pon a prueba tu estrategia con el bote de Her Hans! 🎲 Lanza tres dados contra la banca y llévate todo el oro al lanzar un trío de unos!\n -Parejas:x1\n -Tríos:x3\n -Escalera alta:x5\n",
         "actual_league": "🏆 **Campo Actual**: {league}",
-        "lueague_description": "Elija qué campo de operaciones de PoE2 quiere que {_bot_display_name} vigile",
+        "lueague_description": "Elija qué campo de operaciones de PoE2 quiere que Her Hans vigile",
         "dropdown": {
             "league_standard": "Campo: Estándar",
             "league_standard_description": "Elegir campo estándar de POE2",

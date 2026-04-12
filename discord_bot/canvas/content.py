@@ -47,6 +47,14 @@ def _get_personality_descriptions(server_id: str = None) -> dict:
             logger.debug(f"Could not load descriptions for server {server_id}: {e}")
     return {}
 
+def _get_server_personality_name(server_id: str = None) -> str:
+    """Get the personality name for a specific server, falling back to global."""
+    try:
+        from agent_engine import _get_personality
+        return _get_personality(server_id).get("name", "bot")
+    except Exception:
+        return core.PERSONALITY.get("name", "bot")
+
 os = core.os
 asyncio = core.asyncio
 discord = core.discord
@@ -56,6 +64,7 @@ logger = core.logger
 PERSONALITY = core.PERSONALITY
 from agent_mind import call_llm
 AGENT_CFG = core.AGENT_CFG
+
 from discord_bot.discord_utils import (
     get_db_for_server,
     send_dm_or_channel, send_embed_dm_or_channel,
@@ -77,7 +86,6 @@ get_banker_db_instance = None  # Now using roles_db directly
 get_behavior_db_instance = core.get_behavior_db_instance
 _discord_cfg = core._discord_cfg
 _personality_name = core._personality_name
-_bot_display_name = core._bot_display_name
 _insult_cfg = core._insult_cfg
 _personality_answers = core._personality_answers
 _talk_state_by_guild_id = core._talk_state_by_guild_id
@@ -167,17 +175,14 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     # Get title from personality descriptions for consistency
     personality_descriptions = _get_personality_descriptions(server_id)
 
-    help_title = personality_descriptions.get("help_menu", {}).get("title", f"📚 {_bot_display_name} Canvas - Help & Troubleshooting")
-    # Replace {_bot_display_name} placeholder if present
-    help_title = help_title.replace("{_bot_display_name}", _bot_display_name)
+    help_title = personality_descriptions.get("help_menu", {}).get("title", "📚 Canvas - Help & Troubleshooting")
+    help_title = help_title.replace("**", "")
 
     if section_name == "behavior":
         # Use provided title/description or fall back to personality descriptions
         if title is None:
             behavior_descriptions = personality_descriptions.get("behavior_messages", {})
-            behavior_title = behavior_descriptions.get("canvas_conversation_title", f"💬 {_bot_display_name} General Behavior")
-            # Replace {_bot_display_name} placeholder
-            behavior_title = behavior_title.replace("{_bot_display_name}", _bot_display_name)
+            behavior_title = behavior_descriptions.get("canvas_conversation_title", "💬 General Behavior")
             # Remove ** for embed title
             behavior_title = behavior_title.replace("**", "")
         else:
@@ -185,9 +190,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
 
         # Get home title from descriptions.json
         canvas_home_messages = personality_descriptions.get("canvas_home_messages", {})
-        home_title = canvas_home_messages.get("title", f"🧭 {_bot_display_name} Canvas Hub")
-        # Replace {_bot_display_name} placeholder
-        home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
+        home_title = canvas_home_messages.get("title", "🧭 Canvas Hub")
         # Remove ** for embed title
         home_title = home_title.replace("**", "")
 
@@ -195,30 +198,28 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
             "home": home_title,
             "behavior": behavior_title,
             "roles": None,  # Will be set from content
-            "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
+            "personal": "👤 Canvas - Personal Space",
             "help": help_title,
         }
     else:
         # Get home title from descriptions.json
         canvas_home_messages = personality_descriptions.get("canvas_home_messages", {})
-        home_title = canvas_home_messages.get("title", f"🧭 {_bot_display_name} Canvas Hub")
-        # Replace {_bot_display_name} placeholder
-        home_title = home_title.replace("{_bot_display_name}", _bot_display_name)
+        home_title = canvas_home_messages.get("title", "🧭 Canvas Hub")
         # Remove ** for embed title
         home_title = home_title.replace("**", "")
 
         titles = {
             "home": home_title,
-            "behavior": f"⚙️ {_bot_display_name} Canvas - General Behavior",
+            "behavior": "⚙️ Canvas - General Behavior",
             "roles": None,  # Will be set from content
-            "personal": f"👤 {_bot_display_name} Canvas - Personal Space",
+            "personal": "👤 Canvas - Personal Space",
             "help": help_title,
         }
     
     # Replace placeholders in all titles
     for key in titles:
         if titles[key]:
-            titles[key] = titles[key].replace("{_bot_display_name}", _bot_display_name)
+            pass  # Placeholder replacement removed
     colors = {
         "home": discord.Color.blurple(),
         "behavior": discord.Color.orange(),
@@ -257,13 +258,11 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
 
     # Fallback title if none was extracted
     if titles.get(section_name) is None:
-        titles[section_name] = f"{_bot_display_name} Canvas"
-        titles[section_name] = titles[section_name].replace("{_bot_display_name}", _bot_display_name)
-
+        titles[section_name] = "Canvas"
+        titles[section_name] = titles[section_name]
     # Get final title with placeholder replacement
-    final_title = titles.get(section_name, f"{_bot_display_name} Canvas")
-    final_title = final_title.replace("{_bot_display_name}", _bot_display_name)
-
+    final_title = titles.get(section_name, "Canvas")
+    final_title = final_title
     embed = discord.Embed(
         title=final_title,
         description=description[:4096],
@@ -316,9 +315,8 @@ def _normalize_canvas_title(title: str) -> str:
 
 def _build_canvas_intro_block(title: str, description: str | None = None) -> str:
     # Apply placeholder replacement to title and description
-    title = str(title).replace("{_bot_display_name}", _bot_display_name)
-    description = str(description or "").replace("{_bot_display_name}", _bot_display_name)
-    
+    title = str(title)
+    description = str(description or "")    
     normalized_title = _normalize_canvas_title(title)
     parts = [f"**{normalized_title}**"] if normalized_title else []
     normalized_description = str(description or "").strip()
@@ -340,9 +338,8 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "mc": _normalize_canvas_title(role_descriptions.get("mc", {}).get("title", "🎵 MC")),
     }
     blocks = _split_canvas_blocks(content)
-    title = role_titles.get(role_name, f"{_bot_display_name} Canvas")
-    title = title.replace("{_bot_display_name}", _bot_display_name)
-     
+    title = role_titles.get(role_name, "Canvas")
+    title = title     
     role_colors = {
         "news_watcher": discord.Color.blue(),
         "treasure_hunter": discord.Color.dark_gold(),
@@ -376,7 +373,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
             embed.add_field(name=block_title, value=value, inline=False)
 
     footer_title = role_titles.get(role_name, role_name)
-    footer_title = footer_title.replace("{_bot_display_name}", _bot_display_name)
+    footer_title = footer_title
     embed.set_footer(text=f"{footer_title} • {'admin' if admin_visible else 'user'} view")
     
     # Add user thumbnail for banker role (like !banker balance)
@@ -502,6 +499,7 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
         "taboo_add": "The bot will ask for a keyword and add it to the taboo list.",
         "taboo_del": "The bot will ask for a keyword and remove it from the taboo list.",
         "role_control_open": "The bot will ask which role to enable or disable for this server.",
+        "personality_open": "The bot will open the personality management interface.",
     }
 
     if role_name:
@@ -514,7 +512,7 @@ def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_respons
     # Use provided title/description or fall back to extracting from content
     if title is None:
         lines = [line.strip() for line in content.splitlines() if line.strip()]
-        title_line = lines[0] if lines else f"{_bot_display_name} Canvas - General Behavior"
+        title_line = lines[0] if lines else "Canvas - General Behavior"
         title = title_line.replace("**", "")
     else:
         title = title.replace("**", "")
@@ -561,9 +559,7 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         "news_watcher": [
             ("Personal", "overview"),
         ] + ([("Admin", "admin")] if admin_visible else []),
-        "treasure_hunter": [
-            ("POE2", "poe2"),
-        ],
+        "treasure_hunter": [],  # POE2 button added separately with emoticon
         "trickster": (
             # Regular subrole views
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
@@ -587,48 +583,23 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         ],
     }
     
-    # Special handling for treasure_hunter POE2 subroles
-    if role_name == "treasure_hunter" and current_detail in {"personal", "league", "admin"}:
-        # Don't return from items_map, let specific treasure_hunter logic handle these
-        pass
-    elif role_name == "treasure_hunter":
-        # For other treasure_hunter details, use items_map
-        return items_map.get(role_name, [])
-    else:
-        # For non-treasure_hunter roles, use items_map
-        return items_map.get(role_name, [])
-
-    # Specific treasure_hunter logic for POE2 subroles
+    # Special handling for treasure_hunter POE2 views
+    if role_name == "treasure_hunter" and current_detail in {"poe2", "league", "admin"}:
+        poe2_buttons = [
+            (personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("items", "Items"), "poe2"),
+            (personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("league", "League"), "league"),
+        ]
+        if admin_visible:
+            poe2_buttons.append(
+                (personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("admin", "Admin"), "admin")
+            )
+        return poe2_buttons
+    
+    # Special handling for treasure_hunter overview - return empty list (POE2 button added separately with emoticon in ui.py)
     if role_name == "treasure_hunter":
-        # Safe nested access with fallbacks
-        roles_view = personality_descriptions.get("roles_view_messages", {})
-        treasure_hunter = roles_view.get("treasure_hunter", {})
-        poe2 = treasure_hunter.get("poe2", {})
-        
-        # Use poe2.dropdown for the dropdown options
-        hunter_descriptions = poe2.get("dropdown", {})
-        
-        # Ensure hunter_descriptions is a dict
-        if not isinstance(hunter_descriptions, dict):
-            hunter_descriptions = {}
-        
-        def _hunter_text(key: str, fallback: str) -> str:
-            value = hunter_descriptions.get(key)
-            if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
-            return str(value).strip() if value else fallback
-        
-        if current_detail in {"league", "personal", "admin"}:
-            return [
-                ("Items", "personal"),
-                ("League", "league"),
-                ("Admin", "admin"),
-            ] if admin_visible else [
-                ("Items", "personal"),
-                ("League", "league"),
-            ]
-        # If no specific detail matched (including overview), return empty list for treasure_hunter
         return []
+    
+    return items_map.get(role_name, [])
 
 
 def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
@@ -650,7 +621,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         def _news_text(key: str, fallback: str) -> str:
             value = news_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                value = str(value)
             return str(value).strip() if value else fallback
         
         if detail_name in {"personal", "overview"}:  # Same view for both
@@ -686,7 +657,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         def _hunter_text(key: str, fallback: str) -> str:
             value = hunter_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                value = str(value)
             return str(value).strip() if value else fallback
         
         if detail_name == "league":
@@ -695,7 +666,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (_hunter_text("league_fate_of_the_vaal", "League: Fate of the Vaal"), "league_fate_of_the_vaal", _hunter_text("league_fate_of_the_vaal_description", "Choose POE2 league"), "⚡"),
                 (_hunter_text("league_hardcore", "League: Hardcore"), "league_hardcore", _hunter_text("league_hardcore_description", "Choose POE2 league"), "💀"),
             ]
-        if detail_name == "personal":
+        if detail_name in {"personal", "poe2", "items"}:
             return [
                 (_hunter_text("poe2_item_add", "Items: Add"), "poe2_item_add", _hunter_text("poe2_item_add_description", "Add a new POE2 item"), "➕"),
                 (_hunter_text("poe2_item_remove", "Items: Remove"), "poe2_item_remove", _hunter_text("poe2_item_remove_description", "Remove a tracked POE2 item"), "➖"),
@@ -745,7 +716,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         def _trickster_text(key: str, fallback: str) -> str:
             value = trickster_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                value = str(value)
             return str(value).strip() if value else fallback
         
         if detail_name == "overview":
@@ -758,7 +729,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             def _dice_text(key: str, fallback: str) -> str:
                 value = dice_descriptions.get(key)
                 if value:
-                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                    value = str(value)
                 return str(value).strip() if value else fallback
             
             return [
@@ -788,7 +759,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             def _runes_text(key: str, fallback: str) -> str:
                 value = canvas_labels.get(key)
                 if value:
-                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                    value = str(value)
                 return str(value).strip() if value else fallback
             
             # English fallbacks
@@ -833,7 +804,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             def _dice_text(key: str, fallback: str) -> str:
                 value = dice_descriptions.get(key)
                 if value:
-                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                    value = str(value)
                 return str(value).strip() if value else fallback
             
             return [
@@ -862,7 +833,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             def _ring_text(key: str, fallback: str) -> str:
                 value = ring_descriptions.get(key)
                 if value:
-                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                    value = str(value)
                 return str(value).strip() if value else fallback
             
             return [
@@ -909,7 +880,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             def _banker_text(key: str, fallback: str) -> str:
                 value = banker_descriptions.get(key)
                 if value:
-                    value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                    value = str(value)
                 return str(value).strip() if value else fallback
             
             return [
@@ -937,7 +908,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         def _mc_text(key: str, fallback: str) -> str:
             value = dropdown_section.get(key)
             if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
+                value = str(value)
             return str(value).strip() if value else fallback
         
         return [
@@ -986,7 +957,7 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         return None
     surface, state, command_name, input_type = selected
     return "\n".join([
-        f"⚙️ {_bot_display_name} Canvas - General Behavior Action Choice\n",
+        "⚙️ Canvas - General Behavior Action Choice\n",
         "**Selected option**",
         f"- Surface: {surface}",
         f"- State or action: {state}",
@@ -999,7 +970,7 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         "- Apply the change only if you want to affect the whole server behavior",
     ])
 
-def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int = None, user_name: str = None) -> str:
+def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int = None, user_name: str = None, server_id: str = None) -> str:
     """Try to get the last saved memory paragraph as fallback before using defaults."""
     import sqlite3
     
@@ -1057,15 +1028,15 @@ def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int =
     except Exception as e:
         logger.debug(f"Could not retrieve saved memory fallback for {memory_type}: {e}")
     
-    # If no saved records found, use the default fallback
+    # If no saved records found, use the default fallback with server_id
     from agent_mind import _get_daily_memory_fallback, _get_recent_memory_fallback, _get_relationship_memory_fallback
     
     if memory_type == "daily":
-        return _get_daily_memory_fallback()
+        return _get_daily_memory_fallback(server_id)
     elif memory_type == "recent":
-        return _get_recent_memory_fallback()
+        return _get_recent_memory_fallback(server_id)
     elif memory_type == "relationship":
-        return _get_relationship_memory_fallback(user_name or "este umano")
+        return _get_relationship_memory_fallback(user_name or "este umano", server_id)
     
     return ""
 
@@ -1074,7 +1045,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
                        role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_id: str = "default",
                        author_id: int = 0, guild=None, is_dm: bool = False) -> str:
     """Build the main Canvas hub view with status information."""
-    enabled_roles = _get_enabled_roles(agent_config)
+    enabled_roles = _get_enabled_roles(agent_config, guild)
     roles_text = ", ".join(enabled_roles) if enabled_roles else "none"
     
     # Get home messages from personality with fallback (dynamic per server)
@@ -1084,7 +1055,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     def _home_text(key: str, fallback: str) -> str:
         value = home_messages.get(key)
         if value:
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
+            value = str(value)
         return str(value).strip() if value else fallback
     
     personalitystatus = _home_text("personalitystatus", "**Personality:**" )
@@ -1114,9 +1085,9 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     database = None
     try:
         database = AgentDatabase(server_id=server_id)
-        recent_record = database.get_recent_memory_record()
+        recent_record = database.get_most_recent_memory_record()
         relationship_record = database.get_user_relationship_memory(author_id)
-        daily_record = database.get_daily_memory_record()
+        daily_record = database.get_most_recent_daily_memory_record()
     except Exception as e:
         logger.warning(f"Canvas status could not load memory data for server={server_id}: {e}")
         # Database error, but we still have the records (might be None)
@@ -1137,17 +1108,17 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     # Use fallback content if summaries are empty (e.g., due to token errors or no today's record)
     if not recent_summary:
         if database:
-            recent_summary = _get_last_saved_memory_fallback(database, "recent")
+            recent_summary = _get_last_saved_memory_fallback(database, "recent", server_id=server_id)
         else:
             from agent_mind import _get_recent_memory_fallback
-            recent_summary = _get_recent_memory_fallback()
+            recent_summary = _get_recent_memory_fallback(server_id)
     
     if not daily_summary:
         if database:
-            daily_summary = _get_last_saved_memory_fallback(database, "daily")
+            daily_summary = _get_last_saved_memory_fallback(database, "daily", server_id=server_id)
         else:
             from agent_mind import _get_daily_memory_fallback
-            daily_summary = _get_daily_memory_fallback()
+            daily_summary = _get_daily_memory_fallback(server_id)
     
     if not relationship_summary:
         # Try to get user name from guild member or fallback to "este umano"
@@ -1163,10 +1134,10 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             user_name = "este umano"
             
         if database:
-            relationship_summary = _get_last_saved_memory_fallback(database, "relationship", author_id, user_name)
+            relationship_summary = _get_last_saved_memory_fallback(database, "relationship", author_id, user_name, server_id)
         else:
             from agent_mind import _get_relationship_memory_fallback
-            relationship_summary = _get_relationship_memory_fallback(user_name)
+            relationship_summary = _get_relationship_memory_fallback(user_name, server_id)
     
     status_lines.extend([
         f"{homedescription}",
@@ -1182,34 +1153,34 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             "",
             "",
             f"{dailymemorytitle}",
-            f"- {daily_summary[:900]}",
+            f"- {daily_summary[:500]}",
             "",
             "─" * 45,
             "",
         ])
-    
+
     if recent_summary:
         status_lines.extend([
             "",
             "",
             f"{recentsynthesistitle}",
-            f"- {recent_summary[:900]}",
+            f"- {recent_summary[:1000]}",
         ])
-    
+
     if relationship_summary:
         status_lines.extend([
             "",
             "─" * 45,
             "",
             f"{personalsynthesistitle}",
-            f"- {relationship_summary[:900]}",
+            f"- {relationship_summary[:1000]}",
         ])
     
     # Add final separator
     status_lines.extend([
         "",
         "─" * 45,
-        f"{personalitystatus} `{_personality_name}`"
+        f"{personalitystatus} `{_get_server_personality_name(server_id)}`"
     ])
     
     return "\n".join(status_lines)
@@ -1227,12 +1198,10 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     
     # Title and description from descriptions.json with fallback
     title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_id} 🎭")
-    description = roles_messages.get("description", f"🌟 {core._bot_display_name} the role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.")
+    description = roles_messages.get("description", "🌟 The role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.")
     
-    # Replace {_bot_display_name} placeholder in main title and description
-    title = title.replace("{_bot_display_name}", _bot_display_name)
-    description = description.replace("{_bot_display_name}", _bot_display_name)
-    
+    title = title
+    description = description    
     # Helper messages
     enabled_status = roles_messages.get("enabled_status", "ACTIVE")
     interval_info = roles_messages.get("interval_info", "⏰ Every {interval}h")
@@ -1274,10 +1243,8 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
         title = role_info.get("title", fallback_titles.get(role_key, role_key))
         description = role_info.get("description", fallback_descriptions.get(role_key, "Role functionality"))
         
-        # Replace {_bot_display_name} placeholder in role titles and descriptions
-        title = title.replace("{_bot_display_name}", _bot_display_name)
-        description = description.replace("{_bot_display_name}", _bot_display_name)
-        
+        title = title
+        description = description        
         return {
             "title": title,
             "description": description
@@ -1379,7 +1346,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
 def _build_canvas_personal() -> str:
     """Build the personal/DM-oriented Canvas view."""
     return (
-        f"👤 {_bot_display_name} Canvas - Personal Space\n\n"
+        "👤 Canvas - Personal Space\n\n"
         "**Personal workflows**\n"
         "- News Watcher personal subscriptions: `!watcherhelp`\n"
         "- POE2 objectives and league: `!hunter poe2 help`\n"

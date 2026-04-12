@@ -1,8 +1,8 @@
 {
-    "title": "**🎭El Trilero Jorobado {_bot_display_name}**",
+    "title": "**🎭El Trilero Jorobado Igorrr**",
     "description": "Ven y déjate engañar por el siervo rastrero, juega y sufre con Igorrr.",
     "button": "🎭Trilero del Horno",
-    "canvas_trickster_overview_title": "**🎭Trilero {_bot_display_name}**",
+    "canvas_trickster_overview_title": "**🎭Trilero Igorrr**",
     "canvas_trickster_overview_description": "Elige tu veneno en el callejón del horno...",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
@@ -27,7 +27,7 @@
         "rankingvoid": " No hay víctimas todavía, JEJEJE!",
         "historyvoid": " Nadie ha jugado todavía... qué aburrido",
         "history": " **📜  Historial de sufrimientos **",
-        "help": " **Ayuda de los Dientes**\n Juega con los huesos de rata de {_bot_display_name}, apuesta monedas y pierde! Usa 'dice play' para sufrir.\n Si sacas tres unos, el horno te devolverá algo... quizás.",
+        "help": " **Ayuda de los Dientes**\n Juega con los huesos de rata de Igorrr, apuesta monedas y pierde! Usa 'dice play' para sufrir.\n Si sacas tres unos, el horno te devolverá algo... quizás.",
         "title": "💰 DIENTES DE RATA 💰**\n",
         "current_balance": "Monedas podridas acumuladas:",
         "fixed_bet": "Precio por tirar:",
@@ -44,7 +44,7 @@
         "error_database_access": "¡SSSSS! Error al acceder a los papeles grasientos del juego!",
         "error_procesar_tirada": "¡KHÉ! Error al procesar los huesos: {error}",
         "help_titulo": "🎲 **AYUDA DE LOS HUESOS DE RATA** 🎲",
-        "help_descripcion": "¡SSSSS! Pon a prueba tu suerte con los huesos de {_bot_display_name}! 🎲\n\n",
+        "help_descripcion": "¡SSSSS! Pon a prueba tu suerte con los huesos de Igorrr! 🎲\n\n",
         "help_commands": "**Comandos:**\n",
         "help_play": "• `!dice play` - Tira los huesos (cuesta monedas podridas)\n",
         "select_dice_admin_action": "🎲 Elegir veneno...",

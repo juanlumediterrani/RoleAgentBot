@@ -2,9 +2,9 @@
     "title": "**📡 Vigia de Noticias **",
     "description": "Suscribete a categorías de noticias y recibe alertas segun el método de análisis escogido.",
     "button": "📡 Vigia",
-    "alert_title": "**:wolf: Lobos Rastreadores de {_bot_display_name} :wolf:**",
+    "alert_title": "**:wolf: Lobos Rastreadores de Putre :wolf:**",
     "embed_footer": ":wolf: Lobos Rastreadores de Putre :wolf:",
-    "feeds_available_title": "📡 Lobogs Rastreadores de {_bot_display_name}",
+    "feeds_available_title": "📡 Lobogs Rastreadores de Putre",
     "categories_available_title": "📂 Terrenos de Kaza",
     "available_feeds_title": "**Feeds disponibles**",
     "category_feeds_title": "**{category} Feeds**",
@@ -97,14 +97,14 @@
     "commands":{
         "usage_subscribe": "📝 Uza mi acha: `!watcher subscribe <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
         "usage_unsubscribe": "📝 Uza mi acha: `!watcher unsubscribe <terreno> [numero_de_nido]`",
-        "uso_general": "📝 Uza mi acha: `!watcher general <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
-        "uso_palabras": "📝 Uza mi acha: `!watcher keywords \"palabra1,palabra2\" [terreno] [numero_de_nido|all]`",
-        "usage_cancelar_palabras": "📝 Uza mi acha: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
+        "usage_general": "📝 Uza mi acha: `!watcher general <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
+        "usage_keywords": "📝 Uza mi acha: `!watcher keywords \"palabra1,palabra2\" [terreno] [numero_de_nido|all]`",
+        "usage_cancel_keywords": "📝 Uza mi acha: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
         "usage_mixto": "📝 Uza mi acha: `!watcher mixed <terreno>`",
-        "usage_agregar_feed": "📝 Solo jefes: `!watcher add_feed <nombre> <url> <terreno> [pais] [idioma]`",
-        "usage_canal_suscribir": "📝 Solo jefes: `!watcherchannel subscribe <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
-        "usage_canal_cancelar": "📝 Solo jefes: `!watcherchannel unsubscribe <terreno> [numero_de_nido]`",
-        "usage_canal_palabras": "📝 Solo jefes: `!watcherchannel keywords \"palabra1,palabra2\"`"
+        "usage_add_feed": "📝 Solo jefes: `!watcher add_feed <nombre> <url> <terreno> [pais] [idioma]`",
+        "usage_channel_subscribe": "📝 Solo jefes: `!watcherchannel subscribe <terreno> [numero_de_nido|all]`\nSin numero: primer nido | 'all': todos los nidos",
+        "usage_channel_cancel": "📝 Solo jefes: `!watcherchannel unsubscribe <terreno> [numero_de_nido]`",
+        "usage_channel_keywords": "📝 Solo jefes: `!watcherchannel keywords \"palabra1,palabra2\"`"
     }
 }
 

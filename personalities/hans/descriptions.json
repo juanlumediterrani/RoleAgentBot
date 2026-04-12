@@ -13,15 +13,15 @@
       "frequency_format": "Cada {hours}h"
     },
     "help_menu": {
-      "title": "📚 ** {_bot_display_name} - MANUAL DE INSTRUCCIONES**",
-      "description": "**DESCRIPCIÓN OFICIAL** 🦅⚖️\n¡ACHTUNG! {_bot_display_name} es un agente disciplinario con memoria persistente y autoridad absoluta. ¡Sigue las reglas o sufrirás las consecuencias, Zivilist! ✍️🚫",
+      "title": "📚 ** Her Hans - MANUAL DE INSTRUCCIONES**",
+      "description": "**DESCRIPCIÓN OFICIAL** 🦅⚖️\n¡ACHTUNG! Her Hans es un agente disciplinario con memoria persistente y autoridad absoluta. ¡Sigue las reglas o sufrirás las consecuencias, Zivilist! ✍️🚫",
       "separator": "═══════════════════════════════════════",
       "roles_section": "**MÓDULOS DE OPERACIÓN**\nLos módulos son capacidades autorizadas para mantener el orden y la disciplina entre los reclutas.",
       "behavior_section": "**PROTOCOLOS DE COMPORTAMIENTO**\n¡SCHNELL! Configura los protocolos de comportamiento. ¡SOLO PARA OFICIALES SUPERIORES!",
       "tips_section": "**ÓRDENES ESTRICTAS**\n-¡Preguntar cómo funciona un comando: '¿cómo funciona el comando dice?'!\n-¡Las mejores capacidades están dentro de cada módulo operativo!"
     },
     "canvas_home_messages": {
-      "title": "🧭 {_bot_display_name} • CUARTEL GENERAL",
+      "title": "🧭 Her Hans • CUARTEL GENERAL",
       "button_home": "🧭 Cuartel",
       "button_back": "← Retroceder",
       "button_roles": "🎪 Módulos",
@@ -29,7 +29,7 @@
       "button_help": "📝 Manual",
       "generic_option_label": "¡SELECCIONAR OPCIÓN, RECLUTA!",
       "personalitystatus": "**Personalidad cargada:**",
-      "description": "-¡Interactuar con todas las funciones autorizadas de {_bot_display_name} desde aquí!\n-¡El panel Canvas permite control total sobre todas las operaciones!",
+      "description": "-¡Interactuar con todas las funciones autorizadas de Her Hans desde aquí!\n-¡El panel Canvas permite control total sobre todas las operaciones!",
       "recentsynthesistitle": "🧐 **Reporte actual**",
       "dailymemorytitle": "🗺️ **Análisis del frente**",
       "personalsynthesistitle": "👞 **Informe personal del recluta**",
@@ -40,8 +40,8 @@
       "dm_server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL SERVIDOR! 📉💥 ¡Ejecutar acciones desde un servidor! ✍️🚫"
     },
     "roles_view_messages": {
-      "title": "🎭  UNIDADES ESPECIALES DE {_bot_display_name} 🎭",
-      "description": "🌟 ¡Navegar por las diferentes unidades operativas desplegadas para {_bot_display_name}!",
+      "title": "🎭  UNIDADES ESPECIALES DE Her Hans 🎭",
+      "description": "🌟 ¡Navegar por las diferentes unidades operativas desplegadas para Her Hans!",
       "role_categories": "═════════════════════════════════",
       "enabled_status": "ACTIVO 🦅⚖️",
       "inactive_status": "❌ FUERA DE SERVICIO 📉💥",
@@ -57,40 +57,60 @@
       "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA! 🦅⚖️",
       "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO! 📉💥",
       "frequency_help": "📝 ¡Usar comando: `!{role}frequency <horas>` (de 1 a 168 horas)\n¡Ejemplo: `!watcherfrequency 2` para vigilar cada 2 horas, ¡SCHNELL!",
-      "music_help": "🎵 **MÚSICA DE {_bot_display_name}** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!"
+      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!"
     },
     "behavior_messages": {
       "conversation": {
-        "title": "**💬 {_bot_display_name} - INTERROGATORIO MILITAR**",
-        "description": "**PROTOCOLO DE INTELIGENCIA:** 🦅⚖️\n -¡{_bot_display_name} ejecuta protocolos de interrogatorio en DM y menciones!\n -¡Memoria operativa persistente para registrar todas las misiones anteriores!\n -¡Reacciona según parámetros tácticos y palabras clave prohibidas! ¡Configurar en protocolos de seguridad! ✍️🚫",
+        "title": "**💬 Her Hans - INTERROGATORIO MILITAR**",
+        "description": "**PROTOCOLO DE INTELIGENCIA:** 🦅⚖️\n -¡Her Hans ejecuta protocolos de interrogatorio en DM y menciones!\n -¡Memoria operativa persistente para registrar todas las misiones anteriores!\n -¡Reacciona según parámetros tácticos y palabras clave prohibidas! ¡Configurar en protocolos de seguridad! ✍️🚫",
         "button": "💬 Interrogatorio"
       },
       "greetings": {
-        "title": "**👋 {_bot_display_name} - PROTOCOLO DE SALUDO MILITAR**",
+        "title": "**👋 Her Hans - PROTOCOLO DE SALUDO MILITAR**",
         "description": "**REGLAMENTO DE FORMACIONES:** 🦅⚖️\n -¡Ejecuta saludos reglamentarios al detectar reclutas en línea!\n -¡Tiempo de espera táctico: 5 minutos antes de declarar ausencia!\n -¡(En desarrollo): Sistema de respuesta obligatoria al saludo militar! ✍️🚫",
         "button": "👋 Formación"
       },
       "welcome": {
-        "title": "**🍺 {_bot_display_name} - PROTOCOLO DE INDUCCIÓN**",
+        "title": "**🍺 Her Hans - PROTOCOLO DE INDUCCIÓN**",
         "description": "**PROCEDIMIENTO DE RECLUTAMIENTO:** 🦅⚖️\n -¡Ejecuta ceremonia oficial de inducción para nuevos reclutas!\n -¡Registra presencia en el cuartel y asigna número de identificación! ✍️🚫",
         "button": "🍺 Inducción"
       },
       "taboo": {
-        "title": "**🚫 {_bot_display_name} - PROTOCOLO DE SEGURIDAD**",
+        "title": "**🚫 Her Hans - PROTOCOLO DE SEGURIDAD**",
         "description": "**REGLAMENTO DE DISCIPLINA:** 🦅⚖️\n -¡Configurar sistema de respuesta automática a palabras prohibidas en canales y DM!\n -¡Activar/desactivar alertas de seguridad y palabras clave restringidas! ✍️🚫",
         "title_keywords": "**VOCABULARIO RESTRINGIDO ACTUAL:**",
         "button": "🚫 Seguridad"
       },
       "comentary": {
-        "title": "**🗣️ {_bot_display_name} - COMUNICADOS TÁCTICOS**",
+        "title": "**🗣️ Her Hans - COMUNICADOS TÁCTICOS**",
         "description": "**SISTEMA DE INTELIGENCIA:** 🦅⚖️\n -¡Emite comunicados oficiales sobre estado de misiones y operaciones activas!\n -¡Analiza rendimiento de unidades y reporta al comando superior! 📉💥",
         "button": "🗣️ Comunicados"
       },
       "role_control": {
-        "title": "**🎛️ {_bot_display_name} - COMANDO DE UNIDADES**",
+        "title": "**🎛️ Her Hans - COMANDO DE UNIDADES**",
         "description": "**CENTRO DE CONTROL TÁCTICO:** 🦅⚖️\n -¡Activar y desactivar unidades operativas desde el puesto de mando!\n -¡Supervisar estado de todas las fuerzas desplegadas en el campo! ✍️🚫",
         "button": "🎛️ Comando"
+      },
+      "personality": {
+        "title": "**🎭 Her Hans - CAMBIO DE IDENTIDAD OPERATIVA**",
+        "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️\n -¡Cambiar el personaje del agente para este servidor!\n -¡Descargar una copia de seguridad de la identidad actual con los cambios de en su personalidad!\n -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
+        "button": "🎭 Identidad"
       }
+    },
+    "personality_messages": {
+      "view_title": "🎭 Her Hans - CAMBIO DE IDENTIDAD OPERATIVA",
+      "view_description": "¡Cambiar o descargar la identidad operativa del bot para esta unidad!",
+      "option_change": "Cambiar Identidad",
+      "option_change_desc": "¡Cambiar a una personalidad operativa diferente!",
+      "option_download": "Descargar Identidad Actual",
+      "option_download_desc": "¡Exportar identidad como archivo ZIP cifrado!",
+      "placeholder": "¡Elige una operación de identidad...",
+      "modal_personality_label": "Nueva Identidad Operativa",
+      "modal_download_label": "¿Descargar identidad anterior? (si/no)",
+      "modal_delete_memory_label": "¿Borrar archivos de inteligencia? (si/no)",
+      "modal_download_memory_label": "¿Descargar inteligencia primero? (si/no)",
+      "download_success": "✅ ¡¡IDENTIDAD `{personality}` EXPORTADA CON ÉXITO, COMANDANTE!!",
+      "change_success": "✅ ¡¡IDENTIDAD CAMBIADA DE `{old}` A `{new}`!! ¡¡LA NUEVA IDENTIDAD ESTÁ ACTIVA Y OPERATIVA, COMANDANTE!!"
     },
     "readme":{
       "label_user_question":"**PREGUNTA DEL RECLUTA:**",

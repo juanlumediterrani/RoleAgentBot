@@ -1,5 +1,5 @@
 {
-    "title": "**💎 El Buscagranos de {_bot_display_name}**",
+    "title": "**💎 El Buscagranos de Igorrr**",
     "description": "Igorrr busca objetos valiosos para fundirlos o venderlos por ungüento para la joroba.",
     "button": "💎 Buscagranos",
     "active_items": "🎯 Granos que busco",
@@ -16,8 +16,8 @@
     "item_found": "🎯 ¡KHÉ! Encontré esto",
     "no_recent_finds": "🌫️ No hay granos nuevos... SSSSS.",
     "hunter_help": " **Buscagranos** - `!poe2 add <basura>` | `!poe2 list` | `!poe2 help` para que Igorrr te enseñe a robar",
-    "canvas_hunter_overview_title": "💎 El Buscagranos de {_bot_display_name}",
-    "canvas_title": "💎 El Buscagranos de {_bot_display_name}",
+    "canvas_hunter_overview_title": "💎 El Buscagranos de Igorrr",
+    "canvas_title": "💎 El Buscagranos de Igorrr",
     "select_hunter_action": "💎 Elige qué robar...",
     "add_item": "Añadir Grano",
     "add_description": "Buscar un nuevo tipo de basura",

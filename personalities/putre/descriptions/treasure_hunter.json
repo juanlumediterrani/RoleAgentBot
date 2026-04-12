@@ -1,7 +1,13 @@
 {
-    "title": "**💎 {_bot_display_name} Cazador de Tesoros **",
-    "description": "Haz que {_bot_display_name} monitorice precios de objetos en diferentes juegos y te envie alertas cuando el precio este en una zona de max/min",
+    "title": "**💎 Putre Cazador de Tesoros **",
+    "description": "Haz que Putre monitorice precios de objetos en diferentes juegos y te envie alertas cuando el precio este en una zona de max/min",
     "button": "💎 Tesoros",
+    "button_poe2": "👺 POE2",
+    "subrole_buttons": {
+        "items": "💎 Objetos",
+        "league": "🏆 Liga",
+        "admin": "⚙️ Admin"
+    },
     "user_flows_title": "Flujo para el usuario",
     "user_flows_1": "Selecciona el juego que quieres suscribirte",
     "user_flows_2": "Navega en el para configurarlo y selecionar los items deseados.",
@@ -12,11 +18,10 @@
     "admin_flows_title": "Flujo para admin",
     "admin_flows_1": "Navega dentro de los subroles para activarlos y configurarlos, desde su admin view.",
     "poe2": {
-        "title": "**💎 {_bot} Tesoros en Path of Exile 2**",
-        "description": "Haz que {_bot_display_name} monitorice precios y te envie alertas",
-        "game_description": "Pon a prueba tu suerte con el bote de {_bot_display_name}! 🎲 Tira tres dados contra la banca y llevate todo el oro al lanzar un trio de unos!/n -Parejas:x1\n -Trios:x3\n -Escalera alta:x5\n",
-        "actual_league": "🏆 **Liga Aktual**: {league}",
-        "lueague_description": "Elige que liga de PoE2 quiere que {_bot_display_name} vigile",
+        "title": "💎 **Tesoros en Path of Exile 2** 👺" ,
+        "description": "Haz que Putre monitorice precios y te envie alertas",
+        "current_league": "🏆 **Liga Aktual**: {league}",
+        "league_description": "Aqui se muestran las diferentes ligas que puedes selecionar y los hits del momento en esa liga.",
         "dropdown": {
             "league_standard": "Liga: Estándar",
             "league_standard_description": "Elegir liga estándar de POE2",

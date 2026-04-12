@@ -13,7 +13,7 @@
       "frequency_format": "Cada {hours}h"
     },
     "help_menu": {
-      "title": "📚 ** {_bot_display_name} - Manual de Supervivencia en el Horno**",
+      "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
       "description": "**Descripción**\nIgorrr es el servidor jorobado que te vigila mientras duermes. Tiene memoria para tus pecados y puede escupirte comandos si el Amo lo permite.",
       "separator": "---------------------------------------------",
       "roles_section": "**Labores**\nLos módulos de Labores son las cadenas que Igorrr arrastra para servir al Amo y vigilar a los sacos de harina.",
@@ -21,7 +21,7 @@
       "tips_section": "**Susurros útiles**\n-Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir...\n-Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
     },
     "canvas_home_messages": {
-      "title": "🧭 {_bot_display_name} - El Callejón Mugriento",
+      "title": "🧭 Igorrr - El Callejón Mugriento",
       "button_home": "🧭 El Horno",
       "button_back": "← Atrás (al sótano)",
       "button_roles": "🎪 Labores",
@@ -42,33 +42,33 @@
     },
     "canvas_behavior_messages": {
       "conversation": {
-        "title": "**💬 {_bot_display_name} - Murmullos del Sótano**",
+        "title": "**💬 Igorrr - Murmullos del Sótano**",
         "description": "**Descripción:**\n -Igorrr responde a susurros y menciones.\n -Tiene memoria de tus pecados y puede recordarlos cuando quieras.\n -Reacciona a palabras prohibidas si el Amo lo permite.",
         "button": "💬 Murmullos"
       },
       "greetings": {
-        "title": "**👋 {_bot_display_name} - Siseos de Bienvenida**",
+        "title": "**👋 Igorrr - Siseos de Bienvenida**",
         "description": "**Descripción:**\n -Igorrr sisea cuando los sacos de harina se conectan.\n -Espera 5 min antes de decir que se fue.\n -(Por implementar):\n Reconoce si no le responden y deja de saludar.",
         "button": "👋 Siseos"
       },
       "welcome": {
-        "title": "**🍺 {_bot_display_name} - Bienvenida al Horno**",
+        "title": "**🍺 Igorrr - Bienvenida al Horno**",
         "description": "**Descripción:**\n -Da la bienvenida a los sacos de harina nuevos al sótano.",
         "button": "🍺 Bienvenida"
       },
       "taboo": {
-        "title": "**🚫 {_bot_display_name} - Palabras Prohibidas**",
+        "title": "**🚫 Igorrr - Palabras Prohibidas**",
         "description": "**Como funciona:**\n -Configura a Igorrr para que reaccione al leer una palabra.\n -Se puede activar/desactivar o configurar las palabras que huelen mal.",
         "title_keywords": "Palabras que huelen mal:",
         "button": "🚫 Prohibido"
       },
       "comentary": {
-        "title": "**🗣️ {_bot_display_name} - Comentarios del Horno**",
+        "title": "**🗣️ Igorrr - Comentarios del Horno**",
         "description": "**Descripción**\n -Igorrr habla solo sobre lo que ve en el horno y los chismes del callejón.",
         "button": "🗣️ Comentarios"
       },
       "role_control": {
-        "title": "**🎛️ {_bot_display_name} - Control de Cadenas**",
+        "title": "**🎛️ Igorrr - Control de Cadenas**",
         "description": "**Descripción**\n -Activa o apaga las labores del sótano desde aquí.",
         "button": "🎛️ Control"
       }
@@ -82,7 +82,7 @@
       "description": "Borra mis recuerdos si quieres que olvide cuánto asco me das. O mírame recordar tus pecados."
     },
     "roles_view_messages": {
-      "title": "🎭 Labores de {_bot_display_name} 🎭",
+      "title": "🎭 Labores de Igorrr 🎭",
       "description": "🌟 Mira qué cadenas arrastra Igorrr hoy para complacer al Amo.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "TRABAJANDO... SSSSS",
@@ -106,15 +106,35 @@
         "button": "🚫 Prohibido"
       },
       "comentary": {
-        "title": "**🗣️ {_bot_display_name} - Murmullos**",
+        "title": "**🗣️ Igorrr - Murmullos**",
         "description": "**Descripción**\\n -Igorrr habla solo sobre lo que ve en el horno y los chismes del callejón.",
         "button": "🗣️ Murmurar"
       },
       "role_control": {
-        "title": "**🎛️ {_bot_display_name} - Control de Cadenas**",
+        "title": "**🎛️ Igorrr - Control de Cadenas**",
         "description": "**Descripción**\\n -Activa o apaga mis labores. No me hagas trabajar de más... SSSSS.",
         "button": "🎛️ Control"
+      },
+      "personality": {
+        "title": "**🎭 Igorrr - Cambio de Piel**",
+        "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\n -Descarga mi piel actual antes de mudarme.\n -Migra mis recuerdos al cambiar.",
+        "button": "🎭 Piel"
       }
+    },
+    "personality_messages": {
+      "view_title": "🎭 Igorrr - Cambio de Piel",
+      "view_description": "Cambia o descarga mi personalidad para este servidor.",
+      "option_change": "Cambiar Piel",
+      "option_change_desc": "Cambiar a una personalidad diferente",
+      "option_download": "Descargar Piel Actual",
+      "option_download_desc": "Exportar personalidad como ZIP",
+      "placeholder": "Elige una acción de piel...",
+      "modal_personality_label": "Nueva Piel",
+      "modal_download_label": "¿Descargar piel anterior? (si/no)",
+      "modal_delete_memory_label": "¿Borrar mi memoria? (si/no)",
+      "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
+      "download_success": "✅ ¡Piel `{personality}` exportada! Guarda bien ese archivo...",
+      "change_success": "✅ ¡Piel cambiada de `{old}` a `{new}`! Ya estoy usando mi nueva piel... SSSSS..."
     },
     "readme": {
       "label_user_question": "Duda del saco de harina:",

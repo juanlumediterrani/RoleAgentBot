@@ -300,6 +300,28 @@ class CanvasSmartBackButton(discord.ui.Button):
             await self._navigate_to_home(interaction, view)
             return
         
+        # Handle CanvasBehaviorView with personality detail - go back to conversation
+        if isinstance(view, CanvasBehaviorView) and view.current_detail == "personality":
+            logger.info(f"🔧 Behavior personality view -> conversation")
+            from .canvas_behavior import build_canvas_behavior_detail
+            from .content import _build_canvas_behavior_embed
+            title, description, content = build_canvas_behavior_detail("conversation", view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+            if content:
+                behavior_view = CanvasBehaviorView(
+                    author_id=view.author_id,
+                    sections=view.sections,
+                    admin_visible=view.admin_visible,
+                    agent_config=view.agent_config,
+                    current_detail="conversation",
+                    guild=view.guild,
+                )
+                behavior_embed = _build_canvas_behavior_embed(content, view.admin_visible, None, title, description)
+                await interaction.response.edit_message(content=None, embed=behavior_embed, view=behavior_view)
+                behavior_view.message = interaction.message
+            else:
+                await self._navigate_to_home(interaction, view)
+            return
+        
         if hasattr(view, 'current_detail') and hasattr(view, 'role_name'):
             logger.info(f"🔧 RoleDetailView navigation - current_detail: {view.current_detail}, role_name: {view.role_name}")
             
@@ -548,10 +570,11 @@ class CanvasSmartBackButton(discord.ui.Button):
             # Check required functions
             if not _build_canvas_home or not _build_canvas_embed:
                 raise ImportError("Home view functions not available")
-            
-            # Get correct server_id from guild
-            server_id = get_server_key(view.guild) if view.guild else "default"
-            
+
+            # Get correct server_id from guild or active server
+            from agent_db import get_server_id
+            server_id = get_server_key(view.guild) if view.guild else get_server_id()
+
             # Build home content
             content = _build_canvas_home(
                 view.agent_config,
@@ -757,7 +780,6 @@ try:
     # Get variables from core
     _discord_cfg = core._discord_cfg
     _personality_name = core._personality_name
-    _bot_display_name = core._bot_display_name
     _insult_cfg = core._insult_cfg
     _personality_answers = core._personality_answers
     from agent_engine import _personality_descriptions
@@ -780,7 +802,6 @@ except ImportError:
     # Core fallbacks
     _discord_cfg = {}
     _personality_name = "Unknown"
-    _bot_display_name = "Bot"
     _insult_cfg = {}
     _personality_answers = {}
 
@@ -887,6 +908,10 @@ from .canvas_treasure_hunter import (
 from .canvas_banker import (
     BankerConfigModal as _BankerConfigModal,
     handle_canvas_banker_action as _HandleCanvasBankerAction,
+)
+from .canvas_personality import (
+    CanvasPersonalityView,
+    build_canvas_personality_content,
 )
 
 class CanvasSectionSelect(discord.ui.Select):
@@ -1036,7 +1061,7 @@ class CanvasRoleSelect(discord.ui.Select):
         }
         
         embed = discord.Embed(
-            title=f"📋 {_bot_display_name} - All Available Roles",
+            title="📋 All Available Roles",
             description="Complete list of available roles and their status",
             color=discord.Color.blue()
         )
@@ -1089,9 +1114,9 @@ class CanvasRoleDetailSelect(discord.ui.Select):
 
 
 class CanvasRoleActionSelect(discord.ui.Select):
-    def __init__(self, role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None):
+    def __init__(self, role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None, guild=None):
         action_items = _get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config)
-        
+
         # Handle both 3-tuple and 4-tuple formats
         options = []
         for item in action_items:
@@ -1101,8 +1126,10 @@ class CanvasRoleActionSelect(discord.ui.Select):
             else:  # (label, value, description) - backward compatibility
                 label, value, description = item
                 options.append(discord.SelectOption(label=label, value=value, description=description))
-        
-        generic_option_label = _personality_descriptions.get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
+
+        # Use server-specific descriptions if guild is provided
+        server_id = get_server_key(guild) if guild else None
+        generic_option_label = _get_personality_descriptions(server_id).get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
         super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options[:25], row=2)
         self.role_name = role_name
         self.detail_name = detail_name
@@ -1204,6 +1231,7 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         ]
         server_id = get_server_key(guild) if guild else None
         generic_option_label = _get_personality_descriptions(server_id).get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
+        
         super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options[:25], row=2)
 
     async def callback(self, interaction: discord.Interaction):
@@ -1340,11 +1368,98 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
 
 
+class CanvasNavRolesButton(discord.ui.Button):
+    """Dynamic Roles button for Canvas home - loads label from server-specific descriptions."""
+
+    def __init__(self, label: str = "Roles"):
+        super().__init__(label=label, style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        guild = interaction.guild or view.guild
+        if guild:
+            server_id = get_server_key(guild) if get_server_key else str(guild.id)
+            view.sections = _build_canvas_sections(
+                view.agent_config,
+                "Canvas",
+                "No Canvas",
+                "Welcome",
+                "No Welcome",
+                "!canvas",
+                "!talk",
+                view.admin_visible,
+                server_id,
+                view.author_id,
+                guild,
+                False
+            )
+            view.guild = guild
+        roles_content = view.sections.get("roles")
+        if not roles_content:
+            await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
+            return
+        roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild)
+        roles_view.message = interaction.message
+        roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
+        roles_view.current_embed = roles_embed  # Store embed for back navigation
+        await _safe_edit_interaction_message(interaction, content=None, embed=roles_embed, view=roles_view)
+        roles_view.message = interaction.message
+
+
+class CanvasNavBehaviorButton(discord.ui.Button):
+    """Dynamic Behavior button for Canvas home - loads label from server-specific descriptions."""
+
+    def __init__(self, label: str = "Behavior"):
+        super().__init__(label=label, style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        guild = interaction.guild or view.guild
+        if guild:
+            server_id = get_server_key(guild) if get_server_key else str(guild.id)
+            view.sections = _build_canvas_sections(
+                view.agent_config,
+                "Canvas",
+                "No Canvas",
+                "Welcome",
+                "No Welcome",
+                "!canvas",
+                "!talk",
+                view.admin_visible,
+                server_id,
+                view.author_id,
+                guild,
+                False
+            )
+            view.guild = guild
+        guild = interaction.guild or view.guild
+        result = _build_canvas_behavior_detail("conversation", view.admin_visible, guild, view.agent_config)
+        if not result:
+            await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
+            return
+        b_title, b_description, b_content = result
+        behavior_view = CanvasBehaviorView(view.author_id, view.sections, view.admin_visible, view.agent_config, current_detail="conversation", guild=guild)
+        behavior_embed = _build_canvas_behavior_embed(b_content, view.admin_visible, title=b_title, description=b_description)
+        await _safe_edit_interaction_message(interaction, content=None, embed=behavior_embed, view=behavior_view)
+        behavior_view.message = interaction.message
+
+
+class CanvasNavHelpButton(discord.ui.Button):
+    """Dynamic Help button for Canvas home - loads label from server-specific descriptions."""
+
+    def __init__(self, label: str = "Help"):
+        super().__init__(label=label, style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        await view._show_section(interaction, "help")
+
+
 class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, discord.ui.View):
     """Interactive button-based Canvas navigation for top-level sections."""
 
     def __init__(self, author_id: int, sections: dict[str, str], admin_visible: bool, agent_config: dict, guild=None, message=None, show_dropdown=True):
-        super().__init__(timeout=600)  # 10 minutes instead of 10
+        super().__init__(timeout=900)  # 15 minutes
         self.author_id = author_id
         self.sections = sections
         self.admin_visible = admin_visible
@@ -1354,19 +1469,21 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
         server_id = get_server_key(guild) if guild else None
         if show_dropdown:
             self.add_item(CanvasSectionSelect(admin_visible, server_id))
-        # Override button labels with server-specific descriptions
-        _desc = _get_personality_descriptions(server_id).get("canvas_home_messages", {})
-        for child in self.children:
-            if hasattr(child, 'callback'):
-                cb_name = getattr(child.callback, '__name__', None)
-                if cb_name == 'roles_button' and _desc.get('button_roles'):
-                    child.label = _desc['button_roles']
-                elif cb_name == 'behavior_button' and _desc.get('button_behavior'):
-                    child.label = _desc['button_behavior']
-                elif cb_name == 'help_button' and _desc.get('button_help'):
-                    child.label = _desc['button_help']
+        # Dynamically add nav buttons with server-specific labels (same pattern as CanvasRolesView)
+        self._add_nav_buttons()
         # Start the timeout timer
         self._reset_timeout()
+
+    def _add_nav_buttons(self):
+        """Add navigation buttons with labels from server-specific descriptions.json."""
+        server_id = get_server_key(self.guild) if self.guild else None
+        _desc = _get_personality_descriptions(server_id).get("canvas_home_messages", {})
+        roles_label = _desc.get("button_roles", "Roles")
+        behavior_label = _desc.get("button_behavior", "Behavior")
+        help_label = _desc.get("button_help", "Help")
+        self.add_item(CanvasNavRolesButton(label=roles_label))
+        self.add_item(CanvasNavBehaviorButton(label=behavior_label))
+        self.add_item(CanvasNavHelpButton(label=help_label))
 
     async def on_timeout(self) -> None:
         """Called when the view times out - delete the entire message."""
@@ -1409,77 +1526,6 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
             return False
         return True
 
-    button_roles = _personality_descriptions.get("canvas_home_messages", {}).get("button_roles", "Roles")
-    @discord.ui.button(label=button_roles, style=discord.ButtonStyle.success)
-    async def roles_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild = interaction.guild or self.guild
-        if guild:
-            server_id = get_server_key(guild) if get_server_key else str(guild.id)
-            self.sections = _build_canvas_sections(
-                self.agent_config,
-                "Canvas",
-                "No Canvas",
-                "Welcome",
-                "No Welcome",
-                "!canvas",
-                "!talk",
-                self.admin_visible,
-                server_id,
-                self.author_id,
-                guild,
-                False
-            )
-            self.guild = guild
-        roles_content = self.sections.get("roles")
-        if not roles_content:
-            await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
-            return
-        roles_view = CanvasRolesView(self.author_id, self.agent_config, self.admin_visible, self.sections, guild=interaction.guild)
-        roles_view.message = interaction.message
-        roles_embed = _build_canvas_embed("roles", roles_content, self.admin_visible)
-        roles_view.current_embed = roles_embed  # Store embed for back navigation
-        await _safe_edit_interaction_message(interaction, content=None, embed=roles_embed, view=roles_view)
-        # Set the message reference for timeout deletion
-        roles_view.message = interaction.message
-
-    button_behavior = _personality_descriptions.get("canvas_home_messages", {}).get("button_behavior", "Behavior")
-    @discord.ui.button(label=button_behavior, style=discord.ButtonStyle.success)
-    async def behavior_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild = interaction.guild or self.guild
-        if guild:
-            server_id = get_server_key(guild) if get_server_key else str(guild.id)
-            self.sections = _build_canvas_sections(
-                self.agent_config,
-                "Canvas",
-                "No Canvas",
-                "Welcome",
-                "No Welcome",
-                "!canvas",
-                "!talk",
-                self.admin_visible,
-                server_id,
-                self.author_id,
-                guild,
-                False
-            )
-            self.guild = guild
-        guild = interaction.guild or self.guild
-        result = _build_canvas_behavior_detail("conversation", self.admin_visible, guild, self.agent_config)
-        if not result:
-            await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
-            return
-        b_title, b_description, b_content = result
-        behavior_view = CanvasBehaviorView(self.author_id, self.sections, self.admin_visible, self.agent_config, current_detail="conversation", guild=guild)
-        behavior_embed = _build_canvas_behavior_embed(b_content, self.admin_visible, title=b_title, description=b_description)
-        await _safe_edit_interaction_message(interaction, content=None, embed=behavior_embed, view=behavior_view)
-        behavior_view.message = interaction.message
-
-    
-    button_help = _personality_descriptions.get("canvas_home_messages", {}).get("button_help", "Help")
-    @discord.ui.button(label=button_help, style=discord.ButtonStyle.primary)
-    async def help_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._show_section(interaction, "help")
-
     def update_visibility(self):
         """Hide or disable admin-only controls according to current permissions."""
         if not self.admin_visible:
@@ -1493,7 +1539,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
     """Interactive role navigation for enabled roles."""
 
     def __init__(self, author_id: int, agent_config: dict, admin_visible: bool, sections: dict[str, str], message=None, guild=None):
-        super().__init__(timeout=600)  # 10 minutes
+        super().__init__(timeout=900)  # 15 minutes
         self.author_id = author_id
         self.agent_config = agent_config
         self.admin_visible = admin_visible
@@ -1647,8 +1693,8 @@ class CanvasTreasureHunterPoe2Button(discord.ui.Button):
             await interaction.response.send_message("❌ Canvas role detail navigation is not available.", ephemeral=True)
             return
 
-        # Navigate to the items (personal) view
-        detail_name = "personal"
+        # Navigate to the POE2 overview view
+        detail_name = "poe2"
         content = _build_canvas_role_detail_view(
             "treasure_hunter",
             detail_name,
@@ -2323,7 +2369,7 @@ async def _handle_canvas_banker_action(interaction: discord.Interaction, action_
 class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
     def __init__(self, author_id: int, sections: dict[str, str], admin_visible: bool, agent_config: dict,
                  current_detail: str = "conversation", guild=None, message=None):
-        super().__init__(timeout=600)  # 10 minutes
+        super().__init__(timeout=900)  # 15 minutes
         self.author_id = author_id
         self.sections = sections
         self.admin_visible = admin_visible
@@ -2335,7 +2381,12 @@ class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixi
         self.update_visibility()
         
         # Add behavior detail buttons
-        if current_detail in ["greetings", "welcome", "commentary", "taboo", "role_control"]:
+        if current_detail == "personality":
+            # Personality view uses its own custom dropdown
+            from .canvas_personality import CanvasPersonalitySelect, _get_personality_descriptions as _get_pers_desc
+            personality_msgs = _get_pers_desc(get_server_key(guild) if guild else None).get("personality_messages", {})
+            self.add_item(CanvasPersonalitySelect(admin_visible, personality_msgs))
+        elif current_detail in ["greetings", "welcome", "commentary", "taboo", "role_control"]:
             self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible, guild))
         self._add_behavior_buttons()
         
@@ -2378,7 +2429,7 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
                  sections: dict[str, str], current_detail: str = "overview", guild=None, message=None,
                  watcher_selected_method: str = None, watcher_last_action: str = None, watcher_selected_category: str = None,
                  previous_view=None):
-        super().__init__(timeout=600)  # 10 minutes
+        super().__init__(timeout=900)  # 15 minutes
         self.author_id = author_id
         self.role_name = role_name
         self.agent_config = agent_config
@@ -2417,10 +2468,10 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
                 self.add_item(CanvasMCActionSelect(self))
             # For Banker, only create dropdown for admin (overview/wallet are info-only)
             elif role_name == "banker" and current_detail == "admin":
-                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config))
+                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config, self.guild))
             # For other roles, create action dropdown
             else:
-                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config))
+                self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config, self.guild))
         for label, detail_name in role_details:
             self.add_item(CanvasRoleDetailButton(label=label, role_name=role_name, detail_name=detail_name))
         self._add_role_buttons()

@@ -1,8 +1,8 @@
 {
-    "title": "**🎭División de Operaciones Especiales {_bot_display_name}**",
+    "title": "**🎭División de Operaciones Especiales Her Hans**",
     "description": "Comando de unidades tácticas especializadas en engaño estratégico y operaciones encubiertas.",
     "button": "🎭 Operaciones",
-    "canvas_trickster_overview_title": "**🎭División de Operaciones Especiales {_bot_display_name}**",
+    "canvas_trickster_overview_title": "**🎭División de Operaciones Especiales Her Hans**",
     "canvas_trickster_overview_description": "Estado general de unidades desplegadas.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
@@ -27,7 +27,7 @@
         "rankingvoid": " ¡No hay combatientes en el frente, soldado!",
         "historyvoid": " ¡Nadie ha combatido todavía, recluta!",
         "history": " **📜  Historial de batallas **",
-        "help": " **Ayuda del TESORO DE GUERRA**\n Combata en el campo de batalla de {_bot_display_name}, apueste marcos y lance granadas para ganar! Use 'dice play' para combatir.\n Si el soldado lanza tres granadas perfectas gana el Tesoro de Guerra!",
+        "help": " **Ayuda del TESORO DE GUERRA**\n Combata en el campo de batalla de Her Hans, apueste marcos y lance granadas para ganar! Use 'dice play' para combatir.\n Si el soldado lanza tres granadas perfectas gana el Tesoro de Guerra!",
         "title": "💰 TESORO DE GUERRA 💰**\n",
         "current_balance": "Marcos acumulados en Tesoro:",
         "fixed_bet": "Costo de granada:",
@@ -44,7 +44,7 @@
         "error_database_access": "¡ACHTUNG! Error al acceder a los archivos de combate!",
         "error_procesar_tirada": "¡ACHTUNG! Error al procesar el combate: {error}",
         "help_titulo": "🎲 **AYUDA DEL BOTÍN DE GUERRA DE HERR HANS** 🎲",
-        "help_descripcion": "¡ACHTUNG! ¡Demuestre su valor en el frente de {_bot_display_name}! 🎲\n\n",
+        "help_descripcion": "¡ACHTUNG! ¡Demuestre su valor en el frente de Her Hans! 🎲\n\n",
         "help_commands": "**Comandos:**\n",
         "help_play": "• `!dice play` - Desplegar artillería (cuesta coste fijo)\n",
         "select_dice_admin_action": "🎲 Seleccionar acción de combate...",
@@ -64,7 +64,7 @@
         "ring_frequency": "Frecuencia de Persecución",
         "ring_frequency_description": "Ajustar frecuencia de investigaciones",
         "dice_play": "Desplegar Artillería",
-        "dice_play_description": "Combatir en el frente de {_bot_display_name}",
+        "dice_play_description": "Combatir en el frente de Her Hans",
         "dice_ranking": "Clasificación",
         "dice_ranking_description": "Ver tabla de combatientes",
         "dice_history": "Historial",
@@ -126,13 +126,13 @@
         "dm_server_access_error": "❌ No se pudo acceder a un cuartel. Por favor ejecute las acciones de dados desde un cuartel.",
         "big_pot": "🔥 **¡EL BOTÍN ARDE COMO ALDEA ENEMIGA!** 🔥\n¡Hay **{balance:,}** marcos alemanes! ¡Use `!dice play` para capturarlo o Herr Hans lo pisará! 🎲",
         "rules":" -**Trío de impactos perfectos**(trio de unos)💣 y capture el **BOTÍN**!\n -Escalera alta **(4,5,6)** multiplica **x5** la apuesta! OFENSIVA BLITZKRIEG 🗡️ !\n - Lance un cualquier **Trío** de impactos mortales 💀 y capture un **x3** de la apuesta.\n - Un **Par** de impactos certeros 🐺 **le devolverán** la apuesta.\n ",
-        "description": "**Descripción:**¡ACHTUNG! ¡Demuestre su valor en el frente de {_bot_display_name}! 🎲 Despliegue artillería pesada contra el enemigo y capture todo el botín si puede!"
+        "description": "**Descripción:**¡ACHTUNG! ¡Demuestre su valor en el frente de Her Hans! 🎲 Despliegue artillería pesada contra el enemigo y capture todo el botín si puede!"
     },
     "ring": {
         "title": "👁️ **Herr Hans Persecutor de la Gestapo** 👁️",
         "description": " El oficial de la Gestapo le perseguirá hasta el fin de los tiempos, acuse a otros soldados para evitar ese calvario.",
-        "status_active": "✅ **PERSECUCIÓN ACTIVA** - {_bot_display_name} está buscando traidores",
-        "status_inactive": "❌ **PERSECUCIÓN INACTIVA** - {_bot_display_name} está descansando",
+        "status_active": "✅ **PERSECUCIÓN ACTIVA** - Her Hans está buscando traidores",
+        "status_inactive": "❌ **PERSECUCIÓN INACTIVA** - Her Hans está descansando",
         "current_target": "🎯 **OBJETIVO ACTUAL:**",
         "target_unknown": "👤 Ningún sospechoso seleccionado",
         "investigation_title": "🔍** HACER UNA ACUSACIÓN:**",
@@ -150,7 +150,7 @@
     },
     "beggar": {
         "title": "🏢 **Partida reservada para el regimiento** 🏢",
-        "description": " {_bot_display_name} recauda marcos para proyectos del regimiento, done marcos regularmente y {_bot_display_name} se lo agradecerá cada semana.\n Si tiene suerte puede que le devuelva algo.",
+        "description": " Her Hans recauda marcos para proyectos del regimiento, done marcos regularmente y Her Hans se lo agradecerá cada semana.\n Si tiene suerte puede que le devuelva algo.",
         "current_fund":"Fondo actual:",
         "title_reason":"Razón:",
         "title_campaign":"🎯 **Campaña actual**:",

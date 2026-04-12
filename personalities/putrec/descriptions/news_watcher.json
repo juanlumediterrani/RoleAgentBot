@@ -1,10 +1,10 @@
 {
-    "title": "**📡 {_bot_display_name} Newz Scout **",
+    "title": "**📡 Putrec Newz Scout **",
     "description": "Sign up for newz groundz and Putre'll warn ya if dere'z war or weird stuff in da world.",
     "button": "📡 Scout",
-    "alert_title": "**:wolf: {_bot_display_name}'z Huntin' Wolvez :wolf:**",
+    "alert_title": "**:wolf: Putrec'z Huntin' Wolvez :wolf:**",
     "embed_footer": ":wolf: Putre'z Hungry Wolvez :wolf:",
-    "feeds_available_title": "📡 Huntin' Dogz of {_bot_display_name}",
+    "feeds_available_title": "📡 Huntin' Dogz of Putrec",
     "categories_available_title": "📂 Huntin' Groundz",
     "available_feeds_title": "**Newz nezts ready to rob**",
     "category_feeds_title": "**{category} Nezts**",
@@ -96,13 +96,13 @@
     "commands":{
         "usage_subscribe": "📝 Uze me axe: `!watcher subscribe <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
         "usage_unsubscribe": "📝 Uze me axe: `!watcher unsubscribe <ground> [nezt_num]`",
-        "uso_general": "📝 Uze me axe: `!watcher general <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
-        "uso_palabras": "📝 Uze me axe: `!watcher keywords \"word1,word2\" [ground] [nezt_num|all]`",
-        "usage_cancelar_palabras": "📝 Uze me axe: `!watcher unsubscribe_keywords \"word1,word2\"`",
+        "usage_general": "📝 Uze me axe: `!watcher general <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
+        "usage_keywords": "📝 Uze me axe: `!watcher keywords \"word1,word2\" [ground] [nezt_num|all]`",
+        "usage_cancel_keywords": "📝 Uze me axe: `!watcher unsubscribe_keywords \"word1,word2\"`",
         "usage_mixto": "📝 Uze me axe: `!watcher mixed <ground>`",
-        "usage_agregar_feed": "📝 Boss Only: `!watcher add_feed <name> <url> <ground> [land] [talk]`",
-        "usage_canal_suscribir": "📝 Boss Only: `!watcherchannel subscribe <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
-        "usage_canal_cancelar": "📝 Boss Only: `!watcherchannel unsubscribe <ground> [nezt_num]`",
-        "usage_canal_palabras": "📝 Boss Only: `!watcherchannel keywords \"word1,word2\"`"
+        "usage_add_feed": "📝 Boss Only: `!watcher add_feed <name> <url> <ground> [land] [talk]`",
+        "usage_channel_subscribe": "📝 Boss Only: `!watcherchannel subscribe <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
+        "usage_channel_cancel": "📝 Boss Only: `!watcherchannel unsubscribe <ground> [nezt_num]`",
+        "usage_channel_keywords": "📝 Boss Only: `!watcherchannel keywords \"word1,word2\"`"
     }
 }

@@ -13,7 +13,7 @@
       "frequency_format": "Cada {hours}h"
     },
     "help_menu": {
-      "title": "📚 ** {_bot_display_name} - Menú de Ayuda**",
+      "title": "📚 ** Putre - Menú de Ayuda**",
       "description": "**Descripción**\nRole Agent Bot es un agente LLM con personalidad cargada, que tiene memoria a largo plazo y puede interactuar con el usuario.",
       "separator": "---------------------------------------------",
       "roles_section": "**Roles**\nLos módulos de Roles son algunas capacidades del bot para dar algunos servicios a los usuarios.",
@@ -21,7 +21,7 @@
       "tips_section": "**Algunos consejos**\n-Puedes preguntarle al bot cómo funciona un comando como: '¿cómo funciona el comando dice?'\n-Las partes más jugosas del bot están dentro de cada rol"
     },
     "canvas_home_messages": {
-      "title": "🧭 {_bot_display_name} Hub",
+      "title": "🧭 Putre Hub",
       "button_home": "🧭 Inicio",
       "button_back": "← Atrás",
       "button_roles": "🎪 Roles",
@@ -29,7 +29,7 @@
       "button_help": "📝 Ayuda",
       "generic_option_label": "Escoge una opción...",
       "personalitystatus": "Personalidad Cargada:",
-      "description": "-Interactua con todas las funciones disponibles para {_bot_display_name} desde aquí.\n -El panel canvas te permite interactuar con todas las opciones del bot desde este menu.",
+      "description": "-Interactua con todas las funciones disponibles para Putre desde aquí.\n -El panel canvas te permite interactuar con todas las opciones del bot desde este menu.",
       "recentsynthesistitle": "**Síntesis Reciente**",
       "dailymemorytitle": "**Memoria**",
       "personalsynthesistitle": "**Síntesis Personal**",
@@ -40,8 +40,8 @@
       "dm_server_access_error": "❌ No se pudo acceder a un servidor. Por favor ejecuta las acciones desde un servidor."
     },
     "roles_view_messages": {
-      "title": "🎭  Roles de {_bot_display_name} 🎭",
-      "description": "🌟 Navega a traves de los diferentes roles disponibles para {_bot_display_name}",
+      "title": "🎭  Roles de Putre 🎭",
+      "description": "🌟 Navega a traves de los diferentes roles disponibles para Putre",
       "role_categories": "──────────────────────────────",
       "enabled_status": "active",
       "inactive_status": "❌ INATIVO",
@@ -57,40 +57,68 @@
       "role_available": "✅ {role} - RUGIENDO Y ZANGRIENTO",
       "role_unavailable": "❌ {role} - PUDRIENDOSE EN LA TIERRA",
       "frequency_help": "📝 Uza el acha azi: `!{role}frequency <oras>` (de 1 a 168 oras)\nEjemplo: `!watcherfrequency 2` ¡para ke aulle kada 2 putas oras!",
-      "music_help": "🎵 **Tambore de {_bot_display_name}** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!"
+      "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!",
+      "treasure_hunter": {
+        "button_poe2": "👺 POE2",
+        "subrole_buttons": {
+          "items": "💎 Items",
+          "league": "🏆 League",
+          "admin": "⚙️ Admin"
+        }
+      }
     },
     "behavior_messages": {
       "conversation": {
-        "title": "**💬 {_bot_display_name} - Conversacion**",
-        "description": "**Descripción:**\n -{_bot_display_name} reacionará a DM y menciones.\n -Tiene memoria persistente e interactiva, puedes preguntarle por algo que ocurrió, puede que le prestará suficiente atención como para recordarlo.\n -Además segun roles y comportamientos, puede reaccionar a diferentes palabras. En el comportamiento taboo puedes configurar una palabra para que reaccione a ella.",
+        "title": "**💬 Putre - Conversacion**",
+        "description": "**Descripción:**\n -Putre reacionará a DM y menciones.\n -Tiene memoria persistente e interactiva, puedes preguntarle por algo que ocurrió, puede que le prestará suficiente atención como para recordarlo.\n -Además segun roles y comportamientos, puede reaccionar a diferentes palabras. En el comportamiento taboo puedes configurar una palabra para que reaccione a ella.",
         "button": "💬 Conversacion"
       },
       "greetings": {
-        "title": "**👋 {_bot_display_name} - Saludos**",
+        "title": "**👋 Putre - Saludos**",
         "description": "**Descripción:**\n -Saluda a los usuarios al conectarse a Discord.\n -Espera 5 min antes de contar como desconectado al usuario.\n -(Por implementar):\n Reconoce si no se le responde al saludar, y deja de saludar.\n",
         "button": "👋 Saludos"
       },
       "welcome": {
-        "title": "**🍺 {_bot_display_name} - Bienvenida**",
+        "title": "**🍺 Putre - Bienvenida**",
         "description": "**Descripción:**\n -Da la bienvenida a nuevos usuarios al servidor.\n",
         "button": "🍺 Bienvenida"
       },
       "taboo": {
-        "title": "**🚫 {_bot_display_name} - Palabras Tabú**",
-        "description": "**Como funciona:**\n -Configura a {_bot_display_name} para que reaccione al leer una palabra por un canal o DM.\n -Se puede activar/desactivar o configurar las palabras.\n",
+        "title": "**🚫 Putre - Palabras Tabú**",
+        "description": "**Como funciona:**\n -Configura a Putre para que reaccione al leer una palabra por un canal o DM.\n -Se puede activar/desactivar o configurar las palabras.\n",
         "title_keywords": "Palabras tabú actuales:",
         "button": "🚫 Tabú"
       },
       "comentary": {
-        "title": "**🗣️ {_bot_display_name} - Comenta (en desarrollo)**",
+        "title": "**🗣️ Putre - Comenta (en desarrollo)**",
         "description": "**Descripción**\n -Hace comentarios activamente sobre sus roles activos y los succesos recientes.",
         "button": "🗣️ Comentario"
       },
       "role_control": {
-        "title": "**🎛️ {_bot_display_name} - Control de Roles**",
+        "title": "**🎛️ Putre - Control de Roles**",
         "description": "**Descripción**\n -Activa y desactiva los roles desde aqui.",
         "button": "🎛️ Control de Roles"
+      },
+      "personality": {
+        "title": "**🎭 Putre - Gestión de Personalidad**",
+        "description": "**Descripción**\n -Cambia la personalidad del bot para este servidor.\n -Descarga la personalidad actual como backup.\n -Migra las bases de datos al cambiar.",
+        "button": "🎭 Personalidad"
       }
+    },
+    "personality_messages": {
+      "view_title": "🎭 Putre - Gestión de Personalidad",
+      "view_description": "Cambia o descarga la personalidad del bot para este servidor.",
+      "option_change": "Cambiar Personalidad",
+      "option_change_desc": "Cambiar a una personalidad diferente",
+      "option_download": "Descargar Actual",
+      "option_download_desc": "Exportar personalidad como ZIP",
+      "placeholder": "Elige una acción de personalidad...",
+      "modal_personality_label": "Nueva Personalidad",
+      "modal_download_label": "¿Descargar personalidad anterior? (si/no)",
+      "modal_delete_memory_label": "¿Borrar memoria del bot? (si/no)",
+      "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
+      "download_success": "✅ ¡Personalidad `{personality}` exportada exitosamente!",
+      "change_success": "✅ ¡Personalidad cambiada de `{old}` a `{new}`! La nueva personalidad ya está activa y lista para usar."
     },
     "readme":{
       "label_user_question":"Pregunta del usuario:",
