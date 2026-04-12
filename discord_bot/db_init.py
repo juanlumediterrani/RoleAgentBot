@@ -41,48 +41,79 @@ def copy_personality_to_server(server_id: str, personality_name: str = None) -> 
         bool: True if copy successful or already exists, False on error
     """
     try:
-        # Get personality name from config if not provided
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        
+        # First, check if server_config.json already exists with a personality
+        server_config_path = os.path.join(base_dir, 'databases', server_id, 'server_config.json')
+        if personality_name is None and os.path.exists(server_config_path):
+            try:
+                with open(server_config_path, encoding='utf-8') as f:
+                    existing_config = json.load(f)
+                existing_personality = existing_config.get('active_personality')
+                if existing_personality:
+                    personality_name = existing_personality
+                    logger.info(f"📋 Using existing personality from server_config.json: {personality_name}")
+            except Exception as e:
+                logger.warning(f"Could not read existing server_config.json: {e}")
+        
+        # Fall back to agent_config.json if still no personality
         if personality_name is None:
-            import json
-            config_path = os.path.join(os.path.dirname(__file__), '..', 'agent_config.json')
+            config_path = os.path.join(base_dir, 'agent_config.json')
             with open(config_path, encoding='utf-8') as f:
                 config = json.load(f)
             personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
             personality_name = os.path.basename(os.path.dirname(personality_path))
+            logger.info(f"📋 Using personality from agent_config.json: {personality_name}")
         
         # Paths
-        base_dir = os.path.dirname(os.path.dirname(__file__))
         source_dir = os.path.join(base_dir, 'personalities', personality_name)
         target_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
         
         # Check if server-specific copy already exists
         if os.path.exists(target_dir):
             logger.info(f"📁 Server-specific personality already exists: {target_dir}")
-            return True
-        
-        # Check if source personality exists
-        if not os.path.exists(source_dir):
-            logger.error(f"❌ Source personality directory not found: {source_dir}")
-            return False
-        
-        # Create target directory
-        os.makedirs(target_dir, exist_ok=True)
-        
-        # Copy all files and directories
-        for item in os.listdir(source_dir):
-            source_item = os.path.join(source_dir, item)
-            target_item = os.path.join(target_dir, item)
+        else:
+            # Create target directory
+            os.makedirs(target_dir, exist_ok=True)
             
-            if os.path.isdir(source_item):
-                # Copy subdirectory (e.g., descriptions/)
-                shutil.copytree(source_item, target_item)
-                logger.info(f"📂 Copied directory: {item}")
-            else:
-                # Copy file (e.g., personality.json, prompts.json)
-                shutil.copy2(source_item, target_item)
-                logger.info(f"📄 Copied file: {item}")
+            # Check if source personality exists
+            if not os.path.exists(source_dir):
+                logger.error(f"❌ Source personality directory not found: {source_dir}")
+                return False
+            
+            # Copy all files and directories (excluding .db files to preserve renamed databases)
+            for item in os.listdir(source_dir):
+                # Skip database files - they are managed separately per server
+                if item.endswith('.db'):
+                    logger.info(f"⏭️ Skipping database file: {item}")
+                    continue
+
+                source_item = os.path.join(source_dir, item)
+                target_item = os.path.join(target_dir, item)
+
+                if os.path.isdir(source_item):
+                    # Copy subdirectory (e.g., descriptions/)
+                    shutil.copytree(source_item, target_item)
+                    logger.info(f"📂 Copied directory: {item}")
+                else:
+                    # Copy file (e.g., personality.json, prompts.json)
+                    shutil.copy2(source_item, target_item)
+                    logger.info(f"📄 Copied file: {item}")
+            
+            logger.info(f"✅ Personality copied to server-specific directory: {target_dir}")
         
-        logger.info(f"✅ Personality copied to server-specific directory: {target_dir}")
+        # Create server_config.json only if it doesn't exist
+        # If it exists, preserve it (personality was already read from it at the start)
+        if not os.path.exists(server_config_path):
+            server_config = {
+                "active_personality": personality_name
+            }
+            with open(server_config_path, 'w', encoding='utf-8') as f:
+                json.dump(server_config, f, indent=2, ensure_ascii=False)
+            logger.info(f"✅ Created server_config.json with active_personality: {personality_name}")
+        else:
+            logger.info(f"✅ Preserved existing server_config.json")
+        
         return True
         
     except Exception as e:
@@ -105,16 +136,30 @@ def get_server_personality_dir(server_id: str, personality_name: str = None) -> 
         str: Path to server-specific personality directory, or None if not exists
     """
     try:
-        # Get personality name from config if not provided
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        
+        # Get personality name from server-specific config if not provided
         if personality_name is None:
             import json
-            config_path = os.path.join(os.path.dirname(__file__), '..', 'agent_config.json')
-            with open(config_path, encoding='utf-8') as f:
-                config = json.load(f)
-            personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
-            personality_name = os.path.basename(os.path.dirname(personality_path))
-        
-        base_dir = os.path.dirname(os.path.dirname(__file__))
+            # First try server-specific config (for runtime personality changes)
+            server_config_path = os.path.join(base_dir, 'databases', server_id, 'server_config.json')
+            if os.path.exists(server_config_path):
+                try:
+                    with open(server_config_path, encoding='utf-8') as f:
+                        server_config = json.load(f)
+                    personality_name = server_config.get('active_personality')
+                    if personality_name:
+                        logger.debug(f"Using active_personality from server_config: {personality_name}")
+                except Exception as e:
+                    logger.warning(f"Could not read server_config.json: {e}")
+            
+            # Fall back to agent_config.json (for initial setup)
+            if personality_name is None:
+                config_path = os.path.join(base_dir, 'agent_config.json')
+                with open(config_path, encoding='utf-8') as f:
+                    config = json.load(f)
+                personality_path = config.get('personality', 'personalities/putre(english)/personality.json')
+                personality_name = os.path.basename(os.path.dirname(personality_path))
         
         # Check the server-specific personality location
         server_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
@@ -126,6 +171,68 @@ def get_server_personality_dir(server_id: str, personality_name: str = None) -> 
     except Exception as e:
         logger.warning(f"Could not get server personality directory: {e}")
         return None
+
+
+def update_personality_files(server_id: str, personality_name: str) -> bool:
+    """
+    Update JSON config files for an existing server-specific personality.
+    
+    When changing personalities, call this to refresh descriptions.json,
+    personality.json, prompts.json, etc. from the global personality directory.
+    
+    Args:
+        server_id: Discord guild ID
+        personality_name: Name of the personality folder (e.g., "putre(english)")
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        import shutil
+        
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        source_dir = os.path.join(base_dir, 'personalities', personality_name)
+        target_dir = os.path.join(base_dir, 'databases', server_id, personality_name)
+        
+        # Check if target exists
+        if not os.path.exists(target_dir):
+            logger.warning(f"Target directory doesn't exist: {target_dir}")
+            return False
+        
+        # Check if source exists
+        if not os.path.exists(source_dir):
+            logger.error(f"Source personality not found: {source_dir}")
+            return False
+        
+        # Update JSON and config files (not .db files)
+        updated_count = 0
+        for item in os.listdir(source_dir):
+            # Skip database files and directories
+            if item.endswith('.db'):
+                continue
+                
+            source_item = os.path.join(source_dir, item)
+            target_item = os.path.join(target_dir, item)
+            
+            if os.path.isdir(source_item):
+                # Remove old directory and copy new one
+                if os.path.exists(target_item):
+                    shutil.rmtree(target_item)
+                shutil.copytree(source_item, target_item)
+                logger.info(f"📂 Updated directory: {item}")
+                updated_count += 1
+            else:
+                # Copy file (overwrites if exists)
+                shutil.copy2(source_item, target_item)
+                logger.info(f"📄 Updated file: {item}")
+                updated_count += 1
+        
+        logger.info(f"✅ Updated {updated_count} files for personality {personality_name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error updating personality files: {e}")
+        return False
 
 
 async def _bootstrap_daily_memory_if_missing(server_key: str, guild_name: str, log, context_label: str) -> None:

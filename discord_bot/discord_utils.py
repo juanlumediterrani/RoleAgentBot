@@ -9,7 +9,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 from agent_logging import get_logger
-from agent_db import get_db_instance, set_current_server, get_active_server_id
+from agent_db import get_db_instance, set_current_server, get_server_id
 
 logger = get_logger('discord_utils')
 
@@ -21,7 +21,7 @@ def get_server_key(guild) -> str:
     """Get a stable unique server key (Discord guild id) for per-server resources."""
     if guild is None:
         # Always use the active server ID from .active_server file
-        active = get_active_server_id()
+        active = get_server_id()
         if active and active.isdigit():
             return active  # Return the guild ID
         return "0"  # Fallback to default server ID
@@ -138,9 +138,10 @@ def is_role_enabled_check(role_name, agent_config=None, guild=None):
     # PRIMARY: Try to get from roles_config with auto-creation
     try:
         from agent_roles_db import get_roles_db_instance
-        server_id = str(guild.id) if guild else "default"
+        from agent_db import get_server_id
+        server_id = str(guild.id) if guild else get_server_id()
         roles_db = get_roles_db_instance(server_id)
-        
+
         # Use default_enabled=True for auto-creation (like behavior.db)
         config = roles_db.get_role_config(role_name, default_enabled=True)
         if config:
@@ -164,9 +165,10 @@ def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, up
     success = False
     try:
         from agent_roles_db import get_roles_db_instance
-        server_id = str(guild.id) if guild else "default"
+        from agent_db import get_server_id
+        server_id = str(guild.id) if guild else get_server_id()
         roles_db = get_roles_db_instance(server_id)
-        
+
         # Get existing config or create new one
         try:
             existing_config = roles_db.get_role_config(role_name)

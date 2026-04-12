@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from agent_fatigue_limits import get_usage_summary, get_fatigue_limits, format_limit_exceeded_message, check_fatigue_limit
-from agent_db import get_fatigue_stats, get_active_server_id
+from agent_db import get_fatigue_stats, get_server_id
 from agent_logging import get_logger
 
 logger = get_logger('fatigue_commands')
@@ -37,7 +37,7 @@ class FatigueCommands(commands.Cog):
         try:
             await interaction.response.defer()
             
-            server_id = get_active_server_id()
+            server_id = get_server_id()
             if not server_id:
                 await interaction.followup.send("❌ Unable to determine server ID")
                 return

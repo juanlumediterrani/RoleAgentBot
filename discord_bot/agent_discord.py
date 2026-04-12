@@ -15,7 +15,7 @@ from discord.ext import commands, tasks
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, _build_conversation_user_prompt
 from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
-from agent_db import set_current_server, get_active_server_id
+from agent_db import set_current_server, get_server_id
 from behavior.db_behavior import get_behavior_db_instance
 from agent_logging import get_logger, update_log_file_path
 from discord_bot.discord_utils import (
@@ -102,7 +102,6 @@ from discord_bot.discord_core_commands import _personality_answers
 
 _discord_cfg = _personality_answers
 _cmd_prefix = _discord_cfg.get("command_prefix", "!")
-_bot_display_name = PERSONALITY.get("bot_display_name", PERSONALITY.get("name", "Bot"))
 _personality_name = PERSONALITY.get("name", "bot").lower()
 
 
@@ -138,7 +137,7 @@ def get_bot_instance():
 
 @tasks.loop(hours=24)
 async def database_cleanup():
-    active_server_key = (get_active_server_id() or "").strip()
+    active_server_key = (get_server_id() or "").strip()
     target_guild = None
     if active_server_key:
         active_key_lower = active_server_key.lower()
@@ -320,7 +319,7 @@ async def on_ready():
     else:
         logger.warning("⚠️ No guilds available for initialization")
 
-    logger.info(f"🤖 Bot {_bot_display_name} connected as {bot.user}")
+    logger.info(f"🤖 Bot connected as {bot.user}")
     logger.info(f"🤖 Prefix: {_cmd_prefix} | Intents: members={bot.intents.members}, presences={bot.intents.presences}")
 
     # Automatic tasks
@@ -366,7 +365,8 @@ async def on_member_join(member):
 async def on_presence_update(before, after):
     """Runs when a member goes from offline to online."""
     from behavior.greet import handle_presence_update
-    await handle_presence_update(before, after, _discord_cfg, _bot_display_name)
+    bot_display_name = PERSONALITY.get("bot_display_name", "Bot")
+    await handle_presence_update(before, after, _discord_cfg, bot_display_name)
 
 
 @bot.event
@@ -611,11 +611,14 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
         logger.info(f"🎯 Ring accusation target updated to: {target_member.display_name}")
         
         # Build denial prompt for LLM
-        from agent_engine import PERSONALITY
+        from agent_engine import PERSONALITY, _get_personality
         from agent_mind import call_llm
         
+        # Get server-specific personality
+        server_personality = _get_personality(server_id) if server_id else PERSONALITY
+        
         # Get ring prompts from personality
-        prompts_config = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
         denial_config = prompts_config.get("denial", {})
         
         task_template = denial_config.get("task", f"Task: The human {target_member.display_name} denies having the ring, warn them not to lie to you and leave them alone")
@@ -672,14 +675,15 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
             "",
             task,
             "",
-            "## RESPUESTA DE PUTRE:",
+            server_personality.get("closing", "## Personality RESPONSE:"),
         ])
         
         denial_prompt = "\n".join(prompt_parts)
         
         # Generate the denial response
-        from agent_engine import _build_system_prompt
-        system_instruction = _build_system_prompt(PERSONALITY)
+        from agent_engine import _build_system_prompt, _get_personality
+        server_personality = _get_personality(server_id) if server_id else PERSONALITY
+        system_instruction = _build_system_prompt(server_personality, server_id)
         
         response = call_llm(
             system_instruction=system_instruction,
@@ -707,11 +711,14 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
     """Handle accusation when the user doesn't exist in the server."""
     try:
         # Build false accusation prompt for LLM
-        from agent_engine import PERSONALITY
+        from agent_engine import PERSONALITY, _get_personality
         from agent_mind import call_llm
         
+        # Get server-specific personality
+        server_personality = _get_personality(server_id) if server_id else PERSONALITY
+        
         # Get ring prompts from personality
-        prompts_config = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
         false_accusation_config = prompts_config.get("false_accusation", {})
         
         mission = false_accusation_config.get("mission", "MISSION ACTIVE - RING: The human falsely accused someone of having the ring.")
@@ -773,14 +780,15 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
             "",
             task,
             "",
-            PERSONALITY.get("closing", "## PUTRE'S RESPONSE:"),
+            server_personality.get("closing", "## Personality RESPONSE:"),
         ])
         
         false_accusation_prompt = "\n".join(prompt_parts)
         
         # Generate the false accusation response
-        from agent_engine import _build_system_prompt
-        system_instruction = _build_system_prompt(PERSONITY)
+        from agent_engine import _build_system_prompt, _get_personality
+        server_personality = _get_personality(server_id) if server_id else PERSONALITY
+        system_instruction = _build_system_prompt(server_personality, server_id)
         
         response = call_llm(
             system_instruction=system_instruction,
@@ -824,17 +832,29 @@ async def _process_chat_message(message):
             server_id = get_server_key(message.guild)
             server_context = f"Server: {message.guild.name} ({server_id})"
             # Ensure active server is set for this message's guild
-            current_active = get_active_server_id()
+            current_active = get_server_id()
             if current_active != server_id:
                 set_current_server(server_id)
+        else:
+            # DM message - determine the user's last server for context
+            from agent_db import get_user_last_server_id
+            last_server = get_user_last_server_id(str(message.author.id))
+            if last_server:
+                server_id = last_server
+                server_context = f"DM (last server: {server_id})"
+                logger.info(f"DM from {message.author.name} - using last server context: {server_id}")
+            else:
+                server_context = "DM (no server context)"
+                logger.info(f"DM from {message.author.name} - no server history found")
 
         active_roles = []
         roles_config = AGENT_CFG.get("roles", {})
         # Only show roles that inject prompts for context
 
-        # Build system instruction for call_llm
-        from agent_engine import _build_system_prompt
-        system_instruction = _build_system_prompt(PERSONALITY)
+        # Build system instruction for call_llm (use server-specific personality)
+        from agent_engine import _build_system_prompt, _get_personality
+        server_personality = _get_personality(server_id) if server_id else PERSONALITY
+        system_instruction = _build_system_prompt(server_personality, server_id)
 
         # Choose the appropriate prompt builder based on context
         if is_public:
@@ -869,7 +889,7 @@ async def _process_chat_message(message):
                 "interaction_type": "channel" if is_public else "dm",
                 "is_public": is_public,
                 "user_id": message.author.id,
-                "role": _bot_display_name,
+                "role": "bot",
                 "server": server_id,
                 "channel_id": message.channel.id if is_public else None,
                 "is_mention": is_mention
@@ -901,7 +921,7 @@ async def _process_chat_message(message):
                         "interaction_type": "channel" if is_public else "dm",
                         "is_public": is_public,
                         "user_id": message.author.id,
-                        "role": _bot_display_name,
+                        "role": "bot",
                         "server": server_id,
                         "channel_id": message.channel.id if is_public else None,
                         "is_mention": is_mention,
@@ -920,8 +940,8 @@ async def _process_chat_message(message):
                 # Continue with original README response if README file fails
 
         # Check if this is a NADA_QUE_DECIR response (nothing to say)
-        nothing_to_say_keyword = PERSONALITY.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")
-        nothing_to_say_description = PERSONALITY.get("behaviors", {}).get("nothing_to_say_description", "(You didn't respond to their last message)")
+        nothing_to_say_keyword = server_personality.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")
+        nothing_to_say_description = server_personality.get("behaviors", {}).get("nothing_to_say_description", "(You didn't respond to their last message)")
         if is_nothing_to_say_response(response, keyword=nothing_to_say_keyword):
             logger.info(f"🔇 NADA_QUE_DECIR response detected from {message.author.name} - skipping response sending")
             
@@ -1045,7 +1065,7 @@ if __name__ == "__main__":
         logger.info(f"📋 Python version: {sys.version}")
         logger.info(f"🔑 Discord token configured: {bool(get_discord_token())}")
         logger.info(f"🎭 Personality: {PERSONALITY.get('name', 'unknown')}")
-        logger.info(f"🤖 Bot display name: {_bot_display_name}")
+        logger.info(f"🤖 Bot display name: {_personality_name}")
         logger.info(f"🔧 Command prefix: {_cmd_prefix}")
         logger.info("⏳ Calling bot.run()...")
         bot.run(get_discord_token())

@@ -82,8 +82,8 @@ def _get_personality_answers() -> dict:
     global _personality_answers_cache, _personality_answers_cache_server_id
     
     try:
-        from agent_db import get_active_server_id
-        current_server_id = get_active_server_id()
+        from agent_db import get_server_id
+        current_server_id = get_server_id()
     except:
         current_server_id = None
     
@@ -124,7 +124,6 @@ class _PersonalityAnswersProxy:
 
 _discord_cfg = _get_personality_answers()
 _personality_name = PERSONALITY.get("name", "bot").lower()
-_bot_display_name = PERSONALITY.get("bot_display_name", PERSONALITY.get("name", "Bot"))
 _insult_cfg = PERSONALITY.get("insult_command", {})  # Moved from discord.insult_command to prompts.json
 _personality_answers = _PersonalityAnswersProxy()
 # _personality_descriptions is now dynamic from agent_engine
@@ -299,13 +298,16 @@ from discord_bot.canvas.ui import (
 )
 from discord_bot.canvas.command import register_canvas_command
 
+# Export for use by canvas modules
+__all__ = ['register_core_commands']
+
+
 def register_core_commands(bot, agent_config):
 
     # --- GET PERSONALITY AND CONFIGURATION ---
     _personality_name = PERSONALITY.get("name", "unknown")
     _personality_answers = PERSONALITY.get("answers", {})
     _discord_cfg = PERSONALITY.get("discord", {})
-    _bot_display_name = _discord_cfg.get("display_name", "Bot")
     
     # --- COMMAND NAMES ---
     greet_name = f"greet{_personality_name}"
@@ -472,7 +474,7 @@ def register_core_commands(bot, agent_config):
         help_msg += "💬 **BASIC CONVERSATION**\n"
         help_msg += "• Mention the bot to start a conversation\n"
         help_msg += "• It responds in character, following the agent's personality\n"
-        help_msg += f"• It replies as {_bot_display_name}\n\n"
+        help_msg += "• It replies according to its personality\n\n"
         
         # Active and inactive roles
         help_msg += "🎭 **ROLE STATUS**\n"

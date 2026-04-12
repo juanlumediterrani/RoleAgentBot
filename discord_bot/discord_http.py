@@ -67,6 +67,15 @@ class DiscordHTTP:
                     return None
                 return await r.json()
 
+    async def get_channel(self, channel_id: int) -> dict | None:
+        """Return channel information by ID, including guild_id."""
+        async with aiohttp.ClientSession() as s:
+            async with s.get(f"{BASE}/channels/{channel_id}", headers=self._headers) as r:
+                if r.status >= 400:
+                    logger.warning(f"get_channel({channel_id}) error {r.status}: {await r.text()}")
+                    return None
+                return await r.json()
+
     async def send_dm(self, user_id: int, content: str, embed: dict = None, components: list = None) -> bool:
         """Create a DM channel and send a private message to a user."""
         async with aiohttp.ClientSession() as s:
