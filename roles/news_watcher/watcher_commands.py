@@ -34,9 +34,7 @@ def _get_watcher_description_text(key: str, fallback: str) -> str:
                 news_watcher_descriptions = json.load(f)
                 value = news_watcher_descriptions.get(key)
                 if value:
-                    # Apply placeholder replacement for bot display name
-                    from discord_bot.canvas.content import _bot_display_name
-                    return str(value).replace("{_bot_display_name}", _bot_display_name)
+                    return str(value)
         except FileNotFoundError:
             pass  # Continue to fallback
         
@@ -51,11 +49,17 @@ def _get_watcher_description_text(key: str, fallback: str) -> str:
         return fallback
 
 class WatcherCommands:
-    """Discord commands to manage the News Watcher role."""
+    """News Watcher command handler."""
     
     def __init__(self, bot):
         self.bot = bot
         self.db_watcher = None
+    
+    def _get_server_id(self, message):
+        """Get server ID from message context."""
+        if hasattr(message, 'guild') and message.guild:
+            return str(message.guild.id)
+        return None
     
     def _get_db(self, server_name: str = None):
         """Get (and cache) the watcher DB instance."""
@@ -64,8 +68,8 @@ class WatcherCommands:
             if server_name:
                 self.db_watcher = get_news_watcher_db_instance(server_name)
             else:
-                from agent_db import get_active_server_id
-                server_name = get_active_server_id()
+                from agent_db import get_server_id
+                server_name = get_server_id()
                 if not server_name:
                     raise RuntimeError("No active server configured for watcher commands")
                 self.db_watcher = get_news_watcher_db_instance(server_name)
@@ -88,11 +92,11 @@ class WatcherCommands:
             feeds = db.get_active_feeds()
             
             if not feeds:
-                await message.channel.send(get_message('error_no_hay_feeds'))
+                await message.channel.send(get_message('error_no_feeds', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
-                title=_get_watcher_description_text('feeds_available_title', get_message('feeds_available_title')),
+                title=_get_watcher_description_text('feeds_available_title', get_message('feeds_available_title', server_id=self._get_server_id(message))),
                 color=discord.Color.blue(),
                 timestamp=datetime.now()
             )
@@ -134,7 +138,7 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_feeds: {e}")
-            await message.channel.send(get_message('error_general', error=e))
+            await message.channel.send(get_message('error_general', server_id=self._get_server_id(message), error=e))
     
     async def cmd_reset(self, message, args):
         """Completely clear all user subscriptions."""
@@ -146,7 +150,7 @@ class WatcherCommands:
             current_type = db.check_user_subscription_type(user_id)
             
             if not current_type:
-                await message.channel.send(get_message('error_no_subscriptions'))
+                await message.channel.send(get_message('error_no_subscriptions', server_id=self._get_server_id(message)))
                 return
             
             # Check if confirmation
@@ -180,7 +184,7 @@ class WatcherCommands:
                                              f"Removed {cancelled} subscription(s) of type '{current_type}'.\n"
                                              f"You can now subscribe to a new type of alerts.")
                 else:
-                    await message.channel.send(get_message('error_no_subscriptions'))
+                    await message.channel.send(get_message('error_no_subscriptions', server_id=self._get_server_id(message)))
                 return
             
             # If not confirmed, show confirmation message
@@ -193,7 +197,7 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_reset: {e}")
-            await message.channel.send(get_message('error_general', error="processing reset request"))
+            await message.channel.send(get_message('error_general', server_id=self._get_server_id(message), error="processing reset request"))
 
     async def cmd_categories(self, message, args):
         """Show available categories."""
@@ -202,7 +206,7 @@ class WatcherCommands:
             categories = db.get_available_categories()
             
             if not categories:
-                await message.channel.send(get_message('error_no_hay_categorias'))
+                await message.channel.send(get_message('error_no_categories', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
@@ -233,12 +237,12 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_categories: {e}")
-            await message.channel.send(get_message('error_general', error=e))
+            await message.channel.send(get_message('error_general', server_id=self._get_server_id(message), error=e))
 
     async def cmd_subscribe(self, message, args):
         """Subscribe the user to a category or specific feed (auto-detects keywords vs flat)."""
         if not args:
-            await message.channel.send(get_message('uso_suscribir'))
+            await message.channel.send(get_message('usage_subscribe', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -264,7 +268,7 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in cmd_subscribe: {e}")
-            await message.channel.send(get_message('error_processing_subscription'))
+            await message.channel.send(get_message('error_processing_subscription', server_id=self._get_server_id(message)))
 
     async def _validate_category_and_feed(self, message, category: str, args: list, db) -> int | None:
         """Validate category and optional feed_id, returns feed_id or None."""
@@ -293,13 +297,13 @@ class WatcherCommands:
                         await message.channel.send(f"❌ Feed ID {feed_id} not found in category '{category}'. Available: 1-{len(feeds)}")
                         return None
                 except ValueError:
-                    await message.channel.send(get_message('feed_id_must_be_number'))
+                    await message.channel.send(get_message('feed_id_must_be_number', server_id=self._get_server_id(message)))
                     return None
         else:
             # Verify category exists
             categories = db.get_available_categories()
             if not any(cat[0] == category for cat in categories):
-                await message.channel.send(get_message('error_categoria_no_encontrada', category=category))
+                await message.channel.send(get_message('error_category_not_found', server_id=self._get_server_id(message), category=category))
                 return None
             
             # NEW BEHAVIOR: Subscribe to first available feed instead of all feeds
@@ -315,7 +319,7 @@ class WatcherCommands:
     async def cmd_unsubscribe(self, message, args):
         """Cancel subscription by number (from list) or by category/feed."""
         if not args:
-            await message.channel.send(get_message('uso_cancelar'))
+            await message.channel.send(get_message('usage_cancel', server_id=self._get_server_id(message)))
             await message.channel.send("💡 Use `!watcher subscriptions` to see numbered list")
             return
         
@@ -334,7 +338,7 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in cmd_unsubscribe: {e}")
-            await message.channel.send(get_message('error_cancelacion'))
+            await message.channel.send(get_message('error_cancellation', server_id=self._get_server_id(message)))
 
     async def _unsubscribe_by_number(self, message, user_id: str, list_number: int):
         """Unsubscribe by numbered list position."""
@@ -398,11 +402,11 @@ class WatcherCommands:
                 feed_info = f"Feed {feed_id}" if feed_id else "all feeds"
                 await message.channel.send(f"✅ Unsubscribed from #{list_number} - {category.title()} ({feed_info})")
             else:
-                await message.channel.send(get_message('no_subscription_to_cancel'))
+                await message.channel.send(get_message('no_subscription_to_cancel', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in _unsubscribe_by_number: {e}")
-            await message.channel.send(get_message('error_cancelacion'))
+            await message.channel.send(get_message('error_cancellation', server_id=self._get_server_id(message)))
 
     async def _unsubscribe_by_category(self, message, user_id: str, args):
         """Unsubscribe by category/feed method."""
@@ -413,7 +417,7 @@ class WatcherCommands:
             try:
                 feed_id = int(args[1])
             except ValueError:
-                await message.channel.send(get_message('feed_id_must_be_number'))
+                await message.channel.send(get_message('feed_id_must_be_number', server_id=self._get_server_id(message)))
                 return
         
         db = self._get_db()
@@ -424,12 +428,12 @@ class WatcherCommands:
             else:
                 await message.channel.send(f"✅ Unsubscribed from {category}")
         else:
-            await message.channel.send(get_message('no_suscripcion_cancelar'))
+            await message.channel.send(get_message('no_subscription_to_cancel', server_id=self._get_server_id(message)))
     
     async def cmd_general_unsubscribe(self, message, args):
         """Cancel an AI (premises-based) subscription for a category/feed."""
         if not args:
-            await message.channel.send(get_message('uso_general_unsubscribe'))
+            await message.channel.send(get_message('usage_general_unsubscribe', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -442,20 +446,20 @@ class WatcherCommands:
                 try:
                     feed_id = int(args[1])
                 except ValueError:
-                    await message.channel.send(get_message('feed_id_must_be_number'))
+                    await message.channel.send(get_message('feed_id_must_be_number', server_id=self._get_server_id(message)))
                     return
             
             if db.cancel_category_subscription(user_id, category, feed_id):
                 if feed_id:
-                    await message.channel.send(get_message('subscription_cancelled_feed', feed_id=feed_id, category=category))
+                    await message.channel.send(get_message('subscription_cancelled_feed', server_id=self._get_server_id(message), feed_id=feed_id, category=category))
                 else:
-                    await message.channel.send(get_message('subscription_cancelled_category', category=category))
+                    await message.channel.send(get_message('subscription_cancelled_category', server_id=self._get_server_id(message), category=category))
             else:
-                await message.channel.send(get_message('no_active_ai_subscription'))
+                await message.channel.send(get_message('no_active_ai_subscription', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_general_unsubscribe: {e}")
-            await message.channel.send(get_message('error_canceling_ai_subscription'))
+            await message.channel.send(get_message('error_canceling_ai_subscription', server_id=self._get_server_id(message)))
     
     async def cmd_status(self, message, args):
         """Show the user's active subscription type and details."""
@@ -529,7 +533,7 @@ class WatcherCommands:
                     embed.set_footer(text="Use !watcher unsubscribe <category> to cancel")
                     await message.channel.send(embed=embed)
                 else:
-                    await message.channel.send(get_message('no_active_flat_subscription'))
+                    await message.channel.send(get_message('no_active_flat_subscription', server_id=self._get_server_id(message)))
                     
             elif current_subscription_type == 'keywords':
                 subscriptions = db.get_user_keyword_subscriptions(user_id)
@@ -567,7 +571,7 @@ class WatcherCommands:
                     embed.set_footer(text="Use !watcher unsubscribe <category> to cancel")
                     await message.channel.send(embed=embed)
                 else:
-                    await message.channel.send(get_message('no_active_keyword_subscription'))
+                    await message.channel.send(get_message('no_active_keyword_subscription', server_id=self._get_server_id(message)))
                     
             elif current_subscription_type == 'ai':
                 subscriptions = db.get_user_ai_subscriptions(user_id)
@@ -607,11 +611,11 @@ class WatcherCommands:
                     await message.channel.send(embed=embed)
                 else:
                     logger.warning(f"DEBUG: Inconsistency detected - type='ai' but no AI subscriptions found for user {user_id}")
-                    await message.channel.send(get_message('no_active_ai_subscription'))
+                    await message.channel.send(get_message('no_active_ai_subscription', server_id=self._get_server_id(message)))
                     
         except Exception as e:
             logger.exception(f"Error in cmd_status: {e}")
-            await message.channel.send(get_message('error_mostrando_estado'))
+            await message.channel.send(get_message('error_showing_status', server_id=self._get_server_id(message)))
     
     async def cmd_categories(self, message, args):
         """Show available categories with active feeds."""
@@ -620,7 +624,7 @@ class WatcherCommands:
             categories = db.get_available_categories()
             
             if not categories:
-                await message.channel.send(get_message('error_no_hay_categorias'))
+                await message.channel.send(get_message('error_no_categories', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
@@ -653,17 +657,17 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_categories: {e}")
-            await message.channel.send(get_message('error_mostrando_categorys'))
+            await message.channel.send(get_message('error_showing_categories', server_id=self._get_server_id(message)))
     
     async def cmd_add_feed(self, message, args):
         """Add a new feed (admins only)."""
         if len(args) < 3:
-            await message.channel.send(get_message('usage_agregar_feed'))
+            await message.channel.send(get_message('usage_add_feed', server_id=self._get_server_id(message)))
             return
         
         # Check admin permissions
         if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('solo_admins_feeds'))
+            await message.channel.send(get_message('admins_only_feeds', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -677,16 +681,16 @@ class WatcherCommands:
             if db.add_feed(name, url, category, country, language):
                 await message.channel.send(f"✅ Feed '{name}' added to category '{category}'")
             else:
-                await message.channel.send(get_message('error_add_feed'))
+                await message.channel.send(get_message('error_add_feed', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_add_feed: {e}")
-            await message.channel.send(get_message('error_agregar_feed'))
+            await message.channel.send(get_message('error_adding_feed', server_id=self._get_server_id(message)))
     
     async def cmd_general_subscribe(self, message, args):
         """Subscribe with AI (premises-based) to a category/feed."""
         if not args:
-            await message.channel.send(get_message('uso_general'))
+            await message.channel.send(get_message('usage_general', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -704,7 +708,7 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in cmd_general_subscribe: {e}")
-            await message.channel.send(get_message('error_procesando_suscripcion_ia'))
+            await message.channel.send(get_message('error_processing_ai_subscription', server_id=self._get_server_id(message)))
     
     async def cmd_keywords_subscribe(self, message, args):
         """Keywords command.
@@ -805,7 +809,7 @@ class WatcherCommands:
     async def cmd_keywords_add(self, message, args):
         """Add a keyword to the user's keyword list (max 7)."""
         if not args:
-            await message.channel.send(get_message('uso_keywords_add'))
+            await message.channel.send(get_message('usage_keywords_add', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -937,7 +941,7 @@ class WatcherCommands:
             keywords = db.get_user_keywords(user_id)
             
             if not keywords:
-                await message.channel.send(get_message('error_no_hay_palabras_clave'))
+                await message.channel.send(get_message('error_no_keywords', server_id=self._get_server_id(message)))
                 return
             
             keywords_list = keywords.split(',')
@@ -956,7 +960,7 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_list: {e}")
-            await message.channel.send(get_message('error_obteniendo_palabras_clave'))
+            await message.channel.send(get_message('error_getting_keywords', server_id=self._get_server_id(message)))
     
     async def cmd_keywords_mod(self, message, args):
         """Modify a saved keyword by index."""
@@ -973,14 +977,14 @@ class WatcherCommands:
                 if index < 0:
                     raise ValueError
             except ValueError:
-                await message.channel.send(get_message('feed_id_must_be_number'))
+                await message.channel.send(get_message('feed_id_must_be_number', server_id=self._get_server_id(message)))
                 return
             
             new_keyword = args[1].strip('"\'')
             
             keywords = db.get_user_keywords(user_id)
             if not keywords:
-                await message.channel.send(get_message('error_no_hay_palabras_clave'))
+                await message.channel.send(get_message('error_no_keywords', server_id=self._get_server_id(message)))
                 return
             
             keywords_list = keywords.split(',')
@@ -996,11 +1000,11 @@ class WatcherCommands:
             if db.update_user_keywords(user_id, updated_keywords):
                 await message.channel.send(f"✅ Keyword #{index + 1} updated: '{old_keyword}' → '{new_keyword}'")
             else:
-                await message.channel.send(get_message('error_adding_keyword'))
+                await message.channel.send(get_message('error_adding_keyword', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_mod: {e}")
-            await message.channel.send(get_message('error_adding_keyword'))
+            await message.channel.send(get_message('error_adding_keyword', server_id=self._get_server_id(message)))
     
     async def cmd_keywords_subscribe_existing(self, message, args):
         """Subscribe to a category/feed using the user's existing saved keywords."""
@@ -1016,7 +1020,7 @@ class WatcherCommands:
             # Ensure the user has saved keywords
             keywords = db.get_user_keywords(user_id)
             if not keywords:
-                await message.channel.send(get_message('error_no_hay_palabras_clave'))
+                await message.channel.send(get_message('error_no_keywords', server_id=self._get_server_id(message)))
                 return
             
             # Validate category and feed using the unified validation function
@@ -1029,7 +1033,7 @@ class WatcherCommands:
             
             # If already has keywords subscription, block
             if current_subscription_type == 'keywords':
-                await message.channel.send(get_message('already_have_keywords_subscription'))
+                await message.channel.send(get_message('already_have_keywords_subscription', server_id=self._get_server_id(message)))
                 return
             
             # If has other subscription types, block
@@ -1044,7 +1048,7 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_subscribe_existing: {e}")
-            await message.channel.send(get_message('error_suscribiendo_palabras_clave'))
+            await message.channel.send(get_message('error_subscribing_keywords', server_id=self._get_server_id(message)))
     
     async def cmd_keywords_subscriptions(self, message, args):
         """Show active keyword subscriptions."""
@@ -1055,7 +1059,7 @@ class WatcherCommands:
             subscriptions = db.get_user_keyword_subscriptions(user_id)
             
             if not subscriptions:
-                await message.channel.send(get_message('error_no_hay_palabras_clave'))
+                await message.channel.send(get_message('error_no_keywords', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
@@ -1083,12 +1087,12 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_subscriptions: {e}")
-            await message.channel.send(get_message('error_obteniendo_estado'))
+            await message.channel.send(get_message('error_getting_status', server_id=self._get_server_id(message)))
     
     async def cmd_keywords_unsubscribe(self, message, args):
         """Cancel a user's keywords subscription for a category."""
         if not args:
-            await message.channel.send(get_message('usage_cancelar_palabras'))
+            await message.channel.send(get_message('usage_cancel_keywords', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -1097,18 +1101,18 @@ class WatcherCommands:
             category = self._normalize_category(args[0])
             
             if db.cancel_user_keyword_subscription(user_id, category):
-                await message.channel.send(get_message('keywords_subscription_cancelled', keywords=category))
+                await message.channel.send(get_message('keywords_subscription_cancelled', server_id=self._get_server_id(message), keywords=category))
             else:
-                await message.channel.send(get_message('no_active_keyword_subscription'))
+                await message.channel.send(get_message('no_active_keyword_subscription', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_unsubscribe: {e}")
-            await message.channel.send(get_message('error_canceling_keywords'))
+            await message.channel.send(get_message('error_canceling_keywords', server_id=self._get_server_id(message)))
     
     async def cmd_keywords_cancel(self, message, args):
         """Cancel a keywords subscription."""
         if not args:
-            await message.channel.send(get_message('usage_cancelar_palabras'))
+            await message.channel.send(get_message('usage_cancel_keywords', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -1118,11 +1122,11 @@ class WatcherCommands:
             if db.cancel_keyword_subscription(str(message.author.id), keywords):
                 await message.channel.send(get_message('keywords_subscription_cancelled', keywords=keywords))
             else:
-                await message.channel.send(get_message('no_keyword_subscription'))
+                await message.channel.send(get_message('no_keyword_subscription', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_keywords_cancel: {e}")
-            await message.channel.send(get_message('error_canceling_keywords'))
+            await message.channel.send(get_message('error_canceling_keywords', server_id=self._get_server_id(message)))
     
     async def cmd_mixed_subscribe(self, message, args):
         """Subscribe to specialized + general feeds in a category."""
@@ -1181,7 +1185,7 @@ class WatcherCommands:
             subscriptions = db.get_keyword_subscriptions(str(message.author.id))
             
             if not subscriptions:
-                await message.channel.send(get_message('error_no_hay_palabras_clave'))
+                await message.channel.send(get_message('error_no_keywords', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
@@ -1230,12 +1234,12 @@ class WatcherCommands:
     async def cmd_channel_keywords_unsubscribe(self, message, args):
         """Cancel a channel keywords subscription."""
         if not args:
-            await message.channel.send(get_message('usage_canal_palabras'))
+            await message.channel.send(get_message('usage_channel_keywords', server_id=self._get_server_id(message)))
             return
         
         # Check admin permissions
         if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('permissions_cancel_channel'))
+            await message.channel.send(get_message('permissions_cancel_channel', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -1246,11 +1250,11 @@ class WatcherCommands:
             if db.cancel_keyword_subscription(str(channel.id), keywords):
                 await message.channel.send(get_message('keywords_subscription_cancelled', keywords=keywords))
             else:
-                await message.channel.send(get_message('error_canceling_keywords'))
+                await message.channel.send(get_message('error_canceling_keywords', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_channel_keywords_unsubscribe: {e}")
-            await message.channel.send(get_message('error_canceling_keywords'))
+            await message.channel.send(get_message('error_canceling_keywords', server_id=self._get_server_id(message)))
     
     # ===== CHANNEL PREMISES COMMANDS =====
     
@@ -1291,7 +1295,7 @@ class WatcherCommands:
             premises, context = db.get_channel_premises_with_context(channel_id)
             
             if not premises:
-                await message.channel.send(get_message('no_premisas_canal'))
+                await message.channel.send(get_message('no_channel_premises', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
@@ -1317,17 +1321,17 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_channel_premises_list: {e}")
-            await message.channel.send(get_message('error_listando_premisas_canal'))
+            await message.channel.send(get_message('error_listing_channel_premises', server_id=self._get_server_id(message)))
     
     async def cmd_channel_premises_add(self, message, args):
         """Add a new premise to the channel (max 7)."""
         # Check admin permissions
         if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('error_permisos'))
+            await message.channel.send(get_message('error_permissions', server_id=self._get_server_id(message)))
             return
         
         if not args:
-            await message.channel.send(get_message('usage_canal_premises_add'))
+            await message.channel.send(get_message('usage_channel_premises_add', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -1337,7 +1341,7 @@ class WatcherCommands:
             new_premise = " ".join(args).strip('"\'')
             
             if not new_premise:
-                await message.channel.send(get_message('debes_proporcionar_premisa'))
+                await message.channel.send(get_message('must_provide_premise', server_id=self._get_server_id(message)))
                 return
             
             success, message_text = db.add_channel_premise(channel_id, new_premise)
@@ -1349,17 +1353,17 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in cmd_channel_premises_add: {e}")
-            await message.channel.send(get_message('error_agregar_feed'))
+            await message.channel.send(get_message('error_adding_feed', server_id=self._get_server_id(message)))
     
     async def cmd_channel_premises_mod(self, message, args):
         """Modify a specific channel premise by index."""
         # Check admin permissions
         if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('error_permisos'))
+            await message.channel.send(get_message('error_permissions', server_id=self._get_server_id(message)))
             return
         
         if len(args) < 2:
-            await message.channel.send(get_message('usage_canal_premises_mod'))
+            await message.channel.send(get_message('usage_channel_premises_mod', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -1389,12 +1393,12 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in cmd_channel_premises_mod: {e}")
-            await message.channel.send(get_message('error_agregar_feed'))
+            await message.channel.send(get_message('error_adding_feed', server_id=self._get_server_id(message)))
 
     async def cmd_channel_premises_del(self, message, args):
         """Delete a specific channel premise by index."""
         if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('error_permisos'))
+            await message.channel.send(get_message('error_permissions', server_id=self._get_server_id(message)))
             return
 
         if not args:
@@ -1548,13 +1552,13 @@ class WatcherCommands:
     async def cmd_channel_general_unsubscribe(self, message, args):
         """Cancel a channel AI subscription for category/feed."""
         if not args:
-            await message.channel.send(get_message('usage_canal_cancelar'))
+            await message.channel.send(get_message('usage_channel_cancel', server_id=self._get_server_id(message)))
             return
         
         try:
             # Check admin permissions
             if not message.author.guild_permissions.administrator:
-                await message.channel.send(get_message('permissions_cancel_channel'))
+                await message.channel.send(get_message('permissions_cancel_channel', server_id=self._get_server_id(message)))
                 return
             
             db = self._get_db()
@@ -1567,20 +1571,20 @@ class WatcherCommands:
                 try:
                     feed_id = int(args[1])
                 except ValueError:
-                    await message.channel.send(get_message('feed_id_must_be_number'))
+                    await message.channel.send(get_message('feed_id_must_be_number', server_id=self._get_server_id(message)))
                     return
             
             if db.cancel_category_subscription(f"channel_{channel_id}", category, feed_id):
                 if feed_id:
-                    await message.channel.send(get_message('suscripcion_canal_cancelada_feed', feed_id=feed_id, category=category))
+                    await message.channel.send(get_message('channel_subscription_cancelled_feed', server_id=self._get_server_id(message), feed_id=feed_id, category=category))
                 else:
-                    await message.channel.send(get_message('suscripcion_canal_cancelada_categoria', category=category))
+                    await message.channel.send(get_message('channel_subscription_cancelled_category', category=category))
             else:
-                await message.channel.send(get_message('error_no_suscripciones_canal'))
+                await message.channel.send(get_message('error_no_channel_subscriptions', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_channel_general_unsubscribe: {e}")
-            await message.channel.send(get_message('error_cancelar_suscripcion_canal'))
+            await message.channel.send(get_message('error_cancelling_channel_subscription', server_id=self._get_server_id(message)))
     
     def _get_category_icon(self, category: str) -> str:
         """Get icon for category."""
@@ -1643,25 +1647,25 @@ class WatcherCommands:
                     return None
                 return feed_id
             except ValueError:
-                await message.channel.send(get_message('feed_id_must_be_number'))
+                await message.channel.send(get_message('feed_id_must_be_number', server_id=self._get_server_id(message)))
                 return None
         else:
             # Verify category exists
             categories = db.get_available_categories()
             if not any(cat[0] == category for cat in categories):
-                await message.channel.send(get_message('error_categoria_no_encontrada', category=category))
+                await message.channel.send(get_message('error_category_not_found', server_id=self._get_server_id(message), category=category))
                 return None
             return None  # No feed_id specified, which is valid
 
     async def cmd_channel_unsubscribe(self, message, args):
         """Cancel the current channel subscription for a category/feed."""
         if not args:
-            await message.channel.send(get_message('usage_canal_cancelar'))
+            await message.channel.send(get_message('usage_channel_cancel', server_id=self._get_server_id(message)))
             return
         
         # Check permissions (requires manage channel)
         if not message.author.guild_permissions.manage_channels:
-            await message.channel.send(get_message('permissions_cancel_channel'))
+            await message.channel.send(get_message('permissions_cancel_channel', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -1677,15 +1681,15 @@ class WatcherCommands:
             
             if db.cancel_channel_subscription(str(channel.id), category, feed_id):
                 if feed_id:
-                    await message.channel.send(get_message('suscripcion_canal_cancelada_feed', feed_id=feed_id, category=category))
+                    await message.channel.send(get_message('channel_subscription_cancelled_feed', server_id=self._get_server_id(message), feed_id=feed_id, category=category))
                 else:
-                    await message.channel.send(get_message('suscripcion_canal_cancelada_categoria', category=category))
+                    await message.channel.send(get_message('channel_subscription_cancelled_category', category=category))
             else:
-                await message.channel.send(get_message('no_subscription_to_cancel'))
+                await message.channel.send(get_message('no_subscription_to_cancel', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_channel_unsubscribe: {e}")
-            await message.channel.send(get_message('error_cancelar_suscripcion_canal'))
+            await message.channel.send(get_message('error_cancelling_channel_subscription', server_id=self._get_server_id(message)))
     
     async def cmd_channel_status(self, message, args):
         """Show current channel subscription status."""
@@ -1764,7 +1768,7 @@ class WatcherCommands:
                 logger.exception(f"Error getting AI channel subscriptions: {e}")
             
             if not all_subscription_details:
-                await message.channel.send(get_message('error_no_suscripciones_canal'))
+                await message.channel.send(get_message('error_no_channel_subscriptions', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
@@ -1835,12 +1839,12 @@ class WatcherCommands:
                         inline=False
                     )
             
-            embed.set_footer(text=get_message('usage_canal_cancelar'))
+            embed.set_footer(text=get_message('usage_channel_cancel', server_id=self._get_server_id(message)))
             await message.channel.send(embed=embed)
             
         except Exception as e:
             logger.exception(f"Error in cmd_channel_status: {e}")
-            await message.channel.send(get_message('error_obteniendo_estado_canal'))
+            await message.channel.send(get_message('error_getting_channel_status', server_id=self._get_server_id(message)))
     
     # ===== PREMISES MANAGEMENT COMMANDS (AI SUBSCRIPTIONS) =====
     
@@ -1901,7 +1905,7 @@ class WatcherCommands:
             
         except Exception as e:
             logger.exception(f"Error in cmd_premises_list: {e}")
-            await send_dm_or_channel(ctx, get_message('error_listando_premisas'))
+            await send_dm_or_channel(ctx, get_message('error_listing_premises', server_id=self._get_server_id(message)))
     
     async def cmd_premises_list_canvas(self, message, args):
         """Canvas-compatible version of cmd_premises_list that handles MockMessage objects."""
@@ -1954,7 +1958,7 @@ class WatcherCommands:
     async def cmd_premises_add(self, ctx, args):
         """Add a new premise (max 7)."""
         if not args:
-            await send_dm_or_channel(ctx, get_message('usage_premises_add'))
+            await send_dm_or_channel(ctx, get_message('usage_premises_add', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -1963,7 +1967,7 @@ class WatcherCommands:
             new_premise = " ".join(args).strip('"\'')
             
             if not new_premise:
-                await send_dm_or_channel(ctx, get_message('debes_proporcionar_premisa'))
+                await send_dm_or_channel(ctx, get_message('must_provide_premise', server_id=self._get_server_id(message)))
                 return
             
             success, message_text = db.add_user_premise(user_id, new_premise)
@@ -1975,12 +1979,12 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in cmd_premises_add: {e}")
-            await send_dm_or_channel(ctx, get_message('error_agregando_premisa'))
+            await send_dm_or_channel(ctx, get_message('error_adding_premise', server_id=self._get_server_id(message)))
     
     async def cmd_premises_mod(self, ctx, args):
         """Modify a premise by index."""
         if len(args) < 2:
-            await send_dm_or_channel(ctx, get_message('usage_premises_mod'))
+            await send_dm_or_channel(ctx, get_message('usage_premises_mod', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -2168,7 +2172,7 @@ class WatcherCommands:
             user_premises = db.get_user_premises(user_id)
             
             if not user_premises:
-                await message.channel.send(get_message('no_premisas_personales'))
+                await message.channel.send(get_message('no_personal_premises', server_id=self._get_server_id(message)))
                 return
             
             embed = discord.Embed(
@@ -2195,7 +2199,7 @@ class WatcherCommands:
     async def cmd_configure_premises(self, message, args):
         """Configure user's custom premises."""
         if not args:
-            await message.channel.send(get_message('usage_premises_configure'))
+            await message.channel.send(get_message('usage_premises_configure', server_id=self._get_server_id(message)))
             return
         
         try:
@@ -2207,21 +2211,21 @@ class WatcherCommands:
             premises_list = [p.strip() for p in premises_text.split(',') if p.strip()]
             
             if len(premises_list) > 7:
-                await message.channel.send(get_message('maximo_premisas_personales'))
+                await message.channel.send(get_message('max_personal_premises', server_id=self._get_server_id(message)))
                 return
             
             if not premises_list:
-                await message.channel.send(get_message('debes_proporcionar_una_premisa'))
+                await message.channel.send(get_message('must_provide_one_premise', server_id=self._get_server_id(message)))
                 return
             
             if db.update_user_premises(user_id, premises_list):
                 await message.channel.send(f"✅ Your custom premises have been configured ({len(premises_list)} premises).\nUse `!watcher premises my_premises` to see them.")
             else:
-                await message.channel.send(get_message('error_configurando_premisas'))
+                await message.channel.send(get_message('error_configuring_premises', server_id=self._get_server_id(message)))
                 
         except Exception as e:
             logger.exception(f"Error in cmd_configure_premises: {e}")
-            await message.channel.send(get_message('error_configurando_premisas'))
+            await message.channel.send(get_message('error_configuring_premises', server_id=self._get_server_id(message)))
     
     def _get_country_flag(self, country: str) -> str:
         """Get flag for country."""
@@ -2597,15 +2601,15 @@ class WatcherCommands:
             if subscription_id:
                 target = f"channel {channel_id}" if channel_id else "you"
                 if feed_id:
-                    await message.channel.send(f"Flat subscription created for {target}: feed {feed_id} in '{category}'")
+                    await send_dm_or_channel(message, f"Flat subscription created for {target}: feed {feed_id} in '{category}'")
                 else:
-                    await message.channel.send(f"Flat subscription created for {target}: '{category}'")
+                    await send_dm_or_channel(message, f"Flat subscription created for {target}: '{category}'")
             else:
-                await message.channel.send("Error creating flat subscription")
+                await send_dm_or_channel(message, "Error creating flat subscription")
                 
         except Exception as e:
             logger.exception(f"Error in flat subscribe: {e}")
-            await message.channel.send("❌ Error processing flat subscription")
+            await send_dm_or_channel(message, "❌ Error processing flat subscription")
 
     async def _handle_keyword_subscribe(self, message, user_id: str, category: str, feed_id, channel_id: str = None):
         """Handle keyword subscription using unified create_subscription."""
@@ -2620,9 +2624,9 @@ class WatcherCommands:
             
             if not keywords:
                 if channel_id:
-                    await message.channel.send("This channel has no keywords configured.")
+                    await send_dm_or_channel(message, "This channel has no keywords configured.")
                 else:
-                    await message.channel.send("You have no keywords configured. Use `!watcher keywords add <keyword>` first.")
+                    await send_dm_or_channel(message, "You have no keywords configured. Use `!watcher keywords add <keyword>` first.")
                 return
             
             # Check subscription limits
@@ -2631,14 +2635,14 @@ class WatcherCommands:
             else:
                 can_sub, msg = db.can_user_subscribe(user_id)
             if not can_sub:
-                await message.channel.send(f"Error: {msg}")
+                await send_dm_or_channel(message, f"Error: {msg}")
                 return
             
             # Handle 'all' parameter
             if feed_id == 'all':
                 feeds = db.get_active_feeds(category)
                 if not feeds:
-                    await message.channel.send(f"No feeds found in category '{category}'")
+                    await send_dm_or_channel(message, f"No feeds found in category '{category}'")
                     return
                 
                 success_count = 0
@@ -2657,9 +2661,9 @@ class WatcherCommands:
                 
                 if success_count > 0:
                     target = f"channel {channel_id}" if channel_id else "you"
-                    await message.channel.send(f"Keyword subscription created for {target}: {success_count} feeds in '{category}' with keywords: {keywords}")
+                    await send_dm_or_channel(message, f"Keyword subscription created for {target}: {success_count} feeds in '{category}' with keywords: {keywords}")
                 else:
-                    await message.channel.send("Error creating keyword subscriptions")
+                    await send_dm_or_channel(message, "Error creating keyword subscriptions")
                 return
             
             # Create single subscription
@@ -2676,15 +2680,15 @@ class WatcherCommands:
             if subscription_id:
                 target = f"channel {channel_id}" if channel_id else "you"
                 if feed_id:
-                    await message.channel.send(f"Keyword subscription created for {target}: feed {feed_id} in '{category}' with keywords: {keywords}")
+                    await send_dm_or_channel(message, f"Keyword subscription created for {target}: feed {feed_id} in '{category}' with keywords: {keywords}")
                 else:
-                    await message.channel.send(f"Keyword subscription created for {target}: '{category}' with keywords: {keywords}")
+                    await send_dm_or_channel(message, f"Keyword subscription created for {target}: '{category}' with keywords: {keywords}")
             else:
-                await message.channel.send("Error creating keyword subscription")
+                await send_dm_or_channel(message, "Error creating keyword subscription")
                 
         except Exception as e:
             logger.exception(f"Error in keyword subscribe: {e}")
-            await message.channel.send("Error processing keyword subscription")
+            await send_dm_or_channel(message, "Error processing keyword subscription")
 
     async def _handle_general_subscribe(self, message, user_id: str, category: str, feed_id, channel_id: str = None, return_result: bool = False):
         """Handle general (AI) subscription using unified create_subscription."""
@@ -2778,7 +2782,7 @@ class WatcherCommands:
                 await message.channel.send(success_msg)
                 return None if return_result else None
             else:
-                error_msg = get_message('error_creando_suscripcion_ia')
+                error_msg = get_message('error_creating_ai_subscription', server_id=self._get_server_id(message))
                 if return_result:
                     return False, error_msg
                 await message.channel.send(error_msg)
@@ -2786,7 +2790,7 @@ class WatcherCommands:
                 
         except Exception as e:
             logger.exception(f"Error in general subscribe: {e}")
-            error_msg = get_message('error_procesando_suscripcion_ia')
+            error_msg = get_message('error_processing_ai_subscription', server_id=self._get_server_id(message))
             if return_result:
                 return False, error_msg
             await message.channel.send(error_msg)

@@ -8,17 +8,15 @@ import sqlite3
 from pathlib import Path
 from typing import List, Tuple
 from agent_logging import get_logger
-from agent_db import get_personality_name
 
 logger = get_logger('global_feed_health')
 
 def get_global_feeds_db_path() -> Path:
     """Generate path for global feeds database (shared across all servers)."""
-    personality_name = get_personality_name()
     base_dir = Path(__file__).parent.parent.parent
     data_dir = base_dir / "data"
     data_dir.mkdir(exist_ok=True)
-    return data_dir / f"global_feeds_{personality_name}.db"
+    return data_dir / "global_feeds.db"
 
 def initialize_global_feeds_db():
     """Initialize the global feeds database with default feeds."""

@@ -13,7 +13,7 @@ import time
 import datetime
 import discord
 from dotenv import load_dotenv
-from agent_db import get_active_server_id
+from agent_db import get_server_id
 from agent_logging import get_logger
 from agent_engine import get_discord_token
 from discord_bot.discord_http import DiscordHTTP
@@ -26,7 +26,7 @@ import json
 import os
 from pathlib import Path
 
-def _load_news_watcher_descriptions() -> dict:
+def _load_news_watcher_descriptions(server_id: str = None) -> dict:
     """Load news_watcher.json descriptions directly."""
     try:
         # Get personality name from configuration
@@ -50,7 +50,7 @@ def _load_news_watcher_descriptions() -> dict:
 _news_watcher_descriptions_cache = {}
 _news_watcher_descriptions_cache_server_id = None
 
-def _get_news_watcher_descriptions() -> dict:
+def _get_news_watcher_descriptions(server_id: str = None) -> dict:
     """
     Get news_watcher descriptions with server-specific caching.
     
@@ -60,14 +60,14 @@ def _get_news_watcher_descriptions() -> dict:
     global _news_watcher_descriptions_cache, _news_watcher_descriptions_cache_server_id
     
     try:
-        from agent_db import get_active_server_id
-        current_server_id = get_active_server_id()
+        from agent_db import get_server_id
+        current_server_id = server_id or get_server_id()
     except:
-        current_server_id = None
+        current_server_id = server_id or None
     
     # Check if we need to reload (different server or no cache)
     if current_server_id != _news_watcher_descriptions_cache_server_id or not _news_watcher_descriptions_cache:
-        _news_watcher_descriptions_cache = _load_news_watcher_descriptions()
+        _news_watcher_descriptions_cache = _load_news_watcher_descriptions(current_server_id)
         _news_watcher_descriptions_cache_server_id = current_server_id
         if os.getenv('ROLE_AGENT_PROCESS') != '1':
             logger.info(f"📰 [NEWS_WATCHER DESCRIPTIONS] Loaded for server: {current_server_id}")
@@ -77,27 +77,35 @@ def _get_news_watcher_descriptions() -> dict:
 
 # Create dynamic _personality_descriptions proxy for news_watcher
 class _NewsWatcherDescriptionsProxy:
-    """Proxy for dynamic news_watcher descriptions loading."""
+    """Proxy for dynamic news_watcher descriptions loading with server-specific support."""
+    def _get_server_id(self):
+        """Get current server ID for server-specific loading."""
+        try:
+            from agent_db import get_server_id
+            return get_server_id()
+        except:
+            return None
+    
     def __getitem__(self, key):
-        return _get_news_watcher_descriptions().get(key)
+        return _get_news_watcher_descriptions(self._get_server_id()).get(key)
     
     def get(self, key, default=None):
-        return _get_news_watcher_descriptions().get(key, default)
+        return _get_news_watcher_descriptions(self._get_server_id()).get(key, default)
     
     def __contains__(self, key):
-        return key in _get_news_watcher_descriptions()
+        return key in _get_news_watcher_descriptions(self._get_server_id())
     
     def keys(self):
-        return _get_news_watcher_descriptions().keys()
+        return _get_news_watcher_descriptions(self._get_server_id()).keys()
     
     def values(self):
-        return _get_news_watcher_descriptions().values()
+        return _get_news_watcher_descriptions(self._get_server_id()).values()
     
     def items(self):
-        return _get_news_watcher_descriptions().items()
+        return _get_news_watcher_descriptions(self._get_server_id()).items()
     
     def __repr__(self):
-        return repr(_get_news_watcher_descriptions())
+        return repr(_get_news_watcher_descriptions(self._get_server_id()))
 
 _personality_descriptions = _NewsWatcherDescriptionsProxy()
 
@@ -199,15 +207,26 @@ async def process_subscriptions(http, server_name: str = "default", include_chan
         for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in subscriptions:
             category_normalized = category.lower()
             
+            # Get server_id from channel_id if available
+            subscription_server_id = None
+            if channel_id:
+                try:
+                    channel_info = await http.get_channel(int(channel_id))
+                    if channel_info:
+                        subscription_server_id = str(channel_info.get('guild_id'))
+                        logger.debug(f"Got server_id {subscription_server_id} from channel {channel_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to get server_id from channel {channel_id}: {e}")
+            
             if method == "flat":
                 if feed_id:
                     feed_data = db_watcher.get_feed_by_id(feed_id)
                     if feed_data:
-                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "flat")
+                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "flat", server_id=subscription_server_id)
                 else:
                     feeds = db_watcher.get_active_feeds(category_normalized)
                     if feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "flat")
+                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "flat", server_id=subscription_server_id)
                     else:
                         logger.warning(f"No feeds found for category '{category}'")
                         
@@ -217,13 +236,13 @@ async def process_subscriptions(http, server_name: str = "default", include_chan
                 if feed_id:
                     feed_data = db_watcher.get_feed_by_id(feed_id)
                     if feed_data:
-                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "keyword", keywords)
+                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "keyword", keywords, subscription_server_id)
                 else:
                     feeds = db_watcher.get_active_feeds(category_normalized)
                     if feeds:
                         target = f"channel {channel_id}" if channel_id else f"user {user_id}"
                         logger.info(f"Processing keywords '{keywords}' for {target} in {category}")
-                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "keyword", keywords)
+                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "keyword", keywords, subscription_server_id)
                     else:
                         logger.warning(f"No feeds found for category '{category}'")
                         
@@ -233,11 +252,11 @@ async def process_subscriptions(http, server_name: str = "default", include_chan
                 if feed_id:
                     feed_data = db_watcher.get_feed_by_id(feed_id)
                     if feed_data:
-                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "general", premises)
+                        await _process_feed_unified(http, db_watcher, global_db, feed_data, user_id, channel_id, server_name, "general", premises, subscription_server_id)
                 else:
                     feeds = db_watcher.get_active_feeds(category_normalized)
                     if feeds:
-                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "general", premises)
+                        await _process_feed_unified(http, db_watcher, global_db, feeds[0], user_id, channel_id, server_name, "general", premises, subscription_server_id)
                     else:
                         logger.warning(f"No feeds found for category '{category}'")
         
@@ -247,7 +266,7 @@ async def process_subscriptions(http, server_name: str = "default", include_chan
         logger.exception(f"Error in {scope} subscription processing: {e}")
 
 
-async def _process_feed_unified(http, db_watcher, global_db, feed_record, user_id, channel_id, server_name: str, method: str = "flat", filter_criteria: str = None):
+async def _process_feed_unified(http, db_watcher, global_db, feed_record, user_id, channel_id, server_name: str, method: str = "flat", filter_criteria: str = None, server_id=None):
     """Unified feed processor for flat, keyword, and AI subscriptions."""
     try:
         feed_id, name, url, category = feed_record[0], feed_record[1], feed_record[2], feed_record[3]
@@ -279,7 +298,7 @@ async def _process_feed_unified(http, db_watcher, global_db, feed_record, user_i
                     # Handle different processing methods
                     if method == "general" and filter_criteria:
                         # AI method: batch analysis with Cohere
-                        await _process_feed_ai_batch(http, feed, name, url, global_db, db_watcher, user_id, channel_id, server_name, filter_criteria)
+                        await _process_feed_ai_batch(http, feed, name, url, global_db, db_watcher, user_id, channel_id, server_name, filter_criteria, server_id)
                     elif method == "keyword" and filter_criteria:
                         # Keyword method: filter by keywords then generate opinion
                         await _process_feed_keyword_filter(http, feed, name, url, global_db, db_watcher, user_id, channel_id, server_name, filter_criteria)
@@ -396,7 +415,7 @@ async def _process_feed_keyword_filter(http, feed, name, url, global_db, db_watc
     logger.info(f"Found {len(matched_articles)} items matching keywords in {name}")
 
 
-async def _process_feed_ai_batch(http, feed, name, url, global_db, db_watcher, user_id, channel_id, server_name, premises):
+async def _process_feed_ai_batch(http, feed, name, url, global_db, db_watcher, user_id, channel_id, server_name, premises, server_id=None):
     """Process AI subscription - batch analysis with Cohere."""
     # Collect all articles for batch analysis
     articles_to_analyze = []
@@ -426,7 +445,7 @@ async def _process_feed_ai_batch(http, feed, name, url, global_db, db_watcher, u
     logger.info(f"🤖 Analyzing {len(articles_to_analyze)} articles in batch...")
     
     # Batch analysis: check all articles at once against premises
-    matching_indices = await _analyze_critical_news_batch(articles_to_analyze, premises)
+    matching_indices = await _analyze_critical_news_batch(articles_to_analyze, premises, server_id)
     
     logger.info(f"🤖 Batch analysis found {len(matching_indices)} matching articles")
     
@@ -494,11 +513,10 @@ def _build_watcher_notification_message(method: str, articles: list[dict], rende
             premises_info += f"{i}. {premise}\n"
         premises_info += "\n"    
     
-    # Get alert title
-    alert_title = ""
-    alert_title = _personality_descriptions.get("alert_title", "🤖 **Critical News Analysis**")
-    from discord_bot.canvas.content import _bot_display_name
-    alert_title = alert_title.replace("{_bot_display_name}", _bot_display_name)
+    # Get alert title from server-specific personality
+    from agent_db import get_server_id
+    current_server_id = get_server_id()
+    alert_title = _get_alert_title(current_server_id)
 
 
     # Build first message with title, premises, and opinion
@@ -559,15 +577,20 @@ def _build_news_watcher_prompt(
     description: str = "",
     prompt_config: dict | None = None,
     news_items: list[dict] | None = None,
+    server_id: str = None,
 ) -> str:
     """Build the injected mission prompt for News Watcher opinions."""
     config = prompt_config or {}
     role_prompts = {}
     
-    # Try to get golden_rules from personality, fallback to config or default
+    # Try to get golden_rules from server-specific personality, fallback to config or default
     try:
-        from agent_engine import PERSONALITY
-        role_prompts = PERSONALITY.get("roles", {})
+        from agent_engine import _get_personality
+        personality = _get_personality(server_id) if server_id else None
+        if not personality:
+            from agent_engine import PERSONALITY
+            personality = PERSONALITY
+        role_prompts = personality.get("roles", {})
         personality_rules = role_prompts.get("news_watcher", {}).get("golden_rules", [])
         golden_rules = personality_rules if personality_rules else config.get("golden_rules")
     except Exception:
@@ -640,17 +663,23 @@ async def _generate_personality_opinion(
     """Generate personality opinion about a news headline."""
     try:
         from agent_mind import call_llm
-        from agent_db import get_active_server_id
+        from agent_db import get_server_id
         
-        server_to_use = server_id or get_active_server_id()
+        server_to_use = server_id or get_server_id()
         if not server_to_use:
             logger.warning("⚠️ No active server available for watcher prompt generation")
             return None
         
-        # Get system prompt from personality or fallback to English
-        try:
+        # Get server-specific personality for all configuration
+        from agent_engine import _get_personality
+        server_personality = _get_personality(server_to_use) if server_to_use else None
+        if not server_personality:
             from agent_engine import PERSONALITY
-            role_prompts = PERSONALITY.get("roles", {})
+            server_personality = PERSONALITY
+        
+        # Get system prompt from server-specific personality or fallback to English
+        try:
+            role_prompts = server_personality.get("roles", {})
             system_prompt = role_prompts.get("news_watcher", {}).get("prompt", ROL_VIGIA_PERSONALITY)
             prompt_config = role_prompts.get("news_watcher", {})
         except Exception:
@@ -663,12 +692,12 @@ async def _generate_personality_opinion(
             description=description,
             prompt_config=prompt_config,
             news_items=news_items,
+            server_id=server_to_use,
         )
         
-        # Get personality opinion
-        # Build system instruction
+        # Build system instruction using server-specific personality
         from agent_engine import _build_system_prompt
-        system_instruction = _build_system_prompt(PERSONALITY)
+        system_instruction = _build_system_prompt(server_personality, server_to_use)
         
         opinion = call_llm(
             system_instruction=system_instruction,
@@ -676,6 +705,7 @@ async def _generate_personality_opinion(
             async_mode=True,
             call_type="news_watcher",
             critical=False,
+            server_id=server_to_use,
             metadata={
                 "interaction_type": "mission",
                 "role_context": "news_watcher",
@@ -780,19 +810,22 @@ for _p in _env_candidates:
 
 logger = get_logger('watcher')
 
-def _get_alert_title() -> str:
-    """Get alert title from descriptions.json or fallback."""
+def _get_alert_title(server_id: str = None) -> str:
+    """Get alert title from descriptions.json or fallback using server-specific personality."""
     try:
-        from agent_engine import PERSONALITY, _bot_display_name
-        descriptions = PERSONALITY.get("discord", {})
+        from agent_engine import _get_personality
+        personality = _get_personality(server_id) if server_id else None
+        if not personality:
+            from agent_engine import PERSONALITY
+            personality = PERSONALITY
+        descriptions = personality.get("discord", {})
         
         # Try to get from news_watcher descriptions first
         news_watcher_descriptions = descriptions.get("roles_view_messages", {}).get("news_watcher", {})
         alert_title = news_watcher_descriptions.get("alert_title")
         
         if alert_title:
-            # Apply placeholder replacement for bot display name
-            return alert_title.replace("{_bot_display_name}", _bot_display_name)
+            return alert_title
         
         # Fallback to watcher messages
         watcher_messages = descriptions.get("watcher_messages", {})
@@ -803,16 +836,20 @@ def _get_alert_title() -> str:
         elif "canvas_personal_title" in watcher_messages:
             return watcher_messages["canvas_personal_title"]
         else:
-            return f"🤖 {_bot_display_name} Watcher"  # Fallback with bot name
+            return "🤖 Watcher"  # Fallback
     except Exception:
         return "🤖 Watcher"  # Fallback
 
 
-def _get_personality_name() -> str:
-    """Get personality name from personality.json or fallback."""
+def _get_personality_name(server_id: str = None) -> str:
+    """Get personality name from personality.json or fallback using server-specific personality."""
     try:
-        from agent_engine import PERSONALITY
-        return PERSONALITY.get("bot_display_name", "Watcher")
+        from agent_engine import _get_personality
+        personality = _get_personality(server_id) if server_id else None
+        if not personality:
+            from agent_engine import PERSONALITY
+            personality = PERSONALITY
+        return personality.get("bot_display_name", "Watcher")
     except Exception:
         return "Watcher"  # Fallback
 
@@ -883,10 +920,14 @@ async def _send_notification(http, user_id: str, channel_id: str, messages: str 
             # Send first message (title and opinion)
             if channel_id:
                 logger.info(f"📢 Sending first message to channel {channel_id}")
-                await http.send_channel_message(channel_id, first_message)
+                # Truncate to 2000 characters (Discord limit)
+                truncated_message = first_message[:2000] if len(first_message) > 2000 else first_message
+                await http.send_channel_message(channel_id, truncated_message)
             else:
                 logger.info(f"📩 Sending first message to DM for user {user_id}")
-                await http.send_dm(int(user_id), first_message)
+                # Truncate to 2000 characters (Discord limit)
+                truncated_message = first_message[:2000] if len(first_message) > 2000 else first_message
+                await http.send_dm(int(user_id), truncated_message)
             
             # Wait a moment between messages for better UX
             await asyncio.sleep(0.5)
@@ -934,12 +975,13 @@ async def _send_notification(http, user_id: str, channel_id: str, messages: str 
     except Exception as e:
         logger.exception(f"Error sending notification: {e}")
 
-async def _analyze_critical_news_batch(articles: list, premises: list | str) -> list:
+async def _analyze_critical_news_batch(articles: list, premises: list | str, server_id: str = None) -> list:
     """Analyze multiple news articles at once against user premises.
     
     Args:
         articles: List of dicts with 'title', 'summary', 'link' keys
         premises: List of user premises (or comma-separated string)
+        server_id: Server ID for logging
         
     Returns:
         List of indices (0-based) of articles that match premises
@@ -996,9 +1038,10 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
         # Log the prompt to prompts.log
         try:
             from prompts_logger import log_final_llm_prompt
-            from agent_db import get_active_server_id
+            from agent_db import get_server_id
             
-            server_name = get_active_server_id()
+            # Use provided server_id or fall back to get_server_id()
+            log_server_id = server_id or get_server_id()
             metadata = {
                 "articles_count": len(articles),
                 "premises_count": len(premises_list),
@@ -1011,9 +1054,9 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
                 system_instruction=system_instruction,
                 user_prompt=user_prompt,
                 role="news_watcher",
-                server=server_name,
+                server=log_server_id,
                 metadata=metadata,
-                server_id=server_name
+                server_id=log_server_id
             )
         except Exception as e:
             logger.warning(f"Could not log prompt to prompts.log: {e}")
@@ -1032,14 +1075,15 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
         # Log Cohere's response to prompts.log
         try:
             from prompts_logger import log_prompt
-            from agent_db import get_active_server_id
+            from agent_db import get_server_id
             
-            server_name = get_active_server_id()
+            # Use provided server_id or fall back to get_server_id()
+            log_server_id = server_id or get_server_id()
             response_metadata = {
                 "provider": "cohere",
                 "call_type": "news_watcher_batch_analysis_response",
                 "role": "news_watcher",
-                "server": server_name,
+                "server": log_server_id,
                 "model": "command-a-03-2025",
                 "temperature": 0.0,
                 "max_tokens": 50,
@@ -1051,7 +1095,7 @@ Respond only with comma-separated numbers (e.g., "0,2,5") or "NONE" if no articl
                 prompt_type="cohere_response",
                 content=result,
                 metadata=response_metadata,
-                server_id=server_name
+                server_id=log_server_id
             )
         except Exception as e:
             logger.warning(f"Could not log Cohere response to prompts.log: {e}")
@@ -1082,11 +1126,11 @@ async def main():
         logger.info("🚀 Starting News Watcher...")
         
         # Get server configuration
-        server_id = get_active_server_id()
-        if not server_id:
+        current_server_id = get_server_id()
+        if not current_server_id:
             logger.warning("⚠️ No active server configured, skipping News Watcher execution")
             return
-        logger.info(f"📡 Server: {server_id}")
+        logger.info(f"📡 Server: {current_server_id}")
         
         # Initialize HTTP client for Discord
         discord_token = get_discord_token()
@@ -1097,7 +1141,7 @@ async def main():
         http = DiscordHTTP(discord_token)
         
         # Process all subscriptions
-        await process_subscriptions(http, server_id)
+        await process_subscriptions(http, current_server_id)
         
         logger.info("✅ News Watcher completed")
         

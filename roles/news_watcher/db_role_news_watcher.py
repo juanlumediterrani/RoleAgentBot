@@ -19,7 +19,7 @@ from agent_db import get_server_db_path_fallback, get_personality_name
 
 def get_db_path(server_id: str = "default") -> Path:
     """Generate database path for news watcher with personality name."""
-    personality_name = get_personality_name()
+    personality_name = get_personality_name(server_id)
     db_name = f"watcher_{personality_name}"
     return get_server_db_path_fallback(server_id, db_name)
 
@@ -2389,6 +2389,26 @@ _db_news_watcher_instances = {}
 
 def get_news_watcher_db_instance(server_id: str = "default") -> DatabaseRoleNewsWatcher:
     """Get or create a news watcher database instance for a specific server."""
-    if server_id not in _db_news_watcher_instances:
-        _db_news_watcher_instances[server_id] = DatabaseRoleNewsWatcher(server_id)
-    return _db_news_watcher_instances[server_id]
+    # Generate the current database path for this server
+    current_db_path = get_db_path(server_id)
+    cache_key = f"{server_id}:{current_db_path}"
+    
+    # Check if we have a cached instance with the same database path
+    if cache_key not in _db_news_watcher_instances:
+        _db_news_watcher_instances[cache_key] = DatabaseRoleNewsWatcher(server_id)
+    
+    return _db_news_watcher_instances[cache_key]
+
+def invalidate_news_watcher_db_instance(server_id: str = None):
+    """Invalidate cached news watcher database instance for a server or all servers."""
+    global _db_news_watcher_instances
+    if server_id:
+        # Invalidate all instances for this server (any personality)
+        keys_to_remove = [k for k in _db_news_watcher_instances.keys() if k.startswith(f"{server_id}:")]
+        for key in keys_to_remove:
+            del _db_news_watcher_instances[key]
+            logger.info(f"🗄️ [NEWS_WATCHER] Invalidated cached db instance for server: {server_id}")
+    else:
+        # Invalidate all instances
+        _db_news_watcher_instances.clear()
+        logger.info("🗄️ [NEWS_WATCHER] Invalidated all cached db instances")

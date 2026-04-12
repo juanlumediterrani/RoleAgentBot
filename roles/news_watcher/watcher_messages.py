@@ -4,16 +4,16 @@ from agent_logging import get_logger
 
 logger = get_logger('watcher_messages')
 
-def get_watcher_messages():
-    """Load custom Watcher messages from personality file."""
+def get_watcher_messages(server_id: str = None):
+    """Load custom Watcher messages from personality file using server-specific directory."""
     try:
         from agent_runtime import get_personality_file_path, get_personality_directory
-        answers_path = get_personality_file_path("answers.json")
+        answers_path = get_personality_file_path("answers.json", server_id)
         with open(answers_path, encoding="utf-8") as f:
             watcher_messages = json.load(f).get("discord", {}).get("watcher_messages", {})
         
         # Also load from news_watcher.json for commands section
-        personality_dir = get_personality_directory()
+        personality_dir = get_personality_directory(server_id)
         news_watcher_path = os.path.join(personality_dir, "descriptions", "news_watcher.json")
         
         try:
@@ -91,9 +91,9 @@ def get_default_messages():
         "feed_added_successful": "✅ Feed '{name}' added to category '{category}'"
     }
 
-def get_message(key, **kwargs):
-    """Get a custom message with variable formatting."""
-    messages = get_watcher_messages()
+def get_message(key, server_id: str = None, **kwargs):
+    """Get a custom message with variable formatting using server-specific personality."""
+    messages = get_watcher_messages(server_id)
     message = messages.get(key)
     
     # If personality doesn't have the message, use English fallback
