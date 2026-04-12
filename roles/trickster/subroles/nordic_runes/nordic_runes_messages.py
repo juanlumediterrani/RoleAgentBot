@@ -15,29 +15,22 @@ try:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from agent_engine import AGENT_CFG
-    # Import bot display name for dynamic replacement
-    try:
-        from discord_bot.discord_core_commands import _bot_display_name
-    except ImportError:
-        # Fallback if discord is not available
-        _bot_display_name = "Bot"
 except ImportError:
     AGENT_CFG = {"personality": "personalities/putre/personality.json"}  # Fallback for testing
-    _bot_display_name = "Bot"  # Fallback
 
 
-def _get_personality_dir() -> str:
-    """Get the current personality directory dynamically."""
+def _get_personality_dir(server_id: str = None) -> str:
+    """Get the current personality directory dynamically using server_id."""
     try:
         # Try to get server-specific directory first
         try:
             from agent_runtime import get_personality_directory
-            server_dir = get_personality_directory()
+            server_dir = get_personality_directory(server_id)
             if server_dir:
                 return server_dir
         except:
             pass
-        
+
         # Fall back to global personality directory
         personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
         personality_path = os.path.join(project_root, personality_rel)
@@ -299,14 +292,14 @@ Choose your casting type and ask the ancient runes!""",
     'keywords': "Keywords",
     'interpretation': "Interpretation",
     'success': "🔮 UHHH! The ancient runes have spoken, human!",
-    'saved': f"🔮 UHHH! {_bot_display_name} saved your rune reading in the ancient scrolls!"
+    'saved': "🔮 UHHH! Your rune reading is saved in the ancient scrolls!"
 }
 
 # Personality messages cache
 _personality_messages = None
 
-def load_personality_messages():
-    """Load messages from personality files with English fallbacks."""
+def load_personality_messages(server_id: str = None):
+    """Load messages from personality files with English fallbacks using server_id."""
     global _personality_messages
     
     # Always reload to ensure fresh messages from descriptions.json
@@ -322,17 +315,17 @@ def load_personality_messages():
         # Need to go up 5 levels: nordic_runes -> subroles -> trickster -> roles -> RoleAgentBot
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         
-        descriptions_path = os.path.join(_get_personality_dir(), "descriptions.json")
-        
+        descriptions_path = os.path.join(_get_personality_dir(server_id), "descriptions.json")
+
         if os.path.exists(descriptions_path):
             with open(descriptions_path, encoding="utf-8") as f:
                 descriptions = json.load(f)
                 # Get the nordic_runes section
                 nordic_runes_data = descriptions.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
-                
+
                 # If no nordic_runes data found in main descriptions.json, try loading from trickster.json
                 if not nordic_runes_data:
-                    trickster_path = os.path.join(_get_personality_dir(), "descriptions", "trickster.json")
+                    trickster_path = os.path.join(_get_personality_dir(server_id), "descriptions", "trickster.json")
                     if os.path.exists(trickster_path):
                         with open(trickster_path, encoding="utf-8") as f:
                             trickster_data = json.load(f)
@@ -351,7 +344,7 @@ def load_personality_messages():
                 
                 # If no labels found in main descriptions.json, try loading from trickster.json
                 if not labels:
-                    trickster_path = os.path.join(_get_personality_dir(), "descriptions", "trickster.json")
+                    trickster_path = os.path.join(_get_personality_dir(server_id), "descriptions", "trickster.json")
                     if os.path.exists(trickster_path):
                         with open(trickster_path, encoding="utf-8") as f:
                             trickster_data = json.load(f)
@@ -361,7 +354,7 @@ def load_personality_messages():
                     merged_messages[key] = value
                 
                 # IMPORTANT: Also include translations section from separate runesplane.json file
-                runesplane_path = os.path.join(_get_personality_dir(), "descriptions", "runesplane.json")
+                runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
                 if os.path.exists(runesplane_path):
                     with open(runesplane_path, encoding="utf-8") as f:
                         runesplane_data = json.load(f)
@@ -416,32 +409,32 @@ def clear_message_cache():
     global _personality_messages
     _personality_messages = None
 
-def get_guidance_messages(category: str) -> dict:
-    """Get guidance messages for a category (love, career, health, path)."""
-    messages = load_personality_messages()
+def get_guidance_messages(category: str, server_id: str = None) -> dict:
+    """Get guidance messages for a category (love, career, health, path) using server_id."""
+    messages = load_personality_messages(server_id)
     guidance_data = messages.get('guidance', {})
-    
+
     # If guidance_data is a string (from labels section), load the actual guidance
     if isinstance(guidance_data, str):
         # Load the actual guidance from descriptions.json
         try:
             import json
             import os
-            
+
             # Get project root and descriptions path
             # Current file: /home/mtx/Documentos/RoleAgentBot/roles/trickster/subroles/nordic_runes/nordic_runes_messages.py
             # Project root: /home/mtx/Documentos/RoleAgentBot
             # Need to go up 5 levels: nordic_runes -> subroles -> trickster -> roles -> RoleAgentBot
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-            
-            descriptions_path = os.path.join(_get_personality_dir(), "descriptions.json")
-            
+
+            descriptions_path = os.path.join(_get_personality_dir(server_id), "descriptions.json")
+
             if os.path.exists(descriptions_path):
                 with open(descriptions_path, encoding="utf-8") as f:
                     descriptions = json.load(f)
-                    
+
                     # Try to load guidance from runesplane.json first
-                    runesplane_path = os.path.join(_get_personality_dir(), "descriptions", "runesplane.json")
+                    runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
                     if os.path.exists(runesplane_path):
                         with open(runesplane_path, encoding="utf-8") as f:
                             runesplane_data = json.load(f)
@@ -452,15 +445,15 @@ def get_guidance_messages(category: str) -> dict:
                         guidance_data = nordic_runes_data.get('guidance', {})
         except:
             guidance_data = {}
-    
+
     return guidance_data.get(category, {})
 
-def get_runes_list_content(page: int = 1) -> str:
-    """Generate runes list content dynamically from RUNES data with translations and pagination."""
+def get_runes_list_content(page: int = 1, server_id: str = None) -> str:
+    """Generate runes list content dynamically from RUNES data with translations and pagination using server_id."""
     # Load personality messages for translations
-    messages = load_personality_messages()
+    messages = load_personality_messages(server_id)
     translations = messages.get('translations', {})
-    
+
     # Load labels from descriptions.json - access labels section directly
     try:
         import json
@@ -468,18 +461,18 @@ def get_runes_list_content(page: int = 1) -> str:
         
         # Get project root and descriptions path
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-        descriptions_path = os.path.join(_get_personality_dir(), "descriptions.json")
-        
+        descriptions_path = os.path.join(_get_personality_dir(server_id), "descriptions.json")
+
         labels_data = {}
         if os.path.exists(descriptions_path):
             with open(descriptions_path, encoding="utf-8") as f:
                 descriptions = json.load(f)
                 # Get the labels section directly
                 labels_data = descriptions.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("labels", {})
-        
+
         # If no labels found in main descriptions.json, try loading from trickster.json
         if not labels_data:
-            trickster_path = os.path.join(_get_personality_dir(), "descriptions", "trickster.json")
+            trickster_path = os.path.join(_get_personality_dir(server_id), "descriptions", "trickster.json")
             if os.path.exists(trickster_path):
                 with open(trickster_path, encoding="utf-8") as f:
                     trickster_data = json.load(f)

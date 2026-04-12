@@ -23,33 +23,26 @@ try:
         sys.path.insert(0, project_root)
     from agent_mind import call_llm
     from agent_engine import AGENT_CFG
-    # Import bot display name for dynamic replacement
-    try:
-        from discord_bot.discord_core_commands import _bot_display_name
-    except ImportError:
-        # Fallback if discord is not available
-        _bot_display_name = "Bot"
     AI_AVAILABLE = True
     logger.info("AI system available - rune interpretations will use AI analysis")
 except ImportError:
     AI_AVAILABLE = False
-    _bot_display_name = "Bot"  # Fallback
     logger.warning("AI system not available, rune interpretations will use fallback method")
     AGENT_CFG = {"personality": "personalities/putre/personality.json"}  # Fallback for testing
 
 
-def _get_personality_dir() -> str:
-    """Get the current personality directory dynamically."""
+def _get_personality_dir(server_id: str = None) -> str:
+    """Get the current personality directory dynamically using server_id."""
     try:
         # Try to get server-specific directory first
         try:
             from agent_runtime import get_personality_directory
-            server_dir = get_personality_directory()
+            server_dir = get_personality_directory(server_id)
             if server_dir:
                 return server_dir
         except:
             pass
-        
+
         # Fall back to global personality directory
         personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
         personality_path = os.path.join(project_root, personality_rel)
@@ -161,7 +154,7 @@ class NordicRunes:
             interpretation += guidance_text
         
         # Add bot's final analysis (simplified)
-        interpretation += f"\n\n**{_bot_display_name}'s Analysis:** GRRR! {rune['name']} tells you that "
+        interpretation += f"\n\n**Analysis:** GRRR! {rune['name']} tells you that "
         interpretation += f"the energies of {rune['name']} are with you. "
         interpretation += f"UHHH! Listen to the ancient wisdom of the runes, human! {rune['symbol']}"
         
@@ -354,7 +347,7 @@ class NordicRunes:
                     })
             
             # Step 2: Get ALL guidance data from descriptions.json
-            guidance_data = get_guidance_messages('guidance') or {}
+            guidance_data = get_guidance_messages('guidance', server_id) or {}
             
             # Step 3: Get the appropriate interpretation prompt from prompts.json
             logger.info(f"🔍 [NORDIC_RUNES] Starting to load prompts for {reading_type}")
@@ -364,7 +357,7 @@ class NordicRunes:
                 
                 # Get project root and prompts path
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-                prompts_path = os.path.join(_get_personality_dir(), "prompts.json")
+                prompts_path = os.path.join(_get_personality_dir(server_id), "prompts.json")
                 
                 with open(prompts_path, encoding="utf-8") as f:
                     prompts_data = json.load(f)
@@ -427,15 +420,15 @@ class NordicRunes:
                 
                 # Get project root and descriptions path
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-                descriptions_path = os.path.join(_get_personality_dir(), "descriptions.json")
-                
+                descriptions_path = os.path.join(_get_personality_dir(server_id), "descriptions.json")
+
                 with open(descriptions_path, 'r', encoding='utf-8') as f:
                     descriptions = json.load(f)
                     nordic_data = descriptions.get('discord', {}).get('roles_view_messages', {}).get('trickster', {}).get('nordic_runes', {})
                     labels = nordic_data.get('labels', {})
-                    
+
                     # Load translations and positions from separate runesplane.json file
-                    runesplane_path = os.path.join(_get_personality_dir(), "descriptions", "runesplane.json")
+                    runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
                     if os.path.exists(runesplane_path):
                         with open(runesplane_path, 'r', encoding='utf-8') as f:
                             runesplane_data = json.load(f)
@@ -445,10 +438,10 @@ class NordicRunes:
                         # Fallback to old structure if runesplane.json doesn't exist
                         positions = nordic_data.get('positions', {})
                         rune_translations = nordic_data.get('translations', {})
-                    
+
                     # If no labels found in main descriptions.json, try loading from trickster.json
                     if not labels:
-                        trickster_path = os.path.join(_get_personality_dir(), "descriptions", "trickster.json")
+                        trickster_path = os.path.join(_get_personality_dir(server_id), "descriptions", "trickster.json")
                         if os.path.exists(trickster_path):
                             with open(trickster_path, 'r', encoding='utf-8') as f:
                                 trickster_data = json.load(f)
@@ -495,13 +488,13 @@ class NordicRunes:
                 
                 # Get project root and descriptions path
                 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-                descriptions_path = os.path.join(_get_personality_dir(), "descriptions.json")
-                
+                descriptions_path = os.path.join(_get_personality_dir(server_id), "descriptions.json")
+
                 with open(descriptions_path, encoding="utf-8") as f:
                     descriptions_data = json.load(f)
-                
+
                 # Navigate to guidance data - try runesplane.json first
-                runesplane_path = os.path.join(_get_personality_dir(), "descriptions", "runesplane.json")
+                runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
                 if os.path.exists(runesplane_path):
                     with open(runesplane_path, encoding="utf-8") as f:
                         runesplane_data = json.load(f)
@@ -534,9 +527,10 @@ class NordicRunes:
                 guidance_data=guidance_data_text
             )
             
-            # Step 6: Build system instruction first
-            from agent_engine import _build_system_prompt, PERSONALITY
-            system_instruction = _build_system_prompt(PERSONALITY)
+            # Step 6: Build system instruction first (server-specific personality)
+            from agent_engine import _build_system_prompt, _get_personality
+            server_personality = _get_personality(server_id) if server_id else PERSONALITY
+            system_instruction = _build_system_prompt(server_personality, server_id)
             
             # Step 7: Get AI response using call_llm function (logging handled centrally in agent_mind.py)
             ai_response = call_llm(

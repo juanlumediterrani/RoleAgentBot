@@ -49,14 +49,16 @@ class NordicRunesCommands:
     def _get_nordic_runes_db(self):
         """Get Nordic Runes database instance for a server."""
         try:
+            from agent_db import get_server_id
             if self.guild:
                 server_id = str(self.guild.id)
             else:
-                server_id = "default"
+                server_id = get_server_id()
             return get_nordic_runes_db_instance(server_id)
         except Exception as e:
             logger.error(f"Failed to get Nordic Runes database: {e}")
-            return get_nordic_runes_db_instance("default")
+            from agent_db import get_server_id
+            return get_nordic_runes_db_instance(get_server_id())
     
     async def cmd_runes(self, ctx, args: List[str]) -> str:
         """Main runes command dispatcher."""

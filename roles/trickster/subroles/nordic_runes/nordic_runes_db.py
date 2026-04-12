@@ -17,9 +17,12 @@ logger = get_logger('nordic_runes_db')
 
 class NordicRunesDB:
     """Database handler for Nordic runes readings using centralized roles.db."""
-    
-    def __init__(self, server_id: str = "default"):
+
+    def __init__(self, server_id: str = None):
         """Initialize database connection using centralized roles.db."""
+        if server_id is None:
+            from agent_db import get_server_id
+            server_id = get_server_id()
         self.server_id = server_id
         self.roles_db = get_roles_db_instance(server_id)
         self.db_path = self.roles_db.db_path
