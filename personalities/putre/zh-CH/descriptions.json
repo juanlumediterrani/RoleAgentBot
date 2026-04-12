@@ -1,0 +1,148 @@
+{
+  "discord": {
+    "general":{
+      "status": "当前状态：",
+      "active": "✅ 活着",
+      "inactive": "❌ 死了",
+      "none": "没有",
+      "every": "每",
+      "for":"为了",
+      "base_frequency": "基础频率：",
+      "current_frequency": "当前频率：",
+      "current_settings": "🔧 **当前设置：**",
+      "frequency_format": "每 {hours} 小时"
+    },
+    "help_menu": {
+      "title": "📚 ** 普特雷 - 帮助菜单**",
+      "description": "**描述**\n角色特工是一个加载了人格的LLM特工，拥有长期记忆，可以与用户互动。",
+      "separator": "---------------------------------------------",
+      "roles_section": "**角色**\n角色模块是机器人向用户提供某些服务的能力。",
+      "behavior_section": "**行为**\n在此部分配置机器人的一些可交互行为。仅限管理员。",
+      "tips_section": "**一些小贴士**\n-你可以问机器人某个命令怎么用，比如：'dice命令怎么用？'\n-机器人最有趣的部分藏在每个角色里面"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 普特雷中枢",
+      "button_home": "🧭 主页",
+      "button_back": "← 返回",
+      "button_roles": "🎪 角色",
+      "button_behavior": "🤖 行为",
+      "button_help": "📝 帮助",
+      "generic_option_label": "选个选项...",
+      "personalitystatus": "已加载人格：",
+      "description": "-从这里与普特雷的所有可用功能互动。\n -画布面板让你可以从这个菜单与机器人的所有选项互动。",
+      "recentsynthesistitle": "**近期合成**",
+      "dailymemorytitle": "**记忆**",
+      "personalsynthesistitle": "**个人合成**",
+      "dm_default_server_title": "🔔 **正在使用默认服务器：{server_name}**",
+      "dm_default_server_message": "*你在私信中浏览，正在使用第一个可用服务器。*",
+      "dm_default_server_separator": "─────────────────────────────────────────────",
+      "dm_no_servers_available": "❌ 没有可用服务器。请在服务器内执行操作。",
+      "dm_server_access_error": "❌ 无法访问服务器。请在服务器内执行操作。"
+    },
+    "roles_view_messages": {
+      "title": "🎭  普特雷的角色 🎭",
+      "description": "🌟 浏览普特雷可用的不同角色",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "活着",
+      "inactive_status": "❌ 死了",
+      "interval_info": "//⏰ 每 {interval} 小时嚎叫",
+      "subroles_info": "🎪 **激活的子角色：** {subroles}",
+      "admin_note": "🔧 **管理员设置：**",
+      "user_note": "👤 **用户功能：**",
+      "help_commands": "💡 **帮助命令：**",
+      "canvas_details": "🎨 **画布详情：**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **没有活着的角色**\n\n当前没有激活的专门角色。让管理员用 `!canvas setup` 激活一些角色。\n\n**可激活的角色：**\n• 📡 新闻哨兵 - 新闻守望者\n• 💎 寻宝猎人 - 宝藏猎手\n• 🎭 骗子 - 赌徒与游戏\n• 💰 银行家 - 部落经济\n• 🎵 司仪 - 音乐与娱乐",
+      "role_list_title": "☠️ 活计与苦工",
+      "role_available": "✅ {role} - 嗷嗷叫活着",
+      "role_unavailable": "❌ {role} - 烂在地里",
+      "frequency_help": "📝 用斧头这样砍：`!{role}frequency <小时>` （1到168小时）\n例如：`!watcherfrequency 2` 让俺每两小时嚎一次！",
+      "music_help": "🎵 **普特雷的战鼓** - `!mc play <噪音>` / `!mc queue` | `!mc help` 看那又臭又长的用法卷轴！",
+      "treasure_hunter": {
+        "button_poe2": "👺 流放之路2",
+        "subrole_buttons": {
+          "items": "💎 物品",
+          "league": "🏆 赛季",
+          "admin": "⚙️ 管理"
+        }
+      }
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 普特雷 - 聊天**",
+        "description": "**描述：**\n -普特雷会对私信和@提及做出反应。\n -有持久互动记忆，你可以问它发生过的事，如果它当时足够留意，可能会记得。\n -此外根据角色和行为，它可以对不同词语做出反应。在禁忌行为中可以设置一个词让它反应。",
+        "button": "💬 聊天"
+      },
+      "greetings": {
+        "title": "**👋 普特雷 - 问候**",
+        "description": "**描述：**\n -用户连接Discord时打招呼。\n -等5分钟才算用户断开。\n -（待实现）：\n 如果打招呼后没人回应，就停止问候。\n",
+        "button": "👋 问候"
+      },
+      "welcome": {
+        "title": "**🍺 普特雷 - 欢迎**",
+        "description": "**描述：**\n -欢迎新用户加入服务器。\n",
+        "button": "🍺 欢迎"
+      },
+      "taboo": {
+        "title": "**🚫 普特雷 - 禁忌词**",
+        "description": "**运作方式：**\n -设置普特雷在频道或私信中读到某个词时做出反应。\n -可以开关或配置词语。\n",
+        "title_keywords": "当前禁忌词：",
+        "button": "🚫 禁忌"
+      },
+      "comentary": {
+        "title": "**🗣️ 普特雷 - 评论（开发中）**",
+        "description": "**描述**\n -主动评论其激活的角色和近期事件。",
+        "button": "🗣️ 评论"
+      },
+      "role_control": {
+        "title": "**🎛️ 普特雷 - 角色控制**",
+        "description": "**描述**\n -从这里开关角色。",
+        "button": "🎛️ 角色控制"
+      },
+      "personality": {
+        "title": "**🎭 普特雷 - 人格管理**",
+        "description": "**描述**\n -为此服务器更改机器人人格。\n -下载当前人格作为备份。\n -更改时迁移数据库。",
+        "button": "🎭 人格"
+      }
+    },
+    "personality_messages": {
+      "view_title": "🎭 普特雷 - 人格管理",
+      "view_description": "为此服务器更改或下载机器人人格。",
+      "option_change": "更改人格",
+      "option_change_desc": "切换到不同人格",
+      "option_download": "下载当前",
+      "option_download_desc": "导出人格为ZIP",
+      "placeholder": "选择一个人格操作...",
+      "modal_personality_label": "新人格",
+      "modal_download_label": "下载之前的人格？（是/否）",
+      "modal_delete_memory_label": "删除机器人记忆？（是/否）",
+      "modal_download_memory_label": "先下载记忆？（是/否）",
+      "download_success": "✅ 人格 `{personality}` 导出成功！",
+      "change_success": "✅ 人格已从 `{old}` 更改为 `{new}`！新人格已激活，可以使用了。"
+    },
+    "readme":{
+      "label_user_question":"用户提问：",
+      "task":"请使用提供的文档回答用户问题",
+      "label_documentation":"文档："
+
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "你记得",
+        "记得",
+        "回忆",
+        "想起来",
+        "你还记得",
+        "记不记得",
+        "你记不记得",
+        "你想起",
+        "有印象吗",
+        "记得吗",
+        "你记得吗",
+        "你想得起来",
+        "有没有印象",
+        "你脑子里有"
+      ]
+    }
+  }
+}

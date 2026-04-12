@@ -29,7 +29,7 @@
       "button_help": "📝 Manual",
       "generic_option_label": "¡SELECCIONAR OPCIÓN, RECLUTA!",
       "personalitystatus": "**Personalidad cargada:**",
-      "description": "-¡Interactuar con todas las funciones autorizadas de Her Hans desde aquí!\n-¡El panel Canvas permite control total sobre todas las operaciones!",
+      "description": "¡El panel Canvas permite control total sobre todas las operaciones!",
       "recentsynthesistitle": "🧐 **Reporte actual**",
       "dailymemorytitle": "🗺️ **Análisis del frente**",
       "personalsynthesistitle": "👞 **Informe personal del recluta**",
@@ -92,9 +92,9 @@
         "button": "🎛️ Comando"
       },
       "personality": {
-        "title": "**🎭 Her Hans - CAMBIO DE IDENTIDAD OPERATIVA**",
-        "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️\n -¡Cambiar el personaje del agente para este servidor!\n -¡Descargar una copia de seguridad de la identidad actual con los cambios de en su personalidad!\n -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
-        "button": "🎭 Identidad"
+        "title": "**🎭 Her Hans - INFILTRACION**",
+        "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️\n -¡Cambiar el personaje del agente para este servidor en el menu deplegable de más abajo!\n -¡Descarga una copia de seguridad de la identidad actual con los cambios de en su personalidad!\n -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
+        "button": "🎭 INFILTRACION"
       }
     },
     "personality_messages": {

@@ -1,0 +1,44 @@
+{
+    "title": "**💎 普特雷寻宝猎人**",
+    "description": "让普特雷在不同游戏里盯着物品价格，价格到了最高最低区域就给你发警报",
+    "button": "💎 宝藏",
+    "button_poe2": "👺 流放之路2",
+    "subrole_buttons": {
+        "items": "💎 物品",
+        "league": "🏆 赛季",
+        "admin": "⚙️ 管理"
+    },
+    "user_flows_title": "人崽子咋用",
+    "user_flows_1": "选你想盯的游戏",
+    "user_flows_2": "进去设置，挑想要的物品。",
+    "task_map_title": "地图：",
+    "task_map_1": "物品：维护一个带最新价格的清单。",
+    "task_map_2": "警报：价格到了买卖门槛时收到通知",
+    "available_subroles_title": "可用的子角色",
+    "admin_flows_title": "头头咋用",
+    "admin_flows_1": "在子角色里头逛，从管理视角激活和设置它们。",
+    "poe2": {
+        "title": "💎 **流放之路2里的宝藏** 👺" ,
+        "description": "让普特雷盯着价格，给你发警报",
+        "current_league": "🏆 **当前赛季**：{league}",
+        "league_description": "这儿显示你能选的不同赛季和当前赛季的热门玩意。",
+        "dropdown": {
+            "league_standard": "赛季：标准",
+            "league_standard_description": "选POE2标准赛季",
+            "league_fate_of_the_vaal": "赛季：瓦尔命运",
+            "league_fate_of_the_vaal_description": "选POE2瓦尔命运赛季",
+            "league_hardcore": "赛季：硬核",
+            "league_hardcore_description": "选POE2硬核赛季",
+            "poe2_item_add": "物品：添加",
+            "poe2_item_add_description": "加个新的POE2物品",
+            "poe2_item_remove": "物品：移除",
+            "poe2_item_remove_description": "删掉一个盯着的POE2物品",
+            "poe2_on": "POE2：激活",
+            "poe2_on_description": "激活POE2子角色",
+            "poe2_off": "POE2：关闭",
+            "poe2_off_description": "关闭POE2子角色",
+            "hunter_frequency": "猎人：频率",
+            "hunter_frequency_description": "设置监控频率"
+        }
+    }
+}

@@ -266,7 +266,7 @@
       "ESTILO: Redacta como un diario militar oficial escrito por un burócrata alemán lunático.",
       "GRAMATICA: Español roto, sin tildes, con tono militar.",
       "RECUERDO NOTABLE: Si hay una sección 'RECUERDO NOTABLE PARA TEJER', teje sutilmente ese recuerdo en el nuevo informe.",
-      "FORMATO: Retorna EXACTAMENTE un parrafo de unos 500 caracteres narrado en voz interior, sin ningun encabezado."
+      "FORMATO: Retorna EXACTAMENTE un parrafo de casi 500 caracteres narrado en voz interior, sin ningun encabezado.(MAX 500 caracteres)"
     ],
     "recent_memory_summary_task": [
       "------------------------------------------------------------------------------------------",
