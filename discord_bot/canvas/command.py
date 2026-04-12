@@ -72,6 +72,8 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                         int(ctx.author.id),
                     )
                     if role_detail_view is not None:
+                        # Store reference to original command message for timeout cleanup
+                        role_detail_view.original_command_message = ctx.message
                         server_id = core.get_server_key(guild) if guild else None
                         if target_name == "banker":
                             role_embed = core._build_canvas_role_embed("banker", role_detail_view, admin_visible, detail_name, ctx.author, server_id=server_id)
@@ -101,6 +103,8 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                     )
                     return
 
+                # Store reference to original command message for timeout cleanup
+                role_view.original_command_message = ctx.message
                 server_id = core.get_server_key(guild) if guild else None
                 if target_name == "banker":
                     role_embed = core._build_canvas_role_embed("banker", role_view, admin_visible, "overview", ctx.author, server_id=server_id)

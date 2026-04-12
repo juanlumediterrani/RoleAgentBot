@@ -8,7 +8,6 @@ from .state import _get_canvas_watcher_method_label, _get_canvas_watcher_frequen
 logger = core.logger
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
 get_watcher_messages = core.get_watcher_messages
-_bot_display_name = core._bot_display_name
 
 
 def _get_nw_descriptions(guild=None) -> dict:
@@ -65,8 +64,6 @@ class CanvasWatcherMethodSelect(discord.ui.Select):
 
         def _watcher_text(key: str, fallback: str) -> str:
             value = watcher_descriptions.get(key)
-            if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
 
         options = [
@@ -111,8 +108,6 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
             watcher_descriptions = {}
             
         value = watcher_descriptions.get(key)
-        if value:
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     def __init__(self, view):
@@ -191,8 +186,6 @@ class CanvasWatcherAdminMethodSelect(discord.ui.Select):
 
         def _watcher_text(key: str, fallback: str) -> str:
             value = watcher_descriptions.get(key)
-            if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
 
         options = [
@@ -236,8 +229,6 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
 
         def _watcher_text(key: str, fallback: str) -> str:
             value = watcher_descriptions.get(key)
-            if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
 
         self._watcher_text = _watcher_text
@@ -1249,10 +1240,8 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
             value = dropdown.get(key)
             if value is None:
                 value = news_watcher.get(key)
-            if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
             return str(value).strip() if value else fallback
-        
+
         if get_news_watcher_db_instance is None:
             return f"**{_watcher_text('channel_subscriptions_title', 'Channel subscriptions')}**\n- Unable to load channel subscription data"
 
@@ -1425,8 +1414,6 @@ def build_canvas_role_news_watcher_detail(
 
     def _watcher_text(key: str, fallback: str) -> str:
         value = watcher_descriptions.get(key, watcher_messages.get(key))
-        if value:
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     def _get_watcher_personal_intro_block() -> str:
@@ -1626,7 +1613,7 @@ def build_canvas_role_news_watcher_detail(
     if detail_name in {"keywords", "filters"}:
         return "\n".join([
             _build_canvas_intro_block(
-                f"📡 {_bot_display_name} Canvas - News Watcher Keywords",
+                "📡 News Watcher Canvas - Keywords",
                 "Shape what the watcher considers relevant for you",
             ),
             "**Keyword management**",
@@ -1647,7 +1634,7 @@ def build_canvas_role_news_watcher_detail(
     if detail_name == "feeds":
         return "\n".join([
             _build_canvas_intro_block(
-                f"📡 {_bot_display_name} Canvas - News Watcher Feeds",
+                "📡 News Watcher Canvas - Feeds",
                 "Browse and manage available news sources",
             ),
             "**Available feeds**",

@@ -336,7 +336,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
     return state
 
 
-def _get_enabled_roles(agent_config: dict) -> list[str]:
+def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
     """Get enabled roles - PRIMARY: roles table, FALLBACK: agent_config."""
     enabled = []
     
@@ -346,9 +346,13 @@ def _get_enabled_roles(agent_config: dict) -> list[str]:
         try:
             from agent_roles_db import get_roles_db_instance
             from discord_bot.discord_utils import get_server_key
-            
-            # Use default server for Canvas (no guild context available)
-            server_id = "default"
+            from agent_db import get_server_id
+
+            # Use guild server_id if available, otherwise fallback to active server
+            if guild and hasattr(guild, 'id'):
+                server_id = str(guild.id)
+            else:
+                server_id = get_server_id()
             roles_db = get_roles_db_instance(server_id)
             all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
             for role_name in all_roles:

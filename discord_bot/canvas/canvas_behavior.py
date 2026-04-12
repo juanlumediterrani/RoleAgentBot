@@ -4,7 +4,6 @@ from discord_bot import discord_core_commands as core
 
 logger = core.logger
 get_server_key = core.get_server_key
-_bot_display_name = core._bot_display_name
 _discord_cfg = core._discord_cfg
 _talk_state_by_guild_id = core._talk_state_by_guild_id
 get_taboo_state = core.get_taboo_state
@@ -30,6 +29,8 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target"),
     ]
 
+    button_personality = behavior_messages.get("personality", {}).get("button", "Personality")
+
     admin_options = [
         (f"{button_greetings}: On", "greetings_on", "Boolean toggle"),
         (f"{button_greetings}: Off", "greetings_off", "Boolean toggle"),
@@ -39,6 +40,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         (f"{button_taboo}: On", "taboo_on", "Boolean toggle"),
         (f"{button_taboo}: Off", "taboo_off", "Boolean toggle"),
         (f"{button_role_control}", "role_control_open", "Select role and boolean state"),
+        (f"{button_personality}", "personality_open", "Manage bot personality"),
     ]
 
     items_map: dict[str, list[tuple[str, str, str]]] = {
@@ -48,6 +50,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         "commentary": common_options,
         "taboo": [(f"{button_taboo}: On", "taboo_on", "Boolean toggle"), (f"{button_taboo}: Off", "taboo_off", "Boolean toggle"), (f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")] if admin_visible else [(f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")],
         "role_control": [(f"{button_role_control}", "role_control_open", "Select role and boolean state")] if admin_visible else [],
+        "personality": [],  # Personality view uses custom dropdown, not action items
     }
     return items_map.get(detail_name, [])
 
@@ -62,6 +65,7 @@ def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = 
     commentary_button = behavior_descriptions.get("comentary", {}).get("button", "Commentary")
     taboo_button = behavior_descriptions.get("taboo", {}).get("button", "Taboo")
     role_control_button = behavior_descriptions.get("role_control", {}).get("button", "Role Control")
+    personality_button = behavior_descriptions.get("personality", {}).get("button", "Personality")
 
     items = []
     if current_detail != "conversation":
@@ -74,6 +78,7 @@ def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = 
             (commentary_button, "commentary"),
             (taboo_button, "taboo"),
             (role_control_button, "role_control"),
+            (personality_button, "personality"),
         ]
         items.extend([item for item in admin_items if item[1] != current_detail])
     return items
@@ -95,7 +100,7 @@ def build_canvas_behavior(
         return result
     # Fallback if build_canvas_behavior_detail returns None
     return (
-        f"💬 {_bot_display_name} General Behavior",
+        "💬 General Behavior",
         "Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles",
         "**Routing**\n- This is a shared global behavior, not a role-specific one\n- Use `!canvas roles` for role-specific flows"
     )
@@ -119,13 +124,12 @@ def build_canvas_behavior_detail(
 
     if detail_name in {"conversation", "chat"}:
         conversations_messages = behavior_descriptions.get("conversation", {})
-        conversation_title = conversations_messages.get("title", f"💬 {_bot_display_name} Canvas - General Behavior Conversation")
+        conversation_title = conversations_messages.get("title", "💬 Canvas - General Behavior Conversation")
         conversation_description = conversations_messages.get("description", "**Conversation surface**\n- Mention the bot in a server channel to talk\n- Send a DM to the bot for private interaction\n- Replies are shaped by the active personality and roles\n")
 
         # Reemplazar placeholders con el nombre del bot
-        conversation_title = conversation_title.replace("{_bot_display_name}", _bot_display_name)
-        conversation_description = conversation_description.replace("{_bot_display_name}", _bot_display_name)
-
+        conversation_title = conversation_title
+        conversation_description = conversation_description
         if guild and hasattr(guild, "id"):
             guild_id = str(guild.id)
         elif guild:
@@ -150,13 +154,12 @@ def build_canvas_behavior_detail(
             greeting_enabled = get_greeting_enabled(guild)
 
         greetings_descriptions = behavior_descriptions.get("greetings", {})
-        greetings_title = greetings_descriptions.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Greetings")
+        greetings_title = greetings_descriptions.get("title", "👋 Canvas - General Behavior Greetings")
         greetings_description = greetings_descriptions.get("description", "**Description**\n- Presence greetings are global server behavior\n- Uses behavior/greet.py module\n- Greets users when they come online (offline → online)\n- 5-minute cooldown between greetings per user")
 
         # Reemplazar placeholders con el nombre del bot
-        greetings_title = greetings_title.replace("{_bot_display_name}", _bot_display_name)
-        greetings_description = greetings_description.replace("{_bot_display_name}", _bot_display_name)
-
+        greetings_title = greetings_title
+        greetings_description = greetings_description
         content = "\n".join([
             f"{title_status}\n",
             f"- {'✅ Enabled' if greeting_enabled else '❌ Disabled'}",
@@ -186,13 +189,12 @@ def build_canvas_behavior_detail(
             welcome_enabled = greeting_cfg.get("enabled", False)
 
         welcome_messages = behavior_descriptions.get("welcome", {})
-        welcome_title = welcome_messages.get("title", f"👋 {_bot_display_name} Canvas - General Behavior Welcome Messages")
+        welcome_title = welcome_messages.get("title", "👋 Canvas - General Behavior Welcome Messages")
         welcome_description = welcome_messages.get("description", "Configure the bot to give a good greeting when someone joins the server for the first time.")
 
         # Reemplazar placeholders con el nombre del bot
-        welcome_title = welcome_title.replace("{_bot_display_name}", _bot_display_name)
-        welcome_description = welcome_description.replace("{_bot_display_name}", _bot_display_name)
-
+        welcome_title = welcome_title
+        welcome_description = welcome_description
         content = "\n".join([
             f"{title_status}\n",
             f"- {'✅ Enabled' if welcome_enabled else '❌ Disabled'}",
@@ -239,13 +241,12 @@ def build_canvas_behavior_detail(
             channel_id = state.get("channel_id")
 
         commentary_messages = behavior_descriptions.get("comentary", {})
-        commentary_title = commentary_messages.get("title", f"🗣️ {_bot_display_name} Canvas - General Behavior Mission Commentary")
+        commentary_title = commentary_messages.get("title", "🗣️ Canvas - General Behavior Mission Commentary")
         commentary_description = commentary_messages.get("description", "Commentary is global behavior driven by active roles")
 
         # Reemplazar placeholders con el nombre del bot
-        commentary_title = commentary_title.replace("{_bot_display_name}", _bot_display_name)
-        commentary_description = commentary_description.replace("{_bot_display_name}", _bot_display_name)
-
+        commentary_title = commentary_title
+        commentary_description = commentary_description
         content = "\n".join([
             f"{title_status}\n",
             f"- {'✅ Enabled' if enabled else '❌ Disabled'}",
@@ -273,14 +274,13 @@ def build_canvas_behavior_detail(
         keywords = ", ".join(state.get("keywords", [])) or "(none)"
 
         taboo_messages = behavior_descriptions.get("taboo", {})
-        taboo_title = taboo_messages.get("title", f"🚫 {_bot_display_name} Canvas - General Behavior Taboo")
+        taboo_title = taboo_messages.get("title", "🚫 Canvas - General Behavior Taboo")
         taboo_description = taboo_messages.get("description", "- Taboo watches normal server chat and can trigger an in-character reply")
         taboo_title_keywords = taboo_messages.get("title_keywords", "**Current keywords**")
 
         # Reemplazar placeholders con el nombre del bot
-        taboo_title = taboo_title.replace("{_bot_display_name}", _bot_display_name)
-        taboo_description = taboo_description.replace("{_bot_display_name}", _bot_display_name)
-
+        taboo_title = taboo_title
+        taboo_description = taboo_description
         content = "\n".join([
             f"{title_status}\n",
             f"- {'On' if state.get('enabled', False) else 'Off'}",
@@ -323,9 +323,10 @@ def build_canvas_behavior_detail(
             enabled = False
             try:
                 from agent_roles_db import get_roles_db_instance
+                from agent_db import get_server_id
 
-                # Use default server for Canvas (no guild context available)
-                server_id = "default"
+                # Use active server for Canvas (fallback to get_server_id if no guild context)
+                server_id = str(guild.id) if guild else get_server_id()
                 roles_db = get_roles_db_instance(server_id)
                 config = roles_db.get_role_config(role_name)
                 if config:
@@ -337,13 +338,12 @@ def build_canvas_behavior_detail(
             status_lines.append(f"- {label}: {'✅ Enabled' if enabled else '❌ Disabled'}")
 
         role_control_messages = behavior_descriptions.get("role_control", {})
-        role_control_title = role_control_messages.get("title", f"🎛️ {_bot_display_name} Canvas - General Behavior Role Control")
+        role_control_title = role_control_messages.get("title", "🎛️ Canvas - General Behavior Role Control")
         role_control_description = role_control_messages.get("description", "Role activation is managed through database - primary source")
 
         # Reemplazar placeholders con el nombre del bot
-        role_control_title = role_control_title.replace("{_bot_display_name}", _bot_display_name)
-        role_control_description = role_control_description.replace("{_bot_display_name}", _bot_display_name)
-
+        role_control_title = role_control_title
+        role_control_description = role_control_description
         content = "\n".join([
             f"{title_status}\n",
             *status_lines,
@@ -353,5 +353,30 @@ def build_canvas_behavior_detail(
             "─" * 45,
         ])
         return (role_control_title, role_control_description, content)
+
+    if detail_name in {"personality"}:
+        if not admin_visible:
+            if callable(setup_not_available_builder):
+                return setup_not_available_builder()
+            return "❌ This setup is only available to administrators."
+
+        personality_messages = behavior_descriptions.get("personality", {})
+        personality_title = personality_messages.get("title", "🎭 Canvas - Personality Management")
+        personality_description = personality_messages.get("description", "Manage the bot's personality for this server")
+
+        # Replace placeholders
+        personality_title = personality_title
+        personality_description = personality_description
+        content = "\n".join([
+            f"{title_status}\n",
+            "Use the dropdown below to manage personality:",
+            "",
+            "• **Change Personality** - Switch to a different personality",
+            "• **Download Current** - Export personality as ZIP backup",
+            "",
+            "⚠️ **Note:** Changing personality requires admin privileges",
+            "─" * 45,
+        ])
+        return (personality_title, personality_description, content)
 
     return None

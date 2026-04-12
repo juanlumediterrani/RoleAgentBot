@@ -6,7 +6,6 @@ import discord
 
 from discord_bot import discord_core_commands as core
 
-_bot_display_name = core._bot_display_name
 logger = core.logger
 
 
@@ -29,13 +28,11 @@ def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None, gu
 
     def _mc_text(key: str, fallback: str) -> str:
         value = mc_descriptions.get(key)
-        if value:
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     parts = [
         _build_canvas_intro_block(
-            _mc_text("title", f"🎵 {_bot_display_name} Canvas - MC (Master of Ceremonies)"),
+            _mc_text("title", "🎵 Canvas - MC (Master of Ceremonies)"),
             _mc_text("description", "Use the dropdown below to control music playback."),
         )
     ]
@@ -83,8 +80,8 @@ class CanvasMCActionSelect(discord.ui.Select):
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
-            return str(value).strip() if value else fallback
+                return str(value).strip() if value else fallback
+            return fallback
         
         mc_actions = _get_mc_action_items_for_detail("mc", "overview", view.admin_visible, view.agent_config)
         options = [
@@ -218,8 +215,8 @@ class CanvasMCSongModal(discord.ui.Modal):
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
-            return str(value).strip() if value else fallback
+                return str(value).strip() if value else fallback
+            return fallback
         
         title = _mc_text("play_song_title", "Play Song Now") if action_name == "mc_play" else _mc_text("add_song_title", "Add Song to Queue")
         super().__init__(title=title, timeout=300)
@@ -295,8 +292,8 @@ class CanvasMCVolumeModal(discord.ui.Modal):
         def _mc_text(key: str, fallback: str) -> str:
             value = mc_descriptions.get(key)
             if value:
-                value = str(value).replace("{_bot_display_name}", _bot_display_name)
-            return str(value).strip() if value else fallback
+                return str(value).strip() if value else fallback
+            return fallback
         
         super().__init__(title=_mc_text("set_volume_title", "Set Volume"), timeout=300)
 

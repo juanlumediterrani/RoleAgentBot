@@ -5,8 +5,9 @@ import discord
 from discord_bot import discord_core_commands as core
 from .state import _get_canvas_poe2_state
 
-_bot_display_name = core._bot_display_name
 _personality_answers = core._personality_answers
+
+
 AGENT_CFG = core.AGENT_CFG
 logger = core.logger
 is_admin = core.is_admin
@@ -220,9 +221,6 @@ def _treasure_text_factory(treasure_messages: dict, treasure_descriptions: dict)
         else:
             value = treasure_descriptions.get(key, treasure_messages.get(key))
 
-        if value:
-            value = str(value).replace("{_bot}", _bot_display_name)
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     return _treasure_text
@@ -239,7 +237,7 @@ def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, g
 
     parts = [
         _build_canvas_intro_block(
-            _treasure_text("title", f"💎 {_bot_display_name} Canvas - Treasure Hunter"),
+            _treasure_text("title", "💎 Treasure Hunter Canvas"),
             _treasure_text("description", "Item-tracking and alerts setup for different games."),
         ),
         f"**{_treasure_text('user_flows_title', 'User flows')}**",
@@ -273,31 +271,29 @@ def build_canvas_role_treasure_hunter_detail(
     _treasure_text = _get_treasure_text_factory(guild)
     
     if detail_name in {"personal", "poe2", "items"}:
-        return build_canvas_role_treasure_hunter_poe2({}, admin_visible, guild, author_id)
+        state = _get_canvas_poe2_state(guild, author_id)
+        items_block = "\n".join([f"- {item}" for item in state["objectives"]]) if state["objectives"] else "- No tracked items yet"
+        return "\n".join([
+            _build_canvas_intro_block(
+            _treasure_text("poe2.title", "💎 Treasure Hunter POE2"),
+            _treasure_text("poe2.description", "Manage your POE2 tracked items and league preferences."),
+        ),
+        "**Current league**",
+        f"- {state['league']}",
+        "",
+        "**Tracked items**",
+        items_block,])
 
     if detail_name in {"league"}:
         state = _get_canvas_poe2_state(guild, author_id)
         return "\n".join([
             _build_canvas_intro_block(
-                _treasure_text("poe2.league.title", f"💎 {_bot_display_name} Canvas - Treasure Hunter League").replace("{league}", state["league"]),
-                _treasure_text("poe2.league.description", "Configure your POE2 league setting for item tracking"),
+                _treasure_text("poe2.current_league", "🏆 **Curent League**: {league}").replace("{league}", state["league"]),
+                _treasure_text("poe2.league_description", "Configure your POE2 league setting for item tracking"),
             ),
-            "**Current league**",
-            f"- {state['league']}",
-            "",
-            "**League actions**",
-            "- `!hunter poe2 league` - Show your current league",
-            "- `!hunter poe2 league \"Standard\"` - Change to Standard",
-            "- `!hunter poe2 league \"Fate of the Vaal\"` - Change to Fate of the Vaal",
-            "- `!hunter poe2 league \"Hardcore\"` - Change to Hardcore if supported",
-            "",
-            "**Concrete choices**",
-            "- Preferred selector options: `Standard` / `Fate of the Vaal`",
-            "- Fallback: text input for a custom or future league",
-            "",
-            "**Routing**",
-            "- League management is DM-oriented",
-            "- Use `!canvas role treasure_hunter` to return to the role overview",
+            "-"*45,
+            _treasure_text("poe2.current_league", "Current League**: {league}").replace("{league}", state["league"]),
+
         ])
 
     if detail_name in {"admin", "setup"}:
@@ -310,7 +306,7 @@ def build_canvas_role_treasure_hunter_detail(
         interval = (AGENT_CFG or {}).get("roles", {}).get("treasure_hunter", {}).get("interval_hours", 1)
         return "\n".join([
             _build_canvas_intro_block(
-                f"💎 {_bot_display_name} Canvas - Treasure Hunter Admin",
+                "💎 Treasure Hunter Admin",
                 "Configure POE2 tracking and automation settings",
             ),
             "**POE2 activation**",
@@ -336,37 +332,3 @@ def build_canvas_role_treasure_hunter_detail(
         ])
 
     return None
-
-
-def build_canvas_role_treasure_hunter_poe2(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str | None:
-    """Build the POE2 subrole view within Treasure Hunter."""
-    from .content import _build_canvas_intro_block
-    _treasure_text = _get_treasure_text_factory(guild)
-
-    state = _get_canvas_poe2_state(guild, author_id)
-    items_block = "\n".join([f"- {item}" for item in state["objectives"]]) if state["objectives"] else "- No tracked items yet"
-    return "\n".join([
-        _build_canvas_intro_block(
-            _treasure_text("poe2.title", f"💎 {_bot_display_name} Canvas - Treasure Hunter POE2"),
-            _treasure_text("poe2.description", "Manage your POE2 tracked items and league preferences."),
-        ),
-        "**Current league**",
-        f"- {state['league']}",
-        "",
-        "**Tracked items**",
-        items_block,
-        "",
-        "**Remove tracked items**",
-        "- Use the remove action selector and confirm the item name or index",
-        "",
-        "**Add a new item**",
-        "- Use the add action selector and submit the exact POE2 item name",
-        "",
-        "**Concrete choices**",
-        "- Text input to add an exact POE2 item name",
-        "- Text input to remove by item name or visible item number",
-        "",
-        "**Routing**",
-        "- Personal POE2 management updates the current server-linked user profile",
-        "- Use `!canvas role treasure_hunter` to return to the role overview",
-    ])

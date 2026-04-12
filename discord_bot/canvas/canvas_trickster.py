@@ -13,8 +13,9 @@ from .state import (
     _get_canvas_beggar_state,
 )
 
-_bot_display_name = core._bot_display_name
 get_server_key = core.get_server_key
+
+
 logger = core.logger
 AgentDatabase = core.AgentDatabase
 is_admin = core.is_admin
@@ -59,8 +60,6 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
         else:
             value = trickster_messages.get(key)
         
-        if value:
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     # Load all subroles from roles_config database (single source of truth)
@@ -148,8 +147,6 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         else:
             value = trickster_messages.get(key)
         
-        if value:
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     if detail_name in {"dice", "game"}:
@@ -226,7 +223,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         
         return "\n".join([
             _build_canvas_intro_block(
-                f"🎲 {_bot_display_name} Canvas - Trickster / Dice / Admin",
+                "🎲 Trickster Canvas - Dice / Admin",
                 _trickster_text("dice_game.admin_description", "Configure dice game settings and announcements"),
             ),
             _trickster_text("dice_game.current_settings", "**Current settings**"),
@@ -309,9 +306,9 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         ring_state = _get_canvas_ring_state(guild)
         ring_messages = roles_messages.get("trickster", {}).get("ring", {})
 
-        title = _trickster_text("ring.title", f"👁️ **{_bot_display_name} Ring Hunter**")
+        title = _trickster_text("ring.title", "👁️ **Ring Hunter**")
         clean_title = title.replace("**", "")
-        description = _trickster_text("ring.description", f"🔍 {_bot_display_name} the ring hunter seeks the lost artifact. Your boss tasked you with finding that cursed jewel and you won't return until you have it. Interrogate suspects and make them talk.")
+        description = _trickster_text("ring.description", "🔍 The ring hunter seeks the lost artifact. Your boss tasked you with finding that cursed jewel and you won't return until you have it. Interrogate suspects and make them talk.")
 
         current_target_label = ring_messages.get("current_target", "🎯 **CURRENT TARGET:**")
         target_unknown = ring_messages.get("target_unknown", "👤 No suspect selected")
@@ -355,7 +352,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         ring_state = _get_canvas_ring_state(guild)
         ring_messages = roles_messages.get("trickster", {}).get("ring", {})
         # Get title without newlines for admin
-        title = _trickster_text("ring.title", f"👁️ **{_bot_display_name} Ring Hunter**")
+        title = _trickster_text("ring.title", "👁️ **Ring Hunter**")
         # Use general descriptions for admin panel
         general = personality_descriptions.get("general", {})
         ring_descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("ring", {})
@@ -367,7 +364,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         current_freq_label = general.get("current_frequency", "Current Frequency:")
         freq_format = general.get("frequency_format", "Every {hours}h")
         hot_potato_format = ring_descriptions.get("hot_potato", "🔥 **Hot Potato:** Iteration {iteration} (frequency reduced by {multiplier}x)")
-        description = _trickster_text("ring.description", f"🔍 {_bot_display_name} the ring hunter seeks the lost artifact. Your boss tasked you with finding that cursed jewel and you won't return until you have it. Interrogate suspects and make them talk.")
+        description = _trickster_text("ring.description", "🔍 The ring hunter seeks the lost artifact. Your boss tasked you with finding that cursed jewel and you won't return until you have it. Interrogate suspects and make them talk.")
 
         base_freq = ring_state.get('base_frequency_hours', ring_state['frequency_hours'])
         current_freq = ring_state.get('current_frequency_hours', ring_state['frequency_hours'])

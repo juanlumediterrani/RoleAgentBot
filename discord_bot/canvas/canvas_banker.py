@@ -6,7 +6,6 @@ from discord_bot import discord_core_commands as core
 
 logger = core.logger
 _personality_answers = core._personality_answers
-_bot_display_name = core._bot_display_name
 get_banker_db_instance = None  # Now using roles_db directly
 get_server_key = core.get_server_key
 is_admin = core.is_admin
@@ -27,8 +26,6 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
 
     def _banker_text(key: str, fallback: str) -> str:
         value = banker_descriptions.get(key, banker_messages.get(key))
-        if value:
-            value = str(value).replace("{_bot_display_name}", _bot_display_name)
         return str(value).strip() if value else fallback
 
     balance = 0
@@ -65,7 +62,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
         except Exception as error:
             logger.warning(f"Could not load banker state for Canvas: {error}")
 
-    title = _banker_text("canvas_title", f"💰 {_bot_display_name} Treasury")
+    title = _banker_text("canvas_title", "💰 Treasury")
     content_parts = [
         _build_canvas_intro_block(
             title,
