@@ -401,7 +401,26 @@ _db_poe_instances = {}
 
 def get_poe_db_instance(server_id: str = "default", liga: str = "Standard") -> DatabaseRolePoe:
     """Get or create a POE database instance for a specific server and league."""
-    key = liga
-    if key not in _db_poe_instances:
-        _db_poe_instances[key] = DatabaseRolePoe(server_name, liga)
-    return _db_poe_instances[key]
+    # Generate the current database path for this server and league
+    current_db_path = get_db_path(server_id, liga)
+    cache_key = f"{server_id}:{liga}:{current_db_path}"
+    
+    # Check if we have a cached instance with the same database path
+    if cache_key not in _db_poe_instances:
+        _db_poe_instances[cache_key] = DatabaseRolePoe(server_id, liga)
+    
+    return _db_poe_instances[cache_key]
+
+def invalidate_poe_db_instance(server_id: str = None):
+    """Invalidate cached POE database instance for a server or all servers."""
+    global _db_poe_instances
+    if server_id:
+        # Invalidate all instances for this server (any league)
+        keys_to_remove = [k for k in _db_poe_instances.keys() if k.startswith(f"{server_id}:")]
+        for key in keys_to_remove:
+            del _db_poe_instances[key]
+            logger.info(f"🗄️ [POE] Invalidated cached db instance for server: {server_id}")
+    else:
+        # Invalidate all instances
+        _db_poe_instances.clear()
+        logger.info("🗄️ [POE] Invalidated all cached db instances")

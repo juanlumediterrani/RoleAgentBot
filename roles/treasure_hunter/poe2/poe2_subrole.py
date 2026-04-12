@@ -25,7 +25,7 @@ except Exception:
 from agent_db import get_server_db_path_fallback
 from agent_engine import get_discord_token
 from agent_mind import call_llm
-from agent_db import get_active_server_id
+from agent_db import get_server_id
 from .poe2scout_client import Poe2ScoutClient, ResponseFormatError, APIError
 
 load_dotenv()
@@ -43,132 +43,45 @@ UMBRAL_VENTA = 0.15
 
 # --- POE2 DATABASE ---
 
-def get_db_path(server_name: str = "default") -> Path:
-    """Generate the database path for the POE2 subrole."""
-    from agent_db import get_personality_name
-    personality_name = get_personality_name()
-    db_name = f"PoE2Subrole_{personality_name}.db"
-    return get_server_db_path_fallback(server_name, db_name)
-
 class DatabaseRolePoe2:
     """Database for the Treasure Hunter POE2 subrole.
-    Manages league configuration, targets, and preferences.
+    
+    Manages server-specific configuration (league, targets, active state)
+    using the roles_*.db database.
     """
-    
-    def __init__(self, server_name: str = "default", db_path: Path = None):
-        if db_path is None:
-            self.db_path = get_db_path(server_name)
-        else:
-            self.db_path = db_path
-        self._lock = threading.Lock()
-        self._ensure_writable_db()
-        self._init_db()
-    
-    def _ensure_writable_db(self):
-        """Ensure the database is accessible and enforce valid permissions."""
-        try:
-            self.db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._fix_permissions(self.db_path.parent)
-            
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA journal_mode=DELETE;')
-            conn.close()
-            
-            self._fix_permissions(self.db_path)
-            
-        except Exception as e:
-            logger.error(f"Cannot access database at {self.db_path}: {e}")
-            raise
-    
-    def _fix_permissions(self, path: Path):
-        """Enforce current user/group permissions on a file or directory."""
-        try:
-            if path.exists():
-                uid = os_module.getuid()
-                gid = os_module.getgid()
-                
-                os_module.chown(path, uid, gid)
-                
-                if path.is_file():
-                    current_mode = path.stat().st_mode
-                    new_mode = (current_mode & 0o777) | stat.S_IWUSR | stat.S_IWGRP
-                    os_module.chmod(path, new_mode)
-                elif path.is_dir():
-                    current_mode = path.stat().st_mode  
-                    new_mode = (current_mode & 0o777) | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP
-                    os_module.chmod(path, new_mode)
-                    
-                logger.debug(f"Fixed permissions for {path}: uid={uid}, gid={gid}")
-        except Exception as e:
-            logger.warning(f"Could not fix permissions for {path}: {e}")
-    
-    def _init_db(self):
-        """Initialize the database."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=DELETE;")
-                conn.commit()
-                
-                # Configuration table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS configuracion (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        liga_actual TEXT NOT NULL DEFAULT 'Standard',
-                        activo INTEGER NOT NULL DEFAULT 0,
-                        fecha_actualizacion TEXT NOT NULL
-                    )
-                ''')
-                
-                # Targets table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS objetivos (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        nombre_item TEXT NOT NULL UNIQUE,
-                        item_id INTEGER,
-                        activo INTEGER NOT NULL DEFAULT 1,
-                        fecha_agregado TEXT NOT NULL
-                    )
-                ''')
-                
-                # Insert initial configuration if it does not exist
-                cursor.execute('SELECT COUNT(*) FROM configuracion')
-                if cursor.fetchone()[0] == 0:
-                    cursor.execute('''
-                        INSERT INTO configuracion (id, liga_actual, activo, fecha_actualizacion)
-                        VALUES (1, 'Standard', 0, ?)
-                    ''', (datetime.now().isoformat(),))
-                
-                conn.commit()
-                logger.info(f"✅ POE2 database ready at {self.db_path}")
 
-                # Initialize default items if none exist yet
-                initialize_default_items(self)
-        except Exception as e:
-            logger.exception(f"❌ Error initializing POE2 database: {e}")
+    def __init__(self, server_name: str = None, db_path: Path = None):
+        if server_name is None:
+            from agent_db import get_server_id
+            server_name = get_server_id()
+        self.server_name = server_name
+        # Use RolesDatabase for POE2 configuration
+        from agent_roles_db import get_roles_db_instance
+        self._roles_db = get_roles_db_instance(server_name)
+        self._lock = threading.Lock()
     
     def set_league(self, league: str) -> bool:
         """Set the current league."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        UPDATE configuracion 
-                        SET liga_actual = ?, fecha_actualizacion = ?
-                        WHERE id = 1
-                    ''', (league, datetime.now().isoformat()))
-                    conn.commit()
-                    
-                    # Clear the item cache from the previous league
-                    from .poe2scout_client import Poe2ScoutClient
-                    scout = Poe2ScoutClient()
-                    scout.clear_items_cache()
-                    logger.info("🗑️ Item cache cleared after league change")
+                config = self._roles_db.get_role_config('poe2_subrole')
+                if not config:
+                    config = {'enabled': True, 'config_data': {}}
+                
+                config_data = config.get('config_data', {})
+                config_data['league'] = league
+                config['config_data'] = config_data
+                
+                self._roles_db.save_role_config('poe2_subrole', config)
+                
+                # Clear the item cache from the previous league
+                from .poe2scout_client import Poe2ScoutClient
+                scout = Poe2ScoutClient()
+                scout.clear_items_cache()
+                logger.info("🗑️ Item cache cleared after league change")
 
-                    logger.info(f"✅ League updated to: {league}")
-                    return True
+                logger.info(f"✅ League updated to: {league}")
+                return True
         except Exception as e:
             logger.exception(f"⚠️ Error updating league: {e}")
             return False
@@ -176,12 +89,10 @@ class DatabaseRolePoe2:
     def get_league(self) -> str:
         """Get the current league."""
         try:
-            with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT liga_actual FROM configuracion WHERE id = 1')
-                    result = cursor.fetchone()
-                    return result[0] if result else "Standard"
+            config = self._roles_db.get_role_config('poe2_subrole')
+            if config and config.get('config_data'):
+                return config['config_data'].get('league', 'Standard')
+            return "Standard"
         except Exception as e:
             logger.exception(f"⚠️ Error getting league: {e}")
             return "Standard"
@@ -190,17 +101,16 @@ class DatabaseRolePoe2:
         """Enable or disable the subrole."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        UPDATE configuracion 
-                        SET activo = ?, fecha_actualizacion = ?
-                        WHERE id = 1
-                    ''', (1 if is_active else 0, datetime.now().isoformat()))
-                    conn.commit()
-                    status = "enabled" if is_active else "disabled"
-                    logger.info(f"✅ POE2 subrole {status}")
-                    return True
+                config = self._roles_db.get_role_config('poe2_subrole')
+                if not config:
+                    config = {'enabled': True, 'config_data': {}}
+                
+                config['enabled'] = is_active
+                self._roles_db.save_role_config('poe2_subrole', config)
+                
+                status = "enabled" if is_active else "disabled"
+                logger.info(f"✅ POE2 subrole {status}")
+                return True
         except Exception as e:
             logger.exception(f"⚠️ Error changing subrole state: {e}")
             return False
@@ -208,12 +118,10 @@ class DatabaseRolePoe2:
     def is_active(self) -> bool:
         """Check whether the subrole is active."""
         try:
-            with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT activo FROM configuracion WHERE id = 1')
-                    result = cursor.fetchone()
-                    return bool(result[0]) if result else False
+            config = self._roles_db.get_role_config('poe2_subrole')
+            if config:
+                return config.get('enabled', False)
+            return False
         except Exception as e:
             logger.exception(f"⚠️ Error checking subrole state: {e}")
             return False
@@ -222,15 +130,23 @@ class DatabaseRolePoe2:
         """Add an item to the target list."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO objetivos (nombre_item, item_id, activo, fecha_agregado)
-                        VALUES (?, ?, 1, ?)
-                    ''', (item_name.strip(), item_id, datetime.now().isoformat()))
-                    conn.commit()
+                config = self._roles_db.get_role_config('poe2_subrole')
+                if not config:
+                    config = {'enabled': True, 'config_data': {}}
+                
+                config_data = config.get('config_data', {})
+                targets = config_data.get('targets', [])
+                
+                if item_name not in targets:
+                    targets.append(item_name)
+                    config_data['targets'] = targets
+                    config['config_data'] = config_data
+                    self._roles_db.save_role_config('poe2_subrole', config)
                     logger.info(f"✅ Target added: {item_name}")
                     return True
+                else:
+                    logger.warning(f"⚠️ Target already exists: {item_name}")
+                    return False
         except Exception as e:
             logger.exception(f"⚠️ Error adding target {item_name}: {e}")
             return False
@@ -239,16 +155,24 @@ class DatabaseRolePoe2:
         """Remove an item from the target list."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('DELETE FROM objetivos WHERE nombre_item = ?', (item_name.strip(),))
-                    conn.commit()
-                    if cursor.rowcount > 0:
-                        logger.info(f"✅ Target removed: {item_name}")
-                        return True
-                    else:
-                        logger.warning(f"⚠️ Target not found: {item_name}")
-                        return False
+                config = self._roles_db.get_role_config('poe2_subrole')
+                if not config:
+                    logger.warning(f"⚠️ No configuration found, cannot remove: {item_name}")
+                    return False
+                
+                config_data = config.get('config_data', {})
+                targets = config_data.get('targets', [])
+                
+                if item_name in targets:
+                    targets.remove(item_name)
+                    config_data['targets'] = targets
+                    config['config_data'] = config_data
+                    self._roles_db.save_role_config('poe2_subrole', config)
+                    logger.info(f"✅ Target removed: {item_name}")
+                    return True
+                else:
+                    logger.warning(f"⚠️ Target not found: {item_name}")
+                    return False
         except Exception as e:
             logger.exception(f"⚠️ Error removing target {item_name}: {e}")
             return False
@@ -257,14 +181,12 @@ class DatabaseRolePoe2:
         """Get the configured targets."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        SELECT nombre_item, item_id, activo, fecha_agregado
-                        FROM objetivos
-                        ORDER BY fecha_agregado DESC
-                    ''')
-                    return cursor.fetchall()
+                config = self._roles_db.get_role_config('poe2_subrole')
+                if config and config.get('config_data'):
+                    targets = config['config_data'].get('targets', [])
+                    # Return as list of tuples for compatibility: (item_name, None, 1, timestamp)
+                    return [(item, None, 1, datetime.now().isoformat()) for item in targets]
+                return []
         except Exception as e:
             logger.exception(f"⚠️ Error getting targets: {e}")
             return []
@@ -273,15 +195,12 @@ class DatabaseRolePoe2:
         """Get the active targets."""
         try:
             with self._lock:
-                with sqlite3.connect(str(self.db_path)) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        SELECT nombre_item, item_id
-                        FROM objetivos
-                        WHERE activo = 1
-                        ORDER BY fecha_agregado DESC
-                    ''')
-                    return cursor.fetchall()
+                config = self._roles_db.get_role_config('poe2_subrole')
+                if config and config.get('config_data'):
+                    targets = config['config_data'].get('targets', [])
+                    # Return as list of tuples for compatibility: (item_name, None)
+                    return [(item, None) for item in targets]
+                return []
         except Exception as e:
             logger.exception(f"⚠️ Error getting active targets: {e}")
             return []
@@ -291,9 +210,26 @@ _db_poe2_instances = {}
 
 def get_poe2_db_instance(server_name: str = "default") -> DatabaseRolePoe2:
     """Get or create a POE2 database instance for a specific server."""
+    # Use server_name as cache key since we now use RolesDatabase
     if server_name not in _db_poe2_instances:
         _db_poe2_instances[server_name] = DatabaseRolePoe2(server_name)
+    
     return _db_poe2_instances[server_name]
+
+def invalidate_poe2_db_instance(server_name: str = None):
+    """Invalidate cached POE2 database instance for a server or all servers.
+    
+    NOTE: This function is kept for backward compatibility but is now a no-op
+    since POE2Subrole uses RolesDatabase which has its own cache invalidation.
+    """
+    global _db_poe2_instances
+    if server_name:
+        if server_name in _db_poe2_instances:
+            del _db_poe2_instances[server_name]
+            logger.info(f"🗄️ [POE2] Invalidated cached db instance for server: {server_name}")
+    else:
+        _db_poe2_instances.clear()
+        logger.info("🗄️ [POE2] Invalidated all cached db instances")
 
 # English alias for consistency
 def get_treasure_hunter_db_instance(server_name: str = "default") -> DatabaseRolePoe2:
@@ -316,7 +252,7 @@ class Poe2SubroleBot(discord.Client):
             user = await self.fetch_user(MI_ID)
             
             # Get DB instance for the active server
-            server_name = get_active_server_id()
+            server_name = get_server_id()
             if not server_name:
                 logger.warning("⚠️ No active server configured for POE2 subrole startup")
                 await self.close()
@@ -413,11 +349,13 @@ class Poe2SubroleBot(discord.Client):
         """Send notification about detected opportunity."""
         try:
             # Get complete system prompt using the proper builder function
-            from agent_engine import _build_system_prompt, PERSONALITY
-            system_instruction = _build_system_prompt(PERSONALITY)
+            from agent_engine import _build_system_prompt, _get_personality
+            server_id = get_server_id()
+            server_personality = _get_personality(server_id) if server_id else PERSONALITY
+            system_instruction = _build_system_prompt(server_personality, server_id)
             
             # Get treasure hunter configuration from personality
-            personality_config = PERSONALITY
+            personality_config = server_personality
             
             # Get active duty and task configuration
             role_prompt = personality_config.get("treasure_hunter", {})

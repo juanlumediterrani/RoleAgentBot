@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from agent_engine import get_discord_token
 from agent_mind import call_llm
-from agent_db import get_global_db, get_active_server_id
+from agent_db import get_global_db, get_server_id
 from dotenv import load_dotenv
 from agent_logging import get_logger
 from discord_bot.discord_http import DiscordHTTP
@@ -87,7 +87,7 @@ async def ejecutar_mision_treasure_hunter(config, server_name=None):
         discord_http = DiscordHTTP(token)
         
         # Get active servers from database
-        active_server_name = get_active_server_id()
+        active_server_name = get_server_id()
         if not active_server_name:
             logger.warning("No active server configured for treasure hunter execution")
             return
@@ -234,7 +234,7 @@ async def procesar_suscripcion(poe2_manager, discord_http, subscription, refresh
             logger.info(f"Skipping recent similar notification for {item_name} in {league}")
             continue
 
-        message = await construir_mensaje_alerta(item_name, signal, current_price)
+        message = await construir_mensaje_alerta(item_name, signal, current_price, server_id)
         sent = await discord_http.send_dm(int(user_id), f"🔮 **POE2 TREASURE** [{server_id}] {message}")
         if sent:
             delivered_notifications.add((league, item_name, signal, current_price))
@@ -248,12 +248,15 @@ def calcular_senal(current_price, min_price, max_price):
         return "VENTA"
     return None
 
-async def construir_mensaje_alerta(item_name, signal, price):
+async def construir_mensaje_alerta(item_name, signal, price, server_id=None):
     """Build the user-facing POE2 alert message."""
     try:
-        from agent_engine import _build_system_prompt, PERSONALITY
+        from agent_engine import _build_system_prompt, _get_personality
+        from agent_db import get_server_id
 
-        system_instruction = _build_system_prompt(PERSONALITY)
+        server_to_use = server_id or get_server_id()
+        server_personality = _get_personality(server_to_use) if server_to_use else PERSONALITY
+        system_instruction = _build_system_prompt(server_personality, server_to_use)
         role_prompt = PERSONALITY.get("treasure_hunter", {})
         active_duty = role_prompt.get(
             "active_duty",
