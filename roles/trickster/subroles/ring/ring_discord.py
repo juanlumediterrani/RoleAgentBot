@@ -271,7 +271,7 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
     try:
         from agent_engine import mark_subrole_executed
         next_freq = _get_ring_state(server_id).get('current_frequency_hours', 24)
-        mark_subrole_executed('ring', datetime.datetime.now() + datetime.timedelta(hours=next_freq))
+        mark_subrole_executed('ring', datetime.datetime.now() + datetime.timedelta(hours=next_freq), server_id=server_id)
         logger.info(f"🎭 [RING] next_run_at persisted: +{next_freq}h from now")
     except Exception as _e:
         logger.warning(f"🎭 [RING] Could not persist next_run_at: {_e}")
@@ -306,45 +306,35 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
 async def execute_ring_accusation(guild, target_user_id: str, target_user_name: str, channel_id: int = None, user_name: str = None, accuser_id: str = None) -> str:
     """Execute a ring accusation using the new prompt system with memory injections."""
     try:
-        # Import memory building functions
+        server_id = str(guild.id) if guild else "unknown_server"
+        
         from agent_mind import (
             _build_prompt_memory_block, 
             _build_prompt_relationship_block, 
             _build_prompt_last_interactions_block
         )
         from agent_db import get_global_db
+        from agent_engine import _get_personality
         
-        # Build the accusation prompt
-        prompts_config = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        server_personality = _get_personality(server_id) if server_id else PERSONALITY
+        prompts_config = server_personality.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
         accusation_config = prompts_config.get("accusation", {})
         
-        # Get base configuration
         task_template = accusation_config.get("task", f"Task: Accuse user {target_user_name} of possessing the ring, intimidate them to hand it over")
-        # Update with actual names
         task = task_template.replace("{target_name}", target_user_name)
-        if user_name:
-            task = task.replace("{user_name}", user_name)
-        else:
-            task = task.replace("{user_name}", "a user")
+        task = task.replace("{user_name}", user_name if user_name else "a user")
         base_rules = accusation_config.get("golden_rules", [])
         
-        # Add context-specific rules
-        if channel_id:  # Public channel
-            additional_rules = accusation_config.get("public_channel", {}).get("additional_rules", [])
-        else:  # DM
-            additional_rules = accusation_config.get("direct_message", {}).get("additional_rules", [])
-        
-        # Combine base rules with additional rules
+        additional_rules = (
+            accusation_config.get("public_channel", {}).get("additional_rules", [])
+            if channel_id
+            else accusation_config.get("direct_message", {}).get("additional_rules", [])
+        )
         rules = base_rules + additional_rules
         
-        # Get database instance for memory retrieval
-        server_id= str(guild.id) if guild else "unknown_server"
         db_instance = get_global_db(server_id=server_id)
-        
-        # Build memory sections using proper functions
         memory_block = _build_prompt_memory_block(server=server_id)
         
-        # Use target_user_id for relationship context (the accused), not the accuser
         relationship_block = _build_prompt_relationship_block(
             user_id=target_user_id,
             user_name=target_user_name,
@@ -384,14 +374,16 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
 
         prompt_parts.extend([
             "",
-            PERSONALITY.get("closing", "## Personality RESPONSE:"),
+            server_personality.get("closing", "## Personality RESPONSE:"),
         ])
         
         
         accusation_prompt = "\n".join(prompt_parts)
         
         # Generate the accusation — offload to thread to avoid blocking the event loop
-        system_instruction = _build_system_prompt(PERSONALITY)
+        from agent_engine import _get_personality
+        server_personality = _get_personality(server_id) if server_id else PERSONALITY
+        system_instruction = _build_system_prompt(server_personality, server_id)
 
         accusation = await asyncio.to_thread(
             call_llm,
