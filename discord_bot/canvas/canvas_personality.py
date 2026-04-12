@@ -22,13 +22,15 @@ except ImportError:
 
 try:
     from discord_bot.db_init import get_server_personality_dir, copy_personality_to_server, update_personality_files
-    from discord_bot.discord_utils import get_server_key, is_admin
+    from discord_bot.discord_utils import get_server_key, is_admin, sync_bot_identity_to_server_personality, update_server_identity
 except ImportError:
     get_server_personality_dir = None
     copy_personality_to_server = None
     update_personality_files = None
     get_server_key = None
     is_admin = None
+    sync_bot_identity_to_server_personality = None
+    update_server_identity = None
 
 try:
     from discord_bot import discord_core_commands as core
@@ -43,8 +45,18 @@ except ImportError:
 # Helper Functions
 # ============================================================================
 
-def _get_available_personalities() -> list[str]:
-    """Get list of available personality directories."""
+def _get_available_personalities(language: str = None) -> list[str]:
+    """Get list of available personality directories.
+    
+    If language is provided, only returns personalities that have
+    a subdirectory for that language (e.g., personalities/<name>/<language>/).
+    
+    Args:
+        language: IETF BCP 47 language code (e.g., "es-ES", "en-US")
+        
+    Returns:
+        List of personality names that are available
+    """
     try:
         base_dir = Path(__file__).parent.parent.parent
         personalities_dir = base_dir / "personalities"
@@ -54,9 +66,19 @@ def _get_available_personalities() -> list[str]:
         personalities = []
         for item in personalities_dir.iterdir():
             if item.is_dir() and not item.name.startswith('.') and not item.name.startswith('__'):
-                # Check if it has a personality.json file
-                if (item / "personality.json").exists():
-                    personalities.append(item.name)
+                if language:
+                    # New structure: check if language subdirectory exists with personality.json
+                    lang_dir = item / language
+                    if lang_dir.exists() and (lang_dir / "personality.json").exists():
+                        personalities.append(item.name)
+                    else:
+                        # Fallback: check old structure (for backward compatibility)
+                        if (item / "personality.json").exists():
+                            personalities.append(item.name)
+                else:
+                    # No language filter - check old structure
+                    if (item / "personality.json").exists():
+                        personalities.append(item.name)
         return sorted(personalities)
     except Exception as e:
         if logger:
@@ -95,6 +117,27 @@ def _get_current_personality_name(server_id: str) -> str:
         if logger:
             logger.error(f"Error getting current personality name: {e}")
     return _personality_name
+
+
+def _get_current_personality_with_language(server_id: str) -> str:
+    """Get the current personality name with language context for comparison."""
+    try:
+        # Get current personality name
+        personality_name = _get_current_personality_name(server_id)
+        
+        # Get current language
+        try:
+            from .server_config import get_server_language
+            current_language = get_server_language(server_id)
+        except Exception:
+            current_language = "en-US"
+        
+        # Create a unique identifier that includes both personality and language
+        return f"{personality_name}:{current_language}"
+    except Exception as e:
+        if logger:
+            logger.error(f"Error getting current personality with language: {e}")
+        return f"{_personality_name}:en-US"
 
 
 async def _zip_personality(personality_name: str, source_dir: Path) -> Path | None:
@@ -364,7 +407,10 @@ class CanvasPersonalitySelect(discord.ui.Select):
 
 
 class CanvasPersonalitySelectView(discord.ui.View):
-    """View for selecting personality with dropdown (step 1 of 2)."""
+    """View for selecting personality with dropdown (step 1 of 2).
+    
+    Only shows personalities that are available for the server's configured language.
+    """
     
     def __init__(self, parent_view: CanvasPersonalityView):
         super().__init__(timeout=300)
@@ -372,21 +418,34 @@ class CanvasPersonalitySelectView(discord.ui.View):
         self.selected_personality = None
         self.old_personality = None
         
-        # Get available personalities
-        available = _get_available_personalities()
+        # Get server's configured language
+        self.server_language = self._get_server_language()
+        
+        # Get available personalities for this language
+        available = _get_available_personalities(self.server_language)
+        
+        # If no personalities available for this language, show all (fallback)
+        if not available:
+            available = _get_available_personalities()
         
         # Personality selection dropdown
-        options = [
-            discord.SelectOption(label=pers, value=pers)
-            for pers in available
-        ]
+        if available:
+            options = [
+                discord.SelectOption(label=pers, value=pers)
+                for pers in available
+            ]
+            placeholder = f"Choose a personality (language: {self.server_language})..."
+        else:
+            options = [discord.SelectOption(label="No personalities available", value="none")]
+            placeholder = "No personalities available"
         
         self.personality_select = discord.ui.Select(
-            placeholder="Choose a personality...",
+            placeholder=placeholder,
             min_values=1,
             max_values=1,
             options=options,
-            row=0
+            row=0,
+            disabled=not available
         )
         self.personality_select.callback = self._on_select
         self.add_item(self.personality_select)
@@ -409,11 +468,38 @@ class CanvasPersonalitySelectView(discord.ui.View):
         self.cancel_button.callback = self._on_cancel
         self.add_item(self.cancel_button)
     
+    def _get_server_language(self) -> str:
+        """Get the configured language for the server."""
+        try:
+            from .server_config import get_server_language
+            if self.parent_view.guild:
+                return get_server_language(str(self.parent_view.guild.id))
+        except Exception as e:
+            if logger:
+                logger.debug(f"Could not get server language: {e}")
+        return "en-US"
+    
+    def _get_current_server_language(self, server_id: str) -> str:
+        """Get the current configured language for the server."""
+        try:
+            from .server_config import get_server_language
+            return get_server_language(server_id)
+        except Exception as e:
+            if logger:
+                logger.debug(f"Could not get current server language: {e}")
+        return "en-US"
+    
     def _load_personality_info(self, personality_name: str) -> str:
-        """Load identity_body from personality.json."""
+        """Load identity_body from personality.json for the server's language."""
         try:
             base_dir = Path(__file__).parent.parent.parent
-            personality_file = base_dir / "personalities" / personality_name / "personality.json"
+            
+            # Try new structure first: personalities/<name>/<language>/personality.json
+            personality_file = base_dir / "personalities" / personality_name / self.server_language / "personality.json"
+            
+            # Fallback to old structure if not found
+            if not personality_file.exists():
+                personality_file = base_dir / "personalities" / personality_name / "personality.json"
             
             if personality_file.exists():
                 import json
@@ -444,16 +530,30 @@ class CanvasPersonalitySelectView(discord.ui.View):
             new_personality = self.personality_select.values[0]
             self.selected_personality = new_personality
             
-            # Get current personality
+            # Get current personality with language context
             server_id = str(self.parent_view.guild.id)
             self.old_personality = _get_current_personality_name(server_id)
+            current_with_language = _get_current_personality_with_language(server_id)
+            new_with_language = f"{new_personality}:{self.server_language}"
             
-            if self.old_personality == new_personality:
+            # Allow selection if it's the same personality but different language
+            if current_with_language == new_with_language:
                 await interaction.response.send_message(
-                    f"❌ The bot is already using the `{new_personality}` personality.",
+                    f"❌ The bot is already using the `{new_personality}` personality with language `{self.server_language}`.",
                     ephemeral=True
                 )
                 self.stop()
+                return
+            
+            # Show confirmation if same personality but different language
+            if self.old_personality == new_personality and self.server_language != self._get_current_server_language(server_id):
+                personality_info = self._load_personality_info(new_personality)
+                await interaction.response.edit_message(
+                    content=f"**Selected Personality: {new_personality} (Language: {self.server_language})**\n\n"
+                           f"⚠️ **Note:** Changing language for the same personality.\n\n{personality_info}",
+                    view=self
+                )
+                self.confirm_button.disabled = False
                 return
             
             # Load personality info
@@ -510,14 +610,37 @@ class CanvasPersonalitySelectView(discord.ui.View):
 class CanvasPersonalityConfirmView(discord.ui.View):
     """View for confirming personality change with boolean selectors (step 2 of 2)."""
     
-    def __init__(self, parent_view: CanvasPersonalityView, new_personality: str, old_personality: str):
+    def __init__(self, parent_view: CanvasPersonalityView = None, new_personality: str = None, old_personality: str = None, 
+                 personality_name: str = None, server_id: str = None, new_language: str = None, is_language_update: bool = False):
         super().__init__(timeout=300)
-        self.parent_view = parent_view
-        self.new_personality = new_personality
-        self.old_personality = old_personality
+        
+        # Handle both old and new calling patterns
+        if personality_name and server_id:
+            # New pattern for language updates
+            self.parent_view = None
+            self.personality_name = personality_name
+            self.server_id = server_id
+            self.new_language = new_language
+            self.is_language_update = is_language_update
+            self.new_personality = personality_name
+            self.old_personality = personality_name
+            self.author_id = None  # Will be set from interaction
+        else:
+            # Old pattern for regular personality changes
+            self.parent_view = parent_view
+            self.new_personality = new_personality
+            self.old_personality = old_personality
+            self.personality_name = new_personality
+            self.server_id = get_server_key(parent_view.guild) if (get_server_key and parent_view.guild) else None
+            self.new_language = None
+            self.is_language_update = False
+            self.author_id = parent_view.author_id
         
         # Get personality messages for labels
-        server_id = get_server_key(parent_view.guild) if (get_server_key and parent_view.guild) else None
+        if self.parent_view:
+            server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
+        else:
+            server_id = self.server_id
         personality_msgs = _get_personality_descriptions(server_id).get("personality_messages", {})
         
         # Boolean options: Yes/No
@@ -534,7 +657,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             options=yes_no_options,
             row=0
         )
-        self.download_old_select.callback = self._dummy_callback
+        self.download_old_select.callback = self._on_download_select
         self.add_item(self.download_old_select)
         
         # Delete memory selector
@@ -545,7 +668,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             options=yes_no_options,
             row=1
         )
-        self.delete_memory_select.callback = self._dummy_callback
+        self.delete_memory_select.callback = self._on_delete_select
         self.add_item(self.delete_memory_select)
         
         # Download memory selector
@@ -556,7 +679,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             options=yes_no_options,
             row=2
         )
-        self.download_memory_select.callback = self._dummy_callback
+        self.download_memory_select.callback = self._on_download_memory_select
         self.add_item(self.download_memory_select)
         
         # Confirm and Cancel buttons
@@ -576,18 +699,48 @@ class CanvasPersonalityConfirmView(discord.ui.View):
         self.cancel_button.callback = self._on_cancel
         self.add_item(self.cancel_button)
     
-    async def _dummy_callback(self, interaction: discord.Interaction):
-        """Dummy callback for Select dropdowns - just acknowledge selection."""
-        await interaction.response.defer()
+    async def _on_download_select(self, interaction: discord.Interaction):
+        """Handle download old personality selection."""
+        try:
+            value = interaction.data.get('values', [''])[0]
+            # Just acknowledge the selection - the actual value will be read in _on_confirm
+            await interaction.response.defer()
+        except Exception as e:
+            if logger:
+                logger.error(f"Error in download select callback: {e}")
+            await interaction.response.send_message("❌ Error selecting option", ephemeral=True)
+    
+    async def _on_delete_select(self, interaction: discord.Interaction):
+        """Handle delete memory selection."""
+        try:
+            value = interaction.data.get('values', [''])[0]
+            # Just acknowledge the selection - the actual value will be read in _on_confirm
+            await interaction.response.defer()
+        except Exception as e:
+            if logger:
+                logger.error(f"Error in delete select callback: {e}")
+            await interaction.response.send_message("❌ Error selecting option", ephemeral=True)
+    
+    async def _on_download_memory_select(self, interaction: discord.Interaction):
+        """Handle download memory selection."""
+        try:
+            value = interaction.data.get('values', [''])[0]
+            # Just acknowledge the selection - the actual value will be read in _on_confirm
+            await interaction.response.defer()
+        except Exception as e:
+            if logger:
+                logger.error(f"Error in download memory select callback: {e}")
+            await interaction.response.send_message("❌ Error selecting option", ephemeral=True)
     
     async def _on_confirm(self, interaction: discord.Interaction):
         """Handle personality change confirmation and execution."""
         try:
-            if not self.parent_view.guild:
+            # Original personality change logic (handles both regular and language updates)
+            if not self.is_language_update and not self.parent_view.guild:
                 await interaction.response.send_message("❌ This action is only available in a server.", ephemeral=True)
                 return
 
-            if not self.parent_view.admin_visible:
+            if not self.is_language_update and not self.parent_view.admin_visible:
                 await interaction.response.send_message("❌ This action is admin-only.", ephemeral=True)
                 return
 
@@ -597,16 +750,26 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             message3 = None  # Success message
 
             # Edit message to show progress, then send followup messages
+            # Edit message to show progress
+            progress_text = f"⏳ Changing personality from `{self.old_personality}` to `{self.new_personality}`..."
+            if self.is_language_update:
+                progress_text = f"⏳ Updating `{self.personality_name}` to `{self.new_language}` language..."
+            
             await interaction.response.edit_message(
-                content=f"⏳ Changing personality from `{self.old_personality}` to `{self.new_personality}`...",
+                content=progress_text,
                 view=None
             )
             # Store the original message reference
             message1 = interaction.message
 
-            server_id = str(self.parent_view.guild.id)
-            new_personality = self.new_personality
-            old_personality = self.old_personality
+            if self.is_language_update:
+                server_id = self.server_id
+                new_personality = self.personality_name
+                old_personality = self.personality_name
+            else:
+                server_id = str(self.parent_view.guild.id)
+                new_personality = self.new_personality
+                old_personality = self.old_personality
             download_old = self.download_old_select.values[0] == "yes"
             delete_memory = self.delete_memory_select.values[0] == "yes"
             download_memory = self.download_memory_select.values[0] == "yes"
@@ -687,15 +850,22 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             
             # Step 5: Copy new personality files (JSON configs) to server
             # Note: .db databases are already renamed in Step 3, no conflict here
+            # Use the target language for the new personality
+            if self.is_language_update:
+                target_language = self.new_language
+            else:
+                from .server_config import get_server_language
+                target_language = get_server_language(server_id)
+            
             success = False
             if copy_personality_to_server:
-                success = copy_personality_to_server(server_id, new_personality)
+                success = copy_personality_to_server(server_id, new_personality, language=target_language, update_config=True)
 
             if not success:
-                await interaction.followup.send(
-                    f"❌ Failed to copy new personality `{new_personality}` to server.",
-                    ephemeral=True
-                )
+                error_msg = f"❌ Failed to copy new personality `{new_personality}` to server."
+                if self.is_language_update:
+                    error_msg = f"❌ Failed to update `{new_personality}` to `{self.new_language}` language."
+                await interaction.followup.send(error_msg, ephemeral=True)
                 return
 
             # Step 5b: Always update JSON config files to ensure descriptions are current
@@ -775,75 +945,128 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                     if logger:
                         logger.warning(f"Could not invalidate beggar config cache: {err}")
                 
-                # Step 7: Initialize memory synthesis for the NEW personality (always)
+                # Step 7: Initialize memory synthesis for the NEW personality (skip for language-only updates)
                 # This creates initial daily memory and schedules the next task
-                try:
-                    from agent_mind import generate_daily_memory_summary
-                    msg2 = await interaction.followup.send(
-                        "🧠 Generating initial memory synthesis for new personality...",
-                        ephemeral=True
-                    )
-                    message2 = msg2
-                    # Force personality reload to ensure we use the correct one
-                    from agent_engine import _get_personality
-                    _get_personality(server_id)  # Pass server_id to load correct personality
-                    
-                    memory_summary = generate_daily_memory_summary(server_id=server_id)
-                    if memory_summary:
-                        if logger:
-                            logger.info(f"✅ Initial memory synthesis generated for {new_personality}")
-                    else:
-                        if logger:
-                            logger.warning(f"⚠️ No memory summary generated (may be normal for new personality)")
-                    
-                    # Step 8: Initialize recent memory with fallback
-                    try:
-                        from agent_mind import _get_recent_memory_fallback
-                        from agent_db import get_db_instance
-                        db_instance = get_db_instance(server_id)
-                        recent_fallback = _get_recent_memory_fallback(server_id)
-                        if recent_fallback:
-                            db_instance.upsert_recent_memory(
-                                summary=recent_fallback,
-                                memory_date=date.today().isoformat(),
-                                metadata={"source": "personality_change_fallback"}
-                            )
-                            if logger:
-                                logger.info(f"✅ Recent memory initialized with fallback for {new_personality}")
-                    except Exception as recent_error:
-                        if logger:
-                            logger.warning(f"Could not initialize recent memory: {recent_error}")
-                    
-                    # Step 9: Initialize relationship memory with fallback (for generic user)
-                    try:
-                        from agent_mind import _get_relationship_memory_fallback
-                        relationship_fallback = _get_relationship_memory_fallback("default_user", server_id)
-                        if relationship_fallback:
-                            db_instance.upsert_user_relationship_memory(
-                                user_id="default",
-                                summary=relationship_fallback,
-                                last_interaction_at=datetime.now().isoformat(),
-                                metadata={"source": "personality_change_fallback"}
-                            )
-                            if logger:
-                                logger.info(f"✅ Relationship memory initialized with fallback for {new_personality}")
-                    except Exception as relationship_error:
-                        if logger:
-                            logger.warning(f"Could not initialize relationship memory: {relationship_error}")
-                except Exception as synthesis_error:
+                if self.is_language_update:
                     if logger:
-                        logger.warning(f"Could not generate initial memory synthesis: {synthesis_error}")
-                    # Non-critical error, don't block the personality change
+                        logger.info(f"⏭️ Skipping memory synthesis for language-only update")
+                if not self.is_language_update:
+                    try:
+                        from agent_mind import generate_daily_memory_summary
+                        msg2 = await interaction.followup.send(
+                            "🧠 Generating initial memory synthesis for new personality...",
+                            ephemeral=True
+                        )
+                        message2 = msg2
+                        # Force personality reload to ensure we use the correct one
+                        from agent_engine import _get_personality
+                        _get_personality(server_id)  # Pass server_id to load correct personality
+                        
+                        memory_summary = generate_daily_memory_summary(server_id=server_id)
+                        if memory_summary:
+                            if logger:
+                                logger.info(f"✅ Initial memory synthesis generated for {new_personality}")
+                        else:
+                            if logger:
+                                logger.warning(f"⚠️ No memory summary generated (may be normal for new personality)")
+                        
+                        # Step 8: Initialize recent memory with fallback
+                        try:
+                            from agent_mind import _get_recent_memory_fallback
+                            from agent_db import get_db_instance
+                            db_instance = get_db_instance(server_id)
+                            recent_fallback = _get_recent_memory_fallback(server_id)
+                            if recent_fallback:
+                                db_instance.upsert_recent_memory(
+                                    summary=recent_fallback,
+                                    memory_date=date.today().isoformat(),
+                                    metadata={"source": "personality_change_fallback"}
+                                )
+                                if logger:
+                                    logger.info(f"✅ Recent memory initialized with fallback for {new_personality}")
+                        except Exception as recent_error:
+                            if logger:
+                                logger.warning(f"Could not initialize recent memory: {recent_error}")
+                        
+                        # Step 9: Initialize relationship memory with fallback (for generic user)
+                        try:
+                            from agent_mind import _get_relationship_memory_fallback
+                            relationship_fallback = _get_relationship_memory_fallback("default_user", server_id)
+                            if relationship_fallback:
+                                db_instance.upsert_user_relationship_memory(
+                                    user_id="default",
+                                    summary=relationship_fallback,
+                                    last_interaction_at=datetime.now().isoformat(),
+                                    metadata={"source": "personality_change_fallback"}
+                                )
+                                if logger:
+                                    logger.info(f"✅ Relationship memory initialized with fallback for {new_personality}")
+                        except Exception as relationship_error:
+                            if logger:
+                                logger.warning(f"Could not initialize relationship memory: {relationship_error}")
+                    except Exception as synthesis_error:
+                        if logger:
+                            logger.warning(f"Could not generate initial memory synthesis: {synthesis_error}")
+                        # Non-critical error, don't block the personality change
             except Exception as reload_error:
                 if logger:
                     logger.warning(f"Could not reload personality in memory: {reload_error}")
 
+            # Step 10: Sync bot identity (nickname + avatar) to new personality
+            # This updates the bot's visual identity in the Discord server
+            try:
+                if sync_bot_identity_to_server_personality and interaction.guild:
+                    if logger:
+                        logger.info(f"🔄 Syncing bot identity for server {server_id} after personality change")
+                    
+                    identity_result = await sync_bot_identity_to_server_personality(interaction.guild)
+                    
+                    if identity_result.get('success'):
+                        changes = []
+                        if identity_result.get('nickname_changed'):
+                            changes.append("nickname")
+                        if identity_result.get('avatar_changed'):
+                            changes.append("avatar")
+                        
+                        if changes:
+                            if logger:
+                                logger.info(f"✅ Bot identity synced: {', '.join(changes)} updated")
+                        else:
+                            if logger:
+                                logger.info(f"✅ Bot identity already correct for new personality")
+                    else:
+                        errors = identity_result.get('errors', ['Unknown error'])
+                        if logger:
+                            logger.warning(f"⚠️ Could not sync bot identity: {', '.join(errors)}")
+                        # Send a non-blocking warning to the user
+                        try:
+                            await interaction.followup.send(
+                                f"⚠️ Personality changed successfully, but identity sync failed: {', '.join(errors)}\n"
+                                f"The bot's nickname/avatar may need manual adjustment with `!setnickname`.",
+                                ephemeral=True
+                            )
+                        except:
+                            pass
+            except Exception as identity_error:
+                if logger:
+                    logger.warning(f"Could not sync bot identity: {identity_error}")
+                # Non-critical error, don't block the personality change
+
             # Get success message
             personality_msgs = _get_personality_descriptions(server_id).get("personality_messages", {})
-            success_msg = personality_msgs.get(
-                "change_success",
-                "✅ Personality changed from `{old}` to `{new}`! The new personality is now active."
-            )
+            
+            if self.is_language_update:
+                success_msg = personality_msgs.get(
+                    "language_update_success",
+                    "✅ Personality `{personality}` updated to `{language}` language! The new language version is now active."
+                )
+                success_content = success_msg.format(personality=new_personality, language=self.new_language)
+            else:
+                success_msg = personality_msgs.get(
+                    "change_success",
+                    "✅ Personality changed from `{old}` to `{new}`! The new personality is now active."
+                )
+                success_content = success_msg.format(old=old_personality, new=new_personality)
 
             # Delete message1 (initial progress) when sending message3 (success)
             try:
@@ -853,16 +1076,105 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 pass
 
             # Send message3 (success message)
+            await interaction.followup.send(success_content, ephemeral=True)
+            self.stop()
+
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error in personality change confirmation view: {e}")
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(f"❌ Error: {str(e)}", ephemeral=True)
+                else:
+                    await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+            except:
+                pass
+            self.stop()
+
+    async def _handle_language_update(self, interaction: discord.Interaction):
+        """Handle language update confirmation and execution."""
+        try:
+            message1 = None
+
+            await interaction.response.edit_message(
+                content=f"⏳ Updating `{self.personality_name}` to `{self.new_language}` language...",
+                view=None
+            )
+            message1 = interaction.message
+
+            server_id = self.server_id
+            new_personality = self.personality_name
+            download_old = self.download_old_select.values[0] == "yes"
+
+            base_dir = Path(__file__).parent.parent.parent
+
+            # Step 1: Download old personality if requested
+            if download_old:
+                old_personality_dir = base_dir / "databases" / server_id / new_personality
+                if old_personality_dir.exists():
+                    try:
+                        zip_path = await _zip_personality(new_personality, old_personality_dir)
+                        if zip_path and zip_path.exists():
+                            file = discord.File(zip_path, filename=f"{new_personality}_backup.zip")
+                            await interaction.followup.send(
+                                content="📦 Backup of current personality downloaded:",
+                                file=file,
+                                ephemeral=True
+                            )
+                            try:
+                                zip_path.unlink()
+                            except:
+                                pass
+                    except Exception as e:
+                        if logger:
+                            logger.warning(f"Failed to create backup: {e}")
+
+            # Step 2: Copy new personality files with target language
+            success = False
+            if copy_personality_to_server:
+                success = copy_personality_to_server(server_id, new_personality, language=self.new_language, update_config=True)
+
+            if not success:
+                await interaction.followup.send(
+                    f"❌ Failed to update `{new_personality}` to `{self.new_language}` language.",
+                    ephemeral=True
+                )
+                return
+
+            # Step 3: Update JSON config files
+            if update_personality_files:
+                files_updated = update_personality_files(server_id, new_personality)
+                if logger and files_updated:
+                    logger.info(f"✅ Updated personality files for {new_personality} to {self.new_language}")
+
+            # Step 4: Sync bot identity if available
+            try:
+                if sync_bot_identity_to_server_personality:
+                    await sync_bot_identity_to_server_personality(server_id)
+            except Exception as identity_error:
+                if logger:
+                    logger.warning(f"Could not sync bot identity: {identity_error}")
+
+            # Step 5: Send success message
+            try:
+                if message1:
+                    await message1.delete()
+            except:
+                pass
+
             await interaction.followup.send(
-                success_msg.format(old=old_personality, new=new_personality),
+                f"✅ Personality `{new_personality}` updated to `{self.new_language}` language! The new language version is now active.",
                 ephemeral=True
             )
             self.stop()
 
         except Exception as e:
             if logger:
-                logger.exception(f"Error in personality change confirmation view: {e}")
-            await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+                logger.exception(f"Error in language update confirmation view: {e}")
+            try:
+                await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
+            except:
+                pass
             self.stop()
 
     async def _on_cancel(self, interaction: discord.Interaction):
@@ -872,7 +1184,13 @@ class CanvasPersonalityConfirmView(discord.ui.View):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """Restrict the interactive view to its original user."""
-        if interaction.user.id != self.parent_view.author_id:
+        # For language updates, set author_id from first interaction
+        if self.is_language_update and self.author_id is None:
+            self.author_id = interaction.user.id
+            return True
+        
+        # Check if user is authorized
+        if self.author_id and interaction.user.id != self.author_id:
             await interaction.response.send_message("❌ This menu belongs to another user.", ephemeral=True)
             return False
         return True

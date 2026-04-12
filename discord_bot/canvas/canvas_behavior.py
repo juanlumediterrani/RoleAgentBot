@@ -19,7 +19,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     button_welcome = behavior_messages.get("welcome", {}).get("button", "Welcome")
     button_commentary = behavior_messages.get("comentary", {}).get("button", "Commentary")
     button_taboo = behavior_messages.get("taboo", {}).get("button", "Taboo")
-    button_role_control = behavior_messages.get("role_control", {}).get("button", "Role Control")
+    button_settings = behavior_messages.get("settings", {}).get("button", "Settings")
 
     common_options = [
         (f"{button_commentary}: On", "commentary_on", "Boolean toggle"),
@@ -39,7 +39,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         (f"{button_commentary}: Frequency", "commentary_frequency", "Number input target"),
         (f"{button_taboo}: On", "taboo_on", "Boolean toggle"),
         (f"{button_taboo}: Off", "taboo_off", "Boolean toggle"),
-        (f"{button_role_control}", "role_control_open", "Select role and boolean state"),
+        (f"{button_settings}", "settings_open", "Manage server settings, roles and language"),
         (f"{button_personality}", "personality_open", "Manage bot personality"),
     ]
 
@@ -49,7 +49,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         "welcome": [(f"{button_welcome}: On", "welcome_on", "Boolean toggle"), (f"{button_welcome}: Off", "welcome_off", "Boolean toggle")] if admin_visible else [],
         "commentary": common_options,
         "taboo": [(f"{button_taboo}: On", "taboo_on", "Boolean toggle"), (f"{button_taboo}: Off", "taboo_off", "Boolean toggle"), (f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")] if admin_visible else [(f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")],
-        "role_control": [(f"{button_role_control}", "role_control_open", "Select role and boolean state")] if admin_visible else [],
+        "settings": [(f"{button_settings}", "settings_open", "Manage server settings, roles and language")] if admin_visible else [],
         "personality": [],  # Personality view uses custom dropdown, not action items
     }
     return items_map.get(detail_name, [])
@@ -64,7 +64,7 @@ def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = 
     welcome_button = behavior_descriptions.get("welcome", {}).get("button", "Welcome")
     commentary_button = behavior_descriptions.get("comentary", {}).get("button", "Commentary")
     taboo_button = behavior_descriptions.get("taboo", {}).get("button", "Taboo")
-    role_control_button = behavior_descriptions.get("role_control", {}).get("button", "Role Control")
+    settings_button = behavior_descriptions.get("settings", {}).get("button", "Settings")
     personality_button = behavior_descriptions.get("personality", {}).get("button", "Personality")
 
     items = []
@@ -77,7 +77,7 @@ def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = 
             (welcome_button, "welcome"),
             (commentary_button, "commentary"),
             (taboo_button, "taboo"),
-            (role_control_button, "role_control"),
+            (settings_button, "settings"),
             (personality_button, "personality"),
         ]
         items.extend([item for item in admin_items if item[1] != current_detail])
@@ -291,16 +291,24 @@ def build_canvas_behavior_detail(
         ])
         return (taboo_title, taboo_description, content)
 
-    if detail_name in {"role_control", "roles"}:
+    if detail_name in {"settings", "role_control"}:
         if not admin_visible:
             if callable(setup_not_available_builder):
                 return setup_not_available_builder()
             return "❌ This setup is only available to administrators."
 
         from discord_bot.discord_utils import initialize_roles_from_database
+        from .server_config import get_server_language, get_available_languages
         initialize_roles_from_database(agent_config, guild)
 
         db = behavior_db_loader(guild) if callable(behavior_db_loader) else None
+        server_id = str(guild.id) if guild else "0"
+        
+        # Get current server language
+        current_language = get_server_language(server_id)
+        available_langs = get_available_languages()
+        language_display = available_langs.get(current_language, current_language)
+
         all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
         role_labels = {
             "news_watcher": "News Watcher",
@@ -326,8 +334,8 @@ def build_canvas_behavior_detail(
                 from agent_db import get_server_id
 
                 # Use active server for Canvas (fallback to get_server_id if no guild context)
-                server_id = str(guild.id) if guild else get_server_id()
-                roles_db = get_roles_db_instance(server_id)
+                sid = str(guild.id) if guild else get_server_id()
+                roles_db = get_roles_db_instance(sid)
                 config = roles_db.get_role_config(role_name)
                 if config:
                     enabled = config.get('enabled', False)
@@ -337,22 +345,35 @@ def build_canvas_behavior_detail(
 
             status_lines.append(f"- {label}: {'✅ Enabled' if enabled else '❌ Disabled'}")
 
-        role_control_messages = behavior_descriptions.get("role_control", {})
-        role_control_title = role_control_messages.get("title", "🎛️ Canvas - General Behavior Role Control")
-        role_control_description = role_control_messages.get("description", "Role activation is managed through database - primary source")
+        settings_messages = behavior_descriptions.get("settings", {})
+        settings_title = settings_messages.get("title", "⚙️ Canvas - Server Settings")
+        settings_description = settings_messages.get("description", "Manage server language and role activations")
 
-        # Reemplazar placeholders con el nombre del bot
-        role_control_title = role_control_title
-        role_control_description = role_control_description
-        content = "\n".join([
-            f"{title_status}\n",
+        # Build three sections
+        # Section 1: Language (now second as requested)
+        language_section = [
+            "🌐 **Server Language**\n",
+            f"- Current: {language_display} ({current_language})",
+            "",
+        ]
+
+        # Section 2: Roles (now third)
+        roles_section = [
+            "🎛️ **Role Management**\n",
             *status_lines,
             "",
             "💡 **Database is primary source** - Changes are persisted immediately",
             "🔧 If you see 'System Error', the database is unavailable",
+        ]
+
+        content = "\n".join([
+            *language_section,
+            "─" * 45,
+            "",
+            *roles_section,
             "─" * 45,
         ])
-        return (role_control_title, role_control_description, content)
+        return (settings_title, settings_description, content)
 
     if detail_name in {"personality"}:
         if not admin_visible:
@@ -367,16 +388,38 @@ def build_canvas_behavior_detail(
         # Replace placeholders
         personality_title = personality_title
         personality_description = personality_description
-        content = "\n".join([
+
+        # Load identity_body from current personality
+        identity_body_text = ""
+        try:
+            from .content import _get_server_personality_name
+            from pathlib import Path
+            import json
+
+            personality_name = _get_server_personality_name(server_id)
+            base_dir = Path(__file__).parent.parent.parent
+            personality_file = base_dir / "personalities" / personality_name / "personality.json"
+
+            if personality_file.exists():
+                with open(personality_file, 'r', encoding='utf-8') as f:
+                    personality_data = json.load(f)
+                identity_body = personality_data.get("system_prompt_template", {}).get("identity_body", [])
+                if identity_body:
+                    identity_body_text = "\n".join(identity_body)
+        except Exception as e:
+            logger.warning(f"Could not load identity_body: {e}")
+
+        content_lines = [
             f"{title_status}\n",
-            "Use the dropdown below to manage personality:",
-            "",
-            "• **Change Personality** - Switch to a different personality",
-            "• **Download Current** - Export personality as ZIP backup",
-            "",
-            "⚠️ **Note:** Changing personality requires admin privileges",
-            "─" * 45,
-        ])
+        ]
+
+        if identity_body_text:
+            content_lines.append(identity_body_text)
+            content_lines.append("")
+            content_lines.append("─" * 45)
+            content_lines.append("")
+
+        content = "\n".join(content_lines)
         return (personality_title, personality_description, content)
 
     return None

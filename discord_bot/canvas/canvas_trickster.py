@@ -6,6 +6,7 @@ import json
 import discord
 
 from discord_bot import discord_core_commands as core
+from discord_bot.discord_utils import translate_dice_combination
 from .state import (
     _get_canvas_dice_state,
     _get_canvas_dice_ranking,
@@ -201,8 +202,10 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                     date_str = created_at[:16] if created_at else ''
                 
                 dice_display = "🎲".join(dice.split('-')) if dice else "???"
+                # Translate combination from English fallback to personality-specific text
+                translated_combination = translate_dice_combination(combination, trickster_messages)
                 prize_emoji = "💰" if prize > 0 else "💸"
-                parts.append(f"👤 {user_name} | {dice_display} → {combination} | {prize_emoji} {prize:,}")
+                parts.append(f"👤 {user_name} | {dice_display} → {translated_combination} | {prize_emoji} {prize:,}")
         else:
             parts.append(descriptions.get("historyvoid", "📊 Any play in the game. Be the first!"))
         

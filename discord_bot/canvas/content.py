@@ -498,7 +498,7 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
         "taboo_off": "Taboo disabled for this server.",
         "taboo_add": "The bot will ask for a keyword and add it to the taboo list.",
         "taboo_del": "The bot will ask for a keyword and remove it from the taboo list.",
-        "role_control_open": "The bot will ask which role to enable or disable for this server.",
+        "settings_open": "The bot will open server settings to manage language and role activation.",
         "personality_open": "The bot will open the personality management interface.",
     }
 
@@ -950,7 +950,7 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         "taboo_off": ("Taboo", "Off", "`!taboo off`", "Boolean toggle"),
         "taboo_add": ("Taboo", "Add keyword", "`!taboo add <keyword>`", "Text input"),
         "taboo_del": ("Taboo", "Remove keyword", "`!taboo del <keyword>`", "Text input"),
-        "role_control_open": ("Role control", "Choose role + on/off", f"`!role{_personality_name} <role> <on|off>`", "Select menu + boolean toggle"),
+        "settings_open": ("Settings", "Manage language and roles", f"`!settings` or `!language`", "Select menu for server configuration"),
     }
     selected = action_map.get(action_name)
     if not selected:

@@ -26,6 +26,7 @@ try:
         _build_canvas_role_embed,
         _build_canvas_home
     )
+    from discord_bot.discord_utils import translate_dice_combination
     from .canvas_behavior import (
         get_canvas_behavior_action_items_for_detail as _get_canvas_behavior_action_items_for_detail,
         get_canvas_behavior_detail_items as _get_canvas_behavior_detail_items,
@@ -1253,11 +1254,15 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                 return
             await interaction.response.send_modal(TabooKeywordModal(action_name, int(interaction.guild.id), view))
             return
-        if action_name == "role_control_open":
+        if action_name in {"role_control_open", "settings_open"}:
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
+                await interaction.response.send_message("❌ This settings option is admin-only.", ephemeral=True)
                 return
-            await interaction.response.send_modal(RoleControlModal(view))
+            await interaction.response.send_message(
+                "⚙️ **Server Settings**\nSelect what you want to configure:",
+                view=SettingsSelectView(view),
+                ephemeral=True
+            )
             return
         if action_name in {"taboo_on", "taboo_off"}:
             if not interaction.guild or not view.admin_visible:
@@ -1983,6 +1988,207 @@ class RoleControlModal(discord.ui.Modal):
             await interaction.response.send_message("❌ Error processing role control. Please try again.", ephemeral=True)
 
 
+class LanguageSelect(discord.ui.Select):
+    """Dropdown for selecting server language."""
+    
+    def __init__(self, view: "CanvasBehaviorView"):
+        from .server_config import get_available_languages, get_server_language
+        
+        self.canvas_view = view
+        server_id = str(view.guild.id) if view.guild else "0"
+        current_lang = get_server_language(server_id)
+        
+        options = []
+        for lang_code, lang_name in get_available_languages().items():
+            options.append(discord.SelectOption(
+                label=lang_name,
+                value=lang_code,
+                description=f"Set server language to {lang_name}",
+                emoji="🌐",
+                default=lang_code == current_lang
+            ))
+        
+        super().__init__(
+            placeholder="🌐 Select server language...",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="language_select"
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            from .server_config import set_server_language, get_server_language
+            from .canvas_personality import _get_current_personality_name, CanvasPersonalitySelectView
+            
+            selected_language = self.values[0]
+            server_id = str(interaction.guild.id) if interaction.guild else "0"
+            
+            # Get current personality before language change
+            current_personality = _get_current_personality_name(server_id)
+            old_language = get_server_language(server_id)
+            
+            # Save the language
+            success = set_server_language(server_id, selected_language)
+            
+            if success:
+                # Check if personality exists for new language
+                from .canvas_personality import _get_available_personalities
+                available_personalities = _get_available_personalities(selected_language)
+                
+                if current_personality in available_personalities:
+                    # Personality exists for new language - offer to update it
+                    await self._offer_personality_language_update(
+                        interaction, current_personality, old_language, selected_language, server_id
+                    )
+                else:
+                    # Personality doesn't exist for new language - just update language
+                    await self._update_language_only(interaction, selected_language)
+            else:
+                await interaction.response.send_message(
+                    "❌ Failed to update language setting.", 
+                    ephemeral=True
+                )
+        except Exception as e:
+            logger.exception(f"Error in language select: {e}")
+            await interaction.response.send_message(
+                "❌ Error updating language. Please try again.", 
+                ephemeral=True
+            )
+    
+    async def _offer_personality_language_update(self, interaction, personality_name, old_language, new_language, server_id):
+        """Offer to update personality to new language version."""
+        try:
+            from .canvas_personality import CanvasPersonalityConfirmView
+            
+            # Create confirmation view for personality language update
+            confirm_view = CanvasPersonalityConfirmView(
+                personality_name=personality_name,
+                server_id=server_id,
+                new_language=new_language,
+                is_language_update=True
+            )
+            
+            await interaction.response.edit_message(
+                content=f"**Language Updated: {old_language} → {new_language}**\n\n"
+                       f"The current personality `{personality_name}` is available in the new language.\n\n"
+                       f"Would you like to update `{personality_name}` to the `{new_language}` version?\n\n"
+                       f"This will migrate the personality files to the new language while preserving your data.",
+                view=confirm_view
+            )
+        except Exception as e:
+            logger.exception(f"Error offering personality language update: {e}")
+            await interaction.response.send_message(
+                "❌ Error preparing personality update. Please try again.", 
+                ephemeral=True
+            )
+    
+    async def _update_language_only(self, interaction, selected_language):
+        """Update language only without personality change."""
+        try:
+            # Update the parent view
+            title, description, content = _build_canvas_behavior_detail(
+                self.canvas_view.current_detail, 
+                self.canvas_view.admin_visible, 
+                self.canvas_view.guild, 
+                self.canvas_view.agent_config
+            ) or (None, None, "")
+            
+            self.canvas_view.auto_response_preview = f"✅ Server language set to: {selected_language}"
+            behavior_embed = _build_canvas_behavior_embed(
+                content or "", 
+                self.canvas_view.admin_visible, 
+                self.canvas_view.auto_response_preview, 
+                title, 
+                description
+            )
+            
+            await interaction.response.edit_message(
+                content=None, 
+                embed=behavior_embed, 
+                view=self.canvas_view
+            )
+        except Exception as e:
+            logger.exception(f"Error updating language only: {e}")
+            await interaction.response.send_message(
+                "❌ Error updating view. Please try again.", 
+                ephemeral=True
+            )
+
+
+class SettingsSelectView(discord.ui.View):
+    """View for selecting settings category (Language or Roles)."""
+    
+    def __init__(self, view: "CanvasBehaviorView"):
+        super().__init__(timeout=300)
+        self.canvas_view = view
+        self.add_item(SettingsSelect(view))
+
+
+class SettingsSelect(discord.ui.Select):
+    """Dropdown for selecting what to configure in settings."""
+    
+    def __init__(self, view: "CanvasBehaviorView"):
+        self.canvas_view = view
+        
+        options = [
+            discord.SelectOption(
+                label="🌐 Server Language",
+                value="language",
+                description="Change the bot's language for this server",
+                emoji="🌐"
+            ),
+            discord.SelectOption(
+                label="🎛️ Role Management",
+                value="roles",
+                description="Enable or disable bot roles",
+                emoji="🎛️"
+            ),
+        ]
+        
+        super().__init__(
+            placeholder="⚙️ Select what to configure...",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="settings_category_select"
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        try:
+            selected = self.values[0]
+            
+            if selected == "language":
+                # Show language selection
+                await interaction.response.edit_message(
+                    content="🌐 **Select Server Language**",
+                    view=LanguageSelectView(self.canvas_view)
+                )
+            elif selected == "roles":
+                # Show role control modal
+                await interaction.response.send_modal(RoleControlModal(self.canvas_view))
+            else:
+                await interaction.response.send_message(
+                    "❌ Invalid selection.", 
+                    ephemeral=True
+                )
+        except Exception as e:
+            logger.exception(f"Error in settings select: {e}")
+            await interaction.response.send_message(
+                "❌ Error processing selection. Please try again.", 
+                ephemeral=True
+            )
+
+
+class LanguageSelectView(discord.ui.View):
+    """View containing only the language select dropdown."""
+    
+    def __init__(self, view: "CanvasBehaviorView"):
+        super().__init__(timeout=300)
+        self.add_item(LanguageSelect(view))
+        self.canvas_view = view
+
+
 TricksterActionModal = _TricksterActionModal
 
 
@@ -2083,6 +2289,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     dice_state = _get_canvas_dice_state(guild)
     answers = _personality_answers.get("dice_game_messages", {})
     descriptions = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+    trickster_messages = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {})
     
     # Build the base content with personality title and pot balance
     title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
@@ -2141,10 +2348,12 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     roll_title = descriptions.get("roll_title", "🎲 **YOUR ROLL:**")
                     result_title = descriptions.get("combination_title", "📊 **RESULT:**")
                     prize_title = descriptions.get("prize_title", "💰 **PRIZE:**")
+                    # Translate combination from English fallback to personality-specific text
+                    translated_combination = translate_dice_combination(combination, trickster_messages)
                     content_parts.extend([
                         #"**🎲 DICE PLAY RESULT**",
                         f"{roll_title}\n **{dice_display}**",
-                        f"{result_title} **{combination}**",
+                        f"{result_title} **{translated_combination}**",
                         "",
                     ])
                     if prize == dice_state['pot_balance']:
@@ -2247,10 +2456,12 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                     prize = record.get('prize', 0)
                     
                     dice_display = "🎲".join(dice.split('-')) if dice else "???"
+                    # Translate combination from English fallback to personality-specific text
+                    translated_combination = translate_dice_combination(combination, trickster_messages)
                     prize_emoji = "💰" if prize > 0 else "💸"
                     
                     content_parts.append(
-                        f"👤 {user_name} | {dice_display} → {combination} | {prize_emoji} {prize:,}"
+                        f"👤 {user_name} | {dice_display} → {translated_combination} | {prize_emoji} {prize:,}"
                     )
             else:
                 historyvoid = descriptions.get("historyvoid", "📊 Any play in the game. Be the first!")
@@ -2386,7 +2597,7 @@ class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixi
             from .canvas_personality import CanvasPersonalitySelect, _get_personality_descriptions as _get_pers_desc
             personality_msgs = _get_pers_desc(get_server_key(guild) if guild else None).get("personality_messages", {})
             self.add_item(CanvasPersonalitySelect(admin_visible, personality_msgs))
-        elif current_detail in ["greetings", "welcome", "commentary", "taboo", "role_control"]:
+        elif current_detail in ["greetings", "welcome", "commentary", "taboo", "settings", "role_control"]:
             self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible, guild))
         self._add_behavior_buttons()
         
