@@ -9,9 +9,12 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 ## ✨ Features
 
 ### 🎭 Multi-Personality System
-- **Multiple Personalities**: Switch between different AI personalities (Putre, Kronk, and more)
+- **Multiple Personalities**: Switch between different AI personalities (Putre, Kronk, Rab, Yuki, and more)
+- **Server-Specific Selection**: Configure different personalities per Discord server via Canvas UI or commands
 - **Character Voice**: Each personality has unique speech patterns, vocabulary, and behavioral traits
 - **Dynamic Responses**: AI maintains character consistency across all interactions
+- **Multi-Language Support**: Personalities available in multiple languages (English, Spanish, Chinese)
+- **Per-Server Language Configuration**: Select preferred language for each server independently
 
 ### 🧠 Advanced Memory Architecture
 - **Four-Layer Memory System**:
@@ -146,11 +149,35 @@ docker run -d --name roleagentbot \
 ```
 
 ### Personality Structure
-Each personality is defined in `personalities/<name>/`:
-- `personality.json`: Core identity and traits
-- `prompts.json`: Behavior-specific prompts
-- `descriptions.json`: UI descriptions and templates
-- `answers.json`: Predefined responses
+Each personality is defined in `personalities/<name>/` with localized language support:
+- **Localized Directories**: `en-US/`, `es-ES/`, `zh-CH/` for different languages
+- **Language-Specific Files**:
+  - `personality.json`: Core identity and traits
+  - `prompts.json`: Behavior-specific prompts
+  - `descriptions.json`: UI descriptions and templates
+  - `answers.json`: Predefined responses
+- **Avatar**: `avatar.png` for personality visual representation
+- **Server Configuration**: Use Canvas UI or commands to set personality and language per server
+
+### Server-Specific Configuration
+Each Discord server can have its own personality and language settings:
+
+**Via Canvas UI:**
+1. Use `!canvas` to open the interactive interface
+2. Navigate to "Server Configuration" section
+3. Select personality from available options (Putre, Kronk, Rab, Yuki, etc.)
+4. Choose preferred language (English, Spanish, Chinese)
+5. Changes apply immediately to the current server
+
+**Via Commands:**
+- `!role<personality>` - Set personality for current server
+- `!canvas` - Access full configuration UI for personality and language
+
+**Benefits:**
+- Different servers can use different personalities simultaneously
+- Language preference per server for multilingual communities
+- No need to restart bot when changing configuration
+- Changes persist across bot restarts
 
 ## 📖 Usage
 
