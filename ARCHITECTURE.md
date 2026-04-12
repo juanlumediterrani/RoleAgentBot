@@ -130,6 +130,34 @@ Command registration happens once during `on_ready()`:
 - Insult/test utilities
 - Role enable/disable controls
 - Runtime state helpers for taboo and talk systems
+- **Bot identity management (`!setpersonality`, `!setnickname`, `!identity`)**
+
+#### Bot Identity Management
+
+The bot supports complete server-specific identity (nickname + avatar) based on personality configuration:
+
+**Commands:**
+- `!setpersonality <name>` - Change server personality with automatic identity sync (admin only)
+- `!setnickname <name>` - Manually set bot nickname (admin only)
+- `!identity` - Show current identity configuration (nickname + avatar status)
+
+**Automatic sync on personality change:**
+During `initialize_server_complete()` or `!setpersonality`, the bot:
+1. Reads `bot_display_name` from `databases/<server_id>/<personality>/personality.json`
+2. Searches for avatar image (`avatar.webp` or `avatar.png`) in the same directory
+3. Updates both nickname and avatar in a **single API call** to minimize rate limit risk
+
+**API Used:**
+```
+PATCH /guilds/{guild.id}/members/@me
+Body: {"nick": "Name", "avatar": "base64_image_data"}
+```
+
+**Requirements:**
+- Bot needs "Change Nickname" permission
+- Avatar formats supported: WebP, PNG (1024x1024px max, < 2MB recommended)
+- Identity changes are local to each guild (multitenant)
+- Falls back gracefully if permissions are missing
 
 ### Dynamic role command layer
 
