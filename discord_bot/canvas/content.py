@@ -2,7 +2,6 @@
 
 from discord_bot import discord_core_commands as core
 from roles import news_watcher
-from roles.news_watcher import watcher_messages
 
 # Dynamic descriptions loading function
 def _get_personality_descriptions(server_id: str = None) -> dict:
@@ -82,7 +81,6 @@ try:
     from agent_roles_db import get_roles_db_instance
 except ImportError:
     get_roles_db_instance = None
-get_watcher_messages = core.get_watcher_messages
 get_poe2_manager = core.get_poe2_manager
 get_banker_db_instance = None  # Now using roles_db directly
 get_behavior_db_instance = core.get_behavior_db_instance

@@ -415,49 +415,6 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         return f"GRRR! {target_user_name} YOU HAVE THE RING! HAND IT OVER OR I'LL CRUSH YOUR SKULL!"
 
 
-async def cmd_trickster_ring(ctx, *args):
-    if not ctx.guild:
-        await ctx.send('❌ This command only works on servers, not in private messages.')
-        return
-
-    if not args:
-        state = _get_ring_state(str(ctx.guild.id))
-        current_freq = state["current_frequency_hours"]
-        iteration = state["frequency_iteration"]
-        base_freq = state["base_frequency_hours"]
-        
-        status_msg = (
-            f"👁️ **Ring status**\n"
-            f"- Enabled: {'yes' if state['enabled'] else 'no'}\n"
-            f"- Base frequency: {base_freq}h\n"
-            f"- Current frequency: {current_freq}h (iteration {iteration})\n"
-            f"- Current target: {state['target_user_name']}"
-        )
-        
-        # Add hot potato explanation if frequency has been reduced
-        if iteration > 0:
-            status_msg += f"\n- 🔥 **Hot potato active**: Frequency reduced by {2 ** iteration}x"
-        
-        await ctx.send(status_msg)
-        return
-
-    action = str(args[0]).lower().strip()
-    if action in {'enable', 'on', 'disable', 'off'}:
-        await _cmd_ring_toggle(ctx, action)
-        return
-    if action == 'frequency':
-        await _cmd_ring_frequency(ctx, args[1:])
-        return
-    if action == 'target':
-        await _cmd_ring_target(ctx)
-        return
-    if action == 'help':
-        await _cmd_ring_help(ctx)
-        return
-
-    await ctx.send('❌ Action not recognized. Use `enable`, `disable`, `frequency`, `target`, or `help`.')
-
-
 async def _cmd_ring_toggle(ctx, action: str):
     if not is_admin(ctx):
         await ctx.send('❌ Only administrators can enable or disable ring on the server.')
@@ -546,58 +503,3 @@ async def _cmd_ring_help(ctx):
     await ctx.send(help_text)
 
 
-async def cmd_accuse_ring(ctx, target: str = ''):
-    if not ctx.guild:
-        await ctx.send('❌ This command only works on servers.')
-        return
-
-    state = _get_ring_state(str(ctx.guild.id), force_refresh=True)
-    if not state.get('enabled', False):
-        await ctx.send('❌ Ring is not enabled on this server.')
-        return
-
-    mentioned_user = None
-    for user in ctx.message.mentions:
-        if not user.bot and user.id != ctx.author.id:
-            mentioned_user = user
-            break
-
-    if mentioned_user is None:
-        await ctx.send('❌ Mention a valid user to target. Example: `!trickster ring target @user`')
-        return
-
-    # Update the target in state and execute immediate accusation
-    target_name = mentioned_user.display_name
-    state['target_user_id'] = str(mentioned_user.id)
-    state['target_user_name'] = target_name
-    _save_ring_state(str(ctx.guild.id), getattr(ctx.author, "name", "target_change"))
-    
-    # Execute immediate accusation
-    try:
-        logger.info(f"🎯 [COMMAND] Executing immediate ring accusation against {target_name}")
-        await _record_accusation(
-            server_id=str(ctx.guild.id),
-            accusation_text=f"ACCUSE {target_name}",
-            guild=ctx.guild,
-            target_user_id=str(mentioned_user.id),
-            target_user_name=target_name,
-            accuser_name=ctx.author.display_name,
-            accuser_id=str(ctx.author.id)
-        )
-        logger.info(f"🎭 [COMMAND] Immediate accusation executed for {target_name}")
-    except Exception as e:
-        logger.error(f"🎭 [COMMAND] Error executing immediate accusation: {e}")
-
-    # Log the target change
-    ring_db = RingDB(str(ctx.guild.id))
-    await asyncio.to_thread(
-        ring_db.save_accusation,
-        ctx.author.id,
-        state['target_user_id'],
-        f"RING_TARGET_CHANGE: New target is {state['target_user_name']}"
-    )
-
-    await ctx.send(
-        f'👁️ **New target selected:** {target_name}\n'
-        f'🎯 **Immediate accusation executed!** The investigation begins now.'
-    )

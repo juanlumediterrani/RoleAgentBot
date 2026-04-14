@@ -92,19 +92,6 @@
         "set_channel_method":"🔧 Establecer método del canal...",
         "select_admin_action":"⚙️ Seleccionar acción de oficial...",
         "server_configuration_title":"**Configuración del Cuartel**"
-          
-    },
-    "commands":{
-        "usage_subscribe": "📝 Use las órdenes: `!watcher subscribe <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
-        "usage_unsubscribe": "📝 Use las órdenes: `!watcher unsubscribe <teatro> [numero_de_fuente]`",
-        "usage_general": "📝 Use las órdenes: `!watcher general <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
-        "usage_keywords": "📝 Use las órdenes: `!watcher keywords \"palabra1,palabra2\" [teatro] [numero_de_fuente|all]`",
-        "usage_cancel_keywords": "📝 Use las órdenes: `!watcher unsubscribe_keywords \"palabra1,palabra2\"`",
-        "usage_mixto": "📝 Use las órdenes: `!watcher mixed <teatro>`",
-        "usage_add_feed": "📝 Solo oficiales: `!watcher add_feed <nombre> <url> <teatro> [pais] [idioma]`",
-        "usage_channel_subscribe": "📝 Solo oficiales: `!watcherchannel subscribe <teatro> [numero_de_fuente|all]`\nSin número: primera fuente | 'all': todas las fuentes",
-        "usage_channel_cancel": "📝 Solo oficiales: `!watcherchannel unsubscribe <teatro> [numero_de_fuente]`",
-        "usage_channel_keywords": "📝 Solo oficiales: `!watcherchannel keywords \"palabra1,palabra2\"`"
     }
 }
 

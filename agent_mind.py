@@ -589,10 +589,14 @@ def refresh_due_recent_memories(server_id: str | None = None) -> int:
         return 1
     else:
         # Process all servers
+        import time
         from agent_db import get_all_server_ids
         server_ids = get_all_server_ids()
         total_processed = 0
-        for sid in server_ids:
+        for idx, sid in enumerate(server_ids):
+            # Small delay between servers to avoid Vertex AI rate limiting
+            if idx > 0:
+                time.sleep(2)
             total_processed += refresh_due_recent_memories(sid)
         return total_processed
 
@@ -1013,10 +1017,14 @@ def refresh_due_relationship_memories(server_id: str | None = None) -> int:
         return processed
     else:
         # Process all servers
+        import time
         from agent_db import get_all_server_ids
         server_ids = get_all_server_ids()
         total_processed = 0
-        for sid in server_ids:
+        for idx, sid in enumerate(server_ids):
+            # Small delay between servers to avoid Vertex AI rate limiting
+            if idx > 0:
+                time.sleep(2)
             total_processed += refresh_due_relationship_memories(sid)
         return total_processed
 
@@ -2326,7 +2334,7 @@ def generate_weekly_personality_evolution(
             if os.path.exists(os.path.join(source_personality_dir, 'personality.json')):
                 import shutil
                 os.makedirs(server_personality_dir, exist_ok=True)
-                for json_file in ['personality.json', 'prompts.json', 'descriptions.json', 'answers.json']:
+                for json_file in ['personality.json', 'prompts.json', 'descriptions.json']:
                     src = os.path.join(source_personality_dir, json_file)
                     dst = os.path.join(server_personality_dir, json_file)
                     if os.path.exists(src):
@@ -2518,7 +2526,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
             if os.path.exists(os.path.join(source_personality_dir, 'personality.json')):
                 import shutil
                 os.makedirs(server_personality_dir, exist_ok=True)
-                for json_file in ['personality.json', 'prompts.json', 'descriptions.json', 'answers.json']:
+                for json_file in ['personality.json', 'prompts.json', 'descriptions.json']:
                     src = os.path.join(source_personality_dir, json_file)
                     dst = os.path.join(server_personality_dir, json_file)
                     if os.path.exists(src):

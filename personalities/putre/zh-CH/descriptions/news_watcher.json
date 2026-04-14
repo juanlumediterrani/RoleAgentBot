@@ -92,18 +92,5 @@
         "set_channel_method":"🔧 设置频道方法...",
         "select_admin_action":"⚙️ 选择管理动作...",
         "server_configuration_title":"**服务器配置**"
-          
-    },
-    "commands":{
-        "usage_subscribe": "📝 用俺斧头砍：`!watcher subscribe <地盘> [巢穴编号|all]`\n没编号：第一个巢穴 | 'all'：所有巢穴",
-        "usage_unsubscribe": "📝 用俺斧头砍：`!watcher unsubscribe <地盘> [巢穴编号]`",
-        "usage_general": "📝 用俺斧头砍：`!watcher general <地盘> [巢穴编号|all]`\n没编号：第一个巢穴 | 'all'：所有巢穴",
-        "usage_keywords": "📝 用俺斧头砍：`!watcher keywords \"词1,词2\" [地盘] [巢穴编号|all]`",
-        "usage_cancel_keywords": "📝 用俺斧头砍：`!watcher unsubscribe_keywords \"词1,词2\"`",
-        "usage_mixto": "📝 用俺斧头砍：`!watcher mixed <地盘>`",
-        "usage_add_feed": "📝 只有头头：`!watcher add_feed <名字> <链接> <地盘> [国家] [语言]`",
-        "usage_channel_subscribe": "📝 只有头头：`!watcherchannel subscribe <地盘> [巢穴编号|all]`\n没编号：第一个巢穴 | 'all'：所有巢穴",
-        "usage_channel_cancel": "📝 只有头头：`!watcherchannel unsubscribe <地盘> [巢穴编号]`",
-        "usage_channel_keywords": "📝 只有头头：`!watcherchannel keywords \"词1,词2\"`"
     }
 }

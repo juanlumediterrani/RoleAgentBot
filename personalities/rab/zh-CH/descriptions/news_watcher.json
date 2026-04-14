@@ -92,18 +92,5 @@
         "set_channel_method":"🔧 为此房间校准过滤器……",
         "select_admin_action":"⚙️ 选择执政官指令……",
         "server_configuration_title":"**服务器架构**"
-          
-    },
-    "commands":{
-        "usage_subscribe": "📝 命令：`!watcher subscribe <领域> [节点_ID|all]`\n无ID：选取首个节点 | 'all'：吸收整个领域。",
-        "usage_unsubscribe": "📝 命令：`!watcher unsubscribe <领域> [节点_ID]`",
-        "usage_general": "📝 命令：`!watcher general <领域> [节点_ID|all]`\n无ID：选取首个节点 | 'all'：分析整个领域。",
-        "usage_keywords": "📝 命令：`!watcher keywords \"模式1,模式2\" [领域] [节点_ID|all]`",
-        "usage_cancel_keywords": "📝 命令：`!watcher unsubscribe_keywords \"模式1,模式2\"`",
-        "usage_mixto": "📝 命令：`!watcher mixed <领域>`",
-        "usage_add_feed": "📝 执政官层级：`!watcher add_feed <名称> <RSS_URL> <领域> [国家] [语言]`",
-        "usage_channel_subscribe": "📝 执政官层级：`!watcherchannel subscribe <领域> [节点_ID|all]`\n为当前频道添加直接数据流。",
-        "usage_channel_cancel": "📝 执政官层级：`!watcherchannel unsubscribe <领域> [节点_ID]`",
-        "usage_channel_keywords": "📝 执政官层级：`!watcherchannel keywords \"模式1,模式2\"`"
     }
 }

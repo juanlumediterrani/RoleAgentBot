@@ -56,7 +56,7 @@
       "role_list_title": "☠️ 化身",
       "role_available": "✅ {role} - 已同步流转中",
       "role_unavailable": "❌ {role} - 失连于沙海",
-      "frequency_help": "📝 调整时间周期：`!{role}frequency <小时数>`（范围：1至168小时）\n示例：`!watcherfrequency 2` 即每2小时接收一次启示。",
+      "frequency_help": "📝 调整时间周期：使用 `!canvas` → 对应角色 → 管理（范围：1至168小时）",
       "music_help": "🎵 **合成共鸣** - `!mc play <频率>` / `!mc queue` | `!mc help` 查阅完整乐谱记录。",
       "treasure_hunter": {
         "button_poe2": "👺 POE2",
@@ -157,6 +157,19 @@
         "记得何时",
         "汝不记得",
         "谁还记得"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "欢迎",
+        "欢迎频道",
+        "迎新"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "大厅",
+        "聊天"
       ]
     }
   }

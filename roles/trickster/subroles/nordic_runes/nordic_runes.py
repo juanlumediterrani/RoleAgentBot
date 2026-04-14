@@ -430,7 +430,18 @@ class NordicRunes:
                     labels = nordic_data.get('labels', {})
 
                     # Load translations and positions from separate runesplane.json file
-                    runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
+                    # Load from databases/{personality}/{language}/descriptions/runesplane.json
+                    personality_dir = _get_personality_dir(server_id)
+                    path_parts = personality_dir.split(os.sep)
+                    if 'personalities' in path_parts:
+                        personalities_idx = path_parts.index('personalities')
+                        path_parts[personalities_idx] = 'databases'
+                        database_dir = os.sep.join(path_parts)
+                        runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
+                    else:
+                        # Fallback to personality directory if structure is unexpected
+                        runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
+                    
                     if os.path.exists(runesplane_path):
                         with open(runesplane_path, 'r', encoding='utf-8') as f:
                             runesplane_data = json.load(f)
@@ -496,7 +507,18 @@ class NordicRunes:
                     descriptions_data = json.load(f)
 
                 # Navigate to guidance data - try runesplane.json first
-                runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
+                # Load from databases/{personality}/{language}/descriptions/runesplane.json
+                personality_dir = _get_personality_dir(server_id)
+                path_parts = personality_dir.split(os.sep)
+                if 'personalities' in path_parts:
+                    personalities_idx = path_parts.index('personalities')
+                    path_parts[personalities_idx] = 'databases'
+                    database_dir = os.sep.join(path_parts)
+                    runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
+                else:
+                    # Fallback to personality directory if structure is unexpected
+                    runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
+                
                 if os.path.exists(runesplane_path):
                     with open(runesplane_path, encoding="utf-8") as f:
                         runesplane_data = json.load(f)

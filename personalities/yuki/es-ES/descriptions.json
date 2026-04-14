@@ -56,7 +56,7 @@
       "role_list_title": "🌸 Presencias Activas",
       "role_available": "✅ {role} - ACTIVO",
       "role_unavailable": "❌ {role} - EN REPOSO",
-      "frequency_help": "📝 Ajusta la cadencia: `!{role}frequency <horas>` (rango: 1 a 168 horas)\nEjemplo: `!watcherfrequency 2` para recibir actualizaciones cada 2 horas.",
+      "frequency_help": "📝 Ajusta la cadencia: Usa `!canvas` → Configuración → Frecuencia (rango: 1 a 168 horas)\nEjemplo: Configura frecuencia a 2 horas para recibir actualizaciones cada 2 horas.",
       "music_help": "🎵 **Música** - `!mc play <nombre>` / `!mc queue` | `!mc help` para consultar el repertorio completo.",
       "treasure_hunter": {
         "button_poe2": "👺 POE2",
@@ -156,6 +156,20 @@
         "recuerdas cuando",
         "no te acuerdas",
         "quién te acuerdas"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "bienvenida",
+        "bienvenidas",
+        "bienvenido",
+        "bienvenidos"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "salón",
+        "sala"
       ]
     }
   }

@@ -39,10 +39,6 @@ try:
 except Exception:
     get_news_watcher_db_instance = None
 
-try:
-    from roles.news_watcher.watcher_messages import get_watcher_messages
-except Exception:
-    get_watcher_messages = None
 
 try:
     from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
@@ -64,14 +60,9 @@ def _get_discord_config(server_id: str) -> dict:
         server_id: Server ID for server-specific configuration
         
     Returns:
-        dict: Discord configuration from answers.json
+        dict: Discord configuration (empty fallback since answers.json removed)
     """
-    try:
-        from agent_runtime import get_personality_message
-        return get_personality_message("answers.json", ["discord"], server_id, {})
-    except Exception as e:
-        logger.warning(f"Could not load discord config for server {server_id}: {e}")
-        return {}
+    return {}
 
 
 def _get_personality_answers() -> dict:
@@ -81,13 +72,7 @@ def _get_personality_answers() -> dict:
     Returns the entire answers.json content for backward compatibility.
     This should be replaced with specific get_personality_message() calls.
     """
-    try:
-        from agent_runtime import get_personality_message
-        from agent_db import get_server_id
-        server_id = get_server_id()
-        return get_personality_message("answers.json", [], server_id, {})
-    except Exception:
-        return {}
+    return {}
 
 
 # Legacy compatibility variables for canvas imports
@@ -292,7 +277,7 @@ def register_core_commands(bot, agent_config):
     async def _cmd_role_toggle(ctx, role_name: str, enabled: bool):
         """Enable or disable roles dynamically."""
         server_id = str(ctx.guild.id) if ctx.guild else None
-        role_cfg = get_personality_message("answers.json", ["role_messages"], server_id, {})
+        role_cfg = {}
         
         if not is_admin(ctx):
             await ctx.send(role_cfg.get("role_no_permission", "❌ Only administrators can enable or disable roles."))
@@ -369,92 +354,100 @@ def register_core_commands(bot, agent_config):
         logger.info("Command agenthelp already registered, skipping...")
 
     async def _show_agent_help(ctx, requested_personality):
-        """Show agent help using the English command surface."""
+        """Show agent help using the English command surface - Canvas-first version."""
         roles_config = AGENT_CFG.get("roles", {})
-        
+
         # Use requested personality name or current personality
         display_name = requested_personality or _personality_name
         help_msg = f"🤖 **Available Commands for {bot.user.name} ({display_name})** 🤖\n\n"
 
-        # Control commands
-        help_msg += "🎛️ **CONTROL COMMANDS**\n"
-        help_msg += f"• `!{greet_name}` - Enable presence greetings by direct message\n"
-        help_msg += f"• `!{nogreet_name}` - Disable presence greetings\n"
-        help_msg += f"• `!{welcome_name}` - Enable new member welcome\n"
-        help_msg += f"• `!{nowelcome_name}` - Disable new member welcome\n"
-        help_msg += f"• `!{insult_name}` - Send an orc insult\n"
+        # Canvas-first notice
+        help_msg += "� **CANVAS UI - PRIMARY INTERFACE**\n"
+        help_msg += "• Use `!canvas` to access all bot features through an interactive interface\n"
+        help_msg += "• Buttons, dropdowns, and visual navigation - no need to remember commands!\n"
+        help_msg += "• All role management, subscriptions, games, and settings available in Canvas\n\n"
+
+        # Essential commands only
+        help_msg += "⚡ **ESSENTIAL COMMANDS** ( kept for convenience )\n"
+        help_msg += "• `!canvas` - **PRIMARY:** Open the Canvas UI for all features\n"
         help_msg += f"• `!{role_cmd_name} <role> <on/off>` - Enable or disable roles dynamically\n"
-        help_msg += f"• `!agenthelp {display_name}` - Show help for this personality\n"
-        help_msg += "• `!readme` - Receive the full user guide by direct message\n\n"
+        help_msg += "• `!setnickname <name>` - Change bot display name (admins only)\n"
+        help_msg += "• `!setpersonality <name>` - Switch bot personality (admins only)\n\n"
 
-        # Role commands
-        help_msg += "🎭 **ROLE COMMANDS**\n"
-
-        # News Watcher
+        # Admin utilities (kept as commands)
+        help_msg += "🔧 **ADMIN UTILITIES**\n"
         if is_role_enabled_check("news_watcher", agent_config, ctx.guild):
-            interval = 1  # Default interval for news_watcher
-            help_msg += f"📡 **News Watcher** - Important alerts every {interval}h\n"
-            help_msg += "  • **Main:** `!watcher` | `!nowatcher` | `!watchernotify`\n"
-            help_msg += "  • **Help:** `!watcherhelp` (users) | `!watcherchannelhelp` (admins)\n"
-            help_msg += "  • **Channel:** `!watcherchannel` group (subscribe, unsubscribe, status, keywords, premises)\n"
-            help_msg += "  • **Subscription:** `!watcher feeds/categories/status/subscribe/unsubscribe/keywords/general/reset`\n\n"
-        # Treasure Hunter
+            help_msg += "• `!forcewatcher` - Force news check immediately (admin only)\n"
+            help_msg += "• `!testwatcher` - Test news watcher without admin (debug)\n"
         if is_role_enabled_check("treasure_hunter", agent_config, ctx.guild):
-            interval = 1  # Default interval for treasure_hunter
-            help_msg += f"💎 **Treasure Hunter** - POE2 item alerts every {interval}h\n"
-            help_msg += "  • **Admin:** `!hunter poe2 on/off`, `!hunterfrequency <h>` (admins only, from a server channel)\n"
-            help_msg += "  • **League:** `!hunter poe2 league \"Standard\"` | `!hunter poe2 \"Fate of the Vaal\"`\n"
-            help_msg += "  • **Items:** `!hunteradd \"item\"` | `!hunterdel \"item\"` | `!hunterdel <number>` | `!hunterlist`\n"
-            help_msg += "  • **Help:** `!hunterhelp` | `!hunter poe2 help`\n\n"
-        # Trickster
+            help_msg += "• `!hunterfrequency <hours>` - Set treasure hunter interval (admin only)\n"
+        help_msg += f"• `!{greet_name}` / `!{nogreet_name}` - Toggle presence greetings\n"
+        help_msg += f"• `!{welcome_name}` / `!{nowelcome_name}` - Toggle welcome messages\n"
+        help_msg += f"• `!{insult_name}` - Send an orc insult\n\n"
+
+        # Voice control (MC - kept as commands)
+        help_msg += "🎵 **VOICE COMMANDS** (MC - voice channel control)\n"
+        help_msg += "• `!mc play \"song name\"` - Play a song\n"
+        help_msg += "• `!mc add \"song name\"` - Add to queue\n"
+        help_msg += "• `!mc skip` - Skip current song\n"
+        help_msg += "• `!mc stop` - Stop playback\n"
+        help_msg += "• `!mc queue` - Show queue\n\n"
+
+        # Role features via Canvas
+        help_msg += "🎭 **ROLE FEATURES** (all available via `!canvas`)\n"
+
+        if is_role_enabled_check("news_watcher", agent_config, ctx.guild):
+            help_msg += "📡 **News Watcher** - Subscribe to news feeds, manage keywords and premises\n"
+
+        if is_role_enabled_check("treasure_hunter", agent_config, ctx.guild):
+            help_msg += "💎 **Treasure Hunter** - POE2 item tracking and price alerts\n"
+
         if is_role_enabled_check("trickster", agent_config, ctx.guild):
             trickster_config = roles_config.get("trickster", {})
-            interval = trickster_config.get("interval_hours", 12)
             subroles = trickster_config.get("subroles", {})
-            
-            help_msg += "🎭 **Trickster** - Multiple subroles:\n"
-            
-            if subroles.get("beggar", {}).get("enabled", False):
-                help_msg += "  • 🙏 **Beggar:** `!trickster beggar enable/disable/frequency <h>/status/help`\n"
-            
-            if subroles.get("ring", {}).get("enabled", False):
-                help_msg += "  • 👁️ **Ring:** `!trickster ring enable/disable/frequency <h>/target @user/help`\n"
-            
+            help_msg += "🎭 **Trickster** - "
+            subrole_list = []
             if subroles.get("dice_game", {}).get("enabled", False):
-                help_msg += "  • 🎲 **Dice Game:** `!dice play/help/balance/stats/ranking/history` | `!dice config bet <amount>` | `!dice config announcements on/off`\n"
-            
-            help_msg += "  • **Main:** `!trickster help`\n\n"
-        # Banker
-        if is_role_enabled_check("banker", agent_config, ctx.guild):
-            help_msg += "💰 **Banker** - Economy and daily rewards\n"
-            help_msg += "  • **Main:** `!banker help`\n"
-            help_msg += "  • **Balance:** `!banker balance` (also available in Canvas)\n"
-            help_msg += "  • **Config:** `!banker bonus <amount>` (admins)\n\n"
-        # Music
-        help_msg += "🎵 **MC** - Request a song while connected to a voice channel\n"
-        help_msg += "  • **Common use:** `!mc play \"ACDC TNT\"` | `!mc add \"Queen Bicycle\"` | `!mc queue`\n"
-        help_msg += "  • **Main:** `!mc help`\n\n"
+                subrole_list.append("Dice Game")
+            if subroles.get("beggar", {}).get("enabled", False):
+                subrole_list.append("Beggar")
+            if subroles.get("ring", {}).get("enabled", False):
+                subrole_list.append("Ring Hunter")
+            if subroles.get("nordic_runes", {}).get("enabled", False):
+                subrole_list.append("Nordic Runes")
+            help_msg += ", ".join(subrole_list) if subrole_list else "Various games and tricks"
+            help_msg += "\n"
 
-        # Multiple agents info (only when no specific personality requested)
-        if not requested_personality: 
+        if is_role_enabled_check("banker", agent_config, ctx.guild):
+            help_msg += "💰 **Banker** - Check balance, view transactions, manage economy\n"
+
+        help_msg += "\n"
+
+        # Deprecated notice
+        help_msg += "⚠️ **DEPRECATED COMMANDS**\n"
+        help_msg += "• Old role commands (`!watcher`, `!hunter`, `!trickster`, `!banker`, etc.) are deprecated\n"
+        help_msg += "• These commands still work but show warnings directing you to `!canvas`\n"
+        help_msg += "• Please migrate to Canvas UI for a better experience\n\n"
+
+        # Multiple agents info
+        if not requested_personality:
             help_msg += "🔀 **MULTI-AGENT SETUP**\n"
             help_msg += f"• Use `!agenthelp {display_name}` for personality-specific help\n"
-            help_msg += "• Each agent has its own personality and commands\n\n"
+            help_msg += "• Each agent has its own personality and Canvas UI\n\n"
 
         # Basic conversation
         help_msg += "💬 **BASIC CONVERSATION**\n"
         help_msg += "• Mention the bot to start a conversation\n"
-        help_msg += "• It responds in character, following the agent's personality\n"
-        help_msg += "• It replies according to its personality\n\n"
-        
-        # Active and inactive roles
+        help_msg += "• It responds in character, following the agent's personality\n\n"
+
+        # Role status
         help_msg += "🎭 **ROLE STATUS**\n"
         role_descriptions = {
-            "mc": "🎵 **Music** - Always available (no activation required)",
-            "news_watcher": "📡 **News Watcher** - Important alerts",
-            "treasure_hunter": "💎 **Treasure Hunter** - Item alerts",
-            "trickster": "🎭 **Trickster** - Beggar, ring, and dice game subroles",
-            "banker": "💰 **Banker** - Economy and daily rewards",
+            "mc": "🎵 **Music** - Always available",
+            "news_watcher": "📡 **News Watcher** - Canvas UI available",
+            "treasure_hunter": "💎 **Treasure Hunter** - Canvas UI available",
+            "trickster": "🎭 **Trickster** - Canvas UI available",
+            "banker": "💰 **Banker** - Canvas UI available",
         }
 
         for role_name_key in roles_config:
@@ -463,13 +456,12 @@ def register_core_commands(bot, agent_config):
                 status_emoji = "✅"
             else:
                 status_emoji = "✅" if enabled else "❌"
-            # Reuse the same role description mapping
             display = role_descriptions.get(role_name_key, f"**{role_name_key.replace('_', ' ').title()}**")
             help_msg += f"• {status_emoji} {display}\n"
 
         # Send help
         server_id = str(ctx.guild.id) if ctx.guild else None
-        help_sent_msg = get_personality_message("answers.json", ["general_messages", "help_sent_private"], server_id, "📩 Help sent by direct message.")
+        help_sent_msg = "📩 Help sent by direct message."
         await send_dm_or_channel(ctx, help_msg, help_sent_msg)
 
 
@@ -531,7 +523,7 @@ def register_core_commands(bot, agent_config):
                         await ctx.author.send(f"{header}```md\n{chunk}\n```")
 
                 server_id = str(ctx.guild.id) if ctx.guild else None
-                readme_sent_msg = get_personality_message("answers.json", ["general_messages", "readme_sent_private"], server_id, "📩 Full user guide sent by direct message.")
+                readme_sent_msg = "📩 Full user guide sent by direct message."
                 await ctx.send(readme_sent_msg)
 
                 logger.info(f"README command executed by {ctx.author.name} in {ctx.guild.name if ctx.guild else 'DM'}")
@@ -552,9 +544,9 @@ def register_core_commands(bot, agent_config):
         async def cmd_test_personality_evolution(ctx):
             """Test weekly personality evolution with synthetic daily memories."""
             server_id = str(ctx.guild.id) if ctx.guild else None
-            role_cfg = get_personality_message("answers.json", ["role_messages"], server_id, {})
+            role_cfg = {}
             if not is_admin(ctx):
-                await ctx.send(role_cfg.get("admin_permission", "❌ Only administrators can test personality evolution."))
+                await ctx.send("❌ Only administrators can test personality evolution.")
                 return
 
             if not ctx.guild:

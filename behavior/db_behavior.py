@@ -287,6 +287,26 @@ class BehaviorDB:
         """Set welcome enabled state."""
         self.set_behavior_state('welcome', enabled, None, updated_by)
     
+    def get_welcome_channel(self) -> str | None:
+        """Get the stored welcome channel ID."""
+        try:
+            state = self.get_behavior_state('welcome')
+            return state['config'].get('channel_id') if state.get('config') else None
+        except Exception as e:
+            logger.error(f"Error getting welcome channel: {e}")
+            return None
+    
+    def set_welcome_channel(self, channel_id: str, updated_by: str = None):
+        """Set the welcome channel ID."""
+        try:
+            state = self.get_behavior_state('welcome')
+            config = state.get('config', {})
+            config['channel_id'] = channel_id
+            self.set_behavior_state('welcome', state['enabled'], config, updated_by)
+            logger.info(f"Welcome channel set to {channel_id} for server: {self.server_key}")
+        except Exception as e:
+            logger.error(f"Error setting welcome channel: {e}")
+    
     def get_commentary_state(self) -> dict:
         """Get commentary state with config."""
         return self.get_behavior_state('commentary')

@@ -21,19 +21,19 @@
       "tips_section": "**Susurros útiles**\n-Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir...\n-Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
     },
     "canvas_home_messages": {
-      "title": "🧭 Igorrr - El Callejón Mugriento",
-      "button_home": "🧭 El Horno",
+      "title": "♨️ Igorrr - El Horno de Leña",
+      "button_home": "♨️ El Horno",
       "button_back": "← Atrás (al sótano)",
-      "button_roles": "🎪 Labores",
-      "button_behavior": "🤖 Tics",
-      "button_help": "❓ ¿Khé?",
+      "button_roles": "🍞 Labores",
+      "button_behavior": "💊 Tics",
+      "button_help": "❓ ¿Ehhh?",
       "button_memory": "🧠 Amnesia",
       "generic_option_label": "Elige tu veneno...",
       "personalitystatus": "Mugre Cargada:",
       "description": "-Toca mis herramientas si te atreves. El panel te deja manejar mis hilos... SSSSS.",
-      "recentsynthesistitle": "**Murmullos del Horno**",
-      "dailymemorytitle": "**Memoria de Rata**",
-      "personalsynthesistitle": "**Tu Rastro de Hollín**",
+      "recentsynthesistitle": "🥖 **Murmullos del Horno**",
+      "dailymemorytitle": "🔥 **Cenizas vivas**",
+      "personalsynthesistitle": "🪤 **Tu Rastro de Hollín**",
       "dm_default_server_title": "🔔 **Usando el horno de: {server_name}**",
       "dm_default_server_message": "*Susurrando desde el privado, usando el primer sótano disponible.*",
       "dm_default_server_separator": "─────────────────────────────────────────────",
@@ -47,7 +47,7 @@
         "button": "💬 Murmullos"
       },
       "greetings": {
-        "title": "**👋 Igorrr - Siseos de Bienvenida**",
+        "title": "**👋 Igorrr - Susurros del horno**",
         "description": "**Descripción:**\n -Igorrr sisea cuando los sacos de harina se conectan.\n -Espera 5 min antes de decir que se fue.\n -(Por implementar):\n Reconoce si no le responden y deja de saludar.",
         "button": "👋 Siseos"
       },
@@ -94,7 +94,7 @@
       "help_commands": "💡 **PARA LOS TONTOS:**",
       "canvas_details": "🎨 **MUGRE EN CANVAS:**",
       "navigation_help": "Usa los botones grasientos para moverte.",
-      "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA**\n\nIgorrr está rascándose la sarna. Pide al Amo que active algo.\n\n**Labores posibles:**\n• 📡 News Watcher - Vigilante\n• 💎 Treasure Hunter - Buscador de chatarra\n• 🎭 Trickster - Mendigo y cenizas\n• 💰 Banker - El tesoro del Amo\n• 🎵 MC - El gramófono oxidado",
+      "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA**\n\nIgorrr está rascándose la sarna. Pide al Amo que active algo.\n\n**Labores posibles:**\n• 📡 News Watcher - Vigilante\n• 💎 Treasure Hunter - Buscador de chatarra\n• 🎭 Trickster - Mendigo y cenizas\n• 🌾 Banker - La despensa del Amo\n• 🎵 MC - El gramófono oxidado",
       "role_list_title": "☠️ Tareas y Castigos",
       "role_available": "✅ {role} - SIBILANTE Y LISTO",
       "role_unavailable": "❌ {role} - RASCÁNDOSE LA SARNA"
@@ -115,9 +115,14 @@
         "description": "**Descripción**\\n -Activa o apaga mis labores. No me hagas trabajar de más... SSSSS.",
         "button": "🎛️ Control"
       },
+      "settings": {
+        "title": "**⚙️ Igorrr - Konfigurazion del Kampamento**",
+        "description": "**Descripción**\\n -Ajusta el idioma del kampamento y aktiva los labores.",
+        "button": "⚙️ Konfigurazion"
+      },
       "personality": {
         "title": "**🎭 Igorrr - Cambio de Piel**",
-        "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\n -Descarga mi piel actual antes de mudarme.\n -Migra mis recuerdos al cambiar.",
+        "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\\n -Descarga mi piel actual antes de mudarme.\\n -Migra mis recuerdos al cambiar.",
         "button": "🎭 Piel"
       }
     },
@@ -160,6 +165,20 @@
         "memoria de rata",
         "saca el carbón",
         "mira en el hollín"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "bienvenida",
+        "bienvenidas",
+        "bienvenido",
+        "bienvenidos"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "salón",
+        "sala"
       ]
     }
   }

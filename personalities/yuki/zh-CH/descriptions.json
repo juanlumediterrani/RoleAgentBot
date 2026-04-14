@@ -56,7 +56,7 @@
       "role_list_title": "🌸 活跃存在",
       "role_available": "✅ {role} - 活跃",
       "role_unavailable": "❌ {role} - 休息中",
-      "frequency_help": "📝 调整频率：`!{role}frequency <小时>` (范围：1 到 168 小时)\n示例：`!watcherfrequency 2` 每2小时接收一次更新。",
+      "frequency_help": "📝 调整频率：使用 `!canvas` → 配置 → 频率 (范围：1 到 168 小时)\n示例：配置频率为 2 小时每2小时接收一次更新。",
       "music_help": "🎵 **音乐** - `!mc play <名称>` / `!mc queue` | `!mc help` 查询完整曲目。",
       "treasure_hunter": {
         "button_poe2": "👺 POE2",
@@ -156,6 +156,19 @@
         "你记得什么时候",
         "你不记得了",
         "谁记得"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "欢迎",
+        "欢迎频道",
+        "迎新"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "大厅",
+        "聊天"
       ]
     }
   }

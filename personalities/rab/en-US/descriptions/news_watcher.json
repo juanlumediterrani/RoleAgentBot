@@ -92,18 +92,5 @@
         "set_channel_method":"🔧 Calibrate filter for this room...",
         "select_admin_action":"⚙️ Select Archon guideline...",
         "server_configuration_title":"**Server Architecture**"
-          
-    },
-    "commands":{
-        "usage_subscribe": "📝 Command: `!watcher subscribe <domain> [node_ID|all]`\nNo ID: takes first node | 'all': absorbs entire domain.",
-        "usage_unsubscribe": "📝 Command: `!watcher unsubscribe <domain> [node_ID]`",
-        "usage_general": "📝 Command: `!watcher general <domain> [node_ID|all]`\nNo ID: takes first node | 'all': analyzes entire domain.",
-        "usage_keywords": "📝 Command: `!watcher keywords \"pattern1,pattern2\" [domain] [node_ID|all]`",
-        "usage_cancel_keywords": "📝 Command: `!watcher unsubscribe_keywords \"pattern1,pattern2\"`",
-        "usage_mixto": "📝 Command: `!watcher mixed <domain>`",
-        "usage_add_feed": "📝 Archon Level: `!watcher add_feed <name> <RSS_url> <domain> [country] [language]`",
-        "usage_channel_subscribe": "📝 Archon Level: `!watcherchannel subscribe <domain> [node_ID|all]`\nAdds a direct flow to current channel.",
-        "usage_channel_cancel": "📝 Archon Level: `!watcherchannel unsubscribe <domain> [node_ID]`",
-        "usage_channel_keywords": "📝 Archon Level: `!watcherchannel keywords \"pattern1,pattern2\"`"
     }
 }

@@ -6,25 +6,11 @@ logger = get_logger('dice_game_messages')
 
 
 def get_dice_game_messages(server_id: str = None):
-    """Load custom Dice Game messages from both answers.json and descriptions.json."""
+    """Load custom Dice Game messages from descriptions.json."""
     combined_messages = {}
     
     try:
-        from agent_runtime import get_personality_file_path, get_personality_directory
-        
-        # Load from answers.json
-        try:
-            answers_path = get_personality_file_path("answers.json", server_id)
-            with open(answers_path, encoding="utf-8") as f:
-                answers_cfg = json.load(f).get("discord", {})
-            
-            dice_game_messages = answers_cfg.get("dice_game_messages", {})
-            dice_game_balance_messages = answers_cfg.get("dice_game_balance_messages", {})
-            combined_messages.update(dice_game_messages)
-            combined_messages.update(dice_game_balance_messages)
-            logger.info("🎲 Loaded dice game messages from answers.json")
-        except Exception as e:
-            logger.warning(f"⚠️ Could not load dice game messages from answers.json: {e}")
+        from agent_runtime import get_personality_directory
         
         # Load from descriptions.json
         try:
@@ -87,7 +73,7 @@ def get_default_messages():
         "straight": "(Straight)",
         "pair": "(Pair)",
         "nothing": "(No Prize)",
-        "big_pot_announcement": "🔥 **POT ALERT** 🔥 The pot has reached **{balance:,} gold coins** ({threshold:,} = 72x the current bet of {bet:,}). Use `!dice play` to try to win it!",
+        "big_pot_announcement": "🔥 **POT ALERT** 🔥 The pot has reached **{balance:,} gold coins** ({threshold:,} = 72x the current bet of {bet:,}). Use `!canvas` → Trickster to try to win it!",
         "jackpot_won_announcement": "� **JACKPOT WON** 🎉 **{player}** has taken the full pot and won **{prize:,} gold coins** in **{server}**!",
         "error_private_message": "❌ This command only works on servers, not in private messages.",
         "error_game_unavailable": "❌ The dice game is not available on this server.",
@@ -106,8 +92,8 @@ def get_default_messages():
         "error_getting_history": "❌ Error getting history.",
         "error_servers_only": "❌ This command only works on servers.",
         "error_admin_only": "❌ Only administrators can configure the dice game.",
-        "error_config_parameter": "❌ You must specify what to configure. Use `!dice config bet <amount>` or `!dice config announcements on/off`.",
-        "error_specify_amount": "❌ You must specify the amount. Example: `!dice config bet 15`.",
+        "error_config_parameter": "❌ You must specify what to configure. Use `!canvas` → Trickster → Admin to configure.",
+        "error_specify_amount": "❌ You must specify the amount. Use `!canvas` → Trickster → Admin to configure.",
         "error_bet_range": "❌ The bet must be between 1 and 1000 coins.",
         "fixed_bet_configured": "✅ **Fixed bet configured** - All games will now cost {amount:,} coins.",
         "error_configuring_bet": "❌ Error configuring fixed bet.",
@@ -125,17 +111,17 @@ def get_default_messages():
         "ranking_won": "💰 Won: {won:,}",
         "ranking_games": "🎲 Games: {games}",
         "ranking_balance_line": "📈 Balance: {balance} ({profitability:.1f}%)",
-        "no_games_played": "🎲 **You haven't played yet** - Use `!dice play` to start!",
+        "no_games_played": "🎲 **You haven't played yet** - Use `!canvas` → Trickster to start!",
         "help_title": "🎲 **DICE GAME - HELP** 🎲",
         "help_description": "Test your luck with Kronk's dice game! 🎲\n\n",
         "help_commands": "**Commands:**\n",
-        "help_play": "• `!dice play` - Roll the dice (costs fixed bet)\n",
-        "help_balance": "• `!dice balance` - View current pot balance\n",
-        "help_stats": "• `!dice stats` - Your personal statistics\n",
-        "help_ranking": "• `!dice ranking` - Server player ranking\n",
-        "help_history": "• `!dice history` - Last games played\n",
-        "help_config": "• `!dice config bet <amount>` (Admins) - Set fixed bet\n",
-        "help_announcements": "• `!dice config announcements on/off` (Admins) - Toggle pot threshold and jackpot win alerts\n",
+        "help_play": "• Use `!canvas` → Trickster → Play to roll the dice\n",
+        "help_balance": "• Use `!canvas` → Trickster to view pot balance\n",
+        "help_stats": "• Use `!canvas` → Trickster → Stats for your statistics\n",
+        "help_ranking": "• Use `!canvas` → Trickster → Ranking for server ranking\n",
+        "help_history": "• Use `!canvas` → Trickster → History for last games\n",
+        "help_config": "• Use `!canvas` → Trickster → Admin to configure (Admins)\n",
+        "help_announcements": "• Use `!canvas` → Trickster → Admin → Announcements to toggle alerts\n",
         "help_prizes": "**Prizes:**\n",
         "help_triple_ones": "• **1-1-1** - Wins the entire pot! 🎰\n",
         "help_three_of_a_kind": "• **Three of a kind** - 3x bet\n",

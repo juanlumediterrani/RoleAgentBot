@@ -163,7 +163,7 @@ async def database_cleanup():
 
 
 async def set_bot_presence_message(guild=None, bot_instance=None):
-    """Set bot presence status message from server-specific answers.json.
+    """Set bot presence status message from server-specific configuration.
     
     Args:
         guild: Optional Discord guild to get server_id from. If None, uses first available guild.
@@ -186,7 +186,7 @@ async def set_bot_presence_message(guild=None, bot_instance=None):
             return
         
         server_id = get_server_key(target_guild)
-        discord_cfg = get_personality_message("answers.json", ["discord"], server_id, {})
+        discord_cfg = {}
         presence_message = discord_cfg.get("mc_messages", {}).get("presence_status", "Use !canvas to interact")
         await target_bot.change_presence(
             activity=discord.Activity(type=discord.ActivityType.listening, name=presence_message)
@@ -448,7 +448,7 @@ async def on_member_join(member):
     from discord_bot.discord_utils import get_server_key
     
     server_id = get_server_key(member.guild)
-    discord_cfg = get_personality_message("answers.json", ["discord"], server_id, {})
+    discord_cfg = {}
     await handle_member_join(member, discord_cfg)
 
 
@@ -460,7 +460,7 @@ async def on_presence_update(before, after):
     from discord_bot.discord_utils import get_server_key
     
     server_id = get_server_key(after.guild)
-    discord_cfg = get_personality_message("answers.json", ["discord"], server_id, {})
+    discord_cfg = {}
     bot_display_name = PERSONALITY.get("bot_display_name", "Bot")
     await handle_presence_update(before, after, discord_cfg, bot_display_name, bot)
 
@@ -490,7 +490,7 @@ async def on_voice_state_update(member, before, after):
                         
                         mc_commands = get_mc_commands_instance()
                         server_id = get_server_key(guild)
-                        mc_cfg = get_personality_message("answers.json", ["mc_messages"], server_id, {})
+                        mc_cfg = {}
                         msg = mc_cfg.get("voice_leave_empty", "👋 The voice channel is empty, leaving now.")
                         
                         if mc_commands:

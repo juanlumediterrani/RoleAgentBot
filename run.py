@@ -114,8 +114,11 @@ async def execute_recent_memory_summary_all_servers():
         return
 
     total_refreshed = 0
-    for server_id in server_ids:
+    for idx, server_id in enumerate(server_ids):
         try:
+            # Small delay between servers to avoid Vertex AI rate limiting
+            if idx > 0:
+                await asyncio.sleep(2)
             refreshed = await asyncio.to_thread(refresh_due_recent_memories, server_id)
             if refreshed:
                 total_refreshed += refreshed
@@ -139,8 +142,11 @@ async def execute_daily_memory_summary_all_servers():
     
     logger.info(f"[run] 🧠 Running daily memory generation for {len(server_ids)} servers")
     
-    for server_id in server_ids:
+    for idx, server_id in enumerate(server_ids):
         try:
+            # Small delay between servers to avoid Vertex AI rate limiting
+            if idx > 0:
+                await asyncio.sleep(3)
             # Check if server needs daily memory generation
             from agent_db import get_global_db
             import sqlite3
@@ -182,6 +188,8 @@ async def execute_daily_memory_summary_all_servers():
                     
         except Exception as e:
             logger.error(f"[run] ❌ Error processing daily memory for server '{server_id}': {e}")
+            # Continue with next server even if one fails
+            continue
     
     logger.info(f"[run] 🧠 Daily memory generation completed for all servers")
 
@@ -218,8 +226,11 @@ async def execute_weekly_personality_evolution_all_servers():
     logger.info(f"[run] 🧬 Running weekly personality evolution for {len(server_ids)} servers")
     
     total_evolved = 0
-    for server_id in server_ids:
+    for idx, server_id in enumerate(server_ids):
         try:
+            # Small delay between servers to avoid Vertex AI rate limiting
+            if idx > 0:
+                await asyncio.sleep(3)
             result = await asyncio.to_thread(generate_weekly_personality_evolution, server_id)
             if result.get("success"):
                 total_evolved += 1

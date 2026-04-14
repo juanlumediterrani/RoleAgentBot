@@ -56,7 +56,7 @@
       "role_list_title": "☠️ Kargos y Trabajos",
       "role_available": "✅ {role} - RUGIENDO Y ZANGRIENTO",
       "role_unavailable": "❌ {role} - PUDRIENDOSE EN LA TIERRA",
-      "frequency_help": "📝 Uza el acha azi: `!{role}frequency <oras>` (de 1 a 168 oras)\nEjemplo: `!watcherfrequency 2` ¡para ke aulle kada 2 putas oras!",
+      "frequency_help": "📝 Uza `!canvas` → el rol → Admin pa ajustar la frekuensia (de 1 a 168 oras)!",
       "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!",
       "treasure_hunter": {
         "button_poe2": "👺 POE2",
@@ -159,6 +159,20 @@
         "recuerdas cuando",
         "no te acuerdas",
         "kien te acuerdas"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "bienvenida",
+        "bienvenidas",
+        "bienvenido",
+        "bienvenidos"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "salón",
+        "sala"
       ]
     }
   }

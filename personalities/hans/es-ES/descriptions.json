@@ -56,7 +56,7 @@
       "role_list_title": "☠️ UNIDADES MILITARES Y OPERACIONES",
       "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA! 🦅⚖️",
       "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO! 📉💥",
-      "frequency_help": "📝 ¡Usar comando: `!{role}frequency <horas>` (de 1 a 168 horas)\n¡Ejemplo: `!watcherfrequency 2` para vigilar cada 2 horas, ¡SCHNELL!",
+      "frequency_help": "📝 ¡Use `!canvas` → el rol correspondiente → Admin para ajustar la frecuencia (de 1 a 168 horas), ¡SCHNELL!",
       "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!",
       "treasure_hunter": {
         "button_poe2": "👺 POE2",
@@ -153,6 +153,20 @@
         "recuerdas cuando",
         "no te acuerdas",
         "kien te acuerdas"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "bienvenida",
+        "bienvenidas",
+        "bienvenido",
+        "bienvenidos"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "salón",
+        "sala"
       ]
     }
   }

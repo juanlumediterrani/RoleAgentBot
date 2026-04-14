@@ -7,7 +7,6 @@ from .state import _get_canvas_watcher_method_label, _get_canvas_watcher_frequen
 
 logger = core.logger
 get_news_watcher_db_instance = core.get_news_watcher_db_instance
-get_watcher_messages = core.get_watcher_messages
 
 
 def _get_nw_descriptions(guild=None) -> dict:
@@ -1420,7 +1419,6 @@ def build_canvas_role_news_watcher_detail(
 ) -> str | None:
     """Build a detailed News Watcher view with 3-block structure."""
     from .content import _build_canvas_intro_block
-    watcher_messages = get_watcher_messages() if get_watcher_messages else {}
     
     # Safe nested access with fallbacks
     news_watcher = _get_nw_descriptions(guild)
@@ -1432,7 +1430,7 @@ def build_canvas_role_news_watcher_detail(
         watcher_descriptions = news_watcher
 
     def _watcher_text(key: str, fallback: str) -> str:
-        value = watcher_descriptions.get(key, watcher_messages.get(key))
+        value = watcher_descriptions.get(key)
         return str(value).strip() if value else fallback
 
     def _get_watcher_personal_intro_block() -> str:

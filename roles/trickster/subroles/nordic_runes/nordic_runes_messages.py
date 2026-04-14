@@ -6,6 +6,9 @@ Contains rune definitions, interpretations, and messages with personality suppor
 from agent_logging import get_logger
 logger = get_logger('nordic_runes_messages')
 
+# Import rune data from rune_data.py (English fallback)
+from .rune_data import RUNES, READING_TYPES
+
 # Dynamic personality loading
 try:
     import sys
@@ -40,226 +43,6 @@ def _get_personality_dir(server_id: str = None) -> str:
     except:
         # Fallback to putre if something goes wrong
         return os.path.join(project_root, "personalities", "putre")
-
-# Elder Futhark Runes with their meanings
-RUNES = {
-    'fehu': {
-        'name': 'Fehu',
-        'symbol': 'ᚠ',
-        'meaning': 'Wealth, Cattle, Possessions',
-        'keywords': ['wealth', 'abundance', 'success', 'prosperity', 'material gain'],
-        'reversed': False,
-        'description': 'Represents material wealth, prosperity, and success in financial matters.'
-    },
-    'uruz': {
-        'name': 'Uruz',
-        'symbol': 'ᚢ',
-        'meaning': 'Aurochs, Strength, Power',
-        'keywords': ['strength', 'courage', 'power', 'vitality', 'wild energy'],
-        'reversed': False,
-        'description': 'Symbolizes untamed strength, courage, and primal energy.'
-    },
-    'thurisaz': {
-        'name': 'Thurisaz',
-        'symbol': 'ᚦ',
-        'meaning': 'Giant, Thor, Protection',
-        'keywords': ['protection', 'defense', 'conflict', 'change', 'catharsis'],
-        'reversed': False,
-        'description': 'Represents protective forces, conflict resolution, and necessary change.'
-    },
-    'ansuz': {
-        'name': 'Ansuz',
-        'symbol': 'ᚨ',
-        'meaning': 'God, Odin, Communication',
-        'keywords': ['communication', 'wisdom', 'knowledge', 'divine messages', 'inspiration'],
-        'reversed': False,
-        'description': 'Symbolizes divine communication, wisdom, and inspired speech.'
-    },
-    'raidho': {
-        'name': 'Raidho',
-        'symbol': 'ᚱ',
-        'meaning': 'Journey, Travel, Movement',
-        'keywords': ['journey', 'travel', 'movement', 'change', 'progress'],
-        'reversed': False,
-        'description': 'Represents physical and spiritual journeys, movement, and life path.'
-    },
-    'kenaz': {
-        'name': 'Kenaz',
-        'symbol': 'ᚲ',
-        'meaning': 'Torch, Knowledge, Creativity',
-        'keywords': ['knowledge', 'creativity', 'inspiration', 'clarity', 'vision'],
-        'reversed': False,
-        'description': 'Symbolizes illumination, creative fire, and intellectual clarity.'
-    },
-    'gebo': {
-        'name': 'Gebo',
-        'symbol': 'ᚷ',
-        'meaning': 'Gift, Partnership, Exchange',
-        'keywords': ['gift', 'partnership', 'exchange', 'balance', 'harmony'],
-        'reversed': False,
-        'description': 'Represents gifts, partnerships, and balanced exchanges.'
-    },
-    'wunjo': {
-        'name': 'Wunjo',
-        'symbol': 'ᚹ',
-        'meaning': 'Joy, Pleasure, Harmony',
-        'keywords': ['joy', 'happiness', 'harmony', 'success', 'fulfillment'],
-        'reversed': False,
-        'description': 'Symbolizes joy, harmony, and the fulfillment of desires.'
-    },
-    'hagalaz': {
-        'name': 'Hagalaz',
-        'symbol': 'ᚺ',
-        'meaning': 'Hail, Disruption, Change',
-        'keywords': ['disruption', 'change', 'crisis', 'transformation', 'chaos'],
-        'reversed': False,
-        'description': 'Represents disruptive change, crisis, and necessary transformation.'
-    },
-    'nauthiz': {
-        'name': 'Nauthiz',
-        'symbol': 'ᚾ',
-        'meaning': 'Need, Necessity, Constraint',
-        'keywords': ['need', 'necessity', 'constraint', 'discipline', 'delay'],
-        'reversed': False,
-        'description': 'Symbolizes necessity, constraint, and the need for patience.'
-    },
-    'isa': {
-        'name': 'Isa',
-        'symbol': 'ᛁ',
-        'meaning': 'Ice, Stillness, Stagnation',
-        'keywords': ['ice', 'stillness', 'stagnation', 'delay', 'clarity'],
-        'reversed': False,
-        'description': 'Represents stillness, delay, and the need for reflection.'
-    },
-    'jera': {
-        'name': 'Jera',
-        'symbol': 'ᛃ',
-        'meaning': 'Year, Harvest, Cycle',
-        'keywords': ['harvest', 'cycle', 'reward', 'patience', 'natural timing'],
-        'reversed': False,
-        'description': 'Symbolizes the harvest, natural cycles, and deserved rewards.'
-    },
-    'eiwaz': {
-        'name': 'Eiwaz',
-        'symbol': 'ᛇ',
-        'meaning': 'Yew Tree, Protection, Endurance',
-        'keywords': ['protection', 'endurance', 'transformation', 'mysteries', 'life-death'],
-        'reversed': False,
-        'description': 'Represents the yew tree, endurance, and life-death mysteries.'
-    },
-    'perthro': {
-        'name': 'Perthro',
-        'symbol': 'ᛈ',
-        'meaning': 'Mystery, Fate, Chance',
-        'keywords': ['mystery', 'fate', 'chance', 'secrets', 'destiny'],
-        'reversed': False,
-        'description': 'Symbolizes mysteries, fate, and the element of chance.'
-    },
-    'algiz': {
-        'name': 'Algiz',
-        'symbol': 'ᛉ',
-        'meaning': 'Elk, Protection, Divine Connection',
-        'keywords': ['protection', 'divine connection', 'higher self', 'spiritual defense'],
-        'reversed': False,
-        'description': 'Represents protection, divine connection, and spiritual defense.'
-    },
-    'sowilo': {
-        'name': 'Sowilo',
-        'symbol': 'ᛊ',
-        'meaning': 'Sun, Victory, Success',
-        'keywords': ['sun', 'victory', 'success', 'honor', 'achievement'],
-        'reversed': False,
-        'description': 'Symbolizes the sun, victory, and successful achievement.'
-    },
-    'tiwaz': {
-        'name': 'Tiwaz',
-        'symbol': 'ᛏ',
-        'meaning': 'Tyr, Justice, Honor',
-        'keywords': ['justice', 'honor', 'courage', 'sacrifice', 'leadership'],
-        'reversed': False,
-        'description': 'Represents justice, honor, and principled leadership.'
-    },
-    'berkano': {
-        'name': 'Berkano',
-        'symbol': 'ᛒ',
-        'meaning': 'Birch, Growth, Rebirth',
-        'keywords': ['growth', 'rebirth', 'fertility', 'new beginnings', 'motherhood'],
-        'reversed': False,
-        'description': 'Symbolizes growth, rebirth, and nurturing new beginnings.'
-    },
-    'ehwaz': {
-        'name': 'Ehwaz',
-        'symbol': 'ᛖ',
-        'meaning': 'Horse, Movement, Trust',
-        'keywords': ['movement', 'trust', 'cooperation', 'progress', 'partnership'],
-        'reversed': False,
-        'description': 'Represents movement, trust, and cooperative progress.'
-    },
-    'mannaz': {
-        'name': 'Mannaz',
-        'symbol': 'ᛗ',
-        'meaning': 'Man, Humanity, Self',
-        'keywords': ['humanity', 'self', 'relationships', 'cooperation', 'community'],
-        'reversed': False,
-        'description': 'Symbolizes humanity, self-awareness, and social relationships.'
-    },
-    'laguz': {
-        'name': 'Laguz',
-        'symbol': 'ᛚ',
-        'meaning': 'Water, Flow, Intuition',
-        'keywords': ['water', 'flow', 'intuition', 'emotions', 'unconscious'],
-        'reversed': False,
-        'description': 'Represents water, emotional flow, and intuitive wisdom.'
-    },
-    'ingwaz': {
-        'name': 'Ingwaz',
-        'symbol': 'ᛜ',
-        'meaning': 'Ing, Fertility, Potential',
-        'keywords': ['fertility', 'potential', 'growth', 'stored energy', 'completion'],
-        'reversed': False,
-        'description': 'Symbolizes fertility, potential energy, and gradual growth.'
-    },
-    'dagaz': {
-        'name': 'Dagaz',
-        'symbol': 'ᛞ',
-        'meaning': 'Day, Dawn, Breakthrough',
-        'keywords': ['day', 'dawn', 'breakthrough', 'clarity', 'transformation'],
-        'reversed': False,
-        'description': 'Represents the dawn, breakthrough moments, and positive transformation.'
-    },
-    'othala': {
-        'name': 'Othala',
-        'symbol': 'ᛟ',
-        'meaning': 'Heritage, Home, Legacy',
-        'keywords': ['heritage', 'home', 'legacy', 'ancestry', 'property'],
-        'reversed': False,
-        'description': 'Symbolizes heritage, home, and ancestral legacy.'
-    }
-}
-
-# Reading types and their descriptions
-READING_TYPES = {
-    'single': {
-        'name': 'Single Rune',
-        'description': 'A single rune for quick guidance on a specific question',
-        'num_runes': 1
-    },
-    'three': {
-        'name': 'Three Rune Spread',
-        'description': 'Past, Present, Future - A comprehensive reading for life situations',
-        'num_runes': 3
-    },
-    'cross': {
-        'name': 'Five Rune Cross',
-        'description': 'A detailed reading covering multiple aspects of your situation',
-        'num_runes': 5
-    },
-    'runic_cross': {
-        'name': 'Runic Cross',
-        'description': 'Traditional seven-rune spread for deep spiritual guidance',
-        'num_runes': 7
-    }
-}
 
 # English fallback messages
 ENGLISH_MESSAGES = {
@@ -356,7 +139,18 @@ def load_personality_messages(server_id: str = None):
                     merged_messages[key] = value
                 
                 # IMPORTANT: Also include translations section from separate runesplane.json file
-                runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
+                # Load from databases/{personality}/{language}/descriptions/runesplane.json
+                personality_dir = _get_personality_dir(server_id)
+                path_parts = personality_dir.split(os.sep)
+                if 'personalities' in path_parts:
+                    personalities_idx = path_parts.index('personalities')
+                    path_parts[personalities_idx] = 'databases'
+                    database_dir = os.sep.join(path_parts)
+                    runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
+                else:
+                    # Fallback to personality directory if structure is unexpected
+                    runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
+                
                 if os.path.exists(runesplane_path):
                     with open(runesplane_path, encoding="utf-8") as f:
                         runesplane_data = json.load(f)
@@ -436,11 +230,22 @@ def get_guidance_messages(category: str, server_id: str = None) -> dict:
                     descriptions = json.load(f)
 
                     # Try to load guidance from runesplane.json first
-                    runesplane_path = os.path.join(_get_personality_dir(server_id), "descriptions", "runesplane.json")
+                    # Load from databases/{personality}/{language}/descriptions/runesplane.json
+                    personality_dir = _get_personality_dir(server_id)
+                    path_parts = personality_dir.split(os.sep)
+                    if 'personalities' in path_parts:
+                        personalities_idx = path_parts.index('personalities')
+                        path_parts[personalities_idx] = 'databases'
+                        database_dir = os.sep.join(path_parts)
+                        runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
+                    else:
+                        # Fallback to personality directory if structure is unexpected
+                        runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
+                    
                     if os.path.exists(runesplane_path):
                         with open(runesplane_path, encoding="utf-8") as f:
                             runesplane_data = json.load(f)
-                            guidance_data = runesplane_data.get('guidance', {})
+                            guidance_data = runesplane_data.get("guidance", {})
                     else:
                         # Fallback to old structure
                         nordic_runes_data = descriptions.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
@@ -451,27 +256,25 @@ def get_guidance_messages(category: str, server_id: str = None) -> dict:
     return guidance_data.get(category, {})
 
 def get_runes_list_content(page: int = 1, server_id: str = None) -> str:
-    """Generate runes list content dynamically from RUNES data with translations and pagination using server_id."""
-    # Load personality messages for translations
+    """Generate runes list content dynamically from runesplane.json with pagination using server_id."""
+    import json
+    import os
+    
+    # Get project root
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    
+    # Load personality messages for labels
     messages = load_personality_messages(server_id)
-    translations = messages.get('translations', {})
-
-    # Load labels from descriptions.json - access labels section directly
+    
+    # Load labels from descriptions.json
+    labels_data = {}
     try:
-        import json
-        import os
-        
-        # Get project root and descriptions path
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         descriptions_path = os.path.join(_get_personality_dir(server_id), "descriptions.json")
-
-        labels_data = {}
         if os.path.exists(descriptions_path):
             with open(descriptions_path, encoding="utf-8") as f:
                 descriptions = json.load(f)
-                # Get the labels section directly
                 labels_data = descriptions.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {}).get("labels", {})
-
+        
         # If no labels found in main descriptions.json, try loading from trickster.json
         if not labels_data:
             trickster_path = os.path.join(_get_personality_dir(server_id), "descriptions", "trickster.json")
@@ -482,40 +285,105 @@ def get_runes_list_content(page: int = 1, server_id: str = None) -> str:
     except:
         labels_data = {}
     
-    # Get all runes as list for pagination
-    all_runes = list(RUNES.items())
+    # Load rune data from runesplane.json
+    runes_data = {}
+    try:
+        # Load from databases/{personality}/{language}/descriptions/runesplane.json
+        personality_dir = _get_personality_dir(server_id)
+        # Extract personality and language from the path
+        # personality_dir is like: /home/.../personalities/{personality}/{language}
+        # We need to change it to: /home/.../databases/{personality}/{language}
+        path_parts = personality_dir.split(os.sep)
+        # Find the 'personalities' directory and replace with 'databases'
+        if 'personalities' in path_parts:
+            personalities_idx = path_parts.index('personalities')
+            path_parts[personalities_idx] = 'databases'
+            database_dir = os.sep.join(path_parts)
+            runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
+        else:
+            # Fallback to personality directory if structure is unexpected
+            runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
+        
+        if os.path.exists(runesplane_path):
+            with open(runesplane_path, encoding="utf-8") as f:
+                runesplane_data = json.load(f)
+                runes_data = runesplane_data.get("translations", {})
+        else:
+            # Fallback to English RUNES from rune_data.py if runesplane.json doesn't exist
+            logger.warning(f"runesplane.json not found at {runesplane_path}, using fallback RUNES from rune_data.py")
+            for rune_key, rune_info in RUNES.items():
+                runes_data[rune_key] = {
+                    'meaning': rune_info.get('meaning', 'Unknown'),
+                    'keywords': rune_info.get('keywords', []),
+                    'interpretation': rune_info.get('description', 'No description')
+                }
+    except Exception as e:
+        logger.error(f"Failed to load runesplane.json: {e}, using fallback RUNES from rune_data.py")
+        # Fallback to English RUNES from rune_data.py
+        for rune_key, rune_info in RUNES.items():
+            runes_data[rune_key] = {
+                'meaning': rune_info.get('meaning', 'Unknown'),
+                'keywords': rune_info.get('keywords', []),
+                'interpretation': rune_info.get('description', 'No description')
+            }
     
-    # Calculate pagination - 8 runes per page without keywords
+    # Define rune symbols and names (Elder Futhark order)
+    rune_order = [
+        ('fehu', 'ᚠ', 'Fehu'),
+        ('uruz', 'ᚢ', 'Uruz'),
+        ('thurisaz', 'ᚦ', 'Thurisaz'),
+        ('ansuz', 'ᚨ', 'Ansuz'),
+        ('raidho', 'ᚱ', 'Raidho'),
+        ('kenaz', 'ᚲ', 'Kenaz'),
+        ('gebo', 'ᚷ', 'Gebo'),
+        ('wunjo', 'ᚹ', 'Wunjo'),
+        ('hagalaz', 'ᚺ', 'Hagalaz'),
+        ('nauthiz', 'ᚾ', 'Nauthiz'),
+        ('isa', 'ᛁ', 'Isa'),
+        ('jera', 'ᛃ', 'Jera'),
+        ('eiwaz', 'ᛇ', 'Eiwaz'),
+        ('perthro', 'ᛈ', 'Perthro'),
+        ('algiz', 'ᛉ', 'Algiz'),
+        ('sowilo', 'ᛊ', 'Sowilo'),
+        ('tiwaz', 'ᛏ', 'Tiwaz'),
+        ('berkano', 'ᛒ', 'Berkano'),
+        ('ehwaz', 'ᛖ', 'Ehwaz'),
+        ('mannaz', 'ᛗ', 'Mannaz'),
+        ('laguz', 'ᛚ', 'Laguz'),
+        ('ingwaz', 'ᛜ', 'Ingwaz'),
+        ('dagaz', 'ᛞ', 'Dagaz'),
+        ('othala', 'ᛟ', 'Othala')
+    ]
+    
+    # Calculate pagination - 8 runes per page
     runes_per_page = 8
-    total_pages = 3
     start_idx = (page - 1) * runes_per_page
     end_idx = start_idx + runes_per_page
-    page_runes = all_runes[start_idx:end_idx]
+    page_runes = rune_order[start_idx:end_idx]
     
     # Page titles with rune ranges - get from descriptions.json with fallback
     page_titles = {
         1: messages.get('runes_page_1_title', "🔮 **THE ELDER FUTHARK - RUNES I (Fehu to Wunjo)** 🔮"),
-        2: messages.get('runes_page_2_title', "🔮 **THE ELDER FUTHARK - RUNES II ( Hagalaz to Sowilo)** 🔮"), 
+        2: messages.get('runes_page_2_title', "🔮 **THE ELDER FUTHARK - RUNES II (Hagalaz to Sowilo)** 🔮"), 
         3: messages.get('runes_page_3_title', "🔮 **THE ELDER FUTHARK - RUNES III (Tiwaz to Othala)** 🔮")
     }
     
     content = page_titles.get(page, f"🔮 **THE ELDER FUTHARK - RUNES {page}** 🔮") + "\n\n" + "-"*55 + "\n\n"
 
-    # Generate content for this page without keywords
-    for rune_key, rune_data in page_runes:
-        symbol = rune_data.get('symbol', '?')
-        name = rune_data.get('name', 'Unknown')
-        meaning = rune_data.get('meaning', 'Unknown')
-        interpretation = rune_data.get('description', 'No description')
+    # Generate content for this page by looping through runesplane.json data
+    title_meaning = labels_data.get("meaning", "Significado:")
+    title_keywords = labels_data.get("keywords", "Palabras Clave:")
+    title_interpretation = labels_data.get("interpretation", "Interpretación:")
+    
+    for rune_key, symbol, name in page_runes:
+        rune_info = runes_data.get(rune_key, {})
+        meaning = rune_info.get('meaning', 'Unknown')
+        keywords = rune_info.get('keywords', [])
+        interpretation = rune_info.get('interpretation', 'No description')
         
-        # Use translations if available
-        rune_translation = translations.get(rune_key, {})
-        if rune_translation:
-            meaning = rune_translation.get('meaning', meaning)
-            interpretation = rune_translation.get('interpretation', interpretation)
-        
-        title_interpretation = labels_data.get("interpretation", "Interpretation:")
-        content += f"**{symbol} {name}** - {meaning}\n"
+        content += f"**{symbol} {name}**\n"
+        content += f"{title_meaning} {meaning}\n"
+        content += f"{title_keywords} {keywords}\n"
         content += f"{title_interpretation} {interpretation}\n\n"
     
     return content

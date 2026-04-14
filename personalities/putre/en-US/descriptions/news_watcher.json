@@ -92,17 +92,5 @@
         "set_channel_method":"🔧 Set Kanal Way...",
         "select_admin_action":"⚙️ Boss Move...",
         "server_configuration_title":"**Camp Setup**"
-    },
-    "commands":{
-        "usage_subscribe": "📝 Uze me axe: `!watcher subscribe <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
-        "usage_unsubscribe": "📝 Uze me axe: `!watcher unsubscribe <ground> [nezt_num]`",
-        "usage_general": "📝 Uze me axe: `!watcher general <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
-        "usage_keywords": "📝 Uze me axe: `!watcher keywords \"word1,word2\" [ground] [nezt_num|all]`",
-        "usage_cancel_keywords": "📝 Uze me axe: `!watcher unsubscribe_keywords \"word1,word2\"`",
-        "usage_mixto": "📝 Uze me axe: `!watcher mixed <ground>`",
-        "usage_add_feed": "📝 Boss Only: `!watcher add_feed <name> <url> <ground> [land] [talk]`",
-        "usage_channel_subscribe": "📝 Boss Only: `!watcherchannel subscribe <ground> [nezt_num|all]`\nNo num: first nezt | 'all': everythin'",
-        "usage_channel_cancel": "📝 Boss Only: `!watcherchannel unsubscribe <ground> [nezt_num]`",
-        "usage_channel_keywords": "📝 Boss Only: `!watcherchannel keywords \"word1,word2\"`"
     }
 }

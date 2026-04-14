@@ -20,6 +20,27 @@ _last_greetings = {}
 # Store pending greetings for server selection
 _pending_greetings = {}
 
+# Global rate limiting for Vertex AI - minimum seconds between any greetings
+_LAST_GLOBAL_GREETING_TIME = 0
+_MIN_SECONDS_BETWEEN_GREETINGS = 3  # Minimum 3 seconds between LLM calls for greetings
+
+
+async def _wait_for_greeting_rate_limit():
+    """Ensure minimum delay between greetings to avoid Vertex AI saturation."""
+    global _LAST_GLOBAL_GREETING_TIME
+    import time
+    import asyncio
+    
+    current_time = time.time()
+    time_since_last = current_time - _LAST_GLOBAL_GREETING_TIME
+    
+    if time_since_last < _MIN_SECONDS_BETWEEN_GREETINGS:
+        wait_time = _MIN_SECONDS_BETWEEN_GREETINGS - time_since_last
+        logger.debug(f"Greeting rate limit: waiting {wait_time:.1f}s before next greeting")
+        await asyncio.sleep(wait_time)
+    
+    _LAST_GLOBAL_GREETING_TIME = time.time()
+
 
 class ServerSelectionButton(discord.ui.Button):
     """Button for selecting a specific server for greeting."""
@@ -38,15 +59,21 @@ class ServerSelectionButton(discord.ui.Button):
     
     async def callback(self, interaction: discord.Interaction):
         """Handle server selection and send greeting."""
-        user_id = str(interaction.user.id)
+        # Disable this button so it can't be clicked again
+        self.disabled = True
+        self.style = discord.ButtonStyle.secondary
         
-        # Remove the selection message
+        # Update the view so other buttons remain usable
         try:
-            await interaction.message.delete()
+            await interaction.response.edit_message(view=self.view)
         except Exception as e:
-            logger.debug(f"Could not delete server selection message: {e}")
+            logger.debug(f"Could not update selection message buttons: {e}")
+            try:
+                await interaction.response.defer()
+            except Exception:
+                pass
         
-        # Send the greeting for selected server
+        # Send the greeting for selected server as a separate DM
         await _send_greeting_to_user(
             user_id=interaction.user.id,
             user_name=interaction.user.display_name,
@@ -54,10 +81,6 @@ class ServerSelectionButton(discord.ui.Button):
             greeting_data=self.greeting_data,
             bot=self.view.bot
         )
-        
-        # Clean up pending greeting
-        if user_id in _pending_greetings:
-            del _pending_greetings[user_id]
 
 
 class ServerSelectionView(discord.ui.View):
@@ -112,6 +135,9 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
         greeting_data: Dictionary with greeting configuration
         bot: Discord bot client
     """
+    # Apply global rate limiting to prevent Vertex AI saturation
+    await _wait_for_greeting_rate_limit()
+    
     try:
         server_id = str(guild.id)
         server_name = get_server_key(guild)
@@ -390,30 +416,14 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
         # User is in multiple servers - show server selection
         logger.info(f"User {after.name} is in {len(eligible_guilds)} servers - showing selection")
         
-        # Build server selection embed
-        avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
-        
+        # Build server selection embed (neutral, no server-specific identity)
         selection_embed = discord.Embed(
-            title=f"{bot_display_name}",
-            description="I see you're in multiple servers with me! Which server should I greet you for?",
-            color=discord.Color.blue()
+            title="Choose a server",
+            description="I'm present in several servers with you! Click each button to receive a greeting from that server.",
+            color=discord.Color.blurple()
         )
         
-        if avatar_url:
-            selection_embed.set_thumbnail(url=avatar_url)
-        
-        # List the servers
-        server_list = "\n".join([f"🏠 {g.name}" for g in eligible_guilds[:10]])
-        if len(eligible_guilds) > 10:
-            server_list += f"\n... and {len(eligible_guilds) - 10} more"
-        
-        selection_embed.add_field(
-            name="Your Servers",
-            value=server_list or "No eligible servers",
-            inline=False
-        )
-        
-        selection_embed.set_footer(text="Click a button below to choose • You have 5 minutes")
+        selection_embed.set_footer(text="Each button sends a separate greeting • Buttons expire in 5 minutes")
         
         # Create greeting data for the view
         greeting_data = {

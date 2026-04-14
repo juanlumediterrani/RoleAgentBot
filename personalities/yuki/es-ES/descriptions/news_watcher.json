@@ -92,17 +92,5 @@
         "set_channel_method":"🔎 Configurar método para este canal...",
         "select_admin_action":"⚙️ Seleccionar acción de administrador...",
         "server_configuration_title":"**Configuración del servidor**"
-    },
-    "commands":{
-        "usage_subscribe": "📝 Comando: `!watcher subscribe <categoría> [ID_fuente|all]`\nSin ID: usa la primera fuente | 'all': suscribe toda la categoría.",
-        "usage_unsubscribe": "📝 Comando: `!watcher unsubscribe <categoría> [ID_fuente]`",
-        "usage_general": "📝 Comando: `!watcher general <categoría> [ID_fuente|all]`\nSin ID: usa la primera fuente | 'all': analiza toda la categoría.",
-        "usage_keywords": "📝 Comando: `!watcher keywords \"término1,término2\" [categoría] [ID_fuente|all]`",
-        "usage_cancel_keywords": "📝 Comando: `!watcher unsubscribe_keywords \"término1,término2\"`",
-        "usage_mixto": "📝 Comando: `!watcher mixed <categoría>`",
-        "usage_add_feed": "📝 Solo Administradores: `!watcher add_feed <nombre> <url_RSS> <categoría> [país] [idioma]`",
-        "usage_channel_subscribe": "📝 Solo Administradores: `!watcherchannel subscribe <categoría> [ID_fuente|all]`\nActiva un flujo directo en el canal actual.",
-        "usage_channel_cancel": "📝 Solo Administradores: `!watcherchannel unsubscribe <categoría> [ID_fuente]`",
-        "usage_channel_keywords": "📝 Solo Administradores: `!watcherchannel keywords \"término1,término2\"`"
     }
 }

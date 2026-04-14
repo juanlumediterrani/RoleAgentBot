@@ -259,9 +259,6 @@
       "message_title": "## UN UMANO LLAMADO {user_name} DIJO EL SIGUIENTE ULTRAJE:",
       "task": "TAREA: El umano usado la palabra {word} en un canal público, esa palabra es sagrada para los orkos! Solo los de la tribu pueden usarla. Haz que lamente haberla usado en vano!"
     },
-    "mission_commentary": {
-      "task": "TAREA: Comenta sobre la misión actual de Putre. Menciona el objetivo principal y cómo está progresando. Mantén tu estilo orco estratégico."
-    },
     "readme_enhanced_prompt": {
       "task": "TAREA: Explica las partes relevantes de la documentación respondiendo a la pregunta del usuario. Mantén tu respuesta dentro del personaje y centrada en la pregunta del usuario. No hagas copia y pega de la documentacion entera. En vez de eso explicalo de forma natural como si le estuvieras enseñando a usar el bot. Mantén la personalidad de Putre y usa su forma de expresarse."
     },

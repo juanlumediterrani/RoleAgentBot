@@ -56,7 +56,7 @@
       "role_list_title": "☠️ Encarnaciones",
       "role_available": "✅ {role} - SINCRONIZADO Y FLUYENDO",
       "role_unavailable": "❌ {role} - DESCONECTADO EN LA ARENA",
-      "frequency_help": "📝 Ajusta el ciclo temporal: `!{role}frequency <horas>` (rango: 1 a 168 horas)\nEjemplo: `!watcherfrequency 2` para recibir visiones cada 2 horas.",
+      "frequency_help": "📝 Ajusta el ciclo temporal: usa `!canvas` → el rol correspondiente → Admin (rango: 1 a 168 horas)",
       "music_help": "🎵 **Resonancia Sintética** - `!mc play <frecuencia>` / `!mc queue` | `!mc help` para leer el registro completo de melodías.",
       "treasure_hunter": {
         "button_poe2": "👺 POE2",
@@ -157,6 +157,20 @@
         "recuerdas cuando",
         "no te acuerdas",
         "quién te acuerdas"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "bienvenida",
+        "bienvenidas",
+        "bienvenido",
+        "bienvenidos"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "salón",
+        "sala"
       ]
     }
   }

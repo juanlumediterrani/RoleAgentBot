@@ -56,7 +56,7 @@
       "role_list_title": "☠️ Titlez and Jobz",
       "role_available": "✅ {role} - ROARIN' AND BLOODY",
       "role_unavailable": "❌ {role} - ROTTIN' IN DA DIRT",
-      "frequency_help": "📝 Use yer choppa like dis: `!{role}frequency <hourz>` (from 1 to 168 hourz)\nExample: `!watcherfrequency 2` so 'e 'owls every 2 zoggin' hourz!",
+      "frequency_help": "📝 Use `!canvas` → da role → Admin to set da frequency (1 to 168 hourz)!",
       "music_help": "🎵 **Putrec's Drumz** - `!mc play <noize>` / `!mc queue` | `!mc help` to read da fat scroll of 'ow to do it!"
     },
     "behavior_messages": {
@@ -146,6 +146,17 @@
         "u remembah wen",
         "don't u remembah",
         "oo do u remembah"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "welcome",
+        "welcomes"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "lobby"
       ]
     }
   }

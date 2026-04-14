@@ -6,22 +6,7 @@ logger = get_logger('banker_messages')
 
 def get_banker_messages():
     """Load custom Banker messages from personality file."""
-    try:
-        from agent_runtime import get_personality_file_path
-        answers_path = get_personality_file_path("answers.json")
-        with open(answers_path, encoding="utf-8") as f:
-            banker_messages = json.load(f).get("discord", {}).get("banker_messages", {})
-        
-        if not banker_messages:
-            logger.warning("⚠️ No custom banker messages found in personality")
-            return get_default_messages()
-        
-        logger.info("💰 Custom banker messages loaded from personality")
-        return banker_messages
-        
-    except Exception as e:
-        logger.error(f"❌ Error loading banker messages: {e}")
-        return get_default_messages()
+    return get_default_messages()
 
 def get_default_messages():
     """Default messages if no customization available."""

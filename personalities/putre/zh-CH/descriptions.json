@@ -56,7 +56,7 @@
       "role_list_title": "☠️ 活计与苦工",
       "role_available": "✅ {role} - 嗷嗷叫活着",
       "role_unavailable": "❌ {role} - 烂在地里",
-      "frequency_help": "📝 用斧头这样砍：`!{role}frequency <小时>` （1到168小时）\n例如：`!watcherfrequency 2` 让俺每两小时嚎一次！",
+      "frequency_help": "📝 用 `!canvas` → 对应角色 → 管理 调频率（1到168小时）！",
       "music_help": "🎵 **普特雷的战鼓** - `!mc play <噪音>` / `!mc queue` | `!mc help` 看那又臭又长的用法卷轴！",
       "treasure_hunter": {
         "button_poe2": "👺 流放之路2",
@@ -147,6 +147,19 @@
         "你想得起来",
         "有没有印象",
         "你脑子里有"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "欢迎",
+        "欢迎频道",
+        "迎新"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "大厅",
+        "聊天"
       ]
     }
   }

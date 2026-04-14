@@ -92,18 +92,5 @@
         "set_channel_method":"🔧 Calibrar filtro para esta sala...",
         "select_admin_action":"⚙️ Seleccionar directriz de Arconte...",
         "server_configuration_title":"**Arquitectura del Servidor**"
-          
-    },
-    "commands":{
-        "usage_subscribe": "📝 Comando: `!watcher subscribe <dominio> [ID_del_nodo|all]`\nSin ID: toma el primer nodo | 'all': absorbe todo el dominio.",
-        "usage_unsubscribe": "📝 Comando: `!watcher unsubscribe <dominio> [ID_del_nodo]`",
-        "usage_general": "📝 Comando: `!watcher general <dominio> [ID_del_nodo|all]`\nSin ID: toma el primer nodo | 'all': analiza el dominio completo.",
-        "usage_keywords": "📝 Comando: `!watcher keywords \"patrón1,patrón2\" [dominio] [ID_del_nodo|all]`",
-        "usage_cancel_keywords": "📝 Comando: `!watcher unsubscribe_keywords \"patrón1,patrón2\"`",
-        "usage_mixto": "📝 Comando: `!watcher mixed <dominio>`",
-        "usage_add_feed": "📝 Nivel Arconte: `!watcher add_feed <nombre> <url_RSS> <dominio> [país] [idioma]`",
-        "usage_channel_subscribe": "📝 Nivel Arconte: `!watcherchannel subscribe <dominio> [ID_del_nodo|all]`\nAñade un flujo directo al canal actual.",
-        "usage_channel_cancel": "📝 Nivel Arconte: `!watcherchannel unsubscribe <dominio> [ID_del_nodo]`",
-        "usage_channel_keywords": "📝 Nivel Arconte: `!watcherchannel keywords \"patrón1,patrón2\"`"
     }
 }

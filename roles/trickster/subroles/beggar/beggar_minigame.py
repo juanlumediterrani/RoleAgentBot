@@ -644,14 +644,6 @@ class BeggarMinigame:
         participant_count = len(participants)
         multiplier_desc = general_multiplier['description']
         
-        # Try to get message from answers.json
-        try:
-            fallback_message = PERSONALITY.get('answers', {}).get('discord', {}).get('beggar_messages', {}).get('minigame_fallback')
-            if fallback_message:
-                return fallback_message.format(new_reason=new_reason, participant_count=participant_count, multiplier=multiplier_desc)
-        except Exception as e:
-            logger.warning(f"Could not load minigame fallback from answers.json: {e}")
-        
         # Neutral English fallback
         return f"Reason changed to '{new_reason}'! Thanks to the {participant_count} donors! {multiplier_desc}. Everyone improved their relationship!"
 

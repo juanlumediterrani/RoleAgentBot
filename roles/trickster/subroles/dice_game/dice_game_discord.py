@@ -24,6 +24,9 @@ def register_dice_commands(bot, personality, send_dm_or_channel, is_admin,
     """
     Register all dice game commands with the Discord bot.
     
+    NOTE: !dice command has been removed. Use !canvas → Trickster instead.
+    Helper functions are kept for Canvas UI integration.
+    
     Args:
         bot: Discord bot instance
         personality: Personality configuration
@@ -34,59 +37,11 @@ def register_dice_commands(bot, personality, send_dm_or_channel, is_admin,
         DICE_GAME_AVAILABLE: Boolean indicating if dice game is available
     """
     
-    # Global variables removed - using roles_db directly
-    
-    # --- !dice (main dice game command) ---
-    if DICE_GAME_AVAILABLE and get_roles_db_instance is not None and get_roles_db_instance is not None:
-        if bot.get_command("dice") is None:
-            @bot.group(name="dice")
-            async def cmd_dice(ctx):
-                """Main dice game command."""
-                if not ctx.guild:
-                    await ctx.send(get_message("error_private_message"))
-                    return
-
-                if not DICE_GAME_AVAILABLE or not get_roles_db_instance is not None or not get_roles_db_instance is not None:
-                    await ctx.send(get_message("error_game_unavailable"))
-                    return
-
-                if ctx.invoked_subcommand is None:
-                    await cmd_dice_help(ctx, personality)
-                    return
-
-            # Register dice subcommands
-            @cmd_dice.command(name="play")
-            async def cmd_dice_play_wrapper(ctx):
-                await cmd_dice_play(ctx, personality, send_dm_or_channel, is_admin, get_banker_db_instance, process_play)
-            
-            @cmd_dice.command(name="help")
-            async def cmd_dice_help_wrapper(ctx):
-                await cmd_dice_help(ctx, personality)
-            
-            @cmd_dice.command(name="balance")
-            async def cmd_dice_balance_wrapper(ctx):
-                await cmd_dice_balance(ctx, personality)
-            
-            @cmd_dice.command(name="stats")
-            async def cmd_dice_stats_wrapper(ctx):
-                await cmd_dice_stats(ctx)
-            
-            @cmd_dice.command(name="ranking")
-            async def cmd_dice_ranking_wrapper(ctx):
-                await cmd_dice_ranking(ctx)
-            
-            @cmd_dice.command(name="history")
-            async def cmd_dice_history_wrapper(ctx):
-                await cmd_dice_history(ctx)
-            
-            @cmd_dice.command(name="config")
-            async def cmd_dice_config_wrapper(ctx):
-                await cmd_dice_config(ctx, personality)
-
-            logger.info("🎲 Dice command registered")
+    # NOTE: !dice command registration removed - use Canvas UI instead
+    logger.info("🎲 Dice commands registration skipped - moved to Canvas UI")
 
 
-# --- DICE GAME SUBCOMMANDS ---
+# --- DICE GAME HELPER FUNCTIONS (for Canvas UI) ---
 
 async def get_announcement_channel(ctx):
     """Get the best channel for announcements (general channel or current channel)."""

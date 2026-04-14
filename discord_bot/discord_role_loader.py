@@ -11,11 +11,14 @@ from discord_bot.discord_utils import is_role_enabled_check
 logger = get_logger('role_loader')
 
 # Role module registry — canonical English names only
+# NOTE: All role commands below have been migrated to Canvas UI (!canvas)
+# The Discord commands are deprecated and will show warnings directing users to Canvas
+# Essential commands that remain: forcewatcher, testwatcher, hunterfrequency (admin utilities)
 ROLE_REGISTRY = {
-    "news_watcher": ("roles.news_watcher.news_watcher_discord", "register_news_watcher_commands"),
-    "treasure_hunter": ("roles.treasure_hunter.treasure_hunter_discord", "register_treasure_hunter_commands"),
-    "trickster": ("roles.trickster.trickster_discord", "register_trickster_commands"),
-    "banker": ("roles.banker.banker_discord", "register_banker_commands"),
+    "news_watcher": ("roles.news_watcher.news_watcher_discord", "register_news_watcher_commands"),  # DEPRECATED - use !canvas
+    "treasure_hunter": ("roles.treasure_hunter.treasure_hunter_discord", "register_treasure_hunter_commands"),  # DEPRECATED - use !canvas
+    "trickster": ("roles.trickster.trickster_discord", "register_trickster_commands"),  # DEPRECATED - use !canvas
+    "banker": ("roles.banker.banker_discord", "register_banker_commands"),  # DEPRECATED - use !canvas
 }
 
 # MC is always registered (does not depend on enabled in the same way)
@@ -28,6 +31,9 @@ def _try_register_role(bot, module_path, func_name, personality, agent_config):
         module = importlib.import_module(module_path)
         register_func = getattr(module, func_name)
         register_func(bot, personality, agent_config)
+        # Log deprecation notice for Canvas migration
+        role_name = module_path.split('.')[1] if len(module_path.split('.')) > 1 else module_path
+        logger.info(f"📋 Role {role_name} commands registered (DEPRECATED commands will show Canvas migration warnings)")
         return True
     except ImportError as e:
         logger.warning(f"Module {module_path} not available: {e}")
@@ -64,6 +70,9 @@ async def register_all_role_commands(bot, agent_config, personality):
             logger.info(f"💤 Role {role_name} disabled")
 
     logger.info(f"Registration complete: {len(registered)} active roles — {', '.join(registered) if registered else 'none'}")
+    if registered:
+        logger.info("🎨 CANVAS-FIRST MIGRATION: Deprecated commands will show warnings directing users to !canvas")
+        logger.info("✅ Essential commands still work: canvas, setnickname, setpersonality, role*, forcewatcher, testwatcher, hunterfrequency, mc voice")
 
 
 async def register_single_role(bot, role_name, agent_config, personality):

@@ -828,18 +828,7 @@ def _get_alert_title(server_id: str = None) -> str:
         if not personality:
             from agent_engine import PERSONALITY
             personality = PERSONALITY
-        descriptions = personality.get("discord", {})
-        
-        # Try legacy watcher messages
-        watcher_messages = descriptions.get("watcher_messages", {})
-        
-        # Look for a title field in watcher messages
-        if "critical_alert_title" in watcher_messages:
-            return watcher_messages["critical_alert_title"]
-        elif "canvas_personal_title" in watcher_messages:
-            return watcher_messages["canvas_personal_title"]
-        else:
-            return "🤖 Watcher"  # Fallback
+        return "🤖 Watcher"  # Fallback
     except Exception:
         return "🤖 Watcher"  # Fallback
 
@@ -1128,8 +1117,8 @@ async def main():
     try:
         logger.info("🚀 Starting News Watcher...")
         
-        # Get server configuration
-        current_server_id = get_server_id()
+        # Get server configuration - check environment variable first (set by scheduler), then fall back to get_server_id()
+        current_server_id = os.environ.get("ACTIVE_SERVER_ID") or get_server_id()
         if not current_server_id:
             logger.warning("⚠️ No active server configured, skipping News Watcher execution")
             return

@@ -2291,16 +2291,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     
     # Get current dice state and personality messages
     dice_state = _get_canvas_dice_state(guild)
-    # Load server-specific answers from answers.json
-    try:
-        from agent_runtime import get_personality_file_path
-        answers_path = get_personality_file_path("answers.json", server_id)
-        with open(answers_path, encoding="utf-8") as f:
-            answers_cfg = json.load(f).get("discord", {})
-        answers = answers_cfg.get("dice_game_messages", {})
-    except Exception as e:
-        logger.warning(f"Could not load server-specific answers.json: {e}")
-        answers = _personality_answers.get("dice_game_messages", {})
+    answers = {}
     descriptions = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
     trickster_messages = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {})
     

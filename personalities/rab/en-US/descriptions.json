@@ -56,7 +56,7 @@
       "role_list_title": "☠️ Incarnations",
       "role_available": "✅ {role} - SYNCHRONIZED AND FLOWING",
       "role_unavailable": "❌ {role} - DISCONNECTED IN THE ARENA",
-      "frequency_help": "📝 Adjust the temporal cycle: `!{role}frequency <hours>` (range: 1 to 168 hours)\nExample: `!watcherfrequency 2` to receive visions every 2 hours.",
+      "frequency_help": "📝 Adjust the temporal cycle: use `!canvas` → the corresponding role → Admin (range: 1 to 168 hours)",
       "music_help": "🎵 **Synthetic Resonance** - `!mc play <frequency>` / `!mc queue` | `!mc help` to read the complete melody registry.",
       "treasure_hunter": {
         "button_poe2": "👺 POE2",
@@ -150,6 +150,17 @@
         "do you remember that",
         "dont you remember",
         "who do you remember"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "welcome",
+        "welcomes"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "lobby"
       ]
     }
   }

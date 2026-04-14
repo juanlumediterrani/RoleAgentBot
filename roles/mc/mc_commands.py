@@ -168,13 +168,7 @@ def _test_cookies_work(cookie_path: str) -> bool:
 
 
 def _load_mc_answers() -> dict:
-    try:
-        from agent_runtime import get_personality_file_path
-        answers_path = get_personality_file_path("answers.json")
-        with open(answers_path, encoding="utf-8") as f:
-            return json.load(f).get("discord", {})
-    except Exception:
-        return {}
+    return {}
 
 class MCCommands:
     """MC (Master of Ceremonies) commands for Discord music."""

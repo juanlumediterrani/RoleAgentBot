@@ -8,8 +8,25 @@ from datetime import datetime
 from agent_logging import get_logger
 
 from .db_role_news_watcher import get_news_watcher_db_instance
-from .watcher_messages import get_message
 from discord_bot.discord_utils import send_dm_or_channel
+
+def get_message(key, **kwargs):
+    """Fallback message function since watcher_messages.py was removed."""
+    fallback_messages = {
+        "feeds_available_title": "📡 Available Feeds",
+        "categories_available_title": "📂 Available Categories",
+        "subscription_added": "✅ Subscription added successfully",
+        "subscription_removed": "✅ Subscription removed successfully",
+        "subscription_list_title": "📋 Your Subscriptions",
+        "no_subscriptions": "❌ You have no active subscriptions",
+        "error_invalid_feed": "❌ Invalid feed ID",
+        "error_invalid_category": "❌ Invalid category",
+        "premise_added": "✅ Premise added successfully",
+        "premise_removed": "✅ Premise removed successfully",
+        "premise_list_title": "🎯 Your Premises",
+        "no_premises": "❌ You have no premises configured",
+    }
+    return fallback_messages.get(key, key)
 
 logger = get_logger('watcher_commands')
 
@@ -41,13 +58,7 @@ def _get_watcher_description_text(key: str, fallback: str) -> str:
         except FileNotFoundError:
             pass  # Continue to fallback
         
-        # Fallback to old descriptions.json using server-specific helper
-        from agent_runtime import get_personality_file_path
-        descriptions_path = get_personality_file_path("descriptions.json")
-        with open(descriptions_path, encoding="utf-8") as f:
-            descriptions = json.load(f).get("discord", {}).get("watcher_messages", {})
-        value = descriptions.get(key)
-        return str(value) if value else fallback
+        return fallback
     except Exception:
         return fallback
 

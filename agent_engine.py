@@ -194,7 +194,7 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                 logger.info(f"🧬 [PERSONALITY] Copying personality files from {base_personality_dir} to {server_personality_dir}")
                 import shutil
                 # Copy all JSON files from base personality to server directory
-                for json_file in ['personality.json', 'prompts.json', 'descriptions.json', 'answers.json']:
+                for json_file in ['personality.json', 'prompts.json', 'descriptions.json']:
                     src_file = os.path.join(base_personality_dir, json_file)
                     dst_file = os.path.join(server_personality_dir, json_file)
                     if os.path.exists(src_file):
@@ -240,11 +240,6 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                     merged_personality['discord'] = {}
                 merged_personality['discord'].update(descriptions_data.get('discord', {}))
                 merged_personality['descriptions'] = descriptions_data.get('discord', {})
-        
-        answers_file = os.path.join(personality_dir, 'answers.json')
-        if os.path.exists(answers_file):
-            with open(answers_file, encoding="utf-8") as f:
-                merged_personality['answers'] = json.load(f)
         
         return merged_personality
     

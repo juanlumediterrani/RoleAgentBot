@@ -17,26 +17,12 @@ MISSION_CONFIG = {
 }
 
 # Load personality messages
-try:
-    import json
-    import os
-    from agent_runtime import get_personality_file_path
-    answers_path = get_personality_file_path("answers.json")
-    with open(answers_path, encoding="utf-8") as f:
-        answers_cfg = json.load(f).get("discord", {})
-    RING_MESSAGES = answers_cfg.get("role_messages", {}).get("ring_accusations", [
-        "You have my ring! Give it to me now!",
-        "Where is my ring? I know you have it!",
-        "Give me back my ring or I'll cut off your hands",
-        "That ring you're looking at... it's mine! Give it back!"
-    ])
-except Exception:
-    RING_MESSAGES = [
-        "You have my ring! Give it to me now!",
-        "Where is my ring? I know you have it!",
-        "Give me back my ring or I'll cut off your hands",
-        "That ring you're looking at... it's mine! Give it back!"
-    ]
+RING_MESSAGES = [
+    "You have my ring! Give it to me now!",
+    "Where is my ring? I know you have it!",
+    "Give me back my ring or I'll cut off your hands",
+    "That ring you're looking at... it's mine! Give it back!"
+]
 
 # Track last accusation time per server to avoid spam
 _last_accusation_time = {}

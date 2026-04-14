@@ -103,55 +103,12 @@ def register_banker_commands(bot, personality, agent_config):
         logger.warning("💰 Banker database not available, skipping command registration")
         return
 
-    if bot.get_command("banker") is not None:
-        logger.info("💰 Banker commands already registered")
-        return
-
-    @bot.group(name="banker")
-    async def cmd_banker(ctx, *args):
-        """Main Banker command for economic management."""
-        logger.info(f"💰 Banker command received with args: {args}")
-
-        if not ctx.guild:
-            await ctx.send(get_message("error_banker_db"))
-            return
-
-        try:
-            db_banker = _get_banker_db(ctx.guild)
-            if db_banker is None:
-                await ctx.send(get_message("error_banker_db"))
-                return
-        except Exception as e:
-            logger.exception(f"Error getting banker DB: {e}")
-            await ctx.send(get_message("error_banker_db"))
-            return
-
-        server_id = str(ctx.guild.id)
-        server_id=ctx.guild.name
-
-        # No args or "help" → show help
-        if not args or (args and args[0].lower() == "help"):
-            embed = _build_banker_help_embed()
-            confirm = get_message("help_sent")
-            await send_embed_dm_or_channel(ctx, embed, confirm)
-            return
-
-        subcommand = args[0].lower()
-        subargs = args[1:] if len(args) > 1 else []
-
-        if subcommand == "balance":
-            await _cmd_banker_balance(ctx, db_banker, server_id)
-        elif subcommand == "tae":
-            await _cmd_banker_tae(ctx, db_banker, server_id, subargs)
-        elif subcommand == "bonus":
-            await _cmd_banker_bonus(ctx, db_banker, server_id, subargs)
-        else:
-            await ctx.send(get_message("command_not_recognized", subcommand=subcommand))
-
-    logger.info("💰 Banker commands registered")
+    # NOTE: !banker command has been removed. Use !canvas → Banker instead.
+    # Helper functions are kept for Canvas UI integration.
+    logger.info("💰 Banker commands registration skipped - moved to Canvas UI")
 
 
-# --- SUBCOMMANDS ---
+# --- HELPER FUNCTIONS (for Canvas UI) ---
 
 async def _cmd_banker_balance(ctx, db_banker, server_id):
     """Show user's gold balance."""
