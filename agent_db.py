@@ -44,8 +44,8 @@ def get_server_id() -> str | None:
                 # Only one server directory, use it
                 return server_dirs[0].name
             elif len(server_dirs) > 1:
-                # Multiple servers, can't determine which one
-                logger.warning(f"Multiple server directories found: {[d.name for d in server_dirs]}. Cannot determine active server.")
+                # Multiple servers, can't determine which one (expected for multi-server deployments)
+                logger.debug(f"Multiple server directories found: {[d.name for d in server_dirs]}. Cannot determine active server.")
     except Exception as e:
         logger.warning(f"Error reading databases directory: {e}")
     
@@ -61,9 +61,8 @@ def get_all_server_ids() -> list[str]:
         server_ids = []
         for server_dir in db_dir.iterdir():
             if server_dir.is_dir() and server_dir.name.isdigit():
-                # Check if this server has an agent database
-                agent_db_path = server_dir / f"agent_{get_personality_name(server_dir.name).lower()}.db"
-                if agent_db_path.exists():
+                # Check if this server has an agent database (any personality)
+                if any(server_dir.glob("agent_*.db")):
                     server_ids.append(server_dir.name)
         
         return sorted(server_ids)
@@ -91,14 +90,13 @@ def get_user_last_server_id(user_id: str) -> str | None:
         for server_dir in db_dir.iterdir():
             if not server_dir.is_dir():
                 continue
-                
+
             server_id = server_dir.name
-            # Check for agent database
-            personality = get_personality_name(server_id)
-            agent_db_path = server_dir / f"agent_{personality.lower()}.db"
-            
-            if not agent_db_path.exists():
+            # Find agent database without resolving personality name
+            agent_db_matches = list(server_dir.glob("agent_*.db"))
+            if not agent_db_matches:
                 continue
+            agent_db_path = agent_db_matches[0]
                 
             try:
                 # Connect to this server's database
@@ -303,7 +301,7 @@ def get_personality_name(server_id: str = None):
                     server_cfg = json.load(f)
                 active_personality = server_cfg.get("active_personality")
                 if active_personality:
-                    logger.info(f"[get_personality_name] Using active_personality from server_config for server {server_id}: {active_personality}")
+                    logger.debug(f"[get_personality_name] Using active_personality from server_config for server {server_id}: {active_personality}")
                     return active_personality.lower()
                 else:
                     logger.warning(f"[get_personality_name] server_config exists but no active_personality for server {server_id}")
@@ -316,9 +314,9 @@ def get_personality_name(server_id: str = None):
     env_personality = os.getenv('PERSONALITY')
     if env_personality:
         if server_id:
-            logger.info(f"[get_personality_name] Using PERSONALITY env var as fallback for server {server_id}: {env_personality}")
+            logger.debug(f"[get_personality_name] Using PERSONALITY env var as fallback for server {server_id}: {env_personality}")
         else:
-            logger.info(f"[get_personality_name] Using PERSONALITY env var (no server_id): {env_personality}")
+            logger.debug(f"[get_personality_name] Using PERSONALITY env var (no server_id): {env_personality}")
         return env_personality.lower()
 
     # Final fallback
@@ -515,7 +513,7 @@ class AgentDatabase:
     def register_interaction(self, user_id, user_name, interaction_type, context, channel_id=None, server_id=None, metadata=None):
         fecha = datetime.datetime.now().isoformat()
         meta_json = json.dumps(metadata) if metadata else None
-        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=60)).isoformat()
+        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=10)).isoformat()  # DEBUG: Changed from 60 to 10 min
         updated_at = datetime.datetime.now().isoformat()
         try:
             with self._lock:
@@ -1758,6 +1756,9 @@ class AgentDatabase:
 # Dictionary to maintain instances per server
 _db_instances = {}
 
+# Lock for thread-safe access to _db_instances
+_db_instances_lock = threading.Lock()
+
 def get_db_instance(server_id: str = "default") -> AgentDatabase:
     """Get or create a database instance for a specific server."""
     global db
@@ -1766,9 +1767,27 @@ def get_db_instance(server_id: str = "default") -> AgentDatabase:
         active = get_server_id()
         if active:
             server_id = active
-    if server_id not in _db_instances:
-        _db_instances[server_id] = AgentDatabase(server_id)
-    return _db_instances[server_id]
+    
+    # Thread-safe access to _db_instances
+    with _db_instances_lock:
+        if server_id not in _db_instances:
+            _db_instances[server_id] = AgentDatabase(server_id)
+        else:
+            # Validate the cached instance still points to the correct personality DB.
+            # The personality can change via canvas_personality (discord subprocess) and
+            # that process cannot invalidate caches in other processes (e.g. the scheduler).
+            expected_name = f"agent_{get_personality_name(server_id).lower()}.db"
+            if _db_instances[server_id].db_path.name != expected_name:
+                old_db_path = _db_instances[server_id].db_path
+                logger.info(
+                    f"🗄️ [DB] Personality changed for server {server_id}: "
+                    f"{old_db_path.name} → {expected_name}. Re-initializing."
+                )
+                # Delete old personality database to prevent orphaned files and
+                # confusion from old pending tasks
+                _delete_old_personality_database(old_db_path, server_id)
+                _db_instances[server_id] = AgentDatabase(server_id)
+        return _db_instances[server_id]
 
 def invalidate_db_instance(server_id: str = None):
     """Invalidate cached database instance for a server.
@@ -1780,19 +1799,44 @@ def invalidate_db_instance(server_id: str = None):
         server_id: Server ID to invalidate, or None to clear all.
     """
     global _db_instances, db, _current_server_id
-    if server_id:
-        if server_id in _db_instances:
-            del _db_instances[server_id]
-            logger.info(f"🗄️ [DB] Invalidated cached db instance for server: {server_id}")
-        # Also reset global db if it was for this server
-        if _current_server_id == server_id:
+    with _db_instances_lock:
+        if server_id:
+            if server_id in _db_instances:
+                del _db_instances[server_id]
+                logger.info(f"🗄️ [DB] Invalidated cached db instance for server: {server_id}")
+            # Also reset global db if it was for this server
+            if _current_server_id == server_id:
+                db = None
+                _current_server_id = None
+        else:
+            _db_instances = {}
             db = None
             _current_server_id = None
-    else:
-        _db_instances = {}
-        db = None
-        _current_server_id = None
-        logger.info("🗄️ [DB] Invalidated all cached db instances")
+            logger.info("🗄️ [DB] Invalidated all cached db instances")
+
+def _delete_old_personality_database(old_db_path: Path, server_id: str):
+    """
+    Delete old personality database file when personality changes.
+    
+    When a server switches personality (e.g., from rab to igorrr), the old
+    database file (agent_rab.db) becomes orphaned. This function removes it
+    to prevent confusion and wasted disk space.
+    
+    Args:
+        old_db_path: Path to the old personality database
+        server_id: Server ID for logging purposes
+    """
+    try:
+        if not old_db_path.exists():
+            return
+        
+        # Delete the old database file
+        old_db_path.unlink()
+        logger.info(
+            f"🗄️ [DB] Deleted old personality database for server {server_id}: {old_db_path.name}"
+        )
+    except Exception as e:
+        logger.warning(f"🗄️ [DB] Could not delete old database {old_db_path}: {e}")
 
 def get_all_server_keys() -> list[str]:
     """Get all server keys from the database instances cache."""
@@ -1814,10 +1858,9 @@ def get_global_db(server_id: str = None, use_default_for_roles: bool = False) ->
         else:
             server_id = "default"
     
-    if db is None or _current_server_id != server_id:
-        db = get_db_instance(server_id)
-        _current_server_id = server_id
-        logger.debug(f"🗄️ [DB] Global database initialized for server: {server_id}")
+    # Always route through get_db_instance so personality-change validation runs.
+    db = get_db_instance(server_id)
+    _current_server_id = server_id
     
     return db
 
@@ -1830,7 +1873,7 @@ def set_current_server(server_id: str):
         # Reload personality to load server-specific copy if available
         try:
             from agent_engine import reload_personality
-            reload_personality()
+            reload_personality(server_id)
         except Exception as e:
             logger.warning(f"Could not reload personality on server change: {e}")
 

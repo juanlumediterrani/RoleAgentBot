@@ -21,15 +21,15 @@
       "tips_section": "**Sugerencias**\n-Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?'\n-Cada camino tiene su propio ritmo y requiere su propia escucha."
     },
     "canvas_home_messages": {
-      "title": "🧭 Sala de Yuki",
-      "button_home": "🧭 Umbral",
+      "title": "⛩️ Salón de Yuki",
+      "button_home": "⛩️ Salón",
       "button_back": "← Volver",
-      "button_roles": "🎭 Artes",
-      "button_behavior": "🤖 Protocolos",
-      "button_help": "📝 Asistencia",
+      "button_roles": "🪭 Artes",
+      "button_behavior": "👘 Protocolos",
+      "button_help": "🏮 Guia",
       "generic_option_label": "Elige un camino...",
       "personalitystatus": "Presencia Activa:",
-      "description": "El panel canvas es tu acceso directo al núcleo del sistema.",
+      "description": "Accede a cada parte del salon dese aquí para acceder a los servicios.",
       "recentsynthesistitle": "**Flujo Reciente**",
       "dailymemorytitle": "**Memoria**",
       "personalsynthesistitle": "**Síntesis del Visitante**",
@@ -40,13 +40,13 @@
       "dm_server_access_error": "❌ No es posible acceder en este momento. Por favor, intenta desde un servidor activo."
     },
     "roles_view_messages": {
-      "title": "🎭 Artes y Caminos 🎭",
+      "title": "🪭 Artes y Caminos 🪭",
       "description": "🌸 Explora las diferentes formas en que Yuki puede estar presente y ser de utilidad.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "active",
       "inactive_status": "❌ EN REPOSO",
       "interval_info": "//⏰ Ciclo de {interval}h",
-      "subroles_info": "🎪 **Subrutinas activas:** {subroles}",
+      "subroles_info": "⏰ **Subrutinas activas:** {subroles}",
       "admin_note": "🔧 **PARÁMETROS DEL ADMINISTRADOR:**",
       "user_note": "👤 **ACCESO DEL VISITANTE:**",
       "help_commands": "💡 **GUÍAS:**",
@@ -84,8 +84,8 @@
         "button": "🍵 Bienvenida"
       },
       "taboo": {
-        "title": "**🚫 Yuki - Umbrales de Atención**",
-        "description": "**Cómo funciona:**\n -Configura palabras o expresiones que activen una respuesta específica de Yuki.\n -Se pueden añadir, activar o desactivar estos umbrales.\n",
+        "title": "**🚫 Yuki - Toques de Atención**",
+        "description": "**Cómo funciona:**\n -Configura palabras o expresiones que activen una respuesta descortés de Yuki.\n -Se pueden añadir, o eliminar palabras taboo.\n",
         "title_keywords": "Umbrales configurados actualmente:",
         "button": "🚫 Umbrales"
       },
@@ -95,7 +95,7 @@
         "button": "🗣️ Observaciones"
       },
       "role_control": {
-        "title": "**🎛️ Yuki - Gestión de Caminos**",
+        "title": "**🎛️ Yuki - Gestión de Artes**",
         "description": "**Descripción**\n -Activa o detiene los diferentes caminos disponibles desde aquí.",
         "button": "🎛️ Gestión"
       },

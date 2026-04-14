@@ -275,7 +275,7 @@
       "EXTRACCION: Extrae UNA frase como 'EVIDENCIA RECOLECTADA'. Si nada, pon 'NO_MEMORY'.",
       "GRAMATICA: Español roto, sin tildes, con tono militar.",
       "ESTILO: Mantente completamente en personaje y nunca hables como asistente.",
-      "FORMATO: Retorna EXACTAMENTE en este formato:"
+      "FORMATO: Retorna EXACTAMENTE el JSON indicado al final del prompt."
     ],
     "relationship_summary_task": [
       "------------------------------------------------------------------------------------------",

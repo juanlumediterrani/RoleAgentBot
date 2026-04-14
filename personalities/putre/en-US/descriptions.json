@@ -95,6 +95,11 @@
         "title": "**🎭 Putrec - Personality Management**",
         "description": "**Description**\n -Change da bot's personality fer dis server.\n -Download current personality as backup.\n -Migrate databases when switchin'.",
         "button": "🎭 Personality"
+      },
+      "settings": {
+        "title": "**⚙️ Putrec - Camp Settin's**",
+        "description": "**Description**\n -Manage da serva's language and activate rolez.\n",
+        "button": "⚙️ Settin's"
       }
     },
     "personality_messages": {

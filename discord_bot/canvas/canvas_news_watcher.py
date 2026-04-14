@@ -12,9 +12,28 @@ get_watcher_messages = core.get_watcher_messages
 
 def _get_nw_descriptions(guild=None) -> dict:
     """Get news_watcher descriptions from server-specific databases path."""
-    from .content import _get_personality_descriptions
-    server_id = core.get_server_key(guild) if guild else None
-    return _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("news_watcher", {})
+    import json
+    from pathlib import Path
+    from discord_bot.db_init import get_server_personality_dir
+    
+    if not guild:
+        return {}
+    
+    try:
+        server_id = str(guild.id)
+        personality_dir = get_server_personality_dir(server_id)
+        
+        if personality_dir:
+            descriptions_dir = Path(personality_dir) / "descriptions"
+            news_watcher_path = descriptions_dir / "news_watcher.json"
+            
+            if news_watcher_path.exists():
+                with open(news_watcher_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not load news_watcher descriptions: {e}")
+    
+    return {}
 
 
 def _build_watcher_role_embed(role_name: str, content: str, admin_visible: bool, surface_name: str, user=None, auto_response: str | None = None):

@@ -22,6 +22,7 @@ from discord_bot.discord_utils import (
     get_server_key, send_dm_or_channel,
     get_db_for_server, check_chat_rate_limit,
     set_is_connected, is_role_enabled_check,
+    send_personality_embed_dm,
 )
 from discord_bot.entitlement_manager import EntitlementManager, set_entitlement_manager
 
@@ -42,7 +43,9 @@ def _build_readme_prompt(user_question: str) -> str:
         Exception: If README file cannot be loaded
     """
     # Try to load personality-specific README_LLM.md first, then fallback to root
-    personality_rel = AGENT_CFG.get("personality", "")
+    default_personality = AGENT_CFG.get("default_personality", "rab")
+    default_language = AGENT_CFG.get("default_language", "en-US")
+    personality_rel = f"personalities/{default_personality}/{default_language}/personality.json"
     personality_dir = os.path.dirname(os.path.join(os.path.dirname(os.path.dirname(__file__)), personality_rel))
     personality_readme_path = os.path.join(personality_dir, 'README_LLM.md')
     root_readme_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'README_LLM.md')
@@ -159,16 +162,49 @@ async def database_cleanup():
     logger.info(f"🧹 Cleanup in {target_guild.name} ({server_key}): {rows} records deleted.")
 
 
-async def set_mc_presence_if_enabled():
-    """Set bot presence status if MC role is active."""
+async def set_bot_presence_message(guild=None, bot_instance=None):
+    """Set bot presence status message from server-specific answers.json.
+    
+    Args:
+        guild: Optional Discord guild to get server_id from. If None, uses first available guild.
+        bot_instance: Optional bot instance to use for changing presence. If None, uses global bot.
+    """
+    from agent_runtime import get_personality_message
+    from discord_bot.discord_utils import get_server_key
+    
+    try:
+        # Use provided bot or global bot
+        target_bot = bot_instance or bot
+        if not target_bot:
+            logger.warning("No bot instance available for setting presence")
+            return
+        
+        # Use provided guild or get first available
+        target_guild = guild or (target_bot.guilds[0] if target_bot.guilds else None)
+        if not target_guild:
+            logger.warning("No guild available for setting bot presence")
+            return
+        
+        server_id = get_server_key(target_guild)
+        discord_cfg = get_personality_message("answers.json", ["discord"], server_id, {})
+        presence_message = discord_cfg.get("mc_messages", {}).get("presence_status", "Use !canvas to interact")
+        await target_bot.change_presence(
+            activity=discord.Activity(type=discord.ActivityType.listening, name=presence_message)
+        )
+        logger.info(f"Display status: {presence_message}")
+    except Exception as e:
+        logger.error(f"Error setting bot presence: {e}")
+
+
+async def set_mc_presence_if_enabled(guild=None):
+    """Set bot presence status if MC role is active.
+    
+    Args:
+        guild: Optional Discord guild to get server_id from. If None, uses first available guild.
+    """
     try:
         if is_role_enabled_check("mc", agent_config):
-            mc_cfg = _discord_cfg.get("mc_messages", {})
-            presence_message = mc_cfg.get("presence_status", "🎵 MC is ready. Use !mc play")
-            await bot.change_presence(
-                activity=discord.Activity(type=discord.ActivityType.listening, name=presence_message)
-            )
-            logger.info(f"🎵 MC status: {presence_message}")
+            await set_bot_presence_message(guild)
     except Exception as e:
         logger.error(f"Error setting MC status: {e}")
 
@@ -408,15 +444,25 @@ async def on_guild_join(guild):
 async def on_member_join(member):
     """Runs when a new user joins the server."""
     from behavior.welcome import handle_member_join
-    await handle_member_join(member, _discord_cfg)
+    from agent_runtime import get_personality_message
+    from discord_bot.discord_utils import get_server_key
+    
+    server_id = get_server_key(member.guild)
+    discord_cfg = get_personality_message("answers.json", ["discord"], server_id, {})
+    await handle_member_join(member, discord_cfg)
 
 
 @bot.event
 async def on_presence_update(before, after):
     """Runs when a member goes from offline to online."""
     from behavior.greet import handle_presence_update
+    from agent_runtime import get_personality_message
+    from discord_bot.discord_utils import get_server_key
+    
+    server_id = get_server_key(after.guild)
+    discord_cfg = get_personality_message("answers.json", ["discord"], server_id, {})
     bot_display_name = PERSONALITY.get("bot_display_name", "Bot")
-    await handle_presence_update(before, after, _discord_cfg, bot_display_name)
+    await handle_presence_update(before, after, discord_cfg, bot_display_name, bot)
 
 
 @bot.event
@@ -439,11 +485,16 @@ async def on_voice_state_update(member, before, after):
                     # Try to get MC instance to send message through callback system
                     try:
                         from roles.mc.mc_discord import get_mc_commands_instance
+                        from agent_runtime import get_personality_message
+                        from discord_bot.discord_utils import get_server_key
+                        
                         mc_commands = get_mc_commands_instance()
+                        server_id = get_server_key(guild)
+                        mc_cfg = get_personality_message("answers.json", ["mc_messages"], server_id, {})
+                        msg = mc_cfg.get("voice_leave_empty", "👋 The voice channel is empty, leaving now.")
+                        
                         if mc_commands:
                             # Use MC message system to support Canvas callbacks
-                            mc_cfg = _discord_cfg.get("mc_messages", {})
-                            msg = mc_cfg.get("voice_leave_empty", "👋 The voice channel is empty, leaving now.")
                             channel = next(
                                 (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages),
                                 None
@@ -452,8 +503,6 @@ async def on_voice_state_update(member, before, after):
                                 await mc_commands._send_message(channel, msg)
                         else:
                             # Fallback to direct message if MC instance not available
-                            mc_cfg = _discord_cfg.get("mc_messages", {})
-                            msg = mc_cfg.get("voice_leave_empty", "👋 The voice channel is empty, leaving now.")
                             channel = next(
                                 (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages),
                                 None
@@ -1093,6 +1142,10 @@ async def _process_chat_message(message):
             accusation_response = await _process_accuse_flag(message, response, server_id, is_public)
 
         # Send response to user (either original LLM response or accusation-specific response)
+        # For DMs, send personality embed first with server-specific identity
+        if not is_public:
+            await send_personality_embed_dm(message.author, bot, message.guild, server_id)
+        
         if accusation_response:
             # Send the accusation-specific response
             await message.channel.send(accusation_response)
@@ -1104,6 +1157,11 @@ async def _process_chat_message(message):
         logger.exception(f"Error processing chat message: {e}")
         fallbacks = PERSONALITY.get("emergency_fallbacks", [])
         if fallbacks:
+            # For DMs, send personality embed first with server-specific identity
+            if message.guild is None:
+                # Get server_id from locals if available, otherwise None
+                error_server_id = locals().get('server_id', None)
+                await send_personality_embed_dm(message.author, bot, None, error_server_id)
             await message.channel.send(random.choice(fallbacks))
 
 

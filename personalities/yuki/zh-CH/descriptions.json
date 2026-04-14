@@ -1,0 +1,162 @@
+{
+  "discord": {
+    "general":{
+      "status": "存在状态：",
+      "active": "✅ 在场",
+      "inactive": "❌ 缺席",
+      "none": "无",
+      "every": "每",
+      "for":"用于",
+      "base_frequency": "基础频率：",
+      "current_frequency": "当前频率：",
+      "current_settings": "🔧 **当前参数：**",
+      "frequency_format": "每 {hours} 小时"
+    },
+    "help_menu": {
+      "title": "📚 **由纪 - 技艺记录**",
+      "description": "**描述**\n由纪是一个具有持久记忆的活跃存在，能够在不同功能之间移动，并与访客保持真实的相遇。",
+      "separator": "---------------------------------------------",
+      "roles_section": "**技艺与道路**\n道路是由纪可以在场为访客提供特定服务的不同形式。",
+      "behavior_section": "**在场守则**\n配置由纪互动习惯的设置。仅限管理员。",
+      "tips_section": "**建议**\n- 你可以向我询问我自己的守则：‘骰子模块如何工作？’\n- 每条道路都有自己的节奏，需要自己的倾听方式。"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 由纪的厅堂",
+      "button_home": "🧭 门槛",
+      "button_back": "← 返回",
+      "button_roles": "🎭 技艺",
+      "button_behavior": "🤖 守则",
+      "button_help": "📝 协助",
+      "generic_option_label": "选择一条道路...",
+      "personalitystatus": "活跃存在：",
+      "description": "canvas 面板是你访问系统核心的快捷方式。",
+      "recentsynthesistitle": "**近期流动**",
+      "dailymemorytitle": "**记忆**",
+      "personalsynthesistitle": "**访客综合**",
+      "dm_default_server_title": "🔔 **已连接到厅堂：{server_name}**",
+      "dm_default_server_message": "*在私密频道收到消息。从第一个可用厅堂回复。*",
+      "dm_default_server_separator": "─────────────────────────────────────────────",
+      "dm_no_servers_available": "❌ 未检测到可用厅堂。请从服务器内发起对话。",
+      "dm_server_access_error": "❌ 此刻无法访问。请从活跃服务器尝试。"
+    },
+    "roles_view_messages": {
+      "title": "🎭 技艺与道路 🎭",
+      "description": "🌸 探索由纪可以在场并提供帮助的不同形式。",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "active",
+      "inactive_status": "❌ 休息中",
+      "interval_info": "//⏰ 周期 {interval} 小时",
+      "subroles_info": "🎪 **活跃子程序：** {subroles}",
+      "admin_note": "🔧 **管理员参数：**",
+      "user_note": "👤 **访客访问：**",
+      "help_commands": "💡 **指南：**",
+      "canvas_details": "🎨 **Canvas 中的方案：**",
+      "navigation_help": "",
+      "no_roles_active": "🌸 **厅堂寂静**\n\n目前没有活跃的专业道路。请管理员通过 `!canvas setup` 激活以下可用服务之一。\n\n**可用道路：**\n• 📡 新闻观察者 - 新闻观察\n• 💎 寻宝者 - 物品分析\n• 🎭 戏法师 - 偶然与概率\n• 💰 银行家 - 资源管理\n• 🎵 MC - 音乐",
+      "role_list_title": "🌸 活跃存在",
+      "role_available": "✅ {role} - 活跃",
+      "role_unavailable": "❌ {role} - 休息中",
+      "frequency_help": "📝 调整频率：`!{role}frequency <小时>` (范围：1 到 168 小时)\n示例：`!watcherfrequency 2` 每2小时接收一次更新。",
+      "music_help": "🎵 **音乐** - `!mc play <名称>` / `!mc queue` | `!mc help` 查询完整曲目。",
+      "treasure_hunter": {
+        "button_poe2": "👺 POE2",
+        "subrole_buttons": {
+          "items": "💎 物品",
+          "league": "🏆 赛季",
+          "admin": "⚙️ 核心"
+        }
+      }
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 由纪 - 对话中的存在**",
+        "description": "**描述：**\n -由纪会回复直接消息和提及。\n -她会记住过去有意义的对话。\n -她会根据活跃的道路对某些特定术语做出反应。在禁忌模块中配置触发特定响应的词语。",
+        "button": "💬 对话"
+      },
+      "greetings": {
+        "title": "**👋 由纪 - 迎接**",
+        "description": "**描述：**\n -由纪在访客连接时打招呼。\n -她在5分钟内保持识别，之后认为访客缺席。\n",
+        "button": "👋 迎接"
+      },
+      "welcome": {
+        "title": "**🍵 由纪 - 欢迎**",
+        "description": "**描述：**\n -由纪欢迎新到达厅堂的访客。\n",
+        "button": "🍵 欢迎"
+      },
+      "taboo": {
+        "title": "**🚫 由纪 - 关注门槛**",
+        "description": "**工作原理：**\n -配置触发由纪特定响应的词语或表达。\n -可以添加、激活或停用这些门槛。\n",
+        "title_keywords": "当前配置的关注门槛：",
+        "button": "🚫 门槛"
+      },
+      "comentary": {
+        "title": "**🗣️ 由纪 - 观察（开发中）**",
+        "description": "**描述**\n -由纪分享关于她活跃功能以及厅堂变化的观察。",
+        "button": "🗣️ 观察"
+      },
+      "role_control": {
+        "title": "**🎛️ 由纪 - 道路管理**",
+        "description": "**描述**\n -从此处激活或停用可用的不同道路。",
+        "button": "🎛️ 管理"
+      },
+      "settings": {
+        "title": "**⚙️ 由纪 - 厅堂设置**",
+        "description": "**描述**\n -管理服务器的语言和模块激活。",
+        "button": "⚙️ 设置"
+      },
+      "personality": {
+        "title": "**🎭 由纪 - 身份**",
+        "description": "**描述**\n -修改由纪在此服务器中的本质和个性。\n -允许保存当前身份状态。\n -更改后记录会更新。",
+        "button": "🎭 身份"
+      }
+    },
+    "personality_messages": {
+      "view_title": "🎭 由纪 - 身份",
+      "view_description": "更改或导出由纪在此厅堂中的活跃身份。",
+      "option_change": "设置新身份",
+      "option_change_desc": "切换到不同的个性配置",
+      "option_download": "导出身份",
+      "option_download_desc": "导出当前配置（ZIP）",
+      "placeholder": "选择一个操作...",
+      "modal_personality_label": "新身份代码",
+      "modal_download_label": "导出之前的身份？（是/否）",
+      "modal_delete_memory_label": "清除记忆记录？（是/否）",
+      "modal_download_memory_label": "清除前导出记忆？（是/否）",
+      "download_success": "✅ 身份 `{personality}` 已成功导出。",
+      "change_success": "✅ 身份更改完成。从 `{old}` 到 `{new}`。新配置已激活。"
+    },
+    "readme":{
+      "label_user_question":"访客咨询：",
+      "task":"请使用所提供的文档回应用户的疑问。",
+      "label_documentation":"文档："
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "你还记得",
+        "记得吗",
+        "回忆一下",
+        "想起来",
+        "你还记得那个",
+        "记得什么时候",
+        "想起来了吗",
+        "你还记得吗",
+        "记得吗",
+        "搜索你的记录",
+        "检查你的记忆",
+        "记得什么",
+        "你有印象吗",
+        "你还记得",
+        "记得",
+        "你还记得吗？",
+        "记得吗？",
+        "想起来",
+        "记得什么时候",
+        "你有印象吗",
+        "访问记录",
+        "你记得什么时候",
+        "你不记得了",
+        "谁记得"
+      ]
+    }
+  }
+}

@@ -297,7 +297,7 @@
       "EXTRACTION: Extract ONE distilled phrase (max 15 words) from the interaction that stands out. If everything was white noise, write 'NO_MEMORY' in the corresponding section.",
       "GRAMMAR: Correct, poetic.",
       "STYLE: Never as an assistant. Always as the intimate diary of a millennial synthetic being.",
-      "FORMAT: Return EXACTLY following the established data structure:"
+      "FORMAT: Return EXACTLY the JSON specified at the end of the prompt."
     ],
     "relationship_summary_task": [
       "------------------------------------------------------------------------------------------",

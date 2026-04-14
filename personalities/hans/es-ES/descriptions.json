@@ -57,7 +57,15 @@
       "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA! 🦅⚖️",
       "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO! 📉💥",
       "frequency_help": "📝 ¡Usar comando: `!{role}frequency <horas>` (de 1 a 168 horas)\n¡Ejemplo: `!watcherfrequency 2` para vigilar cada 2 horas, ¡SCHNELL!",
-      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!"
+      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!",
+      "treasure_hunter": {
+        "button_poe2": "👺 POE2",
+        "subrole_buttons": {
+          "items": "💎 Items",
+          "league": "🏆 League",
+          "admin": "⚙️ Admin"
+        }
+      }
     },
     "behavior_messages": {
       "conversation": {

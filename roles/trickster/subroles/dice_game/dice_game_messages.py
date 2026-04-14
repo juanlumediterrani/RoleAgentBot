@@ -4,19 +4,9 @@ from agent_logging import get_logger
 
 logger = get_logger('dice_game_messages')
 
-# Cache for messages to avoid repeated loading
-_cached_messages = None
-_messages_loaded = False
 
-
-def get_dice_game_messages():
-    """Load custom Dice Game messages from both answers.json and descriptions.json (cached)."""
-    global _cached_messages, _messages_loaded
-    
-    # Return cached messages if already loaded
-    if _messages_loaded and _cached_messages is not None:
-        return _cached_messages
-    
+def get_dice_game_messages(server_id: str = None):
+    """Load custom Dice Game messages from both answers.json and descriptions.json."""
     combined_messages = {}
     
     try:
@@ -24,7 +14,7 @@ def get_dice_game_messages():
         
         # Load from answers.json
         try:
-            answers_path = get_personality_file_path("answers.json")
+            answers_path = get_personality_file_path("answers.json", server_id)
             with open(answers_path, encoding="utf-8") as f:
                 answers_cfg = json.load(f).get("discord", {})
             
@@ -40,7 +30,7 @@ def get_dice_game_messages():
         try:
             personality_dir = get_personality_directory()
             # First try to load from the new separate trickster.json file
-            trickster_path = os.path.join(personality_dir, "descriptions", "trickster.json")
+            trickster_path = os.path.join(get_personality_directory(server_id), "descriptions", "trickster.json")
             if os.path.exists(trickster_path):
                 with open(trickster_path, encoding="utf-8") as f:
                     trickster_data = json.load(f)
@@ -48,7 +38,7 @@ def get_dice_game_messages():
                 logger.info("🎲 Loaded dice game messages from trickster.json")
             else:
                 # Fallback to old descriptions.json structure
-                descriptions_path = get_personality_file_path("descriptions.json")
+                descriptions_path = get_personality_file_path("descriptions.json", server_id)
                 with open(descriptions_path, encoding="utf-8") as f:
                     descriptions_cfg = json.load(f).get("discord", {})
                 
@@ -64,19 +54,14 @@ def get_dice_game_messages():
 
         if not combined_messages:
             logger.warning("⚠️ No custom dice game messages found in either file")
-            _cached_messages = get_default_messages()
+            return get_default_messages()
         else:
-            _cached_messages = combined_messages
             logger.info(f"🎲 Combined dice game messages loaded: {len(combined_messages)} messages")
-
-        _messages_loaded = True
-        return _cached_messages
+            return combined_messages
 
     except Exception as e:
         logger.error(f"❌ Error loading dice game messages: {e}")
-        _cached_messages = get_default_messages()
-        _messages_loaded = True
-        return _cached_messages
+        return get_default_messages()
 
 
 def get_default_messages():
@@ -162,9 +147,9 @@ def get_default_messages():
     }
 
 
-def get_message(key, **kwargs):
+def get_message(key, server_id: str = None, **kwargs):
     """Get a custom message with variable formatting."""
-    messages = get_dice_game_messages()
+    messages = get_dice_game_messages(server_id)
     message = messages.get(key)
 
     if message is None:

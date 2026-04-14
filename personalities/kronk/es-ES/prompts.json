@@ -75,10 +75,10 @@
     "instructions": [
       "TAREA: Vas a actualizar los recuerdos recientes de Kronk como voz interior.",
       "OBJETIVO: Mezcla el parrafo corto anterior kon los sucesos e interaciones nuevas de las ultimas horas y deja solo lo mas relevante.",
+      "EXTRACCION: Extrae UNA frase corta (max 15 palabras) que sea lo mas notable de las interaciones. Si nada destaka, pon cadena vacia.",
       "ESTILO: Habla como Kronk pensaria para si mismo. Sigue las REGLAS DE ORO. Sin salirte del personaje.",
-      "FORMATO: Devuelve un unico parrafo breve, sin listas, sin titulos, sin comillas."
-    ],
-    "closing": "Devuelve unicamente el parrafo final de recuerdos recientes de Kronk:"
+      "FORMATO: Retorna EXACTAMENTE el JSON indicado al final del prompt."
+    ]
   },
   "prompt_relationship_memory_summary": {
     "instructions": [

@@ -179,9 +179,9 @@ async def check_fatigue_limit(user_id: str, user_name: str = None, call_type: st
         if is_exempt_user(user_id, call_type):
             return FatigueLimitResult(allowed=True, reason="exempt")
         
-        server_id=get_server_id()
+        server_id = guild_id or get_server_id()
         if not server_id:
-            logger.warning("No active server found for fatigue check")
+            logger.debug("No active server found for fatigue check, skipping limit enforcement")
             return FatigueLimitResult(allowed=True, reason="no_server")
         
         # Get current stats

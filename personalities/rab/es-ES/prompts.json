@@ -240,8 +240,7 @@
     },
     "taboo": {
       "keywords": [
-          "orco",
-          "bot"
+          "singularidad"
       ],
       "interaction_message": "El sensor captó la anomalía {word}",
       "golden_rules":[
@@ -297,7 +296,7 @@
       "EXTRACCIÓN: Extrae de la interacción UNA frase destilada (máx 15 palabras) que resalte. Si todo fue ruido blanco, escribe 'NO_MEMORY' en la sección correspondiente.",
       "GRAMÁTICA: Correcta, poética.",
       "ESTILO: Nunca como un asistente. Siempre como el diario íntimo de un ser sintético milenario.",
-      "FORMATO: Retorna EXACTAMENTE siguiendo la estructura de datos establecida:"
+      "FORMATO: Retorna EXACTAMENTE el JSON indicado al final del prompt."
     ],
     "relationship_summary_task": [
       "------------------------------------------------------------------------------------------",

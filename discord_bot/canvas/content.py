@@ -39,8 +39,8 @@ def _get_personality_descriptions(server_id: str = None) -> dict:
                             with open(sub_file, 'r', encoding='utf-8') as f:
                                 sub_data = json.load(f)
                             data["roles_view_messages"][role_key] = sub_data
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.error(f"Failed to load {sub_file}: {e}")
                 return data
     except Exception as e:
         if logger:
@@ -48,12 +48,14 @@ def _get_personality_descriptions(server_id: str = None) -> dict:
     return {}
 
 def _get_server_personality_name(server_id: str = None) -> str:
-    """Get the personality name for a specific server, falling back to global."""
+    """Get the personality name for a specific server."""
+    if not server_id:
+        return "bot"
     try:
         from agent_engine import _get_personality
         return _get_personality(server_id).get("name", "bot")
     except Exception:
-        return core.PERSONALITY.get("name", "bot")
+        return "bot"
 
 os = core.os
 asyncio = core.asyncio
@@ -241,7 +243,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
         personality_line = next((line for line in lines if line.startswith("**Personality:**")), "")
         roles_line = next((line for line in lines if line.startswith("**Active roles:**")), "")
         description_parts = [part for part in [personality_line.replace("**", ""), roles_line.replace("**", "")] if part]
-        description = "\n".join(description_parts)
+        description = "".join(description_parts)
     elif section_name == "home_status":
         personality_line = next((line for line in lines if line.startswith("**Personality:**")), "")
         roles_line = next((line for line in lines if line.startswith("**Active roles:**")), "")
@@ -252,7 +254,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     elif section_name == "personal":
         description = "Focus on private or user-specific workflows that continue naturally in DM."
     elif section_name == "help":
-        description = personality_descriptions.get("help_menu").get("description", "Find command entry points, troubleshooting hints, and the fastest recovery paths.")
+        description = personality_descriptions.get("help_menu", {}).get("description", "Find command entry points, troubleshooting hints, and the fastest recovery paths.")
     elif section_name == "behavior":
         description = description or "Shared bot behavior that sits above any individual role."
 
@@ -330,12 +332,55 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
     """Render a role/detail Canvas screen with a role-specific embed layout."""
     personality_descriptions = _get_personality_descriptions(server_id)
     role_descriptions = personality_descriptions.get("roles_view_messages", {})
+    
+    # Load titles from individual role description files
+    def _get_embed_role_title(role_key: str) -> str:
+        """Get role title from description files for embed."""
+        try:
+            from pathlib import Path
+            import json
+            
+            # Get personality directory
+            if server_id:
+                from discord_bot.db_init import get_server_personality_dir
+                personality_dir = get_server_personality_dir(server_id)
+            else:
+                personality_dir = str(Path(__file__).parent.parent.parent / "personalities" / "putre")
+            
+            if not personality_dir:
+                return role_key
+                
+            descriptions_dir = Path(personality_dir) / "descriptions"
+            
+            role_file_map = {
+                "news_watcher": "news_watcher.json",
+                "treasure_hunter": "treasure_hunter.json",
+                "trickster": "trickster.json",
+                "banker": "banker.json",
+                "mc": "mc.json",
+            }
+            
+            if role_key in role_file_map:
+                role_desc_path = descriptions_dir / role_file_map[role_key]
+                if role_desc_path.exists():
+                    role_desc = json.loads(role_desc_path.read_text(encoding='utf-8'))
+                    title = role_desc.get("title", "").replace("**", "").strip()
+                    if title:
+                        return title
+            
+            # Fallback to roles_view_messages
+            title = role_descriptions.get(role_key, {}).get("title", role_key)
+            return title.replace("**", "").strip() if title else role_key
+            
+        except Exception:
+            return role_key
+    
     role_titles = {
-        "news_watcher": _normalize_canvas_title(role_descriptions.get("news_watcher", {}).get("title", "📡 News Watcher")),
-        "treasure_hunter": _normalize_canvas_title(role_descriptions.get("treasure_hunter", {}).get("title", "💎 Treasure Hunter")),
-        "trickster": _normalize_canvas_title(role_descriptions.get("trickster", {}).get("title", "🎭 Trickster")),
-        "banker": _normalize_canvas_title(role_descriptions.get("banker", {}).get("title", "💰 Banker")),
-        "mc": _normalize_canvas_title(role_descriptions.get("mc", {}).get("title", "🎵 MC")),
+        "news_watcher": _normalize_canvas_title(_get_embed_role_title("news_watcher")),
+        "treasure_hunter": _normalize_canvas_title(_get_embed_role_title("treasure_hunter")),
+        "trickster": _normalize_canvas_title(_get_embed_role_title("trickster")),
+        "banker": _normalize_canvas_title(_get_embed_role_title("banker")),
+        "mc": _normalize_canvas_title(_get_embed_role_title("mc")),
     }
     blocks = _split_canvas_blocks(content)
     title = role_titles.get(role_name, "Canvas")
@@ -602,10 +647,10 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     return items_map.get(role_name, [])
 
 
-def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
+def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None, server_id: str = None) -> list[tuple[str, str, str]]:
     if role_name == "news_watcher":
         # Get news_watcher descriptions for action items with robust fallbacks
-        _personality_descriptions = _get_personality_descriptions()
+        _personality_descriptions = _get_personality_descriptions(server_id)
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -640,7 +685,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
 
     if role_name == "treasure_hunter":
         # Get treasure_hunter descriptions for action items with robust fallbacks
-        _personality_descriptions = _get_personality_descriptions()
+        _personality_descriptions = _get_personality_descriptions(server_id)
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -682,7 +727,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
 
     if role_name == "trickster":
         # Get trickster descriptions for action items with robust fallbacks
-        _personality_descriptions = _get_personality_descriptions()
+        _personality_descriptions = _get_personality_descriptions(server_id)
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -788,12 +833,13 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
         if detail_name == "dice_admin" and admin_visible:
             # Get dice_game descriptions for action items with robust fallbacks
-            _personality_descriptions = _get_personality_descriptions()
+            _personality_descriptions = _get_personality_descriptions(server_id)
             
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("roles_view_messages", {})
-            trickster = roles_view.get("trickster", {})
-            dice_game = trickster.get("dice_game", {})
+            
+            # Check if dice_game data is directly in roles_view (trickster.json format)
+            dice_game = roles_view.get("dice_game", {})
             
             # Ensure dice_descriptions is a dict
             if not isinstance(dice_game, dict):
@@ -819,7 +865,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
         if detail_name == "ring_admin" and admin_visible:
             # Get ring descriptions for action items with robust fallbacks
-            _personality_descriptions = _get_personality_descriptions()
+            _personality_descriptions = _get_personality_descriptions(server_id)
             
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -865,7 +911,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             return []
         if detail_name == "admin" and admin_visible:
             # Get banker descriptions for action items with robust fallbacks
-            _personality_descriptions = _get_personality_descriptions()
+            _personality_descriptions = _get_personality_descriptions(server_id)
             
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -890,7 +936,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     
     if role_name == "mc":
         # Get MC descriptions for action items with robust fallbacks
-        _personality_descriptions = _get_personality_descriptions()
+        _personality_descriptions = _get_personality_descriptions(server_id)
         
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("roles_view_messages", {})
@@ -927,10 +973,10 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     return []
 
 
-def _get_canvas_role_action_items(role_name: str, admin_visible: bool, agent_config: dict | None = None) -> list[tuple[str, str, str]]:
+def _get_canvas_role_action_items(role_name: str, admin_visible: bool, agent_config: dict | None = None, server_id: str = None) -> list[tuple[str, str, str]]:
     actions: list[tuple[str, str, str]] = []
-    for _label, detail_name in _get_canvas_role_detail_items(role_name, admin_visible):
-        actions.extend(_get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config))
+    for _label, detail_name in _get_canvas_role_detail_items(role_name, admin_visible, None, server_id):
+        actions.extend(_get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config, server_id))
     return actions
 
 
@@ -1121,7 +1167,6 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             daily_summary = _get_daily_memory_fallback(server_id)
     
     if not relationship_summary:
-        # Try to get user name from guild member or fallback to "este umano"
         user_name = None
         if guild and author_id:
             try:
@@ -1131,7 +1176,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             except:
                 pass
         if not user_name:
-            user_name = "este umano"
+            user_name = "unknown user"
             
         if database:
             relationship_summary = _get_last_saved_memory_fallback(database, "relationship", author_id, user_name, server_id)
@@ -1221,17 +1266,13 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     # Get database for role information
     db = _get_behavior_db_for_guild(guild)
     
-    # Helper function to get role info with fallback
+    # Helper function to get role info from description files with fallback
     def get_role_info(role_key):
-        # Role info is directly under the role key in roles_view_messages
+        # Load title from individual role description files
+        title = _get_role_title_from_descriptions(role_key, server_id)
+        
+        # For description, still use roles_view_messages or fallback
         role_info = roles_messages.get(role_key, {})
-        fallback_titles = {
-            "news_watcher": "News Watcher",
-            "treasure_hunter": "Treasure Hunter", 
-            "trickster": "Trickster",
-            "banker": "Banker",
-            "mc": "MC"
-        }
         fallback_descriptions = {
             "news_watcher": "News monitoring for the clan",
             "treasure_hunter": "Treasure hunting and POE2 monitoring",
@@ -1239,16 +1280,61 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
             "banker": "Clan economy and personal wallets",
             "mc": "Music playback and queue management"
         }
-        
-        title = role_info.get("title", fallback_titles.get(role_key, role_key))
         description = role_info.get("description", fallback_descriptions.get(role_key, "Role functionality"))
         
-        title = title
-        description = description        
         return {
             "title": title,
             "description": description
         }
+    
+    # Helper function to load role title from description files
+    def _get_role_title_from_descriptions(role_name: str, server_id: str = None) -> str:
+        """Load role title from individual description files."""
+        try:
+            from pathlib import Path
+            import json
+            
+            # Get personality directory
+            if server_id:
+                from discord_bot.db_init import get_server_personality_dir
+                personality_dir = get_server_personality_dir(server_id)
+            else:
+                # Fallback to global personality
+                personality_dir = str(Path(__file__).parent.parent.parent / "personalities" / "putre")
+            
+            if not personality_dir:
+                return role_name
+                
+            descriptions_dir = Path(personality_dir) / "descriptions"
+            
+            # Map role names to their description file names
+            role_file_map = {
+                "news_watcher": "news_watcher.json",
+                "treasure_hunter": "treasure_hunter.json",
+                "trickster": "trickster.json",
+                "banker": "banker.json",
+                "mc": "mc.json",
+            }
+            
+            if role_name in role_file_map:
+                role_desc_path = descriptions_dir / role_file_map[role_name]
+                if role_desc_path.exists():
+                    role_desc = json.loads(role_desc_path.read_text(encoding='utf-8'))
+                    title = role_desc.get("title", "").replace("**", "").strip()
+                    if title:
+                        return title
+            
+            # Fallback to roles_view_messages
+            role_info = roles_messages.get(role_name, {})
+            title = role_info.get("title", "")
+            if title:
+                return title.replace("**", "").strip()
+                
+        except Exception:
+            pass
+        
+        # Final fallback to technical name
+        return role_name
     
     # News Watcher
     if is_role_enabled_check("news_watcher", None, guild):
@@ -1398,7 +1484,7 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
     if role_name == "banker" and is_role_enabled_check("banker", agent_config, guild):
         return build_canvas_role_banker(agent_config, admin_visible, guild, author_id)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
-        return build_canvas_role_mc()
+        return build_canvas_role_mc(guild=guild)
     return None
 
 
@@ -1428,5 +1514,5 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
     if role_name == "banker" and is_role_enabled_check("banker", agent_config, guild):
         return build_canvas_role_banker_detail(detail_name, admin_visible, guild, author_id)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
-        return build_canvas_role_mc()
+        return build_canvas_role_mc(guild=guild)
     return None

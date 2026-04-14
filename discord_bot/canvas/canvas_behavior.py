@@ -49,7 +49,10 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         "welcome": [(f"{button_welcome}: On", "welcome_on", "Boolean toggle"), (f"{button_welcome}: Off", "welcome_off", "Boolean toggle")] if admin_visible else [],
         "commentary": common_options,
         "taboo": [(f"{button_taboo}: On", "taboo_on", "Boolean toggle"), (f"{button_taboo}: Off", "taboo_off", "Boolean toggle"), (f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")] if admin_visible else [(f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")],
-        "settings": [(f"{button_settings}", "settings_open", "Manage server settings, roles and language")] if admin_visible else [],
+        "settings": [
+            (f"🌐 Server Language", "language_settings", "Change the bot's language for this server"),
+            (f"🎛️ Role Management", "role_control", "Enable or disable bot roles"),
+        ] if admin_visible else [],
         "personality": [],  # Personality view uses custom dropdown, not action items
     }
     return items_map.get(detail_name, [])

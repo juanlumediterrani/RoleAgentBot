@@ -811,8 +811,18 @@ for _p in _env_candidates:
 logger = get_logger('watcher')
 
 def _get_alert_title(server_id: str = None) -> str:
-    """Get alert title from descriptions.json or fallback using server-specific personality."""
+    """Get alert title from news_watcher.json descriptions or fallback using server-specific personality."""
     try:
+        # Use the same loading mechanism as _personality_descriptions proxy
+        news_watcher_descriptions = _get_news_watcher_descriptions(server_id)
+        
+        # Get alert_title from the loaded news_watcher descriptions
+        alert_title = news_watcher_descriptions.get("alert_title")
+        
+        if alert_title:
+            return alert_title
+        
+        # Fallback to legacy personality structure
         from agent_engine import _get_personality
         personality = _get_personality(server_id) if server_id else None
         if not personality:
@@ -820,14 +830,7 @@ def _get_alert_title(server_id: str = None) -> str:
             personality = PERSONALITY
         descriptions = personality.get("discord", {})
         
-        # Try to get from news_watcher descriptions first
-        news_watcher_descriptions = descriptions.get("roles_view_messages", {}).get("news_watcher", {})
-        alert_title = news_watcher_descriptions.get("alert_title")
-        
-        if alert_title:
-            return alert_title
-        
-        # Fallback to watcher messages
+        # Try legacy watcher messages
         watcher_messages = descriptions.get("watcher_messages", {})
         
         # Look for a title field in watcher messages

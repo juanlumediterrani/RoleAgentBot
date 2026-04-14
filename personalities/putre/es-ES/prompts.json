@@ -299,7 +299,7 @@
       "EXTRACCION: De todas las interacciones recientes, extrae UNA frase corta (máx 15 palabras) que sea la más notable o divertida. Si no hay nada notable, responde 'NO_MEMORY' en el apartado correspondiente.",
       "GRAMATICA: Usa la lengua del personaje. Sin tildes. Completa las frases, no dejes frases a medias.",
       "ESTILO: Mantente completamente en personaje y nunca hables como asistente.",
-      "FORMATO: Retorna EXACTAMENTE en este formato:"
+      "FORMATO: Retorna EXACTAMENTE el JSON indicado al final del prompt."
     ],
     "relationship_summary_task": [
       "------------------------------------------------------------------------------------------",

@@ -31,12 +31,12 @@
     },
     "dice_game_messages": {
       "invitation": "🎲 LA PROBABILIDAD ESTÁ ABIERTA 🎲 El azar no favorece ni condena. Solo revela.",
-      "winner": "La probabilidad se ha inclinado hacia ti. Bien jugado.",
-      "loser": "El azar ha dicho lo suyo. Tu aporte alimenta el fondo común.",
-      "big_pot_announcement": "🔥 **EL FONDO ESTÁ LLENO** 🔥\nSe han acumulado {balance:,} unidades esperando a alguien con paciencia suficiente.\n",
+      "winner": "La probabilidad se ha inclinado hacia ti. Bien jugado 🌸",
+      "loser": "El azar ha dicho lo suyo. Tu aporte alimenta el fondo común. 🃏 ",
+      "big_pot_announcement": "🔥🍶 **LA COPA DE SAKE REBOSA** 🍶🔥\nSe han acumulado {balance:,} unidades esperando a alguien con paciencia suficiente.\n",
       "animation": "🎲🎲🎲 CALCULANDO PROBABILIDADES... 🎲🎲🎲",
       "insufficient_balance": "Tus recursos no son suficientes para esta apuesta. Necesitas {bet:,}, pero tienes {balance:,}.",
-      "pot_won": "🎉🎉🎉 EL FONDO ES TUYO. UNA PROBABILIDAD ENTRE MUCHAS. 🎉🎉🎉",
+      "pot_won": "🌸🌸🌸 LA COPA DE SAKE ES TUYA. UNA PROBABILIDAD ENTRE MUCHAS. 🌸🌸🌸",
       "prize_multiplier": "La combinación es perfecta: {combination}. Has obtenido {prize:,} unidades.",
       "sin_premio": "{combination} - Sin premio esta vez. La sala guarda tu apuesta. Inténtalo de nuevo.",
       "error_jugada": "Algo inesperado interrumpió la jugada: {error}",
@@ -52,7 +52,7 @@
       "error_configuring_announcements": "❌ No pudo aplicarse la configuración de anuncios."
     },
     "dice_game_balance_messages": {
-      "big_pot": "🔥 **EL FONDO ESTÁ EN SU PUNTO MÁXIMO** 🔥\nSe han acumulado {balance:,} unidades. Alguien las reclamará.\n",
+      "big_pot": "🔥🍶 **LA COPA DE SAKE REBOSA** 🍶🔥\nSe han acumulado {balance:,} unidades esperando a alguien con paciencia suficiente.\n",
       "medium_pot": "📈 **Fondo en crecimiento** - La acumulación avanza de forma sostenida.\n",
       "small_pot": "📉 **Fondo reducido** - La sala aún está reuniendo recursos.\n",
       "sent_private": "📩 El estado del fondo ha sido enviado a tu canal privado.",
@@ -99,7 +99,7 @@
       "next_song_error": "No pude pasar a la siguiente canción. El archivo puede estar dañado.",
       "connected_to_voice": "🎤 Conectada al canal de voz: {channel_name}.",
       "no_dm_permission": "📭 No pude enviarte el mensaje privado.\nRevisa tu configuración de privacidad para permitir mensajes directos.",
-      "presence_status": "Usa !canvas para comenzar",
+      "presence_status": "Usa !canvas para empezar la ceremonia",
       "canvas_mc_overview_title": "🎵 Módulo Canvas - Música"
     },
     "watcher_messages": {

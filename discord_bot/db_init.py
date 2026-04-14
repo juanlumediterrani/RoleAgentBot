@@ -609,4 +609,58 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
     else:
         logger.info(f"📊 New guild initialization complete for '{guild_name}': {success_count}/{total_count} ({success_rate:.1f}%)")
     
+    # Delete old personality database files that are no longer needed
+    try:
+        delete_old_personality_databases(server_key)
+    except Exception as e:
+        logger.warning(f"⚠️ Could not delete old personality databases for '{guild_name}': {e}")
+    
     return success_count == total_count
+
+
+def delete_old_personality_databases(server_id: str):
+    """
+    Delete old personality database files for a server.
+    
+    When a personality changes, the old database file (agent_<old>.db) becomes
+    orphaned. This function deletes those orphaned files to prevent confusion
+    and wasted disk space.
+    
+    Args:
+        server_id: Discord guild ID
+    """
+    try:
+        from pathlib import Path
+        from agent_db import get_personality_name
+        
+        server_dir = Path("databases") / server_id
+        if not server_dir.exists():
+            return
+        
+        # Get current personality name
+        current_personality = get_personality_name(server_id).lower()
+        current_db_name = f"agent_{current_personality}.db"
+        
+        # Find all agent_*.db files
+        agent_dbs = list(server_dir.glob("agent_*.db"))
+        
+        deleted_count = 0
+        for db_path in agent_dbs:
+            if db_path.name == current_db_name:
+                continue  # Skip current personality database
+            
+            # Delete old personality database file
+            try:
+                db_path.unlink()
+                logger.info(
+                    f"🗑️ [CLEANUP] Server {server_id}: Deleted old personality database: {db_path.name}"
+                )
+                deleted_count += 1
+            except Exception as e:
+                logger.warning(f"⚠️ Could not delete old database {db_path}: {e}")
+        
+        if deleted_count > 0:
+            logger.info(f"🗑️ [CLEANUP] Server {server_id}: Deleted {deleted_count} old personality database(s)")
+            
+    except Exception as e:
+        logger.warning(f"⚠️ Error in delete_old_personality_databases for server {server_id}: {e}")

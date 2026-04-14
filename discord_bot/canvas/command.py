@@ -6,8 +6,20 @@ from agent_logging import get_logger
 logger = get_logger("discord_core")
 
 
-def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name):
+def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name):
     from discord_bot import discord_core_commands as core
+
+    # Use generic "canvas" command name - personality filtering happens via first argument
+    # The canvas_cmd_name_unused parameter is kept for backward compatibility but ignored
+    # Only register if not already registered by another bot instance
+    if bot.get_command("canvas") is not None:
+        logger.info("Command canvas already registered, skipping...")
+        return
+
+    # Get default personality name from global for initial registration
+    # Server-specific personality will be resolved at runtime via ctx.guild
+    from agent_engine import PERSONALITY as GLOBAL_PERSONALITY
+    _default_personality_name = GLOBAL_PERSONALITY.get("name", "").lower()
 
     try:
         @bot.command(name="canvas")
@@ -18,21 +30,43 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
             )
             
             # Check if this is a name-filtered command
-            # If section matches a bot name, treat it as name filter and shift parameters
+            # If section matches a bot name or personality name, treat it as name filter and shift parameters
             bot_name = ctx.bot.user.name.lower()
             section_lower = (section or "").strip().lower()
             valid_sections = {"home", "role", "roles", "personal", "help", "behavior"}
             
-            if section_lower == bot_name:
-                # This is a name-filtered command: !canvas <bot_name> [section] [target] [detail]
-                logger.info(f"Canvas command targeted to bot '{section}' - name filter activated")
+            # Resolve server-specific personality at runtime (for multi-server deployments)
+            _runtime_personality_name = _default_personality_name
+            if ctx.guild:
+                try:
+                    from agent_engine import _get_personality
+                    server_id = str(ctx.guild.id)
+                    server_personality = _get_personality(server_id)
+                    _runtime_personality_name = server_personality.get("name", _default_personality_name).lower()
+                except Exception as e:
+                    logger.debug(f"Could not resolve server-specific personality, using default: {e}")
+            
+            # Handle mentions: convert <@ID> to username for comparison
+            if section_lower.startswith("<@") and section_lower.endswith(">"):
+                try:
+                    mention_id = section_lower[2:-1].lstrip("!")  # Remove <@ and >, also ! for <@!>
+                    mentioned_user = ctx.guild.get_member(int(mention_id))
+                    if mentioned_user:
+                        section_lower = mentioned_user.name.lower()
+                        logger.info(f"Canvas mention resolved: '{section}' -> '{section_lower}'")
+                except (ValueError, AttributeError) as e:
+                    logger.debug(f"Could not resolve mention '{section}': {e}")
+            
+            if section_lower == bot_name or section_lower == _runtime_personality_name:
+                # This is a name-filtered command: !canvas <bot_name/personality> [section] [target] [detail]
+                logger.info(f"Canvas command targeted to '{section}' (bot/personality name: {_runtime_personality_name}) - name filter activated")
                 # Shift parameters: section becomes target, target becomes detail, detail becomes empty
                 section = target or "home"
                 target = detail or ""
                 detail = ""
             elif section_lower and section_lower not in valid_sections:
                 # Check if this might be a name filter for a different bot
-                logger.info(f"Canvas command with unknown name '{section}' - ignoring as it's for another bot")
+                logger.info(f"Canvas command with name '{section}' not matching '{_runtime_personality_name}' - ignoring as it's for another bot")
                 return  # Don't respond, let the targeted bot handle it
             
             # Auto-initialize news watcher premises on first canvas use
@@ -99,7 +133,7 @@ def register_canvas_command(bot, agent_config, greet_name, nogreet_name, welcome
                 )
                 if role_view is None:
                     await ctx.send(
-                        "❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hunter`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, or detailed views like `!canvas role trickster dice`. You can also use `!canvas <bot_name> role <name>` to target a specific bot."
+                        f"❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hunter`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, or detailed views like `!canvas role trickster dice`. You can also use `!canvas <bot_name> role <name>` to target a specific bot."
                     )
                     return
 

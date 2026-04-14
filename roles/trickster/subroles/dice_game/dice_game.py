@@ -48,17 +48,17 @@ class DiceGame:
         """Roll three dice."""
         return (random.randint(1, 6), random.randint(1, 6), random.randint(1, 6))
     
-    def analyze_roll(self, dice: Tuple[int, int, int]) -> Tuple[str, str, int]:
+    def analyze_roll(self, dice: Tuple[int, int, int], server_id: str = None) -> Tuple[str, str, int]:
         """Analyze dice roll and return combination type, description, and prize multiplier."""
         sorted_dice = sorted(dice)
         dice_str = '-'.join(map(str, dice))
         
         # Get combination descriptions from the message system
-        triple_ones = get_message("triple_ones")
-        triple = get_message("three_of_a_kind")
-        straight = get_message("straight")
-        pair = get_message("pair")
-        nothing = get_message("nothing")
+        triple_ones = get_message("triple_ones", server_id=server_id)
+        triple = get_message("three_of_a_kind", server_id=server_id)
+        straight = get_message("straight", server_id=server_id)
+        pair = get_message("pair", server_id=server_id)
+        nothing = get_message("nothing", server_id=server_id)
 
         # Check for triple ones (jackpot)
         if dice == (1, 1, 1):
@@ -102,7 +102,7 @@ class DiceGame:
             dice_str = '-'.join(map(str, dice))
             
             # Analyze roll
-            combination_type, combination_desc, multiplier = self.analyze_roll(dice)
+            combination_type, combination_desc, multiplier = self.analyze_roll(dice, server_id)
             
             # Calculate prize
             prize = self.calculate_prize(combination_type, pot_balance)
@@ -127,7 +127,7 @@ class DiceGame:
                 'pot_before': pot_balance,
                 'pot_after': new_pot_balance,
                 'jackpot': combination_type == 'triple_one',
-                'message': self._format_result_message(dice_str, combination_desc, prize, new_pot_balance)
+                'message': self._format_result_message(dice_str, combination_desc, prize, new_pot_balance, server_id)
             }
             
             logger.info(f"🎲 {player_name} rolled {dice_str} → {combination_desc} - Prize: {prize}")
@@ -140,24 +140,30 @@ class DiceGame:
                 'message': f"Error while playing the dice game: {str(e)}"
             }
     
-    def _format_result_message(self, dice: str, combination: str, prize: int, new_pot: int) -> str:
+    def _format_result_message(self, dice: str, combination: str, prize: int, new_pot: int, server_id: str = None) -> str:
         """Format the result message for display."""
         # Format individual dice with dice emojis
         dice_display = " ".join([f"🎲{d}" for d in dice.split("-")])
         
         # Build the complete message with all sections
-        message = f"{get_message('roll_title')}\n{dice_display}\n"
-        message += f"{get_message('combination_title')} {combination}\n"
-        message += f"{get_message('prize_title')} "
+        message = f"{get_message('roll_title', server_id=server_id)}\n{dice_display}\n"
+        message += f"{get_message('combination_title', server_id=server_id)} {combination}\n"
+        message += f"{get_message('prize_title', server_id=server_id)} "
         
         if prize == 0:
-            message += get_message("no_prize", combination=dice)
+            message += get_message("no_prize", combination=dice, server_id=server_id)
         elif "JACKPOT" in combination:
-            message += get_message("pot_won", prize=prize)
+            message += get_message("pot_won", prize=prize, server_id=server_id)
         else:
-            message += get_message("prize_multiplier", combination=combination, prize=prize)
+            message += get_message("prize_multiplier", combination=combination, prize=prize, server_id=server_id)
         
-        message += f"\n{get_message('current_pot_title')} {new_pot:,} coins"
+        message += f"\n{get_message('current_pot_title', server_id=server_id)} {new_pot:,} coins"
+        
+        # Add winner/loser summary message
+        if prize > 0:
+            message += f"\n\n{get_message('winner', server_id=server_id)}"
+        else:
+            message += f"\n\n{get_message('loser', server_id=server_id)}"
         
         return message
 
@@ -237,7 +243,7 @@ def process_play(player_id: str, player_name: str, server_display_name: str, cur
                     result['message'] = "❌ The pot does not have enough gold to pay that prize."
                     return result
                 result['pot_after'] = 0 if result.get('jackpot') else (actual_current_pot + fixed_bet - prize)
-                result['message'] = game._format_result_message(result['dice'], result['combination'], prize, result['pot_after'])
+                result['message'] = game._format_result_message(result['dice'], result['combination'], prize, result['pot_after'], server_id)
 
                 # Deduct the bet amount from player's wallet
                 bet_deducted = banker_roles_db.update_balance(

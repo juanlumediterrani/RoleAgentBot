@@ -99,6 +99,11 @@
         "description": "**Descripción**\n -Activa y desactiva los roles desde aqui.",
         "button": "🎛️ Control de Roles"
       },
+      "settings": {
+        "title": "**⚙️ Putre - Konfigurazion del Kampamento**",
+        "description": "**Descripción**\n -Ajusta el idioma del kampamento y aktiva los roles.",
+        "button": "⚙️ Konfigurazion"
+      },
       "personality": {
         "title": "**🎭 Putre - Gestión de Personalidad**",
         "description": "**Descripción**\n -Cambia la personalidad del bot para este servidor.\n -Descarga la personalidad actual como backup.\n -Migra las bases de datos al cambiar.",

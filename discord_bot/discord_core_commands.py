@@ -474,9 +474,11 @@ def register_core_commands(bot, agent_config):
 
 
     # --- CANVAS HUB COMMAND ---
+    canvas_cmd_name = f"canvas{_personality_name}"
     register_canvas_command(
         bot,
         agent_config,
+        canvas_cmd_name,
         greet_name,
         nogreet_name,
         welcome_name,

@@ -19,12 +19,15 @@ def _get_watcher_description_text(key: str, fallback: str) -> str:
         config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "agent_config.json")
         with open(config_path, encoding="utf-8") as f:
             agent_cfg = json.load(f)
-        personality_rel = agent_cfg.get("personality", "")
+        default_personality = agent_cfg.get("default_personality", "rab")
+        default_language = agent_cfg.get("default_language", "en-US")
         
         # First try to get from news_watcher descriptions
         news_watcher_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            os.path.dirname(personality_rel),
+            "personalities",
+            default_personality,
+            default_language,
             "descriptions",
             "news_watcher.json",
         )

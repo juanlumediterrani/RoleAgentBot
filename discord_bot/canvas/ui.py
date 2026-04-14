@@ -727,7 +727,7 @@ class CanvasHomeButton(discord.ui.Button):
         nav_view.update_visibility()
         nav_view.message = interaction.message
         
-        home_embed = _build_canvas_embed("home", home_content, view.admin_visible)
+        home_embed = _build_canvas_embed("home", home_content, view.admin_visible, server_id=server_id)
         await _safe_edit_interaction_message(interaction, content=None, embed=home_embed, view=nav_view)
 
 
@@ -1116,7 +1116,9 @@ class CanvasRoleDetailSelect(discord.ui.Select):
 
 class CanvasRoleActionSelect(discord.ui.Select):
     def __init__(self, role_name: str, detail_name: str, admin_visible: bool, agent_config: dict | None = None, guild=None):
-        action_items = _get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config)
+        # Use server-specific descriptions if guild is provided
+        server_id = get_server_key(guild) if guild else None
+        action_items = _get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config, server_id)
 
         # Handle both 3-tuple and 4-tuple formats
         options = []
@@ -1127,9 +1129,6 @@ class CanvasRoleActionSelect(discord.ui.Select):
             else:  # (label, value, description) - backward compatibility
                 label, value, description = item
                 options.append(discord.SelectOption(label=label, value=value, description=description))
-
-        # Use server-specific descriptions if guild is provided
-        server_id = get_server_key(guild) if guild else None
         generic_option_label = _get_personality_descriptions(server_id).get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
         super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options[:25], row=2)
         self.role_name = role_name
@@ -1254,15 +1253,21 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                 return
             await interaction.response.send_modal(TabooKeywordModal(action_name, int(interaction.guild.id), view))
             return
-        if action_name in {"role_control_open", "settings_open"}:
+        if action_name == "language_settings":
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This settings option is admin-only.", ephemeral=True)
                 return
             await interaction.response.send_message(
-                "⚙️ **Server Settings**\nSelect what you want to configure:",
-                view=SettingsSelectView(view),
+                "🌐 **Select Server Language**",
+                view=LanguageSelectView(view),
                 ephemeral=True
             )
+            return
+        if action_name == "role_control":
+            if not interaction.guild or not view.admin_visible:
+                await interaction.response.send_message("❌ This settings option is admin-only.", ephemeral=True)
+                return
+            await interaction.response.send_modal(RoleControlModal(view))
             return
         if action_name in {"taboo_on", "taboo_off"}:
             if not interaction.guild or not view.admin_visible:
@@ -2057,24 +2062,24 @@ class LanguageSelect(discord.ui.Select):
             )
     
     async def _offer_personality_language_update(self, interaction, personality_name, old_language, new_language, server_id):
-        """Offer to update personality to new language version."""
+        """Offer to update personality to new language version via ephemeral Yes/No prompt."""
         try:
-            from .canvas_personality import CanvasPersonalityConfirmView
+            canvas_view = self.canvas_view
             
-            # Create confirmation view for personality language update
-            confirm_view = CanvasPersonalityConfirmView(
+            view = _LanguagePersonalityPromptView(
                 personality_name=personality_name,
-                server_id=server_id,
+                old_language=old_language,
                 new_language=new_language,
-                is_language_update=True
+                server_id=server_id,
+                canvas_view=canvas_view,
             )
             
-            await interaction.response.edit_message(
-                content=f"**Language Updated: {old_language} → {new_language}**\n\n"
-                       f"The current personality `{personality_name}` is available in the new language.\n\n"
-                       f"Would you like to update `{personality_name}` to the `{new_language}` version?\n\n"
-                       f"This will migrate the personality files to the new language while preserving your data.",
-                view=confirm_view
+            await interaction.response.send_message(
+                f"Language Updated: {old_language} → {new_language}\n\n"
+                f"The current personality `{personality_name}` is also available in `{new_language}`.\n"
+                f"Would you also like to change the personality to its `{new_language}` version?",
+                view=view,
+                ephemeral=True
             )
         except Exception as e:
             logger.exception(f"Error offering personality language update: {e}")
@@ -2116,68 +2121,67 @@ class LanguageSelect(discord.ui.Select):
             )
 
 
-class SettingsSelectView(discord.ui.View):
-    """View for selecting settings category (Language or Roles)."""
-    
-    def __init__(self, view: "CanvasBehaviorView"):
-        super().__init__(timeout=300)
-        self.canvas_view = view
-        self.add_item(SettingsSelect(view))
+class _LanguagePersonalityPromptView(discord.ui.View):
+    """Ephemeral Yes/No prompt shown after a language change when the current personality
+    also supports the new language.  
+    - Yes: opens the personality selection flow (with the language already updated)  
+    - No: confirms language-only change and edits this message
+    """
 
+    def __init__(self, personality_name: str, old_language: str, new_language: str,
+                 server_id: str, canvas_view):
+        super().__init__(timeout=180)
+        self.personality_name = personality_name
+        self.old_language = old_language
+        self.new_language = new_language
+        self.server_id = server_id
+        self.canvas_view = canvas_view
 
-class SettingsSelect(discord.ui.Select):
-    """Dropdown for selecting what to configure in settings."""
-    
-    def __init__(self, view: "CanvasBehaviorView"):
-        self.canvas_view = view
-        
-        options = [
-            discord.SelectOption(
-                label="🌐 Server Language",
-                value="language",
-                description="Change the bot's language for this server",
-                emoji="🌐"
-            ),
-            discord.SelectOption(
-                label="🎛️ Role Management",
-                value="roles",
-                description="Enable or disable bot roles",
-                emoji="🎛️"
-            ),
-        ]
-        
-        super().__init__(
-            placeholder="⚙️ Select what to configure...",
-            min_values=1,
-            max_values=1,
-            options=options,
-            custom_id="settings_category_select"
-        )
-    
-    async def callback(self, interaction: discord.Interaction):
+        yes_button = discord.ui.Button(label="Yes", style=discord.ButtonStyle.green, row=0)
+        yes_button.callback = self._on_yes
+        self.add_item(yes_button)
+
+        no_button = discord.ui.Button(label="No", style=discord.ButtonStyle.red, row=0)
+        no_button.callback = self._on_no
+        self.add_item(no_button)
+
+    async def _on_yes(self, interaction: discord.Interaction):
+        """Open the personality selection dropdown (language already saved)."""
         try:
-            selected = self.values[0]
-            
-            if selected == "language":
-                # Show language selection
-                await interaction.response.edit_message(
-                    content="🌐 **Select Server Language**",
-                    view=LanguageSelectView(self.canvas_view)
-                )
-            elif selected == "roles":
-                # Show role control modal
-                await interaction.response.send_modal(RoleControlModal(self.canvas_view))
-            else:
-                await interaction.response.send_message(
-                    "❌ Invalid selection.", 
-                    ephemeral=True
-                )
-        except Exception as e:
-            logger.exception(f"Error in settings select: {e}")
-            await interaction.response.send_message(
-                "❌ Error processing selection. Please try again.", 
-                ephemeral=True
+            from .canvas_personality import CanvasPersonalityView, CanvasPersonalitySelectView
+
+            # Build a minimal parent view so CanvasPersonalitySelectView can work
+            parent_view = CanvasPersonalityView(
+                author_id=interaction.user.id,
+                admin_visible=self.canvas_view.admin_visible,
+                guild=interaction.guild,
+                message=None,
             )
+            selection_view = CanvasPersonalitySelectView(parent_view)
+            await interaction.response.edit_message(
+                content="Select a new personality from the dropdown below:",
+                view=selection_view,
+            )
+        except Exception as e:
+            logger.exception(f"Error opening personality select from language prompt: {e}")
+            await interaction.response.edit_message(
+                content=f"❌ Error: {str(e)}",
+                view=None,
+            )
+        self.stop()
+
+    async def _on_no(self, interaction: discord.Interaction):
+        """Confirm language-only change and edit this ephemeral message."""
+        try:
+            await interaction.response.edit_message(
+                content=f"Language Updated: {self.old_language} → {self.new_language}\n"
+                        f"Personality unchanged.",
+                view=None,
+            )
+        except Exception as e:
+            logger.exception(f"Error confirming language-only change: {e}")
+        self.stop()
+
 
 
 class LanguageSelectView(discord.ui.View):
@@ -2287,7 +2291,16 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     
     # Get current dice state and personality messages
     dice_state = _get_canvas_dice_state(guild)
-    answers = _personality_answers.get("dice_game_messages", {})
+    # Load server-specific answers from answers.json
+    try:
+        from agent_runtime import get_personality_file_path
+        answers_path = get_personality_file_path("answers.json", server_id)
+        with open(answers_path, encoding="utf-8") as f:
+            answers_cfg = json.load(f).get("discord", {})
+        answers = answers_cfg.get("dice_game_messages", {})
+    except Exception as e:
+        logger.warning(f"Could not load server-specific answers.json: {e}")
+        answers = _personality_answers.get("dice_game_messages", {})
     descriptions = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
     trickster_messages = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {})
     
@@ -2665,7 +2678,7 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
         
         server_id = get_server_key(guild) if guild else None
         role_details = _get_canvas_role_detail_items(role_name, current_detail, admin_visible, role_name, server_id)
-        current_actions = _get_canvas_role_action_items_for_detail(role_name, current_detail, admin_visible)
+        current_actions = _get_canvas_role_action_items_for_detail(role_name, current_detail, admin_visible, self.agent_config, server_id)
         if current_actions:
             # For News Watcher, create dynamic dropdowns
             if role_name == "news_watcher" and current_detail in {"personal", "overview"}:

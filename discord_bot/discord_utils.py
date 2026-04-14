@@ -296,6 +296,111 @@ async def send_embed_dm_or_channel(ctx, embed, confirm_msg="📩 Message sent by
         await ctx.send(embed=embed)
 
 
+async def send_personality_embed_dm(target, bot: discord.Client, guild: discord.Guild = None, server_id: str = None):
+    """
+    Send an embed with the bot's server-specific avatar and personality name before DM content.
+    
+    This function creates a "header" embed showing the bot's personality identity
+    specific to the server where the interaction originated.
+    
+    Args:
+        target: The target user (discord.Member or discord.User) to send DM to
+        bot: The Discord bot client instance
+        guild: Optional Discord guild to get server-specific nickname and avatar
+        server_id: Optional server ID (used if guild not provided)
+        
+    Returns:
+        bool: True if embed was sent successfully, False otherwise
+    """
+    try:
+        # Determine effective server_id
+        effective_server_id = str(guild.id) if guild else server_id
+        
+        # Get bot's member data in the guild for server-specific identity
+        bot_member = guild.me if guild else None
+        
+        # Get server-specific avatar URL (from guild member if available)
+        if bot_member and bot_member.display_avatar:
+            # Use the bot's avatar in this specific server (nickname avatar)
+            avatar_url = bot_member.display_avatar.url
+        else:
+            # Fallback to global bot avatar
+            avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
+        
+        # Get personality display name (server-specific priority)
+        display_name = None
+        if effective_server_id:
+            # First try: server-specific personality config
+            personality_name = get_server_personality_display_name(effective_server_id)
+            if personality_name:
+                display_name = personality_name
+        
+        # Second try: guild nickname
+        if not display_name and bot_member and bot_member.nick:
+            display_name = bot_member.nick
+        
+        # Third try: global display name
+        if not display_name:
+            display_name = bot.user.display_name
+        
+        # Create personality embed
+        embed = discord.Embed(
+            title=f"{display_name}",
+            description="*Sending you a message...*",
+            color=discord.Color.blue()
+        )
+        
+        if avatar_url:
+            embed.set_thumbnail(url=avatar_url)
+        
+        # Send the personality embed
+        await target.send(embed=embed)
+        logger.debug(f"Sent personality embed to {target.name} (server: {effective_server_id or 'default'}, name: {display_name})")
+        return True
+        
+    except discord.errors.Forbidden:
+        logger.warning(f"Cannot send personality embed DM to {target.name} (Forbidden)")
+        return False
+    except Exception as e:
+        logger.error(f"Error sending personality embed to {target.name}: {e}")
+        return False
+
+
+async def send_dm_with_personality(target, bot: discord.Client, content: str, guild: discord.Guild = None, server_id: str = None):
+    """
+    Send a DM with personality embed header followed by the message content.
+    
+    This is a convenience function that sends the personality embed first,
+    then sends the actual message content. The embed uses server-specific
+    avatar and nickname from the provided guild.
+    
+    Args:
+        target: The target user (discord.Member or discord.User) to send DM to
+        bot: The Discord bot client instance
+        content: The message content to send
+        guild: Optional Discord guild to get server-specific nickname and avatar
+        server_id: Optional server ID (used if guild not provided)
+        
+    Returns:
+        bool: True if both messages were sent successfully, False otherwise
+    """
+    # Send personality embed first with server-specific identity
+    embed_sent = await send_personality_embed_dm(target, bot, guild, server_id)
+    
+    try:
+        # Send the actual message content
+        await target.send(content)
+        logger.debug(f"Sent DM content to {target.name}")
+        return True
+        
+    except discord.errors.Forbidden:
+        logger.warning(f"Cannot send DM to {target.name} (Forbidden)")
+        return False
+    except Exception as e:
+        logger.error(f"Error sending DM to {target.name}: {e}")
+        return False
+
+
 # --- EVENT AND DUPLICATE CONTROL ---
 
 _event_cache = {}

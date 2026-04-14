@@ -37,7 +37,7 @@ class FatigueCommands(commands.Cog):
         try:
             await interaction.response.defer()
             
-            server_id = get_server_id()
+            server_id = str(interaction.guild.id) if interaction.guild else get_server_id()
             if not server_id:
                 await interaction.followup.send("❌ Unable to determine server ID")
                 return

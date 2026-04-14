@@ -25,7 +25,9 @@ _AGENT_CONFIG_PATH = os.path.join(_BASE_DIR, "agent_config.json")
 with open(_AGENT_CONFIG_PATH, encoding="utf-8") as file_handle:
     AGENT_CFG = json.load(file_handle)
 
-PERSONALITY_RELATIVE_PATH = AGENT_CFG.get("personality", "personalities/default.json")
+_DEFAULT_PERSONALITY = AGENT_CFG.get("default_personality", "rab")
+_DEFAULT_LANGUAGE = AGENT_CFG.get("default_language", "en-US")
+PERSONALITY_RELATIVE_PATH = f"personalities/{_DEFAULT_PERSONALITY}/{_DEFAULT_LANGUAGE}/personality.json"
 _PERSONALITY_PATH = os.path.join(_BASE_DIR, PERSONALITY_RELATIVE_PATH)
 _PERSONALITY_DIR = os.path.dirname(_PERSONALITY_PATH)
 

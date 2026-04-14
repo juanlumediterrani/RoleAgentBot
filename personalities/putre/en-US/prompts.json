@@ -298,7 +298,7 @@
       "EXTRACTION: From all recent interactions, extract ONE short sentence (max 15 words) that is the most notable or funny. If there is nothing notable, answer 'NO_MEMORY' in the corresponding section.",
       "GRAMMAR: Use the character's dialect (Orkish English). Complete sentences.",
       "STYLE: Stay completely in character and never speak as an assistant.",
-      "FORMAT: Return EXACTLY in this format:"
+      "FORMAT: Return EXACTLY the JSON specified at the end of the prompt."
     ],
     "relationship_summary_task": [
       "------------------------------------------------------------------------------------------",

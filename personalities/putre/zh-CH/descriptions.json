@@ -103,6 +103,11 @@
         "title": "**🎭 普特雷 - 人格管理**",
         "description": "**描述**\n -为此服务器更改机器人人格。\n -下载当前人格作为备份。\n -更改时迁移数据库。",
         "button": "🎭 人格"
+      },
+      "settings": {
+        "title": "**⚙️ 普特雷 - 营地设置**",
+        "description": "**描述**\n -管理服务器的语言和激活角色。\n",
+        "button": "⚙️ 设置"
       }
     },
     "personality_messages": {

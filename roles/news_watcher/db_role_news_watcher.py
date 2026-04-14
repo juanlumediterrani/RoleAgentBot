@@ -30,6 +30,7 @@ class DatabaseRoleNewsWatcher:
     """
     
     def __init__(self, server_id: str = "default", db_path: Path = None):
+        self.server_id = server_id
         if db_path is None:
             self.db_path = get_db_path(server_id)
         else:
@@ -892,81 +893,6 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error subscribing keywords: {e}")
             return False
     
-    def cancel_keyword_subscription(self, user_id: str, keywords: str, channel_id: str = None) -> bool:
-        """Cancel keyword subscription."""
-        try:
-            with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        UPDATE subscriptions_keywords SET is_active = 0 
-                        WHERE user_id = ? AND keywords = ? AND channel_id = ?
-                    ''', (user_id, keywords, channel_id))
-                    conn.commit()
-                    return cursor.rowcount > 0
-        except Exception as e:
-            logger.exception(f"Error canceling keyword subscription: {e}")
-            return False
-    
-    def get_keyword_subscriptions(self, user_id: str, channel_id: str = None) -> list:
-        """Get keyword subscriptions of a user or channel."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT keywords, subscribed_at
-                    FROM subscriptions_keywords 
-                    WHERE user_id = ? AND channel_id = ? AND is_active = 1
-                ''', (user_id, channel_id))
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting keyword subscriptions: {e}")
-            return []
-    
-    def get_keyword_subscribers(self) -> list:
-        """Get all active keyword subscriptions."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT user_id, channel_id, keywords
-                    FROM subscriptions_keywords 
-                    WHERE is_active = 1
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting keyword subscribers: {e}")
-            return []
-    
-    def check_news_keywords_match(self, titulo: str) -> list:
-        """Check if a news headline matches keyword subscriptions."""
-        try:
-            keyword_subscribers = self.get_keyword_subscribers()
-            matches = []
-
-            title_lower = titulo.lower()
-
-            for user_id, channel_id, keywords in keyword_subscribers:
-                # Handle both string and list inputs for keywords
-                if isinstance(keywords, list):
-                    keyword_list = [str(p).strip().lower() for p in keywords if p and str(p).strip()]
-                elif isinstance(keywords, str):
-                    keyword_list = [p.strip().lower() for p in keywords.split(',')]
-                else:
-                    logger.warning(f"Invalid keywords type: {type(keywords)} for user {user_id}")
-                    continue
-                
-                # Check if any keyword is in the title
-                if any(keyword in title_lower for keyword in keyword_list):
-                    if channel_id:
-                        matches.append(f"channel_{channel_id}")
-                    else:
-                        matches.append(user_id)
-
-            return matches
-        except Exception as e:
-            logger.exception(f"Error checking keywords: {e}")
-            return []
     
     def subscribe_channel_category(self, channel_id: str, channel_name: str, server_id: str, 
                                  category: str, feed_id: int = None) -> bool:
@@ -1243,21 +1169,6 @@ class DatabaseRoleNewsWatcher:
             logger.exception(f"Error checking subscription: {e}")
             return False
     
-    def get_all_active_keyword_subscriptions(self) -> list:
-        """Get all active keyword subscriptions (user subscriptions only)."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT user_id, channel_id, keywords, category, feed_id
-                    FROM subscriptions_keywords 
-                    WHERE is_active = 1 AND (channel_id IS NULL OR channel_id = '')
-                ''')
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting all keyword subscriptions: {e}")
-            return []
-    
     # ===== USER PREMISES MANAGEMENT =====
     
     def get_user_premises(self, user_id: str) -> list:
@@ -1347,17 +1258,16 @@ class DatabaseRoleNewsWatcher:
             return [], "empty"
     
     def _get_default_premises(self) -> list:
-        """Get default premises from personality file."""
+        """Get default premises from server-specific personality file."""
         try:
-            from agent_engine import PERSONALITY
+            from agent_engine import _get_personality
+            personality = _get_personality(self.server_id)
             # Look for premises in the news_watcher section of roles
-            if ('roles' in PERSONALITY and 
-                'news_watcher' in PERSONALITY['roles'] and
-                'premises' in PERSONALITY['roles']['news_watcher']):
-                return PERSONALITY['roles']['news_watcher']['premises']
-            return []
+            roles = personality.get("roles", {})
+            news_watcher = roles.get("news_watcher", {})
+            return news_watcher.get("premises", [])
         except Exception as e:
-            logger.error(f"Error getting default premises: {e}")
+            logger.error(f"Error getting default premises for server {self.server_id}: {e}")
             return []
 
     def _get_premises_limit(self) -> int:
@@ -1772,10 +1682,10 @@ class DatabaseRoleNewsWatcher:
                 if cursor.fetchone()[0] > 0:
                     return 'flat'
                 
-                # Check if user has keyword subscription
+                # Check if user has keyword subscription (unified system)
                 cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_keywords 
-                    WHERE user_id = ? AND is_active = 1
+                    SELECT COUNT(*) FROM subscriptions 
+                    WHERE user_id = ? AND is_active = 1 AND method = 'keyword'
                 ''', (user_id,))
                 
                 if cursor.fetchone()[0] > 0:
@@ -1815,10 +1725,10 @@ class DatabaseRoleNewsWatcher:
                 if cursor.fetchone()[0] > 0:
                     return 'flat'
                 
-                # Check if channel has keyword subscription
+                # Check if channel has keyword subscription (unified system)
                 cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_keywords 
-                    WHERE channel_id = ? AND is_active = 1
+                    SELECT COUNT(*) FROM subscriptions 
+                    WHERE channel_id = ? AND is_active = 1 AND method = 'keyword'
                 ''', (channel_id,))
                 
                 if cursor.fetchone()[0] > 0:
@@ -1858,12 +1768,12 @@ class DatabaseRoleNewsWatcher:
                         WHERE user_id = ? AND is_active = 1 AND (user_premises IS NULL OR user_premises = '')
                     ''', (user_id,))
                 
-                # Cancel keyword subscriptions if not to be kept
+                # Cancel keyword subscriptions if not to be kept (unified system)
                 if subscription_type_to_keep != 'keywords':
                     cursor.execute('''
-                        UPDATE subscriptions_keywords 
+                        UPDATE subscriptions 
                         SET is_active = 0 
-                        WHERE user_id = ? AND is_active = 1
+                        WHERE user_id = ? AND is_active = 1 AND method = 'keyword'
                     ''', (user_id,))
                 
                 # Cancel AI subscriptions if not to be kept
@@ -1899,12 +1809,12 @@ class DatabaseRoleNewsWatcher:
                         WHERE channel_id = ? AND is_active = 1 AND (channel_premises IS NULL OR channel_premises = '')
                     ''', (channel_id,))
                 
-                # Cancel keyword subscriptions if not to be kept
+                # Cancel keyword subscriptions if not to be kept (unified system)
                 if subscription_type_to_keep != 'keywords':
                     cursor.execute('''
-                        UPDATE subscriptions_keywords 
+                        UPDATE subscriptions 
                         SET is_active = 0 
-                        WHERE channel_id = ? AND is_active = 1
+                        WHERE channel_id = ? AND is_active = 1 AND method = 'keyword'
                     ''', (channel_id,))
                 
                 # Cancel AI subscriptions if not to be kept
@@ -1935,83 +1845,6 @@ class DatabaseRoleNewsWatcher:
         except Exception as e:
             logger.exception(f"Error getting active subscriptions: {e}")
             return []
-    
-    def get_user_keywords(self, user_id: str) -> str:
-        """Get the configured keywords of a user from user_premises table."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT premise_text FROM user_premises 
-                    WHERE user_id = ? AND premise_text LIKE 'KEYWORDS:%'
-                    ORDER BY created_at DESC LIMIT 1
-                ''', (user_id,))
-                result = cursor.fetchone()
-                if result and result[0]:
-                    # Extract keywords from "KEYWORDS:iran,crypto" format
-                    return result[0].replace('KEYWORDS:', '', 1)
-                return None
-        except Exception as e:
-            logger.exception(f"Error getting user keywords: {e}")
-            return None
-    
-    def update_user_keywords(self, user_id: str, keywords: str) -> bool:
-        """Update the keywords of a user in the user_premises table (renamed for keywords)."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                
-                if keywords:
-                    # Store keywords in user_premises table (reuse existing infrastructure)
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO user_premises 
-                        (user_id, premise_text, created_at)
-                        VALUES (?, ?, ?)
-                    ''', (user_id, f"KEYWORDS:{keywords}", datetime.now().isoformat()))
-                else:
-                    # Remove keywords if empty
-                    cursor.execute('''
-                        DELETE FROM user_premises 
-                        WHERE user_id = ? AND premise_text LIKE 'KEYWORDS:%'
-                    ''', (user_id,))
-                
-                conn.commit()
-                return True
-        except Exception as e:
-            logger.exception(f"Error updating user keywords: {e}")
-            return False
-    
-    def get_user_keyword_subscriptions(self, user_id: str) -> list:
-        """Get all keyword subscriptions of a user."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT category, feed_id, keywords 
-                    FROM subscriptions_keywords 
-                    WHERE user_id = ? AND is_active = 1
-                    ORDER BY category, feed_id
-                ''', (user_id,))
-                return cursor.fetchall()
-        except Exception as e:
-            logger.exception(f"Error getting keyword subscriptions: {e}")
-            return []
-    
-    def cancel_user_keyword_subscription(self, user_id: str, category: str) -> bool:
-        """Cancel user keyword subscription for a category."""
-        try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE subscriptions_keywords 
-                    SET is_active = 0
-                    WHERE user_id = ? AND category = ? AND is_active = 1
-                ''', (user_id, category))
-                conn.commit()
-                return cursor.rowcount > 0
-        except Exception as e:
-            logger.exception(f"Error canceling user keyword subscription: {e}")
-            return False
     
     def get_user_ai_subscriptions(self, user_id: str) -> list:
         """Get all AI subscriptions of a user."""
@@ -2079,10 +1912,10 @@ class DatabaseRoleNewsWatcher:
                 ''', (channel_id,))
                 flat_count = cursor.fetchone()[0]
                 
-                # Count keyword subscriptions
+                # Count keyword subscriptions (unified system)
                 cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_keywords 
-                    WHERE channel_id = ? AND is_active = 1
+                    SELECT COUNT(*) FROM subscriptions 
+                    WHERE channel_id = ? AND is_active = 1 AND method = 'keyword'
                 ''', (channel_id,))
                 keyword_count = cursor.fetchone()[0]
                 
@@ -2114,8 +1947,8 @@ class DatabaseRoleNewsWatcher:
                 user_flat_count = cursor.fetchone()[0]
                 
                 cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_keywords 
-                    WHERE is_active = 1
+                    SELECT COUNT(*) FROM subscriptions 
+                    WHERE is_active = 1 AND method = 'keyword'
                 ''')
                 user_keyword_count = cursor.fetchone()[0]
                 
@@ -2127,8 +1960,8 @@ class DatabaseRoleNewsWatcher:
                 channel_flat_count = cursor.fetchone()[0]
                 
                 cursor.execute('''
-                    SELECT COUNT(*) FROM subscriptions_keywords 
-                    WHERE channel_id IS NOT NULL AND is_active = 1
+                    SELECT COUNT(*) FROM subscriptions 
+                    WHERE channel_id IS NOT NULL AND is_active = 1 AND method = 'keyword'
                 ''')
                 channel_keyword_count = cursor.fetchone()[0]
                 
@@ -2382,6 +2215,89 @@ class DatabaseRoleNewsWatcher:
     def delete_subscription(self, subscription_id: int) -> bool:
         """Delete a subscription (soft delete by setting is_active=0)."""
         return self.update_subscription(subscription_id, is_active=0)
+    
+    def get_user_keyword_subscriptions(self, user_id: str) -> list:
+        """Get all keyword subscriptions of a user (unified system)."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT category, feed_id, keywords 
+                    FROM subscriptions 
+                    WHERE user_id = ? AND is_active = 1 AND method = 'keyword'
+                    ORDER BY category, feed_id
+                ''', (user_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting keyword subscriptions: {e}")
+            return []
+    
+    def cancel_user_keyword_subscription(self, user_id: str, category: str) -> bool:
+        """Cancel user keyword subscription for a category (unified system)."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE subscriptions 
+                    SET is_active = 0
+                    WHERE user_id = ? AND category = ? AND is_active = 1 AND method = 'keyword'
+                ''', (user_id, category))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.exception(f"Error canceling user keyword subscription: {e}")
+            return False
+    
+    def get_user_keywords(self, user_id: str) -> str:
+        """Get keywords from user's keyword subscriptions (unified system)."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT keywords FROM subscriptions 
+                    WHERE user_id = ? AND is_active = 1 AND method = 'keyword'
+                    LIMIT 1
+                ''', (user_id,))
+                result = cursor.fetchone()
+                return result[0] if result and result[0] else None
+        except Exception as e:
+            logger.exception(f"Error getting user keywords: {e}")
+            return None
+    
+    def update_user_keywords(self, user_id: str, keywords: str) -> bool:
+        """Update keywords in user's keyword subscriptions (unified system)."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                
+                if keywords:
+                    # Update existing keyword subscription or create new one
+                    cursor.execute('''
+                        UPDATE subscriptions 
+                        SET keywords = ?
+                        WHERE user_id = ? AND is_active = 1 AND method = 'keyword'
+                    ''', (keywords, user_id))
+                    
+                    if cursor.rowcount == 0:
+                        # No existing keyword subscription, create one with default category
+                        cursor.execute('''
+                            INSERT INTO subscriptions 
+                            (user_id, category, keywords, method, is_active, subscribed_at)
+                            VALUES (?, ?, ?, 'keyword', 1, datetime('now'))
+                        ''', (user_id, 'general', keywords))
+                else:
+                    # Remove keywords from keyword subscriptions
+                    cursor.execute('''
+                        UPDATE subscriptions 
+                        SET keywords = NULL
+                        WHERE user_id = ? AND is_active = 1 AND method = 'keyword'
+                    ''', (user_id,))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.exception(f"Error updating user keywords: {e}")
+            return False
 
 
 # Dictionary to maintain instances per server

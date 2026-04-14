@@ -89,18 +89,8 @@ def _get_available_personalities(language: str = None) -> list[str]:
 def _get_personality_descriptions(server_id: str = None) -> dict:
     """Get personality descriptions from server-specific or global directory."""
     try:
-        import json
-        from pathlib import Path
-        from discord_bot.db_init import get_server_personality_dir
-        
-        server_dir = get_server_personality_dir(server_id) if get_server_personality_dir else None
-        if server_dir:
-            server_path = Path(server_dir)
-            descriptions_path = server_path / "descriptions.json"
-            if descriptions_path.exists():
-                with open(descriptions_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f).get("discord", {})
-                return data
+        from discord_bot.canvas.content import _get_personality_descriptions as _full_get
+        return _full_get(server_id)
     except Exception as e:
         if logger:
             logger.debug(f"Could not load descriptions for server {server_id}: {e}")
@@ -225,6 +215,19 @@ def _delete_database(server_id: str, db_name: str) -> bool:
         return False
 
 
+def _invalidate_db_cache(import_path: str, func_name: str, db_name: str, server_id: str) -> None:
+    """Safely invalidate a database cache instance for a given server."""
+    try:
+        module = __import__(import_path, fromlist=[func_name])
+        invalidate_func = getattr(module, func_name)
+        invalidate_func(server_id)
+        if logger:
+            logger.info(f"✅ Invalidated {db_name} db cache for server {server_id}")
+    except Exception as err:
+        if logger:
+            logger.warning(f"Could not invalidate {db_name} db instance: {err}")
+
+
 def _delete_personality_directory(server_id: str, personality_name: str) -> bool:
     """Delete a personality directory from server."""
     try:
@@ -257,16 +260,13 @@ class CanvasPersonalityView(discord.ui.View):
         self.guild = guild
         self.message = message
         
-        # Get personality-specific labels
+        # Get personality-specific labels (single call, reused below)
         server_id = get_server_key(guild) if (get_server_key and guild) else None
-        personality_msgs = _get_personality_descriptions(server_id).get("personality_messages", {})
+        personality_descriptions = _get_personality_descriptions(server_id)
+        personality_msgs = personality_descriptions.get("personality_messages", {})
         
         # Add dropdown with personality options
         self.add_item(CanvasPersonalitySelect(admin_visible, personality_msgs))
-        
-        # Add navigation buttons
-        server_id = get_server_key(guild) if (get_server_key and guild) else None
-        personality_descriptions = _get_personality_descriptions(server_id)
         
         # Back button
         back_label = personality_descriptions.get("canvas_home_messages", {}).get("button_back", "← Back")
@@ -468,26 +468,42 @@ class CanvasPersonalitySelectView(discord.ui.View):
         self.cancel_button.callback = self._on_cancel
         self.add_item(self.cancel_button)
     
-    def _get_server_language(self) -> str:
+    def _get_server_language(self, server_id: str = None) -> str:
         """Get the configured language for the server."""
         try:
             from .server_config import get_server_language
-            if self.parent_view.guild:
-                return get_server_language(str(self.parent_view.guild.id))
+            sid = server_id or (str(self.parent_view.guild.id) if self.parent_view.guild else None)
+            if sid:
+                return get_server_language(sid)
         except Exception as e:
             if logger:
                 logger.debug(f"Could not get server language: {e}")
         return "en-US"
     
-    def _get_current_server_language(self, server_id: str) -> str:
-        """Get the current configured language for the server."""
-        try:
-            from .server_config import get_server_language
-            return get_server_language(server_id)
-        except Exception as e:
-            if logger:
-                logger.debug(f"Could not get current server language: {e}")
-        return "en-US"
+    def _truncate_to_limit(self, text: str, max_length: int = 2000) -> str:
+        """Truncate text to max_length, trying to cut at paragraph or sentence boundaries."""
+        if len(text) <= max_length:
+            return text
+        
+        # Try to cut at paragraph boundary (double newline)
+        truncated = text[:max_length]
+        last_paragraph = truncated.rfind('\n\n')
+        if last_paragraph > max_length * 0.7:  # Only use if we keep at least 70%
+            return text[:last_paragraph].rstrip()
+        
+        # Try to cut at sentence boundary (. ! ?)
+        for punctuation in ['.', '!', '?']:
+            last_sentence = truncated.rfind(punctuation)
+            if last_sentence > max_length * 0.7:
+                return text[:last_sentence + 1].rstrip()
+        
+        # Fallback: cut at last space
+        last_space = truncated.rfind(' ')
+        if last_space > max_length * 0.7:
+            return text[:last_space].rstrip()
+        
+        # Last resort: hard cut
+        return text[:max_length].rstrip()
     
     def _load_personality_info(self, personality_name: str) -> str:
         """Load identity_body from personality.json for the server's language."""
@@ -508,8 +524,9 @@ class CanvasPersonalitySelectView(discord.ui.View):
                 
                 identity_body = personality_data.get("system_prompt_template", {}).get("identity_body", [])
                 if identity_body:
-                    # Join the identity body lines
-                    return "\n".join(identity_body)
+                    # Join the identity body lines and truncate to 2000 characters
+                    full_text = "\n".join(identity_body)
+                    return self._truncate_to_limit(full_text, 2000)
             return "No personality description available."
         except Exception as e:
             if logger:
@@ -536,21 +553,14 @@ class CanvasPersonalitySelectView(discord.ui.View):
             current_with_language = _get_current_personality_with_language(server_id)
             new_with_language = f"{new_personality}:{self.server_language}"
             
-            # Allow selection if it's the same personality but different language
-            if current_with_language == new_with_language:
-                await interaction.response.send_message(
-                    f"❌ The bot is already using the `{new_personality}` personality with language `{self.server_language}`.",
-                    ephemeral=True
-                )
-                self.stop()
-                return
-            
             # Show confirmation if same personality but different language
-            if self.old_personality == new_personality and self.server_language != self._get_current_server_language(server_id):
+            if self.old_personality == new_personality and self.server_language != self._get_server_language(server_id):
                 personality_info = self._load_personality_info(new_personality)
+                content = f"**Selected Personality: {new_personality} (Language: {self.server_language})**\n\n" \
+                          f"⚠️ **Note:** Changing language for the same personality.\n\n{personality_info}"
+                content = self._truncate_to_limit(content, 2000)
                 await interaction.response.edit_message(
-                    content=f"**Selected Personality: {new_personality} (Language: {self.server_language})**\n\n"
-                           f"⚠️ **Note:** Changing language for the same personality.\n\n{personality_info}",
+                    content=content,
                     view=self
                 )
                 self.confirm_button.disabled = False
@@ -562,8 +572,10 @@ class CanvasPersonalitySelectView(discord.ui.View):
             # Enable confirm button and update message
             self.confirm_button.disabled = False
             
+            content = f"**Selected Personality: {new_personality}**\n\n{personality_info}"
+            content = self._truncate_to_limit(content, 2000)
             await interaction.response.edit_message(
-                content=f"**Selected Personality: {new_personality}**\n\n{personality_info}",
+                content=content,
                 view=self
             )
                 
@@ -657,7 +669,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             options=yes_no_options,
             row=0
         )
-        self.download_old_select.callback = self._on_download_select
+        self.download_old_select.callback = self._on_select_option_defer
         self.add_item(self.download_old_select)
         
         # Delete memory selector
@@ -668,7 +680,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             options=yes_no_options,
             row=1
         )
-        self.delete_memory_select.callback = self._on_delete_select
+        self.delete_memory_select.callback = self._on_select_option_defer
         self.add_item(self.delete_memory_select)
         
         # Download memory selector
@@ -679,7 +691,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             options=yes_no_options,
             row=2
         )
-        self.download_memory_select.callback = self._on_download_memory_select
+        self.download_memory_select.callback = self._on_select_option_defer
         self.add_item(self.download_memory_select)
         
         # Confirm and Cancel buttons
@@ -692,45 +704,20 @@ class CanvasPersonalityConfirmView(discord.ui.View):
         self.add_item(self.confirm_button)
         
         self.cancel_button = discord.ui.Button(
-            label="Cancel",
+            label="No",
             style=discord.ButtonStyle.red,
             row=3
         )
         self.cancel_button.callback = self._on_cancel
         self.add_item(self.cancel_button)
     
-    async def _on_download_select(self, interaction: discord.Interaction):
-        """Handle download old personality selection."""
+    async def _on_select_option_defer(self, interaction: discord.Interaction):
+        """Shared callback for option selects that only need to acknowledge the interaction."""
         try:
-            value = interaction.data.get('values', [''])[0]
-            # Just acknowledge the selection - the actual value will be read in _on_confirm
             await interaction.response.defer()
         except Exception as e:
             if logger:
-                logger.error(f"Error in download select callback: {e}")
-            await interaction.response.send_message("❌ Error selecting option", ephemeral=True)
-    
-    async def _on_delete_select(self, interaction: discord.Interaction):
-        """Handle delete memory selection."""
-        try:
-            value = interaction.data.get('values', [''])[0]
-            # Just acknowledge the selection - the actual value will be read in _on_confirm
-            await interaction.response.defer()
-        except Exception as e:
-            if logger:
-                logger.error(f"Error in delete select callback: {e}")
-            await interaction.response.send_message("❌ Error selecting option", ephemeral=True)
-    
-    async def _on_download_memory_select(self, interaction: discord.Interaction):
-        """Handle download memory selection."""
-        try:
-            value = interaction.data.get('values', [''])[0]
-            # Just acknowledge the selection - the actual value will be read in _on_confirm
-            await interaction.response.defer()
-        except Exception as e:
-            if logger:
-                logger.error(f"Error in download memory select callback: {e}")
-            await interaction.response.send_message("❌ Error selecting option", ephemeral=True)
+                logger.error(f"Error deferring select interaction: {e}")
     
     async def _on_confirm(self, interaction: discord.Interaction):
         """Handle personality change confirmation and execution."""
@@ -746,11 +733,9 @@ class CanvasPersonalityConfirmView(discord.ui.View):
 
             # Track messages for cleanup
             message1 = None  # Initial progress message
-            message2 = None  # Memory synthesis message
             message3 = None  # Success message
 
             # Edit message to show progress, then send followup messages
-            # Edit message to show progress
             progress_text = f"⏳ Changing personality from `{self.old_personality}` to `{self.new_personality}`..."
             if self.is_language_update:
                 progress_text = f"⏳ Updating `{self.personality_name}` to `{self.new_language}` language..."
@@ -826,8 +811,9 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             # Step 3: Handle databases FIRST (before copying new personality)
             # This ensures we preserve/transfer memory before new personality overwrites files
             if delete_memory:
-                # Delete agent database (memory) and rename others
+                # Delete ONLY the agent database (memory) of the old personality
                 _delete_database(server_id, f"agent_{old_personality}.db")
+                # Rename other databases from old to new personality (preserve roles, behavior, etc.)
                 _rename_server_databases(server_id, old_personality, new_personality)
                 # Create new agent database for new personality
                 new_agent_db = server_db_dir / f"agent_{new_personality}.db"
@@ -837,13 +823,6 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             else:
                 # Rename all databases including agent (preserve memory for new personality)
                 _rename_server_databases(server_id, old_personality, new_personality)
-                # Also rename agent database specifically
-                old_agent = server_db_dir / f"agent_{old_personality}.db"
-                new_agent = server_db_dir / f"agent_{new_personality}.db"
-                if old_agent.exists():
-                    if new_agent.exists():
-                        new_agent.unlink()
-                    old_agent.rename(new_agent)
             
             # Step 4: Delete old personality directory
             _delete_personality_directory(server_id, old_personality)
@@ -904,36 +883,19 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             # Reload personality in memory
             try:
                 from agent_engine import reload_personality
-                reload_personality(server_id)  # Pass server_id to clear specific cache
-                # Also reload descriptions cache
-                global _personality_descriptions_cache, _personality_descriptions_cache_server_id
-                _personality_descriptions_cache = {}
-                _personality_descriptions_cache_server_id = None
+                reload_personality(server_id)  # Clears personality + descriptions cache
                 
                 # IMPORTANT: Invalidate ALL cached database instances AFTER database renaming
                 # This ensures new instances point to the correct personality database files
                 if logger:
                     logger.info(f"🔄 Invalidating all database caches for server {server_id} after personality change")
                 
-                # Helper function to safely invalidate database caches
-                def _invalidate_cache(import_path, func_name, db_name):
-                    """Safely invalidate a database cache with error handling."""
-                    try:
-                        module = __import__(import_path, fromlist=[func_name])
-                        invalidate_func = getattr(module, func_name)
-                        invalidate_func(server_id)
-                        if logger:
-                            logger.info(f"✅ Invalidated {db_name} db cache for server {server_id}")
-                    except Exception as err:
-                        if logger:
-                            logger.warning(f"Could not invalidate {db_name} db instance: {err}")
-                
                 # Invalidate all database caches
-                _invalidate_cache('agent_db', 'invalidate_db_instance', 'agent')
-                _invalidate_cache('agent_roles_db', 'invalidate_roles_db_instance', 'roles')
-                _invalidate_cache('behavior.db_behavior', 'invalidate_behavior_db_instance', 'behavior')
-                _invalidate_cache('roles.news_watcher.db_role_news_watcher', 'invalidate_news_watcher_db_instance', 'news_watcher')
-                _invalidate_cache('roles.treasure_hunter.db_role_treasure_hunter', 'invalidate_poe_db_instance', 'POE')
+                _invalidate_db_cache('agent_db', 'invalidate_db_instance', 'agent', server_id)
+                _invalidate_db_cache('agent_roles_db', 'invalidate_roles_db_instance', 'roles', server_id)
+                _invalidate_db_cache('behavior.db_behavior', 'invalidate_behavior_db_instance', 'behavior', server_id)
+                _invalidate_db_cache('roles.news_watcher.db_role_news_watcher', 'invalidate_news_watcher_db_instance', 'news_watcher', server_id)
+                _invalidate_db_cache('roles.treasure_hunter.db_role_treasure_hunter', 'invalidate_poe_db_instance', 'POE', server_id)
                 
                 # Invalidate beggar config cache
                 try:
@@ -950,14 +912,13 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 if self.is_language_update:
                     if logger:
                         logger.info(f"⏭️ Skipping memory synthesis for language-only update")
-                if not self.is_language_update:
+                else:
                     try:
                         from agent_mind import generate_daily_memory_summary
-                        msg2 = await interaction.followup.send(
+                        await interaction.followup.send(
                             "🧠 Generating initial memory synthesis for new personality...",
                             ephemeral=True
                         )
-                        message2 = msg2
                         # Force personality reload to ensure we use the correct one
                         from agent_engine import _get_personality
                         _get_personality(server_id)  # Pass server_id to load correct personality
@@ -1052,6 +1013,23 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                     logger.warning(f"Could not sync bot identity: {identity_error}")
                 # Non-critical error, don't block the personality change
 
+            # Step 11: Update bot presence message to new personality's message
+            # This updates the "Listening to..." status with the new personality's message
+            try:
+                from discord_bot.agent_discord import set_bot_presence_message
+                if interaction.guild and interaction.client:
+                    if logger:
+                        logger.info(f"🔄 Updating bot presence message for server {server_id} after personality change")
+                    
+                    await set_bot_presence_message(interaction.guild, bot_instance=interaction.client)
+                    
+                    if logger:
+                        logger.info(f"✅ Bot presence message updated to new personality")
+            except Exception as presence_error:
+                if logger:
+                    logger.warning(f"Could not update bot presence message: {presence_error}")
+                # Non-critical error, don't block the personality change
+
             # Get success message
             personality_msgs = _get_personality_descriptions(server_id).get("personality_messages", {})
             
@@ -1091,95 +1069,16 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 pass
             self.stop()
 
-    async def _handle_language_update(self, interaction: discord.Interaction):
-        """Handle language update confirmation and execution."""
-        try:
-            message1 = None
-
-            await interaction.response.edit_message(
-                content=f"⏳ Updating `{self.personality_name}` to `{self.new_language}` language...",
-                view=None
-            )
-            message1 = interaction.message
-
-            server_id = self.server_id
-            new_personality = self.personality_name
-            download_old = self.download_old_select.values[0] == "yes"
-
-            base_dir = Path(__file__).parent.parent.parent
-
-            # Step 1: Download old personality if requested
-            if download_old:
-                old_personality_dir = base_dir / "databases" / server_id / new_personality
-                if old_personality_dir.exists():
-                    try:
-                        zip_path = await _zip_personality(new_personality, old_personality_dir)
-                        if zip_path and zip_path.exists():
-                            file = discord.File(zip_path, filename=f"{new_personality}_backup.zip")
-                            await interaction.followup.send(
-                                content="📦 Backup of current personality downloaded:",
-                                file=file,
-                                ephemeral=True
-                            )
-                            try:
-                                zip_path.unlink()
-                            except:
-                                pass
-                    except Exception as e:
-                        if logger:
-                            logger.warning(f"Failed to create backup: {e}")
-
-            # Step 2: Copy new personality files with target language
-            success = False
-            if copy_personality_to_server:
-                success = copy_personality_to_server(server_id, new_personality, language=self.new_language, update_config=True)
-
-            if not success:
-                await interaction.followup.send(
-                    f"❌ Failed to update `{new_personality}` to `{self.new_language}` language.",
-                    ephemeral=True
-                )
-                return
-
-            # Step 3: Update JSON config files
-            if update_personality_files:
-                files_updated = update_personality_files(server_id, new_personality)
-                if logger and files_updated:
-                    logger.info(f"✅ Updated personality files for {new_personality} to {self.new_language}")
-
-            # Step 4: Sync bot identity if available
-            try:
-                if sync_bot_identity_to_server_personality:
-                    await sync_bot_identity_to_server_personality(server_id)
-            except Exception as identity_error:
-                if logger:
-                    logger.warning(f"Could not sync bot identity: {identity_error}")
-
-            # Step 5: Send success message
-            try:
-                if message1:
-                    await message1.delete()
-            except:
-                pass
-
-            await interaction.followup.send(
-                f"✅ Personality `{new_personality}` updated to `{self.new_language}` language! The new language version is now active.",
-                ephemeral=True
-            )
-            self.stop()
-
-        except Exception as e:
-            if logger:
-                logger.exception(f"Error in language update confirmation view: {e}")
-            try:
-                await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
-            except:
-                pass
-            self.stop()
-
     async def _on_cancel(self, interaction: discord.Interaction):
         """Handle cancel button - dismiss the message."""
-        await interaction.message.delete()
+        try:
+            await interaction.response.defer()
+        except Exception:
+            pass
+        try:
+            await interaction.message.delete()
+        except Exception:
+            pass
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -1211,8 +1110,13 @@ def build_canvas_personality_content(admin_visible: bool, guild=None) -> tuple[s
     
     current_personality = _get_current_personality_name(server_id) if server_id else _personality_name
     
-    # Get available personalities
-    available = _get_available_personalities()
+    # Get available personalities filtered by server language
+    try:
+        from .server_config import get_server_language
+        server_language = get_server_language(server_id) if server_id else None
+    except Exception:
+        server_language = None
+    available = _get_available_personalities(server_language) or _get_available_personalities()
     available_list = "\n".join([f"• `{p}`" for p in available]) if available else "No personalities found"
     
     title = personality_msgs.get("view_title", "🎭 Personality Management")
@@ -1232,10 +1136,3 @@ def build_canvas_personality_content(admin_visible: bool, guild=None) -> tuple[s
 """
     
     return title, description, content
-
-
-async def handle_canvas_personality_action(interaction: discord.Interaction, action_name: str, view) -> None:
-    """Handle personality-related Canvas actions."""
-    # This function is a placeholder for future expansion
-    # Currently, all actions are handled within the modal classes
-    pass

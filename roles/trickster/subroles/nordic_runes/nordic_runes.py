@@ -44,7 +44,9 @@ def _get_personality_dir(server_id: str = None) -> str:
             pass
 
         # Fall back to global personality directory
-        personality_rel = AGENT_CFG.get("personality", "personalities/putre/personality.json")
+        default_personality = AGENT_CFG.get("default_personality", "rab")
+        default_language = AGENT_CFG.get("default_language", "en-US")
+        personality_rel = f"personalities/{default_personality}/{default_language}/personality.json"
         personality_path = os.path.join(project_root, personality_rel)
         return os.path.dirname(personality_path)
     except:
