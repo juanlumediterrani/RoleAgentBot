@@ -24,6 +24,10 @@ from discord_bot.discord_utils import (
     set_is_connected, is_role_enabled_check,
     send_personality_embed_dm,
 )
+try:
+    from discord_bot.canvas.server_config import get_server_language as _get_server_language
+except Exception:
+    _get_server_language = None
 from discord_bot.entitlement_manager import EntitlementManager, set_entitlement_manager
 
 logger = get_logger('discord')
@@ -33,11 +37,12 @@ logger = get_logger('discord')
 
 # --- CONFIGURATION ---
 
-def _build_readme_prompt(user_question: str) -> str:
+def _build_readme_prompt(user_question: str, server_id: str = None) -> str:
     """Build enhanced prompt with README content for LLM.
     
     Args:
         user_question: The original user question
+        server_id: Discord server/guild ID used to resolve the server language
         
     Returns:
         Enhanced prompt string with README documentation
@@ -45,37 +50,42 @@ def _build_readme_prompt(user_question: str) -> str:
     Raises:
         Exception: If README file cannot be loaded
     """
-    # Try to load personality-specific README_LLM.md first, then fallback to root
-    default_personality = AGENT_CFG.get("default_personality", "rab")
-    default_language = AGENT_CFG.get("default_language", "en-US")
-    personality_rel = f"personalities/{default_personality}/{default_language}/personality.json"
-    personality_dir = os.path.dirname(os.path.join(os.path.dirname(os.path.dirname(__file__)), personality_rel))
-    personality_readme_path = os.path.join(personality_dir, 'README_LLM.md')
-    root_readme_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'README_LLM.md')
-    
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    manuals_dir = os.path.join(base_dir, "manuals")
+    fallback_lang = "en-US"
+
+    lang = fallback_lang
+    if server_id and _get_server_language is not None:
+        lang = _get_server_language(str(server_id))
+
+    readme_path = os.path.join(manuals_dir, lang, "README_LLM.md")
+    readme_source = f"manuals/{lang}"
+
     readme_content = None
-    readme_source = ""
-    
-    # First try personality-specific README
-    if os.path.exists(personality_readme_path):
+
+    if os.path.exists(readme_path):
         try:
-            with open(personality_readme_path, 'r', encoding='utf-8') as f:
+            with open(readme_path, 'r', encoding='utf-8') as f:
                 readme_content = f.read()
-            readme_source = "personality-specific"
-            logger.info(f"📖 Using personality-specific README: {personality_readme_path}")
+            logger.info(f"📖 Using README_LLM: {readme_path}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not load personality-specific README: {e}")
-    
-    # Fallback to root README if personality-specific failed or doesn't exist
-    if readme_content is None:
+            logger.warning(f"⚠️ Could not load README_LLM for language '{lang}': {e}")
+
+    # Fallback to en-US if language-specific README not found or failed to load
+    if readme_content is None and lang != fallback_lang:
+        fallback_path = os.path.join(manuals_dir, fallback_lang, "README_LLM.md")
+        logger.warning(f"README_LLM.md not found for language '{lang}', falling back to {fallback_lang}")
         try:
-            with open(root_readme_path, 'r', encoding='utf-8') as f:
+            with open(fallback_path, 'r', encoding='utf-8') as f:
                 readme_content = f.read()
-            readme_source = "root"
-            logger.info(f"📖 Using root README: {root_readme_path}")
+            readme_source = f"manuals/{fallback_lang} (fallback)"
+            logger.info(f"📖 Using fallback README_LLM: {fallback_path}")
         except Exception as e:
-            logger.error(f"❌ Error loading root README_LLM.md: {e}")
+            logger.error(f"❌ Error loading fallback README_LLM.md: {e}")
             raise
+
+    if readme_content is None:
+        raise FileNotFoundError(f"README_LLM.md not found in {readme_path}")
     
     # Get README response rules
     try:
@@ -1015,7 +1025,7 @@ async def _process_chat_message(message):
             
             # Build enhanced prompt with README content
             try:
-                enhanced_prompt = _build_readme_prompt(clean_content)
+                enhanced_prompt = _build_readme_prompt(clean_content, server_id=server_id)
                 
                 logger.info(f"📖 Making second LLM call with README documentation")
                 

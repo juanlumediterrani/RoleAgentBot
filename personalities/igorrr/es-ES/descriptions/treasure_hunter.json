@@ -1,9 +1,9 @@
 {
-    "title": "**💎 El Buscagranos de Igorrr**",
-    "description": "Igorrr busca objetos valiosos para fundirlos o venderlos por ungüento para la joroba.",
+    "title": "**💎 Buscagranos**",
+    "description": "Igorrr vigila los provedores de harinas y avisa cuando comprar, y cuando vender producto.",
     "button": "💎 Buscagranos",
     "active_items": "🎯 Granos que busco",
-    "item_wishlist": "📜 Lista de Deseos del Horno",
+    "item_wishlist": "📜 Lista de harinas vigiladas",
     "last_check": "🕐 Última Búsqueda",
     "next_check": "⏰ Próxima Ratería",
     "current_league": "🏆 Liga donde robo",

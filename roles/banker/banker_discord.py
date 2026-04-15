@@ -7,28 +7,28 @@ import discord
 import json
 import os
 from agent_logging import get_logger
-from .banker_messages import get_message
+from .banker_messages import get_messages
 from discord_bot.discord_utils import is_admin, send_embed_dm_or_channel
 
 logger = get_logger('banker_discord')
-
-
-def _get_banker_description_text(key: str, fallback: str) -> str:
-    try:
-        from agent_runtime import get_personality_file_path
-        descriptions_path = get_personality_file_path("descriptions.json")
-        with open(descriptions_path, encoding="utf-8") as f:
-            descriptions = json.load(f).get("discord", {}).get("banker_messages", {})
-        value = descriptions.get(key)
-        return str(value) if value else fallback
-    except Exception:
-        return fallback
 
 # Availability flags
 try:
     from agent_roles_db import get_roles_db_instance
 except ImportError:
     get_roles_db_instance = None
+
+
+def _get_server_db_path(guild) -> str:
+    """Get the server-specific database path for banker messages."""
+    try:
+        from agent_engine import _get_personality
+        server_id = str(guild.id)
+        personality = _get_personality(server_id)
+        personality_name = personality.get("name", "putre")
+        return os.path.join("databases", server_id, personality_name)
+    except Exception:
+        return os.path.join("databases", str(guild.id), "putre")
 
 
 def _get_banker_db(guild):
@@ -65,47 +65,6 @@ def _initialize_dice_game_account(user_id: str, user_name: str, server_id: str, 
     return False
 
 
-def _build_banker_help_embed():
-    """Build banker help embed (reused in help and no args)."""
-    embed = discord.Embed(
-        title=get_message("help_title"),
-        description=get_message("help_description"),
-        color=discord.Color.gold()
-    )
-    embed.add_field(
-        name=get_message("view_balance"),
-        value=get_message("view_balance_desc"),
-        inline=False
-    )
-    embed.add_field(
-        name=get_message("configure_daily_gold"),
-        value=get_message("configure_daily_gold_desc"),
-        inline=False
-    )
-    embed.add_field(
-        name=get_message("configure_account_bonus"),
-        value=get_message("configure_account_bonus_desc"),
-        inline=False
-    )
-    embed.add_field(
-        name=get_message("information"),
-        value=get_message("information_desc"),
-        inline=False
-    )
-    embed.set_footer(text=get_message("help_footer"))
-    return embed
-
-
-def register_banker_commands(bot, personality, agent_config):
-    """Register banker commands (idempotent)."""
-
-    if not get_roles_db_instance is not None:
-        logger.warning("💰 Banker database not available, skipping command registration")
-        return
-
-    # NOTE: !banker command has been removed. Use !canvas → Banker instead.
-    # Helper functions are kept for Canvas UI integration.
-    logger.info("💰 Banker commands registration skipped - moved to Canvas UI")
 
 
 # --- HELPER FUNCTIONS (for Canvas UI) ---
@@ -115,6 +74,7 @@ async def _cmd_banker_balance(ctx, db_banker, server_id):
     user_id = str(ctx.author.id)
     user_name = ctx.author.display_name
     server_key = str(ctx.guild.id)
+    server_db_path = _get_server_db_path(ctx.guild)
 
     try:
         for member in getattr(ctx.guild, "members", []) or []:
@@ -133,24 +93,24 @@ async def _cmd_banker_balance(ctx, db_banker, server_id):
                 _initialize_dice_game_account(str(member.id), member.display_name, server_id, server_key)
     except Exception as e:
         logger.warning(f"Bulk initialization failed: {e}")
-    
+
     # Create wallet if it doesn't exist (with opening bonus)
     was_created = db_banker.create_wallet(user_id, user_name)
-    
+
     # Initialize dice game account for new and existing users
     dice_game_initialized = _initialize_dice_game_account(user_id, user_name, server_id, server_key)
-    
+
     balance = db_banker.get_balance(user_id)
     history = db_banker.get_transaction_history(user_id, limit=5)
-    
+
     embed = discord.Embed(
-        title=_get_banker_description_text("balance_title", get_message("balance_title")),
-        description=get_message("balance_description"),
+        title=_get_banker_description_text("balance_title", get_messages(server_db_path, "balance_title")),
+        description=get_messages(server_db_path, "balance_description"),
         color=discord.Color.gold()
     )
-    embed.add_field(name=_get_banker_description_text("current_balance", get_message("current_balance")), value=f"{balance:,} gold coins", inline=False)
-    embed.add_field(name=_get_banker_description_text("account_holder", get_message("account_holder")), value=user_name, inline=True)
-    embed.add_field(name=_get_banker_description_text("bank", get_message("bank")), value=server_id, inline=True)
+    embed.add_field(name=_get_banker_description_text("current_balance", get_messages(server_db_path, "current_balance")), value=f"{balance:,} gold coins", inline=False)
+    embed.add_field(name=_get_banker_description_text("account_holder", get_messages(server_db_path, "account_holder")), value=user_name, inline=True)
+    embed.add_field(name=_get_banker_description_text("bank", get_messages(server_db_path, "bank")), value=server_id, inline=True)
 
     # Add dice game status information
     if dice_game_initialized:
@@ -163,19 +123,20 @@ async def _cmd_banker_balance(ctx, db_banker, server_id):
             emoji = "📥" if amount > 0 else "📤"
             history_text += f"{emoji} {amount:,} ({trans_type})\n"
         if history_text:
-            embed.add_field(name=_get_banker_description_text("recent_transactions", get_message("recent_transactions")), value=history_text[:1024], inline=False)
+            embed.add_field(name=_get_banker_description_text("recent_transactions", get_messages(server_db_path, "recent_transactions")), value=history_text[:1024], inline=False)
 
-    embed.set_footer(text=get_message("help_footer"))
+    embed.set_footer(text=get_messages(server_db_path, "help_footer"))
     embed.set_thumbnail(url=ctx.author.display_avatar.url if ctx.author.display_avatar else None)
 
-    confirm = get_message("balance_sent")
+    confirm = get_messages(server_db_path, "balance_sent")
     await send_embed_dm_or_channel(ctx, embed, confirm)
 
 
 async def _cmd_banker_tae(ctx, db_banker, server_id, subargs):
     """Configure or view TAE (admins only)."""
+    server_db_path = _get_server_db_path(ctx.guild)
     if not is_admin(ctx):
-        await ctx.send(get_message("error_admin_daily_gold"))
+        await ctx.send(get_messages(server_db_path, "error_admin_daily_gold"))
         return
 
     if not subargs:
@@ -183,53 +144,54 @@ async def _cmd_banker_tae(ctx, db_banker, server_id, subargs):
         current_tae = db_banker.get_tae(server_id)
 
         embed = discord.Embed(
-            title=_get_banker_description_text("daily_allowance_config_title", get_message("daily_allowance_config_title")),
-            description=get_message("daily_allowance_description"),
+            title=_get_banker_description_text("daily_allowance_config_title", get_messages(server_db_path, "daily_allowance_config_title")),
+            description=get_messages(server_db_path, "daily_allowance_description"),
             color=discord.Color.blue()
         )
-        embed.add_field(name=get_message("current_daily_gold"), value=f"{current_tae:,} coins", inline=True)
+        embed.add_field(name=get_messages(server_db_path, "current_daily_gold"), value=f"{current_tae:,} coins", inline=True)
         embed.add_field(name=_get_banker_description_text("opening_bonus", "Opening Bonus"), value=f"{current_tae * 10:,} coins (10x TAE)", inline=True)
 
         if current_tae == 0:
-            embed.add_field(name=get_message("daily_gold_not_configured"), value="Use !banker tae <amount> to configure", inline=False)
+            embed.add_field(name=get_messages(server_db_path, "daily_gold_not_configured"), value="Use !banker tae <amount> to configure", inline=False)
         else:
-            embed.add_field(name=get_message("daily_gold_info"), value=f"Each user will receive {current_tae:,} coins daily", inline=False)
+            embed.add_field(name=get_messages(server_db_path, "daily_gold_info"), value=f"Each user will receive {current_tae:,} coins daily", inline=False)
 
-        embed.set_footer(text=get_message("daily_gold_footer"))
+        embed.set_footer(text=get_messages(server_db_path, "daily_gold_footer"))
         await ctx.send(embed=embed)
     else:
         # Set new TAE
         try:
             amount = int(subargs[0])
             if amount < 0 or amount > 1000:
-                await ctx.send(get_message("error_daily_gold_range"))
+                await ctx.send(get_messages(server_db_path, "error_daily_gold_range"))
                 return
 
             admin_id = str(ctx.author.id)
             if db_banker.set_tae(server_id, amount):
                 embed = discord.Embed(
-                    title=get_message("daily_gold_configured"),
-                    description=get_message("daily_gold_updated"),
+                    title=get_messages(server_db_path, "daily_gold_configured"),
+                    description=get_messages(server_db_path, "daily_gold_updated"),
                     color=discord.Color.green()
                 )
-                embed.add_field(name=_get_banker_description_text("new_daily_gold", get_message("new_daily_gold")), value=f"{amount:,} coins per day", inline=True)
-                embed.add_field(name=_get_banker_description_text("administrator", get_message("administrator")), value=ctx.author.display_name, inline=True)
-                embed.add_field(name=_get_banker_description_text("server", get_message("server")), value=server_id, inline=True)
-                
+                embed.add_field(name=_get_banker_description_text("new_daily_gold", get_messages(server_db_path, "new_daily_gold")), value=f"{amount:,} coins per day", inline=True)
+                embed.add_field(name=_get_banker_description_text("administrator", get_messages(server_db_path, "administrator")), value=ctx.author.display_name, inline=True)
+                embed.add_field(name=_get_banker_description_text("server", get_messages(server_db_path, "server")), value=server_id, inline=True)
+
                 if amount > 0:
-                    embed.add_field(name=_get_banker_description_text("next_distribution", get_message("next_distribution")), value="Will be distributed automatically every day", inline=False)
-                embed.set_footer(text=get_message("help_footer"))
+                    embed.add_field(name=_get_banker_description_text("next_distribution", get_messages(server_db_path, "next_distribution")), value="Will be distributed automatically every day", inline=False)
+                embed.set_footer(text=get_messages(server_db_path, "help_footer"))
                 await ctx.send(embed=embed)
             else:
-                await ctx.send(get_message("error_configuring_daily_gold"))
+                await ctx.send(get_messages(server_db_path, "error_configuring_daily_gold"))
         except ValueError:
-            await ctx.send(get_message("error_invalid_amount"))
+            await ctx.send(get_messages(server_db_path, "error_invalid_amount"))
 
 
 async def _cmd_banker_bonus(ctx, db_banker, server_id, subargs):
     """Show opening bonus information (calculated as 10x TAE)."""
+    server_db_path = _get_server_db_path(ctx.guild)
     if not is_admin(ctx):
-        await ctx.send(get_message("error_admin_account_bonus"))
+        await ctx.send(get_messages(server_db_path, "error_admin_account_bonus"))
         return
 
     # Show current bonus calculation
@@ -237,13 +199,13 @@ async def _cmd_banker_bonus(ctx, db_banker, server_id, subargs):
     current_bonus = current_tae * 10
 
     embed = discord.Embed(
-        title=_get_banker_description_text("account_bonus_title", get_message("account_bonus_title")),
+        title=_get_banker_description_text("account_bonus_title", get_messages(server_db_path, "account_bonus_title")),
         description="Opening bonus is automatically calculated as 10x the TAE rate.",
         color=discord.Color.green()
     )
     embed.add_field(name="Current TAE", value=f"{current_tae:,} coins", inline=True)
     embed.add_field(name="Opening Bonus", value=f"{current_bonus:,} coins (10x TAE)", inline=True)
-    embed.add_field(name=_get_banker_description_text("server", get_message("server")), value=server_id, inline=True)
+    embed.add_field(name=_get_banker_description_text("server", get_messages(server_db_path, "server")), value=server_id, inline=True)
     embed.add_field(name="How to change", value="Use `!banker tae <amount>` to change the TAE rate", inline=False)
     embed.set_footer(text="New accounts automatically receive 10x TAE as opening bonus")
     await ctx.send(embed=embed)

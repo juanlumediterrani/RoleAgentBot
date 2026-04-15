@@ -1,12 +1,12 @@
 {
-    "title": "**🎭El Trilero Jorobado Igorrr**",
+    "title": "**🎭 Vapores del Horno**",
     "description": "Ven y déjate engañar por el siervo rastrero, juega y sufre con Igorrr.",
-    "button": "🎭Trilero del Horno",
-    "canvas_trickster_overview_title": "**🎭Trilero Igorrr**",
+    "button": "🎭 Vapores",
+    "canvas_trickster_overview_title": "**🎭 Vapores del Horno**",
     "canvas_trickster_overview_description": "Elige tu veneno en el callejón del horno...",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "beggar": "🍪 **Dame Galletas** - Pide harina para proyectos del horno, siempre encendido!",
+        "beggar": "🔥 **Alimentar el horno** - Pide harina para proyectos del horno, siempre encendido!",
         "dice_game": "🍞 **Migajas del Horno** - Hornear pan y apostar sacos de harina, ¿quién se quema?",
         "ring": "🫓 **Cazador de la Masa Madre** - Acusa a inocentes de robar la masa madre del Amo",
         "nordic_runes": "🥖 **Runas de Pan** - Escribe runas en pan, hornéalas y lee el destino en las migajas quemadas"
@@ -14,7 +14,7 @@
     "subrole_buttons": {
         "dice": "🍞 Migajas",
         "ring": "🫓 Masa", 
-        "beggar": "🍪 Galleta",
+        "beggar": "🔥 Alimentar horno",
         "runes": "🥖 Runas"
     },
     "dice_game": {
@@ -37,7 +37,7 @@
         "three_of_a_kind": "🌾 TRES ESPIGAS 🌾 DE TRIGO 🌾",
         "straight": "🥨 ESCALERA DE 🥨 PRETZELS 🥨 ",
         "pair": "🍞 DOS MIGAJAS 🍞",
-        "nothing": "¡BASURA DEL HORNO!",
+        "nothing": "¡HOLLIN HORNO!",
         "no_prize": "{combination} - ¡PUAJ! ¡Sin premio! ¡Más harina para Igorrr, lárgate perdedor!",
         "error_servers_only": "¡SSSSS! Este comando solo funciona en el horno, saco de harina estúpido!",
         "error_game_unavailable": "¡KHÉ! Las migajas no están disponibles en este sótano!",
@@ -85,11 +85,11 @@
         "error_configuring": "❌ ¡SSSSS! Error al cambiar la configuración del horno."
     },
     "beggar": {
-        "title": "🙏 **Mendigo del Horno** 🙏",
+        "title": "🔥 **Alimentar el horno** 🔥",
         "description": "Igorrr necesita harina para proyectos del horno... ¡Dale o te escupo ceniza!",
-        "current_reason": "🎯 **Rogando para:** {reason}",
+        "current_reason": "🎯 **Recaudando harina para:** {reason}",
         "donation_goal": "🌾📦 **Meta de harina:** {goal} sacos",
-        "current_donations": "🌾📦 **Harina recogida:** {current} / {goal}",
+        "current_donations": "🌾� **Harina recogida:** {current} / {goal}",
         "donors_count": "👥 **Leprosos que dieron:** {count}",
         "last_donation": "🕐 **Último susurro:** {time}",
         "donation_progress": "📊 **Progreso de la miseria:** {progress}%",
@@ -99,7 +99,6 @@
         "donate_description": "Tirar harina a Igorrr",
         "view_stats": "📊 Ver Miseria",
         "stats_description": "Mira cuánto ha sufrido Igorrr",
-        "help_text": "🙏 **Ayuda del Mendigo**\n\nIgorrr mendiga harina para proyectos del horno. Usa `!donate <cantidad>` para darle tus sacos de harina.\n\nCada donación ayuda a Igorrr a construir cosas para el Amo.",
         "donation_successful": "✅ ¡SSSSS! Gracias por los {amount} sacos de harina, saco de harina!",
         "donation_failed": "❌ ¡KHÉ! Error al dar harina. El horno se tragó tu trigo.",
         "goal_reached": "🎉 ¡JEJEJE! Igorrr alcanzó su meta de {goal} sacos!",
@@ -113,7 +112,7 @@
         "not_donated_yet": "🌫️ No has dado nada... egoísta",
         "weekly_leader": "🏆 **Líder semanal:** {name} ({amount} sacos)",
         "monthly_leader": "🏆 **Líder mensual:** {name} ({amount} sacos)",
-        "all_time_leader": "👑 **Líder de todos los tiempos:** {name} ({amount} sacos)"
+        "all_time_leader": "� **Líder de todos los tiempos:** {name} ({amount} sacos)"
     },
     "ring": {
         "title": "👁️ **Cazador de la Masa** 👁️",
@@ -169,7 +168,7 @@
         "omen_good": "✨ **Buen presagio:** {omen}",
         "omen_bad": "💀 **Mal presagio:** {omen}",
         "omen_neutral": "⚖️ **Presagio neutral:** {omen}",
-        "advice_given": "💡 **Consejo del horno:** {advice}",
+        "advice_given": "� **Consejo del horno:** {advice}",
         "warning_issued": "⚠️ **Advertencia de las cenizas:** {warning}",
         "prophecy_fulfilled": "🎉 ¡SSSSS! La profecía del pan se cumplió: {prophecy}",
         "reading_saved": "📜 Guardé este presagio en mis papeles grasientos",

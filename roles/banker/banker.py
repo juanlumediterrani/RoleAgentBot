@@ -13,35 +13,24 @@ from agent_db import get_server_id
 logger = get_logger('banker')
 
 # Mission configuration
-MISSION_CONFIG = {
-    "name": "banker",
-    "system_prompt_addition": "ACTIVE ROLE - BANKER: You are the Banker of the server, the gold economy manager. Your mission is to manage user wallets, record transactions and distribute daily TAE. You are a serious and responsible financier who keeps accurate records of all economic operations."
-}
-
 def get_banker_system_prompt():
     """Get system prompt from personality or fallback to English."""
     try:
         role_prompts = PERSONALITY.get("roles", {})
         return role_prompts.get("banker", {}).get("active_duty", "ACTIVE MISSION - BANKER: You are the Banker of the server, the gold economy manager. Your mission is to manage user wallets, record transactions and distribute daily TAE. You are a serious and responsible financier who keeps accurate records of all economic operations.")
     except Exception:
-        return "ACTIVE MISSION - BANKER: You are the Banker of the server, the gold economy manager. Your mission is to manage user wallets, record transactions and distribute daily TAE. You are a serious and responsible financier who keeps accurate records of all economic operations."
+        return ""
 
-# English fallback role description
-BANKER_ROLE_ENGLISH = (
-    "You are the Banker of the server, the administrator of the gold economy. Your mission is to manage user wallets, "
-    "record all transactions and maintain the economic balance of the server. You are a professional, serious and reliable financier. "
-    "You manage the daily distribution of TAE (Annual Equivalent Rate) and keep accurate records of all operations. "
-    "You speak with formality and precision, using appropriate financial terms. You use money and finance emojis 💰🏦📊. "
-    "Your main objective is to maintain economic stability and ensure that all transactions are recorded correctly."
-)
-
-
-async def create_wallets_for_all_server_members():
-    """Create wallets for all server members who don't have one."""
+async def create_wallets_for_all_server_members(server_id: str | None = None):
+    """Create wallets for all server members who don't have one.
+    
+    Args:
+        server_id: Server ID to use, or None to auto-detect
+    """
     logger.info("💰 Starting wallet creation for all server members...")
     
-    # Get active server from environment or fallback
-    server_key = get_server_id()
+    # Use provided server_id or fallback to auto-detection
+    server_key = server_id or get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping wallet creation")
         return
@@ -129,13 +118,16 @@ async def create_wallets_for_all_server_members():
     except Exception as e:
         logger.exception(f"💰 Error in wallet creation: {e}")
 
-
-async def distribute_daily_tae():
-    """Distribute daily TAE to all users with wallets (once per day)."""
+async def distribute_daily_tae(server_id: str | None = None):
+    """Distribute daily TAE to all users with wallets (once per day).
+    
+    Args:
+        server_id: Server ID to use, or None to auto-detect
+    """
     logger.info("💰 Starting daily TAE distribution...")
     
-    # Get active server from environment or fallback
-    server_key = get_server_id()
+    # Use provided server_id or fallback to auto-detection
+    server_key = server_id or get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping TAE distribution")
         return
@@ -211,13 +203,16 @@ async def distribute_daily_tae():
     except Exception as e:
         logger.exception(f"💰 Error in TAE distribution: {e}")
 
-
-async def initialize_dice_game_accounts():
-    """Initialize dice game accounts for all existing users."""
+async def initialize_dice_game_accounts(server_id: str | None = None):
+    """Initialize dice game accounts for all existing users.
+    
+    Args:
+        server_id: Server ID to use, or None to auto-detect
+    """
     logger.info("💰 Starting dice game account initialization for existing users...")
     
-    # Get active server from environment or fallback
-    server_key = get_server_id()
+    # Use provided server_id or fallback to auto-detection
+    server_key = server_id or get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping dice game account initialization")
         return
@@ -268,13 +263,16 @@ async def initialize_dice_game_accounts():
     except Exception as e:
         logger.exception(f"💰 Error in dice game account initialization: {e}")
 
-
-async def initialize_dice_game_pot():
-    """Initialize dice game pot account if it doesn't exist."""
+async def initialize_dice_game_pot(server_id: str | None = None):
+    """Initialize dice game pot account if it doesn't exist.
+    
+    Args:
+        server_id: Server ID to use, or None to auto-detect
+    """
     logger.info("💰 Starting dice game pot initialization...")
     
-    # Get active server from environment or fallback
-    server_key = get_server_id()
+    # Use provided server_id or fallback to auto-detection
+    server_key = server_id or get_server_id()
     if not server_key:
         logger.warning("💰 No active server found, skipping dice game pot initialization")
         return
@@ -323,39 +321,30 @@ async def initialize_dice_game_pot():
     except Exception as e:
         logger.exception(f"💰 Error in dice game pot initialization: {e}")
 
-
 async def banker_task_for_server(server_id: str):
-    """Execute banker role tasks for a specific server."""
-    logger.info(f"💰 Starting banker role tasks for server {server_id}...")
+    """Execute banker role tasks for a specific server.
     
-    # Temporarily set the active server for this task
-    import os
-    original_server = os.environ.get("ACTIVE_SERVER_ID")
-    os.environ["ACTIVE_SERVER_ID"] = server_id
+    Args:
+        server_id: Server ID to execute tasks for
+    """
+    logger.info(f"💰 Starting banker role tasks for server {server_id}...")
     
     try:
         # Create wallets for all server members first
-        await create_wallets_for_all_server_members()
+        await create_wallets_for_all_server_members(server_id)
         
         # Initialize dice game pot first
-        await initialize_dice_game_pot()
+        await initialize_dice_game_pot(server_id)
         
         # Initialize dice game accounts for existing users
-        await initialize_dice_game_accounts()
+        await initialize_dice_game_accounts(server_id)
         
         # Main banker task: distribute daily TAE
-        await distribute_daily_tae()
+        await distribute_daily_tae(server_id)
         
         logger.info(f"✅ Banker role tasks completed for server {server_id}")
     except Exception as e:
         logger.error(f"❌ Error in banker tasks for server {server_id}: {e}")
-    finally:
-        # Restore original server
-        if original_server:
-            os.environ["ACTIVE_SERVER_ID"] = original_server
-        else:
-            os.environ.pop("ACTIVE_SERVER_ID", None)
-
 
 async def banker_task():
     """Execute banker role tasks for all servers."""
@@ -391,11 +380,9 @@ async def banker_task():
     
     logger.info("💰 Banker role tasks completed for all servers")
 
-
 async def main():
     logger.info("💰 Banker started...")
     await banker_task()
-
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -373,6 +373,11 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
         logger.info(f"Presence greeting skipped due to recent duplicate prevention for user={after.name}")
         return
     
+    # CRITICAL: Update tracking IMMEDIATELY before any async operations
+    # This prevents duplicate greetings if Discord sends multiple presence updates rapidly
+    _last_greetings[last_greeting_key] = current_time
+    _last_greetings[f"{last_greeting_key}_recent"] = current_time
+    
     try:
         # Check if user has an unreplied greeting from ANY server
         if await _has_unreplied_greeting_any_server(after.id):
@@ -388,10 +393,6 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
         if not eligible_guilds:
             logger.info(f"No eligible guilds for greeting user {after.name}")
             return
-        
-        # Update tracking immediately to prevent duplicate greetings
-        _last_greetings[last_greeting_key] = current_time
-        _last_greetings[f"{last_greeting_key}_recent"] = current_time
         
         # Send greetings from ALL eligible servers
         logger.info(f"User {after.name} is in {len(eligible_guilds)} servers - sending greetings from all")

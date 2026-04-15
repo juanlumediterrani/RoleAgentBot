@@ -46,6 +46,11 @@ except Exception:
     get_poe2_manager = None
 
 try:
+    from discord_bot.canvas.server_config import get_server_language
+except Exception:
+    get_server_language = None
+
+try:
     from behavior.db_behavior import get_behavior_db_instance
 except Exception:
     get_behavior_db_instance = None
@@ -485,7 +490,20 @@ def register_core_commands(bot, agent_config):
         async def cmd_readme(ctx):
             """Send the user guide privately to the user."""
             try:
-                readme_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "README_USER.md")
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                manuals_dir = os.path.join(base_dir, "manuals")
+                fallback_lang = "en-US"
+
+                server_id = str(ctx.guild.id) if ctx.guild else None
+                lang = fallback_lang
+                if server_id and get_server_language is not None:
+                    lang = get_server_language(server_id)
+
+                readme_path = os.path.join(manuals_dir, lang, "README_USER.md")
+                if not os.path.exists(readme_path):
+                    logger.warning(f"README_USER.md not found for language '{lang}', falling back to {fallback_lang}")
+                    readme_path = os.path.join(manuals_dir, fallback_lang, "README_USER.md")
+
                 with open(readme_path, 'r', encoding='utf-8') as f:
                     readme_content = f.read()
 
@@ -522,7 +540,6 @@ def register_core_commands(bot, agent_config):
                         header = f"**Part {i}/{len(chunks)}**\n\n" if len(chunks) > 1 else ""
                         await ctx.author.send(f"{header}```md\n{chunk}\n```")
 
-                server_id = str(ctx.guild.id) if ctx.guild else None
                 readme_sent_msg = "📩 Full user guide sent by direct message."
                 await ctx.send(readme_sent_msg)
 

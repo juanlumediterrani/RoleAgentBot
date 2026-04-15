@@ -4,143 +4,68 @@ from agent_logging import get_logger
 
 logger = get_logger('banker_messages')
 
-def get_banker_messages():
-    """Load custom Banker messages from personality file."""
-    return get_default_messages()
-
 def get_default_messages():
     """Default messages if no customization available."""
     return {
-        "balance_title": "💰 Gold Balance",
-        "balance_description": "Your gold balance status",
+        "title": "💰 Gold Banker",
+        "description": "Banker allows you to hold a wallet and make transactions between users and the bot.",
+        "wallet_information": "Wallet information:",
+        "balance":"Balance:",
         "current_balance": "💎 Current Gold",
+        "button": "💰 Banker",
         "account_holder": "👤 Account Holder",
         "bank": "🏦 Bank",
-        "new_account": "🎉 New Account! You received {bonus} free coins!",
-        "recent_transactions": "📊 Recent Transactions",
-        "daily_allowance_config_title": "🏦 Daily Gold Configuration",
-        "daily_allowance_description": "Daily gold distribution settings",
-        "current_daily_gold": "💰 Current Daily Gold",
-        "last_distribution": "📅 Last Distribution",
-        "daily_gold_not_configured": "⚠️ Daily gold not configured!",
-        "daily_gold_info": "ℹ️ Info: Each user receives {tae} coins daily",
-        "daily_gold_footer": "💼 Use !banker tae <amount> to configure",
-        "daily_gold_configured": "✅ Daily Gold Configured",
-        "daily_gold_updated": "Daily gold updated successfully",
-        "new_daily_gold": "💰 New Daily Gold",
-        "administrator": "👤 Administrator",
-        "server": "🏦 Server",
-        "next_distribution": "ℹ️ Next Distribution: Daily",
-        "account_bonus_title": "🎁 New Account Bonus",
-        "account_bonus_description": "Bonus for new accounts",
-        "current_bonus": "💰 Current Bonus",
-        "account_bonus_info": "ℹ️ Info: New accounts receive {bonus} coins",
-        "account_bonus_footer": "💼 Use !banker bonus <amount> to configure",
-        "account_bonus_configured": "✅ Account Bonus Configured",
-        "account_bonus_updated": "Account bonus updated successfully",
-        "new_account_bonus": "💰 New Account Bonus",
-        "application": "ℹ️ New accounts will receive this bonus",
-        "help_title": "💰 Banker - Help",
-        "help_description": "Commands to manage server economy",
-        "view_balance": "💎 View Balance",
-        "view_balance_desc": "`!banker balance`\nShows your current gold balance and recent transactions.\nNew accounts receive opening bonus automatically.",
-        "configure_daily_gold": "🏦 Configure Daily Gold (Admins)",
-        "configure_daily_gold_desc": "`!banker tae <amount>`\nSet daily gold for all users (0-1000 coins).\n`!banker tae` - View current settings.",
-        "configure_account_bonus": "🎁 Configure Account Bonus (Admins)",
-        "configure_account_bonus_desc": "`!banker bonus <amount>`\nSet bonus for new accounts (0-10000 coins).\n`!banker bonus` - View current bonus.",
-        "information": "ℹ️ Information",
-        "information_desc": "• Daily gold distributed to all accounts.\n• New accounts receive opening bonus.\n• All transactions are recorded.\n• Only administrators can configure economy settings.",
-        "help_footer": "💼 Banker - Economic Management",
-        "error_admin_daily_gold": "❌ Only administrators can configure daily gold!",
-        "error_admin_account_bonus": "❌ Only administrators can configure account bonus!",
-        "error_daily_gold_range": "❌ Daily gold must be between 0 and 1000 coins!",
-        "error_account_bonus_range": "❌ Account bonus must be between 0 and 10000 coins!",
-        "error_invalid_amount": "❌ Invalid amount! Use an integer number!",
-        "error_configuring_daily_gold": "❌ Error configuring daily gold!",
-        "error_configuring_account_bonus": "❌ Error configuring account bonus!",
-        "error_banker_database": "❌ Error accessing banker database!",
-        "command_not_recognized": "❌ Subcommand '{subcommand}' not recognized! Use `!banker help` to see help.",
-        "help_sent": "📩 Banker help sent by private message.",
-        "balance_sent": "💰 Your balance information sent by private message.",
-        "banker_help": "💰 **Banker** - `!banker balance` | `!banker tae <amount>` (admins) | `!banker help` for complete help",
-        "error_banker_db": "❌ Banker database not available."
+        "recent_transactions_title": "Recent Transactions:",
+        "no_transactions_yet": "Not recent transactions.",
+        "dropdown":{
+            "select_banker_action": "💰 Select action",
+            "config_tae": "Configure TAE",
+            "config_tae_description": "Adjust the daily amount",
+            "config_bonus": "Configure  Bonus",
+            "config_bonus_description": "Set the amount of bonus",  } 
     }
 
-def get_message(key, **kwargs):
-    """Get a custom message with variable formatting."""
-    messages = get_banker_messages()
-    message = messages.get(key)
-    
-    # If personality doesn't have the message, use English fallback
-    if message is None:
-        message = get_english_fallback(key)
-    
-    # Replace variables in message
+def _lookup(raw: dict, key: str):
+    """Look up a key in the messages dict: root first, then inside 'dropdown'."""
+    value = raw.get(key)
+    if value is None:
+        value = raw.get("dropdown", {}).get(key)
+    return value
+
+def get_messages(server_db_path: str, key: str, **kwargs) -> str:
+    """Get a banker message for the given key, loading from the server-specific path.
+
+    Args:
+        server_db_path: Relative path like 'databases/<id_server>/<personality>'
+        key: Message key to retrieve (top-level or inside 'dropdown')
+        **kwargs: Optional variables to format into the message
+
+    Returns:
+        The formatted message string.
+    """
+    message = None
+
     try:
-        return message.format(**kwargs)
-    except KeyError as e:
-        logger.error(f"❌ Error formatting message '{key}': variable not found {e}")
-        return message
+        json_path = os.path.join(server_db_path, "descriptions", "banker.json")
+        if os.path.isfile(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            message = _lookup(raw, key)
     except Exception as e:
-        logger.error(f"❌ Error formatting message '{key}': {e}")
-        return message
+        logger.error(f"❌ Could not load banker messages from '{server_db_path}': {e}")
 
-def get_english_fallback(key):
-    """Get English fallback message for when personality doesn't have custom message."""
-    fallbacks = {
-        "balance_title": "💰 Gold Balance",
-        "balance_description": "Your gold balance status",
-        "current_balance": "💎 Current Gold",
-        "account_holder": "👤 Account Holder",
-        "bank": "🏦 Bank",
-        "new_account": "🎉 New Account! You received {bonus} free coins!",
-        "recent_transactions": "📊 Recent Transactions",
-        "daily_allowance_config_title": "🏦 Daily Gold Configuration",
-        "daily_allowance_description": "Daily gold distribution settings",
-        "current_daily_gold": "💰 Current Daily Gold",
-        "last_distribution": "📅 Last Distribution",
-        "daily_gold_not_configured": "⚠️ Daily gold not configured!",
-        "daily_gold_info": "ℹ️ Info: Each user receives {tae} coins daily",
-        "daily_gold_footer": "💼 Use !banker tae <amount> to configure",
-        "daily_gold_configured": "✅ Daily Gold Configured",
-        "daily_gold_updated": "Daily gold updated successfully",
-        "new_daily_gold": "💰 New Daily Gold",
-        "administrator": "👤 Administrator",
-        "server": "🏦 Server",
-        "next_distribution": "ℹ️ Next Distribution: Daily",
-        "account_bonus_title": "🎁 New Account Bonus",
-        "account_bonus_description": "Bonus for new accounts",
-        "current_bonus": "💰 Current Bonus",
-        "account_bonus_info": "ℹ️ Info: New accounts receive {bonus} coins",
-        "account_bonus_footer": "💼 Use !banker bonus <amount> to configure",
-        "account_bonus_configured": "✅ Account Bonus Configured",
-        "account_bonus_updated": "Account bonus updated successfully",
-        "new_account_bonus": "💰 New Account Bonus",
-        "application": "ℹ️ New accounts will receive this bonus",
-        "help_title": "💰 Banker - Help",
-        "help_description": "Commands to manage server economy",
-        "view_balance": "💎 View Balance",
-        "view_balance_desc": "`!banker balance`\nShows your current gold balance and recent transactions.\nNew accounts receive opening bonus automatically.",
-        "configure_daily_gold": "🏦 Configure Daily Gold (Admins)",
-        "configure_daily_gold_desc": "`!banker tae <amount>`\nSet daily gold for all users (0-1000 coins).\n`!banker tae` - View current settings.",
-        "configure_account_bonus": "🎁 Configure Account Bonus (Admins)",
-        "configure_account_bonus_desc": "`!banker bonus <amount>`\nSet bonus for new accounts (0-10000 coins).\n`!banker bonus` - View current bonus.",
-        "information": "ℹ️ Information",
-        "information_desc": "• Daily gold distributed to all accounts.\n• New accounts receive opening bonus.\n• All transactions are recorded.\n• Only administrators can configure economy settings.",
-        "help_footer": "💼 Banker - Economic Management",
-        "error_admin_daily_gold": "❌ Only administrators can configure daily gold!",
-        "error_admin_account_bonus": "❌ Only administrators can configure account bonus!",
-        "error_daily_gold_range": "❌ Daily gold must be between 0 and 1000 coins!",
-        "error_account_bonus_range": "❌ Account bonus must be between 0 and 10000 coins!",
-        "error_invalid_amount": "❌ Invalid amount! Use an integer number!",
-        "error_configuring_daily_gold": "❌ Error configuring daily gold!",
-        "error_configuring_account_bonus": "❌ Error configuring account bonus!",
-        "error_banker_database": "❌ Error accessing banker database!",
-        "command_not_recognized": "❌ Subcommand '{subcommand}' not recognized! Use `!banker help` to see help.",
-        "help_sent": "📩 Banker help sent by private message.",
-        "balance_sent": "💰 Your balance information sent by private message.",
-        "banker_help": "💰 **Banker** - `!banker balance` | `!banker tae <amount>` (admins) | `!banker help` for complete help",
-        "error_banker_db": "❌ Banker database not available."
-    }
-    
-    return fallbacks.get(key, f"❌ Message not found: {key}")
+    if message is None:
+        message = _lookup(get_default_messages(), key)
+
+    if not isinstance(message, str):
+        message = "Warning-Deprecated"
+
+    if kwargs:
+        try:
+            return message.format(**kwargs)
+        except KeyError as e:
+            logger.error(f"❌ Error formatting banker message '{key}': variable not found {e}")
+        except Exception as e:
+            logger.error(f"❌ Error formatting banker message '{key}': {e}")
+
+    return message

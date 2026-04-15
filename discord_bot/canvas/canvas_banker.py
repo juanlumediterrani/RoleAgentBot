@@ -1,11 +1,11 @@
 """Canvas Banker content builders."""
 
 import discord
+import os
 
 from discord_bot import discord_core_commands as core
 
 logger = core.logger
-_personality_answers = core._personality_answers
 get_banker_db_instance = None  # Now using roles_db directly
 get_server_key = core.get_server_key
 is_admin = core.is_admin
@@ -16,16 +16,37 @@ try:
 except ImportError:
     get_roles_db_instance = None
 
+# Import banker messages
+try:
+    from roles.banker.banker_messages import get_messages
+except ImportError:
+    get_messages = None
+
+
+def _get_server_db_path(guild) -> str:
+    """Get the server-specific database path for banker messages."""
+    try:
+        from agent_engine import _get_personality
+        server_id = str(guild.id)
+        personality = _get_personality(server_id)
+        personality_name = personality.get("name", "putre")
+        return os.path.join("databases", server_id, personality_name)
+    except Exception:
+        return os.path.join("databases", str(guild.id), "putre")
+
 
 def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the unified Banker role view with wallet information."""
     from .content import _build_canvas_intro_block, _get_personality_descriptions
     server_id = get_server_key(guild) if guild else None
-    banker_messages = _personality_answers.get("banker_messages", {})
+    server_db_path = _get_server_db_path(guild) if guild else None
     banker_descriptions = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("banker", {})
 
     def _banker_text(key: str, fallback: str) -> str:
-        value = banker_descriptions.get(key, banker_messages.get(key))
+        if get_messages and server_db_path:
+            value = get_messages(server_db_path, key)
+        else:
+            value = banker_descriptions.get(key)
         return str(value).strip() if value else fallback
 
     balance = 0

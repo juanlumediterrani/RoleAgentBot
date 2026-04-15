@@ -84,8 +84,8 @@ def copy_personality_to_server(server_id: str, personality_name: str = None, lan
             with open(config_path, encoding='utf-8') as f:
                 config = json.load(f)
             
-            # Get default personality name - hardcoded to 'rab' as system default
-            personality_name = 'rab'
+            # Get default personality name from agent_config.json
+            personality_name = config.get('default_personality', 'rab')
             
             # Get default language from agent_config.json (new field 'default_language')
             # This is the FINAL fallback language when nothing else is configured
