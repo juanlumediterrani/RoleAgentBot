@@ -140,6 +140,53 @@ def persist_active_server_id(server_id: str) -> None:
         pass
 
 
+_DM_SESSIONS_FILE = Path(__file__).parent / ".dm_sessions.json"
+
+
+def pin_dm_session(user_id: int, server_id: str) -> None:
+    """Set the active DM server for a user. Called only from greeting buttons."""
+    try:
+        sessions = _load_dm_sessions()
+        sessions[str(user_id)] = server_id
+        _DM_SESSIONS_FILE.write_text(json.dumps(sessions), encoding="utf-8")
+        logger.debug(f"DM session pinned: user={user_id} → server={server_id}")
+    except Exception as e:
+        logger.debug(f"Could not pin DM session: {e}")
+
+
+def get_pinned_dm_server(user_id: int) -> str | None:
+    """Return the active DM server_id for a user, or None if not set."""
+    try:
+        sessions = _load_dm_sessions()
+        return sessions.get(str(user_id))
+    except Exception as e:
+        logger.debug(f"Could not get pinned DM server: {e}")
+        return None
+
+
+def _load_dm_sessions() -> dict:
+    """Load DM sessions from disk. Migrates old format if needed."""
+    try:
+        if not _DM_SESSIONS_FILE.exists():
+            return {}
+        sessions = json.loads(_DM_SESSIONS_FILE.read_text(encoding="utf-8"))
+        # Migrate old format: {"user_id:active_server": {"server_id": "...", ...}} → {"user_id": "server_id"}
+        if any(":" in k for k in sessions):
+            migrated = {}
+            for key, value in sessions.items():
+                if ":active_server" in key:
+                    uid = key.split(":")[0]
+                    sid = value.get("server_id") if isinstance(value, dict) else None
+                    if uid and sid:
+                        migrated[uid] = sid
+            _DM_SESSIONS_FILE.write_text(json.dumps(migrated), encoding="utf-8")
+            logger.info(f"Migrated DM sessions to simplified format: {len(migrated)} users")
+            return migrated
+        return sessions
+    except Exception:
+        return {}
+
+
 def get_data_dir() -> Path:
     """Return the shared data directory used by runtime databases."""
     DB_DIR.mkdir(parents=True, exist_ok=True)

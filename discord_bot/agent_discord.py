@@ -28,6 +28,9 @@ from discord_bot.entitlement_manager import EntitlementManager, set_entitlement_
 
 logger = get_logger('discord')
 
+# DM session pins are persisted to disk via agent_db.pin_dm_session / get_pinned_dm_server
+# so they survive bot restarts. No in-memory cache needed.
+
 # --- CONFIGURATION ---
 
 def _build_readme_prompt(user_question: str) -> str:
@@ -935,16 +938,23 @@ async def _process_chat_message(message):
             if current_active != server_id:
                 set_current_server(server_id)
         else:
-            # DM message - determine the user's last server for context
-            from agent_db import get_user_last_server_id
-            last_server = get_user_last_server_id(str(message.author.id))
-            if last_server:
-                server_id = last_server
-                server_context = f"DM (last server: {server_id})"
-                logger.info(f"DM from {message.author.name} - using last server context: {server_id}")
+            # DM message - use pinned server set by greeting buttons
+            from agent_db import get_pinned_dm_server, get_user_last_server_id
+            pinned = get_pinned_dm_server(message.author.id)
+            if pinned:
+                server_id = pinned
+                server_context = f"DM (pinned server: {server_id})"
+                logger.info(f"DM from {message.author.name} - pinned session server: {server_id}")
             else:
-                server_context = "DM (no server context)"
-                logger.info(f"DM from {message.author.name} - no server history found")
+                # No pin yet - use last interaction as transient fallback (no pin created)
+                last_server = get_user_last_server_id(str(message.author.id))
+                if last_server:
+                    server_id = last_server
+                    server_context = f"DM (fallback server: {server_id})"
+                    logger.info(f"DM from {message.author.name} - fallback server from DB: {server_id}")
+                else:
+                    server_context = "DM (no server context)"
+                    logger.info(f"DM from {message.author.name} - no server history found")
 
         active_roles = []
         roles_config = AGENT_CFG.get("roles", {})
@@ -1112,15 +1122,15 @@ async def _process_chat_message(message):
             db_paths = glob.glob("databases/*/behavior*.db")
             for db_path in db_paths:
                 try:
-                    # Extract server name from path
-                    server_id = os.path.basename(os.path.dirname(db_path))
-                    behavior_db = get_behavior_db_instance(server_id)
+                    # Extract server name from path (use different var to avoid shadowing outer server_id)
+                    _loop_server_id = os.path.basename(os.path.dirname(db_path))
+                    behavior_db = get_behavior_db_instance(_loop_server_id)
                     # Try to mark user as replied in this server
                     replied = await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, "dm_context")
                     if replied:
-                        logger.info(f"Marked user {message.author.name} as replied via DM for server {server_id}")
+                        logger.info(f"Marked user {message.author.name} as replied via DM for server {_loop_server_id}")
                 except Exception as e:
-                    logger.debug(f"Could not mark user replied for server {server_id}: {e}")
+                    logger.debug(f"Could not mark user replied for server {_loop_server_id}: {e}")
 
         # If a DM was received, reset ring unanswered counter for this user across all servers
         if message.guild is None:
@@ -1144,7 +1154,11 @@ async def _process_chat_message(message):
         # Send response to user (either original LLM response or accusation-specific response)
         # For DMs, send personality embed first with server-specific identity
         if not is_public:
-            await send_personality_embed_dm(message.author, bot, message.guild, server_id)
+            # Use the same server_id that was used for the LLM response
+            # Don't try to resolve guild to avoid using the wrong server
+            logger.info(f"📨 DM embed call: server_id={server_id} (using same as LLM response)")
+            await send_personality_embed_dm(message.author, bot, None, server_id)
+            # Pin is only set/changed via greeting buttons — no refresh here
         
         if accusation_response:
             # Send the accusation-specific response
@@ -1161,6 +1175,7 @@ async def _process_chat_message(message):
             if message.guild is None:
                 # Get server_id from locals if available, otherwise None
                 error_server_id = locals().get('server_id', None)
+                # Use the same server_id without resolving guild
                 await send_personality_embed_dm(message.author, bot, None, error_server_id)
             await message.channel.send(random.choice(fallbacks))
 

@@ -672,7 +672,7 @@ def _get_active_roles_section(server_id: str = None) -> str:
             
             if subrole_duty:
                 subrole_display = _get_role_display_name(subrole_name, server_id)
-                lines.append(line_template.format(scope=f"{_get_role_display_name(role_name, server_id)}/{subrole_display}", duty=subrole_duty))
+                lines.append(line_template.format(scope=subrole_display, duty=subrole_duty))
 
     if not lines:
         return f"{section_label}\n{empty_message}"

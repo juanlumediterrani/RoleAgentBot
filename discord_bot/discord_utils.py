@@ -313,35 +313,44 @@ async def send_personality_embed_dm(target, bot: discord.Client, guild: discord.
         bool: True if embed was sent successfully, False otherwise
     """
     try:
-        # Determine effective server_id
-        effective_server_id = str(guild.id) if guild else server_id
-        
-        # Get bot's member data in the guild for server-specific identity
-        bot_member = guild.me if guild else None
-        
-        # Get server-specific avatar URL (from guild member if available)
-        if bot_member and bot_member.display_avatar:
-            # Use the bot's avatar in this specific server (nickname avatar)
-            avatar_url = bot_member.display_avatar.url
-        else:
-            # Fallback to global bot avatar
-            avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
-        
+        # Determine effective server_id - prioritize passed server_id over guild.id
+        # This ensures DM sessions use the pinned server_id even if guild resolution fails
+        effective_server_id = server_id if server_id else (str(guild.id) if guild else None)
+        logger.info(f"📨 send_personality_embed_dm: passed server_id={server_id}, guild={guild.name if guild else 'None'}, effective_server_id={effective_server_id}")
+
         # Get personality display name (server-specific priority)
         display_name = None
         if effective_server_id:
-            # First try: server-specific personality config
+            # First try: server-specific personality.json bot_display_name
             personality_name = get_server_personality_display_name(effective_server_id)
             if personality_name:
                 display_name = personality_name
+                logger.info(f"📨 Got display_name from server-specific: {display_name}")
         
         # Second try: guild nickname
-        if not display_name and bot_member and bot_member.nick:
-            display_name = bot_member.nick
+        if not display_name and guild:
+            bot_member = guild.me
+            if bot_member and bot_member.nick:
+                display_name = bot_member.nick
         
         # Third try: global display name
         if not display_name:
             display_name = bot.user.display_name
+        
+        # Get local personality avatar file (server-specific, NOT global bot avatar)
+        avatar_file = None
+        avatar_attachment_name = None
+        if effective_server_id:
+            local_avatar_path = get_server_personality_avatar_path(effective_server_id)
+            if local_avatar_path and os.path.exists(local_avatar_path):
+                avatar_attachment_name = os.path.basename(local_avatar_path)
+                avatar_file = discord.File(local_avatar_path, filename=avatar_attachment_name)
+                logger.info(f"📨 Got avatar from server-specific: {local_avatar_path}")
+        
+        # Fallback: global bot avatar URL if no local file
+        fallback_avatar_url = None
+        if not avatar_file:
+            fallback_avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
         
         # Create personality embed
         embed = discord.Embed(
@@ -350,12 +359,17 @@ async def send_personality_embed_dm(target, bot: discord.Client, guild: discord.
             color=discord.Color.blue()
         )
         
-        if avatar_url:
-            embed.set_thumbnail(url=avatar_url)
+        if avatar_file:
+            embed.set_thumbnail(url=f"attachment://{avatar_attachment_name}")
+        elif fallback_avatar_url:
+            embed.set_thumbnail(url=fallback_avatar_url)
         
         # Send the personality embed
-        await target.send(embed=embed)
-        logger.debug(f"Sent personality embed to {target.name} (server: {effective_server_id or 'default'}, name: {display_name})")
+        if avatar_file:
+            await target.send(embed=embed, file=avatar_file)
+        else:
+            await target.send(embed=embed)
+        logger.info(f"📨 Personality embed → {target.name} | server_id={effective_server_id} | name={display_name} | avatar={'local:'+avatar_attachment_name if avatar_file else 'fallback'}")
         return True
         
     except discord.errors.Forbidden:
@@ -835,8 +849,9 @@ def get_server_personality_avatar_path(server_id: str) -> str | None:
     """
     Get path to avatar image from server-specific personality directory.
     
-    Searches for avatar files in order: .webp, .png
-    Path: databases/<server_id>/<personality>/avatar.<ext>
+    Avatar is copied to databases/<server_id>/<personality>/avatar.<ext>
+    during personality initialisation and updates.
+    Falls back to personalities/<name>/avatar.<ext> if the copy is missing.
     
     Args:
         server_id: Discord guild ID
@@ -848,16 +863,26 @@ def get_server_personality_avatar_path(server_id: str) -> str | None:
     if not result:
         return None
     
-    personality_dir, _ = result
-    avatar_extensions = ['.webp', '.png']
+    personality_dir, personality_name = result
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    avatar_extensions = ['.png', '.webp', '.jpg', '.jpeg']
     
+    # 1. Server-specific copy (databases/<server_id>/<personality>/)
     for ext in avatar_extensions:
         avatar_path = os.path.join(personality_dir, f'avatar{ext}')
         if os.path.exists(avatar_path):
-            logger.debug(f"Found avatar for server {server_id}: {avatar_path}")
+            logger.debug(f"Found avatar in databases/ for server {server_id}: {avatar_path}")
             return avatar_path
     
-    logger.debug(f"No avatar found for server {server_id}")
+    # 2. Fallback: source personalities/<name>/
+    personalities_dir = os.path.join(base_dir, 'personalities', personality_name)
+    for ext in avatar_extensions:
+        avatar_path = os.path.join(personalities_dir, f'avatar{ext}')
+        if os.path.exists(avatar_path):
+            logger.debug(f"Found avatar in personalities/ for server {server_id}: {avatar_path}")
+            return avatar_path
+    
+    logger.debug(f"No avatar found for server {server_id} (personality: {personality_name})")
     return None
 
 

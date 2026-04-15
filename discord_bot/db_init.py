@@ -326,6 +326,18 @@ def update_personality_files(server_id: str, personality_name: str, language: st
                 logger.info(f"📄 Updated file: {item}")
                 updated_count += 1
         
+        # Also copy avatar from global personality root (not language subdir)
+        global_personality_dir = os.path.join(base_dir, 'personalities', personality_name)
+        avatar_extensions = ['.png', '.webp', '.jpg', '.jpeg']
+        for ext in avatar_extensions:
+            for prefix in ['avatar', 'avatarfull']:
+                avatar_source = os.path.join(global_personality_dir, f'{prefix}{ext}')
+                avatar_target = os.path.join(target_dir, f'{prefix}{ext}')
+                if os.path.exists(avatar_source):
+                    shutil.copy2(avatar_source, avatar_target)
+                    logger.info(f"🖼️ Updated avatar: {prefix}{ext}")
+                    updated_count += 1
+        
         logger.info(f"✅ Updated {updated_count} files for personality {personality_name} (language: {language})")
         return True
         

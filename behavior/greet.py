@@ -17,9 +17,6 @@ logger = get_logger('greet_behavior')
 # Track last greetings per user to avoid spam
 _last_greetings = {}
 
-# Store pending greetings for server selection
-_pending_greetings = {}
-
 # Global rate limiting for Vertex AI - minimum seconds between any greetings
 _LAST_GLOBAL_GREETING_TIME = 0
 _MIN_SECONDS_BETWEEN_GREETINGS = 3  # Minimum 3 seconds between LLM calls for greetings
@@ -42,86 +39,76 @@ async def _wait_for_greeting_rate_limit():
     _LAST_GLOBAL_GREETING_TIME = time.time()
 
 
-class ServerSelectionButton(discord.ui.Button):
-    """Button for selecting a specific server for greeting."""
+class ReplyButton(discord.ui.Button):
+    """Button to reply to a greeting and set the conversation context to this server."""
     
-    def __init__(self, guild: discord.Guild, greeting_data: dict, row: int = 0):
-        # Truncate guild name if too long for button label
-        label = guild.name[:80] if len(guild.name) > 80 else guild.name
+    def __init__(self, guild: discord.Guild, server_id: str, row: int = 0):
         super().__init__(
-            label=label,
+            label="Contestar",
             style=discord.ButtonStyle.primary,
-            emoji="🏠",
+            emoji="💬",
             row=row
         )
         self.guild = guild
-        self.greeting_data = greeting_data
+        self.server_id = server_id
     
     async def callback(self, interaction: discord.Interaction):
-        """Handle server selection and send greeting."""
-        # Disable this button so it can't be clicked again
-        self.disabled = True
-        self.style = discord.ButtonStyle.secondary
-        
-        # Update the view so other buttons remain usable
+        """Handle reply button click - pin the conversation to this server."""
         try:
+            # Pin the DM session to this server
+            from agent_db import pin_dm_session
+            pin_dm_session(interaction.user.id, self.server_id)
+            logger.info(f"DM session pinned via ReplyButton: user={interaction.user.id} server={self.server_id}")
+            
+            # Disable the button after clicking
+            self.disabled = True
+            self.label = "✓ Conversación activa"
+            self.style = discord.ButtonStyle.success
+            
+            # Update the message to show the button was clicked
             await interaction.response.edit_message(view=self.view)
+            
+            # Send a confirmation message
+            await interaction.followup.send(
+                f"💬 Estás conversando conmigo como si estuvieras en **{self.guild.name}**. "
+                f"Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor.",
+                ephemeral=True
+            )
         except Exception as e:
-            logger.debug(f"Could not update selection message buttons: {e}")
+            logger.error(f"Error in ReplyButton callback: {e}")
             try:
-                await interaction.response.defer()
+                await interaction.response.send_message(
+                    "❌ No se pudo iniciar la conversación. Intenta enviarme un mensaje directamente.",
+                    ephemeral=True
+                )
             except Exception:
                 pass
-        
-        # Send the greeting for selected server as a separate DM
-        await _send_greeting_to_user(
-            user_id=interaction.user.id,
-            user_name=interaction.user.display_name,
-            guild=self.guild,
-            greeting_data=self.greeting_data,
-            bot=self.view.bot
-        )
 
 
-class ServerSelectionView(discord.ui.View):
-    """View with buttons for selecting which server to greet from."""
+class ReplyButtonView(discord.ui.View):
+    """View containing the reply button for a greeting."""
     
-    def __init__(self, bot: discord.Client, greeting_data: dict, timeout: float = 300.0):
+    def __init__(self, guild: discord.Guild, server_id: str, timeout: float = 300.0):
         super().__init__(timeout=timeout)
-        self.bot = bot
-        self.greeting_data = greeting_data
-        self._add_server_buttons()
-    
-    def _add_server_buttons(self):
-        """Add a button for each mutual server."""
-        guilds = self.greeting_data.get('mutual_guilds', [])
-        
-        # Add buttons (max 25 buttons per view, but practically limited by row system)
-        for i, guild in enumerate(guilds[:25]):  # Discord limit is 25 buttons
-            row = i // 5  # 5 buttons per row
-            if row > 4:  # Max 5 rows (0-4)
-                break
-            self.add_item(ServerSelectionButton(guild, self.greeting_data, row=row))
+        self.guild = guild
+        self.server_id = server_id
+        self.message = None
+        self.add_item(ReplyButton(guild, server_id, row=0))
     
     async def on_timeout(self):
         """Called when the view times out."""
-        # Clean up pending greeting
-        for user_id, data in list(_pending_greetings.items()):
-            if data.get('view') == self:
-                del _pending_greetings[user_id]
-                break
-        
-        # Disable all buttons
+        # Disable the button
         for child in self.children:
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
+                child.label = "⏰ Expirado"
         
         # Try to update the message
         if self.message:
             try:
-                await self.message.edit(content="⏰ Server selection timed out. Use `!talk` or mention me to chat!", view=self)
+                await self.message.edit(view=self)
             except Exception as e:
-                logger.debug(f"Could not update timed out server selection: {e}")
+                logger.debug(f"Could not update timed out reply button: {e}")
 
 
 async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_data: dict, bot: discord.Client):
@@ -166,9 +153,18 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
             logger.error(f"Could not find user {user_id} for greeting")
             return
         
-        # Send greeting with personality embed (server-specific avatar and name)
-        await send_dm_with_personality(user, bot, f"👋 {saludo}", guild, server_id)
-        logger.info(f"🔄 Presence DM sent to {user_name} (server: {guild.name})")
+        # Send personality embed first (server-specific avatar and name)
+        from discord_bot.discord_utils import send_personality_embed_dm
+        await send_personality_embed_dm(user, bot, guild, server_id)
+        
+        # Create the reply button view for this server
+        view = ReplyButtonView(guild, server_id, timeout=300.0)
+        
+        # Send greeting message with the reply button
+        greeting_message = await user.send(f"👋 {saludo}", view=view)
+        view.message = greeting_message
+        
+        logger.info(f"🔄 Presence DM sent to {user_name} (server: {guild.name}) with reply button")
         
         # Update tracking
         current_time = time.time()
@@ -377,12 +373,6 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
         logger.info(f"Presence greeting skipped due to recent duplicate prevention for user={after.name}")
         return
     
-    # Check if user already has a pending greeting selection
-    user_id_str = str(after.id)
-    if user_id_str in _pending_greetings:
-        logger.info(f"User {after.name} already has a pending server selection")
-        return
-    
     try:
         # Check if user has an unreplied greeting from ANY server
         if await _has_unreplied_greeting_any_server(after.id):
@@ -403,52 +393,19 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
         _last_greetings[last_greeting_key] = current_time
         _last_greetings[f"{last_greeting_key}_recent"] = current_time
         
-        # If user is only in one eligible server, send greeting directly
-        if len(eligible_guilds) == 1:
-            guild = eligible_guilds[0]
-            greeting_data = {
-                'discord_cfg': discord_cfg,
-                'presence_cfg': presence_cfg
-            }
-            await _send_greeting_to_user(after.id, after.display_name, guild, greeting_data, bot)
-            return
+        # Send greetings from ALL eligible servers
+        logger.info(f"User {after.name} is in {len(eligible_guilds)} servers - sending greetings from all")
         
-        # User is in multiple servers - show server selection
-        logger.info(f"User {after.name} is in {len(eligible_guilds)} servers - showing selection")
-        
-        # Build server selection embed (neutral, no server-specific identity)
-        selection_embed = discord.Embed(
-            title="Choose a server",
-            description="I'm present in several servers with you! Click each button to receive a greeting from that server.",
-            color=discord.Color.blurple()
-        )
-        
-        selection_embed.set_footer(text="Each button sends a separate greeting • Buttons expire in 5 minutes")
-        
-        # Create greeting data for the view
-        greeting_data = {
-            'discord_cfg': discord_cfg,
-            'presence_cfg': presence_cfg,
-            'mutual_guilds': eligible_guilds,
-            'user_name': after.display_name
-        }
-        
-        # Create and store the view
-        view = ServerSelectionView(bot, greeting_data, timeout=300.0)
-        _pending_greetings[user_id_str] = {
-            'view': view,
-            'timestamp': current_time
-        }
-        
-        # Send the selection message
-        try:
-            selection_message = await after.send(embed=selection_embed, view=view)
-            view.message = selection_message
-            logger.info(f"� Server selection sent to {after.name} for {len(eligible_guilds)} servers")
-        except discord.errors.Forbidden:
-            logger.warning(f"Cannot send server selection DM to {after.name} (Forbidden)")
-        except Exception as e:
-            logger.error(f"Error sending server selection to {after.name}: {e}")
+        for guild in eligible_guilds:
+            try:
+                greeting_data = {
+                    'discord_cfg': discord_cfg,
+                    'presence_cfg': presence_cfg
+                }
+                await _send_greeting_to_user(after.id, after.display_name, guild, greeting_data, bot)
+            except Exception as e:
+                logger.error(f"Error sending greeting to {after.name} from server {guild.name}: {e}")
+                # Continue with other servers even if one fails
             
     except Exception as e:
         logger.error(f"Error in presence greeting for {after.name}: {e}")
