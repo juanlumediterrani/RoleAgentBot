@@ -25,7 +25,6 @@ Updated Docker configuration to match the current program functionality after ma
 - .env uses `DISCORD_TOKEN` but compose files looked for `DISCORD_TOKEN_PUTRE`
 - Added missing `DISCORD_TOKEN_AGUMON` to compose files
 - Added `MISTRAL_API_KEY` support
-- Added `HOST_UID/HOST_GID` for proper permissions
 
 ### 3. Deprecated Configuration
 **Problem**: Production compose used deprecated individual role flags
@@ -52,7 +51,6 @@ Now uses unified `ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc`
 
 ### 2. Environment Variables Updates
 - **Added MISTRAL_API_KEY**: New LLM provider support
-- **Added HOST_UID/HOST_GID**: Proper user mapping for volume permissions
 - **Removed deprecated role flags**: Individual role flags (NEWS_WATCHER_ENABLED, etc.) replaced with ACTIVE_ROLES
 
 ### 3. Docker Compose Updates
@@ -60,7 +58,6 @@ Now uses unified `ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc`
 - **docker-compose.production.yml**: 
   - Added missing API keys (MISTRAL_API_KEY)
   - Removed deprecated individual role flags
-  - Added HOST_UID/HOST_GID for proper permissions
   - Maintained dual-bot setup (Kronk + Putre)
 
 ### 4. .dockerignore Updates
@@ -113,8 +110,6 @@ COHERE_API_KEY=your_key_here
 MISTRAL_API_KEY=your_key_here (NEW)
 
 # System Configuration
-HOST_UID=1001
-HOST_GID=1001
 PERSONALITY=agumon|kronk|putre|hans
 ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc
 ```
@@ -193,14 +188,13 @@ To verify functionality:
 
 ### New Features
 - Support for MISTRAL AI provider
-- Better user permission handling
 - Complete behavior system support
 - All new Python modules included
 
 ## Troubleshooting
 
 ### Common Issues
-1. **Permission errors**: Ensure HOST_UID/HOST_GID match your user ID
+1. **Permission errors**: Check volume mount permissions
 2. **Missing API keys**: Add MISTRAL_API_KEY to .env file
 3. **Build failures**: Check all Python files are present in project root
 

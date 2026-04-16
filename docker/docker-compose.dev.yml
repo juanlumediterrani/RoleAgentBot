@@ -14,8 +14,6 @@ services:
       args:
         ENABLE_MC: "true"
         PERSONALITY: hans
-        HOST_UID: ${HOST_UID:-1001}
-        HOST_GID: ${HOST_GID:-1001}
     image: roleagentbot:dev
     container_name: roleagentbot-dev
     env_file: ../.env

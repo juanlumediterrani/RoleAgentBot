@@ -92,7 +92,7 @@ COPY run.py .
 COPY ARCHITECTURE.md .
 COPY README_USER.md .
 
-# Create necessary directories with correct permissions (as root)
+# Create necessary directories
 RUN mkdir -p /app/logs /app/databases /app/fatiga /app/cookies
 
 # Create cookies.txt placeholder with instructions
@@ -110,7 +110,5 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENV PERSONALITY=${PERSONALITY}
 ENV ACTIVE_ROLES=${ACTIVE_ROLES}
 
-# Run as root to handle volume permissions properly
-# The entrypoint will switch to the correct user
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["python", "run.py"]

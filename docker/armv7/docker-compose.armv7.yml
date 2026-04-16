@@ -16,8 +16,6 @@ services:
       args:
         PERSONALITY: ${PERSONALITY:-putre(english)}
         ACTIVE_ROLES: ${ACTIVE_ROLES:-news_watcher,treasure_hunter,trickster,banker,mc}
-        HOST_UID: ${HOST_UID:-1001}
-        HOST_GID: ${HOST_GID:-1001}
     image: roleagentbot:putre-armv7
     container_name: putrebot
     env_file: ../../.env

@@ -15,31 +15,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
 
-# ── 0. Fix ownership of mounted directories (only if running as root) ────────
-if [ "$(id -u)" = "0" ]; then
-    # Get the target user ID from environment or fallback to 1001
-    TARGET_UID=${HOST_UID:-1001}
-    TARGET_GID=${HOST_GID:-1001}
-    
-    # Ensure mounted directories have correct ownership for target user
-    if [ -d "/app/logs" ]; then
-        chown -R ${TARGET_UID}:${TARGET_GID} /app/logs 2>/dev/null || true
-    fi
-    if [ -d "/app/databases" ]; then
-        chown -R ${TARGET_UID}:${TARGET_GID} /app/databases 2>/dev/null || true
-    fi
-    if [ -d "/app/fatiga" ]; then
-        chown -R ${TARGET_UID}:${TARGET_GID} /app/fatiga 2>/dev/null || true
-    fi
-    
-    chown -R ${TARGET_UID}:${TARGET_GID} /app/logs /app/databases 2>/dev/null || true
-    
-    # Also fix any existing log directories that might have wrong permissions
-    find /app/logs -type d -exec chown ${TARGET_UID}:${TARGET_GID} {} \; 2>/dev/null || true
-
-    # Fix permissions for any existing database files
-    find /app/databases -type f -exec chown ${TARGET_UID}:${TARGET_GID} {} \; 2>/dev/null || true
-fi
+# ── 0. No permission fixing needed ────────────────────────────────────────
 
 # ── Now running as target user (or already running as correct user) ──────────────
 CONFIG="agent_config.json"
