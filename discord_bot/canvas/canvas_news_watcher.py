@@ -1418,8 +1418,6 @@ def build_canvas_role_news_watcher_detail(
     setup_not_available_builder=None,
 ) -> str | None:
     """Build a detailed News Watcher view with 3-block structure."""
-    from .content import _build_canvas_intro_block
-    
     # Safe nested access with fallbacks
     news_watcher = _get_nw_descriptions(guild)
     
@@ -1434,16 +1432,16 @@ def build_canvas_role_news_watcher_detail(
         return str(value).strip() if value else fallback
 
     def _get_watcher_personal_intro_block() -> str:
-        return _build_canvas_intro_block(
+        return "\n".join([
             _watcher_text('title', 'News Watcher Personal'),
             _watcher_text('description', 'Build and maintain your personal news subscriptions. Choose a method first, then subscribe to categories or feeds, or review your keywords and premises.'),
-        )
+        ])
 
     def _get_watcher_admin_intro_block() -> str:
-        return _build_canvas_intro_block(
+        return "\n".join([
             f"{_watcher_text('title', '📡 News Watcher')} Admin",
             _watcher_text("description", "Manage channel subscriptions with the same flow as personal view, but applied to channels. Choose a method, then manage categories, feeds, and server actions."),
-        )
+        ])
 
     def _format_categories() -> str:
         if not guild or get_news_watcher_db_instance is None:
@@ -1629,10 +1627,8 @@ def build_canvas_role_news_watcher_detail(
 
     if detail_name in {"keywords", "filters"}:
         return "\n".join([
-            _build_canvas_intro_block(
-                "📡 News Watcher Canvas - Keywords",
-                "Shape what the watcher considers relevant for you",
-            ),
+            "📡 News Watcher Canvas - Keywords",
+            "Shape what the watcher considers relevant for you",
             "**Keyword management**",
             "- `!watcher keywords add <word>` - Add a keyword",
             "- `!watcher keywords del <word>` - Remove a keyword",
@@ -1650,10 +1646,8 @@ def build_canvas_role_news_watcher_detail(
 
     if detail_name == "feeds":
         return "\n".join([
-            _build_canvas_intro_block(
-                "📡 News Watcher Canvas - Feeds",
-                "Browse and manage available news sources",
-            ),
+            "📡 News Watcher Canvas - Feeds",
+            "Browse and manage available news sources",
             "**Available feeds**",
             _format_feeds(),
             "",
@@ -1674,10 +1668,8 @@ def build_canvas_role_news_watcher_detail(
         current_method = _get_canvas_watcher_method_label(str(guild.id)) if guild else "Unknown"
         current_frequency = _get_canvas_watcher_frequency_hours(str(guild.id)) if guild else 1
         return "\n".join([
-            _build_canvas_intro_block(
-                f"{_watcher_text('title', '📡 News Watcher')} Admin",
-                "Configure how the server receives and filters watcher output",
-            ),
+            f"{_watcher_text('title', '📡 News Watcher')} Admin",
+            "Configure how the server receives and filters watcher output",
             "**Channel and server setup**",
             "- `!watcherchannelhelp` - Open the channel/admin help surface",
             "- `!watcherchannel subscribe <category> [feed_id]` - Subscribe the current channel",

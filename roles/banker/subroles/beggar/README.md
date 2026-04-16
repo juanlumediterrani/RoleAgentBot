@@ -114,28 +114,27 @@ CREATE TABLE roles_config (
 )
 ```
 
-## Usage Examples
+## Canvas Usage
+
+All interactions are done through the Canvas UI. Access via: `!canvas banker`
 
 ### Enable/Disable Beggar
-```bash
-!trickster beggar enable
-!trickster beggar disable
-```
+- Navigate to **Banker → Admin → Beggar**
+- Use dropdown: "Beggar: On" or "Beggar: Off"
 
 ### Set Frequency
-```bash
-!trickster beggar frequency 12  # Every 12 hours
-```
+- Navigate to **Banker → Admin → Beggar**
+- Use dropdown: "Beggar: Frequency"
+- Enter hours in modal (1-168 hours)
 
 ### View Status
-```bash
-!trickster beggar status
-```
+- Navigate to **Banker → Beggar**
+- Shows: Current reason, fund balance, recent donations
 
 ### Donate Gold
-```bash
-!trickster beggar donate 100
-```
+- Navigate to **Banker → Beggar**
+- Use dropdown: "Beggar: Donate"
+- Enter amount in modal
 
 ## Integration Points
 
@@ -144,10 +143,10 @@ CREATE TABLE roles_config (
 - Calls `execute_beggar_task()` for automated messages
 - Passes bot instance for channel access
 
-### Discord Commands
-- Updated `trickster_discord.py` to use new config
-- Maintains backward compatibility with old commands
-- Enhanced status display with leaderboard
+### Canvas UI
+- All interactions through Canvas interface
+- No text commands needed
+- Visual buttons and modals for all actions
 
 ### Canvas UI Integration
 - Uses `get_canvas_beggar_state()` for UI display
@@ -159,7 +158,7 @@ CREATE TABLE roles_config (
 ### From Old System
 1. Configuration moved from `beggar_config` table to `roles_config`
 2. Donation tracking moved to `beggar_subrole` table in `roles.db`
-3. All existing commands continue to work
+3. All user interactions now through Canvas UI only
 
 ### Data Migration
 - Existing subscriptions automatically converted
@@ -208,11 +207,10 @@ CREATE TABLE roles_config (
    - Check fund balance
    - Ensure minigame is enabled
 
-### Debug Commands
-```bash
-!trickster beggar status  # Shows full configuration
-!testwatcher            # Tests news watcher (similar beggar test could be added)
-```
+### Debug Actions
+- Navigate to **Banker → Admin → Beggar** for configuration
+- Use "Beggar: Force Minigame" to test minigame manually
+- Check logs for detailed error information
 
 ## Development Notes
 

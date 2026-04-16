@@ -899,7 +899,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 
                 # Invalidate beggar config cache
                 try:
-                    from roles.trickster.subroles.beggar.beggar_config import invalidate_beggar_config_cache
+                    from roles.banker.subroles.beggar.beggar_db import invalidate_beggar_config_cache
                     invalidate_beggar_config_cache(server_id)
                     if logger:
                         logger.info(f"✅ Invalidated beggar config cache for server {server_id}")

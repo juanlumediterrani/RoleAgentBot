@@ -860,7 +860,7 @@ class RolesDatabase:
 
                                         if subrole_name == 'beggar' and subrole_enabled:
                                             try:
-                                                from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+                                                from roles.banker.subroles.beggar.beggar_db import get_beggar_config
                                                 beggar_config = get_beggar_config(self.server_id)
 
                                                 # Only initialize if reason is not already set
@@ -882,7 +882,7 @@ class RolesDatabase:
                                     # Special initialization for beggar subrole
                                     if subrole_name == 'beggar' and subrole_enabled:
                                         try:
-                                            from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+                                            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
                                             beggar_config = get_beggar_config(self.server_id)
                                             
                                             # Check if reason is not already set
@@ -936,7 +936,7 @@ class RolesDatabase:
                             # Special initialization for beggar role when updated
                             if role_name == 'beggar' and enabled:
                                 try:
-                                    from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+                                    from roles.banker.subroles.beggar.beggar_db import get_beggar_config
                                     beggar_config = get_beggar_config(server_id)
                                     
                                     # Check if reason is not already set

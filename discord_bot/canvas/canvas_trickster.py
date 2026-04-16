@@ -11,7 +11,6 @@ from .state import (
     _get_canvas_dice_state,
     _get_canvas_dice_ranking,
     _get_canvas_ring_state,
-    _get_canvas_beggar_state,
 )
 
 get_server_key = core.get_server_key
@@ -35,13 +34,13 @@ except Exception:
 
 def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=None) -> str:
     """Build the Trickster role view."""
-    from .content import _build_canvas_intro_block, _get_personality_descriptions
+    from .content import _get_personality_descriptions
     roles_messages = {}
     trickster_messages = {}
     try:
         server_id = get_server_key(guild) if guild else None
         personality_descriptions = _get_personality_descriptions(server_id)
-        roles_messages = personality_descriptions.get("roles_view_messages", {})
+        roles_messages = personality_descriptions.get("role_descriptions", {})
         trickster_messages = roles_messages.get("trickster", {})
     except Exception:
         pass
@@ -74,7 +73,7 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
             trickster_config = roles_db.get_role_config('trickster')
             if trickster_config and trickster_config.get('enabled', False):
                 # Get all enabled trickster subroles from database
-                trickster_subroles = ['beggar', 'dice_game', 'ring', 'nordic_runes']
+                trickster_subroles = ['dice_game', 'ring', 'nordic_runes']
                 for subrole in trickster_subroles:
                     subrole_config = roles_db.get_role_config(subrole)
                     if subrole_config and subrole_config.get('enabled', False):
@@ -88,7 +87,6 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     
     dice_state = _get_canvas_dice_state(guild)
     ring_state = _get_canvas_ring_state(guild)
-    beggar_state = _get_canvas_beggar_state(guild)
     
     separator = _trickster_text("canvas_trickster_overview_separator", "---------")
     subrole_descriptions = trickster_messages.get("canvas_trickster_subrole_descriptions", {})
@@ -99,10 +97,8 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
             active_descriptions.append(subrole_descriptions[subrole])
 
     parts = [
-        _build_canvas_intro_block(
-            _trickster_text("canvas_trickster_overview_title", "🎭Canvas - Trickster"),
-            _trickster_text("description", "Description: Trickster is a minigame based role."),
-        ),
+        _trickster_text("canvas_trickster_overview_title", "🎭Canvas - Trickster"),
+        _trickster_text("description", "Description: Trickster is a minigame based role."),
     ]
 
     if active_descriptions:
@@ -112,7 +108,7 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     parts += [
         "",
         "**Live state**",
-        f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,} | ring {'On' if ring_state['enabled'] else 'Off'} | beggar {'On' if beggar_state['enabled'] else 'Off'}",
+        f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,} | ring {'On' if ring_state['enabled'] else 'Off'}",
     ]
 
     return "\n".join(parts)
@@ -120,8 +116,6 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
 
 def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, guild=None, author_id: int | None = None, agent_config: dict | None = None) -> str | None:
     """Build a detailed Trickster view."""
-    from .content import _build_canvas_intro_block
-    
     # Handle overview case
     if detail_name == "overview":
         # Use the main overview function
@@ -130,7 +124,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
     from .content import _get_personality_descriptions
     server_id = get_server_key(guild) if guild else None
     personality_descriptions = _get_personality_descriptions(server_id)
-    roles_messages = personality_descriptions.get("roles_view_messages", {})
+    roles_messages = personality_descriptions.get("role_descriptions", {})
     trickster_messages = roles_messages.get("trickster", {})
 
     def _trickster_text(key: str, fallback: str) -> str:
@@ -152,14 +146,15 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
 
     if detail_name in {"dice", "game"}:
         dice_state = _get_canvas_dice_state(guild)
-        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+        descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("dice_game", {})
         title = _trickster_text("dice_game.title", "🎲 DICE GAME")
         pot_title = _trickster_text("dice_game.current_balance", "💎 **CURRENT POT:**")
         fixed_bet = _trickster_text("dice_game.fixed_bet", "💎 **FIXED BET:**")
         game_description = _trickster_text("dice_game.description", "Test your luck against the Dice POT! Roll the dice and win big prizes!")
         dice_rules = _trickster_text("dice_game.rules", "-Triple Ones you won the POT!\n -n Hight Straight (4,5,6) you won x5 the bet.\n -Any Triple, you won x3 the bet.\n -The pairs will return you the bet.\n ")
         parts = [
-            _build_canvas_intro_block(title, game_description),
+            title,
+            game_description,
             "**Rules**",
             dice_rules,
             "",
@@ -222,13 +217,11 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         hot_pot = int(dice_state["bet"] * 72)
         
         # Get personality descriptions with English fallbacks
-        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+        descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("dice_game", {})
         
         return "\n".join([
-            _build_canvas_intro_block(
-                "🎲 Trickster Canvas - Dice / Admin",
-                _trickster_text("dice_game.admin_description", "Configure dice game settings and announcements"),
-            ),
+            "🎲 Trickster Canvas - Dice / Admin",
+            _trickster_text("dice_game.admin_description", "Configure dice game settings and announcements"),
             _trickster_text("dice_game.current_settings", "**Current settings**"),
             f"{_trickster_text('dice_game.current_fixed_bet', '**Current fixed bet:**')} {dice_state['bet']:,} {_trickster_text('dice_game.gold_suffix', 'gold')}",
             f"{_trickster_text('dice_game.current_pot', '**Current pot:**')} {dice_state['pot_balance']:,} {_trickster_text('dice_game.gold_suffix', 'gold')}",
@@ -244,66 +237,6 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
             _trickster_text("dice_game.back_only", "- Back only from here"),
             _trickster_text("dice_game.no_other_buttons", "- No other subrole buttons are shown in this admin screen"),
         ])
-
-    if detail_name in {"beggar"}:
-        beggar_state = _get_canvas_beggar_state(guild)
-        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
-        
-        title = _trickster_text("beggar.title", "🙏 BEGGAR")
-        fund_title = _trickster_text("beggar.current_fund", "💰 **CURRENT FUND:**")
-        description = _trickster_text("beggar.description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")
-        title_reason = _trickster_text("beggar.title_reason", "**Reason:**")
-        title_campaing = _trickster_text("beggar.title_campaign", "**Current Campaign**")
-        title_instructions = _trickster_text("beggar.title_instructions", "**How it works**")
-        instructions = _trickster_text("beggar.instructions", "💝 Click the 'Donate' button below\n - Wait the weekly result at end of the week.\n - If you give whatever donation, the beggar will memory that.\n ")
-        title_donations = _trickster_text("beggar.title_donations", "**Recent Donations**")
-    
-        parts = [
-            _build_canvas_intro_block(title, description),
-            "-" * 45,
-            title_campaing,
-            f"{title_reason} {beggar_state['last_reason'] or 'Support the clan'}",
-            f"{fund_title} {beggar_state['fund_balance']:,} :coin:",
-            "-" * 45,
-            "",
-            title_instructions,
-            instructions,
-            "-" * 45,
-            "",
-            title_donations,
-        ]   
-        
-        # Add recent donation history if available
-        if beggar_state.get('recent_donations'):
-            for donation in beggar_state['recent_donations'][:5]:
-                donor = donation.get('donor_name', 'Anonymous')
-                amount = donation.get('amount', 0)
-                reason = donation.get('reason', 'Support')
-                parts.append(f" - 💰 {donor}: {amount:,} :coin: -->  {reason}")
-        else:
-            no_donations = descriptions.get("no_donations", "📊 No donations yet. Be the first to contribute!")
-            parts.append(no_donations)
-        
-        return "\n".join(parts)
-
-    if detail_name in {"beggar_admin"}:
-        beggar_state = _get_canvas_beggar_state(guild)
-        descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("beggar", {})
-        trickster_descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {})
-        description = _trickster_text("beggar.description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")  
-        title = _trickster_text("beggar.title", "🙏 BEGGAR")
-        general_descriptions = personality_descriptions.get("general", {})
-        return "\n".join([
-            _build_canvas_intro_block(title, description),
-            "-" * 45,
-            general_descriptions.get("current_settings", "**Current Settings**"),
-            "-" * 45,
-            f"{general_descriptions.get('status_label', '**Status:**')} {general_descriptions.get('active', '✅ Enabled') if beggar_state['enabled'] else general_descriptions.get('inactive','❌ Disabled')}",
-            f"{general_descriptions.get('frequency_label', '**Frequency:**')} {general_descriptions.get('every', 'every')} {beggar_state['frequency_hours']}h",
-            f"{_trickster_text('beggar.current_fund', '**Current Fund:**')} {beggar_state['fund_balance']:,} :coin:",
-            f"{_trickster_text('beggar.title_reason', '**Last Reason:**')} {beggar_state['last_reason'] or general_descriptions.get('none','None')}",
-           
-           ])
 
     if detail_name in {"ring"}:
         ring_state = _get_canvas_ring_state(guild)
@@ -322,8 +255,9 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         inactive_instructions = ring_messages.get("inactive_instructions", "To enable ring functionality:\n• An admin must go to **Ring Admin**\n• Click **Ring: On** to activate\n• Set frequency for automatic investigations\n\nOnce enabled, you can accuse users of carrying the One Ring!")
 
         parts = [
-            _build_canvas_intro_block(clean_title, description),
-            "-" * 45,   
+            clean_title,
+            description,
+            "-" * 45,
             ]
         
         parts.append("")
@@ -358,7 +292,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         title = _trickster_text("ring.title", "👁️ **Ring Hunter**")
         # Use general descriptions for admin panel
         general = personality_descriptions.get("general", {})
-        ring_descriptions = personality_descriptions.get("roles_view_messages", {}).get("trickster", {}).get("ring", {})
+        ring_descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("ring", {})
         
         admin_status = general.get("status", "Status:")
         active_text = general.get("active", "Active")
@@ -373,10 +307,8 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         current_freq = ring_state.get('current_frequency_hours', ring_state['frequency_hours'])
         
         parts = [
-            _build_canvas_intro_block(
-                f"{title} Admin",
-                description,
-            ),
+            f"{title} Admin",
+            description,
             f"**{admin_status}** {active_text if ring_state['enabled'] else inactive_text}",
             f"**{base_freq_label}** {freq_format.format(hours=base_freq)}",
             f"**{current_freq_label}** {freq_format.format(hours=current_freq)}",
@@ -408,7 +340,8 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         runes_title = runes_messages.get("runes_title", "**The 24 Elder Futhark Runes:**")
         
         return "\n".join([
-            _build_canvas_intro_block(title, description),
+            title,
+            description,
             "-"*45,
             how_to_use,
             "-"*45,
@@ -432,10 +365,8 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         runes_enabled = subroles.get("nordic_runes", {}).get("enabled", False)
         
         return "\n".join([
-            _build_canvas_intro_block(
-                f"{title} Admin",
-                "Configure Nordic Runes subrole settings and availability for this server."
-            ),
+            f"{title} Admin",
+            "Configure Nordic Runes subrole settings and availability for this server.",
             f"**Status:** {'✅ Enabled' if runes_enabled else '❌ Disabled'}",
             "",
             "**Controls**",
@@ -469,8 +400,8 @@ def get_runes_messages(guild=None) -> dict:
         from .content import _get_personality_descriptions
         server_id = get_server_key(guild) if guild else None
         descriptions = _get_personality_descriptions(server_id)
-        if descriptions and "roles_view_messages" in descriptions and "trickster" in descriptions["roles_view_messages"] and "nordic_runes" in descriptions["roles_view_messages"]["trickster"]:
-            return descriptions["roles_view_messages"]["trickster"]["nordic_runes"]
+        if descriptions and "role_descriptions" in descriptions and "trickster" in descriptions["role_descriptions"] and "nordic_runes" in descriptions["role_descriptions"]["trickster"]:
+            return descriptions["role_descriptions"]["trickster"]["nordic_runes"]
     except Exception as e:
         logger.error(f"Error loading runes messages from descriptions: {e}")
     
@@ -546,7 +477,7 @@ class RuneCastingModal(discord.ui.Modal):
 
             from .content import _get_personality_descriptions
             _rune_server_id = get_server_key(interaction.guild) if interaction.guild else None
-            descriptions = _get_personality_descriptions(_rune_server_id).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
+            descriptions = _get_personality_descriptions(_rune_server_id).get("role_descriptions", {}).get("trickster", {}).get("nordic_runes", {})
             saved_msg = descriptions.get("reading_saved", "🔮 Runes have been cast! Your reading has been saved.")
             
             # Handle tuple return value (main_response, interpretation_response_parts)
@@ -679,7 +610,7 @@ async def handle_canvas_runes_action(interaction: discord.Interaction, action_na
         guild = interaction.guild
         from .content import _get_personality_descriptions
         server_id = get_server_key(guild) if guild else None
-        _runes_desc = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
+        _runes_desc = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("trickster", {}).get("nordic_runes", {})
 
         class MockMessage:
             def __init__(self, author, guild):
@@ -1008,7 +939,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         donor_id = str(author_id)
         donor_name = interaction.user.display_name
         from roles.banker.banker_db import get_banker_roles_db_instance
-        from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+        from roles.banker.subroles.beggar.beggar_db import get_beggar_config
         db_banker_roles = get_banker_roles_db_instance(server_key)
         db_banker_roles.create_wallet(donor_id, donor_name, "user")
         wallet = db_banker.get_banker_wallet(donor_id)
@@ -1169,7 +1100,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 else:
                     message = "❌ Failed to update ring frequency in roles_config database."
             else:
-                from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+                from roles.banker.subroles.beggar.beggar_db import get_beggar_config
                 beggar_config = get_beggar_config(server_id)
                 ok = beggar_config.set_frequency_hours(hours)
                 if not ok:
@@ -1287,8 +1218,8 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
                 applied_text = "Failed to update ring status in roles_config database."
         elif action_name in {"beggar_on", "beggar_off"}:
             try:
-                from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
-                from roles.trickster.subroles.beggar.beggar_task import execute_beggar_task
+                from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+                from roles.banker.subroles.beggar.beggar_task import execute_beggar_task
 
                 server_id_str = str(interaction.guild.id)
                 beggar_config = get_beggar_config(server_id_str)
@@ -1321,7 +1252,7 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
             current_detail = "beggar_admin"
         elif action_name == "beggar_force_minigame":
             try:
-                from roles.trickster.subroles.beggar.beggar_minigame import BeggarMinigame
+                from roles.banker.subroles.beggar.beggar_minigame import BeggarMinigame
 
                 server_id_str = str(interaction.guild.id)
                 if not interaction.response.is_done():

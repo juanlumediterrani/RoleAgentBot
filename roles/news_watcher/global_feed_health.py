@@ -58,7 +58,6 @@ def initialize_global_feeds_db():
         if cursor.fetchone()[0] == 0:
             logger.info("📡 Initializing global feeds database with default feeds...")
             default_feeds = [
-                ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/", "crypto"),
                 ("Cointelegraph", "https://cointelegraph.com/rss", "crypto"),
                 ("Decrypt", "https://decrypt.co/feed", "crypto"),
                 ("Bloomberg Markets", "https://feeds.bloomberg.com/markets/news.rss", "economy"),
@@ -69,7 +68,6 @@ def initialize_global_feeds_db():
                 ("The Guardian World", "https://www.theguardian.com/world/rss", "general"),
                 ("Al Jazeera English", "https://www.aljazeera.com/xml/rss/all.xml", "international"),
                 ("BBC World News", "http://rss.cnn.com/rss/edition_world.rss", "international"),
-                ("Reuters World", "https://feeds.feedburner.com/oreilly/radar", "international"),
                 ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "technology"),
                 ("BBC Technology", "https://www.zdnet.com/news/rss.xml", "technology"),
                 ("TechCrunch", "https://techcrunch.com/feed/", "technology"),

@@ -4,6 +4,8 @@ from agent_logging import get_logger
 
 logger = get_logger('banker_messages')
 
+
+#Default english message Fallback
 def get_default_messages():
     """Default messages if no customization available."""
     return {
@@ -11,10 +13,10 @@ def get_default_messages():
         "description": "Banker allows you to hold a wallet and make transactions between users and the bot.",
         "wallet_information": "Wallet information:",
         "balance":"Balance:",
-        "current_balance": "💎 Current Gold",
+        "coin":"🪙",
         "button": "💰 Banker",
         "account_holder": "👤 Account Holder",
-        "bank": "🏦 Bank",
+        "server": "🏦 Bank",
         "recent_transactions_title": "Recent Transactions:",
         "no_transactions_yet": "Not recent transactions.",
         "dropdown":{

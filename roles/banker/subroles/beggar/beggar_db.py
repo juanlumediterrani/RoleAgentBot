@@ -1,62 +1,82 @@
 """
-Beggar Subrole Configuration Manager
-Centralized configuration management using roles.db/roles_config
+Beggar Database and Configuration Operations
+Handles all database interactions and configuration for the beggar subrole.
 """
 
 import json
+import os
 import random
+import asyncio
+import threading
+from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
 
 from agent_logging import get_logger
 from agent_roles_db import get_roles_db_instance
 from agent_engine import _get_personality
 
-logger = get_logger('beggar_config')
+logger = get_logger('beggar_db')
 
 
 class BeggarConfig:
-    """Centralized beggar configuration manager."""
-    
+    """Centralized beggar configuration manager using roles.db."""
+
     def __init__(self, server_id: str):
         self.server_id = server_id
         self.roles_db = get_roles_db_instance(server_id)
         self.roles_db.migrate_legacy_beggar_data(server_id)
         self._reasons_cache = None
-    
+
     def get_default_reasons(self) -> List[str]:
-        """Get reasons from prompts.json dynamically using server-specific personality."""
+        """Get reasons from personality files (prompts.json or answers.json) dynamically using server-specific personality."""
         if self._reasons_cache is None:
             try:
-                # Use server-specific personality
                 personality = _get_personality(self.server_id)
-                # Look in the correct location: roles -> trickster -> subroles -> beggar -> reasons
+                
+                # Try prompts.json first (standard structure: roles.banker.subroles.beggar.reasons)
                 roles_config = personality.get('roles', {})
-                trickster_config = roles_config.get('trickster', {})
-                beggar_subrole = trickster_config.get('subroles', {}).get('beggar', {})
+                banker_config = roles_config.get('banker', {})
+                beggar_subrole = banker_config.get('subroles', {}).get('beggar', {})
                 self._reasons_cache = beggar_subrole.get('reasons', [])
 
+                # If not found in prompts.json, try answers.json (structure: roles.banker.beggar.reasons)
                 if not self._reasons_cache:
-                    logger.warning(f"No reasons found in prompts.json for beggar (server: {self.server_id})")
+                    try:
+                        from agent_runtime import get_personality_directory
+                        personality_dir = get_personality_directory(self.server_id)
+                        answers_path = os.path.join(personality_dir, 'answers.json')
+                        if os.path.exists(answers_path):
+                            with open(answers_path, encoding='utf-8') as f:
+                                answers_data = json.load(f)
+                            roles_answers = answers_data.get('roles', {})
+                            banker_answers = roles_answers.get('banker', {})
+                            beggar_answers = banker_answers.get('beggar', {})
+                            self._reasons_cache = beggar_answers.get('reasons', [])
+                            if self._reasons_cache:
+                                logger.info(f"Loaded {len(self._reasons_cache)} reasons from answers.json for server {self.server_id}")
+                    except Exception as e:
+                        logger.debug(f"Could not load reasons from answers.json: {e}")
+
+                if not self._reasons_cache:
+                    logger.warning(f"No reasons found in personality files for beggar (server: {self.server_id})")
                     self._reasons_cache = ["default reason"]
 
             except Exception as e:
-                logger.error(f"Error loading reasons from prompts.json (server: {self.server_id}): {e}")
+                logger.error(f"Error loading reasons from personality files (server: {self.server_id}): {e}")
                 self._reasons_cache = ["default reason"]
 
         return self._reasons_cache
-    
+
     def get_config(self) -> Dict[str, Any]:
         """Get beggar configuration from roles_config."""
         try:
             config = self.roles_db.get_role_config('beggar')
-            
+
             if config and config.get('config_data'):
                 config_data = json.loads(config['config_data'])
             else:
                 config_data = {}
-            
-            # Ensure defaults
+
             return {
                 'enabled': config.get('enabled', False),
                 'frequency_hours': config_data.get('frequency_hours', 24),
@@ -69,11 +89,11 @@ class BeggarConfig:
                 'minigame_enabled': config_data.get('minigame_enabled', True),
                 'relationship_improvements': config_data.get('relationship_improvements', True)
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting beggar config: {e}")
             return self._get_default_config()
-    
+
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration."""
         return {
@@ -88,152 +108,137 @@ class BeggarConfig:
             'minigame_enabled': True,
             'relationship_improvements': True
         }
-    
+
     def save_config(self, config: Dict[str, Any]) -> bool:
         """Save beggar configuration to roles_config."""
         try:
             logger.info(f"Saving beggar config for server {self.server_id}")
-            # Extract config data (everything except enabled)
             config_data = {k: v for k, v in config.items() if k != 'enabled'}
-            logger.info(f"Config data to save: {config_data}")
-            logger.info(f"Enabled status to save: {config.get('enabled', False)}")
-            
+
             success = self.roles_db.save_role_config(
-                'beggar', 
+                'beggar',
                 config.get('enabled', False),
                 json.dumps(config_data)
             )
-            
+
             if success:
                 logger.info(f"Saved beggar config for server {self.server_id}")
-                self._reasons_cache = None  # Clear reasons cache
+                self._reasons_cache = None
             else:
                 logger.error(f"Failed to save beggar config for server {self.server_id}")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Error saving beggar config: {e}", exc_info=True)
             return False
-    
+
     def is_enabled(self) -> bool:
         """Check if beggar is enabled."""
         config = self.get_config()
         return config.get('enabled', False)
-    
+
     def set_enabled(self, enabled: bool) -> bool:
         """Enable or disable beggar."""
         logger.info(f"Setting beggar enabled to {enabled} for server {self.server_id}")
         config = self.get_config()
-        logger.info(f"Current config before change: {config}")
         config['enabled'] = enabled
-        logger.info(f"Config after change: {config}")
         result = self.save_config(config)
         logger.info(f"save_config returned: {result}")
         return result
-    
+
     def get_frequency_hours(self) -> int:
         """Get task execution frequency in hours."""
         config = self.get_config()
         return config.get('frequency_hours', 24)
-    
+
     def set_frequency_hours(self, hours: int) -> bool:
         """Set task execution frequency in hours."""
         config = self.get_config()
-        config['frequency_hours'] = max(1, hours)  # Minimum 1 hour
+        config['frequency_hours'] = max(1, hours)
         return self.save_config(config)
-    
+
     def get_current_reason(self) -> str:
         """Get current begging reason."""
         config = self.get_config()
         return config.get('current_reason', '')
-    
+
     def set_current_reason(self, reason: str) -> bool:
         """Set current begging reason and track when it started."""
         config = self.get_config()
         old_reason = config.get('current_reason', '')
-        
+
         config['current_reason'] = reason
         config['reason_started'] = datetime.now().isoformat()
         config['last_reason_change'] = datetime.now().isoformat()
-        
+
         success = self.save_config(config)
-        
+
         if success and old_reason != reason:
             logger.info(f"Beggar reason changed from '{old_reason}' to '{reason}'")
-            # Trigger minigame check if reason actually changed
             self._check_reason_change(old_reason, reason)
-        
+
         return success
-    
+
     def should_change_reason(self) -> bool:
         """Check if it's time to change the reason (weekly cycle)."""
         config = self.get_config()
         reason_started = config.get('reason_started')
-        
+
         if not reason_started:
             return True
-        
+
         try:
             started = datetime.fromisoformat(reason_started)
-            # Change reason every 7 days
             return datetime.now() >= started + timedelta(days=7)
         except Exception:
             return True
-    
+
     def select_new_reason(self) -> str:
         """Select a new random reason from defaults."""
         current_reason = self.get_current_reason()
         default_reasons = self.get_default_reasons()
-        
-        logger.info(f"Available reasons: {default_reasons}")
-        logger.info(f"Current reason: '{current_reason}'")
-        
-        # Try to get a different reason
+
         available_reasons = [r for r in default_reasons if r != current_reason]
-        
-        logger.info(f"Available reasons after filtering: {available_reasons}")
-        
+
         if not available_reasons:
-            # If only current reason exists, pick from all
             available_reasons = default_reasons
             logger.warning("Only one reason available, selecting from all reasons")
-        
+
         new_reason = random.choice(available_reasons)
         logger.info(f"Selected new reason: '{new_reason}'")
-        
+
         self.set_current_reason(new_reason)
-        
         return new_reason
-    
+
     def get_target_channel_id(self) -> Optional[str]:
         """Get target channel ID for public messages."""
         config = self.get_config()
         return config.get('target_channel_id')
-    
+
     def set_target_channel_id(self, channel_id: str) -> bool:
         """Set target channel ID for public messages."""
         config = self.get_config()
         config['target_channel_id'] = channel_id
         config['auto_channel_selection'] = False
         return self.save_config(config)
-    
+
     def get_target_gold(self) -> int:
         """Get the current beggar target amount."""
         config = self.get_config()
         return int(config.get('target_gold', 0) or 0)
-    
+
     def set_target_gold(self, amount: int) -> bool:
         """Set the current beggar target amount."""
         config = self.get_config()
         config['target_gold'] = max(0, int(amount))
         return self.save_config(config)
-    
+
     def is_auto_channel_selection(self) -> bool:
         """Check if auto channel selection is enabled."""
         config = self.get_config()
         return config.get('auto_channel_selection', True)
-    
+
     def set_auto_channel_selection(self, enabled: bool) -> bool:
         """Enable or disable auto channel selection."""
         config = self.get_config()
@@ -241,97 +246,170 @@ class BeggarConfig:
         if enabled:
             config['target_channel_id'] = None
         return self.save_config(config)
-    
+
     def is_minigame_enabled(self) -> bool:
         """Check if minigame on reason change is enabled."""
         config = self.get_config()
         return config.get('minigame_enabled', True)
-    
+
     def set_minigame_enabled(self, enabled: bool) -> bool:
         """Enable or disable minigame on reason change."""
         config = self.get_config()
         config['minigame_enabled'] = enabled
         return self.save_config(config)
-    
+
     def is_relationship_improvements_enabled(self) -> bool:
         """Check if relationship improvements are enabled."""
         config = self.get_config()
         return config.get('relationship_improvements', True)
-    
+
     def set_relationship_improvements_enabled(self, enabled: bool) -> bool:
         """Enable or disable relationship improvements."""
         config = self.get_config()
         config['relationship_improvements'] = enabled
         return self.save_config(config)
-    
+
     def get_reason_status(self) -> Dict[str, Any]:
         """Get detailed status about current reason."""
         config = self.get_config()
         reason_started = config.get('reason_started')
-        
+
         status = {
             'current_reason': config.get('current_reason', ''),
             'reason_started': reason_started,
             'days_active': 0,
             'should_change': self.should_change_reason()
         }
-        
+
         if reason_started:
             try:
                 started = datetime.fromisoformat(reason_started)
                 status['days_active'] = (datetime.now() - started).days
             except Exception:
                 pass
-        
+
         return status
-    
+
     def _check_reason_change(self, old_reason: str, new_reason: str) -> None:
         """Check if we should trigger minigame on reason change."""
         if not self.is_minigame_enabled():
             return
-        
+
         if not old_reason or old_reason == new_reason:
             return
-        
+
         logger.info(f"Reason changed from '{old_reason}' to '{new_reason}', triggering minigame check")
-        
-        # Import here to avoid circular imports
+
         try:
-            import asyncio
-            from .beggar_minigame import BeggarMinigame
-            
-            # Create background task to avoid blocking
+            from .beggar_task import BeggarMinigame
+
             async def _trigger_minigame_background():
                 try:
                     minigame = BeggarMinigame(self.server_id)
                     await minigame.trigger_reason_change_minigame(old_reason, new_reason)
                 except Exception as e:
                     logger.error(f"Error in background minigame task: {e}")
-            
-            # Schedule background task
+
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
                     asyncio.create_task(_trigger_minigame_background())
                 else:
-                    # If no loop running, run it in a new thread
-                    import threading
                     def run_in_thread():
                         new_loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(new_loop)
                         new_loop.run_until_complete(_trigger_minigame_background())
                         new_loop.close()
-                    
+
                     thread = threading.Thread(target=run_in_thread)
                     thread.daemon = True
                     thread.start()
             except Exception as e:
                 logger.error(f"Error scheduling background minigame task: {e}")
-                
+
         except ImportError:
             logger.warning("Beggar minigame module not available")
         except Exception as e:
             logger.error(f"Error triggering reason change minigame: {e}")
+
+
+class BeggarDatabase:
+    """Database operations for beggar subrole."""
+    
+    def __init__(self, server_id: str):
+        self.server_id = str(server_id)
+        self.roles_db = get_roles_db_instance(server_id)
+    
+    def save_donation(self, user_id: str, user_name: str, amount: int, reason: str) -> bool:
+        """Save a donation to the database."""
+        try:
+            # Update beggar statistics
+            self.roles_db.update_beggar_donation(user_id, user_name, amount, reason)
+            
+            # Save beggar request record
+            self.roles_db.save_beggar_request(
+                user_id=user_id,
+                user_name=user_name,
+                request_type="BEGGAR_DONATION",
+                message=f"Donated {amount} gold",
+                channel_id=None,
+                metadata=f"reason:{reason}",
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save donation: {e}")
+            return False
+    
+    def get_recent_donations(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get recent donations from the database."""
+        try:
+            # This would query the roles_db for recent donations
+            # Implementation depends on the actual database structure
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get recent donations: {e}")
+            return []
+    
+    def get_fund_balance(self) -> int:
+        """Get current beggar fund balance."""
+        try:
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            banker_db = get_banker_roles_db_instance(self.server_id)
+            if banker_db:
+                return banker_db.get_balance("beggar_fund")
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to get fund balance: {e}")
+            return 0
+    
+    def update_fund_balance(self, amount: int, source: str, description: str) -> bool:
+        """Update beggar fund balance."""
+        try:
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            banker_db = get_banker_roles_db_instance(self.server_id)
+            if banker_db:
+                return banker_db.update_balance(
+                    "beggar_fund", "Beggar Fund",
+                    amount, source, description
+                )
+            return False
+        except Exception as e:
+            logger.error(f"Failed to update fund balance: {e}")
+            return False
+    
+    def get_donation_participants(self) -> List[Dict[str, Any]]:
+        """Get list of users who have donated."""
+        try:
+            # Query the database for participants
+            return self.roles_db.get_beggar_participants() if hasattr(self.roles_db, 'get_beggar_participants') else []
+        except Exception as e:
+            logger.error(f"Failed to get participants: {e}")
+            return []
+
+
+def get_beggar_db(server_id: str) -> BeggarDatabase:
+    """Factory function to get BeggarDatabase instance."""
+    return BeggarDatabase(server_id)
 
 
 # Global instance cache
@@ -347,25 +425,23 @@ def get_beggar_config(server_id: str) -> BeggarConfig:
 
 def invalidate_beggar_config_cache(server_id: str = None):
     """Invalidate cached beggar configuration instance for a server or all servers.
-    
+
     Call this after personality change so the next get_beggar_config()
     creates a new BeggarConfig pointing to the correct database.
-    
+
     Args:
         server_id: Server ID to invalidate, or None to clear all.
     """
     global _config_instances
     if server_id:
         if server_id in _config_instances:
-            # Clear reasons cache before deleting instance
             if hasattr(_config_instances[server_id], '_reasons_cache'):
                 _config_instances[server_id]._reasons_cache = None
             del _config_instances[server_id]
-            logger.info(f"🗄️ [BEGGAR] Invalidated cached config for server: {server_id}")
+            logger.info(f"[BEGGAR] Invalidated cached config for server: {server_id}")
     else:
-        # Clear reasons cache for all instances before clearing
         for config in _config_instances.values():
             if hasattr(config, '_reasons_cache'):
                 config._reasons_cache = None
         _config_instances.clear()
-        logger.info(f"🗄️ [BEGGAR] Cleared all cached configs")
+        logger.info(f"[BEGGAR] Cleared all cached configs")

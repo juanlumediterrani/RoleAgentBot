@@ -2,16 +2,46 @@
     "title": "**💰 El Gran Kofre de Putre**",
     "description": "El orco tesorero te administra tus cuentas y transacciones de oro.",
     "button": "💰 Tesorero",
+    "coin":"🪙",
+    "wallet_information": "Estao aktual del Kofre:",
     "recent_transactions_title": "Zakeos Rezientes",
-    "no_transactions_yet": "No ay zakeos ainda",
+    "no_transactions_yet": "No ay zakeos todabia",
     "current_balance": "💎 Botin Zakeado Aora",
     "account_holder": "👤 Umano Zakeador",
-    "bank": "🏦 Kueva del Tesoro",
+    "server": "🏦 Kueva del Tesoro",
     "dropdown":{
         "select_banker_action": "💰 Selekzionar aksion de tesoro...",
         "config_tae": "Konfigurar TAE",
         "config_tae_description": "Ajustar la tasa diaria de oro",
         "config_bonus": "Konfigurar Bono",
-        "config_bonus_description": "Ajustar monedas para novatos",
+        "config_bonus_description": "Ajustar monedas para novatos"
+    },
+    "subrole_buttons": {
+        "overview": "💰 Tesorero",
+        "beggar": "🙏 Limosna"
+    },
+    "beggar": {
+        "title": ":coin: **RECAUDACIONES PUTRE** :coin:",
+        "description": " Putre recauda oro para proyectos del clan, dona oro regularmente y Putre te lo agradecera cada semana.\n Si tienes suerte puede que te devuelva algo.",
+        "current_fund":"Fondo actual:",
+        "title_campaign":"**Campanya atual**",
+        "title_reason":"Razon:",
+        "title_instructions":"**Instrucciones**",
+        "instructions":" - Haz click donar en el menu desplegable de abajo.\n - Espera a los resultados semanales al final de esta.\n - Participa con cualquier cantidad y Putre lo tendra en cuenta.\n",
+        "title_donations":"📊 ** Donaciones:**",
+        "no_donations":" No hay donaciones todavia. Se el primero en contribuir!",
+        "beggar_donation_success": "¡Grazia po donar {amount} de oro pa la cauza: {reason}! 🪙",
+        "dropdown":{
+            "beggar_donate": "Limosna: Donar",
+            "beggar_donate_description": "Hacer una donacion para proyectos del clan",
+            "beggar_on": "Limosna: Activar",
+            "beggar_on_description": "Activar sistema de limosnas",
+            "beggar_off": "Limosna: Desactivar",
+            "beggar_off_description": "Desactivar sistema de limosnas",
+            "beggar_frequency": "Limosna: Frecuencia",
+            "beggar_frequency_description": "Establecer frecuencia de solicitudes",
+            "beggar_force_minigame": "Limosna: Forzar Minijuego",
+            "beggar_force_minigame_description": "Forzar ejecucion del minijuego"
+        }
     }
 }

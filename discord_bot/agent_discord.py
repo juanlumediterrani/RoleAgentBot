@@ -151,6 +151,48 @@ def get_bot_instance():
 
 # --- AUTOMATIC TASKS ---
 
+@tasks.loop(minutes=1)
+async def discord_task_scheduler():
+    """Run all Discord-dependent scheduled tasks inside the bot process.
+    
+    This scheduler executes tasks that need access to Discord (like beggar, news_watcher)
+    from within the bot process where the bot instance is actually connected to Discord.
+    Tasks that don't need Discord (memory operations) run in the main scheduler process.
+    """
+    if not bot.is_ready():
+        return
+    
+    try:
+        from agent_db import get_all_server_ids
+        from agent_engine import get_due_subrole_tasks_for_server, execute_subrole_internal_task
+        
+        server_ids = get_all_server_ids()
+        if not server_ids:
+            return
+        
+        for server_id in server_ids:
+            tasks_to_execute = get_due_subrole_tasks_for_server(server_id)
+            if not tasks_to_execute:
+                continue
+            
+            logger.info(f"[BOT_SCHEDULER] Server {server_id}: executing {len(tasks_to_execute)} subrole task(s): {[name for name, _ in tasks_to_execute]}")
+            
+            for subrole_name, subrole_config in tasks_to_execute:
+                try:
+                    await execute_subrole_internal_task(
+                        subrole_name, subrole_config,
+                        bot_instance=bot,  # Pass the actual connected bot instance
+                        server_id=server_id
+                    )
+                except Exception as e:
+                    logger.error(f"[BOT_SCHEDULER] Error in {subrole_name} for {server_id}: {e}")
+    except Exception as e:
+        logger.error(f"[BOT_SCHEDULER] Error in task scheduler: {e}")
+
+@discord_task_scheduler.before_loop
+async def _before_task_scheduler():
+    await bot.wait_until_ready()
+
 @tasks.loop(hours=24)
 async def database_cleanup():
     active_server_key = (get_server_id() or "").strip()
@@ -395,6 +437,12 @@ async def on_ready():
     if not database_cleanup.is_running():
         database_cleanup.start()
         logger.info("🧹 DB cleanup task started")
+    
+    # Start Discord task scheduler for Discord-dependent tasks (beggar, news_watcher, etc)
+    if not discord_task_scheduler.is_running():
+        discord_task_scheduler.start()
+        logger.info("🎭 Discord task scheduler started")
+    
     await set_mc_presence_if_enabled()
     
     # Create banker wallets for all server members

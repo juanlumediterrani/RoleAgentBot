@@ -15,6 +15,18 @@
                 "not_gold":{
                 }
             }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "traer a tu familia orka kontigo",
+                    "komprar un jabali guerrero para la batalla",
+                    "pagar tributo al jefe orko para ke no te mate",
+                    "afilar tu acha zeka en la herreria",
+                    "komprar carne kruda para la fiesta",
+                    "konstruir una nueva tienda en el kampamento"
+                ]
+            }
         }
     }
 

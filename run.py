@@ -23,6 +23,7 @@ from agent_engine import (
     generate_daily_memory_summary,
     refresh_due_recent_memories,
     refresh_due_relationship_memories,
+    get_due_subrole_tasks_for_server,
 )
 from agent_mind import generate_weekly_personality_evolution
 
@@ -297,30 +298,18 @@ async def _execute_optional_role_tasks(roles_cfg: dict, next_run: dict[str, date
         logger.info(f"[run] ⏳ '{name}' next execution: {next_run[name]:%H:%M:%S}")
 
 
-def _get_due_subrole_tasks_for_server(server_id: str) -> list[tuple[str, dict]]:
-    tasks_to_execute = []
-    for subrole_name, subrole_config in get_active_subroles(server_id).items():
-        frequency = _get_subrole_frequency_from_config(subrole_name)
-        if should_execute_subrole_task(subrole_name, frequency, server_id):
-            tasks_to_execute.append((subrole_name, subrole_config))
-    return tasks_to_execute
-
-
 async def _execute_optional_subrole_tasks():
+    """DISABLED: Subrole tasks now run in discord_task_scheduler (bot process) where bot instance is connected.
+    
+    The main scheduler process cannot access Discord's bot instance because it runs in a separate
+    process. Discord-dependent tasks (beggar, news_watcher, treasure_hunter) are now executed
+    by discord_task_scheduler inside agent_discord.py where the bot is actually connected.
+    """
     try:
-        from agent_db import get_all_server_ids
-        server_ids = get_all_server_ids()
-        if not server_ids:
-            return
-        for server_id in server_ids:
-            tasks_to_execute = _get_due_subrole_tasks_for_server(server_id)
-            if not tasks_to_execute:
-                continue
-            logger.info(f"[run] 🎭 Server {server_id}: executing {len(tasks_to_execute)} subrole task(s): {[name for name, _ in tasks_to_execute]}")
-            await asyncio.gather(*[
-                execute_subrole_internal_task(subrole_name, subrole_config, server_id=server_id)
-                for subrole_name, subrole_config in tasks_to_execute
-            ])
+        # Subrole tasks are now handled by discord_task_scheduler in the bot process
+        # This function is kept for backward compatibility but does nothing
+        logger.debug("[run] Subrole tasks disabled - handled by discord_task_scheduler in bot process")
+        return
     except Exception as e:
         logger.error(f"[run] 🎭 Error in subrole tasks: {e}")
 

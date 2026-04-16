@@ -45,7 +45,7 @@ def _get_treasure_text_factory(guild=None):
     server_id = core.get_server_key(guild) if guild else None
     personality_descriptions = _get_personality_descriptions(server_id)
     treasure_messages = _personality_answers.get("treasure_hunter_messages", {})
-    treasure_descriptions = personality_descriptions.get("roles_view_messages", {}).get("treasure_hunter", {})
+    treasure_descriptions = personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {})
     return _treasure_text_factory(treasure_messages, treasure_descriptions)
 
 
@@ -228,7 +228,6 @@ def _treasure_text_factory(treasure_messages: dict, treasure_descriptions: dict)
 
 def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the Treasure Hunter role view."""
-    from .content import _build_canvas_intro_block
     _treasure_text = _get_treasure_text_factory(guild)
 
     interval = (agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("interval_hours", 1)
@@ -236,10 +235,8 @@ def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, g
     objective_count = len(state.get("objectives", []))
 
     parts = [
-        _build_canvas_intro_block(
-            _treasure_text("title", "💎 Treasure Hunter Canvas"),
-            _treasure_text("description", "Item-tracking and alerts setup for different games."),
-        ),
+        _treasure_text("title", "💎 Treasure Hunter Canvas"),
+        _treasure_text("description", "Item-tracking and alerts setup for different games."),
         f"**{_treasure_text('user_flows_title', 'User flows')}**",
         f"- {_treasure_text('user_flows_1', 'Select the game that you want to track.')}",
         f"- {_treasure_text('user_flows_2', 'Navigate inside to configure the differents aspects and select the items.')}",
@@ -267,17 +264,14 @@ def build_canvas_role_treasure_hunter_detail(
     setup_not_available_builder=None,
 ) -> str | None:
     """Build a detailed Treasure Hunter view based on detail_name."""
-    from .content import _build_canvas_intro_block
     _treasure_text = _get_treasure_text_factory(guild)
     
     if detail_name in {"personal", "poe2", "items"}:
         state = _get_canvas_poe2_state(guild, author_id)
         items_block = "\n".join([f"- {item}" for item in state["objectives"]]) if state["objectives"] else "- No tracked items yet"
         return "\n".join([
-            _build_canvas_intro_block(
             _treasure_text("poe2.title", "💎 Treasure Hunter POE2"),
             _treasure_text("poe2.description", "Manage your POE2 tracked items and league preferences."),
-        ),
         "**Current league**",
         f"- {state['league']}",
         "",
@@ -287,10 +281,8 @@ def build_canvas_role_treasure_hunter_detail(
     if detail_name in {"league"}:
         state = _get_canvas_poe2_state(guild, author_id)
         return "\n".join([
-            _build_canvas_intro_block(
-                _treasure_text("poe2.current_league", "🏆 **Curent League**: {league}").replace("{league}", state["league"]),
-                _treasure_text("poe2.league_description", "Configure your POE2 league setting for item tracking"),
-            ),
+            _treasure_text("poe2.current_league", "🏆 **Curent League**: {league}").replace("{league}", state["league"]),
+            _treasure_text("poe2.league_description", "Configure your POE2 league setting for item tracking"),
             "-"*45,
             _treasure_text("poe2.current_league", "Current League**: {league}").replace("{league}", state["league"]),
 
@@ -305,10 +297,8 @@ def build_canvas_role_treasure_hunter_detail(
         state = _get_canvas_poe2_state(guild, author_id)
         interval = (AGENT_CFG or {}).get("roles", {}).get("treasure_hunter", {}).get("interval_hours", 1)
         return "\n".join([
-            _build_canvas_intro_block(
-                "💎 Treasure Hunter Admin",
-                "Configure POE2 tracking and automation settings",
-            ),
+            "💎 Treasure Hunter Admin",
+            "Configure POE2 tracking and automation settings",
             "**POE2 activation**",
             f"- Current state: {'On' if state['activated'] else 'Off'}",
             "",

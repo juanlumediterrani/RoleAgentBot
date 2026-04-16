@@ -189,25 +189,25 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                 os.makedirs(server_personality_dir, exist_ok=True)
                 logger.info(f"🧬 [PERSONALITY] Created server personality directory: {server_personality_dir}")
             
-            # If personality.json doesn't exist in server directory, copy from base
-            if not os.path.exists(server_personality_json):
-                logger.info(f"🧬 [PERSONALITY] Copying personality files from {base_personality_dir} to {server_personality_dir}")
-                import shutil
-                # Copy all JSON files from base personality to server directory
-                for json_file in ['personality.json', 'prompts.json', 'descriptions.json']:
-                    src_file = os.path.join(base_personality_dir, json_file)
-                    dst_file = os.path.join(server_personality_dir, json_file)
-                    if os.path.exists(src_file):
-                        shutil.copy2(src_file, dst_file)
-                        logger.debug(f"  Copied: {json_file}")
-                # Copy descriptions subdirectory if exists
-                src_desc_dir = os.path.join(base_personality_dir, 'descriptions')
-                dst_desc_dir = os.path.join(server_personality_dir, 'descriptions')
-                if os.path.exists(src_desc_dir) and os.path.isdir(src_desc_dir):
-                    if os.path.exists(dst_desc_dir):
-                        shutil.rmtree(dst_desc_dir)
-                    shutil.copytree(src_desc_dir, dst_desc_dir)
-                    logger.debug(f"  Copied: descriptions/ directory")
+            # Copy missing JSON files from base personality to server directory
+            import shutil
+            files_to_copy = ['personality.json', 'prompts.json', 'descriptions.json', 'answers.json']
+            files_copied = False
+            for json_file in files_to_copy:
+                src_file = os.path.join(base_personality_dir, json_file)
+                dst_file = os.path.join(server_personality_dir, json_file)
+                if os.path.exists(src_file) and not os.path.exists(dst_file):
+                    shutil.copy2(src_file, dst_file)
+                    logger.debug(f"🧬 [PERSONALITY] Copied missing file: {json_file}")
+                    files_copied = True
+            
+            # Copy descriptions subdirectory if missing
+            src_desc_dir = os.path.join(base_personality_dir, 'descriptions')
+            dst_desc_dir = os.path.join(server_personality_dir, 'descriptions')
+            if os.path.exists(src_desc_dir) and os.path.isdir(src_desc_dir) and not os.path.exists(dst_desc_dir):
+                shutil.copytree(src_desc_dir, dst_desc_dir)
+                logger.debug(f"🧬 [PERSONALITY] Copied missing directory: descriptions/")
+                files_copied = True
             
             # Now use server directory if files exist
             if os.path.exists(server_personality_json):
@@ -488,7 +488,7 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
     # Handle beggar subrole special case: always append current reason regardless of format
     if subrole_name == "beggar" and server_id:
         try:
-            from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
             beggar_config = get_beggar_config(server_id)
             
             if beggar_config.is_enabled():
@@ -975,6 +975,11 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
     try:
         logger.info(f"🎭 [SUBROLE] Executing internal task: {subrole_name} (server: {server_id})")
         
+        # Get bot instance if not provided (needed for Discord operations like channel selection)
+        if bot_instance is None:
+            from discord_bot.agent_discord import get_bot_instance
+            bot_instance = get_bot_instance()
+        
         # Get system prompt and base mission prompt (server-specific personality)
         if server_id is None:
             from agent_db import get_server_id
@@ -994,7 +999,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         # Add specific reasons/methods at the end
         task_details = ""
         if subrole_name == "beggar":
-            from roles.trickster.subroles.beggar.beggar_task import execute_beggar_task
+            from roles.banker.subroles.beggar.beggar_task import execute_beggar_task
             try:
                 success = await execute_beggar_task(server_id=server_id, bot_instance=bot_instance)
                 if success:
@@ -1197,3 +1202,15 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
 
     except Exception as e:
         logger.error(f"🎭 [SUBROLE] Error executing task {subrole_name}: {e}")
+
+
+# ── Shared Task Scheduler Logic ─────────────────────────────────────────────────
+
+def get_due_subrole_tasks_for_server(server_id: str) -> list[tuple[str, dict]]:
+    """Get all due subrole tasks for a specific server."""
+    tasks_to_execute = []
+    for subrole_name, subrole_config in get_active_subroles(server_id).items():
+        frequency = _get_subrole_frequency_from_config(subrole_name)
+        if should_execute_subrole_task(subrole_name, frequency, server_id):
+            tasks_to_execute.append((subrole_name, subrole_config))
+    return tasks_to_execute

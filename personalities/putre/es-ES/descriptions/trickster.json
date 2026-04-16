@@ -6,15 +6,13 @@
     "canvas_trickster_overview_description": "tle de esta view.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "beggar": "🙏 **Limosnero** - Pide donaciones para proyectos del clan con excusas creativas",
         "dice_game": "🎲 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!",
         "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único",
-        "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir sabiduría y guía"
+        "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir saburía y guia"
     },
     "subrole_buttons": {
         "dice": "🎲 Bote",
-        "ring": "👁️ Anillo", 
-        "beggar": "🙏 Limosna",
+        "ring": "👁️ Anillo",
         "runes": "🔮 Runas"
     },
     "dice_game": {
@@ -145,31 +143,7 @@
         "admin_description": "Configura la funcionalidad y frecuencia de la caza del anillo",
         "dropdown":{
             "ring_accuse": "Anillo: Acusar",
-            "ring_accuse_description": "Acusar a un usuario de llevar el Anillo Único"
-        }
-    },
-    "beggar": {
-        "title": ":coin: **RECAUDACIONES PUTRE** :coin:",
-        "description": " Putre recauda oro para proyectos del clan, dona oro regularmente y Putre te lo agradecera cada semana.\n Si tienes suerte puede que te devuelva algo.",
-        "current_fund":"Fondo actual:",
-        "title_reason":"Razón:",
-        "title_campaign":"🎯 **Campaña actual**:",
-        "title_instructions":"💝 **¿Como funciona?**",
-        "instructions":" - Haz click donar en el menú desplegable de abajo.\n - Espera a los resultados semanales al final de esta.\n - Participa con cualquier cantidad y Putre lo tendrá en cuenta.\n",
-        "title_donations":"📊 ** Donaciones:**",
-        "no_donations":" No hay donaciones todavía. Se el primero en contribuir!",
-        "beggar_donation_success": "¡Grazia po donar {amount} de oro pa la cauza: {reason}! 🪙",
-        "dropdown":{
-            "beggar_donate": "Limosna: Donar",
-            "beggar_donate_description": "Hacer una donación para proyectos del clan",
-            "beggar_on": "Limosna: Activar",
-            "beggar_on_description": "Activar sistema de limosnas",
-            "beggar_off": "Limosna: Desactivar",
-            "beggar_off_description": "Desactivar sistema de limosnas",
-            "beggar_frequency": "Limosna: Frecuencia",
-            "beggar_frequency_description": "Establecer frecuencia de solicitudes",
-            "beggar_force_minigame": "Limosna: Forzar Minijuego",
-            "beggar_force_minigame_description": "Forzar ejecución del minijuego"
+            "ring_accuse_description": "Acusar a un usuario de llevar el Anillo Unico"
         }
     },
     "nordic_runes":{

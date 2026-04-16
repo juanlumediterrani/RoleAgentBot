@@ -192,7 +192,7 @@ def _get_canvas_beggar_state(guild) -> dict:
     try:
         server_key = get_server_key(guild)
         server_id = str(guild.id)
-        from roles.trickster.subroles.beggar.beggar_config import get_beggar_config
+        from roles.banker.subroles.beggar.beggar_db import get_beggar_config
         beggar_config = get_beggar_config(server_id)
         state["enabled"] = beggar_config.is_enabled()
         state["frequency_hours"] = beggar_config.get_frequency_hours()

@@ -456,15 +456,6 @@ class DatabaseRoleNewsWatcher:
                 
                 # International News Feeds
                 {
-                    'name': 'Reuters World',
-                    'url': 'http://rss.cnn.com/rss/edition_world.rss',
-                    'category': 'international',
-                    'country': 'US',
-                    'language': 'en',
-                    'keywords': 'war,conflict,crisis,government,politics',
-                    'feed_type': 'general'
-                },
-                {
                     'name': 'BBC World News',
                     'url': 'https://feeds.bbci.co.uk/news/world/rss.xml',
                     'category': 'international',
@@ -550,15 +541,6 @@ class DatabaseRoleNewsWatcher:
                     'language': 'en',
                     'keywords': 'bitcoin,cryptocurrency,blockchain,ethereum',
                     'feed_type': 'keywords'
-                },
-                {
-                    'name': 'CoinDesk',
-                    'url': 'https://www.zdnet.com/news/rss.xml',
-                    'category': 'crypto',
-                    'country': 'US',
-                    'language': 'en',
-                    'keywords': 'bitcoin,crypto,defi,nft,trading',
-                    'feed_type': 'especializado'
                 },
                 {
                     'name': 'Decrypt',

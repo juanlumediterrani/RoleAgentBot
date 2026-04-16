@@ -435,7 +435,8 @@ class CanvasSmartBackButton(discord.ui.Button):
                         view.admin_visible, 
                         target_detail, 
                         None, 
-                        detail_view.auto_response_preview
+                        detail_view.auto_response_preview,
+                        server_id=get_server_key(interaction.guild) if interaction.guild else None
                     )
                     
                     await interaction.response.edit_message(embed=detail_embed, view=detail_view)
@@ -480,7 +481,8 @@ class CanvasSmartBackButton(discord.ui.Button):
                         view.admin_visible, 
                         target_detail, 
                         None, 
-                        detail_view.auto_response_preview
+                        detail_view.auto_response_preview,
+                        server_id=get_server_key(interaction.guild) if interaction.guild else None
                     )
                     
                     await interaction.response.edit_message(embed=detail_embed, view=detail_view)
@@ -542,8 +544,9 @@ class CanvasSmartBackButton(discord.ui.Button):
                 content, 
                 view.admin_visible, 
                 "overview", 
-                None, 
-                main_view.auto_response_preview
+                None,
+                main_view.auto_response_preview,
+                server_id=get_server_key(interaction.guild) if interaction.guild else None
             )
             
             await interaction.response.edit_message(embed=main_embed, view=main_view)
@@ -833,14 +836,14 @@ def _get_personality_descriptions(server_id: str = None) -> dict:
                     data = json.load(f).get("discord", {})
                 sub_dir = server_path / "descriptions"
                 if sub_dir.exists():
-                    if "roles_view_messages" not in data:
-                        data["roles_view_messages"] = {}
+                    if "role_descriptions" not in data:
+                        data["role_descriptions"] = {}
                     for sub_file in sub_dir.glob("*.json"):
                         role_key = sub_file.stem
                         try:
                             with open(sub_file, 'r', encoding='utf-8') as f:
                                 sub_data = json.load(f)
-                            data["roles_view_messages"][role_key] = sub_data
+                            data["role_descriptions"][role_key] = sub_data
                         except Exception:
                             pass
                 return data
@@ -908,6 +911,7 @@ from .canvas_treasure_hunter import (
 )
 from .canvas_banker import (
     BankerConfigModal as _BankerConfigModal,
+    BeggarFrequencyModal as _BeggarFrequencyModal,
     handle_canvas_banker_action as _HandleCanvasBankerAction,
 )
 from .canvas_personality import (
@@ -1043,7 +1047,7 @@ class CanvasRoleSelect(discord.ui.Select):
             guild=interaction.guild,
             watcher_selected_method=watcher_selected_method
         )
-        role_embed = _build_canvas_role_embed(role_name, content, view.admin_visible, "overview", interaction.user, detail_view.auto_response_preview)
+        role_embed = _build_canvas_role_embed(role_name, content, view.admin_visible, "overview", interaction.user, detail_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         await interaction.response.edit_message(content=None, embed=role_embed, view=detail_view)
         # Set the message reference for timeout deletion
         detail_view.message = interaction.message
@@ -1110,7 +1114,7 @@ class CanvasRoleDetailSelect(discord.ui.Select):
             watcher_selected_method=getattr(view, 'watcher_selected_method', None),
             watcher_last_action=getattr(view, 'watcher_last_action', None)
         )
-        detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, detail_name, None, next_view.auto_response_preview)
+        detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, detail_name, None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
 
 
@@ -1147,6 +1151,14 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 return
             await interaction.response.send_modal(BankerConfigModal(action_name))
             return
+        if self.role_name == "banker" and action_name == "beggar_donate":
+            if not interaction.guild:
+                await interaction.response.send_message("❌ Donations are only available in a server.", ephemeral=True)
+                return
+            # Open donation modal
+            from .canvas_banker import BeggarDonationModal as _BeggarDonationModal
+            await interaction.response.send_modal(_BeggarDonationModal(interaction.guild, view.author_id, view))
+            return
         if action_name in {"watcher_frequency", "hunter_frequency"}:
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
@@ -1170,7 +1182,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 return
             await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"dice_fixed_bet", "dice_pot_value", "ring_frequency", "beggar_frequency", "beggar_donate", "ring_accuse"}:
+        if self.role_name == "trickster" and action_name in {"dice_fixed_bet", "dice_pot_value", "ring_frequency", "ring_accuse"}:
             if not interaction.guild:
                 await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
                 return
@@ -1206,11 +1218,17 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 return
             await _handle_canvas_watcher_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off", "ring_on", "ring_off", "beggar_on", "beggar_off", "beggar_force_minigame", "runes_on", "runes_off"}:
+        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off", "ring_on", "ring_off", "runes_on", "runes_off"}:
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This trickster option is admin-only.", ephemeral=True)
                 return
             await _handle_canvas_trickster_action(interaction, action_name, view)
+            return
+        if self.role_name == "banker" and action_name in {"beggar_on", "beggar_off", "beggar_frequency", "beggar_force_minigame"}:
+            if not interaction.guild or not view.admin_visible:
+                await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
+                return
+            await _handle_canvas_banker_action(interaction, action_name, view)
             return
         if self.role_name == "mc":
             if not interaction.guild:
@@ -1576,7 +1594,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
     def _add_role_buttons(self):
         """Add a button for each enabled role."""
         server_id = get_server_key(self.guild) if self.guild else None
-        _roles_desc = _get_personality_descriptions(server_id).get("roles_view_messages", {})
+        _roles_desc = _get_personality_descriptions(server_id).get("role_descriptions", {})
         button_watcher = _roles_desc.get("news_watcher", {}).get("button", "Watcher")
         button_trickster = _roles_desc.get("trickster", {}).get("button", "Trickster")
         button_treasure_hunter = _roles_desc.get("treasure_hunter", {}).get("button", "Hunter")
@@ -1633,7 +1651,7 @@ class CanvasRoleButton(discord.ui.Button):
             previous_view=view  # Pass current CanvasRolesView as previous_view for back navigation
         )
         detail_view.message = interaction.message
-        role_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, "overview", None, detail_view.auto_response_preview)
+        role_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, "overview", None, detail_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         detail_view.current_embed = role_embed
         await interaction.response.edit_message(content=None, embed=role_embed, view=detail_view)
         # Set the message reference for timeout deletion
@@ -1686,7 +1704,7 @@ class CanvasRoleDetailButton(discord.ui.Button):
             previous_view=view  # Pass current view as previous_view for back navigation
         )
         next_view.message = interaction.message
-        detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, self.detail_name, None, next_view.auto_response_preview)
+        detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, self.detail_name, None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         next_view.current_embed = detail_embed
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
 
@@ -1728,7 +1746,7 @@ class CanvasTreasureHunterPoe2Button(discord.ui.Button):
             previous_view=view  # Pass current view as previous_view for back navigation
         )
         next_view.message = interaction.message
-        detail_embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, detail_name, None, next_view.auto_response_preview)
+        detail_embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, detail_name, None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         next_view.current_embed = detail_embed
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
 class RoleFrequencyModal(discord.ui.Modal):
@@ -1796,7 +1814,7 @@ class RoleFrequencyModal(discord.ui.Modal):
             guild=self.view.guild,
         )
         next_view.auto_response_preview = applied_text
-        role_embed = _build_canvas_role_embed(self.role_name, content, self.view.admin_visible, "admin", None, next_view.auto_response_preview)
+        role_embed = _build_canvas_role_embed(self.role_name, content, self.view.admin_visible, "admin", None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
 
 
@@ -2280,7 +2298,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
 
     # Handle DM case by using default server
     _g = getattr(interaction, 'guild', None)
-    messages_source = _get_personality_descriptions(get_server_key(_g) if _g else None).get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
+    messages_source = _get_personality_descriptions(get_server_key(_g) if _g else None).get("role_descriptions", {}).get("trickster", {}).get("dice_game", {})
     guild, dm_notification_parts = await _get_default_guild_for_dm(interaction, messages_source)
     if guild is None:
         return  # Error already handled by utility function
@@ -2292,8 +2310,8 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     # Get current dice state and personality messages
     dice_state = _get_canvas_dice_state(guild)
     answers = {}
-    descriptions = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {}).get("dice_game", {})
-    trickster_messages = _get_personality_descriptions(get_server_key(guild) if guild else None).get("roles_view_messages", {}).get("trickster", {})
+    descriptions = _get_personality_descriptions(get_server_key(guild) if guild else None).get("role_descriptions", {}).get("trickster", {}).get("dice_game", {})
+    trickster_messages = _get_personality_descriptions(get_server_key(guild) if guild else None).get("role_descriptions", {}).get("trickster", {})
     
     # Build the base content with personality title and pot balance
     title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
@@ -2492,7 +2510,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
             return
 
         # Store current embed in view for back navigation
-        role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "dice", None, "Redirected to dice game")
+        role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "dice", None, "Redirected to dice game", server_id=get_server_key(interaction.guild) if interaction.guild else None)
         view.current_embed = role_embed
         
         next_view = CanvasRoleDetailView(
@@ -2534,7 +2552,7 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     # Rebuild the view with dynamic content
     content = "\n".join(content_parts)
     # Store current embed in view for back navigation
-    role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "dice", None, f"Executed {action_name.replace('_', ' ').title()}")
+    role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "dice", None, f"Executed {action_name.replace('_', ' ').title()}", server_id=get_server_key(interaction.guild) if interaction.guild else None)
     view.current_embed = role_embed
     
     next_view = CanvasRoleDetailView(
@@ -2703,7 +2721,7 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
         # Add POE2 button only for treasure_hunter main overview (not subrol views)
         if self.role_name == "treasure_hunter" and self.current_detail == "overview":
             server_id = get_server_key(self.guild) if self.guild else None
-            button_poe2 = _get_personality_descriptions(server_id).get("roles_view_messages", {}).get("treasure_hunter", {}).get("button_poe2", "👺 POE2")
+            button_poe2 = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("treasure_hunter", {}).get("button_poe2", "👺 POE2")
             self.add_item(CanvasTreasureHunterPoe2Button(label=button_poe2, style=discord.ButtonStyle.green))
         return
 
