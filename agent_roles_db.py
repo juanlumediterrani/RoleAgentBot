@@ -15,11 +15,21 @@ from agent_db import get_server_db_path_fallback, get_database_path
 logger = get_logger('agent_roles_db')
 
 
-def get_roles_db_path(server_id: str = "default") -> Path:
-    """Generate database path for roles configuration."""
+def get_roles_db_path(server_id: str = "default") -> Optional[Path]:
+    """Generate database path for roles configuration.
+    
+    Returns None if personality cannot be determined to avoid creating
+    placeholder databases in server directories.
+    """
     from agent_db import get_personality_name
     personality_name = get_personality_name(server_id)
     logger.info(f"[get_roles_db_path] server_id={server_id}, personality_name={personality_name}")
+    
+    # Don't create database if personality cannot be determined
+    if not personality_name:
+        logger.warning(f"[get_roles_db_path] Cannot determine personality for server {server_id}, skipping database creation")
+        return None
+    
     db_name = f"roles_{personality_name}"
     return get_server_db_path_fallback(server_id, db_name)
 
@@ -27,10 +37,25 @@ def get_roles_db_path(server_id: str = "default") -> Path:
 class RolesDatabase:
     """Centralized database handler for all roles configuration."""
     
-    def __init__(self, server_id: str = "default"):
-        """Initialize database connection using roles.db."""
+    def __init__(self, server_id: str = None):
+        """Initialize database connection using roles.db.
+        
+        Args:
+            server_id: Server ID. Must be a valid server ID, not None or 'default'.
+        
+        Raises:
+            ValueError: If server_id is None, 'default', or personality cannot be determined.
+        """
+        if not server_id or server_id == "default":
+            raise ValueError(f"RolesDatabase requires a valid server_id, got: {server_id}")
+        
         self.server_id = server_id
-        self.db_path = get_roles_db_path(server_id)
+        db_path = get_roles_db_path(server_id)
+        
+        if not db_path:
+            raise ValueError(f"Cannot determine database path for server {server_id} - personality not found")
+        
+        self.db_path = db_path
         self._lock = threading.RLock()
         self._init_tables()
     
@@ -1565,14 +1590,21 @@ class RolesDatabase:
 # Global database instance cache
 _roles_db_instances: Dict[str, RolesDatabase] = {}
 
-def get_roles_db_instance(server_id: str = "default") -> RolesDatabase:
-    """Get the roles database instance for a specific server."""
+def get_roles_db_instance(server_id: str = None) -> Optional[RolesDatabase]:
+    """Get the roles database instance for a specific server.
+    
+    Args:
+        server_id: Server ID. If None or "default", returns None instead of creating placeholder.
+    
+    Returns:
+        RolesDatabase instance or None if server_id is not valid.
+    """
     global _roles_db_instances
-    # Redirect "default" to "0" as placeholder for roles initialization
-    # This prevents creation of roles_agent.db when no server_id is provided
-    if server_id == "default":
-        server_id = "0"
-        logger.info("Redirecting roles_db initialization from 'default' to server 0 as placeholder")
+    
+    # Don't create database during module import - require explicit valid server_id
+    if not server_id or server_id == "default":
+        logger.debug("get_roles_db_instance called without valid server_id - skipping database creation")
+        return None
     
     # Generate the current database path for this server
     current_db_path = get_roles_db_path(server_id)

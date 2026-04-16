@@ -5,6 +5,7 @@ import os
 import threading
 from pathlib import Path
 from datetime import date
+from typing import Optional
 from agent_logging import get_logger
 
 logger = get_logger('db')
@@ -37,7 +38,7 @@ def get_server_id() -> str | None:
         str | None: Server ID as string, or None if not found
     """
     try:
-        db_dir = Path("databases")
+        db_dir = Path(__file__).parent / "databases"
         if db_dir.exists():
             server_dirs = [d for d in db_dir.iterdir() if d.is_dir() and d.name.isdigit()]
             if len(server_dirs) == 1:
@@ -54,7 +55,7 @@ def get_server_id() -> str | None:
 def get_all_server_ids() -> list[str]:
     """Get all server IDs that have databases."""
     try:
-        db_dir = Path("databases")
+        db_dir = Path(__file__).parent / "databases"
         if not db_dir.exists():
             return []
         
@@ -78,7 +79,7 @@ def get_user_last_server_id(user_id: str) -> str | None:
         from pathlib import Path
         
         # Try to find the user's last server from any available database
-        db_dir = Path("databases")
+        db_dir = Path(__file__).parent / "databases"
         if not db_dir.exists():
             return None
             
@@ -331,6 +332,8 @@ def get_personality_name(server_id: str = None):
         server_id: Optional server ID to get personality for specific server.
                   If not provided, uses active server detection.
     """
+    logger.debug(f"[get_personality_name] Called with server_id={server_id}, __file__={__file__}")
+    
     # Server 0 is a placeholder for initialization only - skip server_config check
     if server_id == "0":
         env_personality = os.getenv('PERSONALITY')
@@ -342,10 +345,15 @@ def get_personality_name(server_id: str = None):
     if server_id:
         try:
             import json
-            server_config_path = Path("databases") / server_id / "server_config.json"
+            # Use absolute path based on script location, not relative to CWD
+            _base_dir = Path(__file__).parent
+            logger.debug(f"[get_personality_name] _base_dir={_base_dir}")
+            server_config_path = _base_dir / "databases" / server_id / "server_config.json"
+            logger.debug(f"[get_personality_name] server_config_path={server_config_path}, exists={server_config_path.exists()}")
             if server_config_path.exists():
                 with open(server_config_path, encoding="utf-8") as f:
                     server_cfg = json.load(f)
+                logger.debug(f"[get_personality_name] server_cfg={server_cfg}")
                 active_personality = server_cfg.get("active_personality")
                 if active_personality:
                     logger.debug(f"[get_personality_name] Using active_personality from server_config for server {server_id}: {active_personality}")
@@ -353,9 +361,9 @@ def get_personality_name(server_id: str = None):
                 else:
                     logger.warning(f"[get_personality_name] server_config exists but no active_personality for server {server_id}")
             else:
-                logger.warning(f"[get_personality_name] server_config.json not found for server {server_id}")
+                logger.warning(f"[get_personality_name] server_config.json not found at {server_config_path}")
         except Exception as e:
-            logger.error(f"[get_personality_name] Error reading server_config for server {server_id}: {e}")
+            logger.error(f"[get_personality_name] Error reading server_config for server {server_id}: {e}", exc_info=True)
 
     # Then try from environment variable (fallback for global operations or when server_config is missing)
     env_personality = os.getenv('PERSONALITY')
@@ -366,9 +374,9 @@ def get_personality_name(server_id: str = None):
             logger.debug(f"[get_personality_name] Using PERSONALITY env var (no server_id): {env_personality}")
         return env_personality.lower()
 
-    # Final fallback
-    logger.warning(f"[get_personality_name] No personality found, using fallback 'agent'")
-    return "agent"
+    # No valid personality found - return None instead of creating placeholder
+    logger.warning(f"[get_personality_name] No personality found for server {server_id}, returning None")
+    return None
 
 # Path and limits configuration
 BASE_DIR = Path(__file__).parent
@@ -380,6 +388,13 @@ class AgentDatabase:
         if db_path is None:
             # Use personality-specific database name with explicit server_id
             personality_name = get_personality_name(server_id)
+            
+            # Don't create database if personality cannot be determined
+            if not personality_name:
+                logger.warning(f"[AgentDatabase] Cannot determine personality for server {server_id}, skipping database initialization")
+                self.db_path = None
+                return
+            
             db_name = f"agent_{personality_name}"
             self.db_path = get_server_db_path_fallback(server_id, db_name)
         else:
@@ -1945,6 +1960,11 @@ def get_database_path(server_id: str, db_type: str) -> str:
     
     personality_name = get_personality_name(server_id)
 
+    # Don't create database if personality cannot be determined
+    if not personality_name:
+        logger.warning(f"[get_database_path] Cannot determine personality for server {server_id}, skipping database creation for {db_type}")
+        return None
+
     # Map database types to filenames (only for non-centralized roles)
     db_filenames = {
         'news_watcher': f'watcher_{personality_name}',
@@ -1955,7 +1975,7 @@ def get_database_path(server_id: str, db_type: str) -> str:
 
 # --- FATIGUE DATABASE SYSTEM ---
 
-def get_fatigue_db_path(server_id: str) -> str:
+def get_fatigue_db_path(server_id: str) -> Optional[str]:
     """
     Get path for fatigue database.
 
@@ -1963,9 +1983,15 @@ def get_fatigue_db_path(server_id: str) -> str:
         server_id: Server ID
 
     Returns:
-        str: Full path to fatigue database
+        str: Full path to fatigue database, or None if personality cannot be determined
     """
     personality_name = get_personality_name(server_id)
+    
+    # Don't create database if personality cannot be determined
+    if not personality_name:
+        logger.warning(f"[get_fatigue_db_path] Cannot determine personality for server {server_id}, skipping database creation")
+        return None
+    
     db_name = f"fatigue_{personality_name}"
     return str(get_server_db_path(server_id, db_name))
 

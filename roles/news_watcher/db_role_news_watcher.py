@@ -17,9 +17,19 @@ except Exception:
 
 from agent_db import get_server_db_path_fallback, get_personality_name
 
-def get_db_path(server_id: str = "default") -> Path:
-    """Generate database path for news watcher with personality name."""
+def get_db_path(server_id: str = "default") -> Optional[Path]:
+    """Generate database path for news watcher with personality name.
+    
+    Returns None if personality cannot be determined to avoid creating
+    placeholder databases in server directories.
+    """
     personality_name = get_personality_name(server_id)
+    
+    # Don't create database if personality cannot be determined
+    if not personality_name:
+        logger.warning(f"[get_db_path] Cannot determine personality for server {server_id}, skipping database creation")
+        return None
+    
     db_name = f"watcher_{personality_name}"
     return get_server_db_path_fallback(server_id, db_name)
 
@@ -33,6 +43,10 @@ class DatabaseRoleNewsWatcher:
         self.server_id = server_id
         if db_path is None:
             self.db_path = get_db_path(server_id)
+            # Don't initialize if db_path is None (personality not found)
+            if not self.db_path:
+                logger.warning(f"[DatabaseRoleNewsWatcher] Cannot determine database path for server {server_id}, skipping initialization")
+                return
         else:
             self.db_path = db_path
         self._lock = threading.Lock()
@@ -2285,10 +2299,17 @@ class DatabaseRoleNewsWatcher:
 # Dictionary to maintain instances per server
 _db_news_watcher_instances = {}
 
-def get_news_watcher_db_instance(server_id: str = "default") -> DatabaseRoleNewsWatcher:
-    """Get or create a news watcher database instance for a specific server."""
+def get_news_watcher_db_instance(server_id: str = "default") -> Optional[DatabaseRoleNewsWatcher]:
+    """Get or create a news watcher database instance for a specific server.
+    
+    Returns None if personality cannot be determined.
+    """
     # Generate the current database path for this server
     current_db_path = get_db_path(server_id)
+    if not current_db_path:
+        logger.warning(f"[get_news_watcher_db_instance] Cannot determine database path for server {server_id}")
+        return None
+    
     cache_key = f"{server_id}:{current_db_path}"
     
     # Check if we have a cached instance with the same database path

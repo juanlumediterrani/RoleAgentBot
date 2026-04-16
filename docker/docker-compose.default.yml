@@ -10,14 +10,14 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        PERSONALITY: putre(english)
+        PERSONALITY: putre
     image: roleagentbot:default
     container_name: roleagentbot-default
 
     # Variables de entorno
     env_file: ../.env
     environment:
-      - PERSONALITY=putre(english)
+      - PERSONALITY=putre
       - ROLE_AGENT_PROCESS=false
 
     # Volúmenes específicos para instancia default

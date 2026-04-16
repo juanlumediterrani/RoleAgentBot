@@ -76,6 +76,9 @@ class POE2SubroleManager:
             return False
         try:
             roles_db = self._get_roles_db(server_id)
+            if not roles_db:
+                logger.warning(f"⚠️ Cannot access roles database for server {server_id} - POE2 activation check skipped")
+                return False
             enabled = roles_db.is_role_enabled("poe2", server_id)
             with self._lock:
                 self._activation_status[server_id] = enabled

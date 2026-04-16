@@ -36,6 +36,14 @@ BEGGAR_REASONS_FALLBACK = [
     "to buy armor for battle",
 ]
 
+# Fallback task prompt template
+BEGGAR_TASK_PROMPT_FALLBACK = "INTERNAL TASK - BEGGAR: You are raising gold on the server for {reason}. Be convincing but maintain your rough orc style."
+
+# Fallback labels
+BEGGAR_LABELS_FALLBACK = {
+    "recent_channel_messages": "=== RECENT CHANNEL MESSAGES ===",
+}
+
 
 def _load_personality_reasons(server_id: str = None) -> List[str]:
     """
@@ -87,18 +95,93 @@ def get_random_reason(server_id: str = None) -> str:
     return random.choice(reasons)
 
 
+def get_task_prompt_template(server_id: str = None) -> str:
+    """
+    Load task prompt template from personality prompts.json, fallback to BEGGAR_TASK_PROMPT_FALLBACK.
+    
+    Args:
+        server_id: Server ID for server-specific personality files
+        
+    Returns:
+        Task prompt template string with {reason} placeholder
+    """
+    try:
+        from agent_runtime import get_personality_file_path, _load_personality_file_cached
+        
+        # Try to load task prompt from personality prompts.json
+        prompts_data = _load_personality_file_cached("prompts.json", server_id)
+        
+        # Check if task prompt exists in the prompts
+        if prompts_data:
+            # Look for task prompt in the beggar subrole section
+            task_prompt = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("prompt")
+            if task_prompt:
+                return task_prompt
+        
+        # Fallback to BEGGAR_TASK_PROMPT_FALLBACK
+        return BEGGAR_TASK_PROMPT_FALLBACK
+        
+    except Exception:
+        # If anything fails, return fallback
+        return BEGGAR_TASK_PROMPT_FALLBACK
+
+
+def get_label(label_key: str, server_id: str = None) -> str:
+    """
+    Load a label from personality prompts.json, fallback to BEGGAR_LABELS_FALLBACK.
+    
+    Args:
+        label_key: Key for the label (e.g., "recent_channel_messages")
+        server_id: Server ID for server-specific personality files
+        
+    Returns:
+        Label string
+    """
+    try:
+        from agent_runtime import get_personality_file_path, _load_personality_file_cached
+        
+        # Try to load labels from personality prompts.json
+        prompts_data = _load_personality_file_cached("prompts.json", server_id)
+        
+        # Check if labels exist in the prompts
+        if prompts_data:
+            # Look for labels in the beggar subrole section
+            labels = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("labels", {})
+            if label_key in labels:
+                return labels[label_key]
+        
+        # Fallback to BEGGAR_LABELS_FALLBACK
+        return BEGGAR_LABELS_FALLBACK.get(label_key, label_key)
+        
+    except Exception:
+        # If anything fails, return fallback
+        return BEGGAR_LABELS_FALLBACK.get(label_key, label_key)
+
+
 # Canvas default fallback neutral english UI Messages
 CANVAS_MESSAGES = {
-    "title": ":coin: **FUNDRAISING** :coin:",
-    "description": "The bot collects gold for clan projects. Donate gold regularly and the bot will appreciate it each week.",
-    "current_fund": "Current fund:",
-    "title_campaign": "**Current campaign**",
-    "title_reason": "Reason:",
+    "title": "🪙 **RECAUDATIONS** 🪙",
+    "description": " Keep gold for for different reasons and give the result at the end of the week.\n Maybe you won some gold.",
+    "current_fund":"Current found:",
+    "title_campaign":"**Current campaing**",
+    "title_reason":"Reason:",
     "title_instructions": "**Instructions**",
-    "instructions": " - Click donate in the dropdown menu below.\n - Wait for weekly results at the end of this week.\n - Participate with any amount and the bot will take it into account.",
+    "instructions": " - Click donate in the dropdown menu below.\n - Wait for weekly results at the end of this week.\n - Participate with any amount and Putre will take it into account.\n",
     "title_donations": "📊 **Donations:**",
     "no_donations": "No donations yet. Be the first to contribute!",
-    "donation_success": "Thanks for donating {amount} gold for the cause: {reason}! 🪙",
+    "beggar_donation_success": "Thanks for donating {amount} gold for the cause: {reason}! 🪙",
+    "dropdown": {
+        "beggar_donate": "Beggar: Donate",
+        "beggar_donate_description": "Make a donation for clan projects",
+        "beggar_on": "Beggar: Enable",
+        "beggar_on_description": "Enable beggar system",
+        "beggar_off": "Beggar: Disable",
+        "beggar_off_description": "Disable beggar system",
+        "beggar_frequency": "Beggar: Frequency",
+        "beggar_frequency_description": "Set request frequency",
+        "beggar_force_minigame": "Beggar: Force Minigame",
+        "beggar_force_minigame_description": "Force minigame execution"
+    }
 }
 
 

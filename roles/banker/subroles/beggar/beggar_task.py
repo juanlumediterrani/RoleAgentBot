@@ -17,6 +17,7 @@ from agent_engine import _build_system_prompt, _get_personality
 
 from .beggar_db import get_beggar_config
 from .beggar_discord import BeggarDonationView
+from .beggar_messages import get_task_prompt_template, get_label
 from agent_roles_db import get_roles_db_instance
 
 logger = get_logger('beggar_task')
@@ -222,19 +223,48 @@ class BeggarTask:
             return None
     
     async def _get_recent_channel_messages(self, channel, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent messages from channel for context."""
+        """Get recent messages from channel for context using Discord API directly."""
         try:
             messages = []
-            async for message in channel.history(limit=limit):
-                # Skip bot messages and system messages
-                if not message.author.bot and not message.system_content:
-                    messages.append({
-                        'author': message.author.display_name,
-                        'content': message.content[:200],  # Limit content length
-                        'timestamp': message.created_at.isoformat()
-                    })
+            message_count = 0
+            logger.info(f"Fetching Discord messages from channel {channel.name}")
             
-            return messages
+            async for message in channel.history(limit=20):  # Fetch more to filter
+                message_count += 1
+                
+                # Only include messages from last hour
+                import datetime
+                message_age = (datetime.datetime.now(datetime.timezone.utc) - message.created_at).total_seconds()
+                if message_age > 3600:
+                    continue
+                    
+                # Skip commands
+                if message.content.strip().startswith('!'):
+                    continue
+
+                # Skip empty bot messages (embeds, reactions, etc.)
+                if message.author.bot and not message.content.strip():
+                    continue
+                    
+                # Format message and clean mentions
+                content = message.content
+                # Replace user mentions with display names
+                for mention in message.mentions:
+                    content = content.replace(f"<@{mention.id}>", f"@{mention.display_name}")
+                
+                messages.append({
+                    'author': message.author.display_name,
+                    'content': content[:200],  # Limit content length
+                    'timestamp': message.created_at.isoformat()
+                })
+            
+            logger.info(f"Discord message fetch completed. Processed: {message_count}, Included: {len(messages)}")
+            
+            # discord_channel.history() returns newest-first; reverse to get chronological order
+            # then take the last N (most recent) in chronological order
+            messages_chronological = list(reversed(messages))
+            
+            return messages_chronological[-limit:]  # Return only the requested limit
             
         except Exception as e:
             logger.error(f"Error getting recent messages from channel {channel.name}: {e}")
@@ -242,13 +272,8 @@ class BeggarTask:
     
     def _build_task_prompt(self, reason: str, recent_messages: List[Dict[str, Any]]) -> str:
         """Build the complete prompt for the begging task."""
-        # Get task prompt from server-specific personality dynamically
-        personality = _get_personality(self.server_id)
-        task_prompt_template = personality.get('roles', {}).get('banker', {}).get('subroles', {}).get('beggar', {}).get('prompt', '')
-
-        if not task_prompt_template:
-            task_prompt_template = "INTERNAL TASK - BEGGAR: You are raising gold on the server for {reason}. Be convincing but maintain your rough orc style."
-
+        # Get task prompt template from beggar_messages.py (loads from personality prompts.json)
+        task_prompt_template = get_task_prompt_template(self.server_id)
         task_prompt = task_prompt_template.format(reason=reason)
         
         # Get weekly donations summary
@@ -257,7 +282,9 @@ class BeggarTask:
         # Build recent messages context
         messages_context = ""
         if recent_messages:
-            messages_context = "\n\n=== RECENT CHANNEL MESSAGES ===\n"
+            # Get label from beggar_messages.py (loads from personality prompts.json)
+            channel_label = get_label("recent_channel_messages", self.server_id)
+            messages_context = f"\n\n{channel_label}\n"
             for msg in recent_messages[-5:]:  # Only last 5 messages
                 messages_context += f"[{msg['author']}]: {msg['content']}\n"
         

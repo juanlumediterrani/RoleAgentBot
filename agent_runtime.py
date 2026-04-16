@@ -19,7 +19,7 @@ from agent_logging import get_logger
 load_dotenv()
 logger = get_logger('agent_runtime')
 
-_BASE_DIR = os.path.dirname(__file__)
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 _AGENT_CONFIG_PATH = os.path.join(_BASE_DIR, "agent_config.json")
 
 with open(_AGENT_CONFIG_PATH, encoding="utf-8") as file_handle:

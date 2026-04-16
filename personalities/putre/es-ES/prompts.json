@@ -156,6 +156,7 @@
             "7. DIRECTO: Ve al grano con tu petición de oro",
             "8. EMOCIONAL: Usa chantaje emocional orko si es necesario"
           ],
+          "recent_channel_messges":"=== MENSAJES RECIENTES DEL CANAL ===\n",
           "minigame_prompt": "TAREA: Eres Putre el mendigo orco. Acabas de terminar el proyecto anterior '{old_reason}' y te dispones a recaudar oro para '{new_reason}'. Para celebrar, has organizado un minijuego con los participantes que te ayudaron. Genera un mensaje narrativo celebrando el proyecto terminado y agradeciendo a los participantes.",
           "minigame_golden_rules": "\n=== REGLAS DE ORO ===\n1. ESTILO PUTRE: Usa GRRR!, GRAAAH!, BLEGH, y lenguaje orko sin tildes\n2. EMOCIONAL: Sé emotivo y agradecido con los participantes\n3. CAMBIO: Menciona claramente el cambio de proyecto al nuevo.\n4. PREMIOS: A veces los proyectos dan frutos y se devuelve la donacion o se le multiplica.\n5. PARTICIPACION: Al nombrar la participación de un usuraio aprovecha pare decirle si se ha llevado premio.\n6. LONGITUD: 5-10 frases (250-500 caracteres)\n7. AUTENTICIDAD: Actúa como un verdadero recaudador orko\n8. CELEBRACION: Tono festivo y de celebración",
           "relationship_improvement_task": "TAREA: Actualiza el resumen de la relación para reflejar que el usuario contribuyó con oro al proyecto de Putre. Modifica sutilmente los recuerdos que tienes de tu relacion con el usuario:",
