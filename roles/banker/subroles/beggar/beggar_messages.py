@@ -44,6 +44,14 @@ BEGGAR_LABELS_FALLBACK = {
     "recent_channel_messages": "=== RECENT CHANNEL MESSAGES ===",
 }
 
+# Fallback minigame results
+MINIGAME_RESULTS_FALLBACK = {
+    "nothing": "No gold returns for anyone this time",
+    "return": "All participants get their donations back",
+    "double": "All participants get double their donations back",
+    "triple": "All participants get triple their donations back"
+}
+
 
 def _load_personality_reasons(server_id: str = None) -> List[str]:
     """
@@ -170,8 +178,12 @@ CANVAS_MESSAGES = {
     "title_donations": "📊 **Donations:**",
     "no_donations": "No donations yet. Be the first to contribute!",
     "beggar_donation_success": "Thanks for donating {amount} gold for the cause: {reason}! 🪙",
+    "donation_x1_label": "Donate x1 TAE",
+    "donation_x3_label": "Donate x3 TAE",
+    "donation_custom_label": "Custom Amount",
     "dropdown": {
         "beggar_donate": "Beggar: Donate",
+        "beggar_donate_emoji": "🤲",
         "beggar_donate_description": "Make a donation for clan projects",
         "beggar_on": "Beggar: Enable",
         "beggar_on_description": "Enable beggar system",
@@ -185,9 +197,75 @@ CANVAS_MESSAGES = {
 }
 
 
-def get_canvas_message(key: str, **kwargs) -> str:
-    """Get a canvas UI message with optional formatting."""
-    message = CANVAS_MESSAGES.get(key, key)
-    if kwargs:
-        message = message.format(**kwargs)
-    return message
+def get_golden_rules(server_id: str = None) -> List[str]:
+    """
+    Load golden rules from personality prompts.json, fallback to MISSION_CONFIG.
+    
+    Args:
+        server_id: Server ID for server-specific personality files
+        
+    Returns:
+        List of golden rule strings
+    """
+    try:
+        from agent_runtime import get_personality_file_path, _load_personality_file_cached
+        
+        # Try to load golden rules from personality prompts.json
+        prompts_data = _load_personality_file_cached("prompts.json", server_id)
+        
+        # Check if golden rules exist in the prompts
+        if prompts_data:
+            # Look for golden rules in the beggar subrole section
+            golden_rules = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("golden_rules", [])
+            if golden_rules:
+                return golden_rules
+        
+        # Fallback to MISSION_CONFIG
+        return MISSION_CONFIG.get('golden_rules', [])
+        
+    except Exception:
+        # If anything fails, return fallback
+        return MISSION_CONFIG.get('golden_rules', [])
+
+
+def get_canvas_message(server_db_path: str = None, key: str = None, **kwargs) -> str:
+    """Get a canvas UI message from personality JSON or fallback.
+    
+    Args:
+        server_db_path: Path to server personality directory (e.g., 'databases/<server_id>/<personality>')
+        key: Message key to retrieve from beggar section
+        **kwargs: Optional variables to format into the message
+        
+    Returns:
+        The formatted message string
+    """
+    message = None
+    
+    if server_db_path and key:
+        try:
+            import os
+            import json
+            json_path = os.path.join(server_db_path, "descriptions", "banker.json")
+            if os.path.isfile(json_path):
+                with open(json_path, "r", encoding="utf-8") as f:
+                    raw = json.load(f)
+                # Look in beggar section first
+                beggar_section = raw.get("beggar", {})
+                message = beggar_section.get(key)
+                # Also check dropdown section inside beggar
+                if message is None:
+                    dropdown = beggar_section.get("dropdown", {})
+                    message = dropdown.get(key)
+        except Exception as e:
+            pass  # Fall back to CANVAS_MESSAGES
+    
+    if message is None:
+        message = CANVAS_MESSAGES.get(key, key)
+    
+    if kwargs and isinstance(message, str):
+        try:
+            return message.format(**kwargs)
+        except (KeyError, ValueError):
+            pass
+    
+    return message if message else key

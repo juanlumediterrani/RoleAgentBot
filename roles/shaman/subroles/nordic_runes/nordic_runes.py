@@ -8,9 +8,11 @@ from datetime import datetime
 import logging
 import random
 
-from .rune_data import get_rune, get_reading_type, READING_TYPES, get_all_runes
-from .nordic_runes_messages import get_guidance_messages, get_message, load_personality_messages
-from ..base_role import BaseRole
+from .nordic_runes_messages import (
+    get_rune, get_reading_type, READING_TYPES, get_all_runes,
+    get_guidance_messages, get_message, load_personality_messages,
+)
+from roles.trickster.subroles.base_role import BaseRole
 
 logger = logging.getLogger(__name__)
 
@@ -366,15 +368,20 @@ class NordicRunes:
                     logger.info(f"🔍 [NORDIC_RUNES] Loaded prompts.json from: {prompts_path}")
                     logger.info(f"🔍 [NORDIC_RUNES] Available top-level keys: {list(prompts_data.keys())}")
                     
-                    # Navigate to the correct path: roles.trickster.subroles.nordic_runes.interpretation_tasks
+                    # Navigate to the correct path: roles.shaman.subroles.nordic_runes.interpretation_tasks
                     roles = prompts_data.get("roles", {})
                     logger.info(f"🔍 [NORDIC_RUNES] roles keys: {list(roles.keys())}")
                     
-                    trickster = roles.get("trickster", {})
-                    logger.info(f"🔍 [NORDIC_RUNES] trickster keys: {list(trickster.keys())}")
+                    shaman = roles.get("shaman", {})
+                    logger.info(f"🔍 [NORDIC_RUNES] shaman keys: {list(shaman.keys())}")
                     
-                    subroles = trickster.get("subroles", {})
+                    subroles = shaman.get("subroles", {})
                     logger.info(f"🔍 [NORDIC_RUNES] subroles keys: {list(subroles.keys())}")
+                    
+                    if not subroles:
+                        # Fallback: try legacy trickster.subroles path
+                        trickster = roles.get("trickster", {})
+                        subroles = trickster.get("subroles", {})
                     
                     nordic_runes = subroles.get("nordic_runes", {})
                     logger.info(f"🔍 [NORDIC_RUNES] nordic_runes keys: {list(nordic_runes.keys())}")
@@ -426,7 +433,7 @@ class NordicRunes:
 
                 with open(descriptions_path, 'r', encoding='utf-8') as f:
                     descriptions = json.load(f)
-                    nordic_data = descriptions.get('discord', {}).get('roles_view_messages', {}).get('trickster', {}).get('nordic_runes', {})
+                    nordic_data = descriptions.get('discord', {}).get('roles_view_messages', {}).get('shaman', {}).get('nordic_runes', {})
                     labels = nordic_data.get('labels', {})
 
                     # Load translations and positions from separate runesplane.json file
@@ -452,13 +459,13 @@ class NordicRunes:
                         positions = nordic_data.get('positions', {})
                         rune_translations = nordic_data.get('translations', {})
 
-                    # If no labels found in main descriptions.json, try loading from trickster.json
+                    # If no labels found in main descriptions.json, try loading from shaman.json
                     if not labels:
-                        trickster_path = os.path.join(_get_personality_dir(server_id), "descriptions", "trickster.json")
-                        if os.path.exists(trickster_path):
-                            with open(trickster_path, 'r', encoding='utf-8') as f:
-                                trickster_data = json.load(f)
-                                labels = trickster_data.get('nordic_runes', {}).get('labels', {})
+                        shaman_path = os.path.join(_get_personality_dir(server_id), "descriptions", "shaman.json")
+                        if os.path.exists(shaman_path):
+                            with open(shaman_path, 'r', encoding='utf-8') as f:
+                                shaman_data = json.load(f)
+                                labels = shaman_data.get('nordic_runes', {}).get('labels', {})
             except Exception as e:
                 # Fallback to English if translation fails
                 labels = {
@@ -525,7 +532,7 @@ class NordicRunes:
                         guidance = runesplane_data.get("guidance", {})
                 else:
                     # Fallback to old structure
-                    nordic_runes = descriptions_data.get("discord", {}).get("roles_view_messages", {}).get("trickster", {}).get("nordic_runes", {})
+                    nordic_runes = descriptions_data.get("discord", {}).get("roles_view_messages", {}).get("shaman", {}).get("nordic_runes", {})
                     guidance = nordic_runes.get("guidance", {})
                 
                 # Format all guidance categories

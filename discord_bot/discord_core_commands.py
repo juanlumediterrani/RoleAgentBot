@@ -418,13 +418,21 @@ def register_core_commands(bot, agent_config):
                 subrole_list.append("Beggar")
             if subroles.get("ring", {}).get("enabled", False):
                 subrole_list.append("Ring Hunter")
-            if subroles.get("nordic_runes", {}).get("enabled", False):
-                subrole_list.append("Nordic Runes")
             help_msg += ", ".join(subrole_list) if subrole_list else "Various games and tricks"
             help_msg += "\n"
 
         if is_role_enabled_check("banker", agent_config, ctx.guild):
             help_msg += "💰 **Banker** - Check balance, view transactions, manage economy\n"
+
+        if is_role_enabled_check("shaman", agent_config, ctx.guild):
+            shaman_config = roles_config.get("shaman", {})
+            shaman_subroles = shaman_config.get("subroles", {})
+            shaman_list = []
+            if shaman_subroles.get("nordic_runes", {}).get("enabled", False):
+                shaman_list.append("Nordic Runes")
+            help_msg += "🔮 **Shaman** - "
+            help_msg += ", ".join(shaman_list) if shaman_list else "Mystical guidance"
+            help_msg += "\n"
 
         help_msg += "\n"
 

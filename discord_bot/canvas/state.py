@@ -21,7 +21,7 @@ except Exception:
     get_news_watcher_db_instance = None
 
 try:
-    from roles.trickster.subroles.nordic_runes.db_nordic_runes import get_nordic_runes_db_instance
+    from roles.shaman.subroles.nordic_runes.nordic_runes_db import get_nordic_runes_db_instance
 except Exception:
     get_nordic_runes_db_instance = None
 

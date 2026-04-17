@@ -1489,15 +1489,15 @@ class RolesDatabase:
                     cursor = conn.cursor()
                     donated_field = 'weekly_donated' if weekly_only else 'total_donated'
                     count_field = 'weekly_donation_count' if weekly_only else 'donation_count'
-                    
+
                     cursor.execute(f"""
                         SELECT user_id, user_name, {donated_field}, {count_field},
                                last_donation, created_at, total_donated, weekly_donated, last_reason
                         FROM beggar_subrole
-                        WHERE server_id = ? AND {donated_field} > 0
+                        WHERE {donated_field} > 0
                         ORDER BY {donated_field} DESC
                         LIMIT ?
-                    """, (server_id, limit))
+                    """, (limit,))
                     
                     leaderboard = []
                     for row in cursor.fetchall():
@@ -1577,8 +1577,7 @@ class RolesDatabase:
                         SET weekly_donated = 0,
                             weekly_donation_count = 0,
                             updated_at = ?
-                        WHERE server_id = ?
-                    """, (datetime.now().isoformat(), server_id))
+                    """, (datetime.now().isoformat(),))
                     conn.commit()
                     logger.info(f"Reset beggar weekly cycle for server {server_id}: {cursor.rowcount} donor rows updated")
                     return True

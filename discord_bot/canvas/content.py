@@ -124,6 +124,10 @@ from .canvas_trickster import (
     build_canvas_role_trickster,
     build_canvas_role_trickster_detail,
 )
+from .canvas_shaman import (
+    build_canvas_role_shaman,
+    build_canvas_role_shaman_detail,
+)
 from .canvas_behavior import (
     build_canvas_behavior,
 )
@@ -337,8 +341,11 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
     
     # Use surface_name as detail_key for subrole titles
     # For admin views like "beggar_admin", use the base subrole key "beggar"
+    # Map canvas surface names to JSON keys where they differ
+    _surface_to_json_key = {"runes": "nordic_runes", "runes_admin": "nordic_runes"}
     if surface_name and surface_name not in {"overview", "admin"}:
-        detail_key = surface_name.replace("_admin", "")
+        base = surface_name.replace("_admin", "")
+        detail_key = _surface_to_json_key.get(surface_name, _surface_to_json_key.get(base, base))
     else:
         detail_key = None
     
@@ -348,6 +355,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "trickster": _normalize_canvas_title(_get_embed_role_title("trickster", detail_key)),
         "banker": _normalize_canvas_title(_get_embed_role_title("banker", detail_key)),
         "mc": _normalize_canvas_title(_get_embed_role_title("mc", detail_key)),
+        "shaman": _normalize_canvas_title(_get_embed_role_title("shaman", detail_key)),
     }
     title = role_titles.get(role_name, "Canvas")
     content_lines = content.splitlines()
@@ -360,6 +368,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "trickster": discord.Color.magenta(),
         "banker": discord.Color.green(),
         "mc": discord.Color.purple(),
+        "shaman": discord.Color.dark_purple(),
     }
      
     description = ""
@@ -582,6 +591,12 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         "mc": [
             ("Personal", "overview"),
         ],
+        "shaman": (
+            [("Personal", "runes")]
+            + ([("Admin", "runes_admin")] if admin_visible else [])
+        ) if current_detail in {"runes", "runes_admin"} else [
+            (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("subrole_buttons", {}).get("runes", "🔮 Runes"), "runes"),
+        ] if current_detail not in {"runes", "runes_admin"} else [],
     }
     
     # Special handling for treasure_hunter POE2 views
@@ -604,7 +619,7 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     if role_name == "banker":
         if current_detail == "beggar":
             return [
-                ("Personal", "overview"),
+                ("Personal", "beggar"),
                 ("Admin", "beggar_admin"),
             ]
         if current_detail == "beggar_admin":
@@ -723,7 +738,8 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             if isinstance(beggar_dropdown, dict):
                 trickster_descriptions.update(beggar_dropdown)
         elif detail_name in {"runes", "runes_admin"}:
-            runes_dropdown = trickster.get("nordic_runes", {}).get("dropdown", {})
+            shaman = roles_view.get("shaman", {})
+            runes_dropdown = shaman.get("nordic_runes", {}).get("dropdown", {})
             if isinstance(runes_dropdown, dict):
                 trickster_descriptions.update(runes_dropdown)
         
@@ -760,7 +776,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             # Check if runes subrole is enabled
             runes_enabled = True  # Temporarily force enabled for testing
             if agent_config:
-                runes_enabled = agent_config.get("roles", {}).get("trickster", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
+                runes_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
             
             if not runes_enabled:
                 # Runes disabled - only show info actions
@@ -771,7 +787,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             # Runes enabled - show all casting actions
             # Get personality messages for dropdown labels
             roles_messages = _personality_descriptions.get("role_descriptions", {})
-            nordic_runes_messages = roles_messages.get("trickster", {}).get("nordic_runes", {})
+            nordic_runes_messages = roles_messages.get("shaman", {}).get("nordic_runes", {})
             canvas_labels = nordic_runes_messages.get("dropdown", {})
             
             def _runes_text(key: str, fallback: str) -> str:
@@ -867,26 +883,79 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
         return []
 
-    if role_name == "banker":
-        # Get banker descriptions for action items with robust fallbacks
+    if role_name == "shaman":
         _personality_descriptions = _get_personality_descriptions(server_id)
+        canvas_labels = (_personality_descriptions
+                         .get("role_descriptions", {})
+                         .get("shaman", {})
+                         .get("nordic_runes", {})
+                         .get("dropdown", {}))
+
+        def _runes_text(key: str, fallback: str) -> str:
+            value = canvas_labels.get(key)
+            return str(value).strip() if value else fallback
+
+        if detail_name == "runes":
+            runes_enabled = True
+            if agent_config:
+                runes_enabled = (agent_config.get("roles", {})
+                                 .get("shaman", {})
+                                 .get("subroles", {})
+                                 .get("nordic_runes", {})
+                                 .get("enabled", False))
+            if not runes_enabled:
+                return [
+                    (_runes_text("runes_types", "Runes: Types"), "runes_types", _runes_text("runes_types_description", "Action"), "🌔"),
+                ]
+            return [
+                (_runes_text("runes_single",      "Runes: Single Cast"),       "runes_single",      _runes_text("runes_single_description",      "Text input target"), "🦅"),
+                (_runes_text("runes_three",       "Runes: Three Cast"),        "runes_three",       _runes_text("runes_three_description",       "Text input target"), "🐾"),
+                (_runes_text("runes_cross",       "Runes: Cross Cast"),        "runes_cross",       _runes_text("runes_cross_description",       "Text input target"), "🌍"),
+                (_runes_text("runes_runic_cross", "Runes: Runic Cross Cast"),  "runes_runic_cross", _runes_text("runes_runic_cross_description",  "Text input target"), "🌌"),
+                (_runes_text("runes_history",     "Runes: History"),           "runes_history",     _runes_text("runes_history_description",     "Action"),            "📓"),
+                (_runes_text("runes_types",       "Runes: Types"),             "runes_types",       _runes_text("runes_types_description",       "Action"),            "🌔"),
+                (_runes_text("runes_runes_1",     "Runes: All Runes I"),       "runes_runes_1",     _runes_text("runes_runes_1_description",     "Action"),            "🗻"),
+                (_runes_text("runes_runes_2",     "Runes: All Runes II"),      "runes_runes_2",     _runes_text("runes_runes_2_description",     "Action"),            "🗻"),
+                (_runes_text("runes_runes_3",     "Runes: All Runes III"),     "runes_runes_3",     _runes_text("runes_runes_3_description",     "Action"),            "🗻"),
+            ]
+        if detail_name == "runes_admin" and admin_visible:
+            return [
+                (_runes_text("runes_on",  "Runes: On"),  "runes_on",  _runes_text("runes_on_description",  "Boolean toggle"), "✅"),
+                (_runes_text("runes_off", "Runes: Off"), "runes_off", _runes_text("runes_off_description", "Boolean toggle"), "❌"),
+            ]
+        return []
+
+    if role_name == "banker":
+        # Import banker messages function
+        try:
+            from roles.banker.banker_messages import get_messages
+        except ImportError:
+            get_messages = None
         
-        # Safe nested access with fallbacks
-        roles_view = _personality_descriptions.get("role_descriptions", {})
-        banker = roles_view.get("banker", {})
-        beggar_descriptions = banker.get("beggar", {})
+        # Get server_db_path for banker messages
+        server_db_path = None
+        if server_id:
+            try:
+                from discord_bot.db_init import get_server_personality_dir
+                server_dir = get_server_personality_dir(server_id)
+                if server_dir:
+                    server_db_path = server_dir
+            except Exception:
+                pass
         
-        # Ensure banker_descriptions is a dict
-        if not isinstance(banker, dict):
-            banker_descriptions = {}
-        else:
-            banker_descriptions = banker
-        
-        def _banker_text(key: str, fallback: str) -> str:
+        def _banker_text(key: str) -> str:
+            # Use get_messages from banker_messages.py if available
+            if get_messages and server_db_path:
+                return get_messages(server_db_path, key)
+            # Fallback to personality descriptions
+            _personality_descriptions = _get_personality_descriptions(server_id)
+            roles_view = _personality_descriptions.get("role_descriptions", {})
+            banker = roles_view.get("banker", {})
+            
             # Handle dot notation for nested keys (e.g., "beggar.title")
             if "." in key:
                 keys = key.split(".")
-                value = banker_descriptions
+                value = banker
                 for k in keys:
                     if isinstance(value, dict) and k in value:
                         value = value[k]
@@ -894,29 +963,37 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                         value = None
                         break
             else:
-                value = banker_descriptions.get(key)
+                value = banker.get(key)
             if value:
                 value = str(value)
-            return str(value).strip() if value else fallback
+            return str(value).strip() if value else key
+        
+        def _banker_emoji(key: str):
+            """Get emoji string from JSON."""
+            emoji_str = _banker_text(key)
+            # Return None if the key was returned (emoji not found)
+            if emoji_str == key:
+                return None
+            return emoji_str
         
         if detail_name == "overview":
             # Overview shows wallet info, no specific actions
             return []
         if detail_name == "beggar":
             return [
-                (_banker_text("beggar.beggar_donate", "Beggar: Donate"), "beggar_donate", _banker_text("beggar.beggar_donate_description", "Number input target"), "🙏"),
+                (_banker_text("beggar.dropdown.beggar_donate"), "beggar_donate", _banker_text("beggar.dropdown.beggar_donate_description"), _banker_emoji("beggar.dropdown.beggar_donate_emoji")),
             ]
         if detail_name == "beggar_admin" and admin_visible:
             return [
-                (_banker_text("beggar.beggar_on", "Beggar: On"), "beggar_on", _banker_text("beggar.beggar_on_description", "Boolean toggle"), "✅"),
-                (_banker_text("beggar.beggar_off", "Beggar: Off"), "beggar_off", _banker_text("beggar.beggar_off_description", "Boolean toggle"), "❌"),
-                (_banker_text("beggar.beggar_frequency", "Beggar: Frequency"), "beggar_frequency", _banker_text("beggar.beggar_frequency_description", "Number input target"), "⏰"),
-                (_banker_text("beggar.beggar_force_minigame", "Beggar: Force Minigame"), "beggar_force_minigame", _banker_text("beggar.beggar_force_minigame_description", "Action button"), "🎲"),
+                (_banker_text("beggar.dropdown.beggar_on"), "beggar_on", _banker_text("beggar.dropdown.beggar_on_description"), _banker_emoji("beggar.dropdown.beggar_on_emoji")),
+                (_banker_text("beggar.dropdown.beggar_off"), "beggar_off", _banker_text("beggar.dropdown.beggar_off_description"), _banker_emoji("beggar.dropdown.beggar_off_emoji")),
+                (_banker_text("beggar.dropdown.beggar_frequency"), "beggar_frequency", _banker_text("beggar.dropdown.beggar_frequency_description"), _banker_emoji("beggar.dropdown.beggar_frequency_emoji")),
+                (_banker_text("beggar.dropdown.beggar_force_minigame"), "beggar_force_minigame", _banker_text("beggar.dropdown.beggar_force_minigame_description"), _banker_emoji("beggar.dropdown.beggar_force_minigame_emoji")),
             ]
         if detail_name == "admin" and admin_visible:
             return [
-                (_banker_text("config_tae", "Config: TAE"), "config_tae", _banker_text("config_tae_description", "Number input target"), "💰"),
-                (_banker_text("config_bonus", "Config: Bonus"), "config_bonus", _banker_text("config_bonus_description", "Number input target"), "🎁"),
+                (_banker_text("config_tae"), "config_tae", _banker_text("config_tae_description"), _banker_emoji("config_tae_emoji")),
+                (_banker_text("config_bonus"), "config_bonus", _banker_text("config_bonus_description"), _banker_emoji("config_bonus_emoji")),
             ]
     
     if role_name == "mc":
@@ -1405,6 +1482,8 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
         return build_canvas_role_trickster(agent_config, admin_visible, guild)
     if role_name == "banker" and is_role_enabled_check("banker", agent_config, guild):
         return build_canvas_role_banker(agent_config, admin_visible, guild, author_id)
+    if role_name == "shaman" and is_role_enabled_check("shaman", agent_config, guild):
+        return build_canvas_role_shaman(agent_config, admin_visible, guild)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
         return build_canvas_role_mc(guild=guild)
     return None
@@ -1435,6 +1514,8 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
         return build_canvas_role_trickster_detail(detail_name, admin_visible, guild, author_id, agent_config)
     if role_name == "banker" and is_role_enabled_check("banker", agent_config, guild):
         return build_canvas_role_banker_detail(detail_name, admin_visible, guild, author_id)
+    if role_name == "shaman" and is_role_enabled_check("shaman", agent_config, guild):
+        return build_canvas_role_shaman_detail(detail_name, admin_visible, guild, author_id, agent_config)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
         return build_canvas_role_mc(guild=guild)
     return None

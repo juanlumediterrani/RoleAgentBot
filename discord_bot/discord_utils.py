@@ -296,6 +296,52 @@ async def send_embed_dm_or_channel(ctx, embed, confirm_msg="📩 Message sent by
         await ctx.send(embed=embed)
 
 
+async def build_personality_embed(bot: discord.Client, guild: discord.Guild = None, server_id: str = None) -> tuple:
+    """
+    Build personality embed and avatar file without sending.
+
+    Returns:
+        tuple: (discord.Embed, discord.File | None)
+    """
+    effective_server_id = server_id if server_id else (str(guild.id) if guild else None)
+
+    display_name = None
+    if effective_server_id:
+        personality_name = get_server_personality_display_name(effective_server_id)
+        if personality_name:
+            display_name = personality_name
+    if not display_name and guild:
+        bot_member = guild.me
+        if bot_member and bot_member.nick:
+            display_name = bot_member.nick
+    if not display_name:
+        display_name = bot.user.display_name
+
+    avatar_file = None
+    avatar_attachment_name = None
+    if effective_server_id:
+        local_avatar_path = get_server_personality_avatar_path(effective_server_id)
+        if local_avatar_path and os.path.exists(local_avatar_path):
+            avatar_attachment_name = os.path.basename(local_avatar_path)
+            avatar_file = discord.File(local_avatar_path, filename=avatar_attachment_name)
+
+    fallback_avatar_url = None
+    if not avatar_file:
+        fallback_avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
+
+    embed = discord.Embed(
+        title=f"{display_name}",
+        description="*Sending you a message...*",
+        color=discord.Color.blue()
+    )
+    if avatar_file:
+        embed.set_thumbnail(url=f"attachment://{avatar_attachment_name}")
+    elif fallback_avatar_url:
+        embed.set_thumbnail(url=fallback_avatar_url)
+
+    return embed, avatar_file
+
+
 async def send_personality_embed_dm(target, bot: discord.Client, guild: discord.Guild = None, server_id: str = None):
     """
     Send an embed with the bot's server-specific avatar and personality name before DM content.

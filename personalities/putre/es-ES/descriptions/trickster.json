@@ -1,4 +1,4 @@
- {
+{
     "title": "**🎭Trilero Putre**",
     "description": "Ven y dejate embaucar por el orco trilero, juega y diviertete.",
     "button": "🎭Trilero",
@@ -7,13 +7,11 @@
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!",
-        "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único",
-        "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir saburía y guia"
+        "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único"
     },
     "subrole_buttons": {
         "dice": "🎲 Bote",
-        "ring": "👁️ Anillo",
-        "runes": "🔮 Runas"
+        "ring": "👁️ Anillo"
     },
     "dice_game": {
         "waitmessage": "Tirando daos...Ezpera!",
@@ -48,7 +46,7 @@
         "select_dice_admin_action": "🎲 Selekzionar aksion de bote...",
         "announcements_on": "Anunsios: Aktivaos",
         "announcements_on_description": "Aktivar anunsios de bote ganado",
-        "announcements_off": "Anunsios: Desaktivaos", 
+        "announcements_off": "Anunsios: Desaktivaos",
         "announcements_off_description": "Desaktivar anunsios de bote ganado",
         "dice_fixed_bet": "Apuesta Fija",
         "dice_fixed_bet_description": "Ajustar el costo de la apuesta fija para jugar al BOTE",
@@ -58,7 +56,7 @@
         "ring_on": "Anillo: Aktivao",
         "ring_on_description": "Aktivar buskeda del anillo",
         "ring_off": "Anillo: Desaktivao",
-        "ring_off_description": "Desaktivar buskeda del anillo", 
+        "ring_off_description": "Desaktivar buskeda del anillo",
         "ring_frequency": "Frekuenzia de Anillo",
         "ring_frequency_description": "Ajustar frekuenzia de revisión",
         "dice_play": "Tirar Dados",
@@ -123,7 +121,7 @@
         "dm_no_servers_available": "❌ No hay servidores disponibles. Por favor ejecuta las acciones de dados desde un servidor.",
         "dm_server_access_error": "❌ No se pudo acceder a un servidor. Por favor ejecuta las acciones de dados desde un servidor.",
         "big_pot": "🔥 **¡EL BOTE ARDE COMO ALDEA ELFIKA!** 🔥\n¡Hay **{balance:,}** monedas de oro! ¡Usa `!canvas` → Trickster para robarlo o putre te pisa! 🎲",
-        "rules":" -**Trio de ojos de GRUUMSH** 👁️ y llevate el **BOTE**!\n -Escalera alta **(4,5,6)** multiplica **x5** la apuesta! INKURSION SANGRIENTA 🗡️ !\n - Lanza un cualquier **Trio** de calavaeras rotas 💀 y llevate un **x3** de la apuesta.\n - Un **Par** de colmillos 🐺 **te devolveran** la apuesta.\n ",
+        "rules": " -**Trio de ojos de GRUUMSH** 👁️ y llevate el **BOTE**!\n -Escalera alta **(4,5,6)** multiplica **x5** la apuesta! INKURSION SANGRIENTA 🗡️ !\n - Lanza un cualquier **Trio** de calavaeras rotas 💀 y llevate un **x3** de la apuesta.\n - Un **Par** de colmillos 🐺 **te devolveran** la apuesta.\n ",
         "description": "**Descripción:**¡GRRR! Pon a prueba tu suerte con el BOTE de Putre! 🎲 Tira los dados contra la banca y lleva todo el oro si puedes!"
     },
     "ring": {
@@ -141,80 +139,9 @@
         "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
         "controls": "**Controles**\n- Activar o desactivar ring\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
         "admin_description": "Configura la funcionalidad y frecuencia de la caza del anillo",
-        "dropdown":{
+        "dropdown": {
             "ring_accuse": "Anillo: Acusar",
             "ring_accuse_description": "Acusar a un usuario de llevar el Anillo Unico"
-        }
-    },
-    "nordic_runes":{
-        "title": "**🔮 Putre - Vidente de Runas Nórdicas Antiguas**",
-        "description": "Acercate y alumbra tu destino con los conocimientos nordicos antiguos. Las runas Elder Futhark hablan con verdad y poder, mostrando el camino para guerreros y orcos por igual.",
-        "title_available_readings":"🌔 **Tipos de lecturas de runas** 🌔\n",
-        "available_readings":"- **Runa única**(tirada rápida): Cada runa representa un concepto cósmico, una fuerza natural o un aspecto de la existencia humana.\n - **Tres runas**(pasado/presente/futuro): La tirada de tres runas sigue el patrón nórdico de comprensión temporal: 'Urðr' (pasado/destino tejido), 'Verðandi' (presente/lo que está siendo), y 'Skuld' (futuro/lo que debe ser).\n - **Cinco runas en cruz** : La cruz de cinco runas es una técnica adivinatoria avanzada que mapea la realidad humana en cinco dimensiones fundamentales, similar a los cinco puntos cardinales del compás mágico nórdico. \n - **Siete runas cruz rúnica**: La cruz rúnica de siete runas es la técnica más avanzada de adivinación nórdica, conocida como 'Yggdrasil Cross' por su conexión con el árbol del mundo\n",
-        "history":"📓**Historial de lecturas**📓",
-        "error_history":"❌ **ERROR!** No hay historial previo.",
-        "how_to_use":"**Como usar:**\n 1. Elige el tipo de lectura en el selecionador de abajo.\n 2. Introduce tu pregunta en el modal que aparecerá.\n 3. Recibirás tu lectura personalizada por mensaje privado con la interpretacion de Putre.\n",
-        "runes_title":"**Las 24 Runas Antiguas de  Futhark:**",
-        "welcome": "🔮 ¡GRRR! Putre el sabio de las runas antiguas ta lizto para revelar tu deztino, umano! Las runas nordicas hablan con poder y verdad!",
-        "question_prompt": "🔮 ¡GRRR! ¿ke kieres saber umano jodido? ¡pregunta a las runas antiguas o putre te parte la kara!",
-        "reading_types": "🔮 ¡Tipos de lanzamientos de runas: single, three, cross, runic_cross!",
-        "invalid_type": "🔮 ¡GRRR! ¡Tipo de lanzamiento inválido umano baboso! ¡Uza: single, three, cross, runic_cross!",
-        "no_question": "🔮 ¡GRRR! ¡Necesitas hacer una pregunta a las runas, umano tonto! ¡no puedo leer tu mente!",
-        "reading_saved": "🔮 ¡UHHH! Putre guardó tu lectura de runas en los pergamino antiguos!",
-        "error": "🔮 ¡BLEGH! ¡La magia oscura rompió las runas! ¡intenta de nuevo umano!",
-        "single_cast": "🦅 **LANZAMIENTO DE RUNA ÚNICA** 🦅",
-        "three_cast": "🐾 **LANZAMIENTO DE TRES RUNAS** 🐾",
-        "cross_cast": "🌍 **LANZAMIENTO DE CRUZ DE CINCO RUNAS** 🌍",
-        "runic_cross_cast": "🌌 **LANZAMIENTO DE CRUZ RÚNICA DE SIETE RUNAS** 🌌",
-        "types": "🔮 **TIPOS DE LANZAMIENTOS DE RUNAS** 🔮",
-        "runes_list": "🗻 **RUNAS ELDER FUTHARK** 🗻",
-        "runes_page_1_title": "🗻 **EL ANTIGUO FUTHARK - RUNAS I (Fehu a Wunjo)** 🗻",
-        "runes_page_2_title": "🗻 **EL ANTIGUO FUTHARK - RUNAS II (Hagalaz a Sowilo)** 🗻",
-        "runes_page_3_title": "🗻 **EL ANTIGUO FUTHARK - RUNAS III (Tiwaz a Othala)** 🗻",
-        "help": "🔮 **SABIDURÍA DE RUNAS NÓRDICAS** 🔮",
-        "help_content": "🔮 **PUTRE EL VIDENTE DE RUNAS** 🔮\n\n**¿Ke son las Runas Nórdicas?**\n¡GRRR! Las runas Elder Futhark son los símbolos antiguos de los guerreros del norte, usadas por los vikingos para ver el futuro y recibir guía de los dioses!\n\n**Lanzamientos Disponibles:**\n• **Runa Única** - Guía rápida para preguntas específicas\n• **Tres Runas** - Pasado, Presente, Futuro del guerrero\n• **Cruz de Cinco** - Análisis completo de la batalla\n\n**¿Cómo usar?:**\n• ¡Usa los komandos: `!runes cast [tipo] <pregunta>`!\n• ¡Ejemplo: `!runes cast single ¿ke debería hacer hoy?`!\n\n**Las 24 Runas Elder Futhark:**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\n¡Cada runa lleva sabiduría antigua para tu camino de guerrero!",
-        "types_content": "🔮 **TIPOS DE LANZAMIENTOS DE RUNAS ANTIGUAS** 🔮\n\n**single** - Runa Única\n└ Guía rápida para una pregunta específica - Usa 1 runa\n\n**three** - Tres Runas\n└ Lectura de Pasado, Presente, Futuro - Usa 3 runas\n\n**cross** - Cruz de Cinco\n└ Análisis completo de la situación - Usa 5 runas\n\n**runic_cross** - Cruz Rúnica\n└ Lectura profunda de siete runas para guía espiritual - Usa 7 runas\n\n**Ejemplos de Uso:**\n`!runes cast single ¿ke debería hacer hoy?`\n`!runes cast three ¿ke me espera en el futuro?`\n`!runes cast cross Ayúdame a entender mi situación actual`\n\n¡GRRR! ¡Elige tu lanzamiento y pregunta a las runas antiguas!",
-        "runes_list_content": "🔮 **EL ELDER FUTHARK - RUNAS ANTIGUAS DE SABIDURÍA** 🔮\n\n**ᚠ FEHU** - Riqueza & Abundancia\nSignificado: Riqueza, Ganado, Posesiones\nPalabras Clave: riqueza, abundancia, éxito, prosperidad, ganancia material\nInterpretación: Representa riqueza material, prosperidad y éxito en asuntos financieros.\n\n**ᚢ URUZ** - Fuerza Primordial\nSignificado: Uro, Fuerza, Poder\nPalabras Clave: fuerza, coraje, poder, vitalidad, energía salvaje\nInterpretación: Simboliza fuerza indómita, coraje y energía primordial.\n\n**ᚦ THURISAZ** - Fuerza Protectora\nSignificado: Gigante, Thor, Protección\nPalabras Clave: protección, defensa, conflicto, cambio, catarsis\nInterpretación: Representa fuerzas protectoras, resolución de conflictos y cambio necesario.\n\n**ᚨ ANSUZ** - Comunicación Divina\nSignificado: Dios, Odin, Comunicación\nPalabras Clave: comunicación, sabiduría, conocimiento, mensajes divinos, inspiración\nInterpretación: Simboliza comunicación divina, sabiduría y discurso inspirado.\n\n**ᚱ RAIDHO** - Viaje Sagrado\nSignificado: Viaje, Viajar, Movimiento\nPalabras Clave: viaje, viajar, movimiento, cambio, progreso\nInterpretación: Representa viajes físicos y espirituales, movimiento y camino de vida.\n\n**ᚲ KENAZ** - Antorcha Iluminadora\nSignificado: Antorcha, Conocimiento, Creatividad\nPalabras Clave: conocimiento, creatividad, inspiración, claridad, visión\nInterpretación: Simboliza iluminación, fuego creativo y claridad intelectual.\n\n**ᚷ GEBO** - Regalo Sagrado\nSignificado: Regalo, Asociación, Intercambio\nPalabras Clave: regalo, asociación, intercambio, equilibrio, armonía\nInterpretación: Representa regalos, asociaciones e intercambios equilibrados.\n\n**ᚹ WUNJO** - Alegría & Armonía\nSignificado: Alegría, Placer, Armonía\nPalabras Clave: alegría, felicidad, armonía, éxito, cumplimiento\nInterpretación: Simboliza alegría, armonía y el cumplimiento de deseos.\n\n**ᚺ HAGALAZ** - Caos Transformador\nSignificado: Granizo, Disrupción, Cambio\nPalabras Clave: disrupción, cambio, crisis, transformación, caos\nInterpretación: Representa cambio disruptivo, crisis y transformación necesaria.\n\n**ᚾ NAUTHIZ** - Fuego de la Necesidad\nSignificado: Necesidad, Constricción, Obligación\nPalabras Clave: necesidad, constricción, disciplina, retraso\nInterpretación: Simboliza necesidad, constricción y la paciencia requerida.\n\n**ᛁ ISA** - Quietud & Claridad\nSignificado: Hielo, Quietud, Estancamiento\nPalabras Clave: hielo, quietud, estancamiento, retraso, claridad\nInterpretación: Representa quietud, retraso y la necesidad de reflexión.\n\n**ᛃ JERA** - Recompensa de la Cosecha\nSignificado: Año, Cosecha, Ciclo\nPalabras Clave: cosecha, ciclo, recompensa, paciencia, tiempo natural\nInterpretación: Simboliza la cosecha, ciclos naturales y recompensas merecidas.\n\n**ᛇ EIWAZ** - Fuerza Duradera\nSignificado: Tejo, Protección, Resistencia\nPalabras Clave: protección, resistencia, transformación, misterios, vida-muerte\nInterpretation: Representa el tejo, resistencia y misterios vida-muerte.\n\n**ᛈ PERTHRO** - Destino Místico\nSignificado: Misterio, Destino, Azar\nPalabras Clave: misterio, destino, azar, secretos, destino oculto\nInterpretación: Simboliza misterios, destino y el elemento del azar.\n\n**ᛉ ALGIZ** - Protección Divina\nSignificado: Alce, Protección, Conexión Divina\nPalabras Clave: protección, conexión divina, yo superior, defensa espiritual\nInterpretación: Representa protección, conexión divina y defensa espiritual.\n\n**ᛊ SOWILO** - Victoria Solar\nSignificado: Sol, Victoria, Éxito\nPalabras Clave: sol, victoria, éxito, honor, logro\nInterpretación: Simboliza el sol, victoria y logros exitosos.\n\n**ᛏ TIWAZ** - Justicia & Honor\nSignificado: Tyr, Justicia, Honor\nPalabras Clave: justicia, honor, coraje, sacrificio, liderazgo\nInterpretación: Representa justicia, honor y liderazgo principiado.\n\n**ᛒ BERKANO** - Crecimiento Nuevo\nSignificado: Abedul, Crecimiento, Renacimiento\nPalabras Clave: crecimiento, renacimiento, fertilidad, nuevos comienzos, maternidad\nInterpretación: Simboliza crecimiento, renacimiento y nuevos comienzos nutritivos.\n\n**ᛖ EHWAZ** - Movimiento Confiable\nSignificado: Caballo, Movimiento, Confianza\nPalabras Clave: movimiento, confianza, cooperación, progreso, asociación\nInterpretación: Representa movimiento, confianza y progreso cooperativo.\n\n**ᛗ MANNAZ** - Conexión Humana\nSignificado: Hombre, Humanidad, Yo\nPalabras Clave: humanidad, yo, relaciones, cooperación, comunidad\nInterpretación: Simboliza humanidad, autoconciencia y relaciones sociales.\n\n**ᛚ LAGUZ** - Flujo Intuitivo\nSignificado: Agua, Flujo, Intuición\nPalabras Clave: agua, flujo, intuición, emociones, inconsciente\nInterpretación: Representa agua, flujo emocional y sabiduría intuitiva.\n\n**ᛜ INGWAZ** - Potencial Oculto\nSignificado: Ing, Fertilidad, Potencial\nPalabras Clave: fertilidad, potencial, crecimiento, energía almacenada, completación\nInterpretación: Simboliza fertilidad, energía potencial y crecimiento gradual.\n\n**ᛞ DAGAZ** - Revelación del Amanecer\nSignificado: Día, Amanecer, Revelación\nPalabras Clave: día, amanecer, revelación, claridad, transformación\nInterpretación: Representa el amanecer, momentos de revelación y transformación positiva.\n\n**ᛟ OTHALA** - Herencia Ancestral\nSignificado: Herencia, Hogar, Legado\nPalabras Clave: herencia, hogar, legado, ascendencia, propiedad\nInterpretación: Simboliza herencia, hogar y legado ancestral.",
-        "history_empty": "🔮 ¡GRRR! ¡No tienes lecturas de runas anteriores umano baboso! ¡Lanza tu primera runa con `!runes cast`!",
-        "history_header": "🔮 **TUS LECTURAS DE RUNAS ANTIGUAS** (Últimas {count})",
-        "history_entry": "**ID {id}** - {type}\nPregunta: {question}\nRunas: {runes}\nFecha: {date}",
-        "stats": "\n**Total de Lecturas:** {total}\n**Tipo Favorito:** {favorite}",
-        "interpretation_header": "**Pregunta:** {question}\n\n",
-        "dropdown": {
-            "runes_single": "Lanzamiento de Runa Única",
-            "runes_three": "Lanzamiento de Tres Runas", 
-            "runes_cross": "Lanzamiento de Cruz de Cinco",
-            "runes_runic_cross": "Lanzamiento de Cruz Rúnica",
-            "runes_history": "Historial de Lecturas",
-            "runes_types": "Tipos de Lanzamientos",
-            "runes_runes_1": "Todas las Runas I",
-            "runes_runes_2": "Todas las Runas II",
-            "runes_runes_3": "Todas las Runas III",
-            "runes_single_description": "Tirada rápida de una runa para guidance inmediata",
-            "runes_three_description": "Pasado/presente/futuro con tres runas",
-            "runes_cross_description": "Cinco runas en cruz para lectura avanzada",
-            "runes_runic_cross_description": "Siete runas en cruz rúnica (Yggdrasil Cross)",
-            "runes_history_description": "Ver tus lecturas anteriores de runas",
-            "runes_types_description": "Ver todos los tipos de lecturas disponibles",
-            "runes_runes_1_description": "Ver las primeras 8 runas antiguas",
-            "runes_runes_2_description": "Ver las siguientes 8 runas antiguas",
-            "runes_runes_3_description": "Ver las últimas 8 runas antiguas",
-            "runes_on": "Runas: Activar",
-            "runes_on_description": "Activar sistema de runas nórdicas",
-            "runes_off": "Runas: Desactivar",
-            "runes_off_description": "Desactivar sistema de runas nórdicas"
-        },
-        "labels": {
-        "meaning": "Significado",
-        "keywords": "Palabras Clave",
-        "interpretation": "Interpretación",
-        "guidance": "Guía para tu pregunta",
-        "question": "Pregunta",
-        "position": "Posición",
-        "rune": "Runa",
-        "description": "Descripción",
-        "success": "🔮 UHHH! Las Runas Antiguas han hablado umano!",
-        "saved": "🔮 UHHH! Putre ha guardado tu tirada en los pergaminos antiguos!"
         }
     }
 }

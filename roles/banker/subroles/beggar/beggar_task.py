@@ -275,10 +275,11 @@ class BeggarTask:
         # Get task prompt template from beggar_messages.py (loads from personality prompts.json)
         task_prompt_template = get_task_prompt_template(self.server_id)
         task_prompt = task_prompt_template.format(reason=reason)
-        
-        # Get weekly donations summary
-        weekly_donations_context = self._get_weekly_donations_context()
-        
+
+        # Get memory blocks using the centralized function
+        from agent_mind import _build_prompt_memory_block
+        memory_context = _build_prompt_memory_block(server=self.server_id)
+
         # Build recent messages context
         messages_context = ""
         if recent_messages:
@@ -289,71 +290,19 @@ class BeggarTask:
                 messages_context += f"[{msg['author']}]: {msg['content']}\n"
         
         # Build golden rules
-        golden_rules = self._get_golden_rules()
+        from .beggar_messages import get_golden_rules
+        golden_rules_list = get_golden_rules(self.server_id)
+        golden_rules = "\n".join(golden_rules_list)
         
         # Complete prompt
-        complete_prompt = f"""{task_prompt}{weekly_donations_context}{messages_context}
+        complete_prompt = f"""{task_prompt}{memory_context}{messages_context}
 
 {golden_rules}
 
 """
         
         return complete_prompt
-    
-    def _get_weekly_donations_context(self) -> str:
-        """Get minimal context about users who donated this week using server-specific personality."""
-        try:
-            weekly_donors = self.roles_db.get_weekly_donations_summary()
 
-            # Get messages from server-specific personality
-            personality = _get_personality(self.server_id)
-            weekly_messages = personality.get('roles', {}).get('banker', {}).get('subroles', {}).get('beggar', {}).get('weekly_donations', {})
-            
-            if not weekly_donors:
-                return weekly_messages.get('no_donations', '')
-            
-            total_weekly = sum(donor['weekly_amount'] for donor in weekly_donors)
-            donor_count = len(weekly_donors)
-            
-            # Build context using Putre's messages
-            context = weekly_messages.get('with_donations', ' Weekly fund: {total} gold from {count} donors:').format(
-                total=total_weekly, 
-                count=donor_count
-            )
-            
-            donor_format = weekly_messages.get('donor_format', '{name}({amount}g)')
-            
-            for donor in weekly_donors[:3]:  # Show top 3 only
-                context += f" {donor_format.format(name=donor['donor_name'], amount=donor['weekly_amount'])},"
-            
-            return context.rstrip(",") + "."
-            
-        except Exception as e:
-            logger.error(f"Error getting weekly donations context: {e}")
-            return weekly_messages.get('error', ' Weekly donations: Data unavailable.') if 'weekly_messages' in locals() else " Weekly donations: Data unavailable."
-    
-    def _get_golden_rules(self) -> str:
-        """Get golden rules for the begging task."""
-        # Get golden rules from server-specific personality dynamically
-        personality = _get_personality(self.server_id)
-        golden_rules_list = personality.get('roles', {}).get('banker', {}).get('subroles', {}).get('beggar', {}).get('golden_rules', [])
-
-        if not golden_rules_list:
-            # Use neutral English fallback from MISSION_CONFIG
-            from .beggar import MISSION_CONFIG
-            golden_rules_list = MISSION_CONFIG.get('golden_rules', [
-                "1. CHARACTER STYLE: Maintain consistent character voice and expressions",
-                "2. PERSUASION: Convince users to donate gold for the stated reason", 
-                "3. PUBLIC: Speak in public channel so everyone hears your request",
-                "4. CONTEXT: Respond to current channel atmosphere if relevant",
-                "5. AUTHENTICITY: Act like a real character, not like a bot",
-                "6. LENGTH: 3-8 sentences (150-400 characters)",
-                "7. DIRECT: Get straight to the point with your gold request",
-                "8. EMOTIONAL: Use emotional appeals if necessary"
-            ])
-        
-        return "\n".join(golden_rules_list)
-    
     def get_task_status(self) -> Dict[str, Any]:
         """Get current task status."""
         config = self.config.get_config()
@@ -490,22 +439,43 @@ class BeggarMinigame:
     def _calculate_general_multiplier(self) -> Dict[str, Any]:
         """Calculate a general multiplier for this minigame runtime."""
         random_choice = _random.random()
-        if random_choice < 0.5:
+        if random_choice < 0.25:
             result_type = "nothing"
             multiplier = 0.0
-            description = "No gold returns for anyone this time"
-        elif random_choice < 0.8:
+        elif random_choice < 0.65:
             result_type = "return"
             multiplier = 1.0
-            description = "All participants get their donations back"
-        else:
+        elif random_choice < 0.9:
             result_type = "double"
             multiplier = 2.0
-            description = "All participants get double their donations back"
+        else:
+            result_type = "triple"
+            multiplier = 3.0
+
+        # Get description from personality JSON
+        description = self._get_minigame_description(result_type)
 
         logger.info(f"General multiplier: {result_type} (x{multiplier}) - {description}")
 
         return {'multiplier': multiplier, 'result_type': result_type, 'description': description}
+
+    def _get_minigame_description(self, result_type: str) -> str:
+        """Get minigame result description from personality JSON or fallback."""
+        try:
+            from agent_runtime import _load_personality_file_cached
+            prompts_data = _load_personality_file_cached("prompts.json", self.server_id)
+
+            if prompts_data:
+                minigame_results = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("minigame_results", {})
+                if result_type in minigame_results:
+                    return minigame_results[result_type]
+
+        except Exception as e:
+            logger.warning(f"Error loading minigame description from personality: {e}")
+
+        # Fallback to beggar_messages
+        from .beggar_messages import MINIGAME_RESULTS_FALLBACK
+        return MINIGAME_RESULTS_FALLBACK.get(result_type, result_type)
 
     def _apply_general_multiplier(self, participants: List[Dict[str, Any]], general_multiplier: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Apply the general multiplier to all participants."""
@@ -551,8 +521,9 @@ class BeggarMinigame:
         multiplier_text = f"{general_multiplier['description']}"
         results_text = "\n".join([f"- {r['user_name']}: {receives} {r['total_received']} {gold}" for r in participant_results])
 
+     # Get memory blocks using the centralized function
         from agent_mind import _build_prompt_memory_block
-        memory_section = _build_prompt_memory_block()
+        memory_section = _build_prompt_memory_block(server=self.server_id)
 
         golden_rules_template = personality.get('roles', {}).get('banker', {}).get('subroles', {}).get('beggar', {}).get('minigame_golden_rules', '')
         if not golden_rules_template:
@@ -565,20 +536,20 @@ class BeggarMinigame:
         participant_results_label = labels.get('participant_results_label', 'RESULTS:')
 
         prompt = f"""{memory_section}
-{task_prompt_template.format(old_reason=old_reason, new_reason=new_reason)}
+            {task_prompt_template.format(old_reason=old_reason, new_reason=new_reason)}
 
-{context_label}
-{participants_label}
-{participants_text}
+            {context_label}
+            {participants_label}
+            {participants_text}
 
-{title_multiplier}
-{multiplier_text}
+            {title_multiplier}
+            {multiplier_text}
 
-{participant_results_label}
-{results_text}
+            {participant_results_label}
+            {results_text}
 
-{golden_rules_template}
-"""
+            {golden_rules_template}
+            """
 
         system_instruction = _build_system_prompt(personality, self.server_id)
 
@@ -770,8 +741,12 @@ PREVIOUS RELATIONSHIP SUMMARY:
 
             if target_channel:
                 try:
-                    await target_channel.send(narrative)
-                    logger.info(f"Minigame narrative sent to channel {target_channel.name}")
+                    # Ensure target_channel is a messageable channel, not a guild
+                    if hasattr(target_channel, 'send'):
+                        await target_channel.send(narrative)
+                        logger.info(f"Minigame narrative sent to channel {target_channel.name}")
+                    else:
+                        logger.error(f"Target channel is not messageable (type: {type(target_channel).__name__})")
                 except Exception as send_error:
                     logger.error(f"Failed to send narrative: {send_error}")
             else:

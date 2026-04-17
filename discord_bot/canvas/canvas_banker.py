@@ -29,6 +29,12 @@ try:
 except ImportError:
     get_messages = None
 
+# Import beggar canvas messages
+try:
+    from roles.banker.subroles.beggar.beggar_messages import get_canvas_message
+except ImportError:
+    get_canvas_message = None
+
 
 def _get_server_db_path(guild) -> str:
     """Get the server-specific personality directory path for banker messages."""
@@ -47,25 +53,6 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
 
     from .content import _get_personality_descriptions
     banker_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("banker", {})
-
-    _fallbacks = {
-        "title": "🏦 Canvas - Banker",
-        "description": "Manage your clan wallet and transactions.",
-        "wallet_information": "**Wallet Information**",
-        "balance": "💰 Balance:",
-        "coin": "coin",
-        "server": "🏛️ Server",
-        "account_holder": "👤 Account",
-        "recent_transactions_title": "**Recent Transactions**",
-        "no_transactions_yet": "- No transactions yet",
-    }
-
-    def _banker_text(key: str) -> str:
-        if get_messages and server_db_path:
-            value = get_messages(server_db_path, key)
-        else:
-            value = banker_descriptions.get(key)
-        return str(value).strip() if value else _fallbacks.get(key, key)
 
     balance = 0
     user_name = "Unknown"
@@ -103,14 +90,16 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
 
     content_parts = [
         
-        _banker_text("title"),
-        _banker_text("description"),
+        get_messages(server_db_path, "title").strip() if get_messages and server_db_path else "title",
+        get_messages(server_db_path, "description").strip() if get_messages and server_db_path else "description",
         "-" * 45,
-        _banker_text("wallet_information"),
-        f"{_banker_text('current_balance')} {balance} {_banker_text('coin')}",
-        f"{_banker_text('server')}: {server_id}",
-        f"{_banker_text('account_holder')}: {user_name}",
-        _banker_text("recent_transactions_title"),
+        get_messages(server_db_path, "wallet_information").strip() if get_messages and server_db_path else "wallet_information",
+        "-" * 45,
+        f"{get_messages(server_db_path, 'current_balance').strip() if get_messages and server_db_path else 'current_balance'} {balance} {get_messages(server_db_path, 'coin').strip() if get_messages and server_db_path else 'coin'}",
+        f"{get_messages(server_db_path, 'server').strip() if get_messages and server_db_path else 'server'}: {server_id}",
+        f"{get_messages(server_db_path, 'account_holder').strip() if get_messages and server_db_path else 'account_holder'}: {user_name}",
+        "-" * 45,
+        get_messages(server_db_path, "recent_transactions_title").strip() if get_messages and server_db_path else "recent_transactions_title",
     ]
 
     if history:
@@ -125,7 +114,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
                 emoji = ":question:"  # Default emoji for invalid amounts
             content_parts.append(f"{emoji} {amount_int:,} ({transaction_type})")
     else:
-        content_parts.append(_banker_text("no_transactions_yet"))
+        content_parts.append(get_messages(server_db_path, "no_transactions_yet").strip() if get_messages and server_db_path else "no_transactions_yet")
 
     return "\n".join(content_parts)
 
@@ -134,6 +123,7 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
     """Build banker detail views including beggar subrole."""
     from .content import _get_personality_descriptions
     server_id = get_server_key(guild) if guild else None
+    server_db_path = _get_server_db_path(guild) if guild else None
     personality_descriptions = _get_personality_descriptions(server_id)
     roles_messages = personality_descriptions.get("role_descriptions", {})
     banker_messages = roles_messages.get("banker", {})
@@ -158,14 +148,15 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
     if detail_name in {"beggar"}:
         beggar_state = _get_canvas_beggar_state(guild)
         
-        title = _banker_text("beggar.title", "🙏 BEGGAR")
-        fund_title = _banker_text("beggar.current_fund", "💰 **CURRENT FUND:**")
-        description = _banker_text("beggar.description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")
-        title_reason = _banker_text("beggar.title_reason", "**Reason:**")
-        title_campaing = _banker_text("beggar.title_campaign", "**Current Campaign**")
-        title_instructions = _banker_text("beggar.title_instructions", "**How it works**")
-        instructions = _banker_text("beggar.instructions", "💝 Click the 'Donate' button below\n - Wait the weekly result at end of the week.\n - If you give whatever donation, the beggar will memory that.\n ")
-        title_donations = _banker_text("beggar.title_donations", "**Recent Donations**")
+        # Get beggar messages from beggar_messages.py
+        title = get_canvas_message(server_db_path, "title") if get_canvas_message else "🪙 **RECAUDATIONS** 🪙"
+        fund_title = get_canvas_message(server_db_path, "current_fund") if get_canvas_message else "Current found:"
+        description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week.\n Maybe you won some gold."
+        title_reason = get_canvas_message(server_db_path, "title_reason") if get_canvas_message else "Reason:"
+        title_campaing = get_canvas_message(server_db_path, "title_campaign") if get_canvas_message else "**Current campaing**"
+        title_instructions = get_canvas_message(server_db_path, "title_instructions") if get_canvas_message else "**Instructions**"
+        instructions = get_canvas_message(server_db_path, "instructions") if get_canvas_message else " - Click donate in the dropdown menu below.\n - Wait for weekly results at the end of this week.\n - Participate with any amount and Putre will take it into account.\n"
+        title_donations = get_canvas_message(server_db_path, "title_donations") if get_canvas_message else "📊 **Donations:**"
     
         parts = [
             title,
@@ -191,7 +182,7 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
                 reason = donation.get('reason', 'Support')
                 parts.append(f" - 💰 {donor}: {amount:,} :coin: -->  {reason}")
         else:
-            no_donations = beggar_messages.get("no_donations", "📊 No donations yet. Be the first to contribute!")
+            no_donations = get_canvas_message(server_db_path, "no_donations") if get_canvas_message else "No donations yet. Be the first to contribute!"
             parts.append(no_donations)
         
         return "\n".join(parts)
@@ -200,8 +191,9 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
         beggar_state = _get_canvas_beggar_state(guild)
         general = personality_descriptions.get("general", {})
         
-        title = _banker_text("beggar.title", "🙏 BEGGAR")
-        description = _banker_text("beggar.description", "Help support the clan with your generous donations! Every gold piece counts towards our collective goals.")
+        # Get beggar messages from beggar_messages.py
+        title = get_canvas_message(server_db_path, "title") if get_canvas_message else "🪙 **RECAUDATIONS** 🪙"
+        description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week.\n Maybe you won some gold."
         
         return "\n".join([
             title,
@@ -211,8 +203,8 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
             "-" * 45,
             f"{general.get('status_label', '**Status:**')} {general.get('active', '✅ Enabled') if beggar_state['enabled'] else general.get('inactive','❌ Disabled')}",
             f"{general.get('frequency_label', '**Frequency:**')} {general.get('every', 'every')} {beggar_state['frequency_hours']}h",
-            f"{_banker_text('beggar.current_fund', '**Current Fund:**')} {beggar_state['fund_balance']:,} :coin:",
-            f"{_banker_text('beggar.title_reason', '**Last Reason:**')} {beggar_state['last_reason'] or general.get('none','None')}",
+            f"{get_canvas_message(server_db_path, 'current_fund') if get_canvas_message else 'Current found:'} {beggar_state['fund_balance']:,} :coin:",
+            f"{get_canvas_message(server_db_path, 'title_reason') if get_canvas_message else 'Reason:'} {beggar_state['last_reason'] or general.get('none','None')}",
         ])
 
     # Default: return main banker view
@@ -460,11 +452,22 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
                 return
             elif action_name == "beggar_force_minigame":
                 # Force minigame execution
-                from roles.banker.subroles.beggar.beggar_minigame import BeggarMinigame
-                minigame = BeggarMinigame(server_id)
-                result = await minigame.force_run_minigame(interaction.guild)
-                current_detail = "beggar_admin"
-                applied_text = f"🎲 Minigame forced: {result}"
+                from roles.banker.subroles.beggar.beggar_task import BeggarMinigame
+
+                if not interaction.response.is_done():
+                    await interaction.response.defer(ephemeral=True)
+
+                async def execute_minigame_background():
+                    try:
+                        minigame = BeggarMinigame(server_id)
+                        result = await minigame.force_weekly_minigame(fallback_channel=interaction.channel)
+                        logger.info(f"Background minigame completed for server {server_id}: {result.get('success', False)}")
+                    except Exception as e:
+                        logger.error(f"Error in background minigame execution: {e}")
+
+                asyncio.create_task(execute_minigame_background())
+                applied_text = "🎲 Minigame iniciado en background..."
+                ok = True
 
             # Rebuild view for beggar admin
             from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
@@ -566,4 +569,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
             await interaction.followup.send(embed=role_embed, view=next_view, ephemeral=True)
     except Exception as e:
         logger.exception(f"Canvas banker action failed: {e}")
-        await interaction.response.send_message("❌ Failed to process banker action.", ephemeral=True)
+        try:
+            await interaction.response.send_message("❌ Failed to process banker action.", ephemeral=True)
+        except (discord.InteractionResponded, discord.NotFound):
+            await interaction.followup.send("❌ Failed to process banker action.", ephemeral=True)

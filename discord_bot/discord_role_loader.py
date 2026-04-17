@@ -19,6 +19,7 @@ ROLE_REGISTRY = {
     "treasure_hunter": ("roles.treasure_hunter.treasure_hunter_discord", "register_treasure_hunter_commands"),  # DEPRECATED - use !canvas
     "trickster": ("roles.trickster.trickster_discord", "register_trickster_commands"),  # DEPRECATED - use !canvas
     "banker": ("roles.banker.banker_discord", "register_banker_commands"),  # DEPRECATED - use !canvas
+    "shaman": ("roles.shaman.shaman_discord", "register_shaman_commands"),  # DEPRECATED - use !canvas
 }
 
 # MC is always registered (does not depend on enabled in the same way)

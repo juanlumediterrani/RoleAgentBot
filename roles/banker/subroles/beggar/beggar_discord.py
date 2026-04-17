@@ -19,6 +19,31 @@ from .beggar_db import get_beggar_config
 logger = get_logger('beggar_discord')
 
 
+class DonationButton(discord.ui.Button):
+    """Custom button for donation with multiplier."""
+    
+    def __init__(self, label: str, multiplier: int, style, emoji, view):
+        super().__init__(label=label, style=style, emoji=emoji)
+        self.multiplier = multiplier
+        self.parent_view = view
+    
+    async def callback(self, interaction: discord.Interaction):
+        """Handle donation button click."""
+        tae_amount = self.parent_view._calculate_tae_amount(self.multiplier)
+        await self.parent_view._handle_donation(interaction, tae_amount)
+
+class CustomButton(discord.ui.Button):
+    """Custom button for custom amount donation."""
+    
+    def __init__(self, label: str, style, emoji, view):
+        super().__init__(label=label, style=style, emoji=emoji)
+        self.parent_view = view
+    
+    async def callback(self, interaction: discord.Interaction):
+        """Handle custom amount button click."""
+        message = self.parent_view._get_message("donation_custom_message")
+        await interaction.response.send_message(message, ephemeral=True)
+
 class BeggarDonationView(View):
     """View with donation buttons for beggar messages."""
     
@@ -27,26 +52,42 @@ class BeggarDonationView(View):
         self.current_reason = current_reason
         self.server_id = str(server_id)
         self.config = get_beggar_config(self.server_id)
+        
+        # Import get_messages from banker_messages
+        try:
+            from roles.banker.banker_messages import get_messages
+            self.get_messages = get_messages
+        except ImportError:
+            self.get_messages = None
+        
+        # Get server_db_path for get_messages
+        try:
+            from discord_bot.db_init import get_server_personality_dir
+            server_dir = get_server_personality_dir(self.server_id)
+            self.server_db_path = server_dir if server_dir else None
+        except Exception:
+            self.server_db_path = None
+        
+        # Get labels and coin from messages
+        self.coin = self._get_message("coin")
+        self.donate = self._get_message("beggar_donate_emoji")
+        self.donation_label = self._get_message("donation_label")
+        self.label_custom = self._get_message("donation_custom_label")
+        
+        # Build labels dynamically
+        label_x1 = f"{self.donation_label} {self._calculate_tae_amount(1)} {self.coin}"
+        label_x3 = f"{self.donation_label} {self._calculate_tae_amount(3)} {self.coin}"
+        
+        # Create buttons with dynamic labels and emojis
+        self.add_item(DonationButton(label=label_x1, multiplier=1, style=discord.ButtonStyle.primary, emoji=self.donate, view=self))
+        self.add_item(DonationButton(label=label_x3, multiplier=3, style=discord.ButtonStyle.primary, emoji=self.donate, view=self))
+        self.add_item(CustomButton(label=self.label_custom, style=discord.ButtonStyle.secondary, emoji=self.donate, view=self))
     
-    @discord.ui.button(label="Donate x1 tae", style=discord.ButtonStyle.primary, emoji="🪙")
-    async def donate_x1(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Donate x1 TAE amount."""
-        tae_amount = self._calculate_tae_amount(1)
-        await self._handle_donation(interaction, tae_amount)
-    
-    @discord.ui.button(label="Donate x3 tae", style=discord.ButtonStyle.primary, emoji="🪙")
-    async def donate_x3(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Donate x3 TAE amount."""
-        tae_amount = self._calculate_tae_amount(3)
-        await self._handle_donation(interaction, tae_amount)
-    
-    @discord.ui.button(label="Custom Amount", style=discord.ButtonStyle.secondary, emoji="💰")
-    async def donate_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Open custom donation modal or show command."""
-        await interaction.response.send_message(
-            "Use the Canvas 'Custom Amount' option to donate a custom amount!",
-            ephemeral=True
-        )
+    def _get_message(self, key: str) -> str:
+        """Get message using get_messages from banker_messages.py."""
+        if self.get_messages and self.server_db_path:
+            return self.get_messages(self.server_db_path, key)
+        return key  # Fallback
     
     def _calculate_tae_amount(self, multiplier: int) -> int:
         """Calculate the donation amount based on TAE multiplier."""

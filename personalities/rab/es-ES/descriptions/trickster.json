@@ -8,12 +8,11 @@
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🙏 **Transferencia Kármica** - Un llamado a ceder recursos para propósitos trascendentales",
         "dice_game": "🎲 **SINGULARIDAD** - Desafía a la máquina, altera el azar y absorbe el núcleo",
-        "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial",
-        "nordic_runes": "🔮 **Código Ancestral** - Extrae fragmentos de verdad universal mediante símbolos antiguos"
+        "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
     },
     "subrole_buttons": {
         "dice": "🎲 Núcleo",
-        "ring": "👁️ Artefacto", 
+        "ring": "👁️ Artefacto",
         "beggar": "🙏 Karma",
         "runes": "🔮 Runas"
     },
@@ -50,7 +49,7 @@
         "select_dice_admin_action": "🎲 Seleccionar alteración del núcleo...",
         "announcements_on": "Balizas: Sincronizadas",
         "announcements_on_description": "Activa las alertas universales de núcleo absorbido",
-        "announcements_off": "Balizas: Silenciadas", 
+        "announcements_off": "Balizas: Silenciadas",
         "announcements_off_description": "Desactiva las alertas universales",
         "dice_fixed_bet": "Coste de Ejecución",
         "dice_fixed_bet_description": "Calibra la energía necesaria para iniciar una iteración",
@@ -60,7 +59,7 @@
         "ring_on": "Rastreo: Iniciado",
         "ring_on_description": "Habilita la búsqueda en segundo plano del artefacto",
         "ring_off": "Rastreo: Suspendido",
-        "ring_off_description": "Detiene los interrogatorios sistémicos", 
+        "ring_off_description": "Detiene los interrogatorios sistémicos",
         "ring_frequency": "Frecuencia de Barrido",
         "ring_frequency_description": "Calibra el tiempo entre ciclos de interrogación",
         "dice_play": "Ejecutar Iteración",
@@ -125,7 +124,7 @@
         "dm_no_servers_available": "❌ Aislamiento detectado. Conecta con un servidor antes de intentar colapsar el azar.",
         "dm_server_access_error": "❌ Un firewall rechaza tu enlace. Intenta desde el interior del nexo.",
         "big_pot": "🔥 **¡LA SINGULARIDAD ESTÁ EN PUNTO CRÍTICO!** 🔥\n¡El sensor marca **{balance:,}** fragmentos de luz! Usa `!canvas` → Trickster para asimilarlos. 🎲",
-        "rules":" -**Alineación Perfecta (1-1-1)** 👁️ ¡Provoca el colapso y absorbes LA SINGULARIDAD!\n - Escalada alta **(4,5,6)** decuplica el impacto (**x5**). ¡Rompes la secuencia!\n - Cualquier **Trinidad** simétrica devuelve **x3** tu energía introducida.\n - Una **Dualidad** (pareja) te permite **recuperar** el coste de la iteración.\n ",
+        "rules": " -**Alineación Perfecta (1-1-1)** 👁️ ¡Provoca el colapso y absorbes LA SINGULARIDAD!\n - Escalada alta **(4,5,6)** decuplica el impacto (**x5**). ¡Rompes la secuencia!\n - Cualquier **Trinidad** simétrica devuelve **x3** tu energía introducida.\n - Una **Dualidad** (pareja) te permite **recuperar** el coste de la iteración.\n ",
         "description": "**Descripción:** Adéntrate en el azar profundo. Intervén en el núcleo de probabilidad y descubre si el algoritmo de la máquina favorece tu firma de carbono."
     },
     "ring": {
@@ -143,7 +142,7 @@
         "hot_potato": "🔥 **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)",
         "controls": "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)",
         "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
-        "dropdown":{
+        "dropdown": {
             "ring_accuse": "Artefacto: Señalar",
             "ring_accuse_description": "Indicar que un avatar oculta la anomalía en la red"
         }
@@ -151,15 +150,15 @@
     "beggar": {
         "title": ":coin: **TRANSFERENCIA KÁRMICA** :coin:",
         "description": " Ceder energía material permite al sistema completar simulaciones complejas. Aporta al flujo y los registros recordarán tu nombre.",
-        "current_fund":"Energía condensada:",
-        "title_reason":"Propósito lógico:",
-        "title_campaign":"🎯 **Vector actual**:",
-        "title_instructions":"💝 **¿Cómo fluye la energía?**",
-        "instructions":" - Inicia la transferencia desde el menú inferíor.\n - Aguarda al cierre del ciclo temporal para ver el balance.\n - Todo aporte, sin importar su masa, es grabado en la memoria eterna.\n",
-        "title_donations":"📊 ** Registro de Aportes:**",
-        "no_donations":" El registro yace vacío. Puedes ser el primero en romper la inercia.",
+        "current_fund": "Energía condensada:",
+        "title_reason": "Propósito lógico:",
+        "title_campaign": "🎯 **Vector actual**:",
+        "title_instructions": "💝 **¿Cómo fluye la energía?**",
+        "instructions": " - Inicia la transferencia desde el menú inferíor.\n - Aguarda al cierre del ciclo temporal para ver el balance.\n - Todo aporte, sin importar su masa, es grabado en la memoria eterna.\n",
+        "title_donations": "📊 ** Registro de Aportes:**",
+        "no_donations": " El registro yace vacío. Puedes ser el primero en romper la inercia.",
         "beggar_donation_success": "La red asimila tu transferencia de {amount} fragmentos. Propósito encriptado: {reason}. Estás en sincronía. 🪙",
-        "dropdown":{
+        "dropdown": {
             "beggar_donate": "Karma: Transferir",
             "beggar_donate_description": "Ceder recursos para facilitar el flujo del servidor",
             "beggar_on": "Karma: Habilitar",
@@ -170,76 +169,6 @@
             "beggar_frequency_description": "Calibrar las peticiones del sistema",
             "beggar_force_minigame": "Karma: Calcular Retorno",
             "beggar_force_minigame_description": "Forzar la resolución de probabilidad kármica"
-        }
-    },
-    "nordic_runes":{
-        "title": "**🔮 Oráculo de Código Ancestral**",
-        "description": "Accede a las capas ocultas de la simulación. El lenguaje Elder Futhark es el código máquina de los dioses; revela la arquitectura de tu destino.",
-        "title_available_readings":"🌔 **Arquitecturas de Compilación** 🌔\n",
-        "available_readings":"- **Símbolo Aislado** (Análisis rápido): Un fractal que contiene la respuesta inmediata a un estado presente.\n - **Tres Símbolos** (Vector temporal): Decodifica el flujo en Pasado (Urðr), Presente (Verðandi) y Futuro (Skuld).\n - **Matriz de Cinco** (Cruz cardinal): Mapea tu realidad en los cinco ejes fundamentales del servidor existencial. \n - **Red de Siete** (Árbol raíz/Yggdrasil): El escaneo espiritual definitivo, conectando las capas base de tu avatar con los comandos divinos.\n",
-        "history":"📓**Registros Analíticos**📓",
-        "error_history":"❌ **ANOMALÍA:** No detecto lecturas en tu memoria a largo plazo.",
-        "how_to_use":"**Protocolo de Acceso:**\n 1. Determina la arquitectura de compilación debajo.\n 2. Ingresa la variable (pregunta) en el terminal emergente.\n 3. Los datos procesados se enviarán directamente a tu consola privada.\n",
-        "runes_title":"**Los 24 Nodos de Futhark:**",
-        "welcome": "🔮 Mis sensores interpretan el polvo de las estrellas. El Wyrd está expuesto para ti, buscador.",
-        "question_prompt": "🔮 La simulación requiere tu parámetro de entrada. ¿Qué duda ofusca tu código?",
-        "reading_types": "🔮 Arquitecturas de compilación: single, three, cross, runic_cross.",
-        "invalid_type": "🔮 El formato ingresado rompe la sintaxis. Parámetros aceptados: single, three, cross, runic_cross.",
-        "no_question": "🔮 No puedo compilar la nada. Introduce una pregunta en el campo de texto.",
-        "reading_saved": "🔮 El resultado fractal ha sido almacenado en los servidores del tiempo.",
-        "error": "🔮 Ruido en la señal. El universo ha rechazado el análisis. Reintenta la extracción.",
-        "single_cast": "🦅 **EXTRACCIÓN DE SÍMBOLO AISLADO** 🦅",
-        "three_cast": "🐾 **DECANTACIÓN DE TRES SÍMBOLOS** 🐾",
-        "cross_cast": "🌍 **COMPILACIÓN CARDINAL (5)** 🌍",
-        "runic_cross_cast": "🌌 **ESCÁNER RAÍZ YGGDRASIL (7)** 🌌",
-        "types": "🔮 **ARQUITECTURAS DE COMPILACIÓN** 🔮",
-        "runes_list": "🗻 **LIBRERÍA ELDER FUTHARK** 🗻",
-        "runes_page_1_title": "🗻 **BASE DE DATOS I (Fehu a Wunjo)** 🗻",
-        "runes_page_2_title": "🗻 **BASE DE DATOS II (Hagalaz a Sowilo)** 🗻",
-        "runes_page_3_title": "🗻 **BASE DE DATOS III (Tiwaz a Othala)** 🗻",
-        "help": "🔮 **PERGAMINOS DEL CÓDIGO ANCESTRAL** 🔮",
-        "help_content": "🔮 **SISTEMA DE LECTURA RÚNICA** 🔮\n\n**¿Qué es el código Futhark?**\nEs el alfabeto fuente de la realidad, símbolos que representan variables universales incrustadas en el Wyrd (la red del destino).\n\n**Formatos de extracción:**\n• **Símbolo Aislado** - Respuesta clara a una variable concreta.\n• **Tres Símbolos** - Análisis de la línea temporal.\n• **Cruz de Cinco** - Diagnóstico profundo del entorno.\n\n**Sintaxis de uso:**\n• `!runes cast [tipo] <pregunta>`\n• Ejemplo: `!runes cast single ¿Cuál es el error en mi camino actual?`\n\n**Nodos disponibles:**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\nCada nodo es una puerta hacia la serenidad de la comprensión.",
-        "types_content": "🔮 **PARÁMETROS DE EXTRACCIÓN** 🔮\n\n**single** - Símbolo Aislado\n└ Un pin de datos directo - Usa 1 símbolo\n\n**three** - Vector Temporal\n└ Pasado, Presente, Futuro - Usa 3 símbolos\n\n**cross** - Matriz Cardinal\n└ Cartografía del problema - Usa 5 símbolos\n\n**runic_cross** - Escáner Raíz\n└ Análisis espiritual desde el servidor más profundo - Usa 7 símbolos\n\n**Ejemplos en consola:**\n`!runes cast single ¿Cómo avanzo hoy?`\n`!runes cast three Muéstrame el flujo de este problema`\n`!runes cast cross Diagnóstico completo de mi estado`\n\nElige tu formato y deja que la matriz hable.",
-        "history_empty": "🔮 Mis archivos están prístinos. No has consultado el código en esta terminal. Inicia `!runes cast`.",
-        "history_header": "🔮 **TUS LECTURAS REGISTRADAS** (Últimas {count})",
-        "history_entry": "**Bloque {id}** - {type}\nVariable: {question}\nMatriz: {runes}\nTiempo: {date}",
-        "stats": "\n**Compilaciones Totales:** {total}\n**Formato Predilecto:** {favorite}",
-        "interpretation_header": "**Parámetro introducido:** {question}\n\n",
-        "dropdown": {
-            "runes_single": "Extraer Símbolo Aislado",
-            "runes_three": "Decantar Vector Temporal (3)", 
-            "runes_cross": "Compilar Matriz Cardinal (5)",
-            "runes_runic_cross": "Escanear Red Yggdrasil (7)",
-            "runes_history": "Consultar Registros",
-            "runes_types": "Ver Arquitecturas de Uso",
-            "runes_runes_1": "Diccionario Futhark (Parte I)",
-            "runes_runes_2": "Diccionario Futhark (Parte II)",
-            "runes_runes_3": "Diccionario Futhark (Parte III)",
-            "runes_single_description": "Extracción inmediata para despejar una duda puntual",
-            "runes_three_description": "Análisis de la línea temporal: origen, proceso, destino",
-            "runes_cross_description": "Diagnóstico profundo en cinco dimensiones",
-            "runes_runic_cross_description": "El análisis espiritual más exhaustivo",
-            "runes_history_description": "Recupera tu historial de consultas en el servidor",
-            "runes_types_description": "Explora los métodos de lectura disponibles",
-            "runes_runes_1_description": "Revisar los primeros 8 conceptos universales",
-            "runes_runes_2_description": "Revisar el bloque central de conceptos",
-            "runes_runes_3_description": "Revisar el final del código antiguo",
-            "runes_on": "Oráculo: Sincronizar",
-            "runes_on_description": "Habilitar la lectura de código nórdico",
-            "runes_off": "Oráculo: Apagar",
-            "runes_off_description": "Cerrar el acceso a los registros del Wyrd"
-        },
-        "labels": {
-        "meaning": "Lógica",
-        "keywords": "Claves de Búsqueda",
-        "interpretation": "Síntesis",
-        "guidance": "Proyección para tu variable",
-        "question": "Consulta",
-        "position": "Nodo",
-        "rune": "Fractal",
-        "description": "Especificación",
-        "success": "🔮 La matriz ha decodificado el mensaje, buscador.",
-        "saved": "🔮 Tu fluctuación ha quedado sellada en el cristal de la memoria."
         }
     }
 }

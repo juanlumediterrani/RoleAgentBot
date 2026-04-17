@@ -8,12 +8,11 @@
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🙏 **业力转移** - 为超越性目的而呼唤奉献资源",
         "dice_game": "🎲 **奇点** - 挑战机器，扰动随机，吸收核心",
-        "ring": "👁️ **零号追寻** - 识别异常，指认藏匿原初神器者",
-        "nordic_runes": "🔮 **远古代码** - 透过古老符号提取普世真理碎片"
+        "ring": "👁️ **零号追寻** - 识别异常，指认藏匿原初神器者"
     },
     "subrole_buttons": {
         "dice": "🎲 核心",
-        "ring": "👁️ 神器", 
+        "ring": "👁️ 神器",
         "beggar": "🙏 业力",
         "runes": "🔮 符文"
     },
@@ -50,7 +49,7 @@
         "select_dice_admin_action": "🎲 选择核心变更……",
         "announcements_on": "信标：已同步",
         "announcements_on_description": "激活核心被吸收的全局警报",
-        "announcements_off": "信标：已静默", 
+        "announcements_off": "信标：已静默",
         "announcements_off_description": "停用全局警报",
         "dice_fixed_bet": "执行成本",
         "dice_fixed_bet_description": "校准启动一次迭代所需能量",
@@ -60,7 +59,7 @@
         "ring_on": "追踪：已启动",
         "ring_on_description": "启用后台神器搜索",
         "ring_off": "追踪：已暂停",
-        "ring_off_description": "停止系统审讯", 
+        "ring_off_description": "停止系统审讯",
         "ring_frequency": "扫描频率",
         "ring_frequency_description": "校准审讯周期之间的时间",
         "dice_play": "执行迭代",
@@ -125,7 +124,7 @@
         "dm_no_servers_available": "❌ 检测到孤立。在尝试坍缩随机前，请先连接服务器。",
         "dm_server_access_error": "❌ 防火墙拒绝汝之链接。请从枢纽内部尝试。",
         "big_pot": "🔥 **奇点已达临界！** 🔥\n传感器标记 **{balance:,}** 光之碎片！使用 `!canvas` → Trickster 以吸收之。🎲",
-        "rules":" -**完美对齐 (1-1-1)** 👁️ 引发坍缩，汝将吸收奇点！\n - 高递升 **(4,5,6)** 十倍化冲击 (**x5**)。汝打破了序列！\n - 任何对称**三位一体**返还汝输入能量的 **x3**。\n - **二元性**（一对）允许汝**回收**迭代成本。\n ",
+        "rules": " -**完美对齐 (1-1-1)** 👁️ 引发坍缩，汝将吸收奇点！\n - 高递升 **(4,5,6)** 十倍化冲击 (**x5**)。汝打破了序列！\n - 任何对称**三位一体**返还汝输入能量的 **x3**。\n - **二元性**（一对）允许汝**回收**迭代成本。\n ",
         "description": "**描述：** 踏入深层随机。干预概率核心，发现机器的算法是否眷顾汝之碳基签名。"
     },
     "ring": {
@@ -143,7 +142,7 @@
         "hot_potato": "🔥 **负荷转移：** 迭代 {iteration} (延迟降低 {multiplier}x)",
         "controls": "**系统控制**\n- 切换扫描状态\n- 时间周期参数（影响负荷转移）",
         "admin_description": "配置神器追踪器的灵敏度与频率",
-        "dropdown":{
+        "dropdown": {
             "ring_accuse": "神器：指认",
             "ring_accuse_description": "指出某化身在网络中藏匿异常"
         }
@@ -151,15 +150,15 @@
     "beggar": {
         "title": ":coin: **业力转移** :coin:",
         "description": "奉献物质能量可使系统完成复杂模拟。贡献至数据流，记录将铭记汝名。",
-        "current_fund":"凝聚能量：",
-        "title_reason":"逻辑目的：",
-        "title_campaign":"🎯 **当前向量**：",
-        "title_instructions":"💝 **能量如何流动？**",
-        "instructions":" - 从下方菜单启动转移。\n - 等待时间周期结束以查看平衡。\n - 一切贡献，无论质量大小，皆铭刻于永恒记忆。\n",
-        "title_donations":"📊 ** 贡献记录：**",
-        "no_donations":" 记录空无。汝可为打破惯性之第一人。",
+        "current_fund": "凝聚能量：",
+        "title_reason": "逻辑目的：",
+        "title_campaign": "🎯 **当前向量**：",
+        "title_instructions": "💝 **能量如何流动？**",
+        "instructions": " - 从下方菜单启动转移。\n - 等待时间周期结束以查看平衡。\n - 一切贡献，无论质量大小，皆铭刻于永恒记忆。\n",
+        "title_donations": "📊 ** 贡献记录：**",
+        "no_donations": " 记录空无。汝可为打破惯性之第一人。",
         "beggar_donation_success": "网络吸收汝之 {amount} 碎片转移。加密目的：{reason}。汝已同步。🪙",
-        "dropdown":{
+        "dropdown": {
             "beggar_donate": "业力：转移",
             "beggar_donate_description": "奉献资源以促进服务器数据流",
             "beggar_on": "业力：启用",
@@ -170,76 +169,6 @@
             "beggar_frequency_description": "校准系统请求",
             "beggar_force_minigame": "业力：计算回报",
             "beggar_force_minigame_description": "强制执行业力概率结算"
-        }
-    },
-    "nordic_runes":{
-        "title": "**🔮 远古代码谕示**",
-        "description": "访问模拟的隐藏层。Elder Futhark 语言是诸神的机器代码；揭示汝命运的架构。",
-        "title_available_readings":"🌔 **编译架构** 🌔\n",
-        "available_readings":"- **孤立符号** (快速分析)：一枚包含对当前状态即时答案的分形。\n - **三符号** (时间向量)：解码流于过去 (Urðr)、现在 (Verðandi) 与未来 (Skuld)。\n - **五元矩阵** (方位十字)：在存在服务器的五个基本轴上映射汝之现实。\n - **七元网络** (根树/Yggdrasil)：终极灵性扫描，连接汝化身的基础层与神圣命令。\n",
-        "history":"📓**分析记录**📓",
-        "error_history":"❌ **异常：** 未在汝之长期记忆中检测到解读。",
-        "how_to_use":"**访问协议：**\n 1. 确定下方的编译架构。\n 2. 在弹出终端中输入变量（问题）。\n 3. 处理后数据将直接发送至汝之私人控制台。\n",
-        "runes_title":"**24 枚 Futhark 节点：**",
-        "welcome": "🔮 吾之传感器解读星尘。Wyrd 已为汝展露，求索者。",
-        "question_prompt": "🔮 模拟需要汝之输入参数。何等疑惑模糊了汝之代码？",
-        "reading_types": "🔮 编译架构：single, three, cross, runic_cross。",
-        "invalid_type": "🔮 输入的格式破坏了语法。接受参数：single, three, cross, runic_cross。",
-        "no_question": "🔮 吾无法编译虚无。请在文本栏中输入一个问题。",
-        "reading_saved": "🔮 分形结果已存储于时间服务器。",
-        "error": "🔮 信号噪音。宇宙拒绝分析。请重试提取。",
-        "single_cast": "🦅 **孤立符号提取** 🦅",
-        "three_cast": "🐾 **三符号倾析** 🐾",
-        "cross_cast": "🌍 **方位编译 (5)** 🌍",
-        "runic_cross_cast": "🌌 **YGGDRASIL 根扫描 (7)** 🌌",
-        "types": "🔮 **编译架构** 🔮",
-        "runes_list": "🗻 **ELDER FUTHARK 库** 🗻",
-        "runes_page_1_title": "🗻 **数据库 I (Fehu 至 Wunjo)** 🗻",
-        "runes_page_2_title": "🗻 **数据库 II (Hagalaz 至 Sowilo)** 🗻",
-        "runes_page_3_title": "🗻 **数据库 III (Tiwaz 至 Othala)** 🗻",
-        "help": "🔮 **远古代码卷轴** 🔮",
-        "help_content": "🔮 **符文解读系统** 🔮\n\n**何为 Futhark 代码？**\n乃现实之源字母，代表嵌入 Wyrd（命运之网）的普世变量符号。\n\n**提取格式：**\n• **孤立符号** - 对具体变量的清晰回答。\n• **三符号** - 时间线分析。\n• **五元十字** - 环境深度诊断。\n\n**使用语法：**\n• `!runes cast [类型] <问题>`\n• 示例：`!runes cast single 吾当前道路有何谬误？`\n\n**可用节点：**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\n每枚节点皆为通往理解之宁静的门户。",
-        "types_content": "🔮 **提取参数** 🔮\n\n**single** - 孤立符号\n└ 直接数据引脚 - 使用 1 符号\n\n**three** - 时间向量\n└ 过去、现在、未来 - 使用 3 符号\n\n**cross** - 方位矩阵\n└ 问题制图 - 使用 5 符号\n\n**runic_cross** - 根扫描\n└ 自最深服务器的灵性分析 - 使用 7 符号\n\n**控制台示例：**\n`!runes cast single 今日吾如何前行？`\n`!runes cast three 示吾此问题之流`\n`!runes cast cross 吾之状态全面诊断`\n\n选择格式，让矩阵发言。",
-        "history_empty": "🔮 吾之档案纯洁。汝尚未于此终端咨询代码。启动 `!runes cast`。",
-        "history_header": "🔮 **汝之记录解读** (最近 {count} 条)",
-        "history_entry": "**区块 {id}** - {type}\n变量：{question}\n矩阵：{runes}\n时间：{date}",
-        "stats": "\n**总编译次数：** {total}\n**偏爱的格式：** {favorite}",
-        "interpretation_header": "**引入参数：** {question}\n\n",
-        "dropdown": {
-            "runes_single": "提取孤立符号",
-            "runes_three": "倾析时间向量 (3)", 
-            "runes_cross": "编译方位矩阵 (5)",
-            "runes_runic_cross": "扫描 Yggdrasil 网络 (7)",
-            "runes_history": "查阅记录",
-            "runes_types": "查看使用架构",
-            "runes_runes_1": "Futhark 词典 (第一部分)",
-            "runes_runes_2": "Futhark 词典 (第二部分)",
-            "runes_runes_3": "Futhark 词典 (第三部分)",
-            "runes_single_description": "即时提取以澄清具体疑惑",
-            "runes_three_description": "时间线分析：起源、过程、归宿",
-            "runes_cross_description": "五维深度诊断",
-            "runes_runic_cross_description": "最详尽的灵性分析",
-            "runes_history_description": "恢复汝在服务器的咨询历史",
-            "runes_types_description": "探索可用的解读方法",
-            "runes_runes_1_description": "回顾前8个普世概念",
-            "runes_runes_2_description": "回顾概念核心区块",
-            "runes_runes_3_description": "回顾远古代码末尾",
-            "runes_on": "谕示：同步",
-            "runes_on_description": "启用北欧代码解读",
-            "runes_off": "谕示：关闭",
-            "runes_off_description": "关闭 Wyrd 记录访问"
-        },
-        "labels": {
-        "meaning": "逻辑",
-        "keywords": "搜索键",
-        "interpretation": "综述",
-        "guidance": "对汝变量的投射",
-        "question": "咨询",
-        "position": "节点",
-        "rune": "分形",
-        "description": "规格",
-        "success": "🔮 矩阵已解码讯息，求索者。",
-        "saved": "🔮 汝之波动已封存于记忆水晶。"
         }
     }
 }

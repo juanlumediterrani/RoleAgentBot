@@ -57,7 +57,14 @@
         "ring": {
           "enabled": true,
           "frequency_hours": 24
-        },
+        }
+      }
+    },
+    "shaman": {
+      "enabled": true,
+      "interval_hours": 24,
+      "script": "roles/shaman/shaman.py",
+      "subroles": {
         "nordic_runes": {
           "enabled": true
         }

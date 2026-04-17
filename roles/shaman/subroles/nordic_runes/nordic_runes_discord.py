@@ -142,13 +142,13 @@ class NordicRunesCommands:
 
             logger.info(f"Reading saved with ID: {reading_id}, question: '{parsed_question}'")
 
-            question_label = get_message('question')
+            question_label = get_message('question', server_id=server_id)
             response = f"**{question_label}:** {parsed_question}\n"
             response += "---\n"
 
             if 'runes_drawn' in reading and reading['runes_drawn']:
                 try:
-                    messages = load_personality_messages()
+                    messages = load_personality_messages(server_id)
                     translations = messages.get('translations', {})
                     positions = messages.get('positions', {})
                 except Exception:

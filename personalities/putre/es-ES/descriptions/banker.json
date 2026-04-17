@@ -6,20 +6,25 @@
     "wallet_information": "Estao aktual del Kofre:",
     "recent_transactions_title": "Zakeos Rezientes",
     "no_transactions_yet": "No ay zakeos todabia",
-    "current_balance": "💎 Botin Zakeado Aora",
-    "account_holder": "👤 Umano Zakeador",
+    "current_balance": "💎 Botin Zakeado:",
+    "account_holder": "👤 Umano Zakeador:",
     "server": "🏦 Kueva del Tesoro",
     "dropdown":{
         "select_banker_action": "💰 Selekzionar aksion de tesoro...",
         "config_tae": "Konfigurar TAE",
         "config_tae_description": "Ajustar la tasa diaria de oro",
+        "config_tae_emoji": "💰",
         "config_bonus": "Konfigurar Bono",
-        "config_bonus_description": "Ajustar monedas para novatos"
+        "config_bonus_description": "Ajustar monedas para novatos",
+        "config_bonus_emoji": "🎁"
     },
     "subrole_buttons": {
-        "overview": "💰 Tesorero",
-        "beggar": "🙏 Limosna"
+        "overview": "💰 Zaka",
+        "beggar": "🙏 Volunta"
     },
+    "donation_label": "Donar:",
+    "donation_custom_label": "Personaliza",
+    "donation_custom_message": "Usa la opcion 'Cantidad Personalizada' del Canvas para donar una cantidad personalizada!",
     "beggar": {
         "title": "🪙 **RECAUDACIONES PUTRE** 🪙",
         "description": " Putre recauda oro para proyectos del clan, dona oro regularmente y Putre te lo agradecera cada semana.\n Si tienes suerte puede que te devuelva algo.",
@@ -32,16 +37,21 @@
         "no_donations":" No hay donaciones todavia. Se el primero en contribuir!",
         "beggar_donation_success": "¡Grazia po donar {amount} de oro pa la cauza: {reason}! 🪙",
         "dropdown":{
-            "beggar_donate": "Limosna: Donar",
+            "beggar_donate": "Volunta: Donar",
             "beggar_donate_description": "Hacer una donacion para proyectos del clan",
-            "beggar_on": "Limosna: Activar",
+            "beggar_donate_emoji": "🤲",
+            "beggar_on": "Volunta: Activar",
             "beggar_on_description": "Activar sistema de limosnas",
-            "beggar_off": "Limosna: Desactivar",
+            "beggar_on_emoji": "✅",
+            "beggar_off": "Volunta: Desactivar",
             "beggar_off_description": "Desactivar sistema de limosnas",
-            "beggar_frequency": "Limosna: Frecuencia",
+            "beggar_off_emoji": "❌",
+            "beggar_frequency": "Volunta: Frecuencia",
             "beggar_frequency_description": "Establecer frecuencia de solicitudes",
-            "beggar_force_minigame": "Limosna: Forzar Minijuego",
-            "beggar_force_minigame_description": "Forzar ejecucion del minijuego"
+            "beggar_frequency_emoji": "⏰",
+            "beggar_force_minigame": "Volunta: Forzar Minijuego",
+            "beggar_force_minigame_description": "Forzar ejecucion del minijuego",
+            "beggar_force_minigame_emoji": "🎲"
         }
     }
 }

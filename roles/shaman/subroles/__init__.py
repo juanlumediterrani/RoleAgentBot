@@ -1,0 +1,3 @@
+"""
+Shaman subroles package.
+"""

@@ -901,9 +901,11 @@ from .canvas_news_watcher import (
 from .canvas_trickster import (
     build_canvas_role_trickster_detail as _build_canvas_role_trickster_detail,
     TricksterActionModal as _TricksterActionModal,
-    RuneCastingModal as _RuneCastingModal,
-    handle_canvas_runes_action as _HandleCanvasRunesAction,
     handle_canvas_trickster_action as _HandleCanvasTricksterAction,
+)
+from .canvas_shaman import (
+    RuneCastingModal as _RuneCastingModal,
+    handle_canvas_shaman_action as _HandleCanvasShamanAction,
 )
 from .canvas_treasure_hunter import (
     Poe2ItemModal as _Poe2ItemModal,
@@ -1003,6 +1005,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "treasure_hunter": ("Treasure Hunter", "Tracked item opportunities"),
             "trickster": ("Trickster", "Subroles and player surfaces"),
             "banker": ("Banker", "Wallet and economy"),
+            "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
         }
         options = []
@@ -1054,7 +1057,7 @@ class CanvasRoleSelect(discord.ui.Select):
 
     async def _handle_list_option(self, interaction: discord.Interaction, view):
         """Handle the 'list' option to show all available roles."""
-        all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
+        all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc"]
         enabled_roles = _get_enabled_roles(view.agent_config, interaction.guild)
         
         role_labels = {
@@ -1062,6 +1065,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "treasure_hunter": ("Treasure Hunter", "Tracked item opportunities"),
             "trickster": ("Trickster", "Subroles and player surfaces"),
             "banker": ("Banker", "Wallet and economy"),
+            "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
         }
         
@@ -1192,25 +1196,8 @@ class CanvasRoleActionSelect(discord.ui.Select):
             # For dice actions, allow DM execution by using default server
             await _handle_canvas_dice_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"runes_single", "runes_three", "runes_cross", "runes_runic_cross"}:
-            if not interaction.guild:
-                await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
-                return
-            
-            # Check if runes subrole is enabled
-            runes_enabled = False
-            if view.agent_config:
-                runes_enabled = view.agent_config.get("roles", {}).get("trickster", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
-            
-            if not runes_enabled:
-                await interaction.response.send_message("❌ Nordic Runes subrole is currently disabled. Contact an administrator to enable this feature.", ephemeral=True)
-                return
-            
-            await interaction.response.send_modal(RuneCastingModal(action_name, view.author_id, interaction.guild))
-            return
-        if self.role_name == "trickster" and action_name.startswith("runes_"):
-            # Allow runes actions in DM by using default guild
-            await _handle_canvas_runes_action(interaction, action_name, view)
+        if self.role_name == "shaman":
+            await _HandleCanvasShamanAction(interaction, action_name, view)
             return
         if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now", "watcher_run_personal"}:
             if not interaction.guild or not view.admin_visible:
@@ -1218,7 +1205,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 return
             await _handle_canvas_watcher_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off", "ring_on", "ring_off", "runes_on", "runes_off"}:
+        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off", "ring_on", "ring_off"}:
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This trickster option is admin-only.", ephemeral=True)
                 return
@@ -1599,6 +1586,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
         button_trickster = _roles_desc.get("trickster", {}).get("button", "Trickster")
         button_treasure_hunter = _roles_desc.get("treasure_hunter", {}).get("button", "Hunter")
         button_banker = _roles_desc.get("banker", {}).get("button", "Banker")
+        button_shaman = _roles_desc.get("shaman", {}).get("button", "Shaman")
         button_mc = _roles_desc.get("mc", {}).get("button", "MC")
 
         role_labels = {
@@ -1606,6 +1594,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
             "treasure_hunter": button_treasure_hunter,
             "trickster": button_trickster,
             "banker": button_banker,
+            "shaman": button_shaman,
             "mc": button_mc,
         }
         for role_name in _get_enabled_roles(self.agent_config, getattr(self, 'guild', None)):
@@ -2220,6 +2209,7 @@ async def _handle_canvas_watcher_action(interaction: discord.Interaction, action
 
 async def _handle_canvas_trickster_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
     return await _HandleCanvasTricksterAction(interaction, action_name, view)
+
 
 
 async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_source: dict = None) -> tuple[discord.Guild | None, list[str]]:
@@ -2846,7 +2836,6 @@ CanvasWatcherFeedsByCategoryModal = _CanvasWatcherFeedsByCategoryModal
 _handle_canvas_watcher_action = _CanvasHandleWatcherAction
 Poe2ItemModal = _Poe2ItemModal
 RuneCastingModal = _RuneCastingModal
-_handle_canvas_runes_action = _HandleCanvasRunesAction
 BankerConfigModal = _BankerConfigModal
 
 

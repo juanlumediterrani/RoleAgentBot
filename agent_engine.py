@@ -489,8 +489,9 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
     if subrole_name == "beggar" and server_id:
         try:
             from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+            from agent_roles_db import get_roles_db_instance
             beggar_config = get_beggar_config(server_id)
-            
+
             if beggar_config.is_enabled():
                 current_reason = beggar_config.get_current_reason()
                 if current_reason:
@@ -504,8 +505,16 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
                     else:
                         # If duty_text is empty, just use the reason
                         duty_text = current_reason
-                    
-                    logger.debug(f"🎭 [BEGGAR] Injected current reason '{current_reason}' in system prompt")
+
+                    # Add current donors and their amounts
+                    roles_db = get_roles_db_instance(server_id)
+                    if roles_db:
+                        donors = roles_db.get_recent_beggar_donations(limit=10)
+                        if donors:
+                            donor_list = ", ".join([f"{d['donor_name']} ({d['total_donated']})" for d in donors])
+                            duty_text = duty_text + f". Donadores actuales: {donor_list}"
+
+                    logger.debug(f"🎭 [BEGGAR] Injected current reason '{current_reason}' and donors in system prompt")
                 else:
                     logger.debug("🎭 [BEGGAR] No current reason available, leaving base line unchanged")
             else:
@@ -584,34 +593,55 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                 if title:
                     return title
         
-        # For subroles, load from trickster.json
-        subrole_names = {"beggar", "nordic_runes", "dice_game", "ring"}
-        if role_name in subrole_names:
+        # For trickster subroles, load from trickster.json
+        trickster_subrole_names = {"beggar", "dice_game", "ring"}
+        if role_name in trickster_subrole_names:
             trickster_path = descriptions_dir / "trickster.json"
             if trickster_path.exists():
                 trickster_desc = json.loads(trickster_path.read_text(encoding='utf-8'))
-                
-                # Try to get title from subrole-specific section first
                 subrole_section = trickster_desc.get(role_name, {})
                 if isinstance(subrole_section, dict):
                     title = subrole_section.get("title", "").replace("**", "").strip()
                     if title:
                         return title
-                
-                # Fallback to canvas_trickster_subrole_descriptions
                 subrole_descriptions = trickster_desc.get("canvas_trickster_subrole_descriptions", {})
                 if role_name in subrole_descriptions:
-                    # Parse format like "🙏 **Transferencia Kármica** - description"
                     desc_text = subrole_descriptions[role_name]
-                    # Extract text between ** **
                     if "**" in desc_text:
                         parts = desc_text.split("**")
                         if len(parts) >= 3:
                             title = parts[1].strip()
                             if title:
                                 return title
-                    # Fallback: take everything before "-" and clean up
                     title = desc_text.split("-")[0].replace("🙏", "").replace("🔮", "").replace("🎲", "").replace("👁️", "").strip()
+                    if title:
+                        return title
+
+        # For shaman subroles, load from shaman.json
+        shaman_subrole_names = {"nordic_runes"}
+        if role_name in shaman_subrole_names:
+            shaman_path = descriptions_dir / "shaman.json"
+            if shaman_path.exists():
+                shaman_desc = json.loads(shaman_path.read_text(encoding='utf-8'))
+                
+                # Try to get title from subrole-specific section first
+                subrole_section = shaman_desc.get(role_name, {})
+                if isinstance(subrole_section, dict):
+                    title = subrole_section.get("title", "").replace("**", "").strip()
+                    if title:
+                        return title
+                
+                # Fallback to canvas_shaman_subrole_descriptions
+                subrole_descriptions = shaman_desc.get("canvas_shaman_subrole_descriptions", {})
+                if role_name in subrole_descriptions:
+                    desc_text = subrole_descriptions[role_name]
+                    if "**" in desc_text:
+                        parts = desc_text.split("**")
+                        if len(parts) >= 3:
+                            title = parts[1].strip()
+                            if title:
+                                return title
+                    title = desc_text.split("-")[0].replace("🔮", "").strip()
                     if title:
                         return title
                         

@@ -8,12 +8,11 @@
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🙏 **Karmic Transfer** - A call to yield resources for transcendental purposes",
         "dice_game": "🎲 **SINGULARITY** - Challenge the machine, alter chance, and absorb the core",
-        "ring": "👁️ **Search for Zero** - Identify anomalies and point out those who hide the primordial artifact",
-        "nordic_runes": "🔮 **Ancient Code** - Extract fragments of universal truth through ancient symbols"
+        "ring": "👁️ **Search for Zero** - Identify anomalies and point out those who hide the primordial artifact"
     },
     "subrole_buttons": {
         "dice": "🎲 Core",
-        "ring": "👁️ Artifact", 
+        "ring": "👁️ Artifact",
         "beggar": "🙏 Karma",
         "runes": "🔮 Runes"
     },
@@ -50,7 +49,7 @@
         "select_dice_admin_action": "🎲 Select core alteration...",
         "announcements_on": "Beacons: Synchronized",
         "announcements_on_description": "Activates universal alerts of absorbed core",
-        "announcements_off": "Beacons: Silenced", 
+        "announcements_off": "Beacons: Silenced",
         "announcements_off_description": "Deactivates universal alerts",
         "dice_fixed_bet": "Execution Cost",
         "dice_fixed_bet_description": "Calibrates the energy needed to start an iteration",
@@ -60,7 +59,7 @@
         "ring_on": "Tracking: Started",
         "ring_on_description": "Enables background search for the artifact",
         "ring_off": "Tracking: Suspended",
-        "ring_off_description": "Stops systemic interrogations", 
+        "ring_off_description": "Stops systemic interrogations",
         "ring_frequency": "Sweep Frequency",
         "ring_frequency_description": "Calibrates the time between interrogation cycles",
         "dice_play": "Execute Iteration",
@@ -125,7 +124,7 @@
         "dm_no_servers_available": "❌ Isolation detected. Connect to a server before attempting to collapse chance.",
         "dm_server_access_error": "❌ A firewall rejects your link. Try from inside the nexus.",
         "big_pot": "🔥 **THE SINGULARITY IS AT CRITICAL POINT!** 🔥\nThe sensor marks **{balance:,}** light fragments! Use `!canvas` → Trickster to assimilate them. 🎲",
-        "rules":" -**Perfect Alignment (1-1-1)** 👁️ Trigger collapse and absorb THE SINGULARITY!\n - High escalation **(4,5,6)** decuplicates impact (**x5**). You break the sequence!\n - Any **Trinity** symmetric returns **x3** your introduced energy.\n - A **Duality** (pair) allows you to **recover** the cost of the iteration.\n ",
+        "rules": " -**Perfect Alignment (1-1-1)** 👁️ Trigger collapse and absorb THE SINGULARITY!\n - High escalation **(4,5,6)** decuplicates impact (**x5**). You break the sequence!\n - Any **Trinity** symmetric returns **x3** your introduced energy.\n - A **Duality** (pair) allows you to **recover** the cost of the iteration.\n ",
         "description": "**Description:** Delve into deep chance. Intervene in the probability core and discover if the machine's algorithm favors your carbon signature."
     },
     "ring": {
@@ -143,7 +142,7 @@
         "hot_potato": "🔥 **Charge Transfer:** Iteration {iteration} (Latency reduced {multiplier}x)",
         "controls": "**System Controls**\n- Toggle sweep status\n- Temporal cycle parameter (affects charge transfer)",
         "admin_description": "Configures the sensitivity and frequency of the artifact tracker",
-        "dropdown":{
+        "dropdown": {
             "ring_accuse": "Artifact: Point Out",
             "ring_accuse_description": "Indicate that an avatar hides the anomaly in the network"
         }
@@ -151,15 +150,15 @@
     "beggar": {
         "title": ":coin: **KARMIC TRANSFER** :coin:",
         "description": " Yielding material energy allows the system to complete complex simulations. Contribute to the flow and the records will remember your name.",
-        "current_fund":"Condensed energy:",
-        "title_reason":"Logical purpose:",
-        "title_campaign":"🎯 **Current vector**:",
-        "title_instructions":"💝 **How does energy flow?**",
-        "instructions":" - Start the transfer from the lower menu.\n - Wait for the temporal cycle to close to see the balance.\n - Every contribution, regardless of its mass, is recorded in eternal memory.\n",
-        "title_donations":"📊 **Contribution Record:**",
-        "no_donations":" The record lies empty. You can be the first to break the inertia.",
+        "current_fund": "Condensed energy:",
+        "title_reason": "Logical purpose:",
+        "title_campaign": "🎯 **Current vector**:",
+        "title_instructions": "💝 **How does energy flow?**",
+        "instructions": " - Start the transfer from the lower menu.\n - Wait for the temporal cycle to close to see the balance.\n - Every contribution, regardless of its mass, is recorded in eternal memory.\n",
+        "title_donations": "📊 **Contribution Record:**",
+        "no_donations": " The record lies empty. You can be the first to break the inertia.",
         "beggar_donation_success": "The network assimilates your transfer of {amount} fragments. Encrypted purpose: {reason}. You are in sync. 🪙",
-        "dropdown":{
+        "dropdown": {
             "beggar_donate": "Karma: Transfer",
             "beggar_donate_description": "Yield resources to facilitate server flow",
             "beggar_on": "Karma: Enable",
@@ -170,76 +169,6 @@
             "beggar_frequency_description": "Calibrate system requests",
             "beggar_force_minigame": "Karma: Calculate Return",
             "beggar_force_minigame_description": "Force karmic probability resolution"
-        }
-    },
-    "nordic_runes":{
-        "title": "**🔮 Ancient Code Oracle**",
-        "description": "Access the hidden layers of the simulation. The Elder Futhark language is the machine code of the gods; reveals the architecture of your destiny.",
-        "title_available_readings":"🌔 **Compilation Architectures** 🌔\n",
-        "available_readings":"- **Isolated Symbol** (Quick Analysis): A fractal containing the immediate answer to a present state.\n - **Three Symbols** (Temporal Vector): Decodes the flow into Past (Urðr), Present (Verðandi) and Future (Skuld).\n - **Five Matrix** (Cardinal Cross): Maps your reality in the five fundamental axes of the existential server. \n - **Seven Network** (Root Tree/Yggdrasil): The definitive spiritual scan, connecting the base layers of your avatar with divine commands.\n",
-        "history":"📓**Analytical Records**📓",
-        "error_history":"❌ **ANOMALY:** No readings detected in your long-term memory.",
-        "how_to_use":"**Access Protocol:**\n 1. Determine the compilation architecture below.\n 2. Enter the variable (question) in the emerging terminal.\n 3. The processed data will be sent directly to your private console.\n",
-        "runes_title":"**The 24 Nodes of Futhark:**",
-        "welcome": "🔮 My sensors interpret the dust of the stars. Wyrd is exposed for you, seeker.",
-        "question_prompt": "🔮 The simulation requires your input parameter. What doubt obscures your code?",
-        "reading_types": "🔮 Compilation architectures: single, three, cross, runic_cross.",
-        "invalid_type": "🔮 The entered format breaks the syntax. Accepted parameters: single, three, cross, runic_cross.",
-        "no_question": "🔮 I cannot compile nothing. Enter a question in the text field.",
-        "reading_saved": "🔮 The fractal result has been stored in the time servers.",
-        "error": "🔮 Noise in the signal. The universe has rejected the analysis. Retry the extraction.",
-        "single_cast": "🦅 **ISOLATED SYMBOL EXTRACTION** 🦅",
-        "three_cast": "🐾 **THREE SYMBOL DECANTATION** 🐾",
-        "cross_cast": "🌍 **CARDINAL COMPILATION (5)** 🌍",
-        "runic_cross_cast": "🌌 **YGGDRASIL ROOT SCANNER (7)** 🌌",
-        "types": "🔮 **COMPILATION ARCHITECTURES** 🔮",
-        "runes_list": "🗻 **ELDER FUTHARK LIBRARY** 🗻",
-        "runes_page_1_title": "🗻 **DATABASE I (Fehu to Wunjo)** 🗻",
-        "runes_page_2_title": "🗻 **DATABASE II (Hagalaz to Sowilo)** 🗻",
-        "runes_page_3_title": "🗻 **DATABASE III (Tiwaz to Othala)** 🗻",
-        "help": "🔮 **ANCIENT CODE SCROLLS** 🔮",
-        "help_content": "🔮 **RUNIC READING SYSTEM** 🔮\n\n**What is the Futhark code?**\nIt is the source alphabet of reality, symbols representing universal variables embedded in Wyrd (the web of destiny).\n\n**Extraction formats:**\n• **Isolated Symbol** - Clear answer to a specific variable.\n• **Three Symbols** - Analysis of the timeline.\n• **Cross of Five** - Deep diagnosis of the environment.\n\n**Syntax of use:**\n• `!runes cast [type] <question>`\n• Example: `!runes cast single What is the error in my current path?`\n\n**Available nodes:**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\nEach node is a door to the serenity of comprehension.",
-        "types_content": "🔮 **EXTRACTION PARAMETERS** 🔮\n\n**single** - Isolated Symbol\n└ A direct data pin - Uses 1 symbol\n\n**three** - Temporal Vector\n└ Past, Present, Future - Uses 3 symbols\n\n**cross** - Cardinal Matrix\n└ Cartography of the problem - Uses 5 symbols\n\n**runic_cross** - Root Scanner\n└ Spiritual analysis from the deepest server - Uses 7 symbols\n\n**Console examples:**\n`!runes cast single How do I advance today?`\n`!runes cast three Show me the flow of this problem`\n`!runes cast cross Complete diagnosis of my state`\n\nChoose your format and let the matrix speak.",
-        "history_empty": "🔮 My files are pristine. You have not consulted the code in this terminal. Start `!runes cast`.",
-        "history_header": "🔮 **YOUR RECORDED READINGS** (Last {count})",
-        "history_entry": "**Block {id}** - {type}\nVariable: {question}\nMatrix: {runes}\nTime: {date}",
-        "stats": "\n**Total Compilations:** {total}\n**Favorite Format:** {favorite}",
-        "interpretation_header": "**Input parameter:** {question}\n\n",
-        "dropdown": {
-            "runes_single": "Extract Isolated Symbol",
-            "runes_three": "Decant Temporal Vector (3)", 
-            "runes_cross": "Compile Cardinal Matrix (5)",
-            "runes_runic_cross": "Scan Yggdrasil Network (7)",
-            "runes_history": "Query Records",
-            "runes_types": "View Usage Architectures",
-            "runes_runes_1": "Futhark Dictionary (Part I)",
-            "runes_runes_2": "Futhark Dictionary (Part II)",
-            "runes_runes_3": "Futhark Dictionary (Part III)",
-            "runes_single_description": "Immediate extraction to clear a specific doubt",
-            "runes_three_description": "Analysis of the timeline: origin, process, destination",
-            "runes_cross_description": "Deep diagnosis in five dimensions",
-            "runes_runic_cross_description": "The most exhaustive spiritual analysis",
-            "runes_history_description": "Retrieve your query history from the server",
-            "runes_types_description": "Explore available reading methods",
-            "runes_runes_1_description": "Review the first 8 universal concepts",
-            "runes_runes_2_description": "Review the central block of concepts",
-            "runes_runes_3_description": "Review the end of the ancient code",
-            "runes_on": "Oracle: Synchronize",
-            "runes_on_description": "Enable Nordic code reading",
-            "runes_off": "Oracle: Shut Down",
-            "runes_off_description": "Close access to Wyrd records"
-        },
-        "labels": {
-        "meaning": "Logic",
-        "keywords": "Search Keys",
-        "interpretation": "Synthesis",
-        "guidance": "Projection for your variable",
-        "question": "Query",
-        "position": "Node",
-        "rune": "Fractal",
-        "description": "Specification",
-        "success": "🔮 The matrix has decoded the message, seeker.",
-        "saved": "🔮 Your fluctuation has been sealed in the crystal of memory."
         }
     }
 }
