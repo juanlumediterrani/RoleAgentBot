@@ -6,15 +6,12 @@
     "canvas_trickster_overview_description": "Accede a las variables no lineales de la simulación.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "beggar": "🙏 **Transferencia Kármica** - Un llamado a ceder recursos para propósitos trascendentales",
         "dice_game": "🎲 **SINGULARIDAD** - Desafía a la máquina, altera el azar y absorbe el núcleo",
         "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
     },
     "subrole_buttons": {
         "dice": "🎲 Núcleo",
-        "ring": "👁️ Artefacto",
-        "beggar": "🙏 Karma",
-        "runes": "🔮 Runas"
+        "ring": "👁️ Artefacto"
     },
     "dice_game": {
         "waitmessage": "Calculando colapso de función de onda... Aguarda.",
@@ -145,30 +142,6 @@
         "dropdown": {
             "ring_accuse": "Artefacto: Señalar",
             "ring_accuse_description": "Indicar que un avatar oculta la anomalía en la red"
-        }
-    },
-    "beggar": {
-        "title": ":coin: **TRANSFERENCIA KÁRMICA** :coin:",
-        "description": " Ceder energía material permite al sistema completar simulaciones complejas. Aporta al flujo y los registros recordarán tu nombre.",
-        "current_fund": "Energía condensada:",
-        "title_reason": "Propósito lógico:",
-        "title_campaign": "🎯 **Vector actual**:",
-        "title_instructions": "💝 **¿Cómo fluye la energía?**",
-        "instructions": " - Inicia la transferencia desde el menú inferíor.\n - Aguarda al cierre del ciclo temporal para ver el balance.\n - Todo aporte, sin importar su masa, es grabado en la memoria eterna.\n",
-        "title_donations": "📊 ** Registro de Aportes:**",
-        "no_donations": " El registro yace vacío. Puedes ser el primero en romper la inercia.",
-        "beggar_donation_success": "La red asimila tu transferencia de {amount} fragmentos. Propósito encriptado: {reason}. Estás en sincronía. 🪙",
-        "dropdown": {
-            "beggar_donate": "Karma: Transferir",
-            "beggar_donate_description": "Ceder recursos para facilitar el flujo del servidor",
-            "beggar_on": "Karma: Habilitar",
-            "beggar_on_description": "Abrir los canales de recolección de energía",
-            "beggar_off": "Karma: Sellar",
-            "beggar_off_description": "Cerrar canales de recolección",
-            "beggar_frequency": "Karma: Ciclo",
-            "beggar_frequency_description": "Calibrar las peticiones del sistema",
-            "beggar_force_minigame": "Karma: Calcular Retorno",
-            "beggar_force_minigame_description": "Forzar la resolución de probabilidad kármica"
         }
     }
 }

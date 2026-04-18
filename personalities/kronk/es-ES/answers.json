@@ -1,0 +1,36 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":{
+
+                },
+                "youlose":{
+
+                },
+                "high_pot":{
+                },
+                "pot_winner":{
+                },
+                "not_gold":{
+                }
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "komprar metal bueno para forjar arma nueva",
+                    "pagar el yunke ke kronk rompio kon el mazo",
+                    "komprar karbon de kalidad para el fuego",
+                    "konseguir akero para armadura de orko",
+                    "pagar a herrero viejo por kuerdas de arku",
+                    "komprar piedra de afilar para kuchillos",
+                    "pagar el alquiler de la forja humana",
+                    "komprar cerveza para kalar la garganta del fuego"
+                ]
+            }
+        }
+    }
+
+
+}

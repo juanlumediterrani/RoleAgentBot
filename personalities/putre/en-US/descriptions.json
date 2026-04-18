@@ -158,6 +158,11 @@
         "chat",
         "lobby"
       ]
+    },
+    "reply_button": {
+      "label": "Reply",
+      "emoji": "💬",
+      "confirmation_message": "💬 You are now talking to me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
     }
   }
 }

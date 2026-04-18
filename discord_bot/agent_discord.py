@@ -15,7 +15,7 @@ from discord.ext import commands, tasks
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, _build_conversation_user_prompt
 from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
-from agent_db import set_current_server, get_server_id
+from agent_db import set_current_server, get_server_id, get_db_instance
 from behavior.db_behavior import get_behavior_db_instance
 from agent_logging import get_logger, update_log_file_path
 from discord_bot.discord_utils import (
@@ -32,8 +32,6 @@ from discord_bot.entitlement_manager import EntitlementManager, set_entitlement_
 
 logger = get_logger('discord')
 
-# DM session pins are persisted to disk via agent_db.pin_dm_session / get_pinned_dm_server
-# so they survive bot restarts. No in-memory cache needed.
 
 # --- CONFIGURATION ---
 
@@ -433,6 +431,10 @@ async def on_ready():
     logger.info(f"🤖 Bot connected as {bot.user}")
     logger.info(f"🤖 Prefix: {_cmd_prefix} | Intents: members={bot.intents.members}, presences={bot.intents.presences}")
 
+    from agent_mind import set_bot_discord_id
+    set_bot_discord_id(bot.user.id)
+    logger.info(f"🤖 Bot Discord ID registered: {bot.user.id}")
+
     # Automatic tasks
     if not database_cleanup.is_running():
         database_cleanup.start()
@@ -657,40 +659,49 @@ def _clean_message_content(message):
     """Clean message content by replacing Discord mentions with readable names and extracting user content after bot mention."""
     try:
         content = message.content
-        
-        # If bot is mentioned, extract only the user's content after the mention
+
+        # If bot is mentioned, check if it's a !canvas command (skip mention for those)
         if message.guild and bot.user.mentioned_in(message):
-            # Find bot mention and extract content after it
-            bot_mention = f'<@{bot.user.id}>'
-            bot_mention_bang = f'<@!{bot.user.id}>'
-            
-            if bot_mention in content:
-                parts = content.split(bot_mention, 1)
-                if len(parts) > 1:
-                    content = parts[1].strip()
-            elif bot_mention_bang in content:
-                parts = content.split(bot_mention_bang, 1)
-                if len(parts) > 1:
-                    content = parts[1].strip()
-        
-        # Replace other user mentions with display names (except bot's own mention which we already handled)
+            # For !canvas @Bot commands, remove only the bot mention
+            if content.strip().startswith('!canvas'):
+                bot_mention = f'<@{bot.user.id}>'
+                bot_mention_bang = f'<@!{bot.user.id}>'
+                content = content.replace(bot_mention, '').replace(bot_mention_bang, '').strip()
+            # For all other mentions, pass the full message (mention will be handled naturally)
+
+        # Get bot name from personality for mention replacement
+        from agent_engine import _get_personality
+        server_id = None
+        if message.guild:
+            from discord_bot.discord_utils import get_server_key
+            server_id = get_server_key(message.guild)
+        personality = _get_personality(server_id) if server_id else {}
+        bot_name = personality.get("name", "Bot")
+
+        # Replace bot mention with personality name
+        bot_mention = f'<@{bot.user.id}>'
+        bot_mention_bang = f'<@!{bot.user.id}>'
+        content = content.replace(bot_mention, f'@{bot_name}')
+        content = content.replace(bot_mention_bang, f'@{bot_name}')
+
+        # Replace other user mentions with display names
         for mention in message.mentions:
-            if mention.id != bot.user.id:  # Skip bot's own mention
+            if mention.id != bot.user.id:  # Skip bot's own mention (already handled)
                 content = content.replace(f'<@{mention.id}>', f'@{mention.display_name}')
                 content = content.replace(f'<@!{mention.id}>', f'@{mention.display_name}')
-        
+
         # Replace role mentions with role names
         for role_mention in message.role_mentions:
             content = content.replace(f'<@&{role_mention.id}>', f'@{role_mention.name}')
-        
+
         # Replace channel mentions with channel names
         for channel_mention in message.channel_mentions:
             content = content.replace(f'<#{channel_mention.id}>', f'#{channel_mention.name}')
-        
+
         # Clean @everyone and @here
         content = content.replace('@everyone', '@everyone')
         content = content.replace('@here', '@here')
-        
+
         return content
     except Exception as e:
         logger.warning(f"Error cleaning message content: {e}")
@@ -723,7 +734,7 @@ async def _process_accuse_flag(message, llm_response: str, server_id: str, is_pu
                 if message.author in server.members:
                     # Check if trickster role is enabled for this server
                     from discord_bot.discord_utils import is_role_enabled_check
-                    if is_role_enabled_check("trickster", server):
+                    if is_role_enabled_check("trickster", guild=server):
                         guild = server
                         break
         
@@ -996,20 +1007,19 @@ async def _process_chat_message(message):
             if current_active != server_id:
                 set_current_server(server_id)
         else:
-            # DM message - use pinned server set by greeting buttons
+            # DM message - resolve server: pin (set by reply button) > last interaction in DB
             from agent_db import get_pinned_dm_server, get_user_last_server_id
             pinned = get_pinned_dm_server(message.author.id)
             if pinned:
                 server_id = pinned
-                server_context = f"DM (pinned server: {server_id})"
-                logger.info(f"DM from {message.author.name} - pinned session server: {server_id}")
+                server_context = f"DM (pinned: {server_id})"
+                logger.info(f"DM from {message.author.name} - using pinned server: {server_id}")
             else:
-                # No pin yet - use last interaction as transient fallback (no pin created)
                 last_server = get_user_last_server_id(str(message.author.id))
                 if last_server:
                     server_id = last_server
-                    server_context = f"DM (fallback server: {server_id})"
-                    logger.info(f"DM from {message.author.name} - fallback server from DB: {server_id}")
+                    server_context = f"DM (last server: {server_id})"
+                    logger.info(f"DM from {message.author.name} - last server from DB: {server_id}")
                 else:
                     server_context = "DM (no server context)"
                     logger.info(f"DM from {message.author.name} - no server history found")
@@ -1113,14 +1123,14 @@ async def _process_chat_message(message):
             logger.info(f"🔇 NADA_QUE_DECIR response detected from {message.author.name} - skipping response sending")
             
             # Register interaction in database with description instead of literal keyword
-            db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)
+            db_instance = get_db_for_server(message.guild) if message.guild else get_db_instance(server_id or get_server_id() or "0")
             interaction_type = "CHANNEL" if is_public else "DM"
             await asyncio.to_thread(
                 db_instance.register_interaction,
                 message.author.id, message.author.name, interaction_type,
-                message.content,
+                clean_content,
                 message.channel.id if message.channel else None,
-                message.guild.id if message.guild else None,
+                server_id,
                 {"response": nothing_to_say_description, "is_public": is_public, "is_mention": is_mention, "nothing_to_say": True}
             )
             
@@ -1151,14 +1161,14 @@ async def _process_chat_message(message):
             return
 
         # Register interaction in database
-        db_instance = get_db_for_server(message.guild) if message.guild else get_db_for_server(None)
+        db_instance = get_db_for_server(message.guild) if message.guild else get_db_instance(server_id or get_server_id() or "0")
         interaction_type = "CHANNEL" if is_public else "DM"
         await asyncio.to_thread(
             db_instance.register_interaction,
             message.author.id, message.author.name, interaction_type,
-            message.content,
+            clean_content,
             message.channel.id if message.channel else None,
-            message.guild.id if message.guild else None,
+            server_id,
             {"response": response, "is_public": is_public, "is_mention": is_mention}
         )
 

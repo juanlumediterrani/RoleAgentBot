@@ -171,6 +171,11 @@
         "salón",
         "sala"
       ]
+    },
+    "reply_button": {
+      "label": "Responder",
+      "emoji": "💬",
+      "confirmation_message": "💬 Estás conversando conmigo como si estuvieras en **{server_name}**. Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor."
     }
   }
 }

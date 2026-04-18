@@ -581,7 +581,11 @@ def register_core_commands(bot, agent_config):
             server_key = get_server_key(ctx.guild)
             logger.info(f"Test personality evolution command executed by {ctx.author.name} in {ctx.guild.name}")
 
-            await ctx.send("🧬 Starting test personality evolution... This may take a moment.")
+            try:
+                await ctx.message.delete()
+            except Exception:
+                pass
+            status_msg = await ctx.send("🧬 Starting test personality evolution... This may take a moment.", delete_after=15)
 
             try:
                 from agent_mind import generate_test_personality_evolution
@@ -595,17 +599,151 @@ def register_core_commands(bot, agent_config):
                         f"💾 Backup: `{os.path.basename(result.get('backup_path', 'N/A'))}`\n"
                         f"📄 Check `logs/{result.get('server_id')}/prompt.log` for prompt and LLM response."
                     )
-                    await ctx.send(response)
+                    await ctx.send(response, delete_after=60)
                 else:
                     error_msg = result.get("error", "Unknown error")
-                    await ctx.send(f"❌ Test evolution failed: {error_msg}")
+                    await ctx.send(f"❌ Test evolution failed: {error_msg}", delete_after=60)
                     logger.error(f"Test personality evolution failed: {error_msg}")
 
             except Exception as e:
                 logger.exception(f"Error in test personality evolution command: {e}")
-                await ctx.send(f"❌ Error during test evolution: {e}")
+                await ctx.send(f"❌ Error during test evolution: {e}", delete_after=60)
     else:
         logger.info("Command testpersonalityevolution already registered, skipping...")
+
+    # --- TEST MEMORY SYNTHESIS COMMANDS ---
+
+    if bot.get_command("testdailymemory") is None:
+        @bot.command(name="testdailymemory")
+        async def cmd_test_daily_memory(ctx):
+            """Test daily memory synthesis generation."""
+            if not is_admin(ctx):
+                await ctx.send("❌ Only administrators can test daily memory synthesis.")
+                return
+
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers, not in direct messages.")
+                return
+
+            server_key = get_server_key(ctx.guild)
+            logger.info(f"Test daily memory command executed by {ctx.author.name} in {ctx.guild.name}")
+
+            try:
+                await ctx.message.delete()
+            except Exception:
+                pass
+            await ctx.send("🧠 Starting test daily memory synthesis... This may take a moment.", delete_after=15)
+
+            try:
+                from agent_mind import generate_daily_memory_summary
+                summary = await asyncio.to_thread(generate_daily_memory_summary, server_key, force=True)
+
+                if summary and summary != "[Error in internal task]":
+                    response = (
+                        f"✅ **Test daily memory synthesis completed**\n\n"
+                        f"📝 Summary (first 200 chars):\n```{summary[:200]}...```\n\n"
+                        f"💾 Saved to database with full history preserved.\n"
+                        f"📄 Check logs for complete prompt and LLM response."
+                    )
+                    await ctx.send(response, delete_after=60)
+                else:
+                    await ctx.send("❌ Test daily memory synthesis failed or returned empty.", delete_after=60)
+
+            except Exception as e:
+                logger.exception(f"Error in test daily memory command: {e}")
+                await ctx.send(f"❌ Error during test: {e}", delete_after=60)
+    else:
+        logger.info("Command testdailymemory already registered, skipping...")
+
+    if bot.get_command("testrecentmemory") is None:
+        @bot.command(name="testrecentmemory")
+        async def cmd_test_recent_memory(ctx):
+            """Test recent memory synthesis generation."""
+            if not is_admin(ctx):
+                await ctx.send("❌ Only administrators can test recent memory synthesis.")
+                return
+
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers, not in direct messages.")
+                return
+
+            server_key = get_server_key(ctx.guild)
+            logger.info(f"Test recent memory command executed by {ctx.author.name} in {ctx.guild.name}")
+
+            try:
+                await ctx.message.delete()
+            except Exception:
+                pass
+            await ctx.send("🧠 Starting test recent memory synthesis... This may take a moment.", delete_after=15)
+
+            try:
+                from agent_mind import generate_recent_memory_summary
+                summary = await asyncio.to_thread(generate_recent_memory_summary, server_key, force=True)
+
+                if summary and summary != "[Error in internal task]":
+                    response = (
+                        f"✅ **Test recent memory synthesis completed**\n\n"
+                        f"📝 Summary (first 200 chars):\n```{summary[:200]}...```\n\n"
+                        f"💾 Saved to database.\n"
+                        f"📄 Check logs for complete prompt and LLM response."
+                    )
+                    await ctx.send(response, delete_after=60)
+                else:
+                    await ctx.send("❌ Test recent memory synthesis failed or returned empty.", delete_after=60)
+
+            except Exception as e:
+                logger.exception(f"Error in test recent memory command: {e}")
+                await ctx.send(f"❌ Error during test: {e}", delete_after=60)
+    else:
+        logger.info("Command testrecentmemory already registered, skipping...")
+
+    if bot.get_command("testrelationshipmemory") is None:
+        @bot.command(name="testrelationshipmemory")
+        async def cmd_test_relationship_memory(ctx, member: discord.Member = None):
+            """Test relationship memory synthesis generation for a user."""
+            if not is_admin(ctx):
+                await ctx.send("❌ Only administrators can test relationship memory synthesis.")
+                return
+
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers, not in direct messages.")
+                return
+
+            # Default to command author if no member specified
+            target_member = member or ctx.author
+            server_key = get_server_key(ctx.guild)
+            user_id = str(target_member.id)
+            user_name = target_member.display_name
+
+            logger.info(f"Test relationship memory command executed by {ctx.author.name} for user {user_name} in {ctx.guild.name}")
+
+            await ctx.send(f"🧠 Starting test relationship memory synthesis for **{user_name}**... This may take a moment.")
+
+            try:
+                from agent_mind import generate_user_relationship_memory_summary
+                summary = await asyncio.to_thread(
+                    generate_user_relationship_memory_summary,
+                    user_id=user_id,
+                    user_name=user_name,
+                    server_id=server_key
+                )
+
+                if summary and summary != "[Error in internal task]":
+                    response = (
+                        f"✅ **Test relationship memory synthesis completed for {user_name}**\n\n"
+                        f"📝 Summary (first 200 chars):\n```{summary[:200]}...```\n\n"
+                        f"💾 Saved to database.\n"
+                        f"📄 Check logs for complete prompt and LLM response."
+                    )
+                    await ctx.send(response)
+                else:
+                    await ctx.send(f"❌ Test relationship memory synthesis failed for {user_name} or returned empty.")
+
+            except Exception as e:
+                logger.exception(f"Error in test relationship memory command: {e}")
+                await ctx.send(f"❌ Error during test: {e}")
+    else:
+        logger.info("Command testrelationshipmemory already registered, skipping...")
 
     # --- BOT IDENTITY COMMANDS ---
 
@@ -794,4 +932,4 @@ def register_core_commands(bot, agent_config):
         logger.info("Command setpersonality already registered, skipping...")
 
     # --- Log registered commands ---
-    logger.info(f"Core commands registered: agenthelp, canvas, {role_cmd_name}, readme, testpersonalityevolution, setnickname, identity, setpersonality")
+    logger.info(f"Core commands registered: agenthelp, canvas, {role_cmd_name}, readme, testpersonalityevolution, testdailymemory, testrecentmemory, testrelationshipmemory, setnickname, identity, setpersonality")

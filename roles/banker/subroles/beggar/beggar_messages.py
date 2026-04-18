@@ -4,13 +4,13 @@ Contains all text messages, prompts, and configuration for the beggar subrole.
 """
 
 import random
-import os
-import sys
 from typing import List, Dict, Any
-from pathlib import Path
 
 # Mission configuration (fallback if JSON is not available)
 MISSION_CONFIG = {
+    "current_fund":"Current found:",
+    "coin":"🪙",
+    "donnor":"Donnors:",
     "name": "beggar",
     "system_prompt_addition": "ACTIVE SUBROLE - BEGGAR: You are always looking for gold and donations for server proyects.",
     "golden_rules": [
@@ -53,6 +53,14 @@ MINIGAME_RESULTS_FALLBACK = {
 }
 
 
+def _get_beggar_section(server_id: str = None) -> Dict[str, Any]:
+    """Get beggar section from server-specific personality loaded by engine."""
+    from agent_engine import _get_personality
+
+    personality = _get_personality(server_id) if server_id else _get_personality()
+    return personality.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {})
+
+
 def _load_personality_reasons(server_id: str = None) -> List[str]:
     """
     Load reasons from personality prompts.json, fallback to BEGGAR_REASONS_FALLBACK.
@@ -64,28 +72,12 @@ def _load_personality_reasons(server_id: str = None) -> List[str]:
         List of reason strings
     """
     try:
-        # Add project root to path for imports
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        if project_root not in sys.path:
-            sys.path.insert(0, project_root)
-        
-        from agent_runtime import get_personality_file_path, _load_personality_file_cached
-        
-        # Try to load reasons from personality prompts.json
-        prompts_path = get_personality_file_path("prompts.json", server_id)
-        prompts_data = _load_personality_file_cached("prompts.json", server_id)
-        
-        # Check if reasons exist in the prompts
-        if prompts_data and "reasons" in prompts_data:
-            reasons = prompts_data["reasons"]
-            if isinstance(reasons, list) and reasons:
-                return reasons
-        
-        # Fallback to BEGGAR_REASONS_FALLBACK
+        beggar_section = _get_beggar_section(server_id)
+        reasons = beggar_section.get("reasons", [])
+        if isinstance(reasons, list) and reasons:
+            return reasons
         return BEGGAR_REASONS_FALLBACK
-        
     except Exception:
-        # If anything fails, return fallback
         return BEGGAR_REASONS_FALLBACK
 
 
@@ -114,23 +106,12 @@ def get_task_prompt_template(server_id: str = None) -> str:
         Task prompt template string with {reason} placeholder
     """
     try:
-        from agent_runtime import get_personality_file_path, _load_personality_file_cached
-        
-        # Try to load task prompt from personality prompts.json
-        prompts_data = _load_personality_file_cached("prompts.json", server_id)
-        
-        # Check if task prompt exists in the prompts
-        if prompts_data:
-            # Look for task prompt in the beggar subrole section
-            task_prompt = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("prompt")
-            if task_prompt:
-                return task_prompt
-        
-        # Fallback to BEGGAR_TASK_PROMPT_FALLBACK
+        beggar_section = _get_beggar_section(server_id)
+        task_prompt = beggar_section.get("prompt")
+        if task_prompt:
+            return task_prompt
         return BEGGAR_TASK_PROMPT_FALLBACK
-        
     except Exception:
-        # If anything fails, return fallback
         return BEGGAR_TASK_PROMPT_FALLBACK
 
 
@@ -146,23 +127,12 @@ def get_label(label_key: str, server_id: str = None) -> str:
         Label string
     """
     try:
-        from agent_runtime import get_personality_file_path, _load_personality_file_cached
-        
-        # Try to load labels from personality prompts.json
-        prompts_data = _load_personality_file_cached("prompts.json", server_id)
-        
-        # Check if labels exist in the prompts
-        if prompts_data:
-            # Look for labels in the beggar subrole section
-            labels = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("labels", {})
-            if label_key in labels:
-                return labels[label_key]
-        
-        # Fallback to BEGGAR_LABELS_FALLBACK
+        beggar_section = _get_beggar_section(server_id)
+        labels = beggar_section.get("labels", {})
+        if label_key in labels:
+            return labels[label_key]
         return BEGGAR_LABELS_FALLBACK.get(label_key, label_key)
-        
     except Exception:
-        # If anything fails, return fallback
         return BEGGAR_LABELS_FALLBACK.get(label_key, label_key)
 
 
@@ -170,7 +140,6 @@ def get_label(label_key: str, server_id: str = None) -> str:
 CANVAS_MESSAGES = {
     "title": "🪙 **RECAUDATIONS** 🪙",
     "description": " Keep gold for for different reasons and give the result at the end of the week.\n Maybe you won some gold.",
-    "current_fund":"Current found:",
     "title_campaign":"**Current campaing**",
     "title_reason":"Reason:",
     "title_instructions": "**Instructions**",
@@ -208,24 +177,37 @@ def get_golden_rules(server_id: str = None) -> List[str]:
         List of golden rule strings
     """
     try:
-        from agent_runtime import get_personality_file_path, _load_personality_file_cached
-        
-        # Try to load golden rules from personality prompts.json
-        prompts_data = _load_personality_file_cached("prompts.json", server_id)
-        
-        # Check if golden rules exist in the prompts
-        if prompts_data:
-            # Look for golden rules in the beggar subrole section
-            golden_rules = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("golden_rules", [])
-            if golden_rules:
-                return golden_rules
-        
-        # Fallback to MISSION_CONFIG
+        beggar_section = _get_beggar_section(server_id)
+        golden_rules = beggar_section.get("golden_rules", [])
+        if golden_rules:
+            return golden_rules
         return MISSION_CONFIG.get('golden_rules', [])
-        
     except Exception:
-        # If anything fails, return fallback
         return MISSION_CONFIG.get('golden_rules', [])
+
+
+def get_memory_interaction_label(interaction_type: str = "recaudation", server_id: str = None) -> str:
+    """
+    Load memory interaction label from personality prompts.json, fallback to default.
+    
+    Args:
+        interaction_type: Type of interaction (e.g., "recaudation")
+        server_id: Server ID for server-specific personality files
+        
+    Returns:
+        Formatted label string: "{beggar_system} /{event} - {recaudation}:"
+    """
+    try:
+        from agent_engine import _get_personality
+
+        personality = _get_personality(server_id) if server_id else _get_personality()
+        event_label = personality.get("general", {}).get("event", "Event")
+        memory_labels = _get_beggar_section(server_id).get("memory_labels", {})
+        beggar_system = memory_labels.get("beggar_system", "Beggar System")
+        recaudation = memory_labels.get(interaction_type, interaction_type)
+        return f"{beggar_system} /{event_label} - {recaudation}:"
+    except Exception:
+        return f"Beggar System /Event - {interaction_type}:"
 
 
 def get_canvas_message(server_db_path: str = None, key: str = None, **kwargs) -> str:

@@ -21,12 +21,12 @@
       "tips_section": "**建议**\n- 你可以向我询问我自己的守则：‘骰子模块如何工作？’\n- 每条道路都有自己的节奏，需要自己的倾听方式。"
     },
     "canvas_home_messages": {
-      "title": "🧭 由纪的厅堂",
-      "button_home": "🧭 门槛",
+      "title": "⛩️ 由纪的厅堂",
+      "button_home": "⛩️ 门槛",
       "button_back": "← 返回",
-      "button_roles": "🎭 技艺",
-      "button_behavior": "🤖 守则",
-      "button_help": "📝 协助",
+      "button_roles": "🪭 技艺",
+      "button_behavior": "👘 守则",
+      "button_help": "🏮 协助",
       "generic_option_label": "选择一条道路...",
       "personalitystatus": "活跃存在：",
       "description": "canvas 面板是你访问系统核心的快捷方式。",
@@ -170,6 +170,11 @@
         "大厅",
         "聊天"
       ]
+    },
+    "reply_button": {
+      "label": "回复",
+      "emoji": "💬",
+      "confirmation_message": "💬 你现在正在与我交谈，就像你在 **{server_name}** 一样。你的所有回复都将使用此人格，直到你选择另一个服务器。"
     }
   }
 }

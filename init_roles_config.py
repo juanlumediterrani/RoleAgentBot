@@ -30,6 +30,13 @@ def init_roles_config_for_server(server_id: str):
         else:
             logger.error("❌ Failed to ensure default roles")
         
+        # Then, migrate from agent_config.json to get subroles and full config
+        migrated = roles_db.migrate_roles_from_agent_config()
+        if migrated:
+            logger.info("✅ Roles migrated from agent_config.json")
+        else:
+            logger.info("ℹ️ No new roles to migrate from agent_config.json")
+        
         # Verify final state
         import sqlite3
         conn = sqlite3.connect(roles_db.db_path)

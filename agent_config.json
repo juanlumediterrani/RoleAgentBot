@@ -46,10 +46,6 @@
       "interval_hours": 12,
       "script": "roles/trickster/trickster.py",
       "subroles": {
-        "beggar": {
-          "enabled": true,
-          "frequency_hours": 12
-        },
         "dice_game": {
           "enabled": true,
           "fixed_bet": 10
@@ -96,7 +92,13 @@
     "banker": {
       "enabled": true,
       "interval_hours": 24,
-      "script": "roles/banker/banker.py"
+      "script": "roles/banker/banker.py",
+      "subroles": {
+        "beggar": {
+          "enabled": true,
+          "frequency_hours": 12
+        }
+      }
     }
   }
 }

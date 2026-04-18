@@ -6,15 +6,12 @@
     "canvas_trickster_overview_description": "Accede a los módulos de probabilidad y azar de la sala.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "beggar": "🧧 **Kifu (寄付)** - Apoya algo que merece ser sostenido entre todos",
         "dice_game": "🎲 **Ozashiki-asobi (お座敷遊び) ** - Desafía al azar y reclama el fondo acumulado",
         "ring": "👁️ **Me-tsuke (目付)** - El círculo de vigilancia que mantiene el orden en el distrito"
     },
     "subrole_buttons": {
         "dice": "🎲 Ozashiki-asobi",
-        "ring": "👁️ Me-tsuke",
-        "beggar": "🧧 Kifu",
-        "runes": "🔮 Uranaishi"
+        "ring": "👁️ Me-tsuke"
     },
     "dice_game": {
         "waitmessage": "Calculando resultado... Un momento.",
@@ -145,30 +142,6 @@
         "dropdown": {
             "ring_accuse": "Me-tsuke: Señalar",
             "ring_accuse_description": "Indicar que un visitante es sospechoso para la investigación"
-        }
-    },
-    "beggar": {
-        "title": "🧧 **KIFU (寄付)** 🧧",
-        "description": "🎭 El mecenazgo de la sala. Como Danna (patron), inviertes en el prestigio de la casa de té para desbloquear mejoras y nuevos instrumentos.",
-        "current_fund": "Fondo de mecenazgo:",
-        "title_reason": "Inversión en:",
-        "title_campaign": "🎯 **Proyecto actual:**",
-        "title_instructions": "💝 **¿Cómo ser Danna?**",
-        "instructions": " - Usa el menú de abajo para realizar tu mecenazgo.\n - Al cierre del ciclo se revelará el resultado de la inversión.\n - Todo Kifu, grande o pequeño, queda registrado en el prestigio de la sala.\n",
-        "title_donations": "📊 **Registro de Danna:**",
-        "no_donations": " Sin mecenazgos registrados todavía. Puedes ser el primer Danna.",
-        "beggar_donation_success": "Tu Kifu de {amount} monedas ha sido registrado. Inversión en: {reason}. Arigato. 🪙",
-        "dropdown": {
-            "beggar_donate": "Kifu: Donar",
-            "beggar_donate_description": "Realizar un mecenazgo al fondo actual",
-            "beggar_on": "Kifu: Activar",
-            "beggar_on_description": "Abrir el canal de mecenazgo",
-            "beggar_off": "Kifu: Cerrar",
-            "beggar_off_description": "Cerrar el canal de mecenazgo",
-            "beggar_frequency": "Kifu: Ciclo",
-            "beggar_frequency_description": "Ajustar la cadencia de los ciclos de inversión",
-            "beggar_force_minigame": "Kifu: Cerrar ciclo",
-            "beggar_force_minigame_description": "Forzar el cierre del ciclo actual y calcular el resultado de la inversión"
         }
     }
 }

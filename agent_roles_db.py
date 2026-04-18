@@ -809,13 +809,16 @@ class RolesDatabase:
     
     def migrate_roles_from_agent_config(self, agent_config_path: str = None) -> bool:
         """Migrate roles from agent_config.json to roles_config - first time initialization."""
+        logger.info(f"[MIGRATE] Starting migrate_roles_from_agent_config for server {self.server_id}")
         try:
             import json
             import os
             
             # Default path to agent_config.json
             if agent_config_path is None:
-                agent_config_path = os.path.join(os.path.dirname(__file__), '..', 'agent_config.json')
+                # Get the project root directory (where agent_config.json is located)
+                project_root = os.path.dirname(os.path.abspath(__file__))
+                agent_config_path = os.path.join(project_root, 'agent_config.json')
             
             if not os.path.exists(agent_config_path):
                 logger.info(f"agent_config.json not found at {agent_config_path}")
@@ -834,6 +837,7 @@ class RolesDatabase:
             
             migrated = 0
             updated = 0
+            config_updates = 0
             
             for role_name, role_config in roles_cfg.items():
                 if not isinstance(role_config, dict):
@@ -851,8 +855,8 @@ class RolesDatabase:
                 }
                 
                 # Add specific configurations for different roles
-                if role_name == 'trickster' and 'subroles' in role_config:
-                    # Handle trickster subroles - create separate entries only
+                if 'subroles' in role_config:
+                    # Handle subroles for any role - create separate entries
                     subroles = role_config.get('subroles', {})
                     
                     # Create separate entries for subroles
@@ -940,39 +944,40 @@ class RolesDatabase:
                 # Check if role already exists
                 existing_config = self.get_role_config(role_name)
                 if existing_config and existing_config.get('created_at'):
-                    # Role exists, update if different
+                    # Role exists, always update config_data to ensure agent_config is preserved
+                    existing_config_data = existing_config.get('config_data', '{}')
+                    try:
+                        existing_data = json.loads(existing_config_data) if existing_config_data else {}
+                    except:
+                        existing_data = {}
+                    
+                    
+                    # Check if agent_config data is missing or empty (BEFORE updating)
+                    existing_agent_config = existing_data.get('agent_config', {})
+                    had_empty_config = not existing_agent_config
+                    config_different = existing_agent_config and existing_agent_config != role_config
+                    
+                    
+                    # Always update with agent_config data to ensure full config is preserved
+                    existing_data.update(config_data)
+                    existing_data['updated_from_agent_config'] = True
+                    
+                    # Track if we made any changes
                     if existing_config.get('enabled') != enabled:
-                        # Preserve existing config_data but update enabled
-                        existing_config_data = existing_config.get('config_data', '{}')
-                        try:
-                            existing_data = json.loads(existing_config_data) if existing_config_data else {}
-                        except:
-                            existing_data = {}
-                        
-                        # Update with agent_config data
-                        existing_data.update(config_data)
-                        existing_data['updated_from_agent_config'] = True
-                        
-                        success = self.save_role_config(role_name, enabled, json.dumps(existing_data))
-                        if success:
-                            updated += 1
-                            logger.info(f"Updated role {role_name} from agent_config: enabled={enabled}")
-                            
-                            # Special initialization for beggar role when updated
-                            if role_name == 'beggar' and enabled:
-                                try:
-                                    from roles.banker.subroles.beggar.beggar_db import get_beggar_config
-                                    beggar_config = get_beggar_config(server_id)
-                                    
-                                    # Check if reason is not already set
-                                    if not beggar_config.get_current_reason():
-                                        # Select initial reason for updated beggar
-                                        selected_reason = beggar_config.select_new_reason()
-                                        logger.info(f"Initialized beggar reason during update: {selected_reason}")
-                                except Exception as e:
-                                    logger.warning(f"Failed to initialize beggar reason during update: {e}")
-                    else:
-                        logger.info(f"Role {role_name} already exists with same enabled state")
+                        updated += 1
+                        logger.info(f"Updated role {role_name} from agent_config: enabled changed to {enabled}")
+                    
+                    if had_empty_config:
+                        logger.info(f"Updated role {role_name} config_data (added missing agent_config)")
+                        config_updates += 1
+                    elif config_different:
+                        logger.info(f"Updated role {role_name} config_data (config changed)")
+                        config_updates += 1
+                    
+                    # Always save to ensure config_data is up to date
+                    success = self.save_role_config(role_name, enabled, json.dumps(existing_data))
+                    if not success:
+                        logger.warning(f"Failed to update role {role_name} config_data")
                 else:
                     # Role doesn't exist, create it
                     success = self.save_role_config(role_name, enabled, json.dumps(config_data))
@@ -980,12 +985,89 @@ class RolesDatabase:
                         migrated += 1
                         logger.info(f"Migrated role {role_name} from agent_config: enabled={enabled}")
             
-            logger.info(f"Migration from agent_config completed: {migrated} new roles, {updated} updated roles")
-            return (migrated + updated) > 0
+            logger.info(f"Migration from agent_config completed: {migrated} new roles, {updated} updated, {config_updates} config updates")
+            return (migrated + updated + config_updates) > 0
             
         except Exception as e:
             logger.error(f"Error migrating roles from agent_config: {e}")
             return False
+    
+    def get_all_roles_with_subroles(self) -> Dict[str, Any]:
+        """Get all roles with their subroles from roles_config table."""
+        try:
+            import json
+            
+            with self._lock:
+                self._ensure_roles_config_table()
+                
+                # Check if table is empty and trigger migration if needed
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM roles_config")
+                    count = cursor.fetchone()[0]
+                    
+                    if count == 0:
+                        logger.warning("roles_config table is empty, triggering migration from agent_config.json")
+                        self.migrate_roles_from_agent_config()
+                
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT role_name, enabled, config_data
+                        FROM roles_config
+                        ORDER BY role_name
+                    """)
+                    
+                    roles = {}
+                    subroles = {}
+                    
+                    for row in cursor.fetchall():
+                        role_name = row[0]
+                        enabled = bool(row[1])
+                        config_data_raw = row[2] or '{}'
+                        
+                        try:
+                            config_data = json.loads(config_data_raw) if config_data_raw else {}
+                        except Exception:
+                            config_data = {}
+                        
+                        parent_role = config_data.get('parent_role')
+                        agent_config = config_data.get('agent_config', {})
+                        subrole_config = config_data.get('subrole_config', {})
+                        
+                        if parent_role:
+                            # This is a subrole - store for later attachment
+                            subroles[role_name] = {
+                                'enabled': enabled,
+                                'parent_role': parent_role,
+                                'config': subrole_config or agent_config
+                            }
+                        else:
+                            # This is a main role - expand config directly
+                            # Also ensure 'enabled' is set properly
+                            role_data = {
+                                'enabled': enabled,
+                                **agent_config  # Expand config keys directly
+                            }
+                            roles[role_name] = role_data
+                    
+                    # Attach subroles to their parent roles
+                    for subrole_name, subrole_info in subroles.items():
+                        parent = subrole_info['parent_role']
+                        if parent in roles:
+                            if 'subroles' not in roles[parent]:
+                                roles[parent]['subroles'] = {}
+                            # Expand subrole config directly
+                            roles[parent]['subroles'][subrole_name] = {
+                                'enabled': subrole_info['enabled'],
+                                **subrole_info['config']
+                            }
+                    
+                    return roles
+                    
+        except Exception as e:
+            logger.error(f"Failed to get all roles with subroles: {e}")
+            return {}
     
     def migrate_legacy_beggar_data(self, server_id: str) -> bool:
         """Migrate beggar data from the dedicated beggar database into roles.db."""

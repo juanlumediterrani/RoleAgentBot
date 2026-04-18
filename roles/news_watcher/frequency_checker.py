@@ -116,7 +116,9 @@ class NewsFrequencyChecker:
         """Send direct messages to users."""
         for user_id, message in user_messages:
             try:
+                # Try bot cache first (avoids fetch_user API issues)
                 user = self.bot.get_user(int(user_id))
+                
                 if user:
                     # Split long messages to avoid Discord limits
                     if len(message) > 2000:
@@ -127,7 +129,7 @@ class NewsFrequencyChecker:
                     else:
                         await user.send(message)
                 else:
-                    logger.warning(f"Could not find user {user_id} for DM")
+                    logger.warning(f"Could not find user {user_id} in bot cache for DM")
                     
             except Exception as e:
                 logger.exception(f"Error sending DM to user {user_id}: {e}")

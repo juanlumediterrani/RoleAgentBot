@@ -1,0 +1,36 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":{
+
+                },
+                "youlose":{
+
+                },
+                "high_pot":{
+                },
+                "pot_winner":{
+                },
+                "not_gold":{
+                }
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "para finankiar la Konstrukkzion del nuevo Kuartel",
+                    "para pagar el Formulario 27-K de mantenimiento burokratiko",
+                    "para adkuerir tinta de kalidad para sellar Dokumentos",
+                    "para komprar Bratwurst para la tropa disciplinada",
+                    "para pagar las multas a Zivilisten indiskiplinados",
+                    "para renovar el stock de formularios en triplikado",
+                    "para finankiar la inspekzion militar del servidor",
+                    "para komprar cerveza kaliente para el personal de Ofizina"
+                ]
+            }
+        }
+    }
+
+
+}

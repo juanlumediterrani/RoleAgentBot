@@ -43,26 +43,44 @@ class ReplyButton(discord.ui.Button):
     """Button to reply to a greeting and set the conversation context to this server."""
     
     def __init__(self, guild: discord.Guild, server_id: str, row: int = 0):
+        # Get reply button config from personality descriptions with English fallback
+        personality = _get_personality(server_id) if server_id else _get_personality()
+        descriptions = personality.get("descriptions", {}).get("discord", {})
+        reply_button_cfg = descriptions.get("reply_button", {})
+        
+        # Use config values or English fallbacks
+        label = reply_button_cfg.get("label", "Reply")
+        emoji = reply_button_cfg.get("emoji", "💬")
+        
         super().__init__(
-            label="Contestar",
+            label=label,
             style=discord.ButtonStyle.primary,
-            emoji="💬",
+            emoji=emoji,
             row=row
         )
         self.guild = guild
         self.server_id = server_id
     
     async def callback(self, interaction: discord.Interaction):
-        """Handle reply button click - pin the conversation to this server."""
+        """Handle reply button click - pin this server and show confirmation."""
         try:
-            # Pin the DM session to this server
             from agent_db import pin_dm_session
             pin_dm_session(interaction.user.id, self.server_id)
-            logger.info(f"DM session pinned via ReplyButton: user={interaction.user.id} server={self.server_id}")
+            logger.info(f"ReplyButton: DM pinned user={interaction.user.id} → server={self.server_id}")
+
+            # Get confirmation message from personality descriptions with English fallback
+            personality = _get_personality(self.server_id) if self.server_id else _get_personality()
+            descriptions = personality.get("descriptions", {}).get("discord", {})
+            reply_button_cfg = descriptions.get("reply_button", {})
+            
+            # Use config message or English fallback
+            confirmation_template = reply_button_cfg.get("confirmation_message", 
+                "💬 You are now talking to me as if you were in **{server_name}**. All your responses will use this personality until you select another server.")
+            confirmation_message = confirmation_template.format(server_name=self.guild.name)
             
             # Disable the button after clicking
             self.disabled = True
-            self.label = "✓ Conversación activa"
+            self.label = "✓ Active"
             self.style = discord.ButtonStyle.success
             
             # Update the message to show the button was clicked
@@ -70,8 +88,7 @@ class ReplyButton(discord.ui.Button):
             
             # Send a confirmation message
             await interaction.followup.send(
-                f"💬 Estás conversando conmigo como si estuvieras en **{self.guild.name}**. "
-                f"Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor.",
+                confirmation_message,
                 ephemeral=True
             )
         except Exception as e:

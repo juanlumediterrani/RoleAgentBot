@@ -15,7 +15,8 @@ from agent_mind import call_llm
 from agent_logging import get_logger
 from agent_db import AgentDatabase
 from behavior.db_behavior import get_behavior_db_instance
-from discord_bot.discord_utils import is_admin, get_db_for_server, set_role_enabled
+from behavior.greet import ReplyButton, ReplyButtonView
+from discord_bot.discord_utils import is_admin, get_db_for_server, set_role_enabled, send_personality_embed_dm
 from .ring_db import RingDB, get_ring_db_instance
 
 logger = get_logger('ring_discord')
@@ -280,7 +281,6 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
     if guild and target_user_id and target_user_name:
         try:
             logger.info(f"🎯 Executing immediate ring accusation against {target_user_name}")
-            accusation = await execute_ring_accusation(guild, target_user_id, target_user_name, user_name=accuser_name, accuser_id=accuser_id)
             
             # Try to send the accusation via DM to the target
             try:
@@ -288,10 +288,37 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
                 from discord_bot.agent_discord import get_bot_instance
                 bot = get_bot_instance()
                 if bot:
-                    target_user = bot.get_user(int(target_user_id))
+                    # Try to get user from guild first (most reliable for shared servers)
+                    target_user = None
+                    try:
+                        target_user = guild.get_member(int(target_user_id))
+                    except Exception:
+                        pass
+                    
+                    # Fallback to bot cache
+                    if not target_user:
+                        target_user = bot.get_user(int(target_user_id))
+                    
                     if target_user:
-                        await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
-                        logger.info(f"🎭 [RING] Immediate accusation sent via DM to {target_user_name}")
+                        server_id = str(guild.id)
+                        
+                        # Send personality embed first (server-specific avatar and name)
+                        await send_personality_embed_dm(target_user, bot, guild, server_id)
+                        
+                        # Generate the accusation before sending
+                        accusation = await execute_ring_accusation(guild, target_user_id, target_user_name, user_name=accuser_name, accuser_id=accuser_id)
+                        
+                        # Create the reply button view for this server
+                        view = ReplyButtonView(guild, server_id, timeout=300.0)
+                        
+                        # Send header + accusation text + reply button in a single message
+                        combined_message = await target_user.send(
+                            f"👁️ **RING ACCUSATION**\n{accusation}",
+                            view=view
+                        )
+                        view.message = combined_message
+                        
+                        logger.info(f"🎭 [RING] Immediate accusation sent via DM to {target_user_name} with personality embed and reply button")
                     else:
                         logger.warning(f"🎭 [RING] Could not find target user {target_user_id} for DM")
                 else:

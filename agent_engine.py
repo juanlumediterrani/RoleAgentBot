@@ -653,6 +653,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
 
 
 def _get_active_roles_section(server_id: str = None) -> str:
+    logger.warning(f"[_get_active_roles_section] Called with server_id={server_id}")
     # Use server-specific personality if server_id provided
     if server_id:
         try:
@@ -662,7 +663,20 @@ def _get_active_roles_section(server_id: str = None) -> str:
     else:
         personality = PERSONALITY
     
-    roles = (AGENT_CFG or {}).get("roles", {})
+    # Load roles from database instead of AGENT_CFG
+    roles = {}
+    if server_id:
+        try:
+            from agent_roles_db import get_roles_db_instance
+            roles_db = get_roles_db_instance(server_id)
+            roles = roles_db.get_all_roles_with_subroles()
+            logger.info(f"[_get_active_roles_section] Loaded {len(roles)} roles from database")
+        except Exception as e:
+            logger.warning(f"[_get_active_roles_section] Failed to load roles from database: {e}, falling back to AGENT_CFG")
+            roles = (AGENT_CFG or {}).get("roles", {})
+    else:
+        roles = (AGENT_CFG or {}).get("roles", {})
+        logger.warning(f"[_get_active_roles_section] Loaded {len(roles)} roles from AGENT_CFG (no server_id)")
     section_cfg = personality.get("active_roles_section", {})
     role_sections = personality.get("roles", {})
 
@@ -676,7 +690,9 @@ def _get_active_roles_section(server_id: str = None) -> str:
     line_template = str(section_cfg.get("line_template") or "- {scope}: {duty}").strip()
 
     lines: list[str] = []
+    logger.warning(f"[_get_active_roles_section] Processing {len(roles)} roles")
     for role_name, role_cfg in roles.items():
+        logger.warning(f"[_get_active_roles_section] Checking role: {role_name}, enabled={role_cfg.get('enabled', False) if isinstance(role_cfg, dict) else 'N/A'}")
         if not isinstance(role_cfg, dict) or not role_cfg.get("enabled", False):
             continue
 
@@ -688,17 +704,71 @@ def _get_active_roles_section(server_id: str = None) -> str:
 
         subroles = role_cfg.get("subroles", {})
         role_subroles_cfg = role_prompt_cfg.get("subroles", {}) if isinstance(role_prompt_cfg, dict) else {}
+        logger.warning(f"[_get_active_roles_section] Role {role_name} has {len(subroles)} subroles")
         if not isinstance(subroles, dict):
             continue
         if not isinstance(role_subroles_cfg, dict):
             role_subroles_cfg = {}
 
         for subrole_name, subrole_cfg in subroles.items():
+            logger.warning(f"[_get_active_roles_section] Checking subrole: {subrole_name}, enabled={subrole_cfg.get('enabled', False) if isinstance(subrole_cfg, dict) else 'N/A'}")
             if not isinstance(subrole_cfg, dict) or not subrole_cfg.get("enabled", False):
                 continue
             subrole_prompt_cfg = role_subroles_cfg.get(subrole_name, {})
             
             subrole_duty = _get_active_duty_text(subrole_prompt_cfg, server_id, subrole_name)
+            
+            # Special handling for beggar subrole: add fund and contributions
+            logger.warning(f"[_get_active_roles_section] Checking beggar condition: role_name={role_name}, subrole_name={subrole_name}, server_id={server_id}")
+            if role_name == "banker" and subrole_name == "beggar" and server_id:
+                logger.warning(f"[_get_active_roles_section] BEGGAR CONDITION MATCHED! Processing beggar fund info...")
+                try:
+                    from roles.banker.subroles.beggar.beggar_db import get_beggar_db
+                    import traceback
+                    
+                    beggar_db = get_beggar_db(server_id)
+                    fund_balance = beggar_db.get_fund_balance()
+                    participants = beggar_db.get_donation_participants()
+                    
+                    logger.warning(f"[BEGGAR DEBUG] Server {server_id}: fund={fund_balance}, participants={len(participants)}")
+                    
+                    server_personality = _get_personality(server_id)
+                    beggar_section = server_personality.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {})
+                    
+                    logger.warning(
+                        f"[BEGGAR DEBUG] Loaded beggar section from personality={server_personality.get('name', 'unknown')} "
+                        f"subrole_keys={list(server_personality.get('roles', {}).get('banker', {}).get('subroles', {}).keys())}"
+                    )
+                    
+                    fund_label = beggar_section.get("current_fund", "Fondo actual:")
+                    coin = beggar_section.get("coin", "🪙")
+                    donnor_label = beggar_section.get("donnor", "Donadores:")
+                    
+                    # Get current reason from config
+                    current_reason = beggar_db.get_current_reason() if hasattr(beggar_db, 'get_current_reason') else "server projects"
+                    
+                    # Build fund info string - Fondo actual primero, luego donadores
+                    fund_info = f"\n  {fund_label} {fund_balance:,} {coin}"
+                    
+                    # Add individual participants with donations
+                    if participants:
+                        fund_info += f"\n  {donnor_label}"
+                        for participant in participants:
+                            name = participant.get('user_name', 'Unknown')
+                            amount = participant.get('total_donated', 0)
+                            fund_info += f"\n    - {name}({amount})"
+                    
+                    # Append to duty
+                    if subrole_duty:
+                        subrole_duty += fund_info
+                    else:
+                        subrole_duty = fund_info.lstrip()
+                    
+                    logger.warning(f"[BEGGAR DEBUG] Successfully added beggar fund info to prompt")
+                        
+                except Exception as e:
+                    logger.error(f"[BEGGAR DEBUG] Failed to load beggar fund info for server {server_id}: {e}")
+                    logger.error(f"[BEGGAR DEBUG] Traceback: {traceback.format_exc()}")
             
             if subrole_duty:
                 subrole_display = _get_role_display_name(subrole_name, server_id)
@@ -1168,13 +1238,25 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                     from discord_bot.agent_discord import get_bot_instance
                     bot = get_bot_instance()
                     if bot:
-                        target_user = bot.get_user(int(target_user_id))
+                        # Try to get user from guild first (most reliable)
+                        target_user = None
+                        try:
+                            guild = bot.get_guild(int(server_name))
+                            if guild:
+                                target_user = guild.get_member(int(target_user_id))
+                        except Exception:
+                            pass
+                        
+                        # Fallback to bot cache
+                        if not target_user:
+                            target_user = bot.get_user(int(target_user_id))
+                        
                         if target_user:
                             await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
                             logger.info(f"🎭 [RING] Accusation sent via DM to {target_user_name}")
                             dm_sent = True
                         else:
-                            logger.warning(f"🎭 [RING] Could not find target user {target_user_id} in cache")
+                            logger.warning(f"🎭 [RING] Could not find target user {target_user_id} in guild or cache")
                     else:
                         logger.warning(f"🎭 [RING] Bot instance not available")
                 except Exception as dm_error:

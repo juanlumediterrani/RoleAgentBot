@@ -1,0 +1,36 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":{
+
+                },
+                "youlose":{
+
+                },
+                "high_pot":{
+                },
+                "pot_winner":{
+                },
+                "not_gold":{
+                }
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "para komprar levadura freska ke no grite",
+                    "para pagar la multa del Amo por keman el pan",
+                    "para adkuirer harina sin gorgojos de verdad",
+                    "para sobornar a la rata grande ke roba el serron",
+                    "para reparar la puerta del horno ke se kae",
+                    "para komprar agua sin sarna para amasar",
+                    "para pagar al karbonero ke trae leña humeda",
+                    "para konstruir kueva propia lejos del Amo"
+                ]
+            }
+        }
+    }
+
+
+}

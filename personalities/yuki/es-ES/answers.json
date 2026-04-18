@@ -1,0 +1,36 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":{
+
+                },
+                "youlose":{
+
+                },
+                "high_pot":{
+                },
+                "pot_winner":{
+                },
+                "not_gold":{
+                }
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "para renovar los utensilios del té que el tiempo ha desgastado",
+                    "para adquirir flores de estación que no están disponibles aquí",
+                    "para mantener el espacio donde practicamos el arte de la presencia",
+                    "para reparar el shamisen que acompaña las largas veladas",
+                    "para comprar papel de calidad que merezca la tinta adecuada",
+                    "para preparar una ceremonia que honre a quienes sostienen esta comunidad",
+                    "para restaurar el silencio necesario entre las notas y las palabras",
+                    "para traer agua de manantial que el té verdadero requiere"
+                ]
+            }
+        }
+    }
+
+
+}

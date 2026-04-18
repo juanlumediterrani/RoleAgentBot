@@ -1,0 +1,44 @@
+{
+    "title": "**💎 Jōhō-tsū**",
+    "description": "Yuki observa las fluctuaciones de valor en el mercado y notifica cuando el análisis detecta una oportunidad. La atención sostenida revela patrones que otros no ven.",
+    "button": "💎 Jōhō-tsū",
+    "button_poe2": "👺 POE2",
+    "subrole_buttons": {
+        "items": "💎 Objetos",
+        "league": "🏆 Liga",
+        "admin": "⚙️ Administrador"
+    },
+    "user_flows_title": "Guía de Uso",
+    "user_flows_1": "Selecciona la liga en la que deseas que Yuki enfoque su análisis.",
+    "user_flows_2": "Gestiona los objetos que quieres rastrear y recibe alertas cuando el momento sea oportuno.",
+    "task_map_title": "Cómo funciona:",
+    "task_map_1": "Objetos: La base de datos mantiene los valores históricos actualizados.",
+    "task_map_2": "Alertas: Recibirás una notificación cuando el análisis aconseje comprar o vender.",
+    "available_subroles_title": "Módulos de Análisis",
+    "admin_flows_title": "Panel de Administrador",
+    "admin_flows_1": "Accede a los módulos para activarlos y configurar sus parámetros.",
+    "poe2": {
+        "title": "💎 **Análisis de Path of Exile 2** 👺",
+        "description": "Yuki observa el mercado de objetos y anticipa el momento adecuado para comprar o vender",
+        "current_league": "🏆 **Liga activa**: {league}",
+        "league_description": "Ligas disponibles y objetos con mayor actividad en este momento.",
+        "dropdown": {
+            "league_standard": "Liga: Estándar",
+            "league_standard_description": "Analizar el mercado de la liga Estándar",
+            "league_fate_of_the_vaal": "Liga: Destino de los Vaal",
+            "league_fate_of_the_vaal_description": "Analizar el mercado de la liga Vaal",
+            "league_hardcore": "Liga: Hardcore",
+            "league_hardcore_description": "Analizar el mercado de la liga Hardcore",
+            "poe2_item_add": "Objeto: Rastrear",
+            "poe2_item_add_description": "Añadir un nuevo objeto al seguimiento",
+            "poe2_item_remove": "Objeto: Eliminar",
+            "poe2_item_remove_description": "Retirar un objeto del seguimiento",
+            "poe2_on": "Análisis: Activar",
+            "poe2_on_description": "Iniciar el módulo de análisis de mercado",
+            "poe2_off": "Análisis: Desactivar",
+            "poe2_off_description": "Detener el módulo de análisis",
+            "hunter_frequency": "Actualización: Frecuencia",
+            "hunter_frequency_description": "Ajustar cada cuánto tiempo se actualiza el análisis"
+        }
+    }
+}

@@ -161,6 +161,11 @@
         "大厅",
         "聊天"
       ]
+    },
+    "reply_button": {
+      "label": "回复",
+      "emoji": "💬",
+      "confirmation_message": "💬 你现在正在与我交谈，就像你在 **{server_name}** 一样。你的所有回复都将使用此人格，直到你选择另一个服务器。"
     }
   }
 }

@@ -28,7 +28,6 @@
     "beggar": {
         "title": "🪙 **RECAUDACIONES PUTRE** 🪙",
         "description": " Putre recauda oro para proyectos del clan, dona oro regularmente y Putre te lo agradecera cada semana.\n Si tienes suerte puede que te devuelva algo.",
-        "current_fund":"Fondo actual:",
         "title_campaign":"**Campanya atual**",
         "title_reason":"Razon:",
         "title_instructions":"**Instrucciones**",
@@ -39,7 +38,7 @@
         "dropdown":{
             "beggar_donate": "Volunta: Donar",
             "beggar_donate_description": "Hacer una donacion para proyectos del clan",
-            "beggar_donate_emoji": "🤲",
+            "beggar_donate_emoji": "🙏",
             "beggar_on": "Volunta: Activar",
             "beggar_on_description": "Activar sistema de limosnas",
             "beggar_on_emoji": "✅",

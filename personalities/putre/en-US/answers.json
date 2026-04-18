@@ -1,0 +1,37 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":{
+
+                },
+                "youlose":{
+
+                },
+                "high_pot":{
+
+                },
+                "pot_winner":{
+
+                },
+                "not_gold":{
+
+                }
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "bringin' yer orc family wif ya",
+                    "buyin' a war boar fer battle",
+                    "payin' tribute ta da orc boss so 'e don't krump ya",
+                    "sharpenin' yer dry choppa at da smithy",
+                    "buyin' raw meat fer da feast",
+                    "buildin' a new tent in da camp"
+                ]
+            }
+        }
+    }
+
+
+}

@@ -551,16 +551,12 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         "dice_admin": "dice",
         "ring": "ring",
         "ring_admin": "ring",
-        "runes": "",  # Empty string indicates navigation to role overview
-        "runes_admin": "runes",
     }
     trickster_admin_map = {
         "dice": "dice_admin",
         "dice_admin": "dice_admin",
         "ring": "ring_admin",
         "ring_admin": "ring_admin",
-        "runes": "runes_admin",
-        "runes_admin": "runes",
     }
     personality_descriptions = _get_personality_descriptions(server_id)
     
@@ -573,16 +569,15 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             # Regular subrole views
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
             + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
-        ) if current_detail in {"dice", "ring", "runes"} else (
+        ) if current_detail in {"dice", "ring"} else (
             # Admin views
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
             + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
-        ) if current_detail in {"dice_admin", "ring_admin", "runes_admin"} else [
+        ) if current_detail in {"dice_admin", "ring_admin"} else [
             # Main trickster overview - show all subroles
             (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("subrole_buttons", {}).get("dice", "Dice"), "dice"),
             (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("subrole_buttons", {}).get("ring", "Ring"), "ring"),
-            (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("subrole_buttons", {}).get("runes", "Runes"), "runes"),
-        ] if current_detail not in {"dice", "ring", "runes", "dice_admin", "ring_admin", "runes_admin"} else [],
+        ] if current_detail not in {"dice", "ring", "dice_admin", "ring_admin"} else [],
         "banker": [
             # Main banker overview - always show subrole buttons
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("subrole_buttons", {}).get("overview", "Overview"), "overview"),

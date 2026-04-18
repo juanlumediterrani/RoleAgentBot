@@ -26,6 +26,14 @@ logger = get_logger('agent_mind')
 # Global cache for config
 _CONFIG_CACHE = None
 
+# Bot's own Discord ID - set from discord layer to guard against self-relationship generation
+_BOT_DISCORD_ID: str | None = None
+
+def set_bot_discord_id(bot_id: str | int) -> None:
+    """Register the bot's own Discord ID to prevent self-relationship memory generation."""
+    global _BOT_DISCORD_ID
+    _BOT_DISCORD_ID = str(bot_id)
+
 # Vertex AI configuration
 _VERTEXAI_INITIALIZED = False
 _VERTEXAI_CLIENT = None
@@ -315,19 +323,36 @@ def _build_last_dialogue_section(last_dialogue: list[dict], server_id: str = Non
     return "\n".join(lines).strip() or _get_recent_dialogue_fallback(server_id)
 
 
-def _format_daily_interactions_for_summary(interactions: list[dict]) -> str:
+def _format_daily_interactions_for_summary(interactions: list[dict], server_id: str = None) -> str:
     if not interactions:
         return "No interactions were recorded for this day."
+    
+    # Load event label from personality JSON with fallback
+    event_label = "EVENT"
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            event_label = personality.get("general", {}).get("event", "EVENT")
+        except Exception:
+            pass
+    
     lines = []
     for item in interactions[-25:]:
-        interaction_type = str(item.get("tipo_interaccion", "")).strip() or "INTERACTION"
         user_name = str(item.get("usuario_nombre", "")).strip() or "human"
         context = str(item.get("contexto", "")).strip()
         response = str(item.get("respuesta", "")).strip()
         timestamp = str(item.get("fecha", "")).strip()
-        lines.append(f"[{timestamp}] {interaction_type} | {user_name}")
+        # Format timestamp to HH:MM for readability
+        formatted_time = timestamp
+        if timestamp:
+            try:
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                formatted_time = dt.strftime('%Y-%m-%dT%H:%M')
+            except Exception:
+                formatted_time = timestamp[:16] if len(timestamp) >= 16 else timestamp
         if context:
-            lines.append(f"Human/Event: {context}")
+            lines.append(f"[{formatted_time}]{event_label}:{user_name} - {context}")
         if response:
             lines.append(f"Bot: {response}")
         lines.append("")
@@ -335,17 +360,31 @@ def _format_daily_interactions_for_summary(interactions: list[dict]) -> str:
 
 
 def _build_recent_memory_summary_prompt(previous_summary: str, interactions: list[dict], target_date: str, server_id: str = None) -> str:
+    # Get synthesis paragraph labels from personality JSON with English fallback
+    synthesis_labels = {}
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            synthesis_labels = personality.get("synthesis_paragraphs", {})
+        except Exception as e:
+            logger.warning(f"🧠 [SYNTHESIS] Error loading personality for {server_id} in _build_recent_memory_summary_prompt: {e}")
+
+    target_date_label = synthesis_labels.get("target_date", "TARGET DATE:")
+    previous_recent_label = synthesis_labels.get("recent_memory", "RECENT MEMORY:")
+    new_events_label = synthesis_labels.get("recent_interactions", "RECENT INTERACTIONS:")
+
     previous_block = previous_summary.strip() or _get_recent_memory_fallback(server_id)
-    interactions_block = _format_daily_interactions_for_summary(interactions)
+    interactions_block = _format_daily_interactions_for_summary(interactions, server_id)
     body = _build_configured_synthesis_prompt(
         prompt_key="prompt_recent_memory_summary",
         fallback_instructions=_get_recent_summary_task_lines(server_id),
         replacements={"target_date": target_date},
         server_id=server_id,
         sections=[
-            ("TARGET DATE:", target_date),
-            ("PREVIOUS RECENT MEMORY:", previous_block),
-            ("NEW EVENTS AND INTERACTIONS:", interactions_block),
+            (target_date_label, target_date),
+            (previous_recent_label, previous_block),
+            (new_events_label, interactions_block),
         ],
         fallback_closing="",
     )
@@ -378,7 +417,7 @@ def _build_daily_summary_prompt(
     
     notable_memory_label = synthesis_labels.get("notable_recollection_to_weave_in", "NOTABLE RECOLLECTION TO WEAVE IN:")
     previous_daily_label = synthesis_labels.get("previous_daily_memory", "PREVIOUS DAILY MEMORY:")
-    latest_recent_label = synthesis_labels.get("latest_recent_memory_of_the_day", "LATEST RECENT MEMORY OF THE DAY:")
+    latest_recent_label = synthesis_labels.get("recent_memory", "RECENT MEMORY:")
     
     previous_block = previous_summary.strip() or _get_daily_memory_fallback(server_id)
     recent_block = recent_memory.strip() or _get_recent_memory_fallback(server_id)
@@ -995,6 +1034,10 @@ def refresh_due_relationship_memories(server_id: str | None = None) -> int:
             user_id = item.get("usuario_id")
             if not user_id:
                 continue
+            if _BOT_DISCORD_ID and str(user_id) == _BOT_DISCORD_ID:
+                logger.warning(f"[RELATIONSHIP_MEMORY] Skipping bot's own ID {user_id} in relationship refresh")
+                db_instance.mark_relationship_refresh_completed(user_id)
+                continue
             relationship_state = db_instance.get_user_relationship_memory(user_id)
             user_name = relationship_state.get("metadata", {}).get("user_name") or None
             last_interaction_at = relationship_state.get("last_interaction_at")
@@ -1353,6 +1396,11 @@ async def _build_prompt_channel_messages_block(
         logger.info(f"🧠 [MIND] Discord channel object: {type(discord_channel)}, name: {getattr(discord_channel, 'name', 'Unknown')}")
         
         try:
+            # Get bot name from personality for mention replacement
+            from agent_engine import _get_personality
+            personality = _get_personality(server) if server else {}
+            bot_name = personality.get("name", "Bot")
+
             # Fetch last 20 messages from Discord (more than we need to filter)
             messages = []
             message_count = 0
@@ -1379,15 +1427,36 @@ async def _build_prompt_channel_messages_block(
                 if message.author.bot and not message.content.strip():
                     logger.info(f"🧠 [MIND] Skipping empty bot message")
                     continue
-                    
+
+                # Skip simple bot mentions from channel history (e.g., "Toma @Putre 🍺")
+                # Check if message mentions the bot and has minimal content
+                if bot_id and bot.user.mentioned_in(message):
+                    bot_mention = f'<@{bot_id}>'
+                    bot_mention_bang = f'<@!{bot_id}>'
+                    content_without_mention = message.content.replace(bot_mention, '').replace(bot_mention_bang, '').strip()
+                    # If remaining content is empty or very short (≤5 chars), skip this message
+                    if not content_without_mention or len(content_without_mention) <= 5:
+                        logger.info(f"🧠 [MIND] Skipping simple bot mention from channel history")
+                        continue
+
                 logger.info(f"🧠 [MIND] Including message from {message.author.display_name} (bot: {message.author.bot})")
                     
                 # Format message and clean mentions
                 content = message.content
                 # Replace user mentions with display names
                 for mention in message.mentions:
-                    content = content.replace(f"<@{mention.id}>", f"@{mention.display_name}")
-                
+                    # Use personality name for bot mention, display name for others
+                    if bot_id and str(mention.id) == bot_id:
+                        content = content.replace(f"<@{mention.id}>", f"@{bot_name}")
+                        content = content.replace(f"<@!{mention.id}>", f"@{bot_name}")
+                    else:
+                        content = content.replace(f"<@{mention.id}>", f"@{mention.display_name}")
+                        content = content.replace(f"<@!{mention.id}>", f"@{mention.display_name}")
+                # Also handle case where bot is mentioned but not in message.mentions list
+                if bot_id:
+                    content = content.replace(f"<@{bot_id}>", f"@{bot_name}")
+                    content = content.replace(f"<@!{bot_id}>", f"@{bot_name}")
+
                 message_text = f"{message.author.display_name}: {content}"
                 messages.append(message_text)
             
@@ -1398,10 +1467,8 @@ async def _build_prompt_channel_messages_block(
             if not messages:
                 logger.info(f"🧠 [MIND] No Discord messages found for channel {channel_id}")
                 return ""
-            
-            # Get label from prompts.json or fallback
-            from agent_engine import _get_personality
-            personality = _get_personality(server) if server else {}
+
+            # Get label from prompts.json or fallback (personality already fetched above)
             channel_label = personality.get("synthesis_paragraphs", {}).get("recent_interactions_from_channel_label", "RECENT MESSAGES FROM CHANNEL:")
             
             # discord_channel.history() returns newest-first; reverse to get chronological order
@@ -1452,9 +1519,18 @@ async def _build_prompt_channel_messages_block(
         # Skip if it's a command (starts with !)
         if message['content'].strip().startswith('!'):
             continue
-            
-        # Clean mentions from content
+
+        # Skip simple bot mentions from database (e.g., "Toma @Putre 🍺")
         content = message['content']
+        if bot_id:
+            bot_mention = f'<@{bot_id}>'
+            bot_mention_bang = f'<@!{bot_id}>'
+            content_without_mention = content.replace(bot_mention, '').replace(bot_mention_bang, '').strip()
+            # If remaining content is empty or very short (≤5 chars), skip this message
+            if not content_without_mention or len(content_without_mention) <= 5:
+                continue
+
+        # Clean mentions from content
         import re
         # Replace user mentions with actual usernames from database
         for match in re.finditer(r'<@(\d+)>', content):

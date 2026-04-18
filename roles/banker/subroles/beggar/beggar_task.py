@@ -101,7 +101,7 @@ class BeggarTask:
                 # Send message to channel with buttons
                 await target_channel.send(response, view=view)
                 
-                # Register the task execution
+                # Register the task execution in roles database
                 self.roles_db.save_beggar_request(
                     user_id="system",
                     user_name="Beggar Task",
@@ -110,6 +110,28 @@ class BeggarTask:
                     channel_id=str(target_channel.id),
                     metadata=f"reason:{current_reason}|with_buttons:true",
                 )
+                
+                # Register as system interaction in agent database for memory synthesis
+                try:
+                    from agent_db import get_global_db
+                    from .beggar_messages import get_memory_interaction_label
+                    db_instance = get_global_db(server_id=self.server_id)
+                    # Use bot's user ID for system interactions
+                    bot_user_id = str(self.bot_instance.user.id) if self.bot_instance and hasattr(self.bot_instance, 'user') else "system"
+                    # Get personality-specific label
+                    user_label = get_memory_interaction_label("recaudation", self.server_id)
+                    db_instance.register_interaction(
+                        user_id=bot_user_id,
+                        user_name=user_label,
+                        interaction_type="BEGGAR_FUNDRAISING_REQUEST",
+                        context=response,
+                        channel_id=str(target_channel.id),
+                        server_id=self.server_id,
+                        metadata={"reason": current_reason, "source": "beggar_task"}
+                    )
+                    logger.info(f"Registered beggar fundraising request as system interaction for memory synthesis")
+                except Exception as e:
+                    logger.warning(f"Failed to register beggar fundraising interaction: {e}")
                 
                 logger.info(f"Beggar task with donation buttons executed in channel {target_channel.name} for server {self.server_id}")
 
@@ -462,13 +484,11 @@ class BeggarMinigame:
     def _get_minigame_description(self, result_type: str) -> str:
         """Get minigame result description from personality JSON or fallback."""
         try:
-            from agent_runtime import _load_personality_file_cached
-            prompts_data = _load_personality_file_cached("prompts.json", self.server_id)
+            personality = _get_personality(self.server_id) if self.server_id else _get_personality()
 
-            if prompts_data:
-                minigame_results = prompts_data.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("minigame_results", {})
-                if result_type in minigame_results:
-                    return minigame_results[result_type]
+            minigame_results = personality.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {}).get("minigame_results", {})
+            if result_type in minigame_results:
+                return minigame_results[result_type]
 
         except Exception as e:
             logger.warning(f"Error loading minigame description from personality: {e}")
@@ -578,13 +598,19 @@ class BeggarMinigame:
         """Process minigame results and update databases."""
         try:
             self._award_gold_from_general_multiplier(result['participant_results'])
-
-            if self.config.is_relationship_improvements_enabled():
-                self._update_relationship_improvements(result['participants'], result['old_reason'])
-
             self.roles_db.reset_beggar_weekly_cycle(self.server_id)
             self._log_minigame_results(result)
             await self.send_narrative_to_channel(result['narrative'], fallback_channel=fallback_channel)
+
+            # Schedule next gold collection
+            try:
+                from agent_engine import mark_subrole_executed
+                from datetime import datetime, timedelta
+                freq = self.config.get_frequency_hours()
+                mark_subrole_executed('beggar', datetime.now() + timedelta(hours=freq), server_id=self.server_id)
+                logger.info(f"🙏 [BEGGAR] Minigame done — next collection scheduled in +{freq}h")
+            except Exception as _e:
+                logger.warning(f"🙏 [BEGGAR] Could not schedule next collection after minigame: {_e}")
 
         except Exception as e:
             logger.error(f"Error processing minigame results: {e}")
@@ -626,97 +652,6 @@ class BeggarMinigame:
         except Exception as e:
             logger.error(f"Error awarding gold: {e}")
 
-    def _update_relationship_improvements(self, participants: List[Dict[str, Any]], reason_context: str) -> None:
-        """Update relationship improvements for participants."""
-        try:
-            from agent_db import get_global_db
-            from agent_mind import call_llm, _build_prompt_memory_block
-
-            db_instance = get_global_db(server_id=self.server_id)
-
-            for participant in participants:
-                user_id = participant['user_id']
-                user_name = participant['user_name']
-
-                try:
-                    relationship_state = db_instance.get_user_relationship_memory(user_id)
-                    current_summary = relationship_state.get("summary", "")
-
-                    task = self._build_relationship_improvement_task(user_name, current_summary, reason_context)
-                    server_personality = _get_personality(self.server_id) if self.server_id else _get_personality()
-                    system_instruction = _build_system_prompt(server_personality, self.server_id)
-
-                    response = call_llm(
-                        system_instruction=system_instruction,
-                        prompt=task,
-                        async_mode=False,
-                        call_type="relationship_improvement",
-                        critical=False,
-                        temperature=0.9,
-                        server_id=self.server_id
-                    )
-
-                    if response and len(response.strip()) > 10:
-                        metadata = {
-                            "user_name": user_name,
-                            "source": "beggar_minigame_improvement",
-                            "improvement_level": "flat",
-                            "generated_at": _datetime.now().isoformat()
-                        }
-                        db_instance.upsert_user_relationship_memory(
-                            user_id, response,
-                            last_interaction_at=_datetime.now().isoformat(),
-                            metadata=metadata
-                        )
-                        logger.info(f"Updated relationship for {user_name}")
-
-                except Exception as e:
-                    logger.error(f"Error updating relationship for {user_name}: {e}")
-
-        except Exception as e:
-            logger.error(f"Error in relationship improvements: {e}")
-
-    def _build_relationship_improvement_task(self, user_name: str, current_summary: str, reason_context_value: str) -> str:
-        """Build task prompt for relationship improvement."""
-        from agent_mind import _build_prompt_memory_block
-        memory_section = _build_prompt_memory_block()
-
-        if not current_summary or not current_summary.strip():
-            current_summary = self._get_relationship_memory_fallback(user_name)
-
-        improvement_task_template = "Update relationship summary based on beggar minigame participation."
-        golden_rules_template = "Maintain bot personality. Show gratitude. Keep concise."
-        reason_context = f"Collection reason: {reason_context_value}"
-
-        task = f"""{memory_section}
-PREVIOUS RELATIONSHIP SUMMARY:
-{current_summary}
-
-{reason_context}
-{improvement_task_template} {user_name}
-{golden_rules_template}
-"""
-        return task
-
-    def _get_relationship_memory_fallback(self, user_name: str) -> str:
-        """Get fallback relationship memory when no previous summary exists."""
-        try:
-            personality = _get_personality(self.server_id)
-            template = personality.get("synthesis_paragraphs", {})
-            fallbacks = template.get("fallbacks", {})
-            fallback = fallbacks.get("relationship_memory", "")
-            if isinstance(fallback, str) and fallback.strip():
-                return fallback.replace("{user_name}", user_name or "human").strip()
-        except Exception:
-            pass
-
-        template = PERSONALITY.get("synthesis_paragraphs", {})
-        fallbacks = template.get("fallbacks", {})
-        fallback = fallbacks.get("relationship_memory", "")
-        if isinstance(fallback, str) and fallback.strip():
-            return fallback.replace("{user_name}", user_name or "human").strip()
-        return f"The character does not yet have a clear opinion about {user_name or 'this human'}."
-
     def _log_minigame_results(self, result: Dict[str, Any]) -> None:
         """Log minigame results for historical purposes."""
         try:
@@ -745,6 +680,28 @@ PREVIOUS RELATIONSHIP SUMMARY:
                     if hasattr(target_channel, 'send'):
                         await target_channel.send(narrative)
                         logger.info(f"Minigame narrative sent to channel {target_channel.name}")
+                        
+                        # Register as system interaction in agent database for memory synthesis
+                        try:
+                            from agent_db import get_global_db
+                            from .beggar_messages import get_memory_interaction_label
+                            db_instance = get_global_db(server_id=self.server_id)
+                            # Use bot's user ID for system interactions
+                            bot_user_id = str(bot_instance.user.id) if bot_instance and hasattr(bot_instance, 'user') else "system"
+                            # Get personality-specific label for minigame results
+                            user_label = get_memory_interaction_label("minigame_results", self.server_id)
+                            db_instance.register_interaction(
+                                user_id=bot_user_id,
+                                user_name=user_label,
+                                interaction_type="BEGGAR_MINIGAME_RESULTS",
+                                context=narrative,
+                                channel_id=str(target_channel.id),
+                                server_id=self.server_id,
+                                metadata={"source": "beggar_minigame", "type": "results_presentation"}
+                            )
+                            logger.info(f"Registered beggar minigame results as system interaction for memory synthesis")
+                        except Exception as e:
+                            logger.warning(f"Failed to register beggar minigame interaction: {e}")
                     else:
                         logger.error(f"Target channel is not messageable (type: {type(target_channel).__name__})")
                 except Exception as send_error:

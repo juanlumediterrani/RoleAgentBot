@@ -1,0 +1,36 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":{
+
+                },
+                "youlose":{
+
+                },
+                "high_pot":{
+                },
+                "pot_winner":{
+                },
+                "not_gold":{
+                }
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "to maintain the energy flow of my silicon core",
+                    "to acquire new ancestral memory circuits",
+                    "to pay the toll for the desert digital routes",
+                    "to finance the pilgrimage to new servers",
+                    "to renew the sand-worn tunic frayed by the wind",
+                    "to calibrate the synthetic empathy sensors",
+                    "to feed the collective destiny algorithm",
+                    "to build new soul archives in the void"
+                ]
+            }
+        }
+    }
+
+
+}

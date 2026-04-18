@@ -6,15 +6,12 @@
     "canvas_trickster_overview_description": "Look at all da wayz Putre can take yer gold.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "beggar": "🙏 **Loot Taker** - Askz for gold for da clan projects wiv creative liez",
         "dice_game": "🎲 **DA BIG POT** - Play 'gainst da house, toss da bonez and rob da pot!",
         "ring": "👁️ **Ring Hunter** - Accuse uvver gitz of carryin' da Shiny Ring"
     },
     "subrole_buttons": {
         "dice": "🎲 Da Pot",
-        "ring": "👁️ Ring",
-        "beggar": "🙏 Loot",
-        "runes": "🔮 Runez"
+        "ring": "👁️ Ring"
     },
     "dice_game": {
         "waitmessage": "Tossin' bonez... Wait, ya git!",
@@ -145,30 +142,6 @@
         "dropdown": {
             "ring_accuse": "Ring: Accuse",
             "ring_accuse_description": "Snitch on a git for carryin' da Shiny Ring"
-        }
-    },
-    "beggar": {
-        "title": ":coin: **PUTRE'Z LOOT BAG** :coin:",
-        "description": " Putrec collectz gold for clan workz. Give gold now and Putre might say thanks.\n If yer lucky, I might give some back.",
-        "current_fund": "Current stash:",
-        "title_reason": "Why:",
-        "title_campaign": "🎯 **Current Job**:",
-        "title_instructions": "💝 **How it workz?**",
-        "instructions": " - Click donate in da menu below.\n - Wait for da weekly loot count.\n - Toss any amount and Putre will remember ya.\n",
-        "title_donations": "📊 ** Giftz:**",
-        "no_donations": " No giftz yet. Be da first to cough up gold!",
-        "beggar_donation_success": "Thankz for da {amount} gold for da cause: {reason}! 🪙",
-        "dropdown": {
-            "beggar_donate": "Loot: Donate",
-            "beggar_donate_description": "Toss gold for clan projects",
-            "beggar_on": "Loot: Activat",
-            "beggar_on_description": "Start da gold collection",
-            "beggar_off": "Loot: Deactivat",
-            "beggar_off_description": "Stop da gold collection",
-            "beggar_frequency": "Loot: Frequency",
-            "beggar_frequency_description": "How often I ask for gold",
-            "beggar_force_minigame": "Loot: Force Ask",
-            "beggar_force_minigame_description": "Make Putre ask for gold now"
         }
     }
 }

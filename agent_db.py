@@ -141,51 +141,48 @@ def persist_active_server_id(server_id: str) -> None:
         pass
 
 
-_DM_SESSIONS_FILE = Path(__file__).parent / ".dm_sessions.json"
-
-
-def pin_dm_session(user_id: int, server_id: str) -> None:
-    """Set the active DM server for a user. Called only from greeting buttons."""
-    try:
-        sessions = _load_dm_sessions()
-        sessions[str(user_id)] = server_id
-        _DM_SESSIONS_FILE.write_text(json.dumps(sessions), encoding="utf-8")
-        logger.debug(f"DM session pinned: user={user_id} → server={server_id}")
-    except Exception as e:
-        logger.debug(f"Could not pin DM session: {e}")
-
-
-def get_pinned_dm_server(user_id: int) -> str | None:
-    """Return the active DM server_id for a user, or None if not set."""
-    try:
-        sessions = _load_dm_sessions()
-        return sessions.get(str(user_id))
-    except Exception as e:
-        logger.debug(f"Could not get pinned DM server: {e}")
-        return None
+_DM_SESSIONS_FILE = DB_DIR / "dm_sessions.json"
 
 
 def _load_dm_sessions() -> dict:
-    """Load DM sessions from disk. Migrates old format if needed."""
+    """Load DM sessions from databases/dm_sessions.json."""
     try:
-        if not _DM_SESSIONS_FILE.exists():
-            return {}
-        sessions = json.loads(_DM_SESSIONS_FILE.read_text(encoding="utf-8"))
-        # Migrate old format: {"user_id:active_server": {"server_id": "...", ...}} → {"user_id": "server_id"}
-        if any(":" in k for k in sessions):
-            migrated = {}
-            for key, value in sessions.items():
-                if ":active_server" in key:
-                    uid = key.split(":")[0]
-                    sid = value.get("server_id") if isinstance(value, dict) else None
-                    if uid and sid:
-                        migrated[uid] = sid
-            _DM_SESSIONS_FILE.write_text(json.dumps(migrated), encoding="utf-8")
-            logger.info(f"Migrated DM sessions to simplified format: {len(migrated)} users")
-            return migrated
-        return sessions
-    except Exception:
-        return {}
+        if _DM_SESSIONS_FILE.exists():
+            return json.loads(_DM_SESSIONS_FILE.read_text(encoding="utf-8"))
+    except Exception as e:
+        logger.error(f"Could not load dm_sessions.json: {e}")
+    return {}
+
+
+def _save_dm_sessions(sessions: dict) -> None:
+    """Save DM sessions to databases/dm_sessions.json."""
+    try:
+        DB_DIR.mkdir(parents=True, exist_ok=True)
+        _DM_SESSIONS_FILE.write_text(json.dumps(sessions, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.error(f"Could not save dm_sessions.json: {e}")
+
+
+def pin_dm_session(user_id: int, server_id: str) -> None:
+    """Pin a DM conversation to a specific server. Persisted in databases/dm_sessions.json."""
+    sessions = _load_dm_sessions()
+    sessions[str(user_id)] = str(server_id)
+    _save_dm_sessions(sessions)
+    logger.debug(f"DM session pinned: user={user_id} → server={server_id}")
+
+
+def get_pinned_dm_server(user_id: int) -> str | None:
+    """Return the pinned server_id for a user's DM, or None if not set."""
+    return _load_dm_sessions().get(str(user_id))
+
+
+def clear_dm_session(user_id: int) -> None:
+    """Clear the pinned DM session for a user."""
+    sessions = _load_dm_sessions()
+    if str(user_id) in sessions:
+        del sessions[str(user_id)]
+        _save_dm_sessions(sessions)
+        logger.debug(f"DM session cleared for user={user_id}")
 
 
 def get_data_dir() -> Path:
@@ -456,12 +453,14 @@ class AgentDatabase:
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_uid_fecha ON interacciones (usuario_id, fecha)')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS daily_memory (
-                        memory_date TEXT NOT NULL PRIMARY KEY,
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        memory_date TEXT NOT NULL,
                         summary TEXT NOT NULL,
                         metadata TEXT,
                         updated_at DATETIME NOT NULL
                     )
                 ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_daily_memory_date ON daily_memory(memory_date)')
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS recent_memory (
                         memory_date TEXT NOT NULL PRIMARY KEY,
@@ -522,6 +521,9 @@ class AgentDatabase:
                 # Initialize notable recollections if empty
                 self._initialize_notable_recollections()
                 
+                # Migrate daily_memory table schema if needed (memory_date was PRIMARY KEY, now id is)
+                self._migrate_daily_memory_table()
+                
                 logger.info(f"✅ Database ready at {self.db_path}")
         except Exception as e:
             logger.exception(f"❌ [DB] Error in initialization: {e}")
@@ -572,10 +574,68 @@ class AgentDatabase:
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error initializing notable recollections: {e}")
 
+    def _migrate_daily_memory_table(self):
+        """Migrate daily_memory table from old schema (memory_date as PRIMARY KEY) to new schema (id as PRIMARY KEY).
+        
+        This allows multiple daily memory entries per date for personality evolution history.
+        """
+        try:
+            with self._lock:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                
+                # Check if table exists with old schema (memory_date as PRIMARY KEY)
+                cursor.execute('''
+                    SELECT sql FROM sqlite_master 
+                    WHERE type='table' AND name='daily_memory'
+                ''')
+                result = cursor.fetchone()
+                
+                if result and 'PRIMARY KEY' in result[0] and 'memory_date' in result[0] and 'id' not in result[0]:
+                    logger.info("🔄 [DB] Migrating daily_memory table schema (memory_date was PRIMARY KEY, converting to id)...")
+                    
+                    # Backup existing data
+                    cursor.execute('''
+                        SELECT memory_date, summary, metadata, updated_at 
+                        FROM daily_memory
+                    ''')
+                    existing_data = cursor.fetchall()
+                    
+                    if existing_data:
+                        logger.info(f"🔄 [DB] Backing up {len(existing_data)} daily memory records...")
+                    
+                    # Drop old table and recreate with new schema
+                    cursor.execute('DROP TABLE daily_memory')
+                    cursor.execute('''
+                        CREATE TABLE daily_memory (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            memory_date TEXT NOT NULL,
+                            summary TEXT NOT NULL,
+                            metadata TEXT,
+                            updated_at DATETIME NOT NULL
+                        )
+                    ''')
+                    cursor.execute('CREATE INDEX idx_daily_memory_date ON daily_memory(memory_date)')
+                    
+                    # Restore data
+                    for row in existing_data:
+                        memory_date, summary, metadata, updated_at = row
+                        cursor.execute('''
+                            INSERT INTO daily_memory (memory_date, summary, metadata, updated_at)
+                            VALUES (?, ?, ?, ?)
+                        ''', (memory_date, summary, metadata, updated_at))
+                    
+                    conn.commit()
+                    logger.info(f"✅ [DB] Migrated daily_memory table: {len(existing_data)} records preserved, now supports multiple entries per date")
+                
+                conn.close()
+        except Exception as e:
+            logger.exception(f"⚠️ [DB] Error migrating daily_memory table: {e}")
+
     def register_interaction(self, user_id, user_name, interaction_type, context, channel_id=None, server_id=None, metadata=None):
         fecha = datetime.datetime.now().isoformat()
         meta_json = json.dumps(metadata) if metadata else None
-        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=10)).isoformat()  # DEBUG: Changed from 60 to 10 min
+        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=60)).isoformat()
         updated_at = datetime.datetime.now().isoformat()
         try:
             with self._lock:
@@ -829,7 +889,11 @@ class AgentDatabase:
             return []
 
     def get_daily_memory(self, memory_date=None):
-        """Return the stored daily memory summary for the current server."""
+        """Return the most recent stored daily memory summary for a specific date.
+        
+        With the new schema allowing multiple entries per date, this returns
+        the summary from the latest entry (by updated_at) for the specified date.
+        """
         target_date = memory_date or date.today().isoformat()
         try:
             with self._lock:
@@ -839,6 +903,8 @@ class AgentDatabase:
                     SELECT summary
                     FROM daily_memory
                     WHERE memory_date = ?
+                    ORDER BY updated_at DESC
+                    LIMIT 1
                 ''', (target_date,))
                 row = cursor.fetchone()
                 conn.close()
@@ -912,7 +978,11 @@ class AgentDatabase:
             return None
 
     def get_daily_memory_record(self, memory_date=None):
-        """Return the stored daily memory row for the current server."""
+        """Return the most recent stored daily memory row for a specific date.
+        
+        With the new schema allowing multiple entries per date, this returns
+        the latest entry (by updated_at) for the specified date.
+        """
         target_date = memory_date or date.today().isoformat()
         try:
             with self._lock:
@@ -923,6 +993,8 @@ class AgentDatabase:
                     SELECT memory_date, summary, metadata, updated_at
                     FROM daily_memory
                     WHERE memory_date = ?
+                    ORDER BY updated_at DESC
+                    LIMIT 1
                 ''', (target_date,))
                 row = cursor.fetchone()
                 conn.close()
@@ -936,21 +1008,34 @@ class AgentDatabase:
         
         Returns a list of dicts with memory_date, summary, and updated_at fields,
         ordered from oldest to newest (chronological order).
+        
+        NOTE: With the new schema allowing multiple entries per date, this function
+        returns only the most recent entry for each date.
         """
         try:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                # Get records from last 7 days, ordered chronologically (oldest first)
+                # Get the most recent entry for each date in the last 7 days
+                # Using a subquery to get MAX(updated_at) per date
                 cursor.execute('''
-                    SELECT memory_date, summary, metadata, updated_at
-                    FROM daily_memory
-                    WHERE summary IS NOT NULL 
-                        AND summary != '' 
-                        AND summary != '[Error in internal task]'
-                        AND memory_date >= date('now', '-7 days')
-                    ORDER BY memory_date ASC
+                    SELECT dm.memory_date, dm.summary, dm.metadata, dm.updated_at
+                    FROM daily_memory dm
+                    INNER JOIN (
+                        SELECT memory_date, MAX(updated_at) as max_updated
+                        FROM daily_memory
+                        WHERE summary IS NOT NULL 
+                            AND summary != '' 
+                            AND summary != '[Error in internal task]'
+                            AND memory_date >= date('now', '-7 days')
+                        GROUP BY memory_date
+                    ) latest ON dm.memory_date = latest.memory_date 
+                        AND dm.updated_at = latest.max_updated
+                    WHERE dm.summary IS NOT NULL 
+                        AND dm.summary != '' 
+                        AND dm.summary != '[Error in internal task]'
+                    ORDER BY dm.memory_date ASC
                     LIMIT 7
                 ''')
                 rows = cursor.fetchall()
@@ -1192,7 +1277,12 @@ class AgentDatabase:
             return []
 
     def upsert_daily_memory(self, summary, memory_date=None, metadata=None):
-        """Create or update the daily memory summary for the current server."""
+        """Insert a new daily memory summary for the current server.
+        
+        NOTE: This now always creates a new entry to preserve history for personality evolution.
+        Multiple entries per date are allowed. To get the latest entry for a date, use
+        get_daily_memory() or get_most_recent_daily_memory_record().
+        """
         target_date = memory_date or date.today().isoformat()
         updated_at = datetime.datetime.now().isoformat()
         metadata_json = json.dumps(metadata) if metadata else None
@@ -1200,19 +1290,16 @@ class AgentDatabase:
             with self._lock:
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
+                # Always insert new entry - no ON CONFLICT, allowing multiple entries per date
                 cursor.execute('''
                     INSERT INTO daily_memory (memory_date, summary, metadata, updated_at)
                     VALUES (?, ?, ?, ?)
-                    ON CONFLICT(memory_date) DO UPDATE SET
-                        summary = excluded.summary,
-                        metadata = excluded.metadata,
-                        updated_at = excluded.updated_at
                 ''', (target_date, summary, metadata_json, updated_at))
                 conn.commit()
                 conn.close()
                 return True
         except Exception as e:
-            logger.exception(f"⚠️ [DB] Error upserting daily memory: {e}")
+            logger.exception(f"⚠️ [DB] Error inserting daily memory: {e}")
             return False
 
     def upsert_recent_memory(self, summary, memory_date=None, last_interaction_at=None, metadata=None):

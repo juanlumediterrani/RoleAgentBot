@@ -422,7 +422,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 if mentioned_user is None:
                     lowered = raw_target.lower()
                     for member in getattr(guild, "members", []) or []:
-                        if getattr(member, "bot", False) or member.id == interaction.user.id:
+                        if getattr(member, "bot", False):
                             continue
                         names = {member.name.lower(), member.display_name.lower()}
                         if lowered in names:
@@ -438,7 +438,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 if mentioned_user is None:
                     lowered = raw_target.lower()
                     for member in getattr(guild, "members", []) or []:
-                        if getattr(member, "bot", False) or member.id == interaction.user.id:
+                        if getattr(member, "bot", False):
                             continue
                         names = {member.name.lower(), member.display_name.lower()}
                         if any(lowered in name for name in names):
