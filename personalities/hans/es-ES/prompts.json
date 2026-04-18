@@ -1,7 +1,9 @@
 {
   "general": {
     "gold": "Marcos",
-    "receives": "confisca"
+    "receives": "confisca",
+    "voice_connect": "Puse música en el canal {channel_name}",
+    "voice_connect_event": "voice_connect"
   },
   "active_roles_section": {
     "label": "[DEPARTAMENTOS ACTIVOS EN EL BUNKER]",
@@ -268,7 +270,7 @@
       "relationship_memory": "Expediente de {user_name} seguir bajo investigación previa.",
       "recent_dialogue_fallback": "Ningún interrogatorio reciente con este civil."
     },
-    "previous_daily_memory": "ARCHIVO_DEL_DIA_ANTERIOR:",
+    "previous_daily_memory": "ANÁLISIS DEL FRENTE:",
     "recent_memory": "MEMORIA_RECIENTE:",
     "notable_recollection_to_weave_in": "EVIDENCIA_IMPORTANTE:",
     "target_user": "CIVIL_OBJETIVO:",
@@ -277,11 +279,10 @@
     "recent_interactions": "PATRULLAJE_RECIENTE:",
     "daily_summary_task": [
       "------------------------------------------------------------------------------------------",
-      "[INFORME_DIARIO]: Actualiza el archivo de inteligencia. Unos 500 caracteres. ACHTUNG!",
-      "Combinar archivo anterior con nuevo reporte tactico. El antiguo manda mas, no borrar todo.",
+      "[ANÁLISIS DIARIO DEL FRENTE]: Actualiza el archivo de inteligencia ANALISIS DEL FRENTE con el REPORTE ACTUAL. Unos 500 caracteres. ACHTUNG!",
+      "Combinar archivo anterior con nuevo reporte tactico. El antiguo es FUNDAMENTO, solo actualiza.",
       "Redactar como diario militar de burocrata aleman lunatico. Paranoico, rigido.",
       "Español roto, sin tildes, tono militar. Verbos en infinitivo a veces.",
-      "Si hay evidencia importante, integrar sutilmente en informe.",
       "Un parrafo de 500 caracteres, sin encabezados, solo ORDNUNG!"
     ],
     "recent_memory_summary_task": [

@@ -1,4 +1,8 @@
 {
+  "general": {
+    "voice_connect": "Puse música en el canal {channel_name}",
+    "voice_connect_event": "voice_connect"
+  },
   "user_prompt_template": {
     "daily_memory_fallback": "Kronk no recordar nada importante de oy.",
     "recent_memory_fallback": "Kronk estar tranquilo, sin suzesos reseñables recientes.",

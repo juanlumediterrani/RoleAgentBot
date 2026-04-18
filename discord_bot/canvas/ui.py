@@ -1224,6 +1224,26 @@ class CanvasRoleActionSelect(discord.ui.Select):
             if not interaction.guild:
                 await interaction.response.send_message("❌ MC actions are only available in a server.", ephemeral=True)
                 return
+            # Handle modal actions (play, add, volume) separately
+            if action_name in {"mc_play", "mc_add"}:
+                from .canvas_mc import CanvasMCSongModal
+                from roles.mc.mc_discord import get_mc_commands_instance
+                mc_commands = get_mc_commands_instance()
+                if not mc_commands:
+                    await interaction.response.send_message("❌ MC commands are not initialized.", ephemeral=True)
+                    return
+                await interaction.response.send_modal(CanvasMCSongModal(action_name, view, mc_commands, view.author_id))
+                return
+            if action_name == "mc_volume":
+                from .canvas_mc import CanvasMCVolumeModal
+                from roles.mc.mc_discord import get_mc_commands_instance
+                mc_commands = get_mc_commands_instance()
+                if not mc_commands:
+                    await interaction.response.send_message("❌ MC commands are not initialized.", ephemeral=True)
+                    return
+                await interaction.response.send_modal(CanvasMCVolumeModal(view, mc_commands, view.author_id))
+                return
+            # Handle direct actions (skip, pause, resume, stop, queue, clear, history)
             await _handle_canvas_mc_action(interaction, action_name, view)
             return
         # This should never be reached as all roles have specific handlers

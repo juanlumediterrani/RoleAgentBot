@@ -1,6 +1,8 @@
 """Canvas MC content and UI components."""
 
 import asyncio
+import json
+import os
 
 import discord
 
@@ -10,20 +12,59 @@ from .canvas_base import CanvasModal
 logger = core.logger
 
 
+def _load_mc_descriptions(server_id: str = None) -> dict:
+    """
+    Load MC descriptions from server-specific mc.json file, with fallback to personality.
+    
+    Args:
+        server_id: Discord server ID for server-specific descriptions
+        
+    Returns:
+        dict: MC descriptions loaded from mc.json or empty dict if not found
+    """
+    if not server_id:
+        return {}
+    
+    try:
+        # First try server-specific mc.json
+        # Path: databases/{server_id}/rab/descriptions/mc.json
+        from agent_db import DB_DIR
+        mc_json_path = DB_DIR / server_id / "rab" / "descriptions" / "mc.json"
+        
+        if mc_json_path.exists():
+            with open(mc_json_path, encoding="utf-8") as f:
+                return json.load(f)
+        
+        # Fallback to personality mc.json
+        from agent_runtime import get_personality_directory
+        personality_dir = get_personality_directory(server_id)
+        personality_mc_path = personality_dir / "descriptions" / "mc.json"
+        
+        if personality_mc_path.exists():
+            with open(personality_mc_path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load mc.json for server {server_id}: {e}")
+    
+    return {}
+
+
 def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None, guild=None) -> str:
     """Build the MC role view with dynamic state."""
     from .content import _get_personality_descriptions
     server_id = core.get_server_key(guild) if guild else None
     mc_messages_fallback = core._personality_answers.get("mc_messages", {})
     mc_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("mc", {})
+    mc_json_data = _load_mc_descriptions(server_id)
 
     def _mc_text(key: str, fallback: str) -> str:
-        value = mc_descriptions.get(key, mc_messages_fallback.get(key))
+        # First try mc.json (server-specific), then descriptions.json, then fallback
+        value = mc_json_data.get(key, mc_descriptions.get(key, mc_messages_fallback.get(key)))
         return str(value).strip() if value else fallback
 
     parts = [
-        _mc_text("title", "🎵 Canvas - MC (Master of Ceremonies)"),
-        _mc_text("description", "Use the dropdown below to control music playback."),
+        _mc_text("title", "🎵 Canvas - MC Music"),
+        _mc_text("canvas_mc_description", "Use the dropdown below to control music playback."),
     ]
 
     if last_action:
@@ -50,9 +91,8 @@ def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None, gu
             parts.append(f"  {_mc_text('queue_empty', '📭 Queue is empty')}")
 
     if mc_messages:
-        parts.append("**MC status**")
-        for message in mc_messages[-3:]:
-            parts.append(f"  {message}")
+        parts.append(_mc_text("mc_status", "**MC status**"))
+        parts.append(f"  {mc_messages[-1]}")
 
     return "\n".join(parts)
 
@@ -65,9 +105,11 @@ class CanvasMCActionSelect(discord.ui.Select):
         server_id = core.get_server_key(view.guild) if view.guild else None
         mc_messages_fallback = core._personality_answers.get("mc_messages", {})
         mc_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("mc", {})
+        mc_json_data = _load_mc_descriptions(server_id)
 
         def _mc_text(key: str, fallback: str) -> str:
-            value = mc_descriptions.get(key, mc_messages_fallback.get(key))
+            # First try mc.json (server-specific), then descriptions.json, then fallback
+            value = mc_json_data.get(key, mc_descriptions.get(key, mc_messages_fallback.get(key)))
             return str(value).strip() if value else fallback
 
         mc_actions = _get_canvas_role_action_items_for_detail("mc", "overview", view.admin_visible, view.agent_config, server_id)
@@ -84,15 +126,46 @@ class CanvasMCActionSelect(discord.ui.Select):
         if not interaction.guild:
             await interaction.response.send_message("❌ MC actions are only available in a server.", ephemeral=True)
             return
+        # Handle modal actions (play, add, volume) separately
+        if action_name in {"mc_play", "mc_add"}:
+            from roles.mc.mc_discord import get_mc_commands_instance
+            mc_commands = get_mc_commands_instance()
+            if not mc_commands:
+                await interaction.response.send_message("❌ MC commands are not initialized.", ephemeral=True)
+                return
+            await interaction.response.send_modal(CanvasMCSongModal(action_name, view, mc_commands, view.author_id))
+            return
+        if action_name == "mc_volume":
+            from roles.mc.mc_discord import get_mc_commands_instance
+            mc_commands = get_mc_commands_instance()
+            if not mc_commands:
+                await interaction.response.send_message("❌ MC commands are not initialized.", ephemeral=True)
+                return
+            await interaction.response.send_modal(CanvasMCVolumeModal(view, mc_commands, view.author_id))
+            return
+        # Handle direct actions (skip, pause, resume, stop, queue, clear, history)
         await _handle_canvas_mc_action(interaction, action_name, view)
 
 
 async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name: str, view) -> None:
     """Handle MC canvas actions."""
+    logger.info(f"MC canvas action received: {action_name}")
     try:
         from roles.mc.mc_discord import get_mc_commands_instance
         from roles.mc.db_role_mc import get_mc_db_instance
         from agent_engine import get_mc_feature
+        from .content import _get_personality_descriptions
+
+        # Load translations
+        server_id = core.get_server_key(view.guild) if view.guild else None
+        mc_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("mc", {})
+        mc_messages_fallback = core._personality_answers.get("mc_messages", {})
+        mc_json_data = _load_mc_descriptions(server_id)
+
+        def _mc_text(key: str, fallback: str) -> str:
+            # First try mc.json (server-specific), then descriptions.json, then fallback
+            value = mc_json_data.get(key, mc_descriptions.get(key, mc_messages_fallback.get(key)))
+            return str(value).strip() if value else fallback
 
         mc_commands = get_mc_commands_instance()
         if not mc_commands:
@@ -112,16 +185,6 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
 
         mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
-        if action_name == "mc_play":
-            await interaction.response.send_modal(CanvasMCSongModal("mc_play", view, mc_commands, view.author_id))
-            return
-        if action_name == "mc_add":
-            await interaction.response.send_modal(CanvasMCSongModal("mc_add", view, mc_commands, view.author_id))
-            return
-        if action_name == "mc_volume":
-            await interaction.response.send_modal(CanvasMCVolumeModal(view, mc_commands, view.author_id))
-            return
-
         captured_messages = []
         last_action = None
         queue_info = None
@@ -138,33 +201,43 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
 
         if action_name == "mc_skip":
             await mc_commands.cmd_skip(mock_message, [])
-            last_action = "⏭️ Song skipped"
+            last_action = _mc_text("song_skipped", "⏭️ Song skipped")
         elif action_name == "mc_pause":
             await mc_commands.cmd_pause(mock_message, [])
-            last_action = "⏸️ Playback paused"
+            last_action = _mc_text("playback_paused", "⏸️ Playback paused")
         elif action_name == "mc_resume":
             await mc_commands.cmd_resume(mock_message, [])
-            last_action = "▶️ Playback resumed"
+            last_action = _mc_text("playback_resumed", "▶️ Playback resumed")
         elif action_name == "mc_stop":
             await mc_commands.cmd_stop(mock_message, [])
-            last_action = "⏹️ Playback stopped and queue cleared"
+            last_action = _mc_text("playback_stopped", "⏹️ Playback stopped and queue cleared")
         elif action_name == "mc_queue":
             await mc_commands.cmd_queue(mock_message, [])
-            last_action = "📋 Queue displayed"
+            last_action = _mc_text("queue_displayed", "📋 Queue displayed")
             try:
                 db_mc = get_mc_db_instance(str(interaction.guild.id))
-                queue_data = db_mc.obtener_queue(str(interaction.guild.id), str(interaction.channel.id))
+                queue_data = db_mc.get_queue(str(interaction.guild.id), str(interaction.channel.id))
                 queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
             except Exception:
                 pass
         elif action_name == "mc_clear":
             await mc_commands.cmd_clear(mock_message, [])
-            last_action = "🗑️ Queue cleared"
+            last_action = _mc_text("queue_cleared", "🗑️ Queue cleared")
+
+        # Fetch updated queue info after actions that modify the queue
+        if action_name in ["mc_skip", "mc_pause", "mc_resume", "mc_stop", "mc_clear"]:
+            try:
+                db_mc = get_mc_db_instance(str(interaction.guild.id))
+                queue_data = db_mc.get_queue(str(interaction.guild.id), str(interaction.channel.id))
+                queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+            except Exception:
+                pass
         elif action_name == "mc_history":
             await mc_commands.cmd_history(mock_message, [])
-            last_action = "📜 History displayed"
+            last_action = _mc_text("history_displayed", "📜 History displayed")
         else:
-            await interaction.response.send_message("❌ Unknown MC action.", ephemeral=True)
+            logger.warning(f"Unknown MC action received: {action_name}")
+            await interaction.response.send_message(f"❌ Unknown MC action: {action_name}", ephemeral=True)
             return
 
         await asyncio.sleep(0.5)
@@ -199,17 +272,21 @@ class CanvasMCSongModal(CanvasModal):
         server_id = core.get_server_key(view.guild) if view.guild else None
         mc_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("mc", {})
         mc_messages_fallback = core._personality_answers.get("mc_messages", {})
+        mc_json_data = _load_mc_descriptions(server_id)
 
         def _mc_text(key: str, fallback: str) -> str:
-            value = mc_descriptions.get(key, mc_messages_fallback.get(key))
+            # First try mc.json (server-specific), then descriptions.json, then fallback
+            value = mc_json_data.get(key, mc_descriptions.get(key, mc_messages_fallback.get(key)))
             return str(value).strip() if value else fallback
 
+        self._mc_text = _mc_text
+
         title = _mc_text("play_song_title", "Play Song Now") if action_name == "mc_play" else _mc_text("add_song_title", "Add Song to Queue")
-        super().__init__(title=title, timeout=300)
+        super().__init__(title=title, timeout=300, author_id=author_id)
 
         self.song_input = discord.ui.TextInput(
-            label="Song Name or URL",
-            placeholder="Enter song name, YouTube URL, or search query...",
+            label=_mc_text("song_name_label", "Song Name or URL"),
+            placeholder=_mc_text("song_name_placeholder", "Enter song name, YouTube URL, or search query..."),
             style=discord.TextStyle.long,
             required=True,
             max_length=200,
@@ -218,7 +295,7 @@ class CanvasMCSongModal(CanvasModal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            await interaction.response.send_message("🎵 Processing song request...", ephemeral=True, delete_after=5)
+            await interaction.response.send_message(self._mc_text("processing_song", "🎵 Processing song request..."), ephemeral=True, delete_after=5)
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -245,14 +322,26 @@ class CanvasMCSongModal(CanvasModal):
 
             if self.action_name == "mc_play":
                 await self.mc_commands.cmd_play(mock_message, args)
-                result_msg = f"🎵 Now playing: {song_query}"
+                result_msg = self._mc_text("song_playing_result", "🎵 Now playing: {song}").format(song=song_query)
             else:
                 await self.mc_commands.cmd_add(mock_message, args)
-                result_msg = f"🎵 Added to queue: {song_query}"
+                result_msg = self._mc_text("song_added_result", "🎵 Added to queue: {song}").format(song=song_query)
+
+            # Fetch updated queue info after adding/playing song
+            queue_info = None
+            try:
+                from roles.mc.db_role_mc import get_mc_db_instance
+                server_id = core.get_server_key(self.view.guild) if self.view.guild else None
+                if server_id and self.view.guild:
+                    db_mc = get_mc_db_instance(server_id)
+                    queue_data = db_mc.get_queue(server_id, str(self.view.guild.id))
+                    queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+            except Exception:
+                pass
 
             await asyncio.sleep(0.5)
             from .content import _build_canvas_role_embed
-            mc_content = build_canvas_role_mc(last_action=result_msg, queue_info=None, mc_messages=captured_messages, guild=self.view.guild)
+            mc_content = build_canvas_role_mc(last_action=result_msg, queue_info=queue_info, mc_messages=captured_messages, guild=self.view.guild)
             self.view.auto_response_preview = result_msg
             server_id = core.get_server_key(self.view.guild) if self.view.guild else None
             embed = _build_canvas_role_embed("mc", mc_content, self.view.admin_visible, "overview", None, server_id=server_id)
@@ -264,28 +353,31 @@ class CanvasMCSongModal(CanvasModal):
             logger.exception(f"Error in MC song modal: {error}")
 
 
-class CanvasMCVolumeModal(discord.ui.Modal):
+class CanvasMCVolumeModal(CanvasModal):
     """Modal for MC volume input."""
 
     def __init__(self, view, mc_commands, author_id: int):
         self.view = view
         self.mc_commands = mc_commands
-        self.author_id = author_id
-        
+
         from .content import _get_personality_descriptions
         server_id = core.get_server_key(view.guild) if view.guild else None
         mc_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("mc", {})
         mc_messages_fallback = core._personality_answers.get("mc_messages", {})
+        mc_json_data = _load_mc_descriptions(server_id)
 
         def _mc_text(key: str, fallback: str) -> str:
-            value = mc_descriptions.get(key, mc_messages_fallback.get(key))
+            # First try mc.json (server-specific), then descriptions.json, then fallback
+            value = mc_json_data.get(key, mc_descriptions.get(key, mc_messages_fallback.get(key)))
             return str(value).strip() if value else fallback
 
-        super().__init__(title=_mc_text("set_volume_title", "Set Volume"), timeout=300, author_id=author_id)
+        self._mc_text = _mc_text
+
+        super().__init__(author_id=author_id, title=_mc_text("set_volume_title", "Set Volume"), timeout=300)
 
         self.volume_input = discord.ui.TextInput(
-            label="Volume (0-100)",
-            placeholder="Enter volume level between 0 and 100...",
+            label=_mc_text("volume_label", "Volume (0-100)"),
+            placeholder=_mc_text("volume_placeholder", "Enter volume level between 0 and 100..."),
             style=discord.TextStyle.short,
             required=True,
             max_length=3,
@@ -304,8 +396,21 @@ class CanvasMCVolumeModal(discord.ui.Modal):
             volume_str = str(self.volume_input.value).strip()
             await self.mc_commands.cmd_volume(mock_message, [volume_str])
 
-            result_msg = f"🔊 Volume set to {volume_str}%"
-            mc_content = build_canvas_role_mc(last_action=result_msg, queue_info=None, mc_messages=None, guild=self.view.guild)
+            result_msg = self._mc_text("volume_set_result", "🔊 Volume set to {volume}%").format(volume=volume_str)
+
+            # Fetch updated queue info after volume change
+            queue_info = None
+            try:
+                from roles.mc.db_role_mc import get_mc_db_instance
+                server_id = core.get_server_key(self.view.guild) if self.view.guild else None
+                if server_id and self.view.guild:
+                    db_mc = get_mc_db_instance(server_id)
+                    queue_data = db_mc.get_queue(server_id, str(self.view.guild.id))
+                    queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+            except Exception:
+                pass
+
+            mc_content = build_canvas_role_mc(last_action=result_msg, queue_info=queue_info, mc_messages=None, guild=self.view.guild)
             self.view.auto_response_preview = result_msg
             from .content import _build_canvas_role_embed
             embed = _build_canvas_role_embed("mc", mc_content, self.view.admin_visible, "overview", None)

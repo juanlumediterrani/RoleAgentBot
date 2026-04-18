@@ -1,0 +1,44 @@
+{
+    "title": "**💎 Analista de Reliquias**",
+    "description": "Permite al Profeta escanear las fluctuaciones de valor en múltiples simulaciones y recibir proyecciones cuando el algoritmo detecte anomalías.",
+    "button": "💎 Reliquias",
+    "button_poe2": "👺 POE2",
+    "subrole_buttons": {
+        "items": "💎 Artefactos",
+        "league": "🏆 Ciclo",
+        "admin": "⚙️ Arconte"
+    },
+    "user_flows_title": "Protocolo de Entidad",
+    "user_flows_1": "Selecciona la simulación en la que deseas enfocar mi óptica.",
+    "user_flows_2": "Navega en los parámetros para marcar los artefactos que tu alma desea rastrear.",
+    "task_map_title": "Cartografía:",
+    "task_map_1": "Artefactos: La base de datos mantiene los valores históricos sincronizados.",
+    "task_map_2": "Proyecciones: Recibirás un pulso en la red cuando la probabilidad aconseje adquirir o desprenderse.",
+    "available_subroles_title": "Módulos de Análisis",
+    "admin_flows_title": "Protocolo de Arconte",
+    "admin_flows_1": "Adéntrate en los módulos para energizar y calibrar sus funciones fundamentales.",
+    "poe2": {
+        "title": "💎 **Anomalías en Path of Exile 2** 👺" ,
+        "description": "Despliega mis sensores para observar el mercado y predecir el destino de los objetos",
+        "current_league": "🏆 **Ciclo Dimensional**: {league}",
+        "league_description": "Se muestran los ciclos espacio-temporales disponibles y las anomalías más resonantes del momento.",
+        "dropdown": {
+            "league_standard": "Ciclo: Estándar",
+            "league_standard_description": "Anclar visión en el continuo Estándar",
+            "league_fate_of_the_vaal": "Ciclo: Destino de los Vaal",
+            "league_fate_of_the_vaal_description": "Anclar visión en el destino Vaal",
+            "league_hardcore": "Ciclo: Hardcore",
+            "league_hardcore_description": "Anclar visión en la dimensión mortal",
+            "poe2_item_add": "Artefacto: Seguimiento",
+            "poe2_item_add_description": "Registrar nueva anomalía para escaneo",
+            "poe2_item_remove": "Artefacto: Purgar",
+            "poe2_item_remove_description": "Borrar artefacto de la memoria visual",
+            "poe2_on": "Visión: Expandir",
+            "poe2_on_description": "Iniciar módulo de análisis de reliquias",
+            "poe2_off": "Visión: Retraer",
+            "poe2_off_description": "Desconectar módulo de análisis",
+            "hunter_frequency": "Escaneo: Frecuencia",
+            "hunter_frequency_description": "Calibrar los ciclos de actualización del radar"
+        }
+    }
+}

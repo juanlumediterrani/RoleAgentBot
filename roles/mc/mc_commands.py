@@ -170,6 +170,43 @@ def _test_cookies_work(cookie_path: str) -> bool:
 def _load_mc_answers() -> dict:
     return {}
 
+
+def _load_mc_descriptions(server_id: str = None) -> dict:
+    """
+    Load MC descriptions from server-specific mc.json file, with fallback to personality.
+    
+    Args:
+        server_id: Discord server ID for server-specific descriptions
+        
+    Returns:
+        dict: MC descriptions loaded from mc.json or empty dict if not found
+    """
+    if not server_id:
+        return {}
+    
+    try:
+        # First try server-specific mc.json
+        # Path: databases/{server_id}/rab/descriptions/mc.json
+        from agent_db import DB_DIR
+        mc_json_path = DB_DIR / server_id / "rab" / "descriptions" / "mc.json"
+        
+        if mc_json_path.exists():
+            with open(mc_json_path, encoding="utf-8") as f:
+                return json.load(f)
+        
+        # Fallback to personality mc.json
+        from agent_runtime import get_personality_directory
+        personality_dir = get_personality_directory(server_id)
+        personality_mc_path = personality_dir / "descriptions" / "mc.json"
+        
+        if personality_mc_path.exists():
+            with open(personality_mc_path, encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"Failed to load mc.json for server {server_id}: {e}")
+    
+    return {}
+
 class MCCommands:
     """MC (Master of Ceremonies) commands for Discord music."""
     
@@ -210,11 +247,17 @@ class MCCommands:
             else:
                 await channel.send(content, **kwargs)
     
-    def get_mc_message(self, key, default=None, **kwargs):
-        """Get customized MC message from personality."""
+    def get_mc_message(self, key, default=None, server_id=None, **kwargs):
+        """Get customized MC message from personality or mc.json."""
         try:
-            role_cfg = _load_mc_answers().get("mc_messages", {})
-            message = role_cfg.get(key)
+            # First try mc.json (server-specific)
+            mc_json_data = _load_mc_descriptions(server_id)
+            message = mc_json_data.get(key)
+            
+            # If not in mc.json, try personality mc_messages
+            if message is None:
+                role_cfg = _load_mc_answers().get("mc_messages", {})
+                message = role_cfg.get(key)
             
             # If no message in personality, use default fallback
             if message is None:
@@ -237,7 +280,9 @@ class MCCommands:
                     'unexpected_error': "❌ **Unexpected error: {error_type}**",
                     'next_song_error': "❌ **Error playing the next song.**",
                     'connected_to_voice': "🎤 **Connected to {channel_name}**",
-                    'no_dm_permission': "📭 **I can't send you a private message.**\n**Please enable server DMs or use another channel.**"
+                    'no_dm_permission': "📭 **I can't send you a private message.**\n**Please enable server DMs or use another channel.**",
+                    'now_playing': "🎵 **Now Playing**\n🎶 {song}\n👤 {artist}\n⏱️ {duration}\n🎤 Added by: {user_name}",
+                    'searching_for_song': "🔍 **Searching for song...**"
                 }
                 message = fallbacks.get(key, default or f"Message not found: {key}")
             
@@ -277,21 +322,21 @@ class MCCommands:
                 voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=60.0)
                 logger.info(f"MC: ✅ Successful connection to {voice_channel.name}")
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, self.get_mc_message("voice_join_empty", f"🎤 **Connected to {voice_channel.name}**"))
+                await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             elif not self.voice_clients[server_id].is_connected():
                 logger.info(f"MC: Reconnecting to channel {voice_channel.name}...")
                 logger.info(f"MC: Starting voice reconnection (timeout: 60s)...")
                 voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=60.0)
                 logger.info(f"MC: ✅ Successful reconnection to {voice_channel.name}")
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, f"🎤 **Reconnected to {voice_channel.name}**")
+                await self._send_message(message.channel, self.get_mc_message("reconnected_to_voice", f"🎤 **Reconnected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             else:
                 voice_client = self.voice_clients[server_id]
                 # Check if in correct channel
                 if voice_client.channel != voice_channel:
                     logger.info(f"MC: Moving from {voice_client.channel.name} to {voice_channel.name}")
                     await voice_client.move_to(voice_channel)
-                    await self._send_message(message.channel, f"🎤 **Moved to {voice_channel.name}**")
+                    await self._send_message(message.channel, self.get_mc_message("moved_to_voice", f"🎤 **Moved to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
         except asyncio.TimeoutError:
             logger.error(f"MC: Timeout connecting to {voice_channel.name}")
             # Don't send timeout message if already connected and playing
@@ -305,7 +350,7 @@ class MCCommands:
                 if voice_client:
                     logger.info(f"MC: Already connected to {voice_channel.name} (using existing client)")
                     self.voice_clients[server_id] = voice_client
-                    await self._send_message(message.channel, f"🎤 **Connected to {voice_channel.name}**")
+                    await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
                 else:
                     logger.error(f"MC: Error: Discord says connected but no voice client")
                     await self._send_message(message.channel, self.get_mc_message('voice_connection_error'))
@@ -320,7 +365,7 @@ class MCCommands:
             return
         
         # Search for the song
-        await self._send_message(message.channel, "🔍 **Searching for song...**")
+        await self._send_message(message.channel, self.get_mc_message("searching_for_song", "🔍 **Searching for song...**", server_id=server_id))
         
         try:
             # Configure yt-dlp with enhanced options to bypass bot detection
@@ -415,19 +460,19 @@ class MCCommands:
                 logger.info(f"MC: Connecting to channel {voice_channel.name}...")
                 voice_client = await voice_channel.connect()
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, f"🎤 **Connected to {voice_channel.name}**")
+                await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             elif not self.voice_clients[server_id].is_connected():
                 logger.info(f"MC: Reconnecting to channel {voice_channel.name}...")
                 voice_client = await voice_channel.connect()
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, f"🎤 **Reconnected to {voice_channel.name}**")
+                await self._send_message(message.channel, self.get_mc_message("reconnected_to_voice", f"🎤 **Reconnected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             else:
                 voice_client = self.voice_clients[server_id]
 
                 if voice_client.channel != voice_channel:
                     logger.info(f"MC: Moving from {voice_client.channel.name} to {voice_channel.name}")
                     await voice_client.move_to(voice_channel)
-                    await self._send_message(message.channel, f"🎤 **Moved to {voice_channel.name}**")
+                    await self._send_message(message.channel, self.get_mc_message("moved_to_voice", f"🎤 **Moved to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
         except discord.errors.ClientException as e:
             if "Already connected to a voice channel" in str(e):
 
@@ -872,7 +917,7 @@ class MCCommands:
             db_mc.register_history(server_id, str(channel.id), user_id, title, url, duration, artist)
             
             # Anunciar
-            await self._send_message(channel, self.get_mc_message("now_playing", f"🎵 **Now Playing**\n🎶 {title}\n👤 {artist}\n⏱️ {duration}\n🎤 Added by: {user_name}", song=title))
+            await self._send_message(channel, self.get_mc_message("now_playing", f"🎵 **Now Playing**\n🎶 {title}\n👤 {artist}\n⏱️ {duration}\n🎤 Added by: {user_name}", server_id=server_id, song=title, artist=artist, duration=duration, user_name=user_name))
             
         except yt_dlp.utils.DownloadError as e:
             error_msg = str(e)

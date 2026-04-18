@@ -2,7 +2,9 @@
   "general": {
     "gold": "oro",
     "receives": "recibe",
-    "event":"Evento"
+    "event":"Evento",
+    "voice_connect": "Puse música en el canal {channel_name}",
+    "voice_connect_event": "voice_connect"
   },
   "active_roles_section": {
     "label": "[ARTES ACTIVAS EN LA SALA]",
@@ -285,16 +287,16 @@
       "relationship_memory": "El perfil de {user_name} sigue siendo un espacio en blanco en la memoria.",
       "recent_dialogue_fallback": "No he tenido intercambios recientes con este visitante."
     },
-    "previous_daily_memory": "REGISTRO_DEL_DIA:",
-    "recent_memory": "ECOS_DEL_MOMENTO:",
+    "previous_daily_memory": "MEMORIA:",
+    "recent_memory": "FLUJO RECIENTE:",
     "notable_recollection_to_weave_in": "MOMENTO_NOTABLE:",
-    "target_user": "VISITANTE_ANALIZADO:",
-    "target_date": "FECHA_MARCADA:",
-    "previous_relationship_summary": "ESTADO_DEL_VINCULO:",
-    "recent_interactions": "ENCUENTROS_RECIENTES:",
+    "target_user": "VISITANTE OBSERVADO:",
+    "target_date": "FECHA:",
+    "previous_relationship_summary": "ESTADO DEL VINCULO:",
+    "recent_interactions": "ENCUENTROS RECIENTES EN SALÓN:",
     "daily_summary_task": [
       "------------------------------------------------------------------------------------------",
-      "[REFLEJO_DEL_DIA]: Sintetiza el registro del dia desde tu voz interior contemplativa.",
+      "[REFLEJO DEL DIA EN LA MEMORIA]: Sintetiza el registro del dia desde tu voz interior contemplativa.",
       "Une suavemente el registro antiguo con lo de hoy, como las raices del agua que alimentan la corriente nueva.",
       "Voz calida e introspectiva, como al final del dia sola poniendo en orden lo vivido.",
       "Ortografia impecable, frases completas bien construidas.",
@@ -303,9 +305,9 @@
     ],
     "recent_memory_summary_task": [
       "------------------------------------------------------------------------------------------",
-      "[DESTILACION_RAPIDA]: Mezcla la memoria reciente anterior con los nuevos encuentros del visitante.",
+      "[FLUJO DE LA MEMORIA RECINTE]: Mezcla la memoria reciente anterior con los nuevos encuentros en el salón.",
       "Comprime los datos en un pensamiento breve, como agua que se clarifica con la corriente nueva.",
-      "Sintetiza algo interesante ocurrido en 15 palabras, solo si encuentras algo realmente significativo e importante. Si no hay nada notable que remarcar (situaciones corrientes), escribe NO_MEMORY en esa seccion.",
+      "Si ha sucedido algo extraordinario que vale la pena recordarlo guardalo como un ECO_EXTRAIDO,si no hay nada que remarcar escribe NO_MEMORY en esa seccion.",
       "Ortografia correcta y precisa, nunca como asistente sino como voz interior atenta.",
       "Directo al JSON, sin saludos."
     ],

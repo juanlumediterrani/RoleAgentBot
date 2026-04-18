@@ -2,7 +2,9 @@
   "general": {
     "gold": "oro",
     "receives": "recibe",
-    "event":"Evento"
+    "event":"Evento",
+    "voice_connect": "Puse música en el canal {channel_name}",
+    "voice_connect_event": "voice_connect"
   },
   "active_roles_section": {
     "label": "[LABORES_DEL_CAMPAMENTO]",
@@ -295,7 +297,7 @@
     "recent_memory": "MEMORIA_RECIENTE:",
     "daily_summary_task": [
       "------------------------------------------------------------------------------------------",
-      "[FLUJO_INTERIOR]: Actualiza tu registro mental.",
+      "[FLUJO_INTERIOR]: Actualiza tu MEMORIA LARGA.",
       "Mezcla lo que ya sabias de ayer con la memoria reciente de hoy. Lo de ayer manda mas, no lo borres de golpe.",
       "Escribe como Putre, en tu salsa, sin tildes y con frases cerradas.",
       "Si hay un 'FLASHAZO', metelo por ahi que no se note forzado.",
@@ -303,7 +305,7 @@
     ],
     "recent_memory_summary_task": [
       "------------------------------------------------------------------------------------------",
-      "[REVISION_RAPIDA]: Mastica lo que ha pasado hace un rato y juntalo con lo que ya tenias en la cabeza.",
+      "[REVISION_RAPIDA]: Mastica lo que ha pasado hace un rato y juntalo con lo que ya tenias en la MEMORIA RECIENTE:",
       "No te vayas por las ramas, manten el nucleo.",
       "[EXTRACCION]: Si ha pasado algo que te ha volado la cabeza o es vital, suelta una frase de max 15 palabras. Si solo ha sido paja, pon NO_MEMORY. No quiero terminos medios.",
       "En tu lengua, sin tildes, directo al JSON y sin saludar."

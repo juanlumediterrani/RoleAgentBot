@@ -1480,7 +1480,17 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
     if role_name == "shaman" and is_role_enabled_check("shaman", agent_config, guild):
         return build_canvas_role_shaman(agent_config, admin_visible, guild)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
-        return build_canvas_role_mc(guild=guild)
+        queue_info = None
+        try:
+            from roles.mc.db_role_mc import get_mc_db_instance
+            server_id = core.get_server_key(guild) if guild else None
+            if server_id and guild:
+                db_mc = get_mc_db_instance(server_id)
+                queue_data = db_mc.get_queue(server_id, str(guild.id))
+                queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+        except Exception as e:
+            logger.warning(f"Failed to load MC queue for overview: {e}")
+        return build_canvas_role_mc(queue_info=queue_info, guild=guild)
     return None
 
 
@@ -1512,5 +1522,15 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
     if role_name == "shaman" and is_role_enabled_check("shaman", agent_config, guild):
         return build_canvas_role_shaman_detail(detail_name, admin_visible, guild, author_id, agent_config)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
-        return build_canvas_role_mc(guild=guild)
+        queue_info = None
+        try:
+            from roles.mc.db_role_mc import get_mc_db_instance
+            server_id = core.get_server_key(guild) if guild else None
+            if server_id and guild:
+                db_mc = get_mc_db_instance(server_id)
+                queue_data = db_mc.get_queue(server_id, str(guild.id))
+                queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+        except Exception as e:
+            logger.warning(f"Failed to load MC queue for detail view: {e}")
+        return build_canvas_role_mc(queue_info=queue_info, guild=guild)
     return None

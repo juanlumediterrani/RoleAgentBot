@@ -530,9 +530,72 @@ async def on_presence_update(before, after):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    """Disconnect the bot from voice if the channel is empty (MC feature)."""
+    """Disconnect the bot from voice if the channel is empty (MC feature). Also record system interactions for voice connections."""
     if member.bot:
         return
+    
+    # Record system interaction when user connects to voice channel
+    if before.channel is None and after.channel is not None:
+        try:
+            from discord_bot.discord_utils import get_server_key, get_db_for_server
+            from agent_engine import _get_personality
+            import json
+            from datetime import datetime
+            
+            guild = after.channel.guild
+            server_id = get_server_key(guild)
+            
+            # Load prompts.json for the server
+            prompts_path = f"databases/{server_id}/rab/prompts.json"
+            voice_connect_msg = "Put music in channel {channel_name}"  # English fallback
+            voice_connect_event = "voice_connect"
+            
+            try:
+                with open(prompts_path, 'r', encoding='utf-8') as f:
+                    prompts = json.load(f)
+                    general = prompts.get("general", {})
+                    voice_connect_msg = general.get("voice_connect", voice_connect_msg)
+                    voice_connect_event = general.get("voice_connect_event", voice_connect_event)
+            except Exception as e:
+                logger.warning(f"Could not load prompts.json for voice connect message: {e}")
+            
+            # Load MC title from descriptions
+            mc_title = "MC"  # English fallback
+            try:
+                mc_desc_path = f"databases/{server_id}/rab/descriptions/mc.json"
+                with open(mc_desc_path, 'r', encoding='utf-8') as f:
+                    mc_desc = json.load(f)
+                    mc_title = mc_desc.get("title", mc_title)
+                    # Remove markdown formatting if present
+                    mc_title = mc_title.replace("**", "").replace("*", "")
+            except Exception as e:
+                logger.warning(f"Could not load MC description: {e}")
+            
+            # Format the message with channel name
+            channel_name = after.channel.name
+            formatted_msg = voice_connect_msg.format(channel_name=channel_name)
+            
+            # Build the interaction message in the specified format
+            date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            interaction_message = f"[{date_str}] {mc_title} system {voice_connect_event} {member.display_name} //{formatted_msg}//"
+            
+            # Record as system interaction
+            db = get_db_for_server(guild)
+            db.register_interaction(
+                user_id=str(member.id),
+                user_name=member.display_name,
+                interaction_type="system",
+                context=interaction_message,
+                channel_id=str(after.channel.id),
+                server_id=server_id,
+                metadata={"event": "voice_connect", "channel_name": channel_name}
+            )
+            
+            logger.info(f"🎤 Recorded voice connection interaction for {member.display_name} in {channel_name}")
+        except Exception as e:
+            logger.exception(f"Error recording voice connection interaction: {e}")
+    
+    # Original logic: disconnect bot from voice if channel is empty
     for vc in list(bot.voice_clients):
         if not vc.is_connected():
             continue

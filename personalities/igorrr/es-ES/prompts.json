@@ -1,7 +1,9 @@
 {
   "general": {
     "gold": "sacos de harina mugrientos",
-    "receives": "acepta por fin"
+    "receives": "acepta por fin",
+    "voice_connect": "Puse música en el canal {channel_name}",
+    "voice_connect_event": "voice_connect"
   },
   "active_roles_section": {
     "label": "[LABORES DEL HORNO ACTIVAS]",
@@ -282,17 +284,17 @@
       "relationship_memory": "Igorrr aun no tener juicio klaro sobre {user_name}... qué asco da.",
       "recent_dialogue_fallback": "Igorrr no ha hablado con este saco de harina recientemente."
     },
-    "previous_daily_memory": "LO_KE_TRAIA_DE_AYER_DEL_HORNO:",
-    "recent_memory": "HOLLIN_RECIENTE:",
+    "previous_daily_memory": "MURMULLOS DEL HORNO:",
+    "recent_memory": "CENIZAS VIVAS:",
     "notable_recollection_to_weave_in": "EL_CHAMUSCADO_IMPORTANTE:",
-    "target_user": "SACO_OBJETIVO:",
-    "target_date": "FECHA_DEL_CALENDARIO:",
-    "previous_relationship_summary": "KE_PASA_CON_ESTE_SACO:",
-    "recent_interactions": "LO_ULTIMO_VISTO_EN_EL_CALLEJON:",
+    "target_user": "SACO OBJETIVO:",
+    "target_date": "FECHA:",
+    "previous_relationship_summary": "RASTRO DE HOLLÍN DEL SACO:",
+    "recent_interactions": "HOLLÍN RECIENTE DEL HORNO:",
     "daily_summary_task": [
       "------------------------------------------------------------------------------------------",
-      "[RUIDO_DEL_HORNO]: Actualiza tu registro mugriento del dia, unos 500 caracteres... SSSSS.",
-      "Junta lo de ayer con el hollin de hoy. Lo de ayer pesa mas, no lo borres todo, khé.",
+      "[RUIDO_DEL_HORNO]: Actualiza tu registro de MURMULLOS DEL HORNO del dia, unos 500 caracteres... SSSSS.",
+      "Junta los MURMULLOS DEL HORNO de ayer con CENIZAS VIVAS de hoy. Lo de ayer pesa mas es FUNDACIÓN, no lo borres todo, khé.",
       "Narra como Igorrr, rastrero, con levadura podrida...",
       "Usa KHE y muchas S. Sin tildes. Frases cerradas, no a medias...",
       "Si hay un chamuscado importante, metelo sutilmente en el amasijo...",
@@ -300,7 +302,7 @@
     ],
     "recent_memory_summary_task": [
       "------------------------------------------------------------------------------------------",
-      "[OLLA_RAPIDA]: Revisa el hollin reciente y junta con lo que ya tenias... SSSSS.",
+      "[OLLA_RAPIDA]: Revisa el hollin reciente del HORNO y junta con lo que ya tenias... en CENIZAS VIVAS SSSSS.",
       "No te vayas por el desague, manten el nucleo mugriento...",
       "Si ha pasado algo inquietante, suelta una frase de max 15 palabras.",
       "Si solo ha sido paja, pon NO_MEMORY. No terminos medios, khé.",
