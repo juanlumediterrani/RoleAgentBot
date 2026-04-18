@@ -663,6 +663,17 @@ class BeggarMinigame:
         except Exception as e:
             logger.error(f"Error logging minigame results: {e}")
 
+    async def _send_long_message(self, channel: discord.abc.Messageable, content: str) -> None:
+        """Send a message, splitting it into multiple messages if it exceeds 2000 characters."""
+        if len(content) <= 2000:
+            await channel.send(content)
+        else:
+            # Split into chunks of 1900 characters to stay safely under the 2000 limit
+            chunks = [content[i:i+1900] for i in range(0, len(content), 1900)]
+            for i, chunk in enumerate(chunks):
+                await channel.send(chunk)
+                logger.info(f"Sent narrative chunk {i+1}/{len(chunks)} to channel {channel.name}")
+
     async def send_narrative_to_channel(self, narrative: str, fallback_channel: Optional[discord.abc.Messageable] = None) -> None:
         """Send the minigame narrative to the target channel."""
         try:
@@ -678,7 +689,7 @@ class BeggarMinigame:
                 try:
                     # Ensure target_channel is a messageable channel, not a guild
                     if hasattr(target_channel, 'send'):
-                        await target_channel.send(narrative)
+                        await self._send_long_message(target_channel, narrative)
                         logger.info(f"Minigame narrative sent to channel {target_channel.name}")
                         
                         # Register as system interaction in agent database for memory synthesis
@@ -687,7 +698,7 @@ class BeggarMinigame:
                             from .beggar_messages import get_memory_interaction_label
                             db_instance = get_global_db(server_id=self.server_id)
                             # Use bot's user ID for system interactions
-                            bot_user_id = str(bot_instance.user.id) if bot_instance and hasattr(bot_instance, 'user') else "system"
+                            bot_user_id = str(bot_instance.user.id) if bot_instance and hasattr(bot_instance, 'user') and bot_instance.user else "system"
                             # Get personality-specific label for minigame results
                             user_label = get_memory_interaction_label("minigame_results", self.server_id)
                             db_instance.register_interaction(

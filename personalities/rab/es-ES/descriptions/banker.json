@@ -34,7 +34,7 @@
         "instructions": " - Selecciona donar en el menú de abajo.\n - El resultado se revela al cierre del ciclo.\n - Cada aportación queda registrada en el núcleo.\n",
         "title_donations": "**Entidades que aportaron:**",
         "no_donations": " El vacío persiste. Ninguna entidad ha aportado todavía.",
-        "beggar_donation_success": "Aportación de {amount} fragmentos registrada para: {reason}. El flujo lo absorbe. 💡",
+        "beggar_donation_success": "Aportación de {amount} 🔋 registrada para: {reason}. El flujo lo absorbe. 🌌",
         "dropdown": {
             "beggar_donate": "Flujo: Aportar",
             "beggar_donate_description": "Contribuir fragmentos al proyecto colectivo",

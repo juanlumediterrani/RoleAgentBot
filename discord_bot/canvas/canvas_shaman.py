@@ -6,6 +6,7 @@ import json
 import discord
 
 from discord_bot import discord_core_commands as core
+from .canvas_base import CanvasModal
 
 get_server_key = core.get_server_key
 
@@ -181,7 +182,7 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
     return None
 
 
-class RuneCastingModal(discord.ui.Modal):
+class RuneCastingModal(CanvasModal):
     """Modal for rune casting questions."""
 
     def __init__(self, action_name: str, author_id: int, guild):
@@ -194,9 +195,8 @@ class RuneCastingModal(discord.ui.Modal):
             "runes_cross": messages.get('cross_cast', "🔮 **FIVE RUNE CROSS CASTING** 🔮"),
             "runes_runic_cross": messages.get('runic_cross_cast', "🔮 **SEVEN RUNE RUNIC CROSS CASTING** 🔮"),
         }
-        super().__init__(title=title_map.get(action_name, "Rune Casting"), timeout=300.0)
+        super().__init__(title=title_map.get(action_name, "Rune Casting"), timeout=300.0, author_id=author_id)
         self.action_name = action_name
-        self.author_id = author_id
         self.guild = guild
         self.reading_type = reading_type
         self.title_map = title_map

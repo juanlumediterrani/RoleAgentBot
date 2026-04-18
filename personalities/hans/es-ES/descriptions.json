@@ -57,15 +57,7 @@
       "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA! 🦅⚖️",
       "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO! 📉💥",
       "frequency_help": "📝 ¡Use `!canvas` → el rol correspondiente → Admin para ajustar la frecuencia (de 1 a 168 horas), ¡SCHNELL!",
-      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!",
-      "treasure_hunter": {
-        "button_poe2": "👺 POE2",
-        "subrole_buttons": {
-          "items": "💎 Items",
-          "league": "🏆 League",
-          "admin": "⚙️ Admin"
-        }
-      }
+      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!"
     },
     "behavior_messages": {
       "conversation": {

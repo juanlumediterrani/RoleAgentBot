@@ -34,7 +34,7 @@
         "instructions":" - Haz click donar en el menu desplegable de abajo.\n - Espera a los resultados semanales al final de esta.\n - Participa con cualquier cantidad y Putre lo tendra en cuenta.\n",
         "title_donations":"📊 ** Donaciones:**",
         "no_donations":" No hay donaciones todavia. Se el primero en contribuir!",
-        "beggar_donation_success": "¡Grazia po donar {amount} de oro pa la cauza: {reason}! 🪙",
+        "beggar_donation_success": "¡Grazia po donar {amount} de 🪙 pa la cauza: {reason}! 💪",
         "dropdown":{
             "beggar_donate": "Volunta: Donar",
             "beggar_donate_description": "Hacer una donacion para proyectos del clan",

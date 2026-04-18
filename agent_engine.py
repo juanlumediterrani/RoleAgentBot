@@ -594,7 +594,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                     return title
         
         # For trickster subroles, load from trickster.json
-        trickster_subrole_names = {"beggar", "dice_game", "ring"}
+        trickster_subrole_names = {"dice_game", "ring"}
         if role_name in trickster_subrole_names:
             trickster_path = descriptions_dir / "trickster.json"
             if trickster_path.exists():

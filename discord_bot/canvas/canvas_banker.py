@@ -5,6 +5,7 @@ import discord
 
 from discord_bot import discord_core_commands as core
 from .state import _get_canvas_beggar_state
+from .canvas_base import CanvasModal
 
 logger = core.logger
 get_banker_db_instance = None  # Now using roles_db directly
@@ -211,10 +212,10 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
     return build_canvas_role_banker({}, admin_visible, guild, author_id)
 
 
-class BankerConfigModal(discord.ui.Modal):
-    def __init__(self, action_name: str):
+class BankerConfigModal(CanvasModal):
+    def __init__(self, action_name: str, author_id: int):
         title = "Banker TAE" if action_name == "config_tae" else "Banker Bonus"
-        super().__init__(title=title)
+        super().__init__(title=title, author_id=author_id)
         self.action_name = action_name
         label = "TAE value" if action_name == "config_tae" else "Bonus value"
         placeholder = "0-1000" if action_name == "config_tae" else "0-10000"
@@ -276,13 +277,12 @@ class BankerConfigModal(discord.ui.Modal):
         )
 
 
-class BeggarDonationModal(discord.ui.Modal):
+class BeggarDonationModal(CanvasModal):
     """Modal for custom beggar donation amount."""
 
     def __init__(self, guild, author_id, view):
-        super().__init__(title="Make a Donation")
+        super().__init__(title="Make a Donation", author_id=author_id)
         self.guild = guild
-        self.author_id = author_id
         self.view = view
 
         self.amount_input = discord.ui.TextInput(
@@ -325,11 +325,11 @@ class BeggarDonationModal(discord.ui.Modal):
             )
 
 
-class BeggarFrequencyModal(discord.ui.Modal):
+class BeggarFrequencyModal(CanvasModal):
     """Modal for configuring beggar frequency."""
 
-    def __init__(self, view):
-        super().__init__(title="Configure Beggar Frequency")
+    def __init__(self, view, author_id: int):
+        super().__init__(title="Configure Beggar Frequency", author_id=author_id)
         self.view = view
         self.frequency = discord.ui.TextInput(
             label="Frequency (hours)",
@@ -447,7 +447,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
             elif action_name == "beggar_frequency":
                 # Show modal for frequency input
                 from .ui import CanvasRoleDetailView
-                modal = BeggarFrequencyModal(view)
+                modal = BeggarFrequencyModal(view, view.author_id)
                 await interaction.response.send_modal(modal)
                 return
             elif action_name == "beggar_force_minigame":

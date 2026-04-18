@@ -1,5 +1,5 @@
 {
-    "title": "🎵 **Jikata** 🪕",
+    "title": " 🎎 **Jikata** 🪕",
     "description": "Conecta a Yuki a un canal de voz para que acompañe el espacio con música. El sonido, bien elegido, también es una forma de presencia.",
     "button": "🪕 Jikata",
     "canvas_mc_title": "🪕 **Jikata**",
@@ -7,7 +7,7 @@
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Utiliza la consola para reproducir canciones, consultar la lista en curso o añadir nuevas piezas al repertorio.",
     "canvas_mc_voice_required": "Requiere conexión previa a un canal de voz",
-    "canvas_mc_admin_title": "🎵 **Ozashiki**  • Administrador",
+    "canvas_mc_admin_title": " 🎎 **Ozashiki**  • Administrador",
     "select_mc_action": "🎼 Seleccionar acción...",
     "play_song_title": "Reproducir Ahora",
     "add_song_title": "Añadir al Repertorio",

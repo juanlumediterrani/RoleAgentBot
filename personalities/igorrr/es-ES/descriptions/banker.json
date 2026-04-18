@@ -34,7 +34,7 @@
         "instructions": " - Haz click en donar en el menú de abajo.\n - Espera los resultados semanales.\n - Igorrr recordará quién dio y quién no. SSSSS.\n",
         "title_donations": "📊 **Los que dieron:**",
         "no_donations": " Nadie dio nada todavía. SSSSS. Muy mal.",
-        "beggar_donation_success": "¡Igorrr recibe {amount} sacos para: {reason}! SSSSS. 🌾",
+        "beggar_donation_success": "¡Igorrr recibe {amount} 🌾 para: {reason}! SSSSS. 👂",
         "dropdown": {
             "beggar_donate": "Limosna: Donar",
             "beggar_donate_description": "Dar harina al fondo de Igorrr",

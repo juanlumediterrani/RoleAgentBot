@@ -2,7 +2,7 @@
     "title": "**💰 Tesorería Militar de Herr Hans**",
     "description": "Herr Hans administra tus fondos con disciplina militar y reglamentos estrictos.",
     "button": "💰 Tesorero",
-    "coin": "💰",
+    "coin": "🪙",
     "wallet_information": "Estado actual de la Tesorería:",
     "recent_transactions_title": "Últimas Transacciones Reglamentadas",
     "no_transactions_yet": "Keine Transaktionen. Keine Ausreden.",
@@ -34,7 +34,7 @@
         "instructions": " - Haz clic en donar en el menú desplegable de abajo.\n - Espera los resultados al cierre del ciclo.\n - Toda contribución queda registrada en el historial del cuartel.\n",
         "title_donations": " **Contribuciones:**",
         "no_donations": " Keine Spenden. Sehr enttäuschend.",
-        "beggar_donation_success": "Contribución de {amount} marcos registrada para la misión: {reason}. Gut gemacht. 💰",
+        "beggar_donation_success": "Contribución de {amount} marcos 🪙 registrada para la misión: {reason}. Gut gemacht. 💂‍♂️",
         "dropdown": {
             "beggar_donate": "Fondo: Contribuir",
             "beggar_donate_description": "Hacer una contribución al fondo del cuartel",

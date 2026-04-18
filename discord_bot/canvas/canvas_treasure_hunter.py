@@ -4,6 +4,7 @@ import discord
 
 from discord_bot import discord_core_commands as core
 from .state import _get_canvas_poe2_state
+from .canvas_base import CanvasModal
 
 _personality_answers = core._personality_answers
 
@@ -49,12 +50,11 @@ def _get_treasure_text_factory(guild=None):
     return _treasure_text_factory(treasure_messages, treasure_descriptions)
 
 
-class Poe2ItemModal(discord.ui.Modal):
+class Poe2ItemModal(CanvasModal):
     def __init__(self, action_name: str, author_id: int, guild, view):
         title = "Add POE2 Item" if action_name == "poe2_item_add" else "Remove POE2 Item"
-        super().__init__(title=title)
+        super().__init__(title=title, author_id=author_id)
         self.action_name = action_name
-        self.author_id = author_id
         self.guild = guild
         self.view = view
         label = "Item name" if action_name == "poe2_item_add" else "Item name or item number"

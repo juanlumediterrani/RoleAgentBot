@@ -2,6 +2,12 @@
     "title": "**💎 Her Hans Cazador de Recursos Estratégicos**",
     "description": "Haga que Her Hans monitoree precios de objetos estratégicos en diferentes juegos y le envíe alertas cuando el precio esté en zona máxima/mínima.",
     "button": "💎 Recursos",
+    "button_poe2": "👺 POE2",
+    "subrole_buttons": {
+        "items": "💎 Items",
+        "league": "🏆 League",
+        "admin": "⚙️ Admin"
+    },
     "user_flows_title": "Procedimiento para el personal",
     "user_flows_1": "Seleccione el campo de operaciones que desea monitorear",
     "user_flows_2": "Navegue para configurarlo y seleccionar los objetivos deseados.",

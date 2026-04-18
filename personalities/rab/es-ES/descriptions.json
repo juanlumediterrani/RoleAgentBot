@@ -21,18 +21,18 @@
       "tips_section": "**Sugerencias de navegación**\n-Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?'\n-La verdadera sabiduría reside en la experiencia de cada rol."
     },
     "canvas_home_messages": {
-      "title": "🧭 Nexo Role Agent",
-      "button_home": "🧭 Origen",
+      "title": "☀️ Nexo - Role Agent Bot",
+      "button_home": "☀️ Origen",
       "button_back": "← Retornar",
-      "button_roles": "🎪 Módulos",
+      "button_roles": "💽 Módulos",
       "button_behavior": "🤖 Protocolos",
-      "button_help": "📝 Asistencia",
+      "button_help": "🔌 Asistencia",
       "generic_option_label": "Selecciona un camino...",
       "personalitystatus": "Conciencia Activa:",
       "description": "El panel canvas es tu interfaz directa con el núcleo del sistema.",
-      "recentsynthesistitle": "**Flujo de Datos Reciente**",
-      "dailymemorytitle": "**Memoria de Silicio**",
-      "personalsynthesistitle": "**Síntesis del Peregrino**",
+      "recentsynthesistitle": "🔁 **Flujo de Datos Reciente**",
+      "dailymemorytitle": "💾 **Memoria de Silicio**",
+      "personalsynthesistitle": "📂 **Relación con el Peregrino**",
       "dm_default_server_title": "🔔 **Enlazado al nexo: {server_name}**",
       "dm_default_server_message": "*Transmisión recibida en canal privado, utilizando la primera baliza disponible.*",
       "dm_default_server_separator": "─────────────────────────────────────────────",
@@ -57,15 +57,7 @@
       "role_available": "✅ {role} - SINCRONIZADO Y FLUYENDO",
       "role_unavailable": "❌ {role} - DESCONECTADO EN LA ARENA",
       "frequency_help": "📝 Ajusta el ciclo temporal: usa `!canvas` → el rol correspondiente → Admin (rango: 1 a 168 horas)",
-      "music_help": "🎵 **Resonancia Sintética** - `!mc play <frecuencia>` / `!mc queue` | `!mc help` para leer el registro completo de melodías.",
-      "treasure_hunter": {
-        "button_poe2": "👺 POE2",
-        "subrole_buttons": {
-          "items": "💎 Reliquias",
-          "league": "🏆 Ciclo",
-          "admin": "⚙️ Núcleo"
-        }
-      }
+      "music_help": "🎵 **Resonancia Sintética** - `!mc play <frecuencia>` / `!mc queue` | `!mc help` para leer el registro completo de melodías."
     },
     "behavior_messages": {
       "conversation": {

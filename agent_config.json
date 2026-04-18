@@ -1,6 +1,6 @@
 {
   "default_personality": "rab",
-  "default_language": "en-US",
+  "default_language": "es-ES",
   "platform": "discord",
   "llm": {
     "max_tokens": 2048

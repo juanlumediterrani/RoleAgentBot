@@ -12,6 +12,7 @@ from .state import (
     _get_canvas_dice_ranking,
     _get_canvas_ring_state,
 )
+from .canvas_base import CanvasModal
 
 get_server_key = core.get_server_key
 
@@ -324,7 +325,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
     return None
 
 
-class TricksterActionModal(discord.ui.Modal):
+class TricksterActionModal(CanvasModal):
     def __init__(self, action_name: str, author_id: int, guild, admin_visible: bool, view=None):
         titles = {
             "dice_fixed_bet": "Dice Fixed Bet",
@@ -334,9 +335,8 @@ class TricksterActionModal(discord.ui.Modal):
             "beggar_donate": "Beggar Donation",
             "ring_accuse": "Accuse User",
         }
-        super().__init__(title=titles.get(action_name, "Trickster Action"))
+        super().__init__(title=titles.get(action_name, "Trickster Action"), author_id=author_id)
         self.action_name = action_name
-        self.author_id = author_id
         self.guild = guild
         self.admin_visible = admin_visible
         self.view = view

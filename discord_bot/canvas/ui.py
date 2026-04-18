@@ -52,6 +52,9 @@ try:
 except ImportError:
     get_news_watcher_db_instance = None
 
+# Import Canvas base classes
+from .canvas_base import CanvasModal
+
 
 class TimeoutResetMixin:
     """Mixin to reset view timeout on user interaction."""
@@ -1153,7 +1156,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
                 return
-            await interaction.response.send_modal(BankerConfigModal(action_name))
+            await interaction.response.send_modal(BankerConfigModal(action_name, view.author_id))
             return
         if self.role_name == "banker" and action_name == "beggar_donate":
             if not interaction.guild:
@@ -1167,7 +1170,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
                 return
-            await interaction.response.send_modal(RoleFrequencyModal(self.role_name, action_name, view.agent_config, view))
+            await interaction.response.send_modal(RoleFrequencyModal(self.role_name, action_name, view.agent_config, view, view.author_id))
             return
         if self.role_name == "treasure_hunter" and action_name in {"poe2_item_add", "poe2_item_remove"}:
             # Allow POE2 item operations in DM
@@ -1250,7 +1253,7 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
                 return
-            await interaction.response.send_modal(CommentaryFrequencyModal(view))
+            await interaction.response.send_modal(CommentaryFrequencyModal(view, view.author_id))
             return
         if action_name in {"taboo_add", "taboo_del"}:
             if not interaction.guild or not view.admin_visible:
@@ -1738,10 +1741,10 @@ class CanvasTreasureHunterPoe2Button(discord.ui.Button):
         detail_embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, detail_name, None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         next_view.current_embed = detail_embed
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
-class RoleFrequencyModal(discord.ui.Modal):
-    def __init__(self, role_name: str, action_name: str, agent_config: dict, view):
+class RoleFrequencyModal(CanvasModal):
+    def __init__(self, role_name: str, action_name: str, agent_config: dict, view, author_id: int):
         title = "Watcher Frequency" if action_name == "watcher_frequency" else "Hunter Frequency"
-        super().__init__(title=title)
+        super().__init__(title=title, author_id=author_id)
         self.role_name = role_name
         self.action_name = action_name
         self.agent_config = agent_config
@@ -1807,9 +1810,9 @@ class RoleFrequencyModal(discord.ui.Modal):
         await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
 
 
-class CommentaryFrequencyModal(discord.ui.Modal):
-    def __init__(self, view):
-        super().__init__(title="Commentary Frequency")
+class CommentaryFrequencyModal(CanvasModal):
+    def __init__(self, view, author_id: int):
+        super().__init__(title="Commentary Frequency", author_id=author_id)
         self.view = view
         self.value_input = discord.ui.TextInput(label="Minutes", placeholder="e.g. 180", required=True, max_length=10)
         self.add_item(self.value_input)
@@ -1855,9 +1858,9 @@ class CommentaryFrequencyModal(discord.ui.Modal):
         await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
 
 
-class TabooKeywordModal(discord.ui.Modal):
-    def __init__(self, action_name: str, guild_id: int, view):
-        super().__init__(title="Taboo Keyword")
+class TabooKeywordModal(CanvasModal):
+    def __init__(self, action_name: str, guild_id: int, view, author_id: int):
+        super().__init__(title="Taboo Keyword", author_id=author_id)
         self.action_name = action_name
         self.guild_id = guild_id
         self.view = view
@@ -1918,13 +1921,13 @@ class TabooKeywordModal(discord.ui.Modal):
             await interaction.response.send_message(applied_text, ephemeral=True)
 
 
-class RoleControlModal(discord.ui.Modal):
+class RoleControlModal(CanvasModal):
     """Modal for role control with role selection and on/off toggle."""
-    
-    def __init__(self, view: "CanvasBehaviorView"):
-        super().__init__(title="Role Control", timeout=300)
+
+    def __init__(self, view: "CanvasBehaviorView", author_id: int):
+        super().__init__(title="Role Control", timeout=300, author_id=author_id)
         self.view = view
-        
+
         # Role selection dropdown
         self.role_input = discord.ui.TextInput(
             label="Role Name",
@@ -1934,7 +1937,7 @@ class RoleControlModal(discord.ui.Modal):
             max_length=50
         )
         self.add_item(self.role_input)
-        
+
         # On/Off toggle
         self.state_input = discord.ui.TextInput(
             label="State (on/off)",

@@ -20,7 +20,7 @@ MISSION_CONFIG = {
 ROLE_CONFIG = {
     "name": "trickster",
     "description": "Role specialized in scams and deceptions to get resources",
-    "subroles": ["beggar", "dice_game"]
+    "subroles": ["dice_game", "ring"]
 }
 
 _TRICKSTER_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -62,27 +62,19 @@ def _load_subrole_function(module_file, func_name):
 
 
 # Load subrole task functions
-_beggar_task = _load_subrole_function(
-    os.path.join(_TRICKSTER_DIR, "subroles", "beggar", "beggar.py"),
-    "beggar_task"
-)
 _dice_game_task = _load_subrole_function(
     os.path.join(_TRICKSTER_DIR, "subroles", "dice_game", "dice_game.py"),
     "dice_game_task"
+)
+_ring_task = _load_subrole_function(
+    os.path.join(_TRICKSTER_DIR, "subroles", "ring", "ring.py"),
+    "ring_task"
 )
 
 
 async def trickster_task():
     """Execute all trickster role tasks."""
     logger.info("🎭 Starting trickster role tasks...")
-
-    if _beggar_task:
-        try:
-            await _beggar_task()
-        except Exception as e:
-            logger.exception(f"❌ Error in beggar task: {e}")
-    else:
-        logger.warning("⚠️ Beggar task not available, skipping")
 
     if _dice_game_task:
         try:
@@ -91,6 +83,14 @@ async def trickster_task():
             logger.exception(f"❌ Error in dice game task: {e}")
     else:
         logger.warning("⚠️ Dice game task not available, skipping")
+
+    if _ring_task:
+        try:
+            await _ring_task()
+        except Exception as e:
+            logger.exception(f"❌ Error in ring task: {e}")
+    else:
+        logger.warning("⚠️ Ring task not available, skipping")
 
     logger.info("✅ Trickster role tasks completed")
 

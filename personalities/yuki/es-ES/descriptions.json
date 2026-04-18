@@ -30,9 +30,9 @@
       "generic_option_label": "Elige un camino...",
       "personalitystatus": "Presencia Activa:",
       "description": "Accede a cada parte del salon dese aquí para acceder a los servicios.",
-      "recentsynthesistitle": "**Flujo Reciente**",
-      "dailymemorytitle": "**Memoria**",
-      "personalsynthesistitle": "**Síntesis del Visitante**",
+      "recentsynthesistitle": "🌊 **Flujo Reciente**",
+      "dailymemorytitle": "🗻 **Memoria**",
+      "personalsynthesistitle": "👥 **Vinculo con el Visitante**",
       "dm_default_server_title": "🔔 **Conectada a la sala: {server_name}**",
       "dm_default_server_message": "*Mensaje recibido en canal privado. Respondiendo desde la primera sala disponible.*",
       "dm_default_server_separator": "─────────────────────────────────────────────",
@@ -57,15 +57,7 @@
       "role_available": "✅ {role} - ACTIVO",
       "role_unavailable": "❌ {role} - EN REPOSO",
       "frequency_help": "📝 Ajusta la cadencia: Usa `!canvas` → Configuración → Frecuencia (rango: 1 a 168 horas)\nEjemplo: Configura frecuencia a 2 horas para recibir actualizaciones cada 2 horas.",
-      "music_help": "🎵 **Música** - `!mc play <nombre>` / `!mc queue` | `!mc help` para consultar el repertorio completo.",
-      "treasure_hunter": {
-        "button_poe2": "👺 POE2",
-        "subrole_buttons": {
-          "items": "💎 Objetos",
-          "league": "🏆 Ciclo",
-          "admin": "⚙️ Núcleo"
-        }
-      }
+      "music_help": "🎵 **Música** - `!mc play <nombre>` / `!mc queue` | `!mc help` para consultar el repertorio completo."
     },
     "behavior_messages": {
       "conversation": {

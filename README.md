@@ -6,6 +6,8 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 ![Discord](https://img.shields.io/badge/Discord-2.7.0-green)
 ![License](https://img.shields.io/badge/License-Custom%20License-orange)
 
+![Main Characters](banners/maincharacters.png)
+
 ## ✨ Features
 
 ### 🎭 Multi-Personality System

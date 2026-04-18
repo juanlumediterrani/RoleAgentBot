@@ -5,6 +5,7 @@ import asyncio
 import discord
 
 from discord_bot import discord_core_commands as core
+from .canvas_base import CanvasModal
 
 logger = core.logger
 
@@ -112,13 +113,13 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
         mock_message = MockMessage(interaction.channel, interaction.user, interaction.guild)
 
         if action_name == "mc_play":
-            await interaction.response.send_modal(CanvasMCSongModal("mc_play", view, mc_commands))
+            await interaction.response.send_modal(CanvasMCSongModal("mc_play", view, mc_commands, view.author_id))
             return
         if action_name == "mc_add":
-            await interaction.response.send_modal(CanvasMCSongModal("mc_add", view, mc_commands))
+            await interaction.response.send_modal(CanvasMCSongModal("mc_add", view, mc_commands, view.author_id))
             return
         if action_name == "mc_volume":
-            await interaction.response.send_modal(CanvasMCVolumeModal(view, mc_commands))
+            await interaction.response.send_modal(CanvasMCVolumeModal(view, mc_commands, view.author_id))
             return
 
         captured_messages = []
@@ -186,10 +187,10 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
         logger.exception(f"Error handling MC canvas action {action_name}: {error}")
 
 
-class CanvasMCSongModal(discord.ui.Modal):
+class CanvasMCSongModal(CanvasModal):
     """Modal for MC song input (play or add)."""
 
-    def __init__(self, action_name: str, view, mc_commands):
+    def __init__(self, action_name: str, view, mc_commands, author_id: int):
         self.action_name = action_name
         self.view = view
         self.mc_commands = mc_commands
@@ -266,9 +267,10 @@ class CanvasMCSongModal(discord.ui.Modal):
 class CanvasMCVolumeModal(discord.ui.Modal):
     """Modal for MC volume input."""
 
-    def __init__(self, view, mc_commands):
+    def __init__(self, view, mc_commands, author_id: int):
         self.view = view
         self.mc_commands = mc_commands
+        self.author_id = author_id
         
         from .content import _get_personality_descriptions
         server_id = core.get_server_key(view.guild) if view.guild else None
@@ -279,7 +281,7 @@ class CanvasMCVolumeModal(discord.ui.Modal):
             value = mc_descriptions.get(key, mc_messages_fallback.get(key))
             return str(value).strip() if value else fallback
 
-        super().__init__(title=_mc_text("set_volume_title", "Set Volume"), timeout=300)
+        super().__init__(title=_mc_text("set_volume_title", "Set Volume"), timeout=300, author_id=author_id)
 
         self.volume_input = discord.ui.TextInput(
             label="Volume (0-100)",

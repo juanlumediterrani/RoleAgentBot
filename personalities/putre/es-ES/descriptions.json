@@ -21,16 +21,16 @@
       "tips_section": "**Algunos consejos**\n-Puedes preguntarle al bot cómo funciona un comando como: '¿cómo funciona el comando dice?'\n-Las partes más jugosas del bot están dentro de cada rol"
     },
     "canvas_home_messages": {
-      "title": "🧭 Putre Hub",
+      "title": "🧭 Burujula Putre",
       "button_home": "🧭 Inicio",
       "button_back": "← Atrás",
       "button_roles": "🎪 Roles",
-      "button_behavior": "🤖 Comportamiento",
-      "button_help": "📝 Ayuda",
+      "button_behavior": "⚔️ Comportamiento",
+      "button_help": "🥩 Ayuda",
       "generic_option_label": "Escoge una opción...",
       "personalitystatus": "Personalidad Cargada:",
       "description": "-Interactua con todas las funciones disponibles para Putre desde aquí.\n -El panel canvas te permite interactuar con todas las opciones del bot desde este menu.",
-      "recentsynthesistitle": "**Síntesis Reciente**",
+      "recentsynthesistitle": "🍺 **Suzesos rezientes**",
       "dailymemorytitle": "**Memoria**",
       "personalsynthesistitle": "**Síntesis Personal**",
       "dm_default_server_title": "🔔 **Usando servidor por defecto: {server_name}**",
@@ -57,15 +57,7 @@
       "role_available": "✅ {role} - RUGIENDO Y ZANGRIENTO",
       "role_unavailable": "❌ {role} - PUDRIENDOSE EN LA TIERRA",
       "frequency_help": "📝 Uza `!canvas` → el rol → Admin pa ajustar la frekuensia (de 1 a 168 oras)!",
-      "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!",
-      "treasure_hunter": {
-        "button_poe2": "👺 POE2",
-        "subrole_buttons": {
-          "items": "💎 Items",
-          "league": "🏆 League",
-          "admin": "⚙️ Admin"
-        }
-      }
+      "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!"
     },
     "behavior_messages": {
       "conversation": {
