@@ -2,6 +2,9 @@
     "title": "**🥁 MC Putre a los tambores!**",
     "description": "MC Putre, invitalo a un canal de voz para que reproduzca musica por ti.",
     "button": "🥁 MC",
+    "subrole_buttons": {
+        "overview": "🥁 Kola"
+    },
     "canvas_mc_subtitle": "Klavijas de kontrol",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Uza el menu dezplegabe para pedime kanciones, pa ve la kola, o pa anyadi ma kanciones umano.",

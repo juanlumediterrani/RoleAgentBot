@@ -6,12 +6,10 @@
     "canvas_trickster_overview_description": "Accede a los módulos de probabilidad y azar de la sala.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **Ozashiki-asobi (お座敷遊び) ** - Desafía al azar y reclama el fondo acumulado",
-        "ring": "👁️ **Me-tsuke (目付)** - El círculo de vigilancia que mantiene el orden en el distrito"
+        "dice_game": "🎲 **Ozashiki-asobi (お座敷遊び) ** - Desafía al azar y reclama el fondo acumulado"
     },
     "subrole_buttons": {
-        "dice": "🎲 Ozashiki-asobi",
-        "ring": "👁️ Me-tsuke"
+        "dice": "🎲 Ozashiki-asobi"
     },
     "dice_game": {
         "waitmessage": "Calculando resultado... Un momento.",
@@ -52,13 +50,6 @@
         "dice_fixed_bet_description": "Ajusta el coste por tirada",
         "dice_pot_value": "Valor del Pozo",
         "dice_pot_value_description": "Establece el fondo inicial del pozo",
-        "select_ring_admin_action": "👁️ Seleccionar acción de Me-tsuke...",
-        "ring_on": "Búsqueda: Activar",
-        "ring_on_description": "Activa la búsqueda del Me-tsuke en segundo plano",
-        "ring_off": "Búsqueda: Desactivar",
-        "ring_off_description": "Detiene la búsqueda activa",
-        "ring_frequency": "Frecuencia de búsqueda",
-        "ring_frequency_description": "Ajusta el tiempo entre cada ronda de interrogación",
         "dice_play": "Jugar",
         "dice_play_description": "Lanzar los dados y participar en el pozo",
         "dice_ranking": "Clasificación",
@@ -123,25 +114,5 @@
         "big_pot": "🔥🍶 **LA COPA DE SAKE REBOSA** 🍶🔥\nSe han acumulado {balance:,} unidades esperando a alguien con paciencia suficiente.\n",
         "rules": " -**Combinación perfecta (1-1-1)** 🍶 ¡Ganas la copa de Sake! 🍶\n - Escalera alta **(4,5,6)** 🃏 multiplica tu apuesta por **5**.\n - Cualquier **trío** 🪭 te devuelve **x3** tu apuesta.\n - Una **pareja** 🕯️ te permite **recuperar** el coste de la tirada.\n ",
         "description": "**Descripción:** Lanza los dados y participa en la copa de Sake. La suerte no discrimina."
-    },
-    "ring": {
-        "title": "👁️ **ME-TSUKE (目付)** 👁️",
-        "description": "🔍 El círculo de vigilancia. Como inspector del distrito, Yuki mantiene una red de contactos que permite interrogar y perseguir sin romper la discreción de la casa de té.",
-        "status_active": "✅ **VIGILANCIA ACTIVA** - Yuki está ejerciendo su función de inspector",
-        "status_inactive": "❌ **EN REPOSO** - La vigilancia no está activa",
-        "current_target": "🎯 **SOSPECHOSO ACTUAL:**",
-        "target_unknown": "👤 Sin sospechosos identificados todavía",
-        "investigation_title": "🔍 **SEÑALAR A UN VISITANTE:**",
-        "investigation_instructions": "• Usa **Me-tsuke: Señalar** desde el menú de abajo\n• Escribe la mención (@) o ID del visitante sospechoso\n• Yuki iniciará una indagación directa\n• El resultado será visible para todos en el canal",
-        "investigation_warning": "⚠️ **RESTRICCIONES:**\n• Un visitante no puede señalarse a sí mismo\n• Los bots no son sujetos de investigación\n• La vigilancia debe estar activada por un administrador",
-        "inactive_title": "⚠️ **VIGILANCIA INACTIVA**",
-        "inactive_instructions": "Para activar la vigilancia:\n• Un administrador debe acceder al panel **Admin Me-tsuke**\n• Ejecutar **Vigilancia: Activar**\n• Configurar la frecuencia de las rondas\n\nUna vez activa, podrás señalar a visitantes sospechosos.",
-        "hot_potato": "🔥 **La sospecha se desplaza:** Ronda {iteration} (velocidad x{multiplier})",
-        "controls": "**Controles**\n- Activar o desactivar la vigilancia\n- Frecuencia de rondas",
-        "admin_description": "Configura la sensibilidad y frecuencia de la vigilancia del Me-tsuke",
-        "dropdown": {
-            "ring_accuse": "Me-tsuke: Señalar",
-            "ring_accuse_description": "Indicar que un visitante es sospechoso para la investigación"
-        }
     }
 }

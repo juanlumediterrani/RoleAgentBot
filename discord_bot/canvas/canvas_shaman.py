@@ -224,7 +224,7 @@ class RuneCastingModal(CanvasModal):
                 await interaction.followup.send("❌ Runes system is not available.", ephemeral=True)
                 return
 
-            runes_commands = get_nordic_runes_commands_instance()
+            runes_commands = get_nordic_runes_commands_instance(interaction.guild)
 
             class MockMessage:
                 def __init__(self, author, guild):

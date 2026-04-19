@@ -35,8 +35,8 @@ _client_groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
 _client_mistral = Mistral(api_key=os.getenv("MISTRAL_API_KEY")) if MISTRAL_AVAILABLE and os.getenv("MISTRAL_API_KEY") else None
 _SIMULATION_MODE = os.getenv("AGENT_SIMULATION", os.getenv("ROLE_AGENT_SIMULATION", "")).strip() in ("1", "true", "True", "yes")
 
-logger.info(f"🔧 [CONFIG] Simulation mode: {'ENABLED' if _SIMULATION_MODE else 'DISABLED'}")
-logger.info("🔧 [CONFIG] Usage counter (path resolved at runtime)")
+logger.debug(f"🔧 [CONFIG] Simulation mode: {'ENABLED' if _SIMULATION_MODE else 'DISABLED'}")
+logger.debug("🔧 [CONFIG] Usage counter (path resolved at runtime)")
 logger.info(f"🤖 [AI] Groq client initialized: {'✅' if os.getenv('GROQ_API_KEY') else '❌'}")
 vertex_ai_disabled = os.getenv('DISABLE_VERTEX_AI', '').strip().lower() in ('1', 'true', 'yes')
 logger.info(f"🤖 [AI] Vertex AI available: {'✅' if os.getenv('GOOGLE_CLOUD_PROJECT') and not vertex_ai_disabled else '❌'}")
@@ -249,4 +249,4 @@ def clear_personality_cache():
     Useful for hot-reloading configuration files while the bot is running.
     """
     _load_personality_file_cached.cache_clear()
-    logger.info("Personality file cache cleared")
+    logger.debug("Personality file cache cleared")

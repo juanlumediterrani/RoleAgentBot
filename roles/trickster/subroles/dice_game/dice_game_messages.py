@@ -21,7 +21,7 @@ def get_dice_game_messages(server_id: str = None):
                 with open(trickster_path, encoding="utf-8") as f:
                     trickster_data = json.load(f)
                 desc_dice_messages = trickster_data.get("dice_game", {})
-                logger.info("🎲 Loaded dice game messages from trickster.json")
+                logger.debug("🎲 Loaded dice game messages from trickster.json")
             else:
                 # Fallback to old descriptions.json structure
                 descriptions_path = get_personality_file_path("descriptions.json", server_id)
@@ -32,7 +32,7 @@ def get_dice_game_messages(server_id: str = None):
                 roles_view = descriptions_cfg.get("roles_view_messages", {})
                 trickster = roles_view.get("trickster", {})
                 desc_dice_messages = trickster.get("dice_game", {})
-                logger.info("🎲 Loaded dice game messages from descriptions.json (fallback)")
+                logger.debug("🎲 Loaded dice game messages from descriptions.json (fallback)")
             
             combined_messages.update(desc_dice_messages)
         except Exception as e:
@@ -42,7 +42,7 @@ def get_dice_game_messages(server_id: str = None):
             logger.warning("⚠️ No custom dice game messages found in either file")
             return get_default_messages()
         else:
-            logger.info(f"🎲 Combined dice game messages loaded: {len(combined_messages)} messages")
+            logger.debug(f"🎲 Combined dice game messages loaded: {len(combined_messages)} messages")
             return combined_messages
 
     except Exception as e:

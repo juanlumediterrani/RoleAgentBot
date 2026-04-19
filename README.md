@@ -11,28 +11,38 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 ## ✨ Features
 
 ### 🎭 Multi-Personality System
-- **Multiple Personalities**: Switch between different AI personalities (Putre, Kronk, Rab, Yuki, and more)
+- **Multiple Personalities**: Switch between different AI personalities (Rab, Putre, Kronk, Yuki, Hans, Igorrr, and more)
 - **Server-Specific Selection**: Configure different personalities per Discord server via Canvas UI or commands
 - **Character Voice**: Each personality has unique speech patterns, vocabulary, and behavioral traits
 - **Dynamic Responses**: AI maintains character consistency across all interactions
 - **Multi-Language Support**: Personalities available in multiple languages (English, Spanish, Chinese)
 - **Per-Server Personalily configuration**: Select preferred personality for each server independently
 
-### 🧠 Advanced Memory Architecture
+### � Personality Evolution
+The bot's personality subtly evolves weekly based on server interactions:
+- Analyzes the last 7 days of daily memories
+- Generates evolved identity paragraphs while preserving core character
+- Creates timestamped backups before applying changes
+- Each server maintains an independent, evolvable personality copy
+
+### �🧠 Advanced Memory Architecture
 - **Four-Layer Memory System**:
   - Daily Memory: Synthesizes important events every 24 hours
-  - Recent Memory: Rolling window of interactions (4-hour synthesis)
-  - Relationship Memory: Per-user relationship summaries refreshed hourly
-  - Recent Dialogue: Direct message window for ongoing conversations
+  - **Recent Memory**: Rolling window of interactions (4-hour synthesis)
+  - **Relationship Memory**: Per-user relationship summaries refreshed hourly
+  - **Recent Dialogue**: Direct message window for ongoing conversations
+  - **Weekly Personality Evolution**: Subtle personality mutation based on 7-day memory synthesis
 - **"Remember That?"**: Detects when users ask about past events and retrieves relevant memories
 - **Notable Recollections**: Stores significant events for future reference
 
 ### 🎮 Modular Role System
 - **News Watcher**: RSS feed monitoring with AI-powered content filtering
-- **Treasure Hunter**: Path of Exile item price tracking and market analysis
-- **Trickster**: Minigames with virtual currency (dice, beggar, ring, runes)
-- **Banker**: Virtual wallet management and transaction processing
-- **Music Controller**: YouTube music playback in voice channels
+- **Treasure Hunter**: Path of Exile 2 item price tracking and market analysis
+- **Trickster**: Dice game minigame with shared Banker pot
+- **Banker**: Virtual wallet management with subrole **Beggar** (DM-based donation requests)
+- **Juggler**: Playful role with subrole **Ring** (interactive accusation game)
+- **Shaman**: Interpretive subrole **Nordic Runes** (personalized readings)
+- **Music Controller (MC)**: YouTube music playback in voice channels with queue management
 
 ### 🎨 Canvas UI System
 - **Interactive Interface**: Button-based navigation for complex configurations
@@ -42,8 +52,9 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 
 ### 🛡️ Safety & Rate Limiting
 - **Fatigue Limit System**: Configurable rate limits (burst, hourly, daily) with intelligent exemptions
+- **Admin Slash Commands**: `/fatigue_stats`, `/fatigue_limits`, `/fatigue_check` for monitoring
 - **Permission Controls**: Admin-only commands and restricted operations
-- **Graceful Degradation**: Fallback mechanisms for service failures
+- **Graceful Degradation**: Fallback mechanisms for service failures (Vertex AI → Groq → Mistral)
 - **Server-Specific Logging**: Isolated log directories per Discord server for better debugging and privacy
 
 ### 🔄 Reactive Behaviors
@@ -173,7 +184,10 @@ Each Discord server can have its own personality and language settings:
 
 **Via Commands:**
 - `!role<personality>` - Set personality for current server
+- `!setnickname <name>` - Set bot nickname for this server (admin only)
+- `!identity` - Show current bot identity information
 - `!canvas` - Access full configuration UI for personality and language
+- `!canvas <bot_name>` - Target specific bot when multiple bots share a guild
 
 **Benefits:**
 - Different servers can use different personalities simultaneously
@@ -191,10 +205,12 @@ Each Discord server can have its own personality and language settings:
 
 ### Role Commands
 - `!watcher` - News watcher commands
-- `!trickster` - Minigames and entertainment
+- `!trickster` - Dice game minigame
 - `!banker` - Virtual wallet operations
 - `!mc` - Music playback control
-- `!hunter` - Treasure hunter for Path of Exile
+- `!hunter` - Treasure hunter for Path of Exile 2
+- `!juggler` - Ring subrole management
+- `!shaman` - Nordic runes readings
 
 ### Behavior Control
 - `!greet[personality]` - Enable presence greetings
@@ -217,7 +233,13 @@ Each Discord server can have its own personality and language settings:
 3. Configure in `agent_config.json`
 4. Test character voice consistency
 
-### Running Tests
+### Admin Test Commands
+- `!testpersonalityevolution` - Test weekly personality evolution with synthetic memories
+- `!testdailymemory` - Test daily memory synthesis generation
+- `!testrecentmemory` - Test recent memory synthesis generation
+- `!testrelationshipmemory [@user]` - Test relationship memory for a user
+
+### Running Role Tests
 ```bash
 # Run specific role tests
 python roles/news_watcher/news_watcher.py
@@ -240,10 +262,10 @@ logs/
 │   └── <PERSONALITY>.log # Personality-specific logs
 ```
 
-### Fatigue Monitoring
-- `!fatigue_stats [@user]` - View usage statistics
-- `!fatigue_limits` - Display current configuration
-- `!fatigue_check @user` - Test limit status
+### Fatigue Monitoring (Slash Commands)
+- `/fatigue_stats [@user]` - View usage statistics
+- `/fatigue_limits` - Display current configuration
+- `/fatigue_check @user` - Test limit status
 
 ## 📄 License & Terms
 
@@ -270,10 +292,10 @@ This project is licensed under a custom license that permits free non-commercial
 This project wouldn't be possible without these amazing open-source tools:
 
 - **[discord.py](https://github.com/Rapptz/discord.py)** - Discord API wrapper for Python
-- **[Google Cloud Vertex AI](https://cloud.google.com/vertex-ai)** - Vertex AI LLM integration
-- **[Groq](https://github.com/groq/groq-python)** - Fast LLM inference
+- **[Google Cloud Vertex AI](https://cloud.google.com/vertex-ai)** - Vertex AI LLM integration (primary)
+- **[Groq](https://github.com/groq/groq-python)** - Fast LLM inference (fallback)
+- **[Mistral AI](https://github.com/mistralai/client-python)** - LLM provider (fallback)
 - **[Cohere](https://github.com/cohere-ai/cohere-python)** - NLP and LLM services
-- **[Mistral AI](https://github.com/mistralai/client-python)** - LLM provider
 - **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** - YouTube media downloader
 - **[feedparser](https://github.com/kurtmckee/feedparser)** - RSS feed parsing
 - **[aiohttp](https://github.com/aio-libs/aiohttp)** - Async HTTP client
@@ -312,13 +334,13 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## 🔮 Future Roadmap
 
-- [ ] Voice MC management.
-- [ ] Enhanced memory recolletions for the relationships.
-- [ ] Personality evolution
+- [x] ~~Voice MC management~~ ✅ Implemented
+- [x] ~~Enhanced memory recollections for the relationships~~ ✅ Implemented
+- [x] ~~Personality evolution~~ ✅ Implemented (weekly)
 - [ ] Personality EX customization inside Discord.
-- [ ] More role modules (shaman, blacksmith, dungeon master...)
+- [x] ~~More role modules~~ ✅ Shaman, Juggler added
 - [ ] Another platforms (telegram, whatsapp, minecraft?)
-- [ ] Fine-Tunning to a LLM to improve his socials capabilities, even adaptors for race and roles.
+- [ ] Fine-Tuning to a LLM to improve his socials capabilities, even adaptors for race and roles.
 
 ---
 

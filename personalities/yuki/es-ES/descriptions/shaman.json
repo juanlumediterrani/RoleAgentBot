@@ -1,24 +1,24 @@
 {
-    "title": "**🌸 Chamán Yuki**",
-    "description": "Consulta los símbolos del Futhark con Yuki. Cada lectura llega con atención genuina.",
-    "button": "🌸 Chamán",
+    "title": "**🌕 Aruki-miko**",
+    "description": "Un arte de adivinación de tierras lejanas, adaptado a la sesión de Ozashiki Asobi. Yuki lo ofrece como Hana-machi no Himitsu: un conocimiento secreto que solo ella posee.",
+    "button": "🌕 Aruki-miko",
     "subrole_buttons": {
-        "runes": "🔮 Uranaishi"
+        "runes": "🀄 Rune-Uranai"
     },
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🔮 **Uranaishi (占い師)** - Consulta los símbolos para encontrar orientación"
+        "nordic_runes": "🀄 **Rune-Uranai (ルーン占い)** - Un arte exótico de tierras lejanas. Las runas talladas en madera de sándalo y lacado Urushi con pan de oro aguardan en su kinchaku de seda de kimono antiguo."
     },
     "nordic_runes": {
-        "title": "**🔮 Uranaishi**",
-        "description": "Consulta los símbolos del alfabeto Elder Futhark para encontrar orientación. Yuki los recibe con el mismo respeto con que aprendió su propio arte: desde fuera, con atención genuina.",
+        "title": "**🀄 Rune-Uranai (ルーン占い)**",
+        "description": "Un arte de adivinación de tierras lejanas, adaptado a la ceremonia de Ozashiki. Yuki lo ofrece como Hana-machi no Himitsu: un conocimiento secreto que solo ella posee.",
         "title_available_readings": "🌔 **Tipos de Lectura** 🌔\n",
-        "available_readings": "- **Símbolo único** (Respuesta rápida): Un símbolo que apunta directamente a la situación presente.\n - **Tres símbolos** (Línea temporal): Pasado (Urðr), Presente (Verðandi) y Futuro (Skuld).\n - **Cruz de cinco** (Mapa completo): Cinco dimensiones de tu situación actual.\n - **Red de siete** (Yggdrasil): La lectura más completa, conectando todas las capas.\n",
+        "available_readings": "- **🎋 Símbolo único** (一文字占い): Una respuesta directa, como el haiku más breve.\n - **🌸 Tres símbolos** (三界の流れ): Pasado, Presente y Futuro —el flujo del tiempo en tres estaciones.\n - **🍂 Cruz de cinco** (五行の配置): Cinco dimensiones dispuestas como los elementos de una ceremonia.\n - **❄️ Red de siete** (世界樹の七枝): La lectura más profunda, como Yggdrasil conectando todos los mundos.\n",
         "history": "📓 **Lecturas anteriores** 📓",
         "error_history": "❌ **Sin lecturas registradas:** No hay consultas previas en la memoria.",
         "how_to_use": "**Cómo usar:**\n 1. Elige el tipo de lectura en el menú de abajo.\n 2. Escribe tu pregunta en el campo que aparecerá.\n 3. La lectura llegará a tu canal privado.\n",
         "runes_title": "**Los 24 símbolos del Futhark:**",
-        "welcome": "🔮 Estoy lista. Los símbolos aguardan tu pregunta.",
-        "question_prompt": "🔮 ¿Qué necesitas saber? Escribe tu pregunta.",
+        "welcome": "🎎 Los símbolos reposan en su kinchaku de seda... ¿Qué secreto buscas revelar esta noche?",
+        "question_prompt": "🌘 Antes de tocar las runas... ¿Qué pregunta traes en tu corazón? Escríbela con intención.",
         "reading_types": "🔮 Tipos de lectura disponibles: single, three, cross, runic_cross.",
         "invalid_type": "🔮 Tipo de lectura no reconocido. Los disponibles son: single, three, cross, runic_cross.",
         "no_question": "🔮 Necesito una pregunta para comenzar. Escribe lo que quieres saber.",

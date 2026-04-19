@@ -21,7 +21,7 @@
                 "reasons": [
                     "para komprar levadura freska ke no grite",
                     "para pagar la multa del Amo por keman el pan",
-                    "para adkuirer harina sin gorgojos de verdad",
+                    "para adkuirir harina sin gorgojos de verdad",
                     "para sobornar a la rata grande ke roba el serron",
                     "para reparar la puerta del horno ke se kae",
                     "para komprar agua sin sarna para amasar",
@@ -30,6 +30,32 @@
                 ]
             }
         }
+    },
+    "ring_messages": {
+        "target_changed": "✅ El anillo apunta ahora a {target_name}",
+        "enabled": "✅ El anillo aktivado en la konfigurasion.",
+        "disabled": "✅ El anillo desaktivado en la konfigurasion."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ La acción se quemó... SSSSS... No está disponible.",
+        "error_behavior_admin_only": "❌ ¡SOLO PARA EL AMO! ¡Tú no tocas la masa! SSSSS...",
+        "error_settings_admin_only": "❌ ¡El Amo no permite que toques los tics! ¡Vete al callejón! SSSSS",
+        "error_taboo_update_failed": "❌ Las palabras prohibidas se escaparon del horno... Revisa las cenizas... SSSSS",
+        "error_greetings_update_failed": "❌ Los siseos se apagaron... Revisa el horno... SSSSS",
+        "error_welcome_update_failed": "❌ La bienvenida se quemó... Revisa las cenizas... SSSSS",
+        "error_commentary_update_failed": "❌ Los comentarios se carbonizaron... Revisa el horno... SSSSS",
+        "error_commentary_disabled": "❌ Los comentarios están fríos como cadáver... SSSSS",
+        "error_commentary_process_failed": "❌ No pude escupir los comentarios... El Amo me castigará... SSSSS",
+        "success_taboo_state": "Palabras que huelen mal {enabled_disabled} en el sótano... SSSSS",
+        "success_greetings_state": "Siseos {enabled_disabled} para los sacos de harina... SSSSS",
+        "success_welcome_state": "Bienvenida {enabled_disabled} para los sacos nuevos... SSSSS",
+        "success_commentary_state": "Comentarios {enabled_disabled} desde el horno... SSSSS",
+        "state_enabled": "horneando",
+        "state_disabled": "frío"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ No hay sótanos abiertos... Vete al callejón... SSSSS",
+        "server_access_error": "❌ No puedo entrar al horno desde aquí... SSSSS..."
     }
 
 

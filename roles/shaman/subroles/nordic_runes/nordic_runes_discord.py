@@ -44,21 +44,17 @@ class NordicRunesCommands:
         """Initialize the runes commands."""
         self.runes = NordicRunes()
         self.guild = guild
-        self.db = self._get_nordic_runes_db()
+        self.db = None
+        if guild:
+            self.db = self._get_nordic_runes_db()
     
     def _get_nordic_runes_db(self):
         """Get Nordic Runes database instance for a server."""
-        try:
-            from agent_db import get_server_id
-            if self.guild:
-                server_id = str(self.guild.id)
-            else:
-                server_id = get_server_id()
-            return get_nordic_runes_db_instance(server_id)
-        except Exception as e:
-            logger.error(f"Failed to get Nordic Runes database: {e}")
-            from agent_db import get_server_id
-            return get_nordic_runes_db_instance(get_server_id())
+        if not self.guild:
+            raise ValueError("Cannot initialize Nordic Runes database: guild context is required")
+        
+        server_id = str(self.guild.id)
+        return get_nordic_runes_db_instance(server_id)
     
     async def cmd_runes(self, ctx, args: List[str]) -> str:
         """Main runes command dispatcher."""
@@ -339,11 +335,18 @@ class NordicRunesCommands:
 # Global commands instance
 _commands_instance = None
 
-def get_nordic_runes_commands_instance() -> NordicRunesCommands:
+def get_nordic_runes_commands_instance(guild=None) -> NordicRunesCommands:
     """Get the global Nordic runes commands instance."""
     global _commands_instance
     if _commands_instance is None:
-        _commands_instance = NordicRunesCommands()
+        _commands_instance = NordicRunesCommands(guild)
+    elif guild and _commands_instance.guild != guild:
+        # Reinitialize if guild context changed
+        _commands_instance.guild = guild
+        _commands_instance.db = _commands_instance._get_nordic_runes_db()
+    elif guild and _commands_instance.db is None:
+        # Initialize database if guild is set but db is None
+        _commands_instance.db = _commands_instance._get_nordic_runes_db()
     return _commands_instance
 
 # Command functions for registration

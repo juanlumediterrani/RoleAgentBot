@@ -143,8 +143,39 @@ class CanvasMCActionSelect(discord.ui.Select):
                 return
             await interaction.response.send_modal(CanvasMCVolumeModal(view, mc_commands, view.author_id))
             return
-        # Handle direct actions (skip, pause, resume, stop, queue, clear, history)
-        await _handle_canvas_mc_action(interaction, action_name, view)
+        # Handle direct actions (skip, pause, resume, stop, clear, history)
+        # mc_queue navigates to overview with current queue
+        if action_name == "mc_queue":
+            from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
+            from .ui import CanvasRoleDetailView
+            from roles.mc.db_role_mc import get_mc_db_instance
+
+            # Get current queue from database
+            queue_info = None
+            try:
+                db_mc = get_mc_db_instance(str(interaction.guild.id))
+                queue_data_all = db_mc.get_queue_all_channels(str(interaction.guild.id))
+                if queue_data_all:
+                    channel_id = queue_data_all[0][7]  # channel_id is at index 7
+                    queue_data = db_mc.get_queue(str(interaction.guild.id), channel_id)
+                    queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+            except Exception as e:
+                logger.warning(f"Failed to load MC queue for overview: {e}")
+
+            # Build MC overview content with queue
+            mc_content = build_canvas_role_mc(queue_info=queue_info, guild=interaction.guild)
+            server_id = core.get_server_key(interaction.guild) if interaction.guild else None
+            embed = _build_canvas_role_embed("mc", mc_content, view.admin_visible, "overview", None, "📋 Flujo escaneado", server_id=server_id)
+
+            # Update view to overview
+            view.current_detail = "overview"
+            try:
+                await interaction.response.edit_message(content=None, embed=embed, view=view)
+            except discord.InteractionResponded:
+                await interaction.followup.edit_message(interaction.message.id, embed=embed, view=view)
+            return
+        else:
+            await _handle_canvas_mc_action(interaction, action_name, view)
 
 
 async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name: str, view) -> None:
@@ -212,14 +243,15 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
             await mc_commands.cmd_stop(mock_message, [])
             last_action = _mc_text("playback_stopped", "⏹️ Playback stopped and queue cleared")
         elif action_name == "mc_queue":
-            await mc_commands.cmd_queue(mock_message, [])
-            last_action = _mc_text("queue_displayed", "📋 Queue displayed")
+            # Get queue info from database (no cmd_queue call to avoid duplication)
             try:
                 db_mc = get_mc_db_instance(str(interaction.guild.id))
                 queue_data = db_mc.get_queue(str(interaction.guild.id), str(interaction.channel.id))
                 queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+                last_action = _mc_text("queue_displayed", "📋 Queue displayed")
             except Exception:
-                pass
+                queue_info = None
+                last_action = _mc_text("queue_displayed", "📋 Queue displayed")
         elif action_name == "mc_clear":
             await mc_commands.cmd_clear(mock_message, [])
             last_action = _mc_text("queue_cleared", "🗑️ Queue cleared")
@@ -334,8 +366,12 @@ class CanvasMCSongModal(CanvasModal):
                 server_id = core.get_server_key(self.view.guild) if self.view.guild else None
                 if server_id and self.view.guild:
                     db_mc = get_mc_db_instance(server_id)
-                    queue_data = db_mc.get_queue(server_id, str(self.view.guild.id))
-                    queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+                    # Get the most recent channel_id from the queue for this server
+                    queue_data_all = db_mc.get_queue_all_channels(server_id)
+                    if queue_data_all:
+                        channel_id = queue_data_all[0][7]  # channel_id is at index 7
+                        queue_data = db_mc.get_queue(server_id, channel_id)
+                        queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
             except Exception:
                 pass
 
@@ -405,8 +441,12 @@ class CanvasMCVolumeModal(CanvasModal):
                 server_id = core.get_server_key(self.view.guild) if self.view.guild else None
                 if server_id and self.view.guild:
                     db_mc = get_mc_db_instance(server_id)
-                    queue_data = db_mc.get_queue(server_id, str(self.view.guild.id))
-                    queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+                    # Get the most recent channel_id from the queue for this server
+                    queue_data_all = db_mc.get_queue_all_channels(server_id)
+                    if queue_data_all:
+                        channel_id = queue_data_all[0][7]  # channel_id is at index 7
+                        queue_data = db_mc.get_queue(server_id, channel_id)
+                        queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
             except Exception:
                 pass
 

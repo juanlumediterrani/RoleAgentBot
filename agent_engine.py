@@ -76,6 +76,16 @@ def _load_personality_descriptions(server_id: str = None) -> dict:
                     descriptions["roles_view_messages"] = {}
                 descriptions["roles_view_messages"]["mc"] = mc_descriptions
         
+        # Load juggler descriptions from separate file
+        juggler_descriptions_path = os.path.join(personality_dir, "descriptions", "juggler.json")
+        if os.path.exists(juggler_descriptions_path):
+            with open(juggler_descriptions_path, encoding="utf-8") as f:
+                juggler_descriptions = json.load(f)
+                # Merge juggler descriptions into roles_view_messages
+                if "roles_view_messages" not in descriptions:
+                    descriptions["roles_view_messages"] = {}
+                descriptions["roles_view_messages"]["juggler"] = juggler_descriptions
+        
         return descriptions
     except Exception as e:
         logger.warning(f"Could not load personality descriptions.json: {e}")
@@ -132,7 +142,7 @@ def _get_subrole_frequency_from_config(subrole_name: str) -> int:
         return 12  # Default fallback
 
 def _cargar_personalidad(server_id: str = None) -> dict:
-    logger.info(f"🧬 [PERSONALITY] _cargar_personalidad called with server_id={server_id}")
+    logger.debug(f"🧬 [PERSONALITY] _cargar_personalidad called with server_id={server_id}")
     # First check for server-specific personality configuration
     personality_rel = None
     language = "en-US"  # Default language
@@ -175,19 +185,19 @@ def _cargar_personalidad(server_id: str = None) -> dict:
     # Check for server-specific personality directory: databases/<server_id>/<personality_name>/
     # NOTE: active_personality_name must be used here — NOT os.path.basename(base_personality_dir)
     # which would return the language code (e.g. "es-ES") instead of the personality name.
-    logger.info(f"🧬 [PERSONALITY] server_id={server_id}, active_personality_name={active_personality_name}")
-    logger.info(f"🧬 [PERSONALITY] base_personality_dir={base_personality_dir}")
+    logger.debug(f"🧬 [PERSONALITY] server_id={server_id}, active_personality_name={active_personality_name}")
+    logger.debug(f"🧬 [PERSONALITY] base_personality_dir={base_personality_dir}")
     if server_id and active_personality_name:
         try:
             server_personality_dir = os.path.join(_BASE_DIR, "databases", server_id, active_personality_name)
             server_personality_json = os.path.join(server_personality_dir, 'personality.json')
-            logger.info(f"🧬 [PERSONALITY] server_personality_dir={server_personality_dir}")
-            logger.info(f"🧬 [PERSONALITY] server_personality_json exists={os.path.exists(server_personality_json)}")
+            logger.debug(f"🧬 [PERSONALITY] server_personality_dir={server_personality_dir}")
+            logger.debug(f"🧬 [PERSONALITY] server_personality_json exists={os.path.exists(server_personality_json)}")
             
             # If server directory doesn't exist, create it
             if not os.path.exists(server_personality_dir):
                 os.makedirs(server_personality_dir, exist_ok=True)
-                logger.info(f"🧬 [PERSONALITY] Created server personality directory: {server_personality_dir}")
+                logger.debug(f"🧬 [PERSONALITY] Created server personality directory: {server_personality_dir}")
             
             # Copy missing JSON files from base personality to server directory
             import shutil
@@ -212,7 +222,7 @@ def _cargar_personalidad(server_id: str = None) -> dict:
             # Now use server directory if files exist
             if os.path.exists(server_personality_json):
                 personality_dir = server_personality_dir
-                logger.info(f"🧬 [PERSONALITY] Using server-local personality from {server_personality_dir}")
+                logger.debug(f"🧬 [PERSONALITY] Using server-local personality from {server_personality_dir}")
             else:
                 logger.warning(f"🧬 [PERSONALITY] Could not copy personality to server directory, using base: {base_personality_dir}")
         except Exception as e:
@@ -288,7 +298,7 @@ def _get_personality(server_id: str = None) -> dict:
                 expected_personality = server_cfg.get("active_personality", "").lower()
                 cached_name = _personality_cache[cache_key].get("name", "").lower()
                 if expected_personality and cached_name != expected_personality:
-                    logger.info(
+                    logger.debug(
                         f"🎭 [PERSONALITY] Cache stale for server {server_id}: "
                         f"cached={cached_name}, expected={expected_personality}. Reloading."
                     )
@@ -299,7 +309,7 @@ def _get_personality(server_id: str = None) -> dict:
     if needs_reload:
         _personality_cache[cache_key] = _cargar_personalidad(server_id)
         if os.getenv('ROLE_AGENT_PROCESS') != '1':
-            logger.info(f"🎭 [PERSONALITY] Loaded: {_personality_cache[cache_key].get('name', 'Unknown')} (server: {server_id})")
+            logger.debug(f"🎭 [PERSONALITY] Loaded: {_personality_cache[cache_key].get('name', 'Unknown')} (server: {server_id})")
     
     return _personality_cache[cache_key]
 
@@ -370,14 +380,14 @@ def reload_personality(server_id: str = None):
         cache_key = server_id
         if cache_key in _personality_cache:
             del _personality_cache[cache_key]
-            logger.info(f"🎭 [PERSONALITY] Cache cleared for server: {server_id}")
+            logger.debug(f"🎭 [PERSONALITY] Cache cleared for server: {server_id}")
         if cache_key in _personality_descriptions_cache:
             del _personality_descriptions_cache[cache_key]
-            logger.info(f"📝 [DESCRIPTIONS] Cache cleared for server: {server_id}")
+            logger.debug(f"📝 [DESCRIPTIONS] Cache cleared for server: {server_id}")
     else:
         _personality_cache = {}
         _personality_descriptions_cache = {}
-        logger.info("🎭 [PERSONALITY] All cache cleared")
+        logger.debug("🎭 [PERSONALITY] All cache cleared")
     # Force reload on next access
     _get_personality(server_id)
 
@@ -407,7 +417,7 @@ def _get_personality_descriptions(server_id: str = None) -> dict:
     if cache_key not in _personality_descriptions_cache:
         _personality_descriptions_cache[cache_key] = _load_personality_descriptions(server_id)
         if os.getenv('ROLE_AGENT_PROCESS') != '1':
-            logger.info(f"📝 [DESCRIPTIONS] Loaded for server: {server_id}")
+            logger.debug(f"📝 [DESCRIPTIONS] Loaded for server: {server_id}")
     
     return _personality_descriptions_cache[cache_key]
 
@@ -444,12 +454,12 @@ def get_discord_token():
     personality_name = PERSONALITY.get("name", "").upper()
     specific_token = os.getenv(f"DISCORD_TOKEN_{personality_name}")
     if specific_token:
-        logger.info(f"🔑 Using specific token: DISCORD_TOKEN_{personality_name}")
+        logger.debug(f"🔑 Using specific token: DISCORD_TOKEN_{personality_name}")
         return specific_token
     # Fallback to generic token
     fallback_token = os.getenv("DISCORD_TOKEN")
     if fallback_token:
-        logger.info(f"🔑 Using generic token: DISCORD_TOKEN")
+        logger.debug(f"🔑 Using generic token: DISCORD_TOKEN")
     else:
         logger.warning("⚠️ No Discord token found (neither specific nor generic)")
     return fallback_token
@@ -475,7 +485,7 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
     # Handle ring subrole special case: replace <accusated_user> placeholder
     if subrole_name == "ring" and server_id and "<accusated_user>" in duty_text:
         try:
-            from roles.trickster.subroles.ring.ring_discord import _get_ring_state
+            from roles.juggler.subroles.ring.ring_discord import _get_ring_state
             ring_state = _get_ring_state(server_id)
             target_user_name = ring_state.get("target_user_name", "Unknown bearer")
             duty_text = duty_text.replace("<accusated_user>", target_user_name)
@@ -594,7 +604,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                     return title
         
         # For trickster subroles, load from trickster.json
-        trickster_subrole_names = {"dice_game", "ring"}
+        trickster_subrole_names = {"dice_game"}
         if role_name in trickster_subrole_names:
             trickster_path = descriptions_dir / "trickster.json"
             if trickster_path.exists():
@@ -605,6 +615,30 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                     if title:
                         return title
                 subrole_descriptions = trickster_desc.get("canvas_trickster_subrole_descriptions", {})
+                if role_name in subrole_descriptions:
+                    desc_text = subrole_descriptions[role_name]
+                    if "**" in desc_text:
+                        parts = desc_text.split("**")
+                        if len(parts) >= 3:
+                            title = parts[1].strip()
+                            if title:
+                                return title
+                    title = desc_text.split("-")[0].replace("🙏", "").replace("🔮", "").replace("🎲", "").replace("👁️", "").strip()
+                    if title:
+                        return title
+        
+        # For juggler subroles, load from juggler.json
+        juggler_subrole_names = {"ring"}
+        if role_name in juggler_subrole_names:
+            juggler_path = descriptions_dir / "juggler.json"
+            if juggler_path.exists():
+                juggler_desc = json.loads(juggler_path.read_text(encoding='utf-8'))
+                subrole_section = juggler_desc.get(role_name, {})
+                if isinstance(subrole_section, dict):
+                    title = subrole_section.get("title", "").replace("**", "").strip()
+                    if title:
+                        return title
+                subrole_descriptions = juggler_desc.get("canvas_juggler_subrole_descriptions", {})
                 if role_name in subrole_descriptions:
                     desc_text = subrole_descriptions[role_name]
                     if "**" in desc_text:
@@ -670,7 +704,7 @@ def _get_active_roles_section(server_id: str = None) -> str:
             from agent_roles_db import get_roles_db_instance
             roles_db = get_roles_db_instance(server_id)
             roles = roles_db.get_all_roles_with_subroles()
-            logger.info(f"[_get_active_roles_section] Loaded {len(roles)} roles from database")
+            logger.debug(f"[_get_active_roles_section] Loaded {len(roles)} roles from database")
         except Exception as e:
             logger.warning(f"[_get_active_roles_section] Failed to load roles from database: {e}, falling back to AGENT_CFG")
             roles = (AGENT_CFG or {}).get("roles", {})
@@ -791,7 +825,7 @@ def _load_active_tasks_system_additions() -> list[str]:
     additions: list[str] = []
     
     if not is_role_process:
-        logger.info("🎭 [ROLES] Verifying configured roles...")
+        logger.debug("🎭 [ROLES] Verifying configured roles...")
     enabled_roles = []
 
     for role_name, role_cfg in roles.items():
@@ -799,12 +833,12 @@ def _load_active_tasks_system_additions() -> list[str]:
             continue
         if not role_cfg.get("enabled", False):
             if not is_role_process:
-                logger.info(f"   💤 [Role] '{role_name}' - disabled")
+                logger.debug(f"   💤 [Role] '{role_name}' - disabled")
             continue
 
         enabled_roles.append(role_name)
         if not is_role_process:
-            logger.info(f"   ✅ [Role] '{role_name}' - active (every {role_cfg.get('interval_hours', '?')}h)")
+            logger.debug(f"   ✅ [Role] '{role_name}' - active (every {role_cfg.get('interval_hours', '?')}h)")
 
         # Skip subroles (beggar, ring) - they will be loaded from JSON
         if role_name in ["beggar", "ring"]:
@@ -815,7 +849,7 @@ def _load_active_tasks_system_additions() -> list[str]:
         if not script_path:
             # Skip roles without script (e.g., integrated roles like mc)
             if not is_role_process:
-                logger.info(f"   📋 [ROL] '{role_name}' - integrated mode (no script)")
+                logger.debug(f"   📋 [ROL] '{role_name}' - integrated mode (no script)")
             continue
             
         role_script_path = os.path.join(_BASE_DIR, script_path)
@@ -846,10 +880,10 @@ def _load_active_tasks_system_additions() -> list[str]:
                         if role_name in ["beggar", "ring"]:
                             additions.append(addition)
                             if not is_role_process:
-                                logger.info(f"   📋 [ROL] '{role_name}' - mission loaded: {addition[:50]}...")
+                                logger.debug(f"   📋 [ROL] '{role_name}' - mission loaded: {addition[:50]}...")
                         else:
                             if not is_role_process:
-                                logger.info(f"   🔄 [ROL] '{role_name}' - contextual context (not global): {addition[:50]}...")
+                                logger.debug(f"   🔄 [ROL] '{role_name}' - contextual context (not global): {addition[:50]}...")
                         continue
             
             if not is_role_process:
@@ -894,7 +928,7 @@ def _load_active_tasks_system_additions() -> list[str]:
                             addition = addition.replace('\\"', '"').replace('\\\\', '\\')
                             if addition:
                                 if not is_role_process:
-                                    logger.info(f"   🔄 [Subrole] '{subrole_name}' - contextual context (not global): {addition[:50]}...")
+                                    logger.debug(f"   🔄 [Subrole] '{subrole_name}' - contextual context (not global): {addition[:50]}...")
                 except Exception as e:
                     if not is_role_process:
                         logger.warning(f"⚠️ Could not load MISSION_CONFIG from subrole {subrole_name}: {e}")
@@ -905,9 +939,9 @@ def _load_active_tasks_system_additions() -> list[str]:
 
     if not is_role_process:
         if enabled_roles:
-            logger.info(f"🎭 [ROLES] Total active: {len(enabled_roles)} - {', '.join(enabled_roles)}")
+            logger.debug(f"🎭 [ROLES] Total active: {len(enabled_roles)} - {', '.join(enabled_roles)}")
         else:
-            logger.info("🎭 [ROLES] No active roles configured")
+            logger.debug("🎭 [ROLES] No active roles configured")
     
     # Mark as verified and save cache
     _roles_verified = True
@@ -1066,14 +1100,14 @@ def mark_subrole_executed(subrole_name: str, next_run: datetime, server_id: str 
             server_id = get_server_id()
         db = RolesDatabase(server_id)
         db.set_subrole_next_run(subrole_name, next_run)
-        logger.info(f"🎭 [SUBROLE] {subrole_name} next run scheduled for {next_run:%Y-%m-%d %H:%M:%S}")
+        logger.debug(f"🎭 [SUBROLE] {subrole_name} next run scheduled for {next_run:%Y-%m-%d %H:%M:%S}")
     except Exception as e:
         logger.error(f"Failed to persist next_run_at for {subrole_name}: {e}")
 
 async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instance=None, server_id: str = None):
     """Execute internal task for a subrole."""
     try:
-        logger.info(f"🎭 [SUBROLE] Executing internal task: {subrole_name} (server: {server_id})")
+        logger.debug(f"🎭 [SUBROLE] Executing internal task: {subrole_name} (server: {server_id})")
         
         # Get bot instance if not provided (needed for Discord operations like channel selection)
         if bot_instance is None:
@@ -1103,7 +1137,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             try:
                 success = await execute_beggar_task(server_id=server_id, bot_instance=bot_instance)
                 if success:
-                    logger.info(f"🎭 [BEGGAR] Task executed successfully")
+                    logger.debug(f"🎭 [BEGGAR] Task executed successfully")
                 else:
                     logger.warning(f"🎭 [BEGGAR] Task execution failed")
             except Exception as e:
@@ -1123,18 +1157,17 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                     frequency = _get_subrole_frequency_from_config('beggar')
                     _cd['frequency_hours'] = frequency
                     _rdb.save_role_config('beggar', _cfg.get('enabled', True), json.dumps(_cd))
-                    logger.info(f"🎭 [BEGGAR] Seeded frequency_hours={frequency} into roles_config")
+                    logger.debug(f"🎭 [BEGGAR] Seeded frequency_hours={frequency} into roles_config")
             except Exception as e:
                 logger.warning(f"🎭 [BEGGAR] Could not read frequency from roles_config: {e}")
                 frequency = _get_subrole_frequency_from_config('beggar')
             mark_subrole_executed(subrole_name, datetime.now() + timedelta(hours=frequency), server_id=_srv)
             return
         elif subrole_name == "ring":
-            from roles.trickster.subroles.ring.ring_discord import (
-                _get_ring_state, execute_ring_accusation,
+            from roles.juggler.subroles.ring.ring_discord import (                _get_ring_state, execute_ring_accusation,
                 _calculate_next_frequency, _auto_reset_ring_accusation
             )
-            from roles.trickster.subroles.ring.ring_db import RingDB
+            from roles.juggler.subroles.ring.ring_db import RingDB
             _RING_IGNORED_LIMIT = 5
             _RING_IGNORED_MIN_FREQ = 1
             try:
@@ -1148,7 +1181,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
 
                 # Skip entirely if ring is not enabled
                 if not ring_state.get('enabled', False):
-                    logger.info(f"🎭 [RING] Ring is disabled, skipping")
+                    logger.debug(f"🎭 [RING] Ring is disabled, skipping")
                     return
 
                 target_user_id = ring_state.get('target_user_id', '')
@@ -1156,7 +1189,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
 
                 # No target configured — do nothing
                 if not target_user_id:
-                    logger.info(f"🎭 [RING] No target configured, skipping")
+                    logger.debug(f"🎭 [RING] No target configured, skipping")
                     return
 
                 # --- Ignored limit check ---
@@ -1165,7 +1198,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                 unanswered = ring_state.get('unanswered_dm_count', 0)
                 current_freq = ring_state.get('current_frequency_hours', 24)
                 if current_freq <= _RING_IGNORED_MIN_FREQ and unanswered >= _RING_IGNORED_LIMIT:
-                    logger.info(f"🔄 [RING] {target_user_name} ignored {unanswered} messages at {current_freq}h freq — auto-resetting")
+                    logger.debug(f"🔄 [RING] {target_user_name} ignored {unanswered} messages at {current_freq}h freq — auto-resetting")
                     db_agent = AgentDatabase(server_name)
                     import sqlite3
                     conn = sqlite3.connect(db_agent.db_path)
@@ -1186,7 +1219,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                         ring_state = _get_ring_state(server_name, force_refresh=True)
                         target_user_id = ring_state['target_user_id']
                         target_user_name = ring_state['target_user_name']
-                        logger.info(f"🔄 [RING] New target after auto-reset: {target_user_name}")
+                        logger.debug(f"🔄 [RING] New target after auto-reset: {target_user_name}")
                     else:
                         logger.warning(f"🎭 [RING] Auto-reset failed: no candidates, staying idle")
                         base_freq = ring_state.get('base_frequency_hours', 24)
@@ -1219,7 +1252,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                     logger.warning(f"Could not get original accuser: {e}")
 
                 accusation = await execute_ring_accusation(None, target_user_id, target_user_name, user_name=accuser_name)
-                logger.info(f"🎭 [RING] Accusation generated for {target_user_name}: {accusation[:100]}...")
+                logger.debug(f"🎭 [RING] Accusation generated for {target_user_name}: {accusation[:100]}...")
 
                 # Find most active channel in last 24h
                 cursor.execute('''
@@ -1253,7 +1286,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                         
                         if target_user:
                             await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
-                            logger.info(f"🎭 [RING] Accusation sent via DM to {target_user_name}")
+                            logger.debug(f"🎭 [RING] Accusation sent via DM to {target_user_name}")
                             dm_sent = True
                         else:
                             logger.warning(f"🎭 [RING] Could not find target user {target_user_id} in guild or cache")
@@ -1270,14 +1303,14 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                             channel = bot.get_channel(int(channel_result[0]))
                             if channel:
                                 await channel.send(f"⚠️ **RING INVESTIGATION** (DM failed)\n{accusation}")
-                                logger.info(f"🎭 [RING] Accusation sent to channel as fallback")
+                                logger.debug(f"🎭 [RING] Accusation sent to channel as fallback")
                     except Exception as ch_err:
                         logger.error(f"🎭 [RING] Channel fallback failed: {ch_err}")
 
                 # Increment unanswered counter and persist
                 ring_state = _get_ring_state(server_name, force_refresh=True)
                 ring_state['unanswered_dm_count'] = ring_state.get('unanswered_dm_count', 0) + 1
-                from roles.trickster.subroles.ring.ring_discord import _save_ring_state
+                from roles.juggler.subroles.ring.ring_discord import _save_ring_state
                 _save_ring_state(server_name, "scheduler_accusation")
 
                 # Schedule next run via hot-potato
@@ -1305,7 +1338,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         )
         
         if response and len(response) > 10:
-            logger.info(f"🎭 [{subrole_name.upper()}] Task executed successfully")
+            logger.debug(f"🎭 [{subrole_name.upper()}] Task executed successfully")
         else:
             logger.warning(f"🎭 [{subrole_name.upper()}] Empty or short response: {response}")
 

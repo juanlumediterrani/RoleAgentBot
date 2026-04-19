@@ -6,12 +6,10 @@
     "canvas_trickster_overview_description": "tle de esta view.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!",
-        "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único"
+        "dice_game": "🎲 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!"
     },
     "subrole_buttons": {
-        "dice": "🎲 Bote",
-        "ring": "👁️ Anillo"
+        "dice": "🎲 Bote"
     },
     "dice_game": {
         "waitmessage": "Tirando daos...Ezpera!",
@@ -52,13 +50,6 @@
         "dice_fixed_bet_description": "Ajustar el costo de la apuesta fija para jugar al BOTE",
         "dice_pot_value": "Valor del Bote",
         "dice_pot_value_description": "Establecer el monto inicial del bote",
-        "select_ring_admin_action": "👁️ Selekzionar aksion de anillo...",
-        "ring_on": "Anillo: Aktivao",
-        "ring_on_description": "Aktivar buskeda del anillo",
-        "ring_off": "Anillo: Desaktivao",
-        "ring_off_description": "Desaktivar buskeda del anillo",
-        "ring_frequency": "Frekuenzia de Anillo",
-        "ring_frequency_description": "Ajustar frekuenzia de revisión",
         "dice_play": "Tirar Dados",
         "dice_play_description": "Jugar al BOTE de Putre",
         "dice_ranking": "Klasifikación",
@@ -123,25 +114,5 @@
         "big_pot": "🔥 **¡EL BOTE ARDE COMO ALDEA ELFIKA!** 🔥\n¡Hay **{balance:,}** monedas de oro! ¡Usa `!canvas` → Trickster para robarlo o putre te pisa! 🎲",
         "rules": " -**Trio de ojos de GRUUMSH** 👁️ y llevate el **BOTE**!\n -Escalera alta **(4,5,6)** multiplica **x5** la apuesta! INKURSION SANGRIENTA 🗡️ !\n - Lanza un cualquier **Trio** de calavaeras rotas 💀 y llevate un **x3** de la apuesta.\n - Un **Par** de colmillos 🐺 **te devolveran** la apuesta.\n ",
         "description": "**Descripción:**¡GRRR! Pon a prueba tu suerte con el BOTE de Putre! 🎲 Tira los dados contra la banca y lleva todo el oro si puedes!"
-    },
-    "ring": {
-        "title": "👁️ **PUTRE CAZADOR DEL ANILLO** 👁️",
-        "description": "🔍 El cazador del anillo te persigara hasta el fin de los tiempos, acusa a otros usuarios para evitar ese calvario.",
-        "status_active": "✅ **CAZA ACTIVA** - Putre está buscando el anillo",
-        "status_inactive": "❌ **CAZA INACTIVA** - Putre está descansando",
-        "current_target": "🎯 **OBJETIVO ACTUAL:**",
-        "target_unknown": "👤 Ningun sospechoso selecionao",
-        "investigation_title": "🔍** HASER UNA ACUSACIÓN:**",
-        "investigation_instructions": "• ¡GRRR! Usa **Ring: Accuse** del menú de abajo umano tonto\n• ¡Escribe: @nombredeusuario o ID del sospechoso!\n• ¡Putre generará acusación amenazante para aterrorizar!\n• ¡Acusación se publicará en kanal para que todos vean!",
-        "investigation_warning": "⚠️ ¡CUIDAO BOBO!:\n• ¡No puedes acusarte a ti mismo, idiota!\n• ¡No puedes acusar bots, no tienen sangre!\n• ¡Ring debe estar aktivado por jefe orko primero!",
-        "inactive_title": "⚠️ **LA CAZA ESTÁ INACTIVA**",
-        "inactive_instructions": "Para activar la funcionalidad del ring:\n• Un admin debe ir a **Ring Admin**\n• Hacer clic en **Ring: On** para activar\n• Configurar la frecuencia para investigaciones automáticas\n\nUna vez activado, puedes acusar usuarios de llevar el Anillo Único!",
-        "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
-        "controls": "**Controles**\n- Activar o desactivar ring\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
-        "admin_description": "Configura la funcionalidad y frecuencia de la caza del anillo",
-        "dropdown": {
-            "ring_accuse": "Anillo: Acusar",
-            "ring_accuse_description": "Acusar a un usuario de llevar el Anillo Unico"
-        }
     }
 }

@@ -104,7 +104,7 @@ def initialize_roles_from_database(agent_config=None, guild=None) -> bool:
             # Use the same server_id as above for verification
             roles_db = get_roles_db_instance(server_id)
             
-            all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "ring", "dice_game"]
+            all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "dice_game"]
             for role_name in all_roles:
                 try:
                     # Get enabled state from agent_config if available, otherwise default to True for MC

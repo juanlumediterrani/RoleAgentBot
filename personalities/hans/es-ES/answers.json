@@ -30,6 +30,32 @@
                 ]
             }
         }
+    },
+    "ring_messages": {
+        "target_changed": "✅ Ziel des Rings aktualisiert auf {target_name}",
+        "enabled": "✅ Ring in Konfiguration aktiviert.",
+        "disabled": "✅ Ring in Konfiguration deaktiviert."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ ¡ACHTUNG! La selección de acción no está disponible, Zivilist! ✍️🚫",
+        "error_behavior_admin_only": "❌ ¡SOLO PARA OFICIALES SUPERIORES! ¡SCHNELL! 🦅⚖️",
+        "error_settings_admin_only": "❌ ¡ACCIÓN RESTRINGIDA! ¡Solo oficiales pueden modificar parámetros! ✍️🚫",
+        "error_taboo_update_failed": "❌ ¡FALLO EN ACTUALIZACIÓN DE UMBRALES! ¡Revisar protocolos! 📉💥",
+        "error_greetings_update_failed": "❌ ¡FALLO EN PROTOCOLO DE SALUDO! ¡Revisar registros! 🦅⚖️",
+        "error_welcome_update_failed": "❌ ¡FALLO EN PROTOCOLO DE INDUCCIÓN! ¡Revisar registros! 📉💥",
+        "error_commentary_update_failed": "❌ ¡FALLO EN OBSERVACIONES! ¡Revisar informes! ✍️🚫",
+        "error_commentary_disabled": "❌ ¡MÓDULO DE OBSERVACIONES DESACTIVADO! 📉💥",
+        "error_commentary_process_failed": "❌ ¡ERROR EN PROCESAMIENTO DE OBSERVACIONES! ¡Revisar registros! ✍️🚫",
+        "success_taboo_state": "Umbrales {enabled_disabled} para este cuartel, Zivilist! 🦅⚖️",
+        "success_greetings_state": "Protocolo de saludo {enabled_disabled} para este cuartel! ✍️",
+        "success_welcome_state": "Ceremonia de inducción {enabled_disabled} para este cuartel! 🦅⚖️",
+        "success_commentary_state": "Observaciones tácticas {enabled_disabled} para este cuartel! ✍️",
+        "state_enabled": "ACTIVADO",
+        "state_disabled": "DESACTIVADO"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ ¡NO HAY CUARTELES DISPONIBLES! 📉💥 ¡Ejecutar acciones desde un servidor, Schweinehund! ✍️🚫",
+        "server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL CUARTEL! 📉💥 ¡Ejecutar acciones desde un servidor! ✍️🚫"
     }
 
 

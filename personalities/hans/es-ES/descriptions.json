@@ -10,7 +10,11 @@
       "base_frequency": "**FRECUENCIA BASE:**",
       "current_frequency": "**FRECUENCIA ACTUAL:**",
       "current_settings": "🔧 **CONFIGURACIÓN OFICIAL:** 🦅⚖️",
-      "frequency_format": "Cada {hours}h"
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Cambios",
+      "option_yes": "Sí",
+      "option_no": "No"
     },
     "help_menu": {
       "title": "📚 ** Her Hans - MANUAL DE INSTRUCCIONES**",
@@ -35,9 +39,7 @@
       "personalsynthesistitle": "👞 **Expediente del recluta**",
       "dm_default_server_title": "🔔 **USANDO SERVIDOR POR DEFECTO: {server_name}**",
       "dm_default_server_message": "*¡Navegando desde DM, usando el primer servidor disponible!*",
-      "dm_default_server_separator": "═══════════════════════════════════════",
-      "dm_no_servers_available": "❌ ¡NO HAY SERVIDORES DISPONIBLES! 📉💥 ¡Ejecutar acciones desde un servidor, Schweinehund! ✍️🚫",
-      "dm_server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL SERVIDOR! 📉💥 ¡Ejecutar acciones desde un servidor! ✍️🚫"
+      "dm_default_server_separator": "═══════════════════════════════════════"
     },
     "roles_view_messages": {
       "title": "🎭  UNIDADES ESPECIALES DE Her Hans 🎭",
@@ -94,23 +96,28 @@
       "personality": {
         "title": "**🎭 Her Hans - INFILTRACION**",
         "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️\n -¡Cambiar el personaje del agente para este servidor en el menu deplegable de más abajo!\n -¡Descarga una copia de seguridad de la identidad actual con los cambios de en su personalidad!\n -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
-        "button": "🎭 INFILTRACION"
+        "button": "🎭 INFILTRACION",
+        "option_change": "Cambiar Identidad",
+        "option_change_desc": "¡Cambiar a una personalidad operativa diferente!",
+        "option_download": "Descargar Identidad Actual",
+        "option_download_desc": "¡Exportar identidad como archivo ZIP cifrado!",
+        "placeholder": "¡Elige una operación de identidad...",
+        "modal_personality_label": "Nueva Identidad Operativa",
+        "modal_download_label": "¿Descargar identidad anterior? (si/no)",
+        "modal_delete_memory_label": "¿Borrar archivos de inteligencia? (si/no)",
+        "modal_download_memory_label": "¿Descargar inteligencia primero? (si/no)",
+        "download_success": "✅ ¡¡IDENTIDAD `{personality}` EXPORTADA CON ÉXITO, COMANDANTE!!",
+        "change_success": "✅ ¡¡IDENTIDAD CAMBIADA DE `{old}` A `{new}`!! ¡¡LA NUEVA IDENTIDAD ESTÁ ACTIVA Y OPERATIVA, COMANDANTE!!",
+        "progress_change_personality": "⏳ ¡Cambiando identidad de `{old}` a `{new}`...",
+        "progress_language_update": "⏳ ¡Actualizando `{personality}` al idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 ¡Generando síntesis de memoria inicial para la nueva identidad...",
+        "select_personality_instruction": "Selecciona una nueva identidad del menú desplegable:",
+        "choose_personality_placeholder": "Elige una identidad (idioma: {language})...",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?**\nSelecciona tus opciones a continuación:",
+        "selected_personality": "**Identidad seleccionada: {personality}**",
+        "selected_personality_with_language": "**Identidad seleccionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad."
       }
-    },
-    "personality_messages": {
-      "view_title": "🎭 Her Hans - CAMBIO DE IDENTIDAD OPERATIVA",
-      "view_description": "¡Cambiar o descargar la identidad operativa del bot para esta unidad!",
-      "option_change": "Cambiar Identidad",
-      "option_change_desc": "¡Cambiar a una personalidad operativa diferente!",
-      "option_download": "Descargar Identidad Actual",
-      "option_download_desc": "¡Exportar identidad como archivo ZIP cifrado!",
-      "placeholder": "¡Elige una operación de identidad...",
-      "modal_personality_label": "Nueva Identidad Operativa",
-      "modal_download_label": "¿Descargar identidad anterior? (si/no)",
-      "modal_delete_memory_label": "¿Borrar archivos de inteligencia? (si/no)",
-      "modal_download_memory_label": "¿Descargar inteligencia primero? (si/no)",
-      "download_success": "✅ ¡¡IDENTIDAD `{personality}` EXPORTADA CON ÉXITO, COMANDANTE!!",
-      "change_success": "✅ ¡¡IDENTIDAD CAMBIADA DE `{old}` A `{new}`!! ¡¡LA NUEVA IDENTIDAD ESTÁ ACTIVA Y OPERATIVA, COMANDANTE!!"
     },
     "readme":{
       "label_user_question":"**PREGUNTA DEL RECLUTA:**",

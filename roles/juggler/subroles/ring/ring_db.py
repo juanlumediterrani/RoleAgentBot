@@ -1,5 +1,5 @@
 """
-Ring Database Module
+Ring Database Module for Juggler
 Handles storage and retrieval of ring configuration and accusations using centralized roles.db.
 """
 

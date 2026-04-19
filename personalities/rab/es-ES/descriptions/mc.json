@@ -2,6 +2,9 @@
     "title": "**📊 Matriz de Resonancia**",
     "description": "Sincroniza al Profeta en un canal de voz para que emita frecuencias armónicas y pacifique el entorno.",
     "button": "📊 Armonía",
+    "subrole_buttons": {
+        "overview": "📊 Flujo"
+    },
     "canvas_mc_subtitle": "Parámetros de Frecuencia",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Utiliza la consola para solicitar secuencias sonoras, observar el flujo actual o añadir nuevas frecuencias al vacío.",

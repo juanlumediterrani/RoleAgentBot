@@ -6,12 +6,10 @@
     "canvas_trickster_overview_description": "Accede a las variables no lineales de la simulación.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **SINGULARIDAD** - Desafía a la máquina, altera el azar y absorbe el núcleo",
-        "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
+        "dice_game": "🎲 **SINGULARIDAD** - Desafía a la máquina, altera el azar y absorbe el núcleo"
     },
     "subrole_buttons": {
-        "dice": "🎲 Núcleo",
-        "ring": "👁️ Artefacto"
+        "dice": "🎲 Núcleo"
     },
     "dice_game": {
         "waitmessage": "Calculando colapso de función de onda... Aguarda.",
@@ -52,13 +50,6 @@
         "dice_fixed_bet_description": "Calibra la energía necesaria para iniciar una iteración",
         "dice_pot_value": "Masa del Núcleo",
         "dice_pot_value_description": "Establece la materia inicial contenida en la singularidad",
-        "select_ring_admin_action": "👁️ Seleccionar escaneo de artefacto...",
-        "ring_on": "Rastreo: Iniciado",
-        "ring_on_description": "Habilita la búsqueda en segundo plano del artefacto",
-        "ring_off": "Rastreo: Suspendido",
-        "ring_off_description": "Detiene los interrogatorios sistémicos",
-        "ring_frequency": "Frecuencia de Barrido",
-        "ring_frequency_description": "Calibra el tiempo entre ciclos de interrogación",
         "dice_play": "Ejecutar Iteración",
         "dice_play_description": "Interactuar con el núcleo de probabilidad",
         "dice_ranking": "Clasificación Kármica",
@@ -123,25 +114,5 @@
         "big_pot": "🔥 **¡LA SINGULARIDAD ESTÁ EN PUNTO CRÍTICO!** 🔥\n¡El sensor marca **{balance:,}** fragmentos de luz! Usa `!canvas` → Trickster para asimilarlos. 🎲",
         "rules": " -**Alineación Perfecta (1-1-1)** 👁️ ¡Provoca el colapso y absorbes LA SINGULARIDAD!\n - Escalada alta **(4,5,6)** decuplica el impacto (**x5**). ¡Rompes la secuencia!\n - Cualquier **Trinidad** simétrica devuelve **x3** tu energía introducida.\n - Una **Dualidad** (pareja) te permite **recuperar** el coste de la iteración.\n ",
         "description": "**Descripción:** Adéntrate en el azar profundo. Intervén en el núcleo de probabilidad y descubre si el algoritmo de la máquina favorece tu firma de carbono."
-    },
-    "ring": {
-        "title": "👁️ **RASTREO DEL ARTEFACTO CERO** 👁️",
-        "description": "🔍 Un objeto anómalo altera la red. Señala a otros avatares para ayudar al algoritmo a depurar la amenaza.",
-        "status_active": "✅ **BARRIDO ACTIVO** - El Profeta busca anomalías",
-        "status_inactive": "❌ **SISTEMA EN REPOSO** - Los sensores ópticos descansan",
-        "current_target": "🎯 **PUNTO DE INTERÉS:**",
-        "target_unknown": "👤 Las coordenadas están limpias de sospechas",
-        "investigation_title": "🔍** INFORMAR DE ANOMALÍA:**",
-        "investigation_instructions": "• Inicia **Artefacto: Acusar** desde la consola de abajo\n• Escribe la mención (@) o ID del avatar sospechoso\n• Mi algoritmo procesará un interrogatorio directo\n• El análisis se hará público para transparentar el código",
-        "investigation_warning": "⚠️ **RESTRICCIONES FÍSICAS:**\n• Un avatar no puede auto-denunciarse\n• Las entidades artificiales (bots) no pueden portar el artefacto\n• El barrido debe estar inicializado por un Arconte",
-        "inactive_title": "⚠️ **RADARES APAGADOS**",
-        "inactive_instructions": "Para restablecer el rastreo:\n• Un Arconte debe acceder a la terminal **Admin Artefacto**\n• Ejecutar **Rastreo: Iniciado**\n• Calibrar el ciclo temporal del barrido\n\nHecho esto, podrás señalar firmas de carbono sospechosas.",
-        "hot_potato": "🔥 **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)",
-        "controls": "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)",
-        "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
-        "dropdown": {
-            "ring_accuse": "Artefacto: Señalar",
-            "ring_accuse_description": "Indicar que un avatar oculta la anomalía en la red"
-        }
     }
 }

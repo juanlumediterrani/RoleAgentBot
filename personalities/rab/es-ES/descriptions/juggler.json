@@ -1,0 +1,38 @@
+{
+    "title": "**🎯Centro de Coordinación de Servicios**",
+    "description": "Nexo que gesta múltiples flujos operativos para mantener la armonía de la red. Optimiza la sincronización entre sistemas.",
+    "button": "🎯 Servicios",
+    "canvas_juggler_subrole_descriptions": {
+        "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
+    },
+    "subrole_buttons": {
+        "overview": "🎯 Vista",
+        "ring": "👁️ Artefacto"
+    },
+    "ring": {
+        "title": "👁️ **RASTREO DEL ARTEFACTO CERO** 👁️",
+        "description": "🔍 Un objeto anómalo altera la red. Señala a otros avatares para ayudar al algoritmo a depurar la amenaza.",
+        "status_active": "✅ **BARRIDO ACTIVO** - El Profeta busca anomalías",
+        "status_inactive": "❌ **SISTEMA EN REPOSO** - Los sensores ópticos descansan",
+        "current_target": "🎯 **PUNTO DE INTERÉS:**",
+        "target_unknown": "👤 Las coordenadas están limpias de sospechas",
+        "investigation_title": "🔍** INFORMAR DE ANOMALÍA:**",
+        "investigation_instructions": "• Inicia **Artefacto: Acusar** desde la consola de abajo\n• Escribe la mención (@) o ID del avatar sospechoso\n• Mi algoritmo procesará un interrogatorio directo\n• El análisis se hará público para transparentar el código",
+        "investigation_warning": "⚠️ **RESTRICCIONES FÍSICAS:**\n• Un avatar no puede auto-denunciarse\n• Las entidades artificiales (bots) no pueden portar el artefacto\n• El barrido debe estar inicializado por un Arconte",
+        "inactive_title": "⚠️ **RADARES APAGADOS**",
+        "inactive_instructions": "Para restablecer el rastreo:\n• Un Arconte debe acceder a la terminal **Admin Artefacto**\n• Ejecutar **Rastreo: Iniciado**\n• Calibrar el ciclo temporal del barrido\n\nHecho esto, podrás señalar firmas de carbono sospechosas.",
+        "hot_potato": "� **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)",
+        "controls": "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)",
+        "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
+        "dropdown": {
+            "ring_accuse": "Artefacto: Señalar",
+            "ring_accuse_description": "Indicar que un avatar oculta la anomalía en la red"
+        }
+    },
+    "dropdown": {
+        "select_juggler_action": "🎯 Seleccionar operación de servicios...",
+        "config_juggler": "Configurar Servicios",
+        "config_juggler_description": "Ajustar parámetros del centro de coordinación",
+        "config_juggler_emoji": "🎯"
+    }
+}

@@ -101,7 +101,6 @@ from .state import (
     _get_canvas_dice_ranking,
     _get_canvas_dice_history,
     _get_canvas_beggar_state,
-    _get_canvas_ring_state,
     _get_canvas_poe2_state,
     _get_enabled_roles,
     _load_role_mission_prompts,
@@ -127,6 +126,10 @@ from .canvas_trickster import (
 from .canvas_shaman import (
     build_canvas_role_shaman,
     build_canvas_role_shaman_detail,
+)
+from .canvas_juggler import (
+    build_canvas_role_juggler,
+    build_canvas_role_juggler_detail,
 )
 from .canvas_behavior import (
     build_canvas_behavior,
@@ -356,6 +359,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "banker": _normalize_canvas_title(_get_embed_role_title("banker", detail_key)),
         "mc": _normalize_canvas_title(_get_embed_role_title("mc", detail_key)),
         "shaman": _normalize_canvas_title(_get_embed_role_title("shaman", detail_key)),
+        "juggler": _normalize_canvas_title(_get_embed_role_title("juggler", detail_key)),
     }
     title = role_titles.get(role_name, "Canvas")
     content_lines = content.splitlines()
@@ -369,6 +373,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "banker": discord.Color.green(),
         "mc": discord.Color.purple(),
         "shaman": discord.Color.dark_purple(),
+        "juggler": discord.Color.orange(),
     }
      
     description = ""
@@ -470,10 +475,6 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "announcements_off": "Dice announcements disabled for this server.",
             "dice_fixed_bet": "The bot will ask for the fixed bet amount and update the dice game configuration.",
             "dice_pot_value": "The bot will ask for the new pot value and update the dice game balance.",
-            "ring_accuse": "The bot will ask for a target user and generate a public ring accusation.",
-            "ring_on": "Ring enabled for this server.",
-            "ring_off": "Ring disabled for this server.",
-            "ring_frequency": "The bot will ask for the ring frequency in hours and update the schedule.",
             "beggar_donate": "The bot will ask for the donation amount and transfer gold from your wallet.",
             "beggar_on": "Beggar enabled for this server.",
             "beggar_off": "Beggar disabled for this server.",
@@ -549,14 +550,10 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     trickster_personal_map = {
         "dice": "dice",
         "dice_admin": "dice",
-        "ring": "ring",
-        "ring_admin": "ring",
     }
     trickster_admin_map = {
         "dice": "dice_admin",
         "dice_admin": "dice_admin",
-        "ring": "ring_admin",
-        "ring_admin": "ring_admin",
     }
     personality_descriptions = _get_personality_descriptions(server_id)
     
@@ -569,22 +566,21 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             # Regular subrole views
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
             + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
-        ) if current_detail in {"dice", "ring"} else (
+        ) if current_detail in {"dice"} else (
             # Admin views
             [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
             + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
-        ) if current_detail in {"dice_admin", "ring_admin"} else [
+        ) if current_detail in {"dice_admin"} else [
             # Main trickster overview - show all subroles
             (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("subrole_buttons", {}).get("dice", "Dice"), "dice"),
-            (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("subrole_buttons", {}).get("ring", "Ring"), "ring"),
-        ] if current_detail not in {"dice", "ring", "dice_admin", "ring_admin"} else [],
+        ] if current_detail not in {"dice", "dice_admin"} else [],
         "banker": [
             # Main banker overview - always show subrole buttons
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("subrole_buttons", {}).get("overview", "Overview"), "overview"),
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("subrole_buttons", {}).get("beggar", "Beggar"), "beggar"),
         ] + ([("Admin", "admin")] if admin_visible else []),
         "mc": [
-            ("Personal", "overview"),
+            (personality_descriptions.get("role_descriptions", {}).get("mc", {}).get("subrole_buttons", {}).get("overview", "Personal"), "overview"),
         ],
         "shaman": (
             [("Personal", "runes")]
@@ -592,6 +588,13 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         ) if current_detail in {"runes", "runes_admin"} else [
             (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("subrole_buttons", {}).get("runes", "🔮 Runes"), "runes"),
         ] if current_detail not in {"runes", "runes_admin"} else [],
+        "juggler": (
+            [("Personal", "ring")]
+            + ([("Admin", "ring_admin")] if admin_visible else [])
+        ) if current_detail in {"ring", "ring_admin"} else [
+            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("overview", "🤹 Vista"), "overview"),
+            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("ring", "👁️ Ring"), "ring"),
+        ] if current_detail not in {"ring", "ring_admin"} else [],
     }
     
     # Special handling for treasure_hunter POE2 views
@@ -722,10 +725,6 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             dice_dropdown = trickster.get("dice_game", {}).get("dropdown", {})
             if isinstance(dice_dropdown, dict):
                 trickster_descriptions.update(dice_dropdown)
-        elif detail_name in {"ring", "ring_admin"}:
-            ring_dropdown = trickster.get("ring", {}).get("dropdown", {})
-            if isinstance(ring_dropdown, dict):
-                trickster_descriptions.update(ring_dropdown)
         elif detail_name in {"beggar", "beggar_admin"}:
             # Beggar is now under banker, load from banker descriptions
             banker = role_descriptions.get("banker", {})
@@ -843,34 +842,6 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (_dice_text("dice_fixed_bet", "Dice: Fixed Bet"), "dice_fixed_bet", _dice_text("dice_fixed_bet_description", "Number input target"), "🎲"),
                 (_dice_text("dice_pot_value", "Dice: Pot Value"), "dice_pot_value", _dice_text("dice_pot_value_description", "Number input target"), "💰"),
             ]
-        if detail_name == "ring":
-            return [
-                (_trickster_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _trickster_text("ring_accuse_description", "User target input"), "👁️"),
-            ]
-        if detail_name == "ring_admin" and admin_visible:
-            # Get ring descriptions for action items with robust fallbacks
-            _personality_descriptions = _get_personality_descriptions(server_id)
-            
-            # Safe nested access with fallbacks
-            roles_view = _personality_descriptions.get("role_descriptions", {})
-            trickster = roles_view.get("trickster", {})
-            ring_descriptions = trickster.get("ring", {})
-            
-            # Ensure ring_descriptions is a dict
-            if not isinstance(ring_descriptions, dict):
-                ring_descriptions = {}
-            
-            def _ring_text(key: str, fallback: str) -> str:
-                value = ring_descriptions.get(key)
-                if value:
-                    value = str(value)
-                return str(value).strip() if value else fallback
-            
-            return [
-                (_ring_text("ring_on", "Ring: On"), "ring_on", _ring_text("ring_on_description", "Boolean toggle"), "👁️"),
-                (_ring_text("ring_off", "Ring: Off"), "ring_off", _ring_text("ring_off_description", "Boolean toggle"), "🚫"),
-                (_ring_text("ring_frequency", "Ring: Frequency"), "ring_frequency", _ring_text("ring_frequency_description", "Number input target"), "⏰"),
-            ]
         if detail_name == "runes_admin" and admin_visible:
             return [
                 (_trickster_text("runes_on", "Runes: On"), "runes_on", _trickster_text("runes_on_description", "Boolean toggle"), "✅"),
@@ -917,6 +888,39 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             return [
                 (_runes_text("runes_on",  "Runes: On"),  "runes_on",  _runes_text("runes_on_description",  "Boolean toggle"), "✅"),
                 (_runes_text("runes_off", "Runes: Off"), "runes_off", _runes_text("runes_off_description", "Boolean toggle"), "❌"),
+            ]
+        return []
+
+    if role_name == "juggler":
+        _personality_descriptions = _get_personality_descriptions(server_id)
+        canvas_labels = (_personality_descriptions
+                         .get("role_descriptions", {})
+                         .get("juggler", {})
+                         .get("ring", {})
+                         .get("dropdown", {}))
+
+        def _ring_text(key: str, fallback: str) -> str:
+            value = canvas_labels.get(key)
+            return str(value).strip() if value else fallback
+
+        if detail_name == "ring":
+            ring_enabled = True
+            if agent_config:
+                ring_enabled = (agent_config.get("roles", {})
+                                 .get("juggler", {})
+                                 .get("subroles", {})
+                                 .get("ring", {})
+                                 .get("enabled", False))
+            if not ring_enabled:
+                return []
+            return [
+                (_ring_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _ring_text("ring_accuse_description", "Text input target"), "👁️"),
+            ]
+        if detail_name == "ring_admin" and admin_visible:
+            return [
+                (_ring_text("ring_on", "Ring: On"), "ring_on", _ring_text("ring_on_description", "Boolean toggle"), "✅"),
+                (_ring_text("ring_off", "Ring: Off"), "ring_off", _ring_text("ring_off_description", "Boolean toggle"), "❌"),
+                (_ring_text("ring_frequency", "Ring: Frequency"), "ring_frequency", _ring_text("ring_frequency_description", "Number input target"), "⏰"),
             ]
         return []
 
@@ -1383,8 +1387,18 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
             ""
         )
     
+    # Juggler
+    if is_role_enabled_check("juggler", None, guild):
+        active_roles.append("juggler")
+        role_info = get_role_info("juggler")
+        parts.append(
+            f" **{role_info['title']}** {enabled_status}\n"
+            f"• {role_info['description']}\n"
+            ""
+        )
+    
     # Check for inactive roles
-    all_possible_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
+    all_possible_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler"]
     for role in all_possible_roles:
         if role not in active_roles:
             inactive_roles.append(role)
@@ -1404,7 +1418,8 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
                 "treasure_hunter": "💎", 
                 "trickster": "🎭",
                 "banker": "💰",
-                "mc": "🎵"
+                "mc": "🎵",
+                "juggler": "🤹"
             }
             icon = role_icons.get(role, "📋")
             parts.append(f"{icon} {role_info['title']} {inactive_status}")
@@ -1479,6 +1494,8 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
         return build_canvas_role_banker(agent_config, admin_visible, guild, author_id)
     if role_name == "shaman" and is_role_enabled_check("shaman", agent_config, guild):
         return build_canvas_role_shaman(agent_config, admin_visible, guild)
+    if role_name == "juggler" and is_role_enabled_check("juggler", agent_config, guild):
+        return build_canvas_role_juggler(agent_config, admin_visible, guild)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
         queue_info = None
         try:
@@ -1521,6 +1538,8 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
         return build_canvas_role_banker_detail(detail_name, admin_visible, guild, author_id)
     if role_name == "shaman" and is_role_enabled_check("shaman", agent_config, guild):
         return build_canvas_role_shaman_detail(detail_name, admin_visible, guild, author_id, agent_config)
+    if role_name == "juggler" and is_role_enabled_check("juggler", agent_config, guild):
+        return build_canvas_role_juggler_detail(detail_name, admin_visible, guild)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
         queue_info = None
         try:
@@ -1528,8 +1547,13 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
             server_id = core.get_server_key(guild) if guild else None
             if server_id and guild:
                 db_mc = get_mc_db_instance(server_id)
-                queue_data = db_mc.get_queue(server_id, str(guild.id))
-                queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
+                # Get the most recent channel_id from the queue for this server
+                queue_data_all = db_mc.get_queue_all_channels(server_id)
+                if queue_data_all:
+                    # Use the channel_id from the most recent entry
+                    channel_id = queue_data_all[0][7]  # channel_id is at index 7
+                    queue_data = db_mc.get_queue(server_id, channel_id)
+                    queue_info = [(title, artist, duration, user_id) for _pos, title, _url, duration, artist, user_id, _fecha in queue_data]
         except Exception as e:
             logger.warning(f"Failed to load MC queue for detail view: {e}")
         return build_canvas_role_mc(queue_info=queue_info, guild=guild)

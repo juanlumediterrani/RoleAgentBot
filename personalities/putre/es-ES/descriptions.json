@@ -9,8 +9,12 @@
       "for":"para",
       "base_frequency": "Frecuencia base:",
       "current_frequency": "Frecuencia actual:",
-      "current_settings": "🔧 **Configuración actual:**",
-      "frequency_format": "Cada {hours}h"
+      "current_settings": "🔧 **Parámetros actuales:**",
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Cambios",
+      "option_yes": "Sí",
+      "option_no": "No"
     },
     "help_menu": {
       "title": "📚 ** Putre - Menú de Ayuda**",
@@ -35,9 +39,7 @@
       "personalsynthesistitle": "**Relazion con el umano**",
       "dm_default_server_title": "🔔 **Usando servidor por defecto: {server_name}**",
       "dm_default_server_message": "*Estás navegando desde DM, usando el primer servidor disponible.*",
-      "dm_default_server_separator": "─────────────────────────────────────────────",
-      "dm_no_servers_available": "❌ No hay servidores disponibles. Por favor ejecuta las acciones desde un servidor.",
-      "dm_server_access_error": "❌ No se pudo acceder a un servidor. Por favor ejecuta las acciones desde un servidor."
+      "dm_default_server_separator": "─────────────────────────────────────────────"
     },
     "roles_view_messages": {
       "title": "🎭  Roles de Putre 🎭",
@@ -99,23 +101,28 @@
       "personality": {
         "title": "**🎭 Putre - Gestión de Personalidad**",
         "description": "**Descripción**\n -Cambia la personalidad del bot para este servidor.\n -Descarga la personalidad actual como backup.\n -Migra las bases de datos al cambiar.",
-        "button": "🎭 Personalidad"
+        "button": "🎭 Personalidad",
+        "option_change": "Cambiar Personalidad",
+        "option_change_desc": "Cambiar a una personalidad diferente",
+        "option_download": "Descargar Actual",
+        "option_download_desc": "Exportar personalidad como ZIP",
+        "placeholder": "Elige una acción de personalidad...",
+        "modal_personality_label": "Nueva Personalidad",
+        "modal_download_label": "¿Descargar personalidad anterior? (si/no)",
+        "modal_delete_memory_label": "¿Borrar memoria del bot? (si/no)",
+        "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
+        "download_success": "✅ ¡Personalidad `{personality}` exportada exitosamente!",
+        "change_success": "✅ ¡Personalidad cambiada de `{old}` a `{new}`! La nueva personalidad ya está activa y lista para usar.",
+        "progress_change_personality": "⏳ Cambiando personalidad de `{old}` a `{new}`...",
+        "progress_language_update": "⏳ Actualizando `{personality}` al idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva personalidad...",
+        "select_personality_instruction": "Elige una personalidad nueva del menú:",
+        "choose_personality_placeholder": "Elige una personalidad (idioma: {language})...",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?**\nSelecciona tus opciones:",
+        "selected_personality": "**Personalidad seleccionada: {personality}**",
+        "selected_personality_with_language": "**Personalidad seleccionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma personalidad."
       }
-    },
-    "personality_messages": {
-      "view_title": "🎭 Putre - Gestión de Personalidad",
-      "view_description": "Cambia o descarga la personalidad del bot para este servidor.",
-      "option_change": "Cambiar Personalidad",
-      "option_change_desc": "Cambiar a una personalidad diferente",
-      "option_download": "Descargar Actual",
-      "option_download_desc": "Exportar personalidad como ZIP",
-      "placeholder": "Elige una acción de personalidad...",
-      "modal_personality_label": "Nueva Personalidad",
-      "modal_download_label": "¿Descargar personalidad anterior? (si/no)",
-      "modal_delete_memory_label": "¿Borrar memoria del bot? (si/no)",
-      "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
-      "download_success": "✅ ¡Personalidad `{personality}` exportada exitosamente!",
-      "change_success": "✅ ¡Personalidad cambiada de `{old}` a `{new}`! La nueva personalidad ya está activa y lista para usar."
     },
     "readme":{
       "label_user_question":"Pregunta del usuario:",

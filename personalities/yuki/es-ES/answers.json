@@ -30,6 +30,32 @@
                 ]
             }
         }
+    },
+    "ring_messages": {
+        "target_changed": "✅ El objeto ahora apunta a {target_name}",
+        "enabled": "✅ El rastro se ha activado en la configuración.",
+        "disabled": "✅ El rastro se ha desactivado en la configuración."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ La selección de acción de comportamiento no está disponible.",
+        "error_behavior_admin_only": "❌ Esta opción de comportamiento es exclusiva para administradores.",
+        "error_settings_admin_only": "❌ Esta opción de ajustes es exclusiva para administradores.",
+        "error_taboo_update_failed": "❌ Error al actualizar el estado de umbrales. Revisa los registros para más detalles.",
+        "error_greetings_update_failed": "❌ Error al actualizar el estado de recepción. Revisa los registros para más detalles.",
+        "error_welcome_update_failed": "❌ Error al actualizar el estado de bienvenida. Revisa los registros para más detalles.",
+        "error_commentary_update_failed": "❌ Error al actualizar el estado de observaciones. Revisa los registros para más detalles.",
+        "error_commentary_disabled": "❌ La función de observaciones de misiones está desactivada actualmente.",
+        "error_commentary_process_failed": "❌ Error al procesar las observaciones. Revisa los registros para más detalles.",
+        "success_taboo_state": "Umbrales {enabled_disabled} para este servidor.",
+        "success_greetings_state": "Recepción {enabled_disabled} para este servidor.",
+        "success_welcome_state": "Bienvenida {enabled_disabled} para este servidor.",
+        "success_commentary_state": "Observaciones {enabled_disabled} para este servidor.",
+        "state_enabled": "activadas",
+        "state_disabled": "desactivadas"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ No se detectan salas disponibles. Por favor, inicia la conversación desde un servidor.",
+        "server_access_error": "❌ No es posible acceder en este momento. Por favor, intenta desde un servidor activo."
     }
 
 

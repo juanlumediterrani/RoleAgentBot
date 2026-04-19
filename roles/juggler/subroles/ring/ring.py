@@ -1,5 +1,5 @@
 """
-Ring subrole for Trickster.
+Ring subrole for Juggler.
 Handles the ring accusation and quest functionality.
 """
 

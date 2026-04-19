@@ -49,10 +49,6 @@
         "dice_game": {
           "enabled": true,
           "fixed_bet": 10
-        },
-        "ring": {
-          "enabled": true,
-          "frequency_hours": 24
         }
       }
     },
@@ -97,6 +93,17 @@
         "beggar": {
           "enabled": true,
           "frequency_hours": 12
+        }
+      }
+    },
+    "juggler": {
+      "enabled": true,
+      "interval_hours": 24,
+      "script": "roles/juggler/juggler.py",
+      "subroles": {
+        "ring": {
+          "enabled": true,
+          "frequency_hours": 24
         }
       }
     }

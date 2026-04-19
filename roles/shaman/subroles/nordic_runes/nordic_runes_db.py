@@ -25,6 +25,11 @@ class NordicRunesDB:
             server_id = get_server_id()
         self.server_id = server_id
         self.roles_db = get_roles_db_instance(server_id)
+        
+        if self.roles_db is None:
+            raise ValueError(f"Cannot initialize NordicRunesDB: roles_db is None for server_id '{server_id}'. "
+                           f"Ensure the server has a valid personality configured.")
+        
         self.db_path = self.roles_db.db_path
     
     def save_reading(self, user_id: str, question: str, runes_drawn: List[str], 

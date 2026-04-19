@@ -14,44 +14,69 @@ get_behavior_db_instance = core.get_behavior_db_instance
 def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible: bool, guild=None) -> list[tuple[str, str, str]]:
     from .content import _get_personality_descriptions
     server_id = get_server_key(guild) if guild else None
-    behavior_messages = _get_personality_descriptions(server_id).get("behavior_messages", {})
+    descriptions = _get_personality_descriptions(server_id)
+    behavior_messages = descriptions.get("behavior_messages", {})
+    general = descriptions.get("general", {})
+
     button_greetings = behavior_messages.get("greetings", {}).get("button", "Greetings")
     button_welcome = behavior_messages.get("welcome", {}).get("button", "Welcome")
     button_commentary = behavior_messages.get("comentary", {}).get("button", "Commentary")
     button_taboo = behavior_messages.get("taboo", {}).get("button", "Taboo")
     button_settings = behavior_messages.get("settings", {}).get("button", "Settings")
 
+    # Get action descriptions and labels from general
+    action_descriptions = general.get("action_descriptions", {})
+    action_labels = general.get("action_labels", {})
+
+    label_on = action_labels.get("on", "On")
+    label_off = action_labels.get("off", "Off")
+    label_now = action_labels.get("now", "Now")
+    label_frequency = action_labels.get("frequency", "Frequency")
+    label_add_keyword = action_labels.get("add_keyword", "Add Keyword")
+    label_remove_keyword = action_labels.get("remove_keyword", "Remove Keyword")
+
+    desc_boolean_toggle = action_descriptions.get("boolean_toggle", "Boolean toggle")
+    desc_number_input = action_descriptions.get("number_input_target", "Number input target")
+    desc_text_input = action_descriptions.get("text_input_target", "Text input target")
+    desc_action = action_descriptions.get("action", "Action")
+
     common_options = [
-        (f"{button_commentary}: On", "commentary_on", "Boolean toggle"),
-        (f"{button_commentary}: Off", "commentary_off", "Boolean toggle"),
-        (f"{button_commentary}: Now", "commentary_now", "Action"),
-        (f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"),
-        (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target"),
+        (f"{button_commentary}: {label_on}", "commentary_on", desc_boolean_toggle),
+        (f"{button_commentary}: {label_off}", "commentary_off", desc_boolean_toggle),
+        (f"{button_commentary}: {label_now}", "commentary_now", desc_action),
+        (f"{button_taboo}: {label_add_keyword}", "taboo_add", desc_text_input),
+        (f"{button_taboo}: {label_remove_keyword}", "taboo_del", desc_text_input),
     ]
 
     button_personality = behavior_messages.get("personality", {}).get("button", "Personality")
 
+    # Get settings language and role labels
+    label_server_language = action_labels.get("server_language", "🌐 Server Language")
+    label_role_management = action_labels.get("role_management", "🎛️ Role Management")
+    settings_lang = behavior_messages.get("settings", {}).get("language_select", {}).get("description", "Change the bot's language for this server")
+    settings_role = "Enable or disable bot roles"  # This could also be added to descriptions if needed
+
     admin_options = [
-        (f"{button_greetings}: On", "greetings_on", "Boolean toggle"),
-        (f"{button_greetings}: Off", "greetings_off", "Boolean toggle"),
-        (f"{button_welcome}: On", "welcome_on", "Boolean toggle"),
-        (f"{button_welcome}: Off", "welcome_off", "Boolean toggle"),
-        (f"{button_commentary}: Frequency", "commentary_frequency", "Number input target"),
-        (f"{button_taboo}: On", "taboo_on", "Boolean toggle"),
-        (f"{button_taboo}: Off", "taboo_off", "Boolean toggle"),
+        (f"{button_greetings}: {label_on}", "greetings_on", desc_boolean_toggle),
+        (f"{button_greetings}: {label_off}", "greetings_off", desc_boolean_toggle),
+        (f"{button_welcome}: {label_on}", "welcome_on", desc_boolean_toggle),
+        (f"{button_welcome}: {label_off}", "welcome_off", desc_boolean_toggle),
+        (f"{button_commentary}: {label_frequency}", "commentary_frequency", desc_number_input),
+        (f"{button_taboo}: {label_on}", "taboo_on", desc_boolean_toggle),
+        (f"{button_taboo}: {label_off}", "taboo_off", desc_boolean_toggle),
         (f"{button_settings}", "settings_open", "Manage server settings, roles and language"),
         (f"{button_personality}", "personality_open", "Manage bot personality"),
     ]
 
     items_map: dict[str, list[tuple[str, str, str]]] = {
         "conversation": common_options + (admin_options if admin_visible else []),
-        "greetings": [(f"{button_greetings}: On", "greetings_on", "Boolean toggle"), (f"{button_greetings}: Off", "greetings_off", "Boolean toggle")] if admin_visible else [],
-        "welcome": [(f"{button_welcome}: On", "welcome_on", "Boolean toggle"), (f"{button_welcome}: Off", "welcome_off", "Boolean toggle")] if admin_visible else [],
+        "greetings": [(f"{button_greetings}: {label_on}", "greetings_on", desc_boolean_toggle), (f"{button_greetings}: {label_off}", "greetings_off", desc_boolean_toggle)] if admin_visible else [],
+        "welcome": [(f"{button_welcome}: {label_on}", "welcome_on", desc_boolean_toggle), (f"{button_welcome}: {label_off}", "welcome_off", desc_boolean_toggle)] if admin_visible else [],
         "commentary": common_options,
-        "taboo": [(f"{button_taboo}: On", "taboo_on", "Boolean toggle"), (f"{button_taboo}: Off", "taboo_off", "Boolean toggle"), (f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")] if admin_visible else [(f"{button_taboo}: Add Keyword", "taboo_add", "Text input target"), (f"{button_taboo}: Remove Keyword", "taboo_del", "Text input target")],
+        "taboo": [(f"{button_taboo}: {label_on}", "taboo_on", desc_boolean_toggle), (f"{button_taboo}: {label_off}", "taboo_off", desc_boolean_toggle), (f"{button_taboo}: {label_add_keyword}", "taboo_add", desc_text_input), (f"{button_taboo}: {label_remove_keyword}", "taboo_del", desc_text_input)] if admin_visible else [(f"{button_taboo}: {label_add_keyword}", "taboo_add", desc_text_input), (f"{button_taboo}: {label_remove_keyword}", "taboo_del", desc_text_input)],
         "settings": [
-            (f"🌐 Server Language", "language_settings", "Change the bot's language for this server"),
-            (f"🎛️ Role Management", "role_control", "Enable or disable bot roles"),
+            (f"{label_server_language}", "language_settings", settings_lang),
+            (f"{label_role_management}", "role_control", settings_role),
         ] if admin_visible else [],
         "personality": [],  # Personality view uses custom dropdown, not action items
     }

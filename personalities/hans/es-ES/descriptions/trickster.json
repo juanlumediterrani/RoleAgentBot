@@ -7,12 +7,10 @@
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🏢 **Partida reservada** - Recauda fondos para el regimiento, haz tu donativo ya.",
-        "dice_game": "🎲 **CAMPO DE BATALLA** - Lance artillería pesada contra el enemigo y capture el botín de guerra!",
-        "ring": "👁️ **Investigador de la Gestapo** - Interroga sospechosos de traición al Reich"
+        "dice_game": "🎲 **CAMPO DE BATALLA** - Lance artillería pesada contra el enemigo y capture el botín de guerra!"
     },
     "subrole_buttons": {
         "dice": "🎲 Artillería",
-        "ring": "🔍 Investigación",
         "beggar": "🏢 Partida reservada",
         "runes": "🎚️ Runenberatung"
     },
@@ -55,13 +53,6 @@
         "dice_fixed_bet_description": "Ajustar el costo del despliegue de artillería",
         "dice_pot_value": "Valor del Botín",
         "dice_pot_value_description": "Establecer el monto inicial del botín de guerra",
-        "select_ring_admin_action": " Seleccionar acción de investigación...",
-        "ring_on": "Persecución: Activada",
-        "ring_on_description": "Activar persecución de traidores",
-        "ring_off": "Persecución: Desactivada",
-        "ring_off_description": "Desactivar persecución de traidores",
-        "ring_frequency": "Frecuencia de Persecución",
-        "ring_frequency_description": "Ajustar frecuencia de investigaciones",
         "dice_play": "Desplegar Artillería",
         "dice_play_description": "Combatir en el frente de Her Hans",
         "dice_ranking": "Clasificación",
@@ -126,26 +117,6 @@
         "big_pot": "🔥 **¡EL BOTÍN ARDE COMO ALDEA ENEMIGA!** 🔥\n¡Hay **{balance:,}** marcos alemanes! ¡Use `!canvas` → Trickster para capturarlo o Herr Hans lo pisará! 🎲",
         "rules": " -**Trío de impactos perfectos**(trio de unos)💣 y capture el **BOTÍN**!\n -Escalera alta **(4,5,6)** multiplica **x5** la apuesta! OFENSIVA BLITZKRIEG 🗡️ !\n - Lance un cualquier **Trío** de impactos mortales 💀 y capture un **x3** de la apuesta.\n - Un **Par** de impactos certeros 🐺 **le devolverán** la apuesta.\n ",
         "description": "**Descripción:**¡ACHTUNG! ¡Demuestre su valor en el frente de Her Hans! 🎲 Despliegue artillería pesada contra el enemigo y capture todo el botín si puede!"
-    },
-    "ring": {
-        "title": "👁️ **Herr Hans Persecutor de la Gestapo** 👁️",
-        "description": " El oficial de la Gestapo le perseguirá hasta el fin de los tiempos, acuse a otros soldados para evitar ese calvario.",
-        "status_active": "✅ **PERSECUCIÓN ACTIVA** - Her Hans está buscando traidores",
-        "status_inactive": "❌ **PERSECUCIÓN INACTIVA** - Her Hans está descansando",
-        "current_target": "🎯 **OBJETIVO ACTUAL:**",
-        "target_unknown": "👤 Ningún sospechoso seleccionado",
-        "investigation_title": "🔍** HACER UNA ACUSACIÓN:**",
-        "investigation_instructions": "• ¡ACHTUNG! Use **Acusar** del menú de operaciones, soldado\n• Ingrese identificación del sospechoso: @nombredeusuario o ID\n• Herr Hans generará interrogatorio para extraer confesión\n• La acusación será publicada en el cuartel general para todos los soldados",
-        "investigation_warning": "⚠️ **ORDENES DEL REICH:**\n• No puede acusarse a sí mismo, traidor\n• No puede acusar unidades automatizadas (bots)\n• La persecución debe estar autorizada por oficial superior",
-        "inactive_title": "⚠️ **LA PERSECUCIÓN ESTÁ INACTIVA**",
-        "inactive_instructions": "¡ACHTUNG! Para autorizar operaciones de persecución:\n• Un oficial superior debe acceder a **Admin**\n• Y autorizar la persecución\n• Establecer frecuencia de interrogatorios automáticos\n\n¡Una vez autorizado, podrá acusar soldados de traición al Reich!",
-        "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
-        "controls": "**Controles**\n- Activar o desactivar persecución\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
-        "admin_description": "Configura la funcionalidad y frecuencia de la persecución nazi",
-        "dropdown": {
-            "ring_accuse": "Persecución: Acusar",
-            "ring_accuse_description": "Acusar a un soldado de ser traidor al Reich"
-        }
     },
     "beggar": {
         "title": "🏢 **Partida reservada para el regimiento** 🏢",

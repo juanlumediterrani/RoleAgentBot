@@ -1,5 +1,5 @@
 """
-Ring subrole Discord commands.
+Ring subrole Discord commands for Juggler.
 Admins can enable or configure ring suspicion; users can accuse a target with `!accuse`.
 """
 
@@ -344,7 +344,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         from agent_engine import _get_personality
         
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
-        prompts_config = server_personality.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
         accusation_config = prompts_config.get("accusation", {})
         
         task_template = accusation_config.get("task", f"Task: Accuse user {target_user_name} of possessing the ring, intimidate them to hand it over")
@@ -477,7 +477,7 @@ async def _cmd_ring_frequency(ctx, args):
         await ctx.send('❌ Only administrators can adjust ring frequency.')
         return
     if not args:
-        await ctx.send('❌ You must specify a number of hours. Example: `!trickster ring frequency 24`')
+        await ctx.send('❌ You must specify a number of hours. Example: `!juggler ring frequency 24`')
         return
     try:
         hours = int(str(args[0]).strip())
@@ -514,18 +514,18 @@ async def _cmd_ring_help(ctx):
     help_text = (
         '👁️ **RING SUBROLE - HELP** 👁️\n\n'
         '**Admin commands**\n'
-        '- `!trickster ring enable`\n'
-        '- `!trickster ring disable`\n'
-        '- `!trickster ring frequency <hours>` - Set base frequency (1-168 hours)\n'
-        '- `!trickster ring target @user`\n'
-        '- `!trickster ring help`\n\n'
+        '- `!juggler ring enable`\n'
+        '- `!juggler ring disable`\n'
+        '- `!juggler ring frequency <hours>` - Set base frequency (1-168 hours)\n'
+        '- `!juggler ring target @user`\n'
+        '- `!juggler ring help`\n\n'
         '**Hot Potato Frequency System** 🔥\n'
         '- Frequency starts at the configured base hours\n'
         '- Each identical accusation halves the frequency (minimum 1 hour)\n'
         '- Frequency resets to base when accusation text changes\n'
         '- Status shows current iteration and frequency reduction\n\n'
         '**User command**\n'
-        '- Ask an administrator to update the current target with `!trickster ring target @user`\n'
+        '- Ask an administrator to update the current target with `!juggler ring target @user`\n'
     )
     await ctx.send(help_text)
 

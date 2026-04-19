@@ -30,6 +30,32 @@
                 ]
             }
         }
+    },
+    "ring_messages": {
+        "target_changed": "✅ El anillo apunta ahora a {target_name}",
+        "enabled": "✅ El anillo aktivado en la konfigurasion.",
+        "disabled": "✅ El anillo desaktivado en la konfigurasion."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ ¡El mazo se rompió! ¡Aksión no disponible para orko! 🔨",
+        "error_behavior_admin_only": "❌ ¡SOLO PARA JEFES ORKOS! ¡Tú no tokas la forja! 🔨🔥",
+        "error_settings_admin_only": "❌ ¡Solo el jefe orko puede kambiar la konfigurasion! 🔨",
+        "error_taboo_update_failed": "❌ ¡El metal se enfrió! ¡No se pudo aktualizar los umbrales! 🔨",
+        "error_greetings_update_failed": "❌ ¡La forja se apagó! ¡No se pudo aktualizar los saludos! 🔨",
+        "error_welcome_update_failed": "❌ ¡El yunke falló! ¡No se pudo aktualizar la bienvenida! 🔨",
+        "error_commentary_update_failed": "❌ ¡El karbon se apagó! ¡No se pudo aktualizar los komentarios! 🔨",
+        "error_commentary_disabled": "❌ ¡El fuego está apagado! ¡Los komentarios no funsionan! 🔨",
+        "error_commentary_process_failed": "❌ ¡El metal se rompió! ¡No se pudieron proesar los komentarios! 🔨",
+        "success_taboo_state": "Umbrales {enabled_disabled} en la forja del servidor! 🔨",
+        "success_greetings_state": "Saludos {enabled_disabled} en la forja! 🔨",
+        "success_welcome_state": "Bienvenida {enabled_disabled} en la forja! 🔨",
+        "success_commentary_state": "Komentarios {enabled_disabled} desde la forja! 🔨",
+        "state_enabled": "kaliente",
+        "state_disabled": "frío"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ ¡No hay forjas disponibles! ¡Ve a una forja orko! 🔨",
+        "server_access_error": "❌ ¡No puedo entrar a la forja desde aquí! ¡Ve a la forja! 🔨"
     }
 
 

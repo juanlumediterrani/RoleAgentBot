@@ -2,6 +2,9 @@
     "title": "**️ El Gramófono Oxidado de Igorrr**",
     "description": "Igorrr arrastra sus pies hasta el rincón del ruido para hacer sufrir a todos.",
     "button": "️ Gramófono Oxidado",
+    "subrole_buttons": {
+        "overview": "️ Saco"
+    },
     "canvas_mc_subtitle": "Klavijas de kontrol",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Uza el menu dezplegabe para pedime ruidos, pa ve el saco, o pa meter ma ruidos umano.",

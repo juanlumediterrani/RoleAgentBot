@@ -1,0 +1,38 @@
+{
+    "title": "🎎 **Okami-san** 🎎",
+    "description": "Una geisha experta en múltiples artes tradicionales, entretiene a los visitantes de la casa de té con gracia y elegancia.",
+    "button": "🎎 Okami-san",
+    "canvas_juggler_subrole_descriptions": {
+        "ring": "👁️ **Me-tsuke (目付)** - El círculo de vigilancia que mantiene el orden en el distrito"
+    },
+    "subrole_buttons": {
+        "overview": "🎎 Vista",
+        "ring": "👁️ Me-tsuke"
+    },
+    "ring": {
+        "title": "👁️ **ME-TSUKE (目付)** 👁️",
+        "description": "🔍 El círculo de vigilancia. Como inspector del distrito, Yuki mantiene una red de contactos que permite interrogar y perseguir sin romper la discreción de la casa de té.",
+        "status_active": "✅ **VIGILANCIA ACTIVA** - Yuki está ejerciendo su función de inspector",
+        "status_inactive": "❌ **EN REPOSO** - La vigilancia no está activa",
+        "current_target": "🎯 **SOSPECHOSO ACTUAL:**",
+        "target_unknown": "👤 Sin sospechosos identificados todavía",
+        "investigation_title": "🔍 **SEÑALAR A UN VISITANTE:**",
+        "investigation_instructions": "• Usa **Me-tsuke: Señalar** desde el menú de abajo\n• Escribe la mención (@) o ID del visitante sospechoso\n• Yuki iniciará una indagación directa\n• El resultado será visible para todos en el canal",
+        "investigation_warning": "⚠️ **RESTRICCIONES:**\n• Un visitante no puede señalarse a sí mismo\n• Los bots no son sujetos de investigación\n• La vigilancia debe estar activada por un administrador",
+        "inactive_title": "⚠️ **VIGILANCIA INACTIVA**",
+        "inactive_instructions": "Para activar la vigilancia:\n• Un administrador debe acceder al panel **Admin Me-tsuke**\n• Ejecutar **Vigilancia: Activar**\n• Configurar la frecuencia de las rondas\n\nUna vez activa, podrás señalar a visitantes sospechosos.",
+        "hot_potato": "🔥 **La sospecha se desplaza:** Ronda {iteration} (velocidad x{multiplier})",
+        "controls": "**Controles**\n- Activar o desactivar la vigilancia\n- Frecuencia de rondas",
+        "admin_description": "Configura la sensibilidad y frecuencia de la vigilancia del Me-tsuke",
+        "dropdown": {
+            "ring_accuse": "Me-tsuke: Señalar",
+            "ring_accuse_description": "Indicar que un visitante es sospechoso para la investigación"
+        }
+    },
+    "dropdown": {
+        "select_juggler_action": "🎎 Seleccionar acción de entretenimiento...",
+        "config_juggler": "Configurar Entretenimiento",
+        "config_juggler_description": "Ajustar configuración del entretenimiento de la geisha",
+        "config_juggler_emoji": "🎎"
+    }
+}

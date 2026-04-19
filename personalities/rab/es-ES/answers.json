@@ -30,6 +30,32 @@
                 ]
             }
         }
+    },
+    "ring_messages": {
+        "target_changed": "✅ El rastro del anillo ahora apunta a {target_name}",
+        "enabled": "✅ El rastro del anillo se ha activado en la configuración.",
+        "disabled": "✅ El rastro del anillo se ha desactivado en la configuración."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ Error de datos: Acción no disponible en el nexo. 💾",
+        "error_behavior_admin_only": "❌ Acceso denegado: Solo administradores del nexo pueden modificar protocolos. 🔌",
+        "error_settings_admin_only": "❌ Permisos insuficientes: Solo el Creador puede ajustar parámetros del nexo. 🔌",
+        "error_taboo_update_failed": "❌ Fallo en actualización de umbrales: Revisar registros del nexo. 💾",
+        "error_greetings_update_failed": "❌ Fallo en protocolo de saludo: Revisar registros del nexo. 💾",
+        "error_welcome_update_failed": "❌ Fallo en protocolo de bienvenida: Revisar registros del nexo. 💾",
+        "error_commentary_update_failed": "❌ Fallo en módulo de observaciones: Revisar registros del nexo. 💾",
+        "error_commentary_disabled": "❌ Módulo de observaciones inactivo en el nexo. 💾",
+        "error_commentary_process_failed": "❌ Error de procesamiento de datos: Revisar registros del nexo. 💾",
+        "success_taboo_state": "Umbrales {enabled_disabled} en este nexo del servidor. 💾",
+        "success_greetings_state": "Protocolo de saludo {enabled_disabled} en este nexo. 💾",
+        "success_welcome_state": "Protocolo de bienvenida {enabled_disabled} en este nexo. 💾",
+        "success_commentary_state": "Módulo de observaciones {enabled_disabled} en este nexo. 💾",
+        "state_enabled": "en línea",
+        "state_disabled": "desconectado"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ No se detectan nexos disponibles. Por favor, inicia la secuencia desde un servidor. 💾",
+        "server_access_error": "❌ La tormenta de arena bloquea el acceso al nexo. Por favor, intenta desde un servidor activo. 💾"
     }
 
 

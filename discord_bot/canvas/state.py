@@ -255,7 +255,7 @@ def _get_canvas_ring_state(guild) -> dict:
         
         # SECONDARY: Use ring_discord state as fallback
         if not ring_config:
-            from roles.trickster.subroles.ring.ring_discord import _get_ring_state
+            from roles.juggler.subroles.ring.ring_discord import _get_ring_state
             if _get_ring_state is not None:
                 current = _get_ring_state(server_id)
                 if current:
@@ -293,7 +293,7 @@ def _get_canvas_ring_state(guild) -> dict:
             state["target_user_name"] = "Unknown bearer"
         
         # Load description from personality
-        subrole_cfg = (PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {}) or {}).get("ring", {})
+        subrole_cfg = (PERSONALITY.get("roles", {}).get("juggler", {}).get("subroles", {}) or {}).get("ring", {})
         state["description"] = str(subrole_cfg.get("description", "")).strip()
     except Exception as e:
         logger.warning(f"Could not load ring state for Canvas: {e}")

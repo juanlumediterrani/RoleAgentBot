@@ -925,7 +925,7 @@ class RolesDatabase:
                                     # Special initialization for ring subrole
                                     elif subrole_name == 'ring' and subrole_enabled:
                                         try:
-                                            from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+                                            from roles.juggler.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
                                             
                                             # Initialize ring state with frequency from agent_config
                                             frequency_hours = subrole_config.get('frequency_hours', 24)

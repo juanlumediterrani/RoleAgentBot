@@ -26,11 +26,35 @@
                     "komprar carne kruda para la fiesta",
                     "konstruir una nueva tienda en el kampamento",
                     "komprar zerbeza para olvidar las derrotas",
-                    "pagar al curandero orko por kolmillos rotos"
+                    "pagar al kurandero orko por kolmillos rotos"
                 ]
             }
         }
+    },
+    "ring_messages": {
+        "target_changed": "✅ El anillo ahora apunta a {target_name}",
+        "enabled": "✅ El anillo aktivado en la konfigurasion.",
+        "disabled": "✅ El anillo desaktivado en la konfigurasion."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ ¡Mi acha se rompió! ¡Aksión no disponible para orko! ⚔️",
+        "error_behavior_admin_only": "❌ ¡SOLO PARA JEFES ORKOS! ¡Tú no komandas el kampamento! ⚔️🥩",
+        "error_settings_admin_only": "❌ ¡Solo el jefe orko puede kambiar la konfigurasion! ⚔️",
+        "error_taboo_update_failed": "❌ ¡La batalla se perdió! ¡No se pudo aktualizar los umbrales! ⚔️",
+        "error_greetings_update_failed": "❌ ¡El kurandero falló! ¡No se pudo aktualizar los saludos! ⚔️",
+        "error_welcome_update_failed": "❌ ¡La tienda se quemó! ¡No se pudo aktualizar la bienvenida! ⚔️",
+        "error_commentary_update_failed": "❌ ¡La carne se pudrió! ¡No se pudo aktualizar los komentarios! ⚔️",
+        "error_commentary_disabled": "❌ ¡La fogata está apagada! ¡Los komentarios no funsionan! ⚔️",
+        "error_commentary_process_failed": "❌ ¡Mi acha se rompió! ¡No se pudieron proesar los komentarios! ⚔️",
+        "success_taboo_state": "Umbrales {enabled_disabled} en el kampamento del servidor! ⚔️",
+        "success_greetings_state": "Saludos {enabled_disabled} en el kampamento! ⚔️",
+        "success_welcome_state": "Bienvenida {enabled_disabled} en el kampamento! ⚔️",
+        "success_commentary_state": "Komentarios {enabled_disabled} desde el kampamento! ⚔️",
+        "state_enabled": "listo para batalla",
+        "state_disabled": "herido"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ ¡No hay kampamentos disponibles! ¡Ve a un kampamento orko! ⚔️",
+        "server_access_error": "❌ ¡No puedo entrar al kampamento desde aquí! ¡Ve al kampamento! ⚔️"
     }
-
-
 }

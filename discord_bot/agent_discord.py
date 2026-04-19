@@ -775,7 +775,7 @@ async def _process_accuse_flag(message, llm_response: str, server_id: str, is_pu
     """Process ACCUSE <USERNAME> flag from LLM response."""
     try:
         # Import the ring extraction function
-        from roles.trickster.subroles.ring.ring import extract_accuse_flag
+        from roles.juggler.subroles.ring.ring import extract_accuse_flag
         
         # Extract the username from ACCUSE flag
         accused_username = extract_accuse_flag(llm_response)
@@ -839,7 +839,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
         server_id = str(guild.id)
         
         # Record accusation and update state (this will save the target info)
-        from roles.trickster.subroles.ring.ring_discord import _record_accusation
+        from roles.juggler.subroles.ring.ring_discord import _record_accusation
         await _record_accusation(server_id, f"ACCUSE {target_member.display_name}", guild, str(target_member.id), target_member.display_name, message.author.display_name, str(message.author.id))
         
         logger.info(f"🎯 Ring accusation target updated to: {target_member.display_name}")
@@ -852,7 +852,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         
         # Get ring prompts from personality
-        prompts_config = server_personality.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
         denial_config = prompts_config.get("denial", {})
         
         task_template = denial_config.get("task", f"Task: The human {target_member.display_name} denies having the ring, warn them not to lie to you and leave them alone")
@@ -952,7 +952,7 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         
         # Get ring prompts from personality
-        prompts_config = server_personality.get("roles", {}).get("trickster", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
         false_accusation_config = prompts_config.get("false_accusation", {})
         
         mission = false_accusation_config.get("mission", "MISSION ACTIVE - RING: The human falsely accused someone of having the ring.")
@@ -1266,7 +1266,7 @@ async def _process_chat_message(message):
         # If a DM was received, reset ring unanswered counter for this user across all servers
         if message.guild is None:
             try:
-                from roles.trickster.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+                from roles.juggler.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
                 for guild in bot.guilds:
                     _srv = str(guild.id)
                     rstate = _get_ring_state(_srv, force_refresh=True)

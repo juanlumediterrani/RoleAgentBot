@@ -268,6 +268,11 @@ def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
                 continue
             logger.info("[run] 🎵 MC standalone mode, launching as process")
 
+        # Skip roles without interval_hours (e.g., juggler)
+        if "interval_hours" not in cfg:
+            logger.info(f"[run] 📋 Role '{name}' enabled — no scheduled interval")
+            continue
+
         next_run[name] = now
         logger.info(f"[run] 📋 Role '{name}' enabled — every {cfg['interval_hours']}h")
 

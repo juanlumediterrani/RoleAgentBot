@@ -2,6 +2,9 @@
     "title": "**🎵 MC Kronk**",
     "description": "Kronk está aquí para la música. Conéctalo a un canal de voz.",
     "button": "🎵 MC",
+    "subrole_buttons": {
+        "overview": "🎵 Música"
+    },
     "canvas_mc_subtitle": "Control de Música",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Usa el menú para pedir canciones, ver la cola, o añadir más música.",

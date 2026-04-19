@@ -61,7 +61,7 @@ def _init_vertexai():
     # Check if Vertex AI is explicitly disabled
     vertex_ai_disabled = os.getenv('DISABLE_VERTEX_AI', '').strip().lower() in ('1', 'true', 'yes')
     if vertex_ai_disabled:
-        logger.info("Vertex AI disabled by DISABLE_VERTEX_AI environment variable")
+        logger.debug("Vertex AI disabled by DISABLE_VERTEX_AI environment variable")
         return False
 
     project = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -78,7 +78,7 @@ def _init_vertexai():
             location=location,
         )
         _VERTEXAI_INITIALIZED = True
-        logger.info(f"✅ Vertex AI (google-genai) initialized: project={project}, location={location}")
+        logger.debug(f"✅ Vertex AI (google-genai) initialized: project={project}, location={location}")
         return True
     except Exception as e:
         logger.error(f"❌ Failed to initialize Vertex AI: {e}")
@@ -535,14 +535,14 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
                 if result and result[0] and result[0].strip():
                     # Found existing summary, use it without saving
                     existing_summary = result[0].strip()
-                    logger.info(f"🧠 [RECENT_MEMORY] No interactions, using existing summary from history")
+                    logger.debug(f"🧠 [RECENT_MEMORY] No interactions, using existing summary from history")
                     return existing_summary
         except Exception as e:
             logger.debug(f"Could not retrieve existing recent memory: {e}")
         
         # No existing summary found, use fallback but don't save it
         fallback = _get_recent_memory_fallback(server_id)
-        logger.info(f"🧠 [RECENT_MEMORY] No interactions and no existing summary, using fallback without saving")
+        logger.debug(f"🧠 [RECENT_MEMORY] No interactions and no existing summary, using fallback without saving")
         return fallback
 
     # Use server-specific personality for system prompt
@@ -583,7 +583,7 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
     else:
         # LLM failed or returned error, keep existing summary unchanged
         summary_text = previous_summary or _get_recent_memory_fallback(server_id)
-        logger.info(f"🧠 [RECENT_MEMORY] LLM failed, keeping existing summary for {server_id} on {resolved_date}")
+        logger.debug(f"🧠 [RECENT_MEMORY] LLM failed, keeping existing summary for {server_id} on {resolved_date}")
     
     # Store extracted recollection if present (even if memory update failed)
     if extracted_recollection and extracted_recollection != "NO_MEMORY":
@@ -593,7 +593,7 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
             source_paragraph=previous_summary[:500] if previous_summary else None,  # Store first 500 chars as context
         )
         if recollection_id:
-            logger.info(f"🧠 [RECENT_MEMORY] Extracted and stored notable recollection: '{extracted_recollection[:60]}...'")
+            logger.debug(f"🧠 [RECENT_MEMORY] Extracted and stored notable recollection: '{extracted_recollection[:60]}...'")
     db_instance.mark_recent_memory_refresh_completed()
     
     return summary_text
@@ -618,12 +618,12 @@ def refresh_due_recent_memories(server_id: str | None = None) -> int:
         )
         
         if not new_interactions:
-            logger.info(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {server_id}")
+            logger.debug(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {server_id}")
             db_instance.mark_recent_memory_refresh_completed()
             return 0
         
         # Execute synthesis only if there are new interactions
-        logger.info(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {server_id}")
+        logger.debug(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {server_id}")
         generate_recent_memory_summary(server_id=server_id)
         return 1
     else:
@@ -730,18 +730,18 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
     # Apply fallback logic only for first instances
     if not previous_summary:
         previous_summary = _get_daily_memory_fallback(server_id)
-        logger.info(f"🧠 [DAILY_MEMORY] First instance - no daily memory found, using daily fallback")
+        logger.debug(f"🧠 [DAILY_MEMORY] First instance - no daily memory found, using daily fallback")
     else:
-        logger.info(f"🧠 [DAILY_MEMORY] Using previous daily memory from {most_recent_daily.get('memory_date', 'unknown')}")
+        logger.debug(f"🧠 [DAILY_MEMORY] Using previous daily memory from {most_recent_daily.get('memory_date', 'unknown')}")
     
     if not recent_summary:
         recent_summary = _get_recent_memory_fallback(server_id)
-        logger.info(f"🧠 [DAILY_MEMORY] First instance - no recent memory found, using recent fallback")
+        logger.debug(f"🧠 [DAILY_MEMORY] First instance - no recent memory found, using recent fallback")
     else:
-        logger.info(f"🧠 [DAILY_MEMORY] Using recent memory from {recent_record.get('memory_date', 'unknown')}")
+        logger.debug(f"🧠 [DAILY_MEMORY] Using recent memory from {recent_record.get('memory_date', 'unknown')}")
     
     # Now we always have both memories to combine
-    logger.info(f"🧠 [DAILY_MEMORY] Combining daily memory + recent memory")
+    logger.debug(f"🧠 [DAILY_MEMORY] Combining daily memory + recent memory")
     
     # Determine if we should inject a random recollection
     recollection_count = db_instance.count_notable_recollections()
@@ -754,11 +754,11 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         # Only use database recollections for dreaming
         dreaming_recollection, _ = _get_random_recollection_for_injection(db_instance)
         if dreaming_recollection:
-            logger.info(f"🧠 [DAILY_MEMORY] DREAMING TRIGGERED - Using database recollection ({recollection_count} total)")
+            logger.debug(f"🧠 [DAILY_MEMORY] DREAMING TRIGGERED - Using database recollection ({recollection_count} total)")
         else:
-            logger.info(f"🧠 [DAILY_MEMORY] DREAMING TRIGGERED - No recollection available in database")
+            logger.debug(f"🧠 [DAILY_MEMORY] DREAMING TRIGGERED - No recollection available in database")
     else:
-        logger.info(f"🧠 [DAILY_MEMORY] No dreaming triggered (recollections: {recollection_count})")
+        logger.debug(f"🧠 [DAILY_MEMORY] No dreaming triggered (recollections: {recollection_count})")
     
     # Use server-specific personality for system prompt
     from agent_engine import _get_personality
@@ -822,16 +822,16 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
                     if result and result[0] and result[0].strip():
                         # Found existing summary, use it
                         summary_text = result[0].strip()
-                        logger.info(f"🧠 [DAILY_MEMORY] LLM failed, using existing daily summary from history")
+                        logger.debug(f"🧠 [DAILY_MEMORY] LLM failed, using existing daily summary from history")
                     else:
                         # No existing summary found, use fallback
                         summary_text = _get_daily_memory_fallback(server_id)
-                        logger.info(f"🧠 [DAILY_MEMORY] LLM failed and no existing summary, using fallback")
+                        logger.debug(f"🧠 [DAILY_MEMORY] LLM failed and no existing summary, using fallback")
             except Exception as e:
                 logger.debug(f"Could not retrieve existing daily memory: {e}")
                 summary_text = _get_daily_memory_fallback(server_id)
         
-        logger.info(f"🧠 [DAILY_MEMORY] LLM failed, keeping existing summary for {server_id} on {resolved_date}")
+        logger.debug(f"🧠 [DAILY_MEMORY] LLM failed, keeping existing summary for {server_id} on {resolved_date}")
         
         # CRITICAL FIX: Save the fallback/previous summary to database even when LLM fails
         # This ensures bootstrap processes don't fail silently
@@ -850,7 +850,7 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         )
         
         if save_success:
-            logger.info(f"🧠 [DAILY_MEMORY] Saved fallback summary for {server_id} on {resolved_date}")
+            logger.debug(f"🧠 [DAILY_MEMORY] Saved fallback summary for {server_id} on {resolved_date}")
         else:
             logger.error(f"🧠 [DAILY_MEMORY] FAILED to save fallback summary for {server_id} on {resolved_date} - database error occurred")
     
@@ -913,7 +913,7 @@ def generate_user_relationship_memory_summary(
         
         # If we have existing memory, preserve it - don't overwrite with fallback
         if existing_summary and existing_summary.strip():
-            logger.info(f"🧠 [RELATIONSHIP_MEMORY] Preserving existing memory for user={user_id} server={server_id}")
+            logger.debug(f"🧠 [RELATIONSHIP_MEMORY] Preserving existing memory for user={user_id} server={server_id}")
             # Update the temporary state to ensure it's current
             db_instance.upsert_user_relationship_memory(
                 user_id,
@@ -925,7 +925,7 @@ def generate_user_relationship_memory_summary(
         
         # Only use fallback if user truly has no relationship history
         fallback = _get_relationship_memory_fallback(user_name, server_id)
-        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Using fallback for new user={user_id} server={server_id}")
+        logger.debug(f"🧠 [RELATIONSHIP_MEMORY] Using fallback for new user={user_id} server={server_id}")
         db_instance.upsert_user_relationship_memory(
             user_id,
             fallback,
@@ -982,12 +982,12 @@ def generate_user_relationship_memory_summary(
             metadata=metadata,
         )
         db_instance.mark_relationship_refresh_completed(user_id)
-        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Updated summary for user={user_id} server={server_id} date={resolved_date}")
+        logger.debug(f"🧠 [RELATIONSHIP_MEMORY] Updated summary for user={user_id} server={server_id} date={resolved_date}")
     else:
         # LLM failed or returned error, preserve existing summary
         if previous_summary and previous_summary.strip():
             summary_text = previous_summary
-            logger.info(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, preserving existing summary for user={user_id} server={server_id}")
+            logger.debug(f"🧠 [RELATIONSHIP_MEMORY] LLM failed, preserving existing summary for user={user_id} server={server_id}")
             # Update database with preserved summary to ensure Canvas can retrieve it
             db_instance.upsert_user_relationship_memory(
                 user_id,
@@ -1056,7 +1056,7 @@ def refresh_due_relationship_memories(server_id: str | None = None) -> int:
                 logger.warning(f" [RELATIONSHIP_MEMORY] Scheduled refresh failed for user={user_id}: {e}")
         deleted = db_instance.clear_stale_relationship_memory_states()
         if deleted:
-            logger.info(f" [RELATIONSHIP_MEMORY] Cleaned up {deleted} stale relationship memory states")
+            logger.debug(f" [RELATIONSHIP_MEMORY] Cleaned up {deleted} stale relationship memory states")
         return processed
     else:
         # Process all servers
@@ -1091,7 +1091,7 @@ def _refresh_relationship_memory_if_due(db_instance, user_id, user_name, recent_
         return summary
     
     # Only use fallback if user truly has no relationship history
-    logger.info(f"🧠 [RELATIONSHIP_MEMORY] No existing memory found, using fallback for new user={user_id}")
+    logger.debug(f"🧠 [RELATIONSHIP_MEMORY] No existing memory found, using fallback for new user={user_id}")
     # Get server_id from db_instance if available
     server_id = getattr(db_instance, 'server_id', None)
     fallback = _get_relationship_memory_fallback(user_name, server_id)
@@ -1388,12 +1388,12 @@ async def _build_prompt_channel_messages_block(
     Build only the CHANNEL MESSAGES block with recent channel interactions.
     This function now fetches messages directly from Discord API.
     """
-    logger.info(f"🧠 [MIND] _build_prompt_channel_messages_block called with channel_id={channel_id}, discord_channel={'provided' if discord_channel else 'None'}")
+    logger.debug(f"🧠 [MIND] _build_prompt_channel_messages_block called with channel_id={channel_id}, discord_channel={'provided' if discord_channel else 'None'}")
     
     # If we have a Discord channel object, fetch messages directly from Discord
     if discord_channel and hasattr(discord_channel, 'history'):
-        logger.info(f"🧠 [MIND] Loading recent messages from Discord channel {channel_id}")
-        logger.info(f"🧠 [MIND] Discord channel object: {type(discord_channel)}, name: {getattr(discord_channel, 'name', 'Unknown')}")
+        logger.debug(f"🧠 [MIND] Loading recent messages from Discord channel {channel_id}")
+        logger.debug(f"🧠 [MIND] Discord channel object: {type(discord_channel)}, name: {getattr(discord_channel, 'name', 'Unknown')}")
         
         try:
             # Get bot name from personality for mention replacement
@@ -1404,28 +1404,28 @@ async def _build_prompt_channel_messages_block(
             # Fetch last 20 messages from Discord (more than we need to filter)
             messages = []
             message_count = 0
-            logger.info(f"🧠 [MIND] Starting to fetch Discord messages from {getattr(discord_channel, 'name', 'Unknown')} channel")
+            logger.debug(f"🧠 [MIND] Starting to fetch Discord messages from {getattr(discord_channel, 'name', 'Unknown')} channel")
             
             async for message in discord_channel.history(limit=20):
                 message_count += 1
-                logger.info(f"🧠 [MIND] Processing message #{message_count}: {message.author.display_name} - {message.content[:50]}...")
+                logger.debug(f"🧠 [MIND] Processing message #{message_count}: {message.author.display_name} - {message.content[:50]}...")
                 
                 # Only include messages from last hour
                 import datetime
                 message_age = (datetime.datetime.now(datetime.timezone.utc) - message.created_at).total_seconds()
-                logger.info(f"🧠 [MIND] Message age: {message_age:.0f} seconds")
+                logger.debug(f"🧠 [MIND] Message age: {message_age:.0f} seconds")
                 if message_age > 3600:
-                    logger.info(f"🧠 [MIND] Skipping message older than 1 hour")
+                    logger.debug(f"🧠 [MIND] Skipping message older than 1 hour")
                     continue
                     
                 # Skip commands
                 if message.content.strip().startswith('!'):
-                    logger.info(f"🧠 [MIND] Skipping command message")
+                    logger.debug(f"🧠 [MIND] Skipping command message")
                     continue
 
                 # Skip empty bot messages (embeds, reactions, etc.)
                 if message.author.bot and not message.content.strip():
-                    logger.info(f"🧠 [MIND] Skipping empty bot message")
+                    logger.debug(f"🧠 [MIND] Skipping empty bot message")
                     continue
 
                 # Skip simple bot mentions from channel history (e.g., "Toma @Putre 🍺")
@@ -1436,10 +1436,10 @@ async def _build_prompt_channel_messages_block(
                     content_without_mention = message.content.replace(bot_mention, '').replace(bot_mention_bang, '').strip()
                     # If remaining content is empty or very short (≤5 chars), skip this message
                     if not content_without_mention or len(content_without_mention) <= 5:
-                        logger.info(f"🧠 [MIND] Skipping simple bot mention from channel history")
+                        logger.debug(f"🧠 [MIND] Skipping simple bot mention from channel history")
                         continue
 
-                logger.info(f"🧠 [MIND] Including message from {message.author.display_name} (bot: {message.author.bot})")
+                logger.debug(f"🧠 [MIND] Including message from {message.author.display_name} (bot: {message.author.bot})")
                     
                 # Format message and clean mentions
                 content = message.content
@@ -1460,12 +1460,12 @@ async def _build_prompt_channel_messages_block(
                 message_text = f"{message.author.display_name}: {content}"
                 messages.append(message_text)
             
-            logger.info(f"🧠 [MIND] Discord message fetch completed. Total messages processed: {message_count}, Messages included: {len(messages)}")
+            logger.debug(f"🧠 [MIND] Discord message fetch completed. Total messages processed: {message_count}, Messages included: {len(messages)}")
             
-            logger.info(f"🧠 [MIND] Found {len(messages)} messages from Discord channel")
+            logger.debug(f"🧠 [MIND] Found {len(messages)} messages from Discord channel")
             
             if not messages:
-                logger.info(f"🧠 [MIND] No Discord messages found for channel {channel_id}")
+                logger.debug(f"🧠 [MIND] No Discord messages found for channel {channel_id}")
                 return ""
 
             # Get label from prompts.json or fallback (personality already fetched above)
@@ -1483,9 +1483,9 @@ async def _build_prompt_channel_messages_block(
             
         except Exception as e:
             logger.error(f"🧠 [MIND] Error fetching Discord messages: {e}")
-            logger.info(f"🧠 [MIND] Discord API failed, falling back to database method")
+            logger.debug(f"🧠 [MIND] Discord API failed, falling back to database method")
     else:
-        logger.info(f"🧠 [MIND] No Discord channel object provided, using database method")
+        logger.debug(f"🧠 [MIND] No Discord channel object provided, using database method")
     
     # Fallback: Use database method
     if not server:
@@ -1496,12 +1496,12 @@ async def _build_prompt_channel_messages_block(
     if not db_instance or not channel_id:
         return ""
     
-    logger.info(f"🧠 [MIND] Loading recent messages from database channel {channel_id}")
+    logger.debug(f"🧠 [MIND] Loading recent messages from database channel {channel_id}")
     channel_messages = db_instance.get_recent_channel_interactions(channel_id, within_minutes=60, max_interactions=10)
-    logger.info(f"🧠 [MIND] Found {len(channel_messages)} messages from database")
+    logger.debug(f"🧠 [MIND] Found {len(channel_messages)} messages from database")
     
     if not channel_messages:
-        logger.info(f"🧠 [MIND] No channel messages found for channel {channel_id}")
+        logger.debug(f"🧠 [MIND] No channel messages found for channel {channel_id}")
         return ""
     
     # Get label from prompts.json or fallback to English
@@ -1695,9 +1695,9 @@ def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str, se
         keywords = content_words - trigger_words_lower
         
         # Add debug logging
-        logger.info(f"🧠 [MEMORY_DETECTION] User content: '{user_content}'")
-        logger.info(f"🧠 [MEMORY_DETECTION] Keywords after removing triggers: {keywords}")
-        logger.info(f"🧠 [MEMORY_DETECTION] Found {len(notable_recollections)} recollections in database")
+        logger.debug(f"🧠 [MEMORY_DETECTION] User content: '{user_content}'")
+        logger.debug(f"🧠 [MEMORY_DETECTION] Keywords after removing triggers: {keywords}")
+        logger.debug(f"🧠 [MEMORY_DETECTION] Found {len(notable_recollections)} recollections in database")
         
         # Find best matching recollection with 50% similarity threshold
         best_match = ""
@@ -1705,12 +1705,12 @@ def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str, se
         
         for i, recollection in enumerate(notable_recollections):
             recollection_text = recollection.get("recollection_text", "").lower()
-            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1}: '{recollection_text}'")
+            logger.debug(f"🧠 [MEMORY_DETECTION] Recollection {i+1}: '{recollection_text}'")
             
             # Calculate similarity score with case-insensitive matching
             recollection_words = set(recollection_text.split())
             if not keywords or not recollection_words:
-                logger.info(f"🧠 [MEMORY_DETECTION] Skipping recollection {i+1}: no keywords or recollection words")
+                logger.debug(f"🧠 [MEMORY_DETECTION] Skipping recollection {i+1}: no keywords or recollection words")
                 continue
                 
             # Calculate dynamic similarity scores
@@ -1723,8 +1723,8 @@ def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str, se
             coverage_boost = recollection_coverage * 0.3  # 30% boost for good recollection coverage
             score = base_score + coverage_boost
             
-            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1} - Keyword coverage: {keyword_coverage:.2f}, Recollection coverage: {recollection_coverage:.2f}, Final score: {score:.2f}")
-            logger.info(f"🧠 [MEMORY_DETECTION] Recollection {i+1} intersection: {intersection}")
+            logger.debug(f"🧠 [MEMORY_DETECTION] Recollection {i+1} - Keyword coverage: {keyword_coverage:.2f}, Recollection coverage: {recollection_coverage:.2f}, Final score: {score:.2f}")
+            logger.debug(f"🧠 [MEMORY_DETECTION] Recollection {i+1} intersection: {intersection}")
             
             # Dynamic threshold: lower base threshold but require minimum absolute matches
             min_absolute_matches = 2  # At least 2 words must match
@@ -1735,10 +1735,10 @@ def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str, se
                 score >= dynamic_threshold):
                 best_score = score
                 best_match = recollection.get("recollection_text", "")
-                logger.info(f"🧠 [MEMORY_DETECTION] New best match found with score {best_score:.2f}")
+                logger.debug(f"🧠 [MEMORY_DETECTION] New best match found with score {best_score:.2f}")
         
         if best_match:
-            logger.info(f"🧠 [MEMORY_DETECTION] Final best match: '{best_match}' with {best_score:.2f} similarity")
+            logger.debug(f"🧠 [MEMORY_DETECTION] Final best match: '{best_match}' with {best_score:.2f} similarity")
             return best_match
         
     except Exception as e:
@@ -1851,17 +1851,17 @@ def call_llm(
     
     try:
         if not is_simulation_mode():
-            logger.info(f"{log_prefix} Starting call to gemini-2.5-flash")
-            logger.info(f"   └─ Temp: {temperature} | Max tokens: {max_tokens}")
-            logger.info("   └─ Top-p: 0.95")
+            logger.debug(f"{log_prefix} Starting call to gemini-2.5-flash")
+            logger.debug(f"   └─ Temp: {temperature} | Max tokens: {max_tokens}")
+            logger.debug("   └─ Top-p: 0.95")
 
             if not VERTEXAI_AVAILABLE:
-                logger.info(f"{log_prefix} Vertex AI not available, skipping to fallback")
+                logger.debug(f"{log_prefix} Vertex AI not available, skipping to fallback")
                 if critical:
                     logger.warning(f"Vertex AI unavailable for critical call, using fallback")
             else:
                 if not _init_vertexai():
-                    logger.info(f"{log_prefix} Vertex AI initialization failed, skipping to fallback")
+                    logger.debug(f"{log_prefix} Vertex AI initialization failed, skipping to fallback")
                     if critical:
                         logger.warning(f"Vertex AI initialization failed for critical call, using fallback")
                 else:
@@ -1874,7 +1874,7 @@ def call_llm(
                             if result is not None:
                                 return result
                         except Exception as e:
-                            logger.info(f"{log_prefix} Vertex AI async call failed, fallback to Groq: {e}")
+                            logger.debug(f"{log_prefix} Vertex AI async call failed, fallback to Groq: {e}")
                             # Fall through to Groq fallback for all calls (critical and non-critical)
                     else:
                         try:
@@ -1885,14 +1885,14 @@ def call_llm(
                             if result is not None:
                                 return result
                         except Exception as e:
-                            logger.info(f"{log_prefix} Vertex AI sync call failed, fallback to Groq: {e}")
+                            logger.debug(f"{log_prefix} Vertex AI sync call failed, fallback to Groq: {e}")
                             # Fall through to Groq fallback for all calls (critical and non-critical)
         else:
-            logger.info(f"{log_prefix} Simulation mode, using Groq")
+            logger.debug(f"{log_prefix} Simulation mode, using Groq")
     except ImportError as e:
-        logger.info(f"{log_prefix} Vertex AI import failed, fallback to Groq: {e}")
+        logger.debug(f"{log_prefix} Vertex AI import failed, fallback to Groq: {e}")
     except Exception as e:
-        logger.info(f"{log_prefix} Vertex AI failed, fallback to Groq: {e}")
+        logger.debug(f"{log_prefix} Vertex AI failed, fallback to Groq: {e}")
     
     # Fallback to Groq
     return _call_groq_fallback(
@@ -1958,7 +1958,9 @@ def _call_vertexai_sync(
             # Log the response
             try:
                 effective_server_id = server_id
-                log_agent_response(postprocessed, role=call_type, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
+                # Use "ring_denial" or "ring_false_accusation" as role for ring-specific responses
+                role_to_log = call_type if call_type in {"ring_denial", "ring_false_accusation"} else call_type
+                log_agent_response(postprocessed, role=role_to_log, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
             except Exception as log_error:
                 logger.warning(f"Failed to log response: {log_error}")
             
@@ -2027,7 +2029,9 @@ def _call_vertexai_async(
             # Log the response
             try:
                 effective_server_id = server_id
-                log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
+                # Use "ring_denial" or "ring_false_accusation" as role for ring-specific responses
+                role_to_log = call_type if call_type in {"ring_denial", "ring_false_accusation"} else "subrole"
+                log_agent_response(postprocessed, role=role_to_log, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
             except Exception as log_error:
                 logger.warning(f"Failed to log subrole response: {log_error}")
             
@@ -2052,9 +2056,9 @@ def _call_vertexai_async(
         if not exception_queue.empty():
             exception = exception_queue.get()
             logger.error(f"🤖 [ASYNC] Vertex AI exception: {exception}")
-            logger.info("🤖 [ASYNC] Vertex AI timeout/error, fallback to Groq")
+            logger.debug("🤖 [ASYNC] Vertex AI timeout/error, fallback to Groq")
         else:
-            logger.info("🤖 [ASYNC] Vertex AI timeout (thread still alive), fallback to Groq")
+            logger.debug("🤖 [ASYNC] Vertex AI timeout (thread still alive), fallback to Groq")
         return _call_groq_fallback(
             system_instruction, prompt, temperature, max_tokens, start_time,
             call_type, critical, logger, user_id, user_name
@@ -2067,7 +2071,7 @@ def _call_groq_fallback(
 ) -> str:
     """Fallback to Groq when Vertex AI fails, with Mistral as second fallback"""
     try:
-        logger.info(f"🤖 [FALLBACK] Starting call to llama-3.3-70b-versatile")
+        logger.debug(f"🤖 [FALLBACK] Starting call to llama-3.3-70b-versatile")
 
         from agent_runtime import get_groq_client
         completion = get_groq_client().chat.completions.create(
@@ -2091,7 +2095,9 @@ def _call_groq_fallback(
         # Log the response
         try:
             effective_server_id = server_id
-            log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
+            # Use "ring_denial" or "ring_false_accusation" as role for ring-specific responses
+            role_to_log = call_type if call_type in {"ring_denial", "ring_false_accusation"} else "subrole"
+            log_agent_response(postprocessed, role=role_to_log, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
         
@@ -2107,7 +2113,7 @@ def _call_groq_fallback(
         return postprocessed
     except Exception as e:
         logger.error(f"🤖 [FALLBACK] Groq failed: {e}")
-        logger.info(f"🤖 [FALLBACK] Trying Mistral as second fallback")
+        logger.debug(f"🤖 [FALLBACK] Trying Mistral as second fallback")
         return _call_mistral_fallback(
             system_instruction, prompt, temperature, max_tokens, start_time,
             call_type, critical, logger, user_id, user_name, server_id
@@ -2121,7 +2127,7 @@ def _call_mistral_fallback(
 ) -> str:
     """Second fallback to Mistral when both Vertex AI and Groq fail"""
     try:
-        logger.info(f"🤖 [FALLBACK2] Starting call to Mistral")
+        logger.debug(f"🤖 [FALLBACK2] Starting call to Mistral")
 
         from agent_runtime import get_mistral_client
         mistral_client = get_mistral_client()
@@ -2149,7 +2155,9 @@ def _call_mistral_fallback(
         # Log the response
         try:
             effective_server_id = server_id
-            log_agent_response(postprocessed, role="subrole", server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
+            # Use "ring_denial" or "ring_false_accusation" as role for ring-specific responses
+            role_to_log = call_type if call_type in {"ring_denial", "ring_false_accusation"} else "subrole"
+            log_agent_response(postprocessed, role=role_to_log, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
         except Exception as log_error:
             logger.warning(f"Failed to log subrole response: {log_error}")
         
@@ -2322,7 +2330,7 @@ def _parse_identity_body_from_llm_response(response: str) -> list[str] | None:
         if isinstance(parsed, list):
             # Validate all elements are strings
             if all(isinstance(item, str) for item in parsed):
-                logger.info(f"🧬 [PERSONALITY_EVOLUTION] Successfully parsed JSON array with {len(parsed)} elements")
+                logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Successfully parsed JSON array with {len(parsed)} elements")
                 return [item.strip() for item in parsed if item.strip()]
         logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Parsed result is not a string array: {type(parsed)}")
         return None
@@ -2330,11 +2338,11 @@ def _parse_identity_body_from_llm_response(response: str) -> list[str] | None:
         logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Failed to parse LLM response as JSON: {e}")
         logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Text being parsed (first 1000 chars):\n{text[:1000]}")
         # Try a more lenient approach: extract strings using regex if JSON parsing fails
-        logger.info(f"🧬 [PERSONALITY_EVOLUTION] Attempting fallback string extraction")
+        logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Attempting fallback string extraction")
         string_pattern = r'"([^"]*(?:\\.[^"]*)*)"'
         matches = re.findall(string_pattern, text)
         if matches:
-            logger.info(f"🧬 [PERSONALITY_EVOLUTION] Fallback extracted {len(matches)} strings")
+            logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Fallback extracted {len(matches)} strings")
             # Unescape the strings
             import codecs
             unescaped = [codecs.decode(s, 'unicode_escape') for s in matches]
@@ -2367,7 +2375,7 @@ def generate_weekly_personality_evolution(
     # Check if evolution is due (run once per week, on Sunday)
     today = date.today()
     if today.weekday() != 6 and not force:  # 6 = Sunday
-        logger.info(f" [PERSONALITY_EVOLUTION] Not Sunday ({today.weekday()}), skipping. Use force=True to override.")
+        logger.debug(f" [PERSONALITY_EVOLUTION] Not Sunday ({today.weekday()}), skipping. Use force=True to override.")
         return {"success": False, "error": "Not Sunday", "day": today.weekday()}
     
     # Get the past 7 days of daily memories
@@ -2415,14 +2423,14 @@ def generate_weekly_personality_evolution(
                     dst = os.path.join(server_personality_dir, json_file)
                     if os.path.exists(src):
                         shutil.copy2(src, dst)
-                logger.info(f"🧬 [PERSONALITY_EVOLUTION] Copied personality files to {server_personality_dir}")
+                logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Copied personality files to {server_personality_dir}")
             else:
                 return {"success": False, "error": "Server personality not found and cannot be copied"}
         except Exception as copy_error:
             logger.error(f"🧬 [PERSONALITY_EVOLUTION] Failed to copy personality: {copy_error}")
             return {"success": False, "error": f"Server personality not found: {server_personality_path}"}
     
-    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Using server-specific personality")
+    logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Using server-specific personality")
     
     try:
         with open(server_personality_path, 'r', encoding='utf-8') as f:
@@ -2442,7 +2450,7 @@ def generate_weekly_personality_evolution(
     week_end = daily_memories[-1].get("memory_date", today.isoformat())
     week_start = daily_memories[0].get("memory_date", (today - timedelta(days=6)).isoformat())
     
-    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Processing week: {week_start} to {week_end} ({len(daily_memories)} days)")
+    logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Processing week: {week_start} to {week_end} ({len(daily_memories)} days)")
     
     # Build system prompt and evolution prompt
     # Use server-specific personality to avoid mixing with global/active_server personality
@@ -2457,7 +2465,7 @@ def generate_weekly_personality_evolution(
     )
     
     # Call LLM for evolution
-    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Calling LLM for personality evolution...")
+    logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Calling LLM for personality evolution...")
     llm_response = call_llm(
         system_instruction=system_instruction,
         prompt=evolution_prompt,
@@ -2486,7 +2494,7 @@ def generate_weekly_personality_evolution(
         logger.error("🧬 [PERSONALITY_EVOLUTION] Parsed identity_body is empty")
         return {"success": False, "error": "Empty identity_body from LLM"}
     
-    logger.info(f"🧬 [PERSONALITY_EVOLUTION] Successfully parsed evolved identity_body with {len(evolved_identity_body)} paragraphs")
+    logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Successfully parsed evolved identity_body with {len(evolved_identity_body)} paragraphs")
     
     # Create backup before evolution
     backup_path = os.path.join(
@@ -2495,7 +2503,7 @@ def generate_weekly_personality_evolution(
     try:
         import shutil
         shutil.copy2(server_personality_path, backup_path)
-        logger.info(f"🧬 [PERSONALITY_EVOLUTION] Created backup at {backup_path}")
+        logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Created backup at {backup_path}")
     except Exception as e:
         logger.warning(f"⚠️ [PERSONALITY_EVOLUTION] Failed to create backup: {e}")
     
@@ -2518,7 +2526,7 @@ def generate_weekly_personality_evolution(
     try:
         with open(server_personality_path, 'w', encoding='utf-8') as f:
             json.dump(evolved_personality, f, indent=2, ensure_ascii=False)
-        logger.info(f"🧬 [PERSONALITY_EVOLUTION] Successfully wrote evolved personality to {server_personality_path}")
+        logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Successfully wrote evolved personality to {server_personality_path}")
     except Exception as e:
         logger.error(f"🧬 [PERSONALITY_EVOLUTION] Failed to write evolved personality: {e}")
         return {"success": False, "error": f"Failed to write personality: {e}"}
@@ -2556,7 +2564,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     
     engine = _engine()
     
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Starting test evolution for server '{server_id}'")
+    test_logger.debug(f"🧬 [TEST_EVOLUTION] Starting test evolution for server '{server_id}'")
     
     # Load 7 synthetic daily memories from test.json
     test_memories_path = os.path.join(os.path.dirname(__file__), "personalities", "test.json")
@@ -2607,14 +2615,14 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
                     dst = os.path.join(server_personality_dir, json_file)
                     if os.path.exists(src):
                         shutil.copy2(src, dst)
-                test_logger.info(f"🧬 [TEST_EVOLUTION] Copied personality files to {server_personality_dir}")
+                test_logger.debug(f"🧬 [TEST_EVOLUTION] Copied personality files to {server_personality_dir}")
             else:
                 return {"success": False, "error": "Server personality not found and cannot be copied"}
         except Exception as copy_error:
             test_logger.error(f"🧬 [TEST_EVOLUTION] Failed to copy personality: {copy_error}")
             return {"success": False, "error": f"Server personality not found: {server_personality_path}"}
     
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Using server-specific personality")
+    test_logger.debug(f"🧬 [TEST_EVOLUTION] Using server-specific personality")
     
     try:
         with open(server_personality_path, 'r', encoding='utf-8') as f:
@@ -2633,7 +2641,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     week_start = test_daily_memories[0].get("memory_date", (today - timedelta(days=6)).isoformat())
     week_end = test_daily_memories[-1].get("memory_date", today.isoformat())
     
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Processing test week: {week_start} to {week_end}")
+    test_logger.debug(f"🧬 [TEST_EVOLUTION] Processing test week: {week_start} to {week_end}")
     
     # Build system prompt and evolution prompt
     # Use server-specific personality to avoid mixing with global/active_server personality
@@ -2655,10 +2663,10 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
         metadata={"server_id": server_id, "test_mode": True},
         server_id=server_id
     )
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Prompt logged to logs/{server_id}/prompt.log")
+    test_logger.debug(f"🧬 [TEST_EVOLUTION] Prompt logged to logs/{server_id}/prompt.log")
     
     # Call LLM for evolution
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Calling LLM for test personality evolution...")
+    test_logger.debug(f"🧬 [TEST_EVOLUTION] Calling LLM for test personality evolution...")
     llm_response = call_llm(
         system_instruction=system_instruction,
         prompt=evolution_prompt,
@@ -2699,7 +2707,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
             "llm_response": llm_response,
         }
     
-    test_logger.info(f"🧬 [TEST_EVOLUTION] Successfully parsed evolved identity_body with {len(evolved_identity_body)} paragraphs")
+    test_logger.debug(f"🧬 [TEST_EVOLUTION] Successfully parsed evolved identity_body with {len(evolved_identity_body)} paragraphs")
     
     # Create backup before evolution
     backup_path = os.path.join(
@@ -2708,7 +2716,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     try:
         import shutil
         shutil.copy2(server_personality_path, backup_path)
-        test_logger.info(f"🧬 [TEST_EVOLUTION] Created test backup at {backup_path}")
+        test_logger.debug(f"🧬 [TEST_EVOLUTION] Created test backup at {backup_path}")
     except Exception as e:
         test_logger.warning(f"⚠️ [TEST_EVOLUTION] Failed to create backup: {e}")
     
@@ -2732,7 +2740,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     try:
         with open(server_personality_path, 'w', encoding='utf-8') as f:
             json.dump(evolved_personality, f, indent=2, ensure_ascii=False)
-        test_logger.info(f"🧬 [TEST_EVOLUTION] Successfully wrote test evolved personality to {server_personality_path}")
+        test_logger.debug(f"🧬 [TEST_EVOLUTION] Successfully wrote test evolved personality to {server_personality_path}")
     except Exception as e:
         test_logger.error(f"🧬 [TEST_EVOLUTION] Failed to write evolved personality: {e}")
         return {

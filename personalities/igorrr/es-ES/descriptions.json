@@ -10,7 +10,11 @@
       "base_frequency": "Ritmo del Amo:",
       "current_frequency": "Ritmo actual:",
       "current_settings": "🔧 **Configuración de la mugre:**",
-      "frequency_format": "Cada {hours}h"
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Cambios",
+      "option_yes": "Sí",
+      "option_no": "No"
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
@@ -21,8 +25,8 @@
       "tips_section": "**Susurros útiles**\n-Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir...\n-Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
     },
     "canvas_home_messages": {
-      "title": "♨️ Igorrr - El Horno de Leña",
-      "button_home": "♨️ El Horno",
+      "title": "🌋 Igorrr - El Horno de Leña",
+      "button_home": "🌋 El Horno",
       "button_back": "← Atrás (al sótano)",
       "button_roles": "🍞 Labores",
       "button_behavior": "💊 Tics",
@@ -36,9 +40,7 @@
       "personalsynthesistitle": "🪤 **Tu Rastro de Hollín**",
       "dm_default_server_title": "🔔 **Usando el horno de: {server_name}**",
       "dm_default_server_message": "*Susurrando desde el privado, usando el primer sótano disponible.*",
-      "dm_default_server_separator": "─────────────────────────────────────────────",
-      "dm_no_servers_available": "❌ No hay sótanos abiertos. Vete al callejón.",
-      "dm_server_access_error": "❌ No puedo entrar al horno desde aquí. SSSSS..."
+      "dm_default_server_separator": "─────────────────────────────────────────────"
     },
     "canvas_behavior_messages": {
       "conversation": {
@@ -123,23 +125,28 @@
       "personality": {
         "title": "**🎭 Igorrr - Cambio de Piel**",
         "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\\n -Descarga mi piel actual antes de mudarme.\\n -Migra mis recuerdos al cambiar.",
-        "button": "🎭 Piel"
+        "button": "🎭 Piel",
+        "option_change": "Cambiar Piel",
+        "option_change_desc": "Cambiar a una personalidad diferente",
+        "option_download": "Descargar Piel Actual",
+        "option_download_desc": "Exportar personalidad como ZIP",
+        "placeholder": "Elige una acción de piel...",
+        "modal_personality_label": "Nueva Piel",
+        "modal_download_label": "¿Descargar piel anterior? (si/no)",
+        "modal_delete_memory_label": "¿Borrar mi memoria? (si/no)",
+        "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
+        "download_success": "✅ ¡Piel `{personality}` exportada! Guarda bien ese archivo...",
+        "change_success": "✅ ¡Piel cambiada de `{old}` a `{new}`! Ya estoy usando mi nueva piel... SSSSS...",
+        "progress_change_personality": "⏳ Cambiando piel de `{old}` a `{new}`...",
+        "progress_language_update": "⏳ Actualizando `{personality}` al idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva piel...",
+        "select_personality_instruction": "Elige una piel nueva del menú:",
+        "choose_personality_placeholder": "Elige una piel (idioma: {language})...",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?**\nSelecciona tus opciones:",
+        "selected_personality": "**Piel seleccionada: {personality}**",
+        "selected_personality_with_language": "**Piel seleccionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma piel."
       }
-    },
-    "personality_messages": {
-      "view_title": "🎭 Igorrr - Cambio de Piel",
-      "view_description": "Cambia o descarga mi personalidad para este servidor.",
-      "option_change": "Cambiar Piel",
-      "option_change_desc": "Cambiar a una personalidad diferente",
-      "option_download": "Descargar Piel Actual",
-      "option_download_desc": "Exportar personalidad como ZIP",
-      "placeholder": "Elige una acción de piel...",
-      "modal_personality_label": "Nueva Piel",
-      "modal_download_label": "¿Descargar piel anterior? (si/no)",
-      "modal_delete_memory_label": "¿Borrar mi memoria? (si/no)",
-      "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
-      "download_success": "✅ ¡Piel `{personality}` exportada! Guarda bien ese archivo...",
-      "change_success": "✅ ¡Piel cambiada de `{old}` a `{new}`! Ya estoy usando mi nueva piel... SSSSS..."
     },
     "readme": {
       "label_user_question": "Duda del saco de harina:",

@@ -884,6 +884,7 @@ from .canvas_mc import (
     CanvasMCVolumeModal,
     _handle_canvas_mc_action,
 )
+from .canvas_juggler import JugglerActionModal
 from .canvas_news_watcher import (
     build_canvas_role_news_watcher_detail as _build_canvas_role_news_watcher_detail,
     CanvasWatcherMethodSelect as _CanvasWatcherMethodSelect,
@@ -1189,7 +1190,7 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 return
             await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"dice_fixed_bet", "dice_pot_value", "ring_frequency", "ring_accuse"}:
+        if self.role_name == "trickster" and action_name in {"dice_fixed_bet", "dice_pot_value"}:
             if not interaction.guild:
                 await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
                 return
@@ -1202,13 +1203,26 @@ class CanvasRoleActionSelect(discord.ui.Select):
         if self.role_name == "shaman":
             await _HandleCanvasShamanAction(interaction, action_name, view)
             return
+        if self.role_name == "juggler":
+            from .canvas_juggler import handle_canvas_juggler_modal_submit
+            # Handle ring actions that need modal input
+            if action_name in {"ring_accuse", "ring_frequency"}:
+                await interaction.response.send_modal(JugglerActionModal(action_name, view.author_id, interaction.guild, view.admin_visible, view))
+                return
+            # Handle ring toggle actions
+            if action_name in {"ring_on", "ring_off"}:
+                if not interaction.guild or not view.admin_visible:
+                    await interaction.response.send_message("❌ This juggler option is admin-only.", ephemeral=True)
+                    return
+                await handle_canvas_juggler_modal_submit(interaction, action_name, "", interaction.guild, view.author_id, view.admin_visible, view)
+                return
         if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now", "watcher_run_personal"}:
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This watcher option is admin-only.", ephemeral=True)
                 return
             await _handle_canvas_watcher_action(interaction, action_name, view)
             return
-        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off", "ring_on", "ring_off"}:
+        if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off"}:
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This trickster option is admin-only.", ephemeral=True)
                 return
@@ -1265,47 +1279,75 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         view = self.view
         if not isinstance(view, CanvasBehaviorView):
-            await interaction.response.send_message("❌ Canvas behavior action selection is not available.", ephemeral=True)
+            # Get error message from answers
+            from agent_runtime import get_personality_message
+            server_id = get_server_key(interaction.guild) if interaction.guild else None
+            error_msg = get_personality_message("answers.json", ["general", "error_selection_unavailable"], server_id, "❌ Canvas behavior action selection is not available.")
+            await interaction.response.send_message(error_msg, ephemeral=True)
             return
         action_name = self.values[0]
         view.auto_response_preview = _get_canvas_auto_response_preview(action_name=action_name)
+        
+        # Load answers.json for general messages
+        from agent_runtime import get_personality_message
+        server_id = get_server_key(interaction.guild) if interaction.guild else None
+        general_answers = get_personality_message("answers.json", ["general"], server_id, {})
+        
         if action_name == "commentary_frequency":
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
+                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
+                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             await interaction.response.send_modal(CommentaryFrequencyModal(view, view.author_id))
             return
         if action_name in {"taboo_add", "taboo_del"}:
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
+                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
+                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             await interaction.response.send_modal(TabooKeywordModal(action_name, int(interaction.guild.id), view))
             return
         if action_name == "language_settings":
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This settings option is admin-only.", ephemeral=True)
+                error_settings_admin_only = general_answers.get("error_settings_admin_only", "❌ This settings option is admin-only.")
+                await interaction.response.send_message(error_settings_admin_only, ephemeral=True)
                 return
+            
+            # Get modal title from descriptions
+            descriptions = _get_personality_descriptions(server_id)
+            lang_select = descriptions.get("behavior_messages", {}).get("settings", {}).get("language_select", {})
+            modal_title = lang_select.get("modal_title", "🌐 **Select Server Language**")
+            
             await interaction.response.send_message(
-                "🌐 **Select Server Language**",
+                modal_title,
                 view=LanguageSelectView(view),
                 ephemeral=True
             )
             return
         if action_name == "role_control":
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This settings option is admin-only.", ephemeral=True)
+                error_settings_admin_only = general_answers.get("error_settings_admin_only", "❌ This settings option is admin-only.")
+                await interaction.response.send_message(error_settings_admin_only, ephemeral=True)
                 return
-            await interaction.response.send_modal(RoleControlModal(view))
+            await interaction.response.send_modal(RoleControlModal(view, interaction.user.id))
             return
         if action_name in {"taboo_on", "taboo_off"}:
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
+                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
+                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             guild_id = int(interaction.guild.id)
             enabled = action_name == "taboo_on"
             if update_taboo_state(guild_id, enabled=enabled):
                 title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
-                view.auto_response_preview = f"Taboo {'enabled' if enabled else 'disabled'} for this server."
+                
+                # Get success message from answers
+                success_taboo_state = general_answers.get("success_taboo_state", "Taboo {enabled_disabled} for this server.")
+                state_enabled = general_answers.get("state_enabled", "enabled")
+                state_disabled = general_answers.get("state_disabled", "disabled")
+                enabled_disabled = state_enabled if enabled else state_disabled
+                
+                view.auto_response_preview = success_taboo_state.format(enabled_disabled=enabled_disabled)
                 behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             else:
@@ -1315,14 +1357,22 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         # Handle greetings toggle
         if action_name in {"greetings_on", "greetings_off"}:
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
+                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
+                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             enabled = action_name == "greetings_on"
             try:
                 from discord_bot.discord_utils import set_greeting_enabled
                 set_greeting_enabled(interaction.guild, enabled)
                 title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
-                view.auto_response_preview = f"Greetings {'enabled' if enabled else 'disabled'} for this server."
+                
+                # Get success message from answers
+                success_greetings_state = general_answers.get("success_greetings_state", "Greetings {enabled_disabled} for this server.")
+                state_enabled = general_answers.get("state_enabled", "enabled")
+                state_disabled = general_answers.get("state_disabled", "disabled")
+                enabled_disabled = state_enabled if enabled else state_disabled
+                
+                view.auto_response_preview = success_greetings_state.format(enabled_disabled=enabled_disabled)
                 behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             except Exception as e:
@@ -1333,7 +1383,8 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         # Handle welcome toggle
         if action_name in {"welcome_on", "welcome_off"}:
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
+                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
+                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             enabled = action_name == "welcome_on"
             try:
@@ -1348,7 +1399,14 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                     db.set_welcome_enabled(enabled, f"{interaction.user.name}")
                 
                 title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
-                view.auto_response_preview = f"Welcome messages {'enabled' if enabled else 'disabled'} for this server."
+                
+                # Get success message from answers
+                success_welcome_state = general_answers.get("success_welcome_state", "Welcome messages {enabled_disabled} for this server.")
+                state_enabled = general_answers.get("state_enabled", "enabled")
+                state_disabled = general_answers.get("state_disabled", "disabled")
+                enabled_disabled = state_enabled if enabled else state_disabled
+                
+                view.auto_response_preview = success_welcome_state.format(enabled_disabled=enabled_disabled)
                 behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             except Exception as e:
@@ -1359,7 +1417,8 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         # Handle commentary toggle
         if action_name in {"commentary_on", "commentary_off"}:
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
+                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
+                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             enabled = action_name == "commentary_on"
             try:
@@ -1377,7 +1436,14 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                     db.set_commentary_state(enabled, config, f"{interaction.user.name}")
                 
                 title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
-                view.auto_response_preview = f"Commentary {'enabled' if enabled else 'disabled'} for this server."
+                
+                # Get success message from answers
+                success_commentary_state = general_answers.get("success_commentary_state", "Commentary {enabled_disabled} for this server.")
+                state_enabled = general_answers.get("state_enabled", "enabled")
+                state_disabled = general_answers.get("state_disabled", "disabled")
+                enabled_disabled = state_enabled if enabled else state_disabled
+                
+                view.auto_response_preview = success_commentary_state.format(enabled_disabled=enabled_disabled)
                 behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
                 await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             except Exception as e:
@@ -1387,14 +1453,19 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         # Handle commentary now action
         if action_name == "commentary_now":
             if not interaction.guild or not view.admin_visible:
-                await interaction.response.send_message("❌ This behavior option is admin-only.", ephemeral=True)
+                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
+                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             try:
-                await interaction.response.send_message("❌ Mission commentary feature is currently disabled.", ephemeral=True)
+                # Get error messages from answers
+                error_commentary_disabled = general_answers.get("error_commentary_disabled", "❌ Mission commentary feature is currently disabled.")
+                
+                await interaction.response.send_message(error_commentary_disabled, ephemeral=True)
                 return
             except Exception as e:
                 logger.error(f"Error in commentary action: {e}")
-                await interaction.response.send_message("❌ Failed to process commentary. Check logs for details.", ephemeral=True)
+                error_commentary_process_failed = general_answers.get("error_commentary_process_failed", "❌ Failed to process commentary. Check logs for details.")
+                await interaction.response.send_message(error_commentary_process_failed, ephemeral=True)
             return
         
         # Fallback for other behavior actions
@@ -1611,6 +1682,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
         button_banker = _roles_desc.get("banker", {}).get("button", "Banker")
         button_shaman = _roles_desc.get("shaman", {}).get("button", "Shaman")
         button_mc = _roles_desc.get("mc", {}).get("button", "MC")
+        button_juggler = _roles_desc.get("juggler", {}).get("button", "Juggler")
 
         role_labels = {
             "news_watcher": button_watcher,
@@ -1619,6 +1691,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
             "banker": button_banker,
             "shaman": button_shaman,
             "mc": button_mc,
+            "juggler": button_juggler,
         }
         for role_name in _get_enabled_roles(self.agent_config, getattr(self, 'guild', None)):
             label = role_labels.get(role_name, role_name.replace("_", " ").title())
@@ -1832,25 +1905,49 @@ class RoleFrequencyModal(CanvasModal):
 
 class CommentaryFrequencyModal(CanvasModal):
     def __init__(self, view, author_id: int):
-        super().__init__(title="Commentary Frequency", author_id=author_id)
+        # Get modal messages from descriptions
+        server_id = get_server_key(view.guild) if view.guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        modal_messages = descriptions.get("behavior_messages", {}).get("comentary", {}).get("modal", {})
+        general = descriptions.get("general", {})
+        
+        title = modal_messages.get("title", "Commentary Frequency")
+        label_minutes = modal_messages.get("label_minutes", "Minutes")
+        placeholder_minutes = modal_messages.get("placeholder_minutes", "e.g. 180")
+        
+        super().__init__(title=title, author_id=author_id)
         self.view = view
-        self.value_input = discord.ui.TextInput(label="Minutes", placeholder="e.g. 180", required=True, max_length=10)
+        self.value_input = discord.ui.TextInput(label=label_minutes, placeholder=placeholder_minutes, required=True, max_length=10)
         self.add_item(self.value_input)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # Get error messages from descriptions
+        server_id = get_server_key(interaction.guild) if interaction.guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        modal_messages = descriptions.get("behavior_messages", {}).get("comentary", {}).get("modal", {})
+        general = descriptions.get("general", {})
+        
+        error_server_only = modal_messages.get("error_server_only", "❌ Commentary settings are only available in a server.")
+        error_admin_only = modal_messages.get("error_admin_only", "❌ This option is admin-only.")
+        error_invalid_number = modal_messages.get("error_invalid_number", "❌ Enter a valid number of minutes.")
+        error_positive_number = modal_messages.get("error_positive_number", "❌ Minutes must be greater than zero.")
+        success_message = modal_messages.get("success_message", "Mission commentary interval set to `{minutes}` minutes.\nCurrent state: {enabled_text}")
+        state_on = modal_messages.get("state_on", "On")
+        state_off = modal_messages.get("state_off", "Off")
+        
         if not interaction.guild:
-            await interaction.response.send_message("❌ Commentary settings are only available in a server.", ephemeral=True)
+            await interaction.response.send_message(error_server_only, ephemeral=True)
             return
         if not is_admin(interaction):
-            await interaction.response.send_message("❌ This option is admin-only.", ephemeral=True)
+            await interaction.response.send_message(error_admin_only, ephemeral=True)
             return
         try:
             minutes = int(str(self.value_input.value).strip())
         except ValueError:
-            await interaction.response.send_message("❌ Enter a valid number of minutes.", ephemeral=True)
+            await interaction.response.send_message(error_invalid_number, ephemeral=True)
             return
         if minutes < 1:
-            await interaction.response.send_message("❌ Minutes must be greater than zero.", ephemeral=True)
+            await interaction.response.send_message(error_positive_number, ephemeral=True)
             return
         guild_id = int(interaction.guild.id)
         state = _talk_state_by_guild_id.get(guild_id) or {}
@@ -1861,7 +1958,7 @@ class CommentaryFrequencyModal(CanvasModal):
             if task and not task.done():
                 task.cancel()
             state["task"] = asyncio.create_task(_start_talk_loop_for_guild(guild_id))
-        enabled_text = "On" if state.get("enabled", False) else "Off"
+        enabled_text = state_on if state.get("enabled", False) else state_off
         
         # Rebuild the Canvas behavior view with updated state
         title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild) or (None, None, "")
@@ -1873,24 +1970,46 @@ class CommentaryFrequencyModal(CanvasModal):
             current_detail=self.view.current_detail,
             guild=self.view.guild,
         )
-        next_view.auto_response_preview = f"Mission commentary interval set to `{minutes}` minutes.\nCurrent state: {enabled_text}"
+        next_view.auto_response_preview = success_message.format(minutes=minutes, enabled_text=enabled_text)
         behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, next_view.auto_response_preview, title, description)
         await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
 
 
 class TabooKeywordModal(CanvasModal):
     def __init__(self, action_name: str, guild_id: int, view, author_id: int):
-        super().__init__(title="Taboo Keyword", author_id=author_id)
+        # Get modal messages from descriptions
+        server_id = get_server_key(view.guild) if view.guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        modal_messages = descriptions.get("behavior_messages", {}).get("taboo", {}).get("modal", {})
+        
+        title = modal_messages.get("title", "Taboo Keyword")
+        label_keyword = modal_messages.get("label_keyword", "Keyword")
+        placeholder_keyword = modal_messages.get("placeholder_keyword", "forbidden word")
+        
+        super().__init__(title=title, author_id=author_id)
         self.action_name = action_name
         self.guild_id = guild_id
         self.view = view
-        self.value_input = discord.ui.TextInput(label="Keyword", placeholder="forbidden word", required=True, max_length=80)
+        self.value_input = discord.ui.TextInput(label=label_keyword, placeholder=placeholder_keyword, required=True, max_length=80)
         self.add_item(self.value_input)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # Get modal messages from descriptions
+        server_id = get_server_key(interaction.guild) if interaction.guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        modal_messages = descriptions.get("behavior_messages", {}).get("taboo", {}).get("modal", {})
+        
+        error_invalid_keyword = modal_messages.get("error_invalid_keyword", "❌ Enter a valid keyword.")
+        success_added = modal_messages.get("success_added", "Added taboo keyword `{keyword}`.")
+        error_add_failed = modal_messages.get("error_add_failed", "Failed to add keyword `{keyword}`. Check logs for details.")
+        info_already_exists = modal_messages.get("info_already_exists", "Keyword `{keyword}` was already in the list.")
+        success_removed = modal_messages.get("success_removed", "Removed taboo keyword `{keyword}`.")
+        error_remove_failed = modal_messages.get("error_remove_failed", "Failed to remove keyword `{keyword}`. Check logs for details.")
+        info_not_exists = modal_messages.get("info_not_exists", "Keyword `{keyword}` was not in the list.")
+        
         keyword = str(self.value_input.value).strip().lower()
         if not keyword:
-            await interaction.response.send_message("❌ Enter a valid keyword.", ephemeral=True)
+            await interaction.response.send_message(error_invalid_keyword, ephemeral=True)
             return
         
         # Get current keywords from database
@@ -1903,23 +2022,23 @@ class TabooKeywordModal(CanvasModal):
         if self.action_name == "taboo_add":
             if keyword not in current_keywords:
                 if update_taboo_state(self.guild_id, keywords=current_keywords + [keyword]):
-                    applied_text = f"Added taboo keyword `{keyword}`."
+                    applied_text = success_added.format(keyword=keyword)
                     success = True
                 else:
-                    applied_text = f"Failed to add keyword `{keyword}`. Check logs for details."
+                    applied_text = error_add_failed.format(keyword=keyword)
             else:
-                applied_text = f"Keyword `{keyword}` was already in the list."
+                applied_text = info_already_exists.format(keyword=keyword)
                 success = True
         else:  # taboo_del
             if keyword in current_keywords:
                 new_keywords = [kw for kw in current_keywords if kw != keyword]
                 if update_taboo_state(self.guild_id, keywords=new_keywords):
-                    applied_text = f"Removed taboo keyword `{keyword}`."
+                    applied_text = success_removed.format(keyword=keyword)
                     success = True
                 else:
-                    applied_text = f"Failed to remove keyword `{keyword}`. Check logs for details."
+                    applied_text = error_remove_failed.format(keyword=keyword)
             else:
-                applied_text = f"Keyword `{keyword}` was not in the list."
+                applied_text = info_not_exists.format(keyword=keyword)
                 success = True
         
         # Rebuild the Canvas behavior view with updated state
@@ -1945,13 +2064,24 @@ class RoleControlModal(CanvasModal):
     """Modal for role control with role selection and on/off toggle."""
 
     def __init__(self, view: "CanvasBehaviorView", author_id: int):
-        super().__init__(title="Role Control", timeout=300, author_id=author_id)
+        # Get modal messages from descriptions
+        server_id = get_server_key(view.guild) if view.guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        modal_messages = descriptions.get("behavior_messages", {}).get("role_control", {}).get("modal", {})
+        
+        title = modal_messages.get("title", "Role Control")
+        label_role_name = modal_messages.get("label_role_name", "Role Name")
+        placeholder_role_name = modal_messages.get("placeholder_role_name", "Enter role name: news_watcher, treasure_hunter, trickster, banker")
+        label_state = modal_messages.get("label_state", "State (on/off)")
+        placeholder_state = modal_messages.get("placeholder_state", "Enter 'on' to enable or 'off' to disable")
+        
+        super().__init__(title=title, timeout=300, author_id=author_id)
         self.view = view
 
         # Role selection dropdown
         self.role_input = discord.ui.TextInput(
-            label="Role Name",
-            placeholder="Enter role name: news_watcher, treasure_hunter, trickster, banker",
+            label=label_role_name,
+            placeholder=placeholder_role_name,
             style=discord.TextStyle.short,
             required=True,
             max_length=50
@@ -1960,8 +2090,8 @@ class RoleControlModal(CanvasModal):
 
         # On/Off toggle
         self.state_input = discord.ui.TextInput(
-            label="State (on/off)",
-            placeholder="Enter 'on' to enable or 'off' to disable",
+            label=label_state,
+            placeholder=placeholder_state,
             style=discord.TextStyle.short,
             required=True,
             max_length=10
@@ -1969,9 +2099,23 @@ class RoleControlModal(CanvasModal):
         self.add_item(self.state_input)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # Get modal messages from descriptions
+        server_id = get_server_key(interaction.guild) if interaction.guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        modal_messages = descriptions.get("behavior_messages", {}).get("role_control", {}).get("modal", {})
+        
+        # Get general messages from answers
+        from agent_runtime import get_personality_message
+        general = get_personality_message("answers.json", ["general"], server_id, {})
+        
+        error_admin_only = modal_messages.get("error_admin_only", "❌ This role option is admin-only.")
+        success_message = modal_messages.get("success_message", "✅ Role '{role_name}' {enabled_disabled} for this server.")
+        state_enabled = general.get("state_enabled", "enabled")
+        state_disabled = general.get("state_disabled", "disabled")
+        
         try:
             if not interaction.guild or not self.view.admin_visible:
-                await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
+                await interaction.response.send_message(error_admin_only, ephemeral=True)
                 return
                 
             role_name = self.role_input.value.strip().lower()
@@ -2009,8 +2153,9 @@ class RoleControlModal(CanvasModal):
             mock_ctx = MockContext(interaction, enabled)
             await _cmd_role_toggle(mock_ctx, role_name, enabled)
             
-            # Build success message
-            result_msg = f"✅ Role '{role_name}' {'enabled' if enabled else 'disabled'} for this server."
+            # Build success message from descriptions
+            enabled_disabled = state_enabled if enabled else state_disabled
+            result_msg = success_message.format(role_name=role_name, enabled_disabled=enabled_disabled)
             
             # Update the view
             title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config) or (None, None, "")
@@ -2033,18 +2178,25 @@ class LanguageSelect(discord.ui.Select):
         server_id = str(view.guild.id) if view.guild else "0"
         current_lang = get_server_language(server_id)
         
+        # Get language select messages from descriptions
+        descriptions = _get_personality_descriptions(server_id)
+        lang_select = descriptions.get("behavior_messages", {}).get("settings", {}).get("language_select", {})
+        
+        placeholder = lang_select.get("placeholder", "🌐 Select server language...")
+        description_template = lang_select.get("description", "Set server language to {lang_name}")
+        
         options = []
         for lang_code, lang_name in get_available_languages().items():
             options.append(discord.SelectOption(
                 label=lang_name,
                 value=lang_code,
-                description=f"Set server language to {lang_name}",
+                description=description_template.format(lang_name=lang_name),
                 emoji="🌐",
                 default=lang_code == current_lang
             ))
         
         super().__init__(
-            placeholder="🌐 Select server language...",
+            placeholder=placeholder,
             min_values=1,
             max_values=1,
             options=options,
@@ -2167,11 +2319,15 @@ class _LanguagePersonalityPromptView(discord.ui.View):
         self.server_id = server_id
         self.canvas_view = canvas_view
 
-        yes_button = discord.ui.Button(label="Yes", style=discord.ButtonStyle.green, row=0)
+        from .canvas_personality import _get_personality_descriptions
+        personality_descriptions = _get_personality_descriptions(server_id)
+        general_msgs = personality_descriptions.get("general", {})
+
+        yes_button = discord.ui.Button(label=general_msgs.get("option_yes", "Yes"), style=discord.ButtonStyle.green, row=0)
         yes_button.callback = self._on_yes
         self.add_item(yes_button)
 
-        no_button = discord.ui.Button(label="No", style=discord.ButtonStyle.red, row=0)
+        no_button = discord.ui.Button(label=general_msgs.get("option_no", "No"), style=discord.ButtonStyle.red, row=0)
         no_button.callback = self._on_no
         self.add_item(no_button)
 
@@ -2188,8 +2344,12 @@ class _LanguagePersonalityPromptView(discord.ui.View):
                 message=None,
             )
             selection_view = CanvasPersonalitySelectView(parent_view)
+            server_id = get_server_key(interaction.guild) if (get_server_key and interaction.guild) else None
+            from .canvas_personality import _get_personality_descriptions
+            personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
+            instruction_msg = personality_msgs.get("select_personality_instruction", "Select a new personality from the dropdown below:")
             await interaction.response.edit_message(
-                content="Select a new personality from the dropdown below:",
+                content=instruction_msg,
                 view=selection_view,
             )
         except Exception as e:
@@ -2252,6 +2412,14 @@ async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_s
         # Get messages from descriptions.json or use defaults
         if messages_source is None:
             messages_source = _get_personality_descriptions(None).get("canvas_home_messages", {})
+        
+        # Load answers.json for DM messages
+        from agent_runtime import get_personality_message
+        server_id = None
+        dm_messages = get_personality_message("answers.json", ["dm_messages"], server_id, {})
+        
+        # Merge dm_messages into messages_source (dm_messages takes precedence)
+        messages_source = {**messages_source, **dm_messages}
         
         # Get the user's last server or first available as default
         try:
@@ -2630,7 +2798,7 @@ class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixi
         if current_detail == "personality":
             # Personality view uses its own custom dropdown
             from .canvas_personality import CanvasPersonalitySelect, _get_personality_descriptions as _get_pers_desc
-            personality_msgs = _get_pers_desc(get_server_key(guild) if guild else None).get("personality_messages", {})
+            personality_msgs = _get_pers_desc(get_server_key(guild) if guild else None).get("behavior_messages", {}).get("personality", {})
             self.add_item(CanvasPersonalitySelect(admin_visible, personality_msgs))
         elif current_detail in ["greetings", "welcome", "commentary", "taboo", "settings", "role_control"]:
             self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible, guild))

@@ -1,0 +1,38 @@
+{
+    "title": "**🎯División de Servicios Especiales Her Hans**",
+    "description": "Unidad de logística y entretenimiento del regimiento, coordina múltiples operaciones para mantener la moral de las tropas.",
+    "button": "🎯 Servicios",
+    "canvas_juggler_subrole_descriptions": {
+        "ring": "👁️ **Investigador de la Gestapo** - Interroga sospechosos de traición al Reich"
+    },
+    "subrole_buttons": {
+        "overview": "🎯 Vista",
+        "ring": "🔍 Investigación"
+    },
+    "ring": {
+        "title": "👁️ **Herr Hans Persecutor de la Gestapo** 👁️",
+        "description": " El oficial de la Gestapo le perseguirá hasta el fin de los tiempos, acuse a otros soldados para evitar ese calvario.",
+        "status_active": "✅ **PERSECUCIÓN ACTIVA** - Her Hans está buscando traidores",
+        "status_inactive": "❌ **PERSECUCIÓN INACTIVA** - Her Hans está descansando",
+        "current_target": "🎯 **OBJETIVO ACTUAL:**",
+        "target_unknown": "👤 Ningún sospechoso seleccionado",
+        "investigation_title": "🔍** HACER UNA ACUSACIÓN:**",
+        "investigation_instructions": "• ¡ACHTUNG! Use **Acusar** del menú de operaciones, soldado\n• Ingrese identificación del sospechoso: @nombredeusuario o ID\n• Herr Hans generará interrogatorio para extraer confesión\n• La acusación será publicada en el cuartel general para todos los soldados",
+        "investigation_warning": "⚠️ **ORDENES DEL REICH:**\n• No puede acusarse a sí mismo, traidor\n• No puede acusar unidades automatizadas (bots)\n• La persecución debe estar autorizada por oficial superior",
+        "inactive_title": "⚠️ **LA PERSECUCIÓN ESTÁ INACTIVA**",
+        "inactive_instructions": "¡ACHTUNG! Para autorizar operaciones de persecución:\n• Un oficial superior debe acceder a **Admin**\n• Y autorizar la persecución\n• Establecer frecuencia de interrogatorios automáticos\n\n¡Una vez autorizado, podrá acusar soldados de traición al Reich!",
+        "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
+        "controls": "**Controles**\n- Activar o desactivar persecución\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
+        "admin_description": "Configura la funcionalidad y frecuencia de la persecución nazi",
+        "dropdown": {
+            "ring_accuse": "Persecución: Acusar",
+            "ring_accuse_description": "Acusar a un soldado de ser traidor al Reich"
+        }
+    },
+    "dropdown": {
+        "select_juggler_action": "🎯 Seleccionar acción de servicios...",
+        "config_juggler": "Configurar Servicios",
+        "config_juggler_description": "Ajustar configuración de la división de servicios",
+        "config_juggler_emoji": "🎯"
+    }
+}

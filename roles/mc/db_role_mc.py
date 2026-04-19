@@ -293,7 +293,23 @@ class DatabaseRoleMC:
         except Exception as e:
             logger.exception(f"Error getting queue: {e}")
             return []
-    
+
+    def get_queue_all_channels(self, server_id: str) -> list:
+        """Get all queue entries for a server across all channels, ordered by added_at DESC."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT position, title, url, duration, artist, user_id, added_at, channel_id
+                    FROM mc_queue 
+                    WHERE server_id = ? AND active = 1
+                    ORDER BY added_at DESC
+                ''', (server_id,))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting queue for all channels: {e}")
+            return []
+
     def remove_song_from_queue(self, server_id: str, channel_id: str, position: int) -> bool:
         """Remove a specific song from queue."""
         try:

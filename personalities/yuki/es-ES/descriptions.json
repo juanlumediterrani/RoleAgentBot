@@ -10,7 +10,27 @@
       "base_frequency": "Cadencia base:",
       "current_frequency": "Cadencia actual:",
       "current_settings": "🔧 **Parámetros actuales:**",
-      "frequency_format": "Cada {hours}h"
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Cambios",
+      "option_yes": "Sí",
+      "option_no": "No",
+      "action_descriptions": {
+        "boolean_toggle": "Alternar activación/desactivación",
+        "number_input_target": "Entrada numérica",
+        "text_input_target": "Entrada de texto",
+        "action": "Acción inmediata"
+      },
+      "action_labels": {
+        "on": "Activar",
+        "off": "Desactivar",
+        "now": "Ahora",
+        "frequency": "Frecuencia",
+        "add_keyword": "Añadir Palabra",
+        "remove_keyword": "Eliminar Palabra",
+        "server_language": "🌐 Idioma del Servidor",
+        "role_management": "🎛️ Gestión de Artes"
+      }
     },
     "help_menu": {
       "title": "📚 **Yuki - Registro de Artes**",
@@ -35,9 +55,7 @@
       "personalsynthesistitle": "👥 **Vinculo con el Visitante**",
       "dm_default_server_title": "🔔 **Conectada a la sala: {server_name}**",
       "dm_default_server_message": "*Mensaje recibido en canal privado. Respondiendo desde la primera sala disponible.*",
-      "dm_default_server_separator": "─────────────────────────────────────────────",
-      "dm_no_servers_available": "❌ No se detectan salas disponibles. Por favor, inicia la conversación desde un servidor.",
-      "dm_server_access_error": "❌ No es posible acceder en este momento. Por favor, intenta desde un servidor activo."
+      "dm_default_server_separator": "─────────────────────────────────────────────"
     },
     "roles_view_messages": {
       "title": "🪭 Artes y Caminos 🪭",
@@ -79,43 +97,86 @@
         "title": "**🚫 Yuki - Toques de Atención**",
         "description": "**Cómo funciona:**\n -Configura palabras o expresiones que activen una respuesta descortés de Yuki.\n -Se pueden añadir, o eliminar palabras taboo.\n",
         "title_keywords": "Umbrales configurados actualmente:",
-        "button": "🚫 Umbrales"
+        "button": "🚫 Umbrales",
+        "modal": {
+          "title": "Palabra Umbral",
+          "label_keyword": "Palabra",
+          "placeholder_keyword": "palabra prohibida",
+          "error_invalid_keyword": "❌ Introduce una palabra válida.",
+          "success_added": "Palabra umbral `{keyword}` añadida.",
+          "error_add_failed": "Error al añadir la palabra `{keyword}`. Revisa los registros para más detalles.",
+          "info_already_exists": "La palabra `{keyword}` ya estaba en la lista.",
+          "success_removed": "Palabra umbral `{keyword}` eliminada.",
+          "error_remove_failed": "Error al eliminar la palabra `{keyword}`. Revisa los registros para más detalles.",
+          "info_not_exists": "La palabra `{keyword}` no estaba en la lista."
+        }
       },
       "comentary": {
         "title": "**🗣️ Yuki - Observaciones (en desarrollo)**",
         "description": "**Descripción**\n -Yuki comparte observaciones sobre sus funciones activas y los cambios en la sala.",
-        "button": "🗣️ Observaciones"
+        "button": "🗣️ Observaciones",
+        "modal": {
+          "title": "Frecuencia de Observaciones",
+          "label_minutes": "Minutos",
+          "placeholder_minutes": "ej. 180",
+          "error_server_only": "❌ La configuración de observaciones solo está disponible en un servidor.",
+          "error_admin_only": "❌ Esta opción es exclusiva para administradores.",
+          "error_invalid_number": "❌ Introduce un número válido de minutos.",
+          "error_positive_number": "❌ Los minutos deben ser mayores que cero.",
+          "success_message": "Intervalo de observaciones establecido en `{minutes}` minutos.\nEstado actual: {enabled_text}",
+          "state_on": "Activo",
+          "state_off": "Inactivo"
+        }
       },
       "role_control": {
         "title": "**🎛️ Yuki - Gestión de Artes**",
         "description": "**Descripción**\n -Activa o detiene los diferentes caminos disponibles desde aquí.",
-        "button": "🎛️ Gestión"
+        "button": "🎛️ Gestión",
+        "modal": {
+          "title": "Gestión de Artes",
+          "label_role_name": "Nombre del Arte",
+          "placeholder_role_name": "Introduce el nombre del arte: news_watcher, treasure_hunter, trickster, banker",
+          "label_state": "Estado (on/off)",
+          "placeholder_state": "Introduce 'on' para activar o 'off' para desactivar",
+          "error_admin_only": "❌ Esta opción de artes es exclusiva para administradores.",
+          "success_message": "✅ Arte '{role_name}' {enabled_disabled} para este servidor."
+        }
       },
       "settings": {
         "title": "**⚙️ Yuki - Ajustes de Sala**",
         "description": "**Descripción**\n -Gestiona el idioma del servidor y la activación de módulos.",
-        "button": "⚙️ Ajustes"
+        "button": "⚙️ Ajustes",
+        "language_select": {
+          "placeholder": "🌐 Seleccionar idioma del servidor...",
+          "description": "Establecer idioma del servidor a {lang_name}",
+          "modal_title": "🌐 Seleccionar Idioma del Servidor"
+        }
       },
       "personality": {
         "title": "**🎭 Yuki - Identidad**",
         "description": "**Descripción**\n -Modifica la esencia y personalidad de Yuki en este servidor.\n -Permite guardar el estado actual de la identidad.\n -Los registros se actualizan al realizar un cambio.",
-        "button": "🎭 Identidad"
+        "button": "🎭 Identidad",
+        "option_change": "Establecer Nueva Identidad",
+        "option_change_desc": "Cambiar a una configuración de personalidad diferente",
+        "option_download": "Exportar Identidad",
+        "option_download_desc": "Exportar la configuración actual (ZIP)",
+        "placeholder": "Elige una acción...",
+        "modal_personality_label": "Código de la Nueva Identidad",
+        "modal_download_label": "¿Exportar identidad anterior? (si/no)",
+        "modal_delete_memory_label": "¿Borrar registros de memoria? (si/no)",
+        "modal_download_memory_label": "¿Exportar memoria antes de borrarla? (si/no)",
+        "download_success": "✅ Identidad `{personality}` exportada correctamente.",
+        "change_success": "✅ Cambio de identidad completado. De `{old}` a `{new}`. La nueva configuración está activa.",
+        "progress_change_personality": "⏳ Cambiando identidad de `{old}` a `{new}`...",
+        "progress_language_update": "⏳ Actualizando `{personality}` al idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva identidad...",
+        "select_personality_instruction": "Selecciona una nueva identidad del menú:",
+        "choose_personality_placeholder": "Elige una identidad (idioma: {language})...",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?**\nSelecciona tus opciones:",
+        "selected_personality": "**Identidad seleccionada: {personality}**",
+        "selected_personality_with_language": "**Identidad seleccionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad."
       }
-    },
-    "personality_messages": {
-      "view_title": "🎭 Yuki - Identidad",
-      "view_description": "Cambia o exporta la identidad activa de Yuki en esta sala.",
-      "option_change": "Establecer Nueva Identidad",
-      "option_change_desc": "Cambiar a una configuración de personalidad diferente",
-      "option_download": "Exportar Identidad",
-      "option_download_desc": "Exportar la configuración actual (ZIP)",
-      "placeholder": "Elige una acción...",
-      "modal_personality_label": "Código de la Nueva Identidad",
-      "modal_download_label": "¿Exportar identidad anterior? (si/no)",
-      "modal_delete_memory_label": "¿Borrar registros de memoria? (si/no)",
-      "modal_download_memory_label": "¿Exportar memoria antes de borrarla? (si/no)",
-      "download_success": "✅ Identidad `{personality}` exportada correctamente.",
-      "change_success": "✅ Cambio de identidad completado. De `{old}` a `{new}`. La nueva configuración está activa."
     },
     "readme":{
       "label_user_question":"Consulta del visitante:",
