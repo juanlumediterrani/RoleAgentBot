@@ -263,7 +263,7 @@ class CanvasPersonalityView(discord.ui.View):
         # Get personality-specific labels (single call, reused below)
         server_id = get_server_key(guild) if (get_server_key and guild) else None
         personality_descriptions = _get_personality_descriptions(server_id)
-        personality_msgs = personality_descriptions.get("personality_messages", {})
+        personality_msgs = personality_descriptions.get("behavior_messages", {}).get("personality", {})
         
         # Add dropdown with personality options
         self.add_item(CanvasPersonalitySelect(admin_visible, personality_msgs))
@@ -343,8 +343,11 @@ class CanvasPersonalitySelect(discord.ui.Select):
                 )
             if modal_view:
                 selection_view = CanvasPersonalitySelectView(modal_view)
+                server_id = get_server_key(self.view.guild) if (get_server_key and self.view.guild) else None
+                personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
+                instruction_msg = personality_msgs.get("select_personality_instruction", "Select a new personality from the dropdown below:")
                 await interaction.response.send_message(
-                    "Select a new personality from the dropdown below:",
+                    instruction_msg,
                     view=selection_view,
                     ephemeral=True
                 )
@@ -385,7 +388,7 @@ class CanvasPersonalitySelect(discord.ui.Select):
             # Send file
             file = discord.File(zip_path, filename=f"{current_personality}.zip")
             
-            personality_msgs = _get_personality_descriptions(server_id).get("personality_messages", {})
+            personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
             success_msg = personality_msgs.get("download_success", "✅ Personality `{personality}` exported successfully!")
             
             await interaction.followup.send(
@@ -434,7 +437,9 @@ class CanvasPersonalitySelectView(discord.ui.View):
                 discord.SelectOption(label=pers, value=pers)
                 for pers in available
             ]
-            placeholder = f"Choose a personality (language: {self.server_language})..."
+            server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
+            personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
+            placeholder = personality_msgs.get("choose_personality_placeholder", "Choose a personality (language: {language})...").format(language=self.server_language)
         else:
             options = [discord.SelectOption(label="No personalities available", value="none")]
             placeholder = "No personalities available"
@@ -451,8 +456,11 @@ class CanvasPersonalitySelectView(discord.ui.View):
         self.add_item(self.personality_select)
         
         # Add Confirm and Cancel buttons (initially disabled)
+        server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        general_msgs = personality_descriptions.get("general", {})
         self.confirm_button = discord.ui.Button(
-            label="Confirm",
+            label=general_msgs.get("button_confirm", "Confirm"),
             style=discord.ButtonStyle.green,
             disabled=True,
             row=1
@@ -556,13 +564,43 @@ class CanvasPersonalitySelectView(discord.ui.View):
             # Show confirmation if same personality but different language
             if self.old_personality == new_personality and self.server_language != self._get_server_language(server_id):
                 personality_info = self._load_personality_info(new_personality)
-                content = f"**Selected Personality: {new_personality} (Language: {self.server_language})**\n\n" \
-                          f"⚠️ **Note:** Changing language for the same personality.\n\n{personality_info}"
+                server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
+                personality_descriptions = _get_personality_descriptions(server_id)
+                personality_msgs = personality_descriptions.get("behavior_messages", {}).get("personality", {})
+                selected_msg = personality_msgs.get("selected_personality_with_language", "**Selected Personality: {personality} (Language: {language})**").format(personality=new_personality, language=self.server_language)
+                note_msg = personality_msgs.get("language_change_note", "⚠️ **Note:** Changing language for the same personality.")
+                
+                # Load personality avatar for embed thumbnail
+                avatar_url = None
+                avatar_file = None
+                try:
+                    from pathlib import Path
+                    base_dir = Path(__file__).parent.parent.parent
+                    avatar_path = base_dir / "personalities" / new_personality / "avatar.png"
+                    if avatar_path.exists():
+                        avatar_file = discord.File(avatar_path, filename="avatar.png")
+                        avatar_url = "attachment://avatar.png"
+                except Exception:
+                    pass
+                
+                # Create embed with avatar as thumbnail
+                content = f"{note_msg}\n\n{personality_info}"
                 content = self._truncate_to_limit(content, 2000)
-                await interaction.response.edit_message(
-                    content=content,
-                    view=self
-                )
+                embed = discord.Embed(title=selected_msg, description=content)
+                if avatar_url:
+                    embed.set_thumbnail(url=avatar_url)
+                
+                if avatar_file:
+                    await interaction.response.edit_message(
+                        embed=embed,
+                        view=self,
+                        attachments=[avatar_file]
+                    )
+                else:
+                    await interaction.response.edit_message(
+                        embed=embed,
+                        view=self
+                    )
                 self.confirm_button.disabled = False
                 return
             
@@ -572,12 +610,42 @@ class CanvasPersonalitySelectView(discord.ui.View):
             # Enable confirm button and update message
             self.confirm_button.disabled = False
             
-            content = f"**Selected Personality: {new_personality}**\n\n{personality_info}"
+            server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
+            personality_descriptions = _get_personality_descriptions(server_id)
+            personality_msgs = personality_descriptions.get("behavior_messages", {}).get("personality", {})
+            selected_msg = personality_msgs.get("selected_personality", "**Selected Personality: {personality}**").format(personality=new_personality)
+            
+            # Load personality avatar for embed thumbnail
+            avatar_url = None
+            avatar_file = None
+            try:
+                from pathlib import Path
+                base_dir = Path(__file__).parent.parent.parent
+                avatar_path = base_dir / "personalities" / new_personality / "avatar.png"
+                if avatar_path.exists():
+                    avatar_file = discord.File(avatar_path, filename="avatar.png")
+                    avatar_url = "attachment://avatar.png"
+            except Exception:
+                pass
+            
+            # Create embed with avatar as thumbnail
+            content = personality_info
             content = self._truncate_to_limit(content, 2000)
-            await interaction.response.edit_message(
-                content=content,
-                view=self
-            )
+            embed = discord.Embed(title=selected_msg, description=content)
+            if avatar_url:
+                embed.set_thumbnail(url=avatar_url)
+            
+            if avatar_file:
+                await interaction.response.edit_message(
+                    embed=embed,
+                    view=self,
+                    attachments=[avatar_file]
+                )
+            else:
+                await interaction.response.edit_message(
+                    embed=embed,
+                    view=self
+                )
                 
         except Exception as e:
             if logger:
@@ -594,8 +662,11 @@ class CanvasPersonalitySelectView(discord.ui.View):
 
             # Edit the current message to show confirmation view instead of deleting
             confirm_view = CanvasPersonalityConfirmView(self.parent_view, self.selected_personality, self.old_personality)
+            server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
+            personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
+            confirm_msg = personality_msgs.get("confirm_change_message", "**Confirm change to {personality}?**\nSelect your options below:").format(personality=self.selected_personality)
             await interaction.response.edit_message(
-                content=f"**Confirm change to {self.selected_personality}?**\nSelect your options below:",
+                content=confirm_msg,
                 view=confirm_view
             )
             self.stop()
@@ -608,7 +679,19 @@ class CanvasPersonalitySelectView(discord.ui.View):
 
     async def _on_cancel(self, interaction: discord.Interaction):
         """Handle cancel button - dismiss the message."""
-        await interaction.message.delete()
+        try:
+            # Try to delete original response first (for ephemeral messages)
+            await interaction.delete_original_response()
+        except discord.NotFound:
+            # Not an ephemeral message or already deleted, try regular delete
+            try:
+                await interaction.message.delete()
+            except discord.NotFound:
+                # Message already deleted, just stop the view
+                pass
+        except Exception:
+            # Other errors, just stop the view
+            pass
         self.stop()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -653,12 +736,14 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
         else:
             server_id = self.server_id
-        personality_msgs = _get_personality_descriptions(server_id).get("personality_messages", {})
+        personality_descriptions = _get_personality_descriptions(server_id)
+        general_msgs = personality_descriptions.get("general", {})
+        personality_msgs = personality_descriptions.get("behavior_messages", {}).get("personality", {})
         
         # Boolean options: Yes/No
         yes_no_options = [
-            discord.SelectOption(label="Yes", value="yes"),
-            discord.SelectOption(label="No", value="no")
+            discord.SelectOption(label=general_msgs.get("option_yes", "Yes"), value="yes"),
+            discord.SelectOption(label=general_msgs.get("option_no", "No"), value="no")
         ]
         
         # Download old personality selector
@@ -696,7 +781,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
         
         # Confirm and Cancel buttons
         self.confirm_button = discord.ui.Button(
-            label="Confirm Change",
+            label=general_msgs.get("button_confirm_changes", "Confirm Changes"),
             style=discord.ButtonStyle.green,
             row=3
         )
@@ -704,7 +789,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
         self.add_item(self.confirm_button)
         
         self.cancel_button = discord.ui.Button(
-            label="No",
+            label=general_msgs.get("option_no", "No"),
             style=discord.ButtonStyle.red,
             row=3
         )
@@ -735,18 +820,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             message1 = None  # Initial progress message
             message3 = None  # Success message
 
-            # Edit message to show progress, then send followup messages
-            progress_text = f"⏳ Changing personality from `{self.old_personality}` to `{self.new_personality}`..."
-            if self.is_language_update:
-                progress_text = f"⏳ Updating `{self.personality_name}` to `{self.new_language}` language..."
-            
-            await interaction.response.edit_message(
-                content=progress_text,
-                view=None
-            )
-            # Store the original message reference
-            message1 = interaction.message
-
+            # Determine server_id and personality names
             if self.is_language_update:
                 server_id = self.server_id
                 new_personality = self.personality_name
@@ -755,6 +829,25 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 server_id = str(self.parent_view.guild.id)
                 new_personality = self.new_personality
                 old_personality = self.old_personality
+
+            # Edit message to show progress, then send followup messages
+            personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
+            if self.is_language_update:
+                progress_text = personality_msgs.get("progress_language_update", "⏳ Updating `{personality}` to `{language}` language...").format(
+                    personality=self.personality_name, language=self.new_language
+                )
+            else:
+                progress_text = personality_msgs.get("progress_change_personality", "⏳ Changing personality from `{old}` to `{new}`...").format(
+                    old=self.old_personality, new=self.new_personality
+                )
+            
+            await interaction.response.edit_message(
+                content=progress_text,
+                view=None
+            )
+            # Store the original message reference
+            message1 = interaction.message
+
             download_old = self.download_old_select.values[0] == "yes"
             delete_memory = self.delete_memory_select.values[0] == "yes"
             download_memory = self.download_memory_select.values[0] == "yes"
@@ -915,8 +1008,10 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 else:
                     try:
                         from agent_mind import generate_daily_memory_summary
+                        personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
+                        memory_msg = personality_msgs.get("generating_memory_synthesis", "🧠 Generating initial memory synthesis for new personality...")
                         await interaction.followup.send(
-                            "🧠 Generating initial memory synthesis for new personality...",
+                            memory_msg,
                             ephemeral=True
                         )
                         # Force personality reload to ensure we use the correct one
@@ -1031,7 +1126,7 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 # Non-critical error, don't block the personality change
 
             # Get success message
-            personality_msgs = _get_personality_descriptions(server_id).get("personality_messages", {})
+            personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
             
             if self.is_language_update:
                 success_msg = personality_msgs.get(
@@ -1076,8 +1171,17 @@ class CanvasPersonalityConfirmView(discord.ui.View):
         except Exception:
             pass
         try:
-            await interaction.message.delete()
+            # Try to delete original response first (for ephemeral messages)
+            await interaction.delete_original_response()
+        except discord.NotFound:
+            # Not an ephemeral message or already deleted, try regular delete
+            try:
+                await interaction.message.delete()
+            except discord.NotFound:
+                # Message already deleted, just stop the view
+                pass
         except Exception:
+            # Other errors, just stop the view
             pass
         self.stop()
 
@@ -1119,8 +1223,8 @@ def build_canvas_personality_content(admin_visible: bool, guild=None) -> tuple[s
     available = _get_available_personalities(server_language) or _get_available_personalities()
     available_list = "\n".join([f"• `{p}`" for p in available]) if available else "No personalities found"
     
-    title = personality_msgs.get("view_title", "🎭 Personality Management")
-    description = personality_msgs.get("view_description", "Change or download the bot's personality for this server.")
+    title = personality_msgs.get("title", "🎭 Personality Management")
+    description = personality_msgs.get("description", "Change or download the bot's personality for this server.")
     
     content = f"""
 **Current Personality:** `{current_personality}`
