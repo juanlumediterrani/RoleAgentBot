@@ -56,6 +56,7 @@ The bot's personality subtly evolves weekly based on server interactions:
 - **Permission Controls**: Admin-only commands and restricted operations
 - **Graceful Degradation**: Fallback mechanisms for service failures (Vertex AI → Groq → Mistral)
 - **Server-Specific Logging**: Isolated log directories per Discord server for better debugging and privacy
+- **GDPR Compliance**: Self-service data erasure via `!forget_me` command with automatic retention policies
 
 ### 🔄 Reactive Behaviors
 - **Presence Greetings**: Proactive DMs when users come online
@@ -202,6 +203,7 @@ Each Discord server can have its own personality and language settings:
 - `!test` - Verify bot connectivity
 - `!canvas` - Open interactive UI
 - `!readme` - Receive user guide via DM
+- `!forget_me` - Request erasure of your personal data (GDPR Art. 17)
 
 ### Role Commands
 - `!watcher` - News watcher commands
@@ -334,11 +336,12 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## 🔮 Future Roadmap
 
-- [x] ~~Voice MC management~~ ✅ Implemented
-- [x] ~~Enhanced memory recollections for the relationships~~ ✅ Implemented
+- [ ] Voice message MC management
+- [ ] MC improviser with LLM
 - [x] ~~Personality evolution~~ ✅ Implemented (weekly)
 - [ ] Personality EX customization inside Discord.
-- [x] ~~More role modules~~ ✅ Shaman, Juggler added
+- [x] ~~More role modules~~ ✅ Shaman, Juggler added (more roles on future: master dungeons, blacksmith...)
+- [ ] Expand roles with subroles (shaman, juggler, trickster)
 - [ ] Another platforms (telegram, whatsapp, minecraft?)
 - [ ] Fine-Tuning to a LLM to improve his socials capabilities, even adaptors for race and roles.
 

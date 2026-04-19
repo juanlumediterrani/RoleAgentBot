@@ -51,7 +51,19 @@
         "success_welcome_state": "Bienvenida {enabled_disabled} para este servidor.",
         "success_commentary_state": "Observaciones {enabled_disabled} para este servidor.",
         "state_enabled": "activadas",
-        "state_disabled": "desactivadas"
+        "state_disabled": "desactivadas",
+        "forget_me_label": "🧹 Olvídame (borrar mis datos)",
+        "forget_me_description": "Elimina tus datos personales de todos los servidores donde opera este agente (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Confirmar borrado de datos",
+        "forget_me_confirm_prompt": "⚠️ **Olvídame — derecho al borrado (GDPR)**\n\nEsto eliminará irreversiblemente tus datos personales de **todos los servidores donde opera este agente**:\n• Registros de interacciones atribuidos a ti.\n• Memorias de relación que se construyeron sobre ti.\n• Contadores de fatiga vinculados a tu identificador.\n• Menciones de tu nombre en resúmenes diarios y de relación serán redactadas a ``[redactado]``.\n\nEsta acción no puede deshacerse. ¿Deseas continuar?",
+        "forget_me_btn_confirm": "Sí, borrar mis datos",
+        "forget_me_btn_cancel": "Cancelar",
+        "forget_me_result_header": "✅ Tus datos personales han sido eliminados con cuidado.",
+        "forget_me_no_data": "ℹ️ No se encontraron datos personales tuyos en ningún servidor conocido.",
+        "forget_me_cancelled": "❎ Cancelado. Ningún dato fue modificado.",
+        "forget_me_not_yours": "❌ Esta confirmación pertenece a otro usuario.",
+        "forget_me_timed_out": "⌛ La confirmación ha expirado. Ningún dato fue modificado.",
+        "forget_me_dm_sent": "📬 Se ha enviado la confirmación por mensaje directo."
     },
     "dm_messages": {
         "no_servers_available": "❌ No se detectan salas disponibles. Por favor, inicia la conversación desde un servidor.",

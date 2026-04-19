@@ -51,7 +51,19 @@
         "success_welcome_state": "Bienvenida {enabled_disabled} en el kampamento! ⚔️",
         "success_commentary_state": "Komentarios {enabled_disabled} desde el kampamento! ⚔️",
         "state_enabled": "listo para batalla",
-        "state_disabled": "herido"
+        "state_disabled": "herido",
+        "forget_me_label": "🧹 Olvídame (borrar mis datos)",
+        "forget_me_description": "Kemar tus datos en la fogata de todos los kampamentos (GDPR Art. 17) ⚔️",
+        "forget_me_confirm_title": "🧹 Konfirmar borrado en el kampamento",
+        "forget_me_confirm_prompt": "⚠️ **¡Guerrero kiere ser olvidado! — Derecho al borrado (GDPR)**\n\nEsto kemará todos tus datos en **TODOS los kampamentos donde Putre pelea**:\n• Registros de interaksiones... la krónika de batalla sobre ti...\n• Memorias ke el kampamento forjó sobre ti...\n• Kontadores de fatiga... las vezes ke molestate al orko...\n• Tu nombre en los resúmenes... será tachado kon seniza ``[redaktado]``...\n\n¡No hay vuelta atrás, guerrero! ¿Estás seguro? ⚔️",
+        "forget_me_btn_confirm": "¡Sí! ¡Kémalo todo! ⚔️",
+        "forget_me_btn_cancel": "No... retirada",
+        "forget_me_result_header": "✅ ¡Tus datos fueron kemados en la fogata del kampamento! ¡Ya no keda nada! ⚔️",
+        "forget_me_no_data": "ℹ️ ¡No se enkontró datos tuyos en ningún kampamento! ¿Eres espíritu? ⚔️",
+        "forget_me_cancelled": "❎ ¡Retirada! ¡Tus datos siguen en el kampamento! ⚔️",
+        "forget_me_not_yours": "❌ ¡Esta konfirmasion es de otro guerrero! ¡No tokar! ⚔️",
+        "forget_me_timed_out": "⌛ ¡La fogata se apagó! ¡Nada fue kemado! ⚔️",
+        "forget_me_dm_sent": "📬 ¡Konfirmasion enviada por mensaje directo! ¡Revisa, guerrero! ⚔️"
     },
     "dm_messages": {
         "no_servers_available": "❌ ¡No hay kampamentos disponibles! ¡Ve a un kampamento orko! ⚔️",

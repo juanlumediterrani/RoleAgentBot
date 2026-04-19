@@ -51,7 +51,19 @@
         "success_welcome_state": "Bienvenida {enabled_disabled} para los sacos nuevos... SSSSS",
         "success_commentary_state": "Comentarios {enabled_disabled} desde el horno... SSSSS",
         "state_enabled": "horneando",
-        "state_disabled": "frío"
+        "state_disabled": "frío",
+        "forget_me_label": "🧹 Olvídame (borrar mis datos)",
+        "forget_me_description": "Quemar todos tus datos del sótano y todos los hornos... SSSSS (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Konfirmar... quemar datos... SSSSS",
+        "forget_me_confirm_prompt": "⚠️ **Olvídame... SSSSS... derecho al borrado (GDPR)**\n\nVoy a quemar todos tus datos en **TODOS los sótanos donde opero**... SSSSS:\n• Registros de interaksiones... los ke te delatan...\n• Memorias ke konstruí sobre ti... mis sekretitos...\n• Kontadores de fatiga... las vezes ke me molestaste...\n• Tu nombre en los resúmenes... lo tacharé kon hollín ``[redaktado]``...\n\nNo hay vuelta atrás... SSSSS... ¿Seguro ke kieres ke olvide?",
+        "forget_me_btn_confirm": "Sí... kéma todo... SSSSS",
+        "forget_me_btn_cancel": "No... déjalo...",
+        "forget_me_result_header": "✅ Tus datos se kemaron en el horno... SSSSS... ya no keda nada...",
+        "forget_me_no_data": "ℹ️ No encontré nada tuyo en ningún sótano... SSSSS... ¿seguro ke existías?",
+        "forget_me_cancelled": "❎ Kanzelado... SSSSS... tus datos siguen en el sótano...",
+        "forget_me_not_yours": "❌ ¡SSSSS! ¡Esto no es tuyo! ¡Es de otro sako de harina!",
+        "forget_me_timed_out": "⌛ Se enfriaron las brasas... SSSSS... nada fue kemado...",
+        "forget_me_dm_sent": "📬 Te envié la konfirmasion por mensaje... SSSSS... revisa el buzón del kallejón..."
     },
     "dm_messages": {
         "no_servers_available": "❌ No hay sótanos abiertos... Vete al callejón... SSSSS",

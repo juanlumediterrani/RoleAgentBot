@@ -65,6 +65,44 @@ def _get_logging_messages():
 LOG_DIR = Path(__file__).parent / 'logs'
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+
+_PROMPT_LOGGING_CACHE = {"mtime": None, "enabled": False}
+
+
+def is_prompt_logging_enabled() -> bool:
+    """Return True only when dev_options.prompt_logging is explicitly enabled.
+
+    This is the single gatekeeper for persisting full LLM prompts/responses.
+    Reading user-authored content to disk indefinitely is a GDPR risk, so the
+    default is OFF and it must be opted in via agent_config.json for dev work.
+    The agent_config.json file is re-stat'd on every call so toggling does not
+    require a bot restart.
+    """
+    # Allow env-var override for one-shot debugging without mutating config.
+    env = os.getenv("AGENT_PROMPT_LOGGING", "").strip().lower()
+    if env in ("1", "true", "yes", "on"):
+        return True
+    if env in ("0", "false", "no", "off"):
+        return False
+
+    config_path = _BASE_DIR / "agent_config.json"
+    try:
+        mtime = config_path.stat().st_mtime
+    except OSError:
+        return False
+
+    if _PROMPT_LOGGING_CACHE["mtime"] != mtime:
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            enabled = bool((cfg.get("dev_options") or {}).get("prompt_logging", False))
+        except Exception:
+            enabled = False
+        _PROMPT_LOGGING_CACHE["mtime"] = mtime
+        _PROMPT_LOGGING_CACHE["enabled"] = enabled
+
+    return _PROMPT_LOGGING_CACHE["enabled"]
+
 def get_prompts_logger(server_id=None):
     """
     Gets a dedicated logger for prompts with custom formatting.
@@ -127,6 +165,8 @@ def log_prompt(prompt_type, content, metadata=None, server_id=None):
         metadata (dict, optional): Additional metadata (role, server, user_id, etc.)
         server_id (str, optional): Discord server ID for server-specific logging
     """
+    if not is_prompt_logging_enabled():
+        return
     logger = get_prompts_logger(server_id)
     
     # Create separator
@@ -180,6 +220,8 @@ def log_user_prompt(content, user_id=None, server=None, role=None, server_id=Non
     log_prompt('user', content, metadata, server_id)
 
 def log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, role=None, server=None, metadata=None, server_id=None):
+    if not is_prompt_logging_enabled():
+        return
     logger = get_prompts_logger(server_id)
     separator = "=" * 80
 
@@ -268,3 +310,33 @@ def log_agent_response(content, role=None, server=None, response_length=None, se
         metadata['response_length'] = response_length
     
     log_prompt('response', content, metadata, server_id)
+
+
+def purge_old_prompt_logs(max_age_days: int = 15) -> int:
+    """Delete prompt.log* files older than ``max_age_days``.
+
+    Walks ``logs/`` and every ``logs/<server_id>/`` subdirectory, removing any
+    file whose name starts with ``prompt.log`` and whose mtime exceeds the
+    threshold. RotatingFileHandler produces numbered backups like
+    ``prompt.log.1``, ``prompt.log.2`` — all of which are caught by the
+    ``prompt.log*`` glob.
+
+    This is a safety net: even if a developer forgets to turn off
+    ``prompt_logging``, the on-disk footprint stays bounded.
+
+    Returns the number of files deleted.
+    """
+    import time
+    cutoff = time.time() - (max_age_days * 86400)
+    deleted = 0
+    try:
+        for p in LOG_DIR.rglob("prompt.log*"):
+            try:
+                if p.is_file() and p.stat().st_mtime < cutoff:
+                    p.unlink()
+                    deleted += 1
+            except OSError:
+                pass
+    except OSError:
+        pass
+    return deleted

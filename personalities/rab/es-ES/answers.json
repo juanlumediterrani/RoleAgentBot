@@ -51,7 +51,19 @@
         "success_welcome_state": "Protocolo de bienvenida {enabled_disabled} en este nexo. 💾",
         "success_commentary_state": "Módulo de observaciones {enabled_disabled} en este nexo. 💾",
         "state_enabled": "en línea",
-        "state_disabled": "desconectado"
+        "state_disabled": "desconectado",
+        "forget_me_label": "🧹 Olvídame (borrar mis datos)",
+        "forget_me_description": "Elimina tus datos personales de todos los nexos que este agente conoce (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Confirmar borrado de datos",
+        "forget_me_confirm_prompt": "⚠️ **Olvídame — derecho al borrado (GDPR)**\n\nEsto eliminará irreversiblemente tus datos personales de **todos los servidores donde opera este agente**:\n• Registros de interacciones atribuidos a ti.\n• Memorias de relación que el agente construyó sobre ti.\n• Contadores de fatiga vinculados a tu id.\n• Menciones de tu nombre en resúmenes diarios y de relación serán redactadas a ``[redactado]``.\n\nEsta acción no puede deshacerse. ¿Deseas continuar?",
+        "forget_me_btn_confirm": "Sí, borrar mis datos",
+        "forget_me_btn_cancel": "Cancelar",
+        "forget_me_result_header": "✅ Tus datos personales han sido eliminados del nexo. 💾",
+        "forget_me_no_data": "ℹ️ No se encontraron datos personales tuyos en ningún nexo conocido. 💾",
+        "forget_me_cancelled": "❎ Operación cancelada. Ningún dato fue modificado. 💾",
+        "forget_me_not_yours": "❌ Esta confirmación pertenece a otro usuario del nexo. 💾",
+        "forget_me_timed_out": "⌛ La confirmación expiró. Ningún dato fue modificado. 💾",
+        "forget_me_dm_sent": "📬 Se ha enviado confirmación por mensaje directo. 💾"
     },
     "dm_messages": {
         "no_servers_available": "❌ No se detectan nexos disponibles. Por favor, inicia la secuencia desde un servidor. 💾",

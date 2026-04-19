@@ -319,10 +319,57 @@ async def _execute_optional_subrole_tasks():
         logger.error(f"[run] 🎭 Error in subrole tasks: {e}")
 
 
+async def execute_gdpr_retention_all_servers():
+    """Apply the configured GDPR retention policy on every server database."""
+    try:
+        config = load_config()
+    except Exception as e:
+        logger.error(f"[run] 🧹 Could not load config for GDPR retention: {e}")
+        return
+
+    gdpr_cfg = config.get("gdpr", {}) or {}
+    if not gdpr_cfg.get("retention_enabled", True):
+        logger.debug("[run] 🧹 GDPR retention disabled in agent_config.json, skipping")
+        return
+
+    interactions_days = int(gdpr_cfg.get("interactions_days", 90))
+    derived_memory_days = int(gdpr_cfg.get("derived_memory_days", 365))
+
+    try:
+        from agent_db import apply_retention_across_servers
+        report = await asyncio.to_thread(
+            apply_retention_across_servers,
+            interactions_days,
+            derived_memory_days,
+        )
+        if report:
+            logger.info(
+                f"[run] 🧹 GDPR retention sweep purged data on {len(report)} server(s) "
+                f"(interactions≥{interactions_days}d, derived≥{derived_memory_days}d)"
+            )
+    except Exception as e:
+        logger.error(f"[run] 🧹 GDPR retention sweep failed: {e}")
+
+    # Prompt-log file retention — safety net against human error leaving
+    # prompt_logging=true in production. Runs regardless of the prompt_logging
+    # flag so stale files are cleaned up even after the flag is turned off.
+    try:
+        from prompts_logger import purge_old_prompt_logs
+        prompt_retention_days = int(
+            (config.get("dev_options") or {}).get("prompt_log_retention_days", 15)
+        )
+        purged = await asyncio.to_thread(purge_old_prompt_logs, prompt_retention_days)
+        if purged:
+            logger.info(f"[run] 🧹 Prompt log retention: deleted {purged} file(s) older than {prompt_retention_days}d")
+    except Exception as e:
+        logger.error(f"[run] 🧹 Prompt log retention failed: {e}")
+
+
 async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dict[str, datetime]):
     task_specs = [
         ("daily_memory", execute_daily_memory_summary_all_servers, timedelta(days=1), "Next daily memory summary"),
         ("weekly_personality_evolution", execute_weekly_personality_evolution_all_servers, timedelta(weeks=1), "Next weekly personality evolution"),
+        ("gdpr_retention", execute_gdpr_retention_all_servers, timedelta(hours=24), "Next GDPR retention sweep"),
     ]
     for task_key, task_func, interval, log_label in task_specs:
         if now < next_non_role_run[task_key]:
@@ -357,9 +404,21 @@ async def scheduler(config: dict):
     next_weekly_evolution_run = datetime.now() + timedelta(weeks=1)
     logger.info(f"[run] 🧬 Next weekly personality evolution scheduled for {next_weekly_evolution_run:%Y-%m-%d %H:%M:%S}")
 
+    # GDPR retention sweep runs with the cadence configured in agent_config.json
+    # (default every 24h). Read the cadence once; the loop below adjusts after
+    # each run based on the same knob.
+    try:
+        _gdpr_cfg = config.get("gdpr", {}) or {}
+        _gdpr_every_hours = int(_gdpr_cfg.get("run_every_hours", 24))
+    except Exception:
+        _gdpr_every_hours = 24
+    next_gdpr_retention_run = datetime.now() + timedelta(hours=_gdpr_every_hours)
+    logger.info(f"[run] 🧹 Next GDPR retention sweep scheduled for {next_gdpr_retention_run:%Y-%m-%d %H:%M:%S}")
+
     next_non_role_run = {
         "daily_memory": next_daily_memory_run,
         "weekly_personality_evolution": next_weekly_evolution_run,
+        "gdpr_retention": next_gdpr_retention_run,
     }
 
     while True:

@@ -51,7 +51,19 @@
         "success_welcome_state": "Bienvenida {enabled_disabled} en la forja! 🔨",
         "success_commentary_state": "Komentarios {enabled_disabled} desde la forja! 🔨",
         "state_enabled": "kaliente",
-        "state_disabled": "frío"
+        "state_disabled": "frío",
+        "forget_me_label": "🧹 Olvídame (borrar mis datos)",
+        "forget_me_description": "Fundir todos tus datos en la forja de todos los servidores (GDPR Art. 17) 🔨",
+        "forget_me_confirm_title": "🧹 Konfirmar borrado en la forja",
+        "forget_me_confirm_prompt": "⚠️ **¡Orko kiere ke le olviden! — Derecho al borrado (GDPR)**\n\nEsto fundirá todos tus datos en **TODAS las forjas donde Kronk trabaja**:\n• Registros de interaksiones... el libro del orko sobre ti...\n• Memorias ke Kronk forjó sobre ti...\n• Kontadores de fatiga... las vezes ke molestaste al orko...\n• Tu nombre en los resúmenes... será tachado kon karbon ``[redaktado]``...\n\n¡No se puede deshazer! ¿El humano está seguro? 🔨",
+        "forget_me_btn_confirm": "¡Sí! ¡Funde todo! 🔨",
+        "forget_me_btn_cancel": "No... dejar",
+        "forget_me_result_header": "✅ ¡Kronk fundió todos tus datos en la forja! ¡Ya no keda metal! 🔨",
+        "forget_me_no_data": "ℹ️ ¡Kronk no enkontró datos tuyos en ninguna forja! ¿Eres fantasma? 🔨",
+        "forget_me_cancelled": "❎ ¡Kanzelado! ¡Tus datos siguen en la forja! 🔨",
+        "forget_me_not_yours": "❌ ¡Esta konfirmasion es de otro humano! ¡No tokar! 🔨",
+        "forget_me_timed_out": "⌛ ¡El fuego se apagó! ¡Nada fue fundido! 🔨",
+        "forget_me_dm_sent": "📬 ¡Kronk envió konfirmasion por mensaje directo! ¡Revisa! 🔨"
     },
     "dm_messages": {
         "no_servers_available": "❌ ¡No hay forjas disponibles! ¡Ve a una forja orko! 🔨",

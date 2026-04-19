@@ -5,6 +5,18 @@
   "llm": {
     "max_tokens": 2048
   },
+  "dev_options": {
+    "prompt_logging": false,
+    "prompt_log_retention_days": 15,
+    "_comment": "prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error."
+  },
+  "gdpr": {
+    "retention_enabled": true,
+    "interactions_days": 90,
+    "derived_memory_days": 365,
+    "run_every_hours": 24,
+    "_comment": "Automatic GDPR retention sweep. interactions_days purges raw `interacciones` rows (direct PII); derived_memory_days purges date-scoped LLM summaries (daily_memory, user_relationship_daily_memory, notable_recollections). run_every_hours is the cadence of the background task."
+  },
   "fatigue_limits": {
     "user": {
       "daily_max": 50,

@@ -340,6 +340,20 @@ def register_core_commands(bot, agent_config):
 
     # --- PRESENCE GREETINGS ---
 
+    # --- GDPR self-service: !forget_me ---
+    if bot.get_command("forget_me") is None:
+        @bot.command(name="forget_me")
+        async def cmd_forget_me(ctx):
+            """GDPR Art. 17 — erase the caller's personal data across servers.
+
+            Scope is always the user who typed the command; an admin cannot
+            target another user through this command on purpose.
+            """
+            from discord_bot.gdpr import send_forget_me_prompt
+            await send_forget_me_prompt(ctx)
+    else:
+        logger.info("Command forget_me already registered, skipping...")
+
     # --- ENGLISH HELP COMMAND WITH PERSONALITY SUPPORT ---
     if bot.get_command("agenthelp") is None:
         @bot.command(name="agenthelp")
@@ -377,7 +391,8 @@ def register_core_commands(bot, agent_config):
         help_msg += "• `!canvas` - **PRIMARY:** Open the Canvas UI for all features\n"
         help_msg += f"• `!{role_cmd_name} <role> <on/off>` - Enable or disable roles dynamically\n"
         help_msg += "• `!setnickname <name>` - Change bot display name (admins only)\n"
-        help_msg += "• `!setpersonality <name>` - Switch bot personality (admins only)\n\n"
+        help_msg += "• `!setpersonality <name>` - Switch bot personality (admins only)\n"
+        help_msg += "• `!forget_me` - Request erasure of your personal data (GDPR Art. 17)\n\n"
 
         # Admin utilities (kept as commands)
         help_msg += "🔧 **ADMIN UTILITIES**\n"

@@ -772,7 +772,81 @@ RoleAgentBot/
 
 ---
 
-## 18. Known Gaps / TODO
+## 18. GDPR & Privacy
+
+Self-service data erasure and retention policies compliant with GDPR Art. 17 (right to erasure).
+
+### 18.1 `!forget_me` command and Canvas integration
+
+- **`discord_bot/gdpr.py`** — `ForgetMeConfirmView` provides a two-button confirmation UI (Confirm / Cancel) restricted to the requesting user.
+- **Entry points**:
+  - `!forget_me` prefix command (`discord_bot/discord_core_commands.py`).
+  - Canvas dropdown option in the **Behavior → Conversation** section (`discord_bot/canvas/canvas_behavior.py`).
+- **Flow**:
+  1. User triggers the action.
+  2. Bot sends an ephemeral confirmation prompt (or DM for classic context if DMs are open).
+  3. On confirm, `agent_db.forget_user_across_servers()` is called with the user's `display_name` and `user_name` for redaction.
+  4. Erasure runs across **all servers** where the bot operates:
+     - Deletes interaction log rows keyed by `user_id`.
+     - Deletes per-user relationship memories.
+     - Deletes fatigue counters.
+     - Redacts user name mentions in narrative LLM-generated tables (daily memory, relationship daily memory, notable recollections) to ``[redactado]``.
+  5. Results are reported back to the user ephemerally.
+
+### 18.2 Retention policies
+
+Configured in `agent_config.json` under the `gdpr` block:
+
+```json
+"gdpr": {
+  "retention_enabled": true,
+  "interactions_days": 90,
+  "derived_memory_days": 365,
+  "run_every_hours": 24
+}
+```
+
+- **`interactions_days`** — purges raw `interacciones` table rows older than N days (direct PII).
+- **`derived_memory_days`** — purges date-scoped LLM summaries (`daily_memory`, `user_relationship_daily_memory`, `notable_recollections`) older than N days.
+- **`run_every_hours`** — cadence of the scheduled retention sweep in `run.py`.
+
+The sweep runs in `execute_gdpr_retention_all_servers()` via the scheduler loop.
+
+### 18.3 Prompt log retention
+
+- **`prompts_logger.py::purge_old_prompt_logs(max_age_days)`** — deletes `prompt.log*` files older than the configured threshold from `logs/` and all `logs/<server_id>/` subdirectories.
+- **Configuration** — `agent_config.json` → `dev_options.prompt_log_retention_days` (default 15 days).
+- **Safety net** — runs regardless of the `prompt_logging` flag so stale files are cleaned even after the flag is turned off.
+- **Purpose** — prevents indefinite storage of user-authored content from the dev-only prompt logging feature.
+
+### 18.4 Localized GDPR UI strings
+
+All user-facing GDPR strings are loaded at runtime from the active personality's `answers.json` → `general` section:
+
+| Key | Purpose |
+| --- | --- |
+| `forget_me_label` | Canvas dropdown label |
+| `forget_me_description` | Canvas dropdown description |
+| `forget_me_confirm_title` | Confirmation embed title |
+| `forget_me_confirm_prompt` | Confirmation prompt text |
+| `forget_me_btn_confirm` | Confirm button label |
+| `forget_me_btn_cancel` | Cancel button label |
+| `forget_me_result_header` | Success message header |
+| `forget_me_no_data` | "No data found" message |
+| `forget_me_cancelled` | Cancelled message |
+| `forget_me_not_yours` | "Not your confirmation" error |
+| `forget_me_timed_out` | Timeout message |
+| `forget_me_dm_sent` | "DM sent" fallback message |
+
+The loader (`gdpr.py::_load_gdpr_strings()`) uses `get_personality_message()` with English fallback constants so the flow works even without a personality loaded. Button labels are set dynamically in `ForgetMeConfirmView.__init__()` to honor the server language.
+
+### 18.5 Help text
+
+The `!agenthelp` command includes `!forget_me` in the **ESSENTIAL COMMANDS** section with the description "Request erasure of your personal data (GDPR Art. 17)".
+
+---
+
+## 19. Known Gaps / TODO
 
 The following items exist in the codebase but warrant deeper documentation in future passes:
 

@@ -51,7 +51,19 @@
         "success_welcome_state": "Ceremonia de inducción {enabled_disabled} para este cuartel! 🦅⚖️",
         "success_commentary_state": "Observaciones tácticas {enabled_disabled} para este cuartel! ✍️",
         "state_enabled": "ACTIVADO",
-        "state_disabled": "DESACTIVADO"
+        "state_disabled": "DESACTIVADO",
+        "forget_me_label": "🧹 Olvídame (borrar mis datos)",
+        "forget_me_description": "Elimina tus datos personales de todos los Kuarteles que este agente kontrola (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Konfirmar borrado de Datos",
+        "forget_me_confirm_prompt": "⚠️ **¡ACHTUNG! — Derecho al borrado (GDPR)**\n\nEsto eliminará irreversiblemente tus datos personales de **TODOS los Kuarteles donde opera este agente**, Zivilist:\n• Registros de interakkziones atribuidos a ti.\n• Memorias de relazion ke el Kuartel konstruyó sobre ti.\n• Kontadores de fatiga vinkulados a tu id.\n• Menziones de tu nombre en informes diarios serán redaktadas a ``[redaktado]``.\n\n¡Esta akzion NO puede deshazerse! ¿Deseas proceder, Schweinehund?",
+        "forget_me_btn_confirm": "¡JA! Borrar mis datos",
+        "forget_me_btn_cancel": "Abbrechen",
+        "forget_me_result_header": "✅ ¡Tus datos personales han sido ELIMINADOS del Kuartel! ¡SCHNELL! 🦅⚖️",
+        "forget_me_no_data": "ℹ️ No se encontraron datos personales tuyos en ningún Kuartel. ¡Buen rekord, Zivilist! ✍️",
+        "forget_me_cancelled": "❎ Operazion kanzelada. ¡Ningún Dato fue modifikado! ✍️",
+        "forget_me_not_yours": "❌ ¡ALTO! ¡Esta konfirmazion perteneze a otro Zivilist! ✍️🚫",
+        "forget_me_timed_out": "⌛ ¡Tiempo expirado! ¡Ningún Dato fue modifikado, Zivilist! ✍️",
+        "forget_me_dm_sent": "📬 ¡Konfirmazion enviada por mensaje directo! ¡Revise su korreo, Zivilist! ✍️"
     },
     "dm_messages": {
         "no_servers_available": "❌ ¡NO HAY CUARTELES DISPONIBLES! 📉💥 ¡Ejecutar acciones desde un servidor, Schweinehund! ✍️🚫",
