@@ -14,7 +14,9 @@
       "button_confirm": "Confirmar",
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
-      "option_no": "No"
+      "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin"
     },
     "help_menu": {
       "title": "📚 ** Her Hans - MANUAL DE INSTRUCCIONES**",
@@ -45,7 +47,7 @@
       "title": "🎭  UNIDADES ESPECIALES DE Her Hans 🎭",
       "description": "🌟 ¡Navegar por las diferentes unidades operativas desplegadas para Her Hans!",
       "role_categories": "═════════════════════════════════",
-      "enabled_status": "ACTIVO 🦅⚖️",
+      "enabled_status": "general.active",
       "inactive_status": "❌ FUERA DE SERVICIO 📉💥",
       "interval_info": "//⏰ CADA {interval}h",
       "subroles_info": "🎪 **SUBMÓDULOS ACTIVOS:** {subroles}",

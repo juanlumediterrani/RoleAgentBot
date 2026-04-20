@@ -67,6 +67,7 @@
     },
     "dm_messages": {
         "no_servers_available": "❌ ¡No hay kampamentos disponibles! ¡Ve a un kampamento orko! ⚔️",
-        "server_access_error": "❌ ¡No puedo entrar al kampamento desde aquí! ¡Ve al kampamento! ⚔️"
+        "server_access_error": "❌ ¡No puedo entrar al kampamento desde aquí! ¡Ve al kampamento! ⚔️",
+        "reply_button_confirmation": "💬 ¡Putre ahora habla desde el kampamento de **{server_name}**! ¡Tus respuestas usarán esta personalidad hasta ke selektes otro! ⚔️"
     }
 }

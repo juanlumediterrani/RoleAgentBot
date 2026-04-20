@@ -37,7 +37,8 @@
     "playback_resumed": "▶️ Emisión restaurada",
     "playback_stopped": "⏹️ Emisión purgada y secuencia vaciada",
     "queue_displayed": "📋 Flujo escaneado",
-    "queue_cleared": "🗑️ Secuencia limpiada",
+    "mc_clear": "🗑️ Secuencia limpiada",
+    "last_song_removed": "🔙 Última frecuencia eliminada",
     "history_displayed": "📜 Registro acústico analizado",
     "dropdown":{
         "set_volume_title": "Calibrar Amplitud",
@@ -55,6 +56,8 @@
         "mc_stop_description": "Corta la energía y vacía la secuencia por completo",
         "mc_queue": "Escanear Flujo",
         "mc_queue_description": "Visualiza las ondas programadas en el búfer",
+        "mc_remove_last": "Eliminar Última",
+        "mc_remove_last_description": "Elimina la última frecuencia añadida a la secuencia",
         "mc_clear": "Limpiar Secuencia",
         "mc_clear_description": "Desintegra todas las frecuencias en espera",
         "mc_history": "Registro Acústico",

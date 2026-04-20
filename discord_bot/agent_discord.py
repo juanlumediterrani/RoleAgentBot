@@ -17,7 +17,7 @@ from agent_mind import call_llm, _build_conversation_user_prompt
 from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
 from agent_db import set_current_server, get_server_id, get_db_instance
 from behavior.db_behavior import get_behavior_db_instance
-from agent_logging import get_logger, update_log_file_path
+from agent_logging import get_logger, update_log_file_path, server_log_context
 from discord_bot.discord_utils import (
     get_server_key, send_dm_or_channel,
     get_db_for_server, check_chat_rate_limit,
@@ -56,7 +56,7 @@ def _build_readme_prompt(user_question: str, server_id: str = None) -> str:
     if server_id and _get_server_language is not None:
         lang = _get_server_language(str(server_id))
 
-    readme_path = os.path.join(manuals_dir, lang, "README_LLM.md")
+    readme_path = os.path.join(manuals_dir, lang, "README_USER.md")
     readme_source = f"manuals/{lang}"
 
     readme_content = None
@@ -65,25 +65,25 @@ def _build_readme_prompt(user_question: str, server_id: str = None) -> str:
         try:
             with open(readme_path, 'r', encoding='utf-8') as f:
                 readme_content = f.read()
-            logger.info(f"📖 Using README_LLM: {readme_path}")
+            logger.info(f"📖 Using README_USER: {readme_path}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not load README_LLM for language '{lang}': {e}")
+            logger.warning(f"⚠️ Could not load README_USER for language '{lang}': {e}")
 
     # Fallback to en-US if language-specific README not found or failed to load
     if readme_content is None and lang != fallback_lang:
-        fallback_path = os.path.join(manuals_dir, fallback_lang, "README_LLM.md")
-        logger.warning(f"README_LLM.md not found for language '{lang}', falling back to {fallback_lang}")
+        fallback_path = os.path.join(manuals_dir, fallback_lang, "README_USER.md")
+        logger.warning(f"README_USER.md not found for language '{lang}', falling back to {fallback_lang}")
         try:
             with open(fallback_path, 'r', encoding='utf-8') as f:
                 readme_content = f.read()
             readme_source = f"manuals/{fallback_lang} (fallback)"
-            logger.info(f"📖 Using fallback README_LLM: {fallback_path}")
+            logger.info(f"📖 Using fallback README_USER: {fallback_path}")
         except Exception as e:
-            logger.error(f"❌ Error loading fallback README_LLM.md: {e}")
+            logger.error(f"❌ Error loading fallback README_USER.md: {e}")
             raise
 
     if readme_content is None:
-        raise FileNotFoundError(f"README_LLM.md not found in {readme_path}")
+        raise FileNotFoundError(f"README_USER.md not found in {readme_path}")
     
     # Get README response rules
     try:
@@ -692,30 +692,34 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # Debug logging
-    if message.content.startswith(bot.command_prefix):
-        logger.info(f"🔍 Command detected: {message.content}")
-        logger.info(f"🔍 Available commands: {[cmd.name for cmd in bot.commands]}")
-        await bot.process_commands(message)
-        return
+    # Bind the server context so every log record emitted downstream lands in
+    # this server's log file (in addition to the shared runtime log).
+    server_id_for_log = str(message.guild.id) if message.guild is not None else None
+    with server_log_context(server_id_for_log):
+        # Debug logging
+        if message.content.startswith(bot.command_prefix):
+            logger.info(f"🔍 Command detected: {message.content}")
+            logger.info(f"🔍 Available commands: {[cmd.name for cmd in bot.commands]}")
+            await bot.process_commands(message)
+            return
 
-    if message.guild is not None:
-        try:
-            from discord_bot.discord_core_commands import is_taboo_triggered
-            taboo_hit, taboo_keyword = is_taboo_triggered(int(message.guild.id), message.content)
-            if taboo_hit:
-                server_id = get_server_key(message.guild)
-                
-                # Process taboo trigger using extracted function
-                from behavior.taboo.taboo import process_taboo_trigger
-                await process_taboo_trigger(message, taboo_keyword, server_id)
-                return
-        except Exception as e:
-            logger.exception(f"Error processing taboo trigger: {e}")
+        if message.guild is not None:
+            try:
+                from discord_bot.discord_core_commands import is_taboo_triggered
+                taboo_hit, taboo_keyword = is_taboo_triggered(int(message.guild.id), message.content)
+                if taboo_hit:
+                    server_id = get_server_key(message.guild)
 
-    # Only process if DM or direct mention
-    if message.guild is None or bot.user.mentioned_in(message):
-        await _process_chat_message(message)
+                    # Process taboo trigger using extracted function
+                    from behavior.taboo.taboo import process_taboo_trigger
+                    await process_taboo_trigger(message, taboo_keyword, server_id)
+                    return
+            except Exception as e:
+                logger.exception(f"Error processing taboo trigger: {e}")
+
+        # Only process if DM or direct mention
+        if message.guild is None or bot.user.mentioned_in(message):
+            await _process_chat_message(message)
 
 
 def _clean_message_content(message):
@@ -1104,7 +1108,7 @@ async def _process_chat_message(message):
                 user_content=clean_content,
                 server=server_id,
                 user_id=message.author.id,
-                user_name=message.author.name,
+                user_name=message.author.display_name,
                 channel_id=message.channel.id,
                 bot_id=str(bot.user.id),
                 discord_channel=message.channel
@@ -1116,7 +1120,7 @@ async def _process_chat_message(message):
                 user_id=message.author.id,
                 user_content=clean_content,
                 server=server_id,
-                user_name=message.author.name,
+                user_name=message.author.display_name,
             )
 
         response = call_llm(

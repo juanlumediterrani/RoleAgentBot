@@ -67,7 +67,8 @@
     },
     "dm_messages": {
         "no_servers_available": "❌ No se detectan nexos disponibles. Por favor, inicia la secuencia desde un servidor. 💾",
-        "server_access_error": "❌ La tormenta de arena bloquea el acceso al nexo. Por favor, intenta desde un servidor activo. 💾"
+        "server_access_error": "❌ La tormenta de arena bloquea el acceso al nexo. Por favor, intenta desde un servidor activo. 💾",
+        "reply_button_confirmation": "💬 Estás conversando conmigo como si estuvieras en **{server_name}**. Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor."
     }
 
 

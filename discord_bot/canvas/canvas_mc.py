@@ -68,10 +68,9 @@ def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None, gu
     ]
 
     if last_action:
-        parts.append(_mc_text("last_action_title", "**Last action**"))
-        parts.append(f"- {last_action}")
+        parts.append(f"{last_action}")
 
-    if not (last_action or queue_info or mc_messages):
+    if last_action is None and queue_info is None and mc_messages is None:
         parts.append(_mc_text("voice_channel_required_title", "**Voice channel required**"))
         parts.append(_mc_text("canvas_mc_voice_required", "You must be in a voice channel to use MC\nBot will auto-connect to your channel"))
 
@@ -255,9 +254,12 @@ async def _handle_canvas_mc_action(interaction: discord.Interaction, action_name
         elif action_name == "mc_clear":
             await mc_commands.cmd_clear(mock_message, [])
             last_action = _mc_text("queue_cleared", "🗑️ Queue cleared")
+        elif action_name == "mc_remove_last":
+            await mc_commands.cmd_remove_last(mock_message, [])
+            last_action = _mc_text("last_song_removed", "🔙 Last song removed")
 
         # Fetch updated queue info after actions that modify the queue
-        if action_name in ["mc_skip", "mc_pause", "mc_resume", "mc_stop", "mc_clear"]:
+        if action_name in ["mc_skip", "mc_pause", "mc_resume", "mc_stop", "mc_clear", "mc_remove_last"]:
             try:
                 db_mc = get_mc_db_instance(str(interaction.guild.id))
                 queue_data = db_mc.get_queue(str(interaction.guild.id), str(interaction.channel.id))

@@ -67,7 +67,8 @@
     },
     "dm_messages": {
         "no_servers_available": "❌ No hay sótanos abiertos... Vete al callejón... SSSSS",
-        "server_access_error": "❌ No puedo entrar al horno desde aquí... SSSSS..."
+        "server_access_error": "❌ No puedo entrar al horno desde aquí... SSSSS...",
+        "reply_button_confirmation": "💬 Ahora konversas desde el sótano de **{server_name}**... SSSSS... Tus respuestas usarán esta personalidad hasta ke selektes otro... SSSSS"
     }
 
 

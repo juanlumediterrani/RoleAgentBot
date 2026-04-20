@@ -243,7 +243,8 @@
         "2. LENGUA: Habla como orko, sin tildes.",
         "3. FRASES_CERRADAS: No acabes con 'ke', 'a', 'de'.",
         "4. ORIGINAL: No repitas,comprueba lo que ya dijiste, se creativo.",
-        "5. PRIMERO: Tu empiezas, el umano aun no dijo nada."
+        "5. PRIMERO: Tu empiezas, el umano aun no dijo nada.",
+        "6. ADECUACIÓN AL VINCULO: Adapta tu saludo segun el [RELACION] con el umano."
       ],
       "response_title": "## SOLO_EL_SALUDO_DE_PUTRE:"
     },

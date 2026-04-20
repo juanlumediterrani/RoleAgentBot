@@ -14,7 +14,9 @@
       "button_confirm": "Confirmar",
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
-      "option_no": "No"
+      "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin"
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
@@ -87,7 +89,7 @@
       "title": "🎭 Labores de Igorrr 🎭",
       "description": "🌟 Mira qué cadenas arrastra Igorrr hoy para complacer al Amo.",
       "role_categories": "──────────────────────────────",
-      "enabled_status": "TRABAJANDO... SSSSS",
+      "enabled_status": "general.active",
       "inactive_status": "❌ DURMIENDO",
       "interval_info": "//⏰ Cada {interval}h",
       "subroles_info": "🎪 **Sub-labores:** {subroles}",

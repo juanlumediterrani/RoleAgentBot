@@ -38,6 +38,7 @@
     "playback_stopped": "⏹️ Reproducción detenida y lista vaciada",
     "queue_displayed": "📋 Lista mostrada",
     "queue_cleared": "🗑️ Lista vaciada",
+    "last_song_removed": "🔙 Última pieza eliminada del repertorio",
     "history_displayed": "📜 Historial consultado",
     "dropdown":{
         "set_volume_title": "Ajustar Volumen",
@@ -55,6 +56,8 @@
         "mc_stop_description": "Detiene la música y vacía la lista por completo",
         "mc_queue": "Ver Lista",
         "mc_queue_description": "Consulta las piezas en espera",
+        "mc_remove_last": "Eliminar Última Pieza",
+        "mc_remove_last_description": "Elimina la última pieza añadida al repertorio",
         "mc_clear": "Vaciar Lista",
         "mc_clear_description": "Elimina todas las piezas pendientes",
         "mc_history": "Historial de Reproducción",

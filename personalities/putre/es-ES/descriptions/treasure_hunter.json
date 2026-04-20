@@ -6,7 +6,7 @@
     "subrole_buttons": {
         "items": "💎 Objetos",
         "league": "🏆 Liga",
-        "admin": "⚙️ Admin"
+        "admin": "general.button_admin"
     },
     "user_flows_title": "Flujo para el usuario",
     "user_flows_1": "Selecciona el juego que quieres suscribirte",

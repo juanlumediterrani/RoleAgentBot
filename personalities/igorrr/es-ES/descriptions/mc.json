@@ -38,6 +38,7 @@
     "playback_stopped": "⏹️ Reproduksion detenida y saco vaciao",
     "queue_displayed": "📋 Sako mostrado",
     "queue_cleared": "🗑️ Sako vaziao",
+    "last_song_removed": "🔙 Último ruido eliminao del saco",
     "history_displayed": "📜 Historial mostrado",
     "dropdown":{
         "set_volume_title": "Ajustar Estruendo",
@@ -55,6 +56,8 @@
         "mc_stop_description": "Detiene la reproduksion y limpia todo el saco",
         "mc_queue": "Ver el Saco",
         "mc_queue_description": "Muestra los ruidos en el saco de reproduksion",
+        "mc_remove_last": "Eliminar Último Ruido",
+        "mc_remove_last_description": "Elimina el último ruido metío en el saco",
         "mc_clear": "Vaciar el Saco",
         "mc_clear_description": "Elimina todos los ruidos del saco",
         "mc_history": "Ver Historial",

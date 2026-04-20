@@ -6,7 +6,6 @@
         "ring": "👁️ **Investigador de la Gestapo** - Interroga sospechosos de traición al Reich"
     },
     "subrole_buttons": {
-        "overview": "🎯 Vista",
         "ring": "🔍 Investigación"
     },
     "ring": {
@@ -26,7 +25,13 @@
         "admin_description": "Configura la funcionalidad y frecuencia de la persecución nazi",
         "dropdown": {
             "ring_accuse": "Persecución: Acusar",
-            "ring_accuse_description": "Acusar a un soldado de ser traidor al Reich"
+            "ring_accuse_description": "Acusar a un soldado de ser traidor al Reich",
+            "ring_on": "Persecución: Activar",
+            "ring_on_description": "Iniciar la persecución de traidores al Reich",
+            "ring_off": "Persecución: Desactivar",
+            "ring_off_description": "Detener el sistema de persecución",
+            "ring_frequency": "Persecución: Frecuencia",
+            "ring_frequency_description": "Configurar la frecuencia de los interrogatorios (afecta la patata caliente)"
         }
     },
     "dropdown": {

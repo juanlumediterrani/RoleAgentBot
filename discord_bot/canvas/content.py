@@ -494,6 +494,7 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "mc_resume": "Playback resumed.",
             "mc_stop": "Playback stopped and the queue cleared.",
             "mc_queue": "Showing the current queue.",
+            "mc_remove_last": "Remove the last song added to the queue.",
             "mc_clear": "Queue cleared.",
             "mc_history": "Showing recent playback history.",
             "mc_volume": "The bot will ask for a new volume value.",
@@ -556,20 +557,32 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         "dice_admin": "dice_admin",
     }
     personality_descriptions = _get_personality_descriptions(server_id)
+    general = personality_descriptions.get("general", {})
+    
+    # Helper function to resolve general.button references
+    def _resolve_button_label(label_text: str) -> str:
+        if label_text and label_text.startswith("general.button_"):
+            key = label_text.split(".", 2)[2] if "." in label_text else label_text
+            return general.get(f"button_{key}", label_text)
+        return label_text
+    
+    # Get button labels from general section
+    button_personal = general.get("button_personal", "👤 Personal")
+    button_admin = general.get("button_admin", "🔧 Admin")
     
     items_map: dict[str, list[tuple[str, str]]] = {
         "news_watcher": [
-            ("Personal", "overview"),
-        ] + ([("Admin", "admin")] if admin_visible else []),
+            (button_personal, "overview"),
+        ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
         "treasure_hunter": [],  # POE2 button added separately with emoticon
         "trickster": (
             # Regular subrole views
-            [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
-            + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
+            [(button_personal, trickster_personal_map.get(current_detail or "dice", "dice"))]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
         ) if current_detail in {"dice"} else (
             # Admin views
-            [("Personal", trickster_personal_map.get(current_detail or "dice", "dice"))]
-            + ([("Admin", trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
+            [(button_personal, trickster_personal_map.get(current_detail or "dice", "dice"))]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
         ) if current_detail in {"dice_admin"} else [
             # Main trickster overview - show all subroles
             (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("subrole_buttons", {}).get("dice", "Dice"), "dice"),
@@ -578,19 +591,19 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             # Main banker overview - always show subrole buttons
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("subrole_buttons", {}).get("overview", "Overview"), "overview"),
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("subrole_buttons", {}).get("beggar", "Beggar"), "beggar"),
-        ] + ([("Admin", "admin")] if admin_visible else []),
+        ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
         "mc": [
-            (personality_descriptions.get("role_descriptions", {}).get("mc", {}).get("subrole_buttons", {}).get("overview", "Personal"), "overview"),
+            (personality_descriptions.get("role_descriptions", {}).get("mc", {}).get("subrole_buttons", {}).get("overview", button_personal), "overview"),
         ],
         "shaman": (
-            [("Personal", "runes")]
-            + ([("Admin", "runes_admin")] if admin_visible else [])
+            [(button_personal, "runes")]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), "runes_admin")] if admin_visible else [])
         ) if current_detail in {"runes", "runes_admin"} else [
             (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("subrole_buttons", {}).get("runes", "🔮 Runes"), "runes"),
         ] if current_detail not in {"runes", "runes_admin"} else [],
         "juggler": (
-            [("Personal", "ring")]
-            + ([("Admin", "ring_admin")] if admin_visible else [])
+            [(button_personal, "ring")]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), "ring_admin")] if admin_visible else [])
         ) if current_detail in {"ring", "ring_admin"} else [
             (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("overview", "🤹 Vista"), "overview"),
             (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("ring", "👁️ Ring"), "ring"),
@@ -604,8 +617,9 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("league", "League"), "league"),
         ]
         if admin_visible:
+            admin_button = personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("admin", "Admin")
             poe2_buttons.append(
-                (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("admin", "Admin"), "admin")
+                (_resolve_button_label(admin_button), "admin")
             )
         return poe2_buttons
     
@@ -617,13 +631,13 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     if role_name == "banker":
         if current_detail == "beggar":
             return [
-                ("Personal", "beggar"),
-                ("Admin", "beggar_admin"),
+                (button_personal, "beggar"),
+                (_resolve_button_label(general.get("button_admin", "Admin")), "beggar_admin"),
             ]
         if current_detail == "beggar_admin":
             return [
-                ("Personal", "beggar"),
-                ("Admin", "beggar_admin"),
+                (button_personal, "beggar"),
+                (_resolve_button_label(general.get("button_admin", "Admin")), "beggar_admin"),
             ]
         if current_detail in {"overview", "admin"}:
             return items_map.get(role_name, [])
@@ -1026,6 +1040,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             (_mc_text("mc_resume", "Resume"), "mc_resume", _mc_text("mc_resume_description", "Action"), "▶️"),
             (_mc_text("mc_stop", "Stop"), "mc_stop", _mc_text("mc_stop_description", "Action"), "⏹️"),
             (_mc_text("mc_queue", "View Queue"), "mc_queue", _mc_text("mc_queue_description", "Action"), "📋"),
+            (_mc_text("mc_remove_last", "Remove Last"), "mc_remove_last", _mc_text("mc_remove_last_description", "Action"), "🔙"),
             (_mc_text("mc_clear", "Clear Queue"), "mc_clear", _mc_text("mc_clear_description", "Action"), "🗑️"),
             (_mc_text("mc_history", "Show History"), "mc_history", _mc_text("mc_history_description", "Action"), "📜"),
             (_mc_text("mc_volume", "Set Volume"), "mc_volume", _mc_text("mc_volume_description", "Number input"), "🔊"),
@@ -1309,6 +1324,11 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     
     # Helper messages
     enabled_status = roles_messages.get("enabled_status", "ACTIVE")
+    # Resolve general.active reference if present
+    if enabled_status and enabled_status.startswith("general."):
+        general = _personality_descriptions.get("general", {})
+        key = enabled_status.split(".", 1)[1]
+        enabled_status = general.get(key, enabled_status)
     interval_info = roles_messages.get("interval_info", "⏰ Every {interval}h")
     inactive_status = roles_messages.get("inactive_status", "❌ INACTIVE")
     

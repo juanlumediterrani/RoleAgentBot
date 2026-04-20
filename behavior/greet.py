@@ -65,17 +65,17 @@ class ReplyButton(discord.ui.Button):
         """Handle reply button click - pin this server and show confirmation."""
         try:
             from agent_db import pin_dm_session
+            from agent_runtime import get_personality_message
             pin_dm_session(interaction.user.id, self.server_id)
             logger.info(f"ReplyButton: DM pinned user={interaction.user.id} → server={self.server_id}")
 
-            # Get confirmation message from personality descriptions with English fallback
-            personality = _get_personality(self.server_id) if self.server_id else _get_personality()
-            descriptions = personality.get("descriptions", {}).get("discord", {})
-            reply_button_cfg = descriptions.get("reply_button", {})
-            
-            # Use config message or English fallback
-            confirmation_template = reply_button_cfg.get("confirmation_message", 
-                "💬 You are now talking to me as if you were in **{server_name}**. All your responses will use this personality until you select another server.")
+            # Get confirmation message from answers.json with English fallback
+            confirmation_template = get_personality_message(
+                "answers.json",
+                ["dm_messages", "reply_button_confirmation"],
+                self.server_id,
+                "💬 You are now talking to me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
+            )
             confirmation_message = confirmation_template.format(server_name=self.guild.name)
             
             # Disable the button after clicking
@@ -162,6 +162,7 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
             call_type="think",
             critical=True,
             logger=logger,
+            server_id=server_id,
         )
         
         # Get user object
@@ -170,15 +171,59 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
             logger.error(f"Could not find user {user_id} for greeting")
             return
         
-        # Send personality embed first (server-specific avatar and name)
-        from discord_bot.discord_utils import send_personality_embed_dm
-        await send_personality_embed_dm(user, bot, guild, server_id)
+        # Create unified message with personality embed + greeting + reply button
+        from discord_bot.discord_utils import get_server_personality_display_name, get_server_personality_avatar_path
+        import os
+        
+        # Get personality display name (server-specific priority)
+        display_name = None
+        if server_id:
+            personality_name = get_server_personality_display_name(server_id)
+            if personality_name:
+                display_name = personality_name
+        
+        # Fallback to guild nickname or global display name
+        if not display_name and guild:
+            bot_member = guild.me
+            if bot_member and bot_member.nick:
+                display_name = bot_member.nick
+        if not display_name:
+            display_name = bot.user.display_name
+        
+        # Get local personality avatar file (server-specific)
+        avatar_file = None
+        avatar_attachment_name = None
+        if server_id:
+            local_avatar_path = get_server_personality_avatar_path(server_id)
+            if local_avatar_path and os.path.exists(local_avatar_path):
+                avatar_attachment_name = os.path.basename(local_avatar_path)
+                avatar_file = discord.File(local_avatar_path, filename=avatar_attachment_name)
+        
+        # Fallback: global bot avatar URL if no local file
+        fallback_avatar_url = None
+        if not avatar_file:
+            fallback_avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
+        
+        # Create personality embed with greeting as description
+        embed = discord.Embed(
+            title=f"{display_name}",
+            description=f"👋 {saludo}",
+            color=discord.Color.blue()
+        )
+        
+        if avatar_file:
+            embed.set_thumbnail(url=f"attachment://{avatar_attachment_name}")
+        elif fallback_avatar_url:
+            embed.set_thumbnail(url=fallback_avatar_url)
         
         # Create the reply button view for this server
         view = ReplyButtonView(guild, server_id, timeout=300.0)
         
-        # Send greeting message with the reply button
-        greeting_message = await user.send(f"👋 {saludo}", view=view)
+        # Send unified message with embed, avatar (if local), and reply button
+        if avatar_file:
+            greeting_message = await user.send(embed=embed, file=avatar_file, view=view)
+        else:
+            greeting_message = await user.send(embed=embed, view=view)
         view.message = greeting_message
         
         logger.info(f"🔄 Presence DM sent to {user_name} (server: {guild.name}) with reply button")
@@ -214,7 +259,7 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
             
     except Exception as e:
         logger.error(f"Error sending greeting to {user_name}: {e}")
-        # Send fallback
+        # Send fallback with unified message (embed + greeting + button)
         try:
             user = bot.get_user(user_id) or await bot.fetch_user(user_id)
             if user:
@@ -222,8 +267,60 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
                 presence_cfg = discord_cfg.get("member_presence", {})
                 fallback_msg = presence_cfg.get("fallback", "Welcome back!")
                 fallback_msg = fallback_msg.format(user_name=user_name)
-                # Send fallback with server-specific personality embed
-                await send_dm_with_personality(user, bot, f"👋 {fallback_msg}", guild, server_id)
+                
+                # Create unified message with personality embed + fallback + reply button
+                from discord_bot.discord_utils import get_server_personality_display_name, get_server_personality_avatar_path
+                import os
+                
+                # Get personality display name (server-specific priority)
+                display_name = None
+                if server_id:
+                    personality_name = get_server_personality_display_name(server_id)
+                    if personality_name:
+                        display_name = personality_name
+                
+                # Fallback to guild nickname or global display name
+                if not display_name and guild:
+                    bot_member = guild.me
+                    if bot_member and bot_member.nick:
+                        display_name = bot_member.nick
+                if not display_name:
+                    display_name = bot.user.display_name
+                
+                # Get local personality avatar file (server-specific)
+                avatar_file = None
+                avatar_attachment_name = None
+                if server_id:
+                    local_avatar_path = get_server_personality_avatar_path(server_id)
+                    if local_avatar_path and os.path.exists(local_avatar_path):
+                        avatar_attachment_name = os.path.basename(local_avatar_path)
+                        avatar_file = discord.File(local_avatar_path, filename=avatar_attachment_name)
+                
+                # Fallback: global bot avatar URL if no local file
+                fallback_avatar_url = None
+                if not avatar_file:
+                    fallback_avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
+                
+                # Create personality embed with fallback as description
+                embed = discord.Embed(
+                    title=f"{display_name}",
+                    description=f"👋 {fallback_msg}",
+                    color=discord.Color.blue()
+                )
+                
+                if avatar_file:
+                    embed.set_thumbnail(url=f"attachment://{avatar_attachment_name}")
+                elif fallback_avatar_url:
+                    embed.set_thumbnail(url=fallback_avatar_url)
+                
+                # Create the reply button view for this server
+                view = ReplyButtonView(guild, server_id, timeout=300.0)
+                
+                # Send unified message with embed, avatar (if local), and reply button
+                if avatar_file:
+                    await user.send(embed=embed, file=avatar_file, view=view)
+                else:
+                    await user.send(embed=embed, view=view)
         except Exception as fallback_error:
             logger.error(f"Fallback greeting also failed: {fallback_error}")
 

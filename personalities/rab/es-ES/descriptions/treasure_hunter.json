@@ -6,7 +6,7 @@
     "subrole_buttons": {
         "items": "💎 Artefactos",
         "league": "🏆 Ciclo",
-        "admin": "⚙️ Arconte"
+        "admin": "general.button_admin"
     },
     "user_flows_title": "Protocolo de Entidad",
     "user_flows_1": "Selecciona la simulación en la que deseas enfocar mi óptica.",

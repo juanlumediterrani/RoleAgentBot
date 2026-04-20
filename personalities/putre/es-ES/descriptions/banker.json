@@ -9,6 +9,10 @@
     "current_balance": "💎 Botin Zakeado:",
     "account_holder": "👤 Umano Zakeador:",
     "server": "🏦 Kueva del Tesoro",
+    "opening_bonus": "Botin inicial",
+    "TAE_DAILY": "Reparto Diario",
+    "BEGGAR_DONATION": "Donación a la Volunta",
+    "dice_game_pot_refill": "Recarga del Pot",
     "dropdown":{
         "select_banker_action": "💰 Selekzionar aksion de tesoro...",
         "config_tae": "Konfigurar TAE",
@@ -30,6 +34,7 @@
         "description": " Putre recauda oro para proyectos del clan, dona oro regularmente y Putre te lo agradecera cada semana.\n Si tienes suerte puede que te devuelva algo.",
         "title_campaign":"**Campanya atual**",
         "title_reason":"Razon:",
+        "current_fund":"Oro akumulado:",
         "title_instructions":"**Instrucciones**",
         "instructions":" - Haz click donar en el menu desplegable de abajo.\n - Espera a los resultados semanales al final de esta.\n - Participa con cualquier cantidad y Putre lo tendra en cuenta.\n",
         "title_donations":"📊 ** Donaciones:**",

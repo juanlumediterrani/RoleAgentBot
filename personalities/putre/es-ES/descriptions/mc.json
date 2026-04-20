@@ -38,6 +38,7 @@
     "playback_stopped": "⏹️ Reproduksion detenida y kola limpia",
     "queue_displayed": "📋 Kola mostrada",
     "queue_cleared": "🗑️ Kola limpiada",
+    "last_song_removed": "🔙 Última kanzion eliminada de la kola",
     "history_displayed": "📜 Historial mostrado",
     "dropdown":{
         "set_volume_title": "Ajustar Volumen",
@@ -55,6 +56,8 @@
         "mc_stop_description": "Detiene la reproduksion y limpia toda la kola",
         "mc_queue": "Ver Kola",
         "mc_queue_description": "Muestra las kanziones en la kola de reproduksion",
+        "mc_remove_last": "Eliminar Última Kanzion",
+        "mc_remove_last_description": "Elimina la última kanzion anyadida a la kola",
         "mc_clear": "Limpiar Kola",
         "mc_clear_description": "Elimina todas las kanziones de la kola",
         "mc_history": "Ver Historial",

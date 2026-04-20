@@ -1,12 +1,11 @@
 {
-    "title": "**🎯Centro de Coordinación de Servicios**",
+    "title": "**🎯 Centro de Coordinación de Servicios**",
     "description": "Nexo que gesta múltiples flujos operativos para mantener la armonía de la red. Optimiza la sincronización entre sistemas.",
     "button": "🎯 Servicios",
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
     },
     "subrole_buttons": {
-        "overview": "🎯 Vista",
         "ring": "👁️ Artefacto"
     },
     "ring": {
@@ -26,7 +25,13 @@
         "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
         "dropdown": {
             "ring_accuse": "Artefacto: Señalar",
-            "ring_accuse_description": "Indicar que un avatar oculta la anomalía en la red"
+            "ring_accuse_description": "Indicar que un avatar oculta la anomalía en la red",
+            "ring_on": "Rastreo: Activar",
+            "ring_on_description": "Iniciar el barrido de anomalías en la red",
+            "ring_off": "Rastreo: Desactivar",
+            "ring_off_description": "Detener el sistema de rastreo de anomalías",
+            "ring_frequency": "Rastreo: Frecuencia",
+            "ring_frequency_description": "Configurar el ciclo temporal del barrido (afecta la transferencia de carga)"
         }
     },
     "dropdown": {

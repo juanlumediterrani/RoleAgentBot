@@ -23,11 +23,11 @@ def get_roles_db_path(server_id: str = "default") -> Optional[Path]:
     """
     from agent_db import get_personality_name
     personality_name = get_personality_name(server_id)
-    logger.info(f"[get_roles_db_path] server_id={server_id}, personality_name={personality_name}")
+    logger.debug(f"[get_roles_db_path] server_id={server_id}, personality_name={personality_name}")
     
     # Don't create database if personality cannot be determined
     if not personality_name:
-        logger.warning(f"[get_roles_db_path] Cannot determine personality for server {server_id}, skipping database creation")
+        logger.debug(f"[get_roles_db_path] Cannot determine personality for server {server_id}, skipping database creation")
         return None
     
     db_name = f"roles_{personality_name}"
@@ -585,7 +585,7 @@ class RolesDatabase:
                     ))
                     
                     conn.commit()
-                    logger.info(f"Saved role config for {role_name}")
+                    logger.debug(f"Saved role config for {role_name}")
                     return True
                     
         except Exception as e:

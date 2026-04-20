@@ -38,6 +38,7 @@
     "playback_stopped": "⏹️ ¡Marcha detenida y formación disuelta!",
     "queue_displayed": "📋 ¡Formación inspeccionada!",
     "queue_cleared": "🗑️ ¡Formación limpiada!",
+    "last_song_removed": "🔙 ¡Última marcha eliminada de formación!",
     "history_displayed": "📜 ¡Historial revisado!",
     "dropdown":{
         "set_volume_title": "¡Ajustar volumen de marcha!",
@@ -55,6 +56,8 @@
         "mc_stop_description": "¡Detener reproducción y limpiar toda la formación! ¡Orden restaurado!",
         "mc_queue": "¡Inspeccionar formación!",
         "mc_queue_description": "¡Mostrar marchas en formación de reproducción! ¡Control estricto!",
+        "mc_remove_last": "¡Eliminar última marcha!",
+        "mc_remove_last_description": "¡Eliminar la última marcha añadida a la formación! ¡Corrección inmediata!",
         "mc_clear": "¡Limpiar formación!",
         "mc_clear_description": "¡Eliminar todas las marchas de la formación! ¡Vacío total!",
         "mc_history": "¡Revisar historial!",

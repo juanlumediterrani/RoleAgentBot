@@ -38,6 +38,7 @@
     "playback_stopped": "⏹️ Reproducción detenida y cola limpiada",
     "queue_displayed": "📋 Cola mostrada",
     "queue_cleared": "🗑️ Cola limpiada",
+    "last_song_removed": "🔙 Última canción eliminada",
     "history_displayed": "📜 Historial mostrado",
     "dropdown":{
         "set_volume_title": "Ajustar Volumen",
@@ -55,6 +56,8 @@
         "mc_stop_description": "Detiene la reproducción y limpia toda la cola",
         "mc_queue": "Ver Cola",
         "mc_queue_description": "Muestra las canciones en la cola de reproducción",
+        "mc_remove_last": "Eliminar Última",
+        "mc_remove_last_description": "Elimina la última canción añadida a la cola",
         "mc_clear": "Limpiar Cola",
         "mc_clear_description": "Elimina todas las canciones de la cola",
         "mc_history": "Ver Historial",

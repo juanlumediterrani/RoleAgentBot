@@ -14,7 +14,9 @@
       "button_confirm": "Confirmar",
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
-      "option_no": "No"
+      "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin"
     },
     "help_menu": {
       "title": "📚 ** Role Agent - Registro de Asistencia**",
@@ -45,7 +47,7 @@
       "title": "🎭 Pieles y Módulos 🎭",
       "description": "🌟 Navega a través de las diferentes vidas que Role Agent puede encarnar.",
       "role_categories": "──────────────────────────────",
-      "enabled_status": "active",
+      "enabled_status": "general.active",
       "inactive_status": "❌ LETARGO",
       "interval_info": "//⏰ Ciclo de {interval}h",
       "subroles_info": "🎪 **Subrutinas activas:** {subroles}",

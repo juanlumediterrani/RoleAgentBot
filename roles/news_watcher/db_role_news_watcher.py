@@ -27,7 +27,7 @@ def get_db_path(server_id: str = "default") -> Optional[Path]:
     
     # Don't create database if personality cannot be determined
     if not personality_name:
-        logger.warning(f"[get_db_path] Cannot determine personality for server {server_id}, skipping database creation")
+        logger.debug(f"[get_db_path] Cannot determine personality for server {server_id}, skipping database creation")
         return None
     
     db_name = f"watcher_{personality_name}"
@@ -45,7 +45,7 @@ class DatabaseRoleNewsWatcher:
             self.db_path = get_db_path(server_id)
             # Don't initialize if db_path is None (personality not found)
             if not self.db_path:
-                logger.warning(f"[DatabaseRoleNewsWatcher] Cannot determine database path for server {server_id}, skipping initialization")
+                logger.debug(f"[DatabaseRoleNewsWatcher] Cannot determine database path for server {server_id}, skipping initialization")
                 return
         else:
             self.db_path = db_path
@@ -2307,7 +2307,7 @@ def get_news_watcher_db_instance(server_id: str = "default") -> Optional[Databas
     # Generate the current database path for this server
     current_db_path = get_db_path(server_id)
     if not current_db_path:
-        logger.warning(f"[get_news_watcher_db_instance] Cannot determine database path for server {server_id}")
+        logger.debug(f"[get_news_watcher_db_instance] Cannot determine database path for server {server_id}")
         return None
     
     cache_key = f"{server_id}:{current_db_path}"

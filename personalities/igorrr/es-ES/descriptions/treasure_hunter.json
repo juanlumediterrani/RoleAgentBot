@@ -6,7 +6,7 @@
     "subrole_buttons": {
         "items": "💎 Granos",
         "league": "🏆 Liga",
-        "admin": "⚙️ Amo"
+        "admin": "general.button_admin"
     },
     "user_flows_title": "Flujo para el Amo",
     "user_flows_1": "Selecciona el juego que quieres que Igorrr robe",

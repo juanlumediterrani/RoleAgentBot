@@ -14,7 +14,9 @@
       "button_confirm": "Confirmar",
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
-      "option_no": "No"
+      "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin"
     },
     "help_menu": {
       "title": "📚 ** Putre - Menú de Ayuda**",
@@ -45,7 +47,7 @@
       "title": "🎭  Roles de Putre 🎭",
       "description": "🌟 Navega a traves de los diferentes roles disponibles para Putre",
       "role_categories": "──────────────────────────────",
-      "enabled_status": "active",
+      "enabled_status": "general.active",
       "inactive_status": "❌ INATIVO",
       "interval_info": "//⏰ Every {interval}h",
       "subroles_info": "🎪 **Subroles activos:** {subroles}",

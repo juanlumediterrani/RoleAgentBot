@@ -6,7 +6,7 @@
     "subrole_buttons": {
         "items": "💎 Items",
         "league": "🏆 League",
-        "admin": "⚙️ Admin"
+        "admin": "general.button_admin"
     },
     "user_flows_title": "Procedimiento para el personal",
     "user_flows_1": "Seleccione el campo de operaciones que desea monitorear",

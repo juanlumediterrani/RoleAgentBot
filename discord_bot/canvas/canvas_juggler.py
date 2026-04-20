@@ -48,12 +48,12 @@ def build_canvas_role_juggler(agent_config: dict, admin_visible: bool, guild=Non
     
     content = f"{title}\n{description}\n"
     
-    # Add subrole buttons if any
-    subrole_buttons = juggler_messages.get("subrole_buttons", {})
-    if subrole_buttons:
+    # Add subrole descriptions if any
+    subrole_descriptions = juggler_messages.get("canvas_juggler_subrole_descriptions", {})
+    if subrole_descriptions:
         content += "\n**Subroles:**\n"
-        for button_label, button_value in subrole_buttons.items():
-            content += f"- {button_label}\n"
+        for subrole, description in subrole_descriptions.items():
+            content += f"{description}\n"
     
     return content
 

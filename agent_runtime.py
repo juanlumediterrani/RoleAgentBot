@@ -37,10 +37,10 @@ _SIMULATION_MODE = os.getenv("AGENT_SIMULATION", os.getenv("ROLE_AGENT_SIMULATIO
 
 logger.debug(f"🔧 [CONFIG] Simulation mode: {'ENABLED' if _SIMULATION_MODE else 'DISABLED'}")
 logger.debug("🔧 [CONFIG] Usage counter (path resolved at runtime)")
-logger.info(f"🤖 [AI] Groq client initialized: {'✅' if os.getenv('GROQ_API_KEY') else '❌'}")
+logger.debug(f"🤖 [AI] Groq client initialized: {'✅' if os.getenv('GROQ_API_KEY') else '❌'}")
 vertex_ai_disabled = os.getenv('DISABLE_VERTEX_AI', '').strip().lower() in ('1', 'true', 'yes')
-logger.info(f"🤖 [AI] Vertex AI available: {'✅' if os.getenv('GOOGLE_CLOUD_PROJECT') and not vertex_ai_disabled else '❌'}")
-logger.info(f"🤖 [AI] Mistral client available: {'✅' if _client_mistral else '❌'}")
+logger.debug(f"🤖 [AI] Vertex AI available: {'✅' if os.getenv('GOOGLE_CLOUD_PROJECT') and not vertex_ai_disabled else '❌'}")
+logger.debug(f"🤖 [AI] Mistral client available: {'✅' if _client_mistral else '❌'}")
 
 
 def get_groq_client():

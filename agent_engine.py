@@ -687,7 +687,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
 
 
 def _get_active_roles_section(server_id: str = None) -> str:
-    logger.warning(f"[_get_active_roles_section] Called with server_id={server_id}")
+    logger.debug(f"[_get_active_roles_section] Called with server_id={server_id}")
     # Use server-specific personality if server_id provided
     if server_id:
         try:
@@ -707,10 +707,11 @@ def _get_active_roles_section(server_id: str = None) -> str:
             logger.debug(f"[_get_active_roles_section] Loaded {len(roles)} roles from database")
         except Exception as e:
             logger.warning(f"[_get_active_roles_section] Failed to load roles from database: {e}, falling back to AGENT_CFG")
+            # (kept as warning: actual DB failure worth surfacing)
             roles = (AGENT_CFG or {}).get("roles", {})
     else:
         roles = (AGENT_CFG or {}).get("roles", {})
-        logger.warning(f"[_get_active_roles_section] Loaded {len(roles)} roles from AGENT_CFG (no server_id)")
+        logger.debug(f"[_get_active_roles_section] Loaded {len(roles)} roles from AGENT_CFG (no server_id)")
     section_cfg = personality.get("active_roles_section", {})
     role_sections = personality.get("roles", {})
 
@@ -724,9 +725,9 @@ def _get_active_roles_section(server_id: str = None) -> str:
     line_template = str(section_cfg.get("line_template") or "- {scope}: {duty}").strip()
 
     lines: list[str] = []
-    logger.warning(f"[_get_active_roles_section] Processing {len(roles)} roles")
+    logger.debug(f"[_get_active_roles_section] Processing {len(roles)} roles")
     for role_name, role_cfg in roles.items():
-        logger.warning(f"[_get_active_roles_section] Checking role: {role_name}, enabled={role_cfg.get('enabled', False) if isinstance(role_cfg, dict) else 'N/A'}")
+        logger.debug(f"[_get_active_roles_section] Checking role: {role_name}, enabled={role_cfg.get('enabled', False) if isinstance(role_cfg, dict) else 'N/A'}")
         if not isinstance(role_cfg, dict) or not role_cfg.get("enabled", False):
             continue
 
@@ -738,14 +739,14 @@ def _get_active_roles_section(server_id: str = None) -> str:
 
         subroles = role_cfg.get("subroles", {})
         role_subroles_cfg = role_prompt_cfg.get("subroles", {}) if isinstance(role_prompt_cfg, dict) else {}
-        logger.warning(f"[_get_active_roles_section] Role {role_name} has {len(subroles)} subroles")
+        logger.debug(f"[_get_active_roles_section] Role {role_name} has {len(subroles)} subroles")
         if not isinstance(subroles, dict):
             continue
         if not isinstance(role_subroles_cfg, dict):
             role_subroles_cfg = {}
 
         for subrole_name, subrole_cfg in subroles.items():
-            logger.warning(f"[_get_active_roles_section] Checking subrole: {subrole_name}, enabled={subrole_cfg.get('enabled', False) if isinstance(subrole_cfg, dict) else 'N/A'}")
+            logger.debug(f"[_get_active_roles_section] Checking subrole: {subrole_name}, enabled={subrole_cfg.get('enabled', False) if isinstance(subrole_cfg, dict) else 'N/A'}")
             if not isinstance(subrole_cfg, dict) or not subrole_cfg.get("enabled", False):
                 continue
             subrole_prompt_cfg = role_subroles_cfg.get(subrole_name, {})
@@ -753,9 +754,9 @@ def _get_active_roles_section(server_id: str = None) -> str:
             subrole_duty = _get_active_duty_text(subrole_prompt_cfg, server_id, subrole_name)
             
             # Special handling for beggar subrole: add fund and contributions
-            logger.warning(f"[_get_active_roles_section] Checking beggar condition: role_name={role_name}, subrole_name={subrole_name}, server_id={server_id}")
+            logger.debug(f"[_get_active_roles_section] Checking beggar condition: role_name={role_name}, subrole_name={subrole_name}, server_id={server_id}")
             if role_name == "banker" and subrole_name == "beggar" and server_id:
-                logger.warning(f"[_get_active_roles_section] BEGGAR CONDITION MATCHED! Processing beggar fund info...")
+                logger.debug(f"[_get_active_roles_section] BEGGAR CONDITION MATCHED! Processing beggar fund info...")
                 try:
                     from roles.banker.subroles.beggar.beggar_db import get_beggar_db
                     import traceback
@@ -764,12 +765,12 @@ def _get_active_roles_section(server_id: str = None) -> str:
                     fund_balance = beggar_db.get_fund_balance()
                     participants = beggar_db.get_donation_participants()
                     
-                    logger.warning(f"[BEGGAR DEBUG] Server {server_id}: fund={fund_balance}, participants={len(participants)}")
+                    logger.debug(f"[BEGGAR DEBUG] Server {server_id}: fund={fund_balance}, participants={len(participants)}")
                     
                     server_personality = _get_personality(server_id)
                     beggar_section = server_personality.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {})
                     
-                    logger.warning(
+                    logger.debug(
                         f"[BEGGAR DEBUG] Loaded beggar section from personality={server_personality.get('name', 'unknown')} "
                         f"subrole_keys={list(server_personality.get('roles', {}).get('banker', {}).get('subroles', {}).keys())}"
                     )
@@ -798,7 +799,7 @@ def _get_active_roles_section(server_id: str = None) -> str:
                     else:
                         subrole_duty = fund_info.lstrip()
                     
-                    logger.warning(f"[BEGGAR DEBUG] Successfully added beggar fund info to prompt")
+                    logger.debug(f"[BEGGAR DEBUG] Successfully added beggar fund info to prompt")
                         
                 except Exception as e:
                     logger.error(f"[BEGGAR DEBUG] Failed to load beggar fund info for server {server_id}: {e}")

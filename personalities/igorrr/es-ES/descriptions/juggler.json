@@ -6,7 +6,6 @@
         "ring": "🫓 **Cazador de la Masa Madre** - Acusa a inocentes de robar la masa madre del Amo"
     },
     "subrole_buttons": {
-        "overview": "🔥 Vista",
         "ring": "🫓 Masa"
     },
     "ring": {
@@ -39,7 +38,13 @@
         "motive_detected": "💭 **Motivo:** {motive}",
         "dropdown": {
             "ring_accuse": "Masa: Acusar",
-            "ring_accuse_description": "Acusar a un usuario de robar la masa madre"
+            "ring_accuse_description": "Acusar a un usuario de robar la masa madre",
+            "ring_on": "Masa: Activar",
+            "ring_on_description": "Iniciar la búsqueda de la masa madre robada",
+            "ring_off": "Masa: Desactivar",
+            "ring_off_description": "Detener la búsqueda de la masa madre",
+            "ring_frequency": "Masa: Frecuencia",
+            "ring_frequency_description": "Configurar la frecuencia de las interrogaciones (afecta la patata caliente)"
         }
     },
     "dropdown": {

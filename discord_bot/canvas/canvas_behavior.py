@@ -40,12 +40,22 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     desc_text_input = action_descriptions.get("text_input_target", "Text input target")
     desc_action = action_descriptions.get("action", "Action")
 
+    # GDPR self-service option — always available to every user, both in
+    # guild channels and DMs. Placed inside common_options so admin-visible
+    # sections (which extend common_options) still include it.
+    label_forget_me = general.get("forget_me_label", "🧹 Forget me (erase my data)")
+    desc_forget_me = general.get(
+        "forget_me_description",
+        "Erase your personal data from every server this bot knows (GDPR Art. 17)",
+    )
+
     common_options = [
         (f"{button_commentary}: {label_on}", "commentary_on", desc_boolean_toggle),
         (f"{button_commentary}: {label_off}", "commentary_off", desc_boolean_toggle),
         (f"{button_commentary}: {label_now}", "commentary_now", desc_action),
         (f"{button_taboo}: {label_add_keyword}", "taboo_add", desc_text_input),
         (f"{button_taboo}: {label_remove_keyword}", "taboo_del", desc_text_input),
+        (label_forget_me, "forget_me", desc_forget_me),
     ]
 
     button_personality = behavior_messages.get("personality", {}).get("button", "Personality")

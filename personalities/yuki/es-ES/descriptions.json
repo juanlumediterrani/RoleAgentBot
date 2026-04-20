@@ -30,7 +30,9 @@
         "remove_keyword": "Eliminar Palabra",
         "server_language": "🌐 Idioma del Servidor",
         "role_management": "🎛️ Gestión de Artes"
-      }
+      },
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin"
     },
     "help_menu": {
       "title": "📚 **Yuki - Registro de Artes**",
@@ -61,7 +63,7 @@
       "title": "🪭 Artes y Caminos 🪭",
       "description": "🌸 Explora las diferentes formas en que Yuki puede estar presente y ser de utilidad.",
       "role_categories": "──────────────────────────────",
-      "enabled_status": "active",
+      "enabled_status": "general.active",
       "inactive_status": "❌ EN REPOSO",
       "interval_info": "//⏰ Ciclo de {interval}h",
       "subroles_info": "⏰ **Subrutinas activas:** {subroles}",

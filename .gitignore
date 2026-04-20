@@ -13,11 +13,11 @@ __pycache__/
 *.db
 *.db-shm
 *.db-wal
-#data/
-#databases/
+data/
+databases/
 
 # Logs
-#logs/
+logs/
 *.log
 
 # Configuración de IDEs

@@ -6,7 +6,6 @@
         "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único"
     },
     "subrole_buttons": {
-        "overview": "🤹 Vista",
         "ring": "👁️ Anillo"
     },
     "ring": {
@@ -26,7 +25,13 @@
         "admin_description": "Configura la funcionalidad y frecuencia de la caza del anillo",
         "dropdown": {
             "ring_accuse": "Anillo: Acusar",
-            "ring_accuse_description": "Acusar a un usuario de llevar el Anillo Unico"
+            "ring_accuse_description": "Acusar a un usuario de llevar el Anillo Unico",
+            "ring_on": "Caza: Activar",
+            "ring_on_description": "Iniciar la caza del Anillo Único",
+            "ring_off": "Caza: Desactivar",
+            "ring_off_description": "Detener la caza del Anillo Único",
+            "ring_frequency": "Caza: Frecuencia",
+            "ring_frequency_description": "Configurar la frecuencia de las rondas (afecta la patata caliente)"
         }
     },
     "dropdown": {

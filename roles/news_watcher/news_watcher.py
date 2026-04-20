@@ -185,7 +185,7 @@ async def process_subscriptions(http, server_name: str = "default", include_chan
     
     # Handle case where database is not yet initialized (server_config.json not created)
     if db_watcher is None:
-        logger.warning(f"News watcher database not initialized for server {server_name} - server_config.json may not exist yet. Skipping subscription processing.")
+        logger.debug(f"News watcher database not initialized for server {server_name} - server_config.json may not exist yet. Skipping subscription processing.")
         return
     
     try:

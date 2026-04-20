@@ -347,7 +347,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             # Update user balance (deduct donation)
             user_update_success = db_banker_roles.update_balance(
                 donor_id, donor_name, 
-                -amount, "BEGGAR_DONATION_OUT", "Donation sent to beggar"
+                -amount, "BEGGAR_DONATION", f"Donation: {reason}"
             )
             
             if not user_update_success:
@@ -358,7 +358,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             # Update beggar fund (add donation)
             fund_update_success = db_banker_roles.update_balance(
                 "beggar_fund", "Beggar Fund", 
-                amount, "BEGGAR_DONATION_IN", f"Donation received from {donor_name}"
+                amount, "BEGGAR_DONATION", f"Donation from {donor_name}: {reason}"
             )
             
             if not fund_update_success:
@@ -367,7 +367,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 # Rollback user balance
                 db_banker_roles.update_balance(
                     donor_id, donor_name, 
-                    amount, "BEGGAR_DONATION_ROLLBACK", "Reversal - failed donation"
+                    amount, "BEGGAR_DONATION", "Reversal - failed donation"
                 )
                 raise RuntimeError("Fund balance update failed")
             

@@ -494,7 +494,7 @@ class MCCommands:
             return
         
 
-        await self._send_message(message.channel, "🔍 **Searching for the song...**")
+        await self._send_message(message.channel, self.get_mc_message("searching_for_song", "🔍 **Searching for the song...**", server_id=server_id))
         
         try:
             # Configure yt-dlp with enhanced options to bypass bot detection
@@ -649,18 +649,42 @@ class MCCommands:
     async def cmd_clear(self, message, args):
         """Clean the queue"""
         server_id = str(message.guild.id)
-        
+
         if not self._check_dj_permissions(message.author):
             await self._send_message(message.channel, "🚫 **You need the DJ role or administrator permissions to use this command.**")
             return
-        
+
         from db_role_mc import get_mc_db_instance
         db_mc = get_mc_db_instance(server_id)
-        
+
         db_mc.clear_queue(server_id, str(message.channel.id))
-        
+
         await self._send_message(message.channel, self.get_mc_message("queue_cleared", "🗑️ **Playback queue cleared.**"))
-    
+
+    async def cmd_remove_last(self, message, args):
+        """Remove the last song added to the queue"""
+        server_id = str(message.guild.id)
+
+        from db_role_mc import get_mc_db_instance
+        db_mc = get_mc_db_instance(server_id)
+
+        queue = db_mc.get_queue(server_id, str(message.channel.id))
+
+        if not queue:
+            await self._send_message(message.channel, "📭 **The queue is empty.**")
+            return
+
+        # Get the last position (highest position number)
+        last_position = max(item[0] for item in queue)
+
+        # Remove the last song
+        success = db_mc.remove_song_from_queue(server_id, str(message.channel.id), last_position)
+
+        if success:
+            await self._send_message(message.channel, self.get_mc_message("last_song_removed", "🔙 **Last song removed from queue.**"))
+        else:
+            await self._send_message(message.channel, "❌ **Could not remove the last song.**")
+
     async def cmd_pause(self, message, args):
         """Pause the reproduction"""
         server_id = str(message.guild.id)
@@ -726,7 +750,6 @@ class MCCommands:
             return
         
         embed = discord.Embed(
-            title="📜 Reproduction history",
             color=discord.Color.purple()
         )
         

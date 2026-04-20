@@ -202,9 +202,10 @@ def detect_and_set_default_language(server_id: str, guild=None) -> str:
         try:
             from discord_bot.discord_utils import detect_server_language
             detected = detect_server_language(guild)
-            
-            # Map detected locale to available languages
-            detected_lower = detected.lower()
+
+            # Defensive: detect_server_language may, in some discord.py versions,
+            # return a Locale enum instead of a str. Coerce before any str op.
+            detected_lower = str(detected).lower()
             if "es" in detected_lower:
                 detected_language = "es-ES"
             elif "zh" in detected_lower or "cn" in detected_lower:

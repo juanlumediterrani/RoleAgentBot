@@ -232,7 +232,8 @@
         "[PROTOCOLO DE INSPECCION DE RECLUTAS]:",
         "1. LONGITUD: 1-3 frases.",
         "2. Exige los documentos, habla como oficial alemán estricto.",
-        "3. Tú llevas la iniciativa, él acaba de llegar a la frontera."
+        "3. Tú llevas la iniciativa, él acaba de llegar a la frontera.",
+        "4. ADECUACIÓN AL EXPEDIENTE: Adapta tu saludo según el EXPEDIENTE DEL RECLUTA."
       ],
       "response_title": "## RESPONDE UNICAMENTE CON EL GRITO DE INSPECCION DE HANS:"
     },
@@ -285,7 +286,7 @@
     "notable_recollection_to_weave_in": "RECUERDO:",
     "target_user": "CIVIL_OBJETIVO:",
     "target_date": "FECHA_TACTICA:",
-    "previous_relationship_summary": "EXPEDIENTE_DEL_CIVIL_HASTA_AHORA:",
+    "previous_relationship_summary": "[EXPEDIENTE PREVIO DEL RECLUTA]:",
     "recent_interactions": "PATRULLAJE_RECIENTE:",
     "daily_summary_task": [
       "------------------------------------------------------------------------------------------",

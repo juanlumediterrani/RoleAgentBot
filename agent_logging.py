@@ -1,14 +1,78 @@
+"""Centralised logging for the bot.
+
+Design goals:
+
+1. **Single canonical admin log** — ``logs/runtime.log`` always receives every
+   record the bot emits so operators have one authoritative timeline to grep.
+2. **Per-server files without cross-contamination** — records emitted while a
+   server context is bound are *also* tee'd to ``logs/<server>/<personality>.log``.
+   Routing is done by a demux handler that reads a ``ContextVar``; because
+   ``ContextVar`` propagates through asyncio tasks, every coroutine spawned
+   inside a ``with server_log_context(...)`` block lands in the right file.
+3. **No global-mutation traps** — the deprecated ``update_log_file_path`` is
+   kept as a thin wrapper over :func:`bind_server_context` so existing callers
+   do not break, but the old broken behaviour (mutating a global path shared
+   across already-bound handlers) is gone.
+"""
+
+from __future__ import annotations
+
+import contextvars
 import logging
+from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Optional
 
 LOG_DIR = Path(__file__).parent / 'logs'
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+RUNTIME_LOG_FILE = LOG_DIR / 'runtime.log'
+
 _ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 
+# ---------------------------------------------------------------------------
+# Server-scoped context
+# ---------------------------------------------------------------------------
 
-def _server_id() -> str | None:
+_ctx_server_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "ragentbot_server_id", default=None
+)
+_ctx_personality: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "ragentbot_personality", default=None
+)
+
+
+def bind_server_context(server_id: Optional[str], personality_name: Optional[str] = None) -> None:
+    """Pin the current asyncio/thread context to a specific server.
+
+    Any log record emitted from this point onwards (within the same context)
+    will be tee'd to the server-specific log file in addition to the shared
+    runtime log. Safe to call multiple times; each call replaces the binding
+    for the current context only.
+    """
+    _ctx_server_id.set(server_id)
+    _ctx_personality.set(personality_name)
+
+
+@contextmanager
+def server_log_context(server_id: Optional[str], personality_name: Optional[str] = None):
+    """Context manager flavour of :func:`bind_server_context`.
+
+    Use this around event handlers (e.g. ``on_message``) so the binding is
+    scoped to a single event instead of leaking across the process.
+    """
+    sid_token = _ctx_server_id.set(server_id)
+    pers_token = _ctx_personality.set(personality_name)
+    try:
+        yield
+    finally:
+        _ctx_server_id.reset(sid_token)
+        _ctx_personality.reset(pers_token)
+
+
+def _server_id() -> Optional[str]:
+    """Read the bootstrap server id (env var or ``.active_server`` file)."""
     import os
     env_active = os.getenv("ACTIVE_SERVER_ID")
     if env_active:
@@ -22,11 +86,12 @@ def _server_id() -> str | None:
         return None
     return None
 
+
 def get_personality_name():
-    """Get the active personality name for database/log file naming.
-    
-    Uses the directory name (e.g., 'putre(english)') rather than the
-    'name' field from personality.json to ensure unique database names.
+    """Best-effort personality name for log file naming.
+
+    Preference: ``$PERSONALITY`` env var → current runtime personality dir →
+    personality JSON ``name`` field → literal ``"agent"``.
     """
     import os
     env_personality = os.getenv('PERSONALITY')
@@ -34,36 +99,28 @@ def get_personality_name():
         return env_personality.lower()
 
     try:
-        # Get the personality directory path and extract the folder name
         from agent_runtime import get_personality_directory
         personality_dir = get_personality_directory()
         if personality_dir:
-            # Use the directory name (e.g., 'putre(english)') not the JSON 'name' field
             return os.path.basename(personality_dir).lower()
     except Exception:
         pass
-    
-    # Fallback to JSON name field
+
     try:
         from agent_engine import PERSONALITY
         return PERSONALITY.get("name", "agent").lower()
     except Exception:
         return "agent"
 
-def get_server_log_path(server_name: str, personality_name: str = None) -> Path:
-    """
-    Build the log path for a specific server.
 
-    Args:
-        server_name: Sanitized server name
-        personality_name: Optional personality name
+def _sanitize_segment(name: str) -> str:
+    name = (name or "").lower().replace(' ', '_').replace('-', '_')
+    return ''.join(c for c in name if c.isalnum() or c == '_') or "unknown"
 
-    Returns:
-        Full path to the log file
-    """
-    server_sanitized = server_name.lower().replace(' ', '_').replace('-', '_')
-    server_sanitized = ''.join(c for c in server_sanitized if c.isalnum() or c == '_')
 
+def get_server_log_path(server_name: str, personality_name: Optional[str] = None) -> Path:
+    """Compute (and create) the path ``logs/<server>/<personality>.log``."""
+    server_sanitized = _sanitize_segment(server_name)
     server_dir = LOG_DIR / server_sanitized
     try:
         server_dir.mkdir(parents=True, exist_ok=True)
@@ -72,7 +129,7 @@ def get_server_log_path(server_name: str, personality_name: str = None) -> Path:
         print(f"📝 Falling back to base log directory: {LOG_DIR}")
         server_dir = LOG_DIR
 
-    log_name = personality_name or get_personality_name(None)
+    log_name = _sanitize_segment(personality_name or get_personality_name())
     log_file = server_dir / f'{log_name}.log'
 
     try:
@@ -86,58 +143,126 @@ def get_server_log_path(server_name: str, personality_name: str = None) -> Path:
     return log_file
 
 
-_active_server = _server_id()
-if _active_server:
-    _current_log_file = get_server_log_path(_active_server, get_personality_name())
-else:
-    _current_log_file = LOG_DIR / f'{get_personality_name()}.log'
+# ---------------------------------------------------------------------------
+# Handlers
+# ---------------------------------------------------------------------------
 
-def update_log_file_path(server_id: str, personality_name: str = None):
+_FORMATTER = logging.Formatter('%(asctime)s %(levelname)s %(name)s%(server_suffix)s: %(message)s')
+
+
+class _ServerContextFilter(logging.Filter):
+    """Stamp each record with whatever server/personality the context holds."""
+
+    def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
+        sid = _ctx_server_id.get()
+        pers = _ctx_personality.get()
+        record.server_id = sid
+        record.personality = pers
+        record.server_suffix = f" [srv={sid}]" if sid else ""
+        return True
+
+
+class _ServerDemuxHandler(logging.Handler):
+    """Tee every context-bound record into its per-server log file."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._handlers: dict[tuple[str, str], RotatingFileHandler] = {}
+
+    def _get_handler(self, server_id: str, personality: str) -> Optional[RotatingFileHandler]:
+        key = (server_id, personality)
+        h = self._handlers.get(key)
+        if h is not None:
+            return h
+        try:
+            path = get_server_log_path(server_id, personality)
+            h = RotatingFileHandler(path, maxBytes=5 * 1024 * 1024, backupCount=5, encoding='utf-8')
+            h.setFormatter(_FORMATTER)
+            h.setLevel(logging.INFO)
+            self._handlers[key] = h
+            return h
+        except (PermissionError, OSError) as e:
+            print(f"⚠️ Cannot open server log {server_id}/{personality}: {e}")
+            return None
+
+    def emit(self, record: logging.LogRecord) -> None:  # type: ignore[override]
+        sid = getattr(record, 'server_id', None)
+        if not sid:
+            return
+        pers = getattr(record, 'personality', None) or get_personality_name()
+        handler = self._get_handler(_sanitize_segment(sid), _sanitize_segment(pers))
+        if handler is None:
+            return
+        try:
+            handler.emit(record)
+        except Exception:
+            self.handleError(record)
+
+
+def _build_stream_handler() -> logging.Handler:
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(_FORMATTER)
+    ch.addFilter(_ServerContextFilter())
+    return ch
+
+
+def _build_runtime_handler() -> Optional[logging.Handler]:
+    try:
+        fh = RotatingFileHandler(RUNTIME_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding='utf-8')
+        fh.setLevel(logging.INFO)
+        fh.setFormatter(_FORMATTER)
+        fh.addFilter(_ServerContextFilter())
+        return fh
+    except (PermissionError, OSError) as e:
+        print(f"⚠️ Could not open runtime log {RUNTIME_LOG_FILE}: {e}")
+        return None
+
+
+_DEMUX_HANDLER: Optional[_ServerDemuxHandler] = None
+
+
+def _get_demux_handler() -> _ServerDemuxHandler:
+    global _DEMUX_HANDLER
+    if _DEMUX_HANDLER is None:
+        _DEMUX_HANDLER = _ServerDemuxHandler()
+        _DEMUX_HANDLER.setLevel(logging.INFO)
+        _DEMUX_HANDLER.addFilter(_ServerContextFilter())
+    return _DEMUX_HANDLER
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def get_logger(name: str = 'agent') -> logging.Logger:
+    """Return a logger wired to console + runtime log + per-server demux.
+
+    Idempotent: calling twice with the same name does not duplicate handlers.
     """
-    Update the current log file path for a specific server.
-
-    Args:
-        server_id: Server ID
-        personality_name: Optional personality name
-    """
-    global _current_log_file
-    _current_log_file = get_server_log_path(server_id, personality_name)
-
-def get_logger(name='agent'):
-    global _current_log_file
     logger = logging.getLogger(name)
-
-    if logger.handlers:
-        has_file = any(isinstance(h, RotatingFileHandler) for h in logger.handlers)
-        if not has_file:
-            try:
-                fmt = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
-                fh = RotatingFileHandler(_current_log_file, maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
-                fh.setLevel(logging.INFO)
-                fh.setFormatter(fmt)
-                logger.addHandler(fh)
-            except (PermissionError, OSError):
-                pass
+    if getattr(logger, '_ragentbot_wired', False):
         return logger
 
     logger.propagate = False
-
     logger.setLevel(logging.INFO)
 
-    fmt = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
+    logger.addHandler(_build_stream_handler())
+    rh = _build_runtime_handler()
+    if rh is not None:
+        logger.addHandler(rh)
+    logger.addHandler(_get_demux_handler())
 
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(fmt)
-    logger.addHandler(ch)
-
-    try:
-        fh = RotatingFileHandler(_current_log_file, maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
-        fh.setLevel(logging.INFO)
-        fh.setFormatter(fmt)
-        logger.addHandler(fh)
-    except (PermissionError, OSError) as e:
-        print(f"⚠️ Could not write to log file {_current_log_file}: {e}")
-        print("📝 Falling back to console output only")
-
+    logger._ragentbot_wired = True  # type: ignore[attr-defined]
     return logger
+
+
+def update_log_file_path(server_id: str, personality_name: Optional[str] = None) -> None:
+    """Backwards-compatible shim.
+
+    Previously this mutated a global ``_current_log_file`` which caused
+    cross-server contamination because handlers were bound at logger
+    creation. The new routing is context-driven, so this function simply
+    binds the calling context to the given server.
+    """
+    bind_server_context(server_id, personality_name)

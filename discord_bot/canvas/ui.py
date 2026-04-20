@@ -33,7 +33,7 @@ try:
         build_canvas_behavior_detail as _build_canvas_behavior_detail,
     )
     if logger:
-        logger.info("✅ Canvas content functions imported successfully")
+        logger.debug("✅ Canvas content functions imported successfully")
 except ImportError as e:
     if logger:
         logger.error(f"❌ Failed to import Canvas content functions: {e}")
@@ -1293,6 +1293,12 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         server_id = get_server_key(interaction.guild) if interaction.guild else None
         general_answers = get_personality_message("answers.json", ["general"], server_id, {})
         
+        if action_name == "forget_me":
+            # GDPR self-service — scoped to the interacting user only.
+            from discord_bot.gdpr import send_forget_me_prompt
+            await send_forget_me_prompt(interaction)
+            return
+
         if action_name == "commentary_frequency":
             if not interaction.guild or not view.admin_visible:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")

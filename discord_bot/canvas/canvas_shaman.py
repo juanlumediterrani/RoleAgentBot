@@ -147,13 +147,11 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
         ])
 
     if detail_name == "runes_admin":
-        title = _runes_text("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
 
         subroles = (agent_config or {}).get("roles", {}).get("shaman", {}).get("subroles", {})
         runes_enabled = subroles.get("nordic_runes", {}).get("enabled", False)
 
         return "\n".join([
-            f"{title} Admin",
             "Configure Nordic Runes subrole settings and availability for this server.",
             f"**Status:** {'✅ Enabled' if runes_enabled else '❌ Disabled'}",
             "",

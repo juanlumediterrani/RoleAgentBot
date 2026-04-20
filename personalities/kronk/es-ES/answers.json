@@ -67,7 +67,8 @@
     },
     "dm_messages": {
         "no_servers_available": "❌ ¡No hay forjas disponibles! ¡Ve a una forja orko! 🔨",
-        "server_access_error": "❌ ¡No puedo entrar a la forja desde aquí! ¡Ve a la forja! 🔨"
+        "server_access_error": "❌ ¡No puedo entrar a la forja desde aquí! ¡Ve a la forja! 🔨",
+        "reply_button_confirmation": "💬 ¡Kronk ahora habla desde la forja de **{server_name}**! ¡Tus respuestas usarán esta personalidad hasta ke selektes otra! 🔨"
     }
 
 

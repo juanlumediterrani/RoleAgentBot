@@ -149,10 +149,10 @@ def is_role_enabled_check(role_name, agent_config=None, guild=None):
         if config:
             return config.get('enabled', True)
     except Exception as e:
-        logger.warning(f"Error getting role enabled state from roles_config for {role_name}: {e}")
+        logger.debug(f"Error getting role enabled state from roles_config for {role_name}: {e}")
     
     # FALLBACK: Use agent_config only if database fails
-    logger.info(f"Using agent_config fallback for role {role_name} (database unavailable)")
+    logger.debug(f"Using agent_config fallback for role {role_name} (database unavailable)")
     default_enabled = False
     if agent_config is not None:
         default_enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
@@ -717,7 +717,9 @@ def detect_server_language(guild) -> str:
     
     # Method 1: Try guild.preferred_locale (only available for DISCOVERABLE servers)
     if hasattr(guild, 'preferred_locale') and guild.preferred_locale:
-        locale = guild.preferred_locale
+        # In recent discord.py versions preferred_locale is a Locale enum, not a str.
+        # Coerce to str so downstream string ops (e.g. .lower()) work consistently.
+        locale = str(guild.preferred_locale)
         logger.info(f"Server '{guild.name}' preferred_locale detected: {locale}")
         return locale
     

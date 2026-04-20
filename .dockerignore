@@ -1,0 +1,60 @@
+# Build context for docker-compose is the repo root (see docker/docker-compose.*.yml).
+# Docker reads the .dockerignore adjacent to the build context, so it MUST live here.
+# (docker/.dockerignore is effectively ignored by BuildKit with context=..)
+
+# Virtualenv / Python caches
+bin/
+include/
+lib/
+pyvenv.cfg
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local runtime data — mounted as volume at runtime, never baked into the image
+databases/
+*.db
+*.db-shm
+*.db-wal
+logs/
+fatiga/
+temp/
+.active_server
+
+# Sensitive material — NEVER ship in the image.
+# cookies.txt is a DEV-ONLY YouTube cookie jar (dummy account). In production it is
+# mounted as a volume by the administrator, not baked. See docker/Dockerfile which
+# creates an empty placeholder at /app/cookies.txt on purpose.
+.env
+.env.*
+cookies.txt
+setup-bot.sh
+setup-gcloud-auth.sh
+start_clean.sh
+
+# Backups / local noise
+old/
+*.backup
+*.bak
+*.tmp
+*.swp
+
+# Git / IDE / workflows
+.git/
+.gitignore
+.vscode/
+.idea/
+.windsurf/
+
+# Docs not needed inside the image
+TERMS_OF_SERVICE.md
+LICENSE
+
+# Docker build files themselves
+Dockerfile*
+docker-compose*.yml
+docker/Dockerfile*
+docker/docker-compose*.yml

@@ -9,6 +9,10 @@
     "current_balance": "💎 Fondos Personales del Recluta:",
     "account_holder": "👤 Personal Militar:",
     "server": "🏦 Cuartel General",
+    "opening_bonus": "Bono de Reclutamiento",
+    "TAE_DAILY": "Asignación Diaria",
+    "BEGGAR_DONATION": "Contribución al Fondo",
+    "dice_game_pot_refill": "Reabastecimiento del Pot",
     "dropdown": {
         "select_banker_action": "👤 Seleccionar acción administrativa...",
         "config_tae": "Configurar Tasa",
@@ -30,6 +34,7 @@
         "description": "Herr Hans recauda fondos para proyectos del cuartel con la misma disciplina con que dirige sus tropas. La contribución es un deber, no una opción.",
         "title_campaign": "**Campaña actual**",
         "title_reason": "Misión:",
+        "current_fund": "Fondos acumulados:",
         "title_instructions": "**Instrucciones**",
         "instructions": " - Haz clic en donar en el menú desplegable de abajo.\n - Espera los resultados al cierre del ciclo.\n - Toda contribución queda registrada en el historial del cuartel.\n",
         "title_donations": " **Contribuciones:**",

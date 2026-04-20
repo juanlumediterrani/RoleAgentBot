@@ -6,7 +6,7 @@
     "subrole_buttons": {
         "items": "💎 Objetos",
         "league": "🏆 Liga",
-        "admin": "⚙️ Administrador"
+        "admin": "general.button_admin"
     },
     "user_flows_title": "Guía de Uso",
     "user_flows_1": "Selecciona la liga en la que deseas que Yuki enfoque su análisis.",

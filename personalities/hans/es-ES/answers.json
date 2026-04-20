@@ -67,7 +67,8 @@
     },
     "dm_messages": {
         "no_servers_available": "❌ ¡NO HAY CUARTELES DISPONIBLES! 📉💥 ¡Ejecutar acciones desde un servidor, Schweinehund! ✍️🚫",
-        "server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL CUARTEL! 📉💥 ¡Ejecutar acciones desde un servidor! ✍️🚫"
+        "server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL CUARTEL! 📉💥 ¡Ejecutar acciones desde un servidor! ✍️🚫",
+        "reply_button_confirmation": "💬 ¡ATENCION, Zivilist! Ahora konversas desde el Kuartel **{server_name}**. ¡Tus respuestas usarán esta personalidad hasta ke selektes otro! ✍️"
     }
 
 

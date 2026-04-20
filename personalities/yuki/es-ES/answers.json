@@ -67,7 +67,8 @@
     },
     "dm_messages": {
         "no_servers_available": "❌ No se detectan salas disponibles. Por favor, inicia la conversación desde un servidor.",
-        "server_access_error": "❌ No es posible acceder en este momento. Por favor, intenta desde un servidor activo."
+        "server_access_error": "❌ No es posible acceder en este momento. Por favor, intenta desde un servidor activo.",
+        "reply_button_confirmation": "💬 Ahora conversas desde la sala de **{server_name}**. Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor."
     }
 
 

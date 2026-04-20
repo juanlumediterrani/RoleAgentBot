@@ -357,8 +357,9 @@ def get_personality_name(server_id: str = None):
                     return active_personality.lower()
                 else:
                     logger.warning(f"[get_personality_name] server_config exists but no active_personality for server {server_id}")
+                # (real configuration anomaly, keep as warning)
             else:
-                logger.warning(f"[get_personality_name] server_config.json not found at {server_config_path}")
+                logger.debug(f"[get_personality_name] server_config.json not found at {server_config_path}")
         except Exception as e:
             logger.error(f"[get_personality_name] Error reading server_config for server {server_id}: {e}", exc_info=True)
 
@@ -372,7 +373,7 @@ def get_personality_name(server_id: str = None):
         return env_personality.lower()
 
     # No valid personality found - return None instead of creating placeholder
-    logger.warning(f"[get_personality_name] No personality found for server {server_id}, returning None")
+    logger.debug(f"[get_personality_name] No personality found for server {server_id}, returning None")
     return None
 
 # Path and limits configuration
@@ -1711,6 +1712,139 @@ class AgentDatabase:
                 logger.info(f"🧹 Cleaned interactions before {deadline} and duplicate tables")
                 return cursor.rowcount
 
+    def forget_user(self, user_id, user_name: str = None, extra_names=None) -> dict:
+        """GDPR — right to erasure (Art. 17).
+
+        Two-phase wipe:
+
+        1. Drop every row directly keyed by this `user_id` (raw interactions,
+           per-user relationship memories, scheduled relationship updates).
+        2. When a ``user_name`` (and optional aliases in ``extra_names``) is
+           provided, **redact** mentions of those names in LLM-synthesised
+           narrative tables. Those tables do not carry a user_id column, so
+           leaving the text intact after erasure would still identify the
+           user by name. We rewrite each occurrence to ``[redacted]`` in place
+           and keep the row (the aggregate memory is about the whole server,
+           not only that user).
+
+        Returns a per-table report of rows deleted / rewritten.
+        """
+        uid = str(user_id)
+        tables_keyed_by_uid = [
+            ('interacciones', 'usuario_id'),
+            ('user_relationship_memory', 'usuario_id'),
+            ('user_relationship_daily_memory', 'usuario_id'),
+            ('pending_relationship_updates', 'usuario_id'),
+        ]
+        deleted: dict = {}
+
+        # Build the name-redaction list, deduplicated and ordered longest-first
+        # so we do not leave partial matches behind.
+        names = []
+        for n in [user_name] + list(extra_names or []):
+            if n and n.strip() and n.strip() not in names:
+                names.append(n.strip())
+        names.sort(key=len, reverse=True)
+
+        narrative_targets = [
+            ('daily_memory', 'summary'),
+            ('recent_memory', 'summary'),
+            ('user_relationship_memory', 'summary'),
+            ('user_relationship_daily_memory', 'summary'),
+            ('notable_recollections', 'recollection_text'),
+        ]
+
+        with self._lock:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+
+                # Phase 1 — delete rows keyed by uid.
+                for table, column in tables_keyed_by_uid:
+                    try:
+                        cursor.execute(f'DELETE FROM {table} WHERE {column} = ?', (uid,))
+                        deleted[table] = cursor.rowcount
+                    except sqlite3.OperationalError:
+                        deleted[table] = 0
+
+                # Phase 2 — redact names in synthesised prose.
+                if names:
+                    import re
+                    pattern = re.compile(
+                        r'\b(' + '|'.join(re.escape(n) for n in names) + r')\b',
+                        flags=re.IGNORECASE,
+                    )
+                    for table, column in narrative_targets:
+                        try:
+                            cursor.execute(f'SELECT rowid, {column} FROM {table}')
+                            rows = cursor.fetchall()
+                        except sqlite3.OperationalError:
+                            deleted[f'{table}.redacted'] = 0
+                            continue
+                        rewrites = 0
+                        for rowid, text in rows:
+                            if not text:
+                                continue
+                            new_text = pattern.sub('[redacted]', text)
+                            if new_text != text:
+                                cursor.execute(
+                                    f'UPDATE {table} SET {column} = ? WHERE rowid = ?',
+                                    (new_text, rowid),
+                                )
+                                rewrites += 1
+                        deleted[f'{table}.redacted'] = rewrites
+
+                conn.commit()
+
+        total = sum(deleted.values())
+        logger.info(f"🧹 [GDPR] forget_user({uid}) on {self.db_path.name}: {deleted} (total_ops={total})")
+        return deleted
+
+    def apply_retention(self, interactions_days: int = 90, derived_memory_days: int = 365) -> dict:
+        """Purge data older than the retention thresholds.
+
+        Args:
+            interactions_days: Hard limit for raw ``interacciones`` rows — the
+                most direct PII we store. Defaults to 90 days.
+            derived_memory_days: Limit for date-scoped LLM summaries that may
+                contain names (``daily_memory``, ``user_relationship_daily_memory``,
+                ``notable_recollections``). Defaults to 365 days.
+
+        Returns a per-table row count of what was deleted.
+        """
+        import datetime as _dt
+        now = _dt.datetime.now()
+        interactions_deadline = (now - _dt.timedelta(days=interactions_days)).isoformat()
+        derived_deadline = (now - _dt.timedelta(days=derived_memory_days)).isoformat()
+        derived_deadline_date = (now - _dt.timedelta(days=derived_memory_days)).date().isoformat()
+
+        # (table, column, deadline, comparator_is_date_only)
+        plan = [
+            ('interacciones', 'fecha', interactions_deadline, False),
+            ('daily_memory', 'memory_date', derived_deadline_date, True),
+            ('user_relationship_daily_memory', 'memory_date', derived_deadline_date, True),
+            ('notable_recollections', 'memory_date', derived_deadline_date, True),
+        ]
+
+        report: dict = {}
+        with self._lock:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                for table, column, deadline, _is_date in plan:
+                    try:
+                        cursor.execute(f'DELETE FROM {table} WHERE {column} < ?', (deadline,))
+                        report[table] = cursor.rowcount
+                    except sqlite3.OperationalError:
+                        report[table] = 0
+                conn.commit()
+
+        total = sum(report.values())
+        if total:
+            logger.info(
+                f"🧹 [GDPR] apply_retention on {self.db_path.name}: {report} "
+                f"(interactions≥{interactions_days}d, derived≥{derived_memory_days}d)"
+            )
+        return report
+
     def count_interactions_by_type_last_day(self, interaction_type, server_id=None):
         """Count how many interactions of `interaction_type` occurred today."""
         try:
@@ -2381,6 +2515,96 @@ def reset_daily_fatigue(server_id: str) -> int:
         
     finally:
         db.close()
+
+def forget_user_across_servers(user_id, user_name: str = None, extra_names=None, server_ids=None) -> dict:
+    """GDPR — sweep a user out of every per-server database we know about.
+
+    Args:
+        user_id: The Discord user id (str/int).
+        user_name: Best-known display/user name. When provided, occurrences
+            are also redacted from LLM-synthesised summaries (see
+            :meth:`AgentDatabase.forget_user`).
+        extra_names: Optional additional aliases to redact.
+        server_ids: Optional iterable of server ids to limit the sweep. When
+            omitted, every subdirectory under ``databases/`` that looks like a
+            server id is processed.
+
+    Returns:
+        Mapping ``{server_id: {table: deleted_rows}}`` with one entry per
+        server successfully processed. Fatigue rows keyed by user_id are also
+        purged.
+    """
+    report: dict = {}
+    db_root = DB_DIR
+    if server_ids is None:
+        try:
+            server_ids = [p.name for p in db_root.iterdir() if p.is_dir() and p.name.isdigit()]
+        except OSError:
+            server_ids = []
+
+    uid = str(user_id)
+    for sid in server_ids:
+        server_report: dict = {}
+        # Main agent DB
+        try:
+            db = get_db_instance(sid)
+            if db is not None:
+                server_report.update(db.forget_user(uid, user_name=user_name, extra_names=extra_names))
+        except Exception as e:
+            logger.warning(f"[GDPR] forget_user failed on agent DB for server {sid}: {e}")
+
+        # Fatigue table lives in its own DB per server
+        try:
+            fat_db = init_fatigue_db(sid)
+            try:
+                cursor = fat_db.execute('DELETE FROM fatigue WHERE user_id = ?', (uid,))
+                server_report['fatigue'] = cursor.rowcount
+                fat_db.commit()
+            finally:
+                fat_db.close()
+        except Exception as e:
+            logger.warning(f"[GDPR] forget_user failed on fatigue DB for server {sid}: {e}")
+
+        if server_report:
+            report[sid] = server_report
+
+    logger.info(f"🧹 [GDPR] forget_user_across_servers({uid}): touched {len(report)} servers")
+    return report
+
+
+def apply_retention_across_servers(interactions_days: int = 90, derived_memory_days: int = 365,
+                                   server_ids=None) -> dict:
+    """Run :meth:`AgentDatabase.apply_retention` on every server database.
+
+    Returns a mapping ``{server_id: {table: deleted_rows}}`` with only the
+    servers where at least one row was deleted.
+    """
+    report: dict = {}
+    db_root = DB_DIR
+    if server_ids is None:
+        try:
+            server_ids = [p.name for p in db_root.iterdir() if p.is_dir() and p.name.isdigit()]
+        except OSError:
+            server_ids = []
+
+    for sid in server_ids:
+        try:
+            db = get_db_instance(sid)
+            if db is None:
+                continue
+            server_report = db.apply_retention(
+                interactions_days=interactions_days,
+                derived_memory_days=derived_memory_days,
+            )
+            if any(server_report.values()):
+                report[sid] = server_report
+        except Exception as e:
+            logger.warning(f"[GDPR] apply_retention failed for server {sid}: {e}")
+
+    if report:
+        logger.info(f"🧹 [GDPR] apply_retention_across_servers: purged on {len(report)} servers")
+    return report
+
 
 def cleanup_old_fatigue_data(server_id: str, days_to_keep: int = 30) -> int:
     """

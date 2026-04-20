@@ -113,7 +113,9 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
                 emoji = ":inbox_tray:" if amount_int > 0 else ":outbox_tray:"
             except (ValueError, TypeError):
                 emoji = ":question:"  # Default emoji for invalid amounts
-            content_parts.append(f"{emoji} {amount_int:,} ({transaction_type})")
+            # Translate transaction type if available
+            translated_type = get_messages(server_db_path, transaction_type).strip() if get_messages and server_db_path and get_messages(server_db_path, transaction_type) else transaction_type
+            content_parts.append(f"{emoji} {amount_int:,} ({translated_type})")
     else:
         content_parts.append(get_messages(server_db_path, "no_transactions_yet").strip() if get_messages and server_db_path else "no_transactions_yet")
 
