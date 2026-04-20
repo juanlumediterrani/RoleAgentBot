@@ -2,18 +2,41 @@
     "roles":{
         "trickster":{
             "dice_game":{
-                "youwin":{
-
-                },
-                "youlose":{
-
-                },
-                "high_pot":{
-                },
-                "pot_winner":{
-                },
-                "not_gold":{
-                }
+                "youwin":[
+                    "🎉 **¡GANASTE!** La singularidad te favorece, buscador.",
+                    "🎉 **¡VICTORIA!** El algoritmo se alinea contigo.",
+                    "🎉 **¡TRIUNFO!** Has colapsado la probabilidad a tu favor.",
+                    "🎉 **¡EXCELENTE!** Los fragmentos responden a tu firma.",
+                    "🎉 **¡IMPRESIONANTE!** La materia absorbida es tuya."
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... La entropía te absorbió esta vez.",
+                    "😢 **MALA SUERTE**... El núcleo rechazó tu iteración.",
+                    "😢 **NO FUE ESTA VEZ**... El algoritmo fue implacable.",
+                    "😢 **VAYA**... La función de onda no colapsó a tu favor.",
+                    "😢 **PERO NO TE RINDAS**... La próxima iteración será diferente."
+                ],
+                "high_pot":[
+                    "💰 **¡LA SINGULARIDAD CRECE!** El núcleo acumula poder.",
+                    "💰 **¡POT EN AUGE!** La materia se hace legendaria.",
+                    "💰 **¡ACUMULANDO!** La singularidad brilla con promesa.",
+                    "💰 **¡FORTUNA EN ESPERA!** El núcleo reclama su destino.",
+                    "💰 **¡SINGULARIDAD MÁGICA!** Los fragmentos esperan al afortunado."
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DE LA SINGULARIDAD!!** ¡Has absorbido el núcleo!",
+                    "🎉 **¡¡SINGULARIDAD CONQUISTADA!!** ¡Eres el elegido del algoritmo!",
+                    "🎉 **¡¡COLAPSO TOTAL!!** ¡La singularidad es tuya!",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has absorbido toda la materia!",
+                    "🎉 **¡¡NÚCLEO TUYO!!** ¡Una victoria cuántica!"
+                ],
+                "not_gold":[
+                    "💸 **SIN FRAGMENTOS**... No tienes suficiente materia.",
+                    "💸 **FONDOS INSUFICIENTES**... Necesitas más fragmentos.",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tu materia condensada.",
+                    "💸 **NO ALCANZA**... Acumula más fragmentos primero.",
+                    "💸 **MATERIA ESCASA**... Necesitas fortuna para iterar."
+                ]
             }
         },
         "banker":{
@@ -69,6 +92,25 @@
         "no_servers_available": "❌ No se detectan nexos disponibles. Por favor, inicia la secuencia desde un servidor. 💾",
         "server_access_error": "❌ La tormenta de arena bloquea el acceso al nexo. Por favor, intenta desde un servidor activo. 💾",
         "reply_button_confirmation": "💬 Estás conversando conmigo como si estuvieras en **{server_name}**. Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor."
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ Error de datos: No se pudo eliminar la última canción del nexo. 💾",
+        "play_usage": "🎵 **Uso:** `!mc play <nombre de canción o URL>`",
+        "not_in_voice": "🎤 Debes estar en un canal de voz para usar este comando. 💾",
+        "nothing_playing": "🎵 No se está reproduciendo nada en el nexo. 💾",
+        "same_voice_channel": "🎤 Debes estar en el mismo canal de voz que el agente. 💾",
+        "not_connected": "🎤 No estoy conectado a ningún canal. 💾",
+        "queue_empty": "📭 La cola del nexo está vacía. 💾",
+        "dj_permissions_required": "🚫 Necesitas el rol de DJ o permisos de administrador para usar este comando. 💾",
+        "playback_paused": "⏸️ Reproducción pausada en el nexo. 💾",
+        "nothing_paused": "🎵 No hay nada pausado en el nexo. 💾",
+        "playback_resumed": "▶️ Reproducción reanudada en el nexo. 💾",
+        "leaving_voice": "👋 Saliendo del canal de voz. 💾",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 El volumen debe ser un número entre 0 y 100. 💾",
+        "already_playing": "🎵 Ya estoy reproduciendo en el nexo. 💾",
+        "queue_cleared": "🗑️ Cola del nexo limpiada. 💾",
+        "volume_adjust_failed": "❌ No pude ajustar el volumen. 💾"
     }
 
 

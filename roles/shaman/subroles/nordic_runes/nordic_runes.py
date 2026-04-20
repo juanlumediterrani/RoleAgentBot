@@ -441,31 +441,36 @@ class NordicRunes:
                     personality_dir = _get_personality_dir(server_id)
                     path_parts = personality_dir.split(os.sep)
                     if 'personalities' in path_parts:
+                        # Convert personalities/{personality}/{language} to databases/{personality}/{language}
                         personalities_idx = path_parts.index('personalities')
                         path_parts[personalities_idx] = 'databases'
                         database_dir = os.sep.join(path_parts)
                         runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
                     else:
-                        # Fallback to personality directory if structure is unexpected
+                        # Already in databases/ structure or other structure, use as-is
                         runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
-                    
+
                     if os.path.exists(runesplane_path):
                         with open(runesplane_path, 'r', encoding='utf-8') as f:
                             runesplane_data = json.load(f)
                             positions = runesplane_data.get('positions', {})
                             rune_translations = runesplane_data.get('translations', {})
                     else:
-                        # Fallback to old structure if runesplane.json doesn't exist
-                        positions = nordic_data.get('positions', {})
-                        rune_translations = nordic_data.get('translations', {})
+                        # Fallback to inline RUNES data from nordic_runes_messages
+                        from .nordic_runes_messages import RUNES, _runes_fallback_data
+                        positions = {}
+                        rune_translations = _runes_fallback_data()
 
-                    # If no labels found in main descriptions.json, try loading from shaman.json
+                    # If no labels found, use inline fallback (no personalities/ fallback)
                     if not labels:
-                        shaman_path = os.path.join(_get_personality_dir(server_id), "descriptions", "shaman.json")
-                        if os.path.exists(shaman_path):
-                            with open(shaman_path, 'r', encoding='utf-8') as f:
-                                shaman_data = json.load(f)
-                                labels = shaman_data.get('nordic_runes', {}).get('labels', {})
+                        from .nordic_runes_messages import ENGLISH_MESSAGES
+                        labels = {
+                            'position': 'Position',
+                            'rune': 'Rune',
+                            'meaning': 'Meaning',
+                            'keywords': 'Keywords',
+                            'interpretation': 'Interpretation'
+                        }
             except Exception as e:
                 # Fallback to English if translation fails
                 labels = {
@@ -518,22 +523,22 @@ class NordicRunes:
                 personality_dir = _get_personality_dir(server_id)
                 path_parts = personality_dir.split(os.sep)
                 if 'personalities' in path_parts:
+                    # Convert personalities/{personality}/{language} to databases/{personality}/{language}
                     personalities_idx = path_parts.index('personalities')
                     path_parts[personalities_idx] = 'databases'
                     database_dir = os.sep.join(path_parts)
                     runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
                 else:
-                    # Fallback to personality directory if structure is unexpected
+                    # Already in databases/ structure or other structure, use as-is
                     runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
-                
+
                 if os.path.exists(runesplane_path):
                     with open(runesplane_path, encoding="utf-8") as f:
                         runesplane_data = json.load(f)
                         guidance = runesplane_data.get("guidance", {})
                 else:
-                    # Fallback to old structure
-                    nordic_runes = descriptions_data.get("discord", {}).get("roles_view_messages", {}).get("shaman", {}).get("nordic_runes", {})
-                    guidance = nordic_runes.get("guidance", {})
+                    # Fallback to empty guidance (no personalities/ fallback)
+                    guidance = {}
                 
                 # Format all guidance categories
                 for category, category_data in guidance.items():

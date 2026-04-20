@@ -2,18 +2,41 @@
     "roles":{
         "trickster":{
             "dice_game":{
-                "youwin":{
-
-                },
-                "youlose":{
-
-                },
-                "high_pot":{
-                },
-                "pot_winner":{
-                },
-                "not_gold":{
-                }
+                "youwin":[
+                    "🎉 **¡GANASTE!** ¡Los guesos te dieron la razón! ⚔️",
+                    "🎉 **¡VICTORIA!** ¡El orco triunfa! ⚔️",
+                    "🎉 **¡TRIUNFO!** ¡Has vencido al destino! ⚔️",
+                    "🎉 **¡EXCELENTE!** ¡Tu acha es fuerte! ⚔️",
+                    "🎉 **¡IMPRESIONANTE!** ¡Una jugada maestra! ⚔️"
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... Los guesos fueron crueles... ⚔️",
+                    "😢 **MALA SUERTE**... El destino fue superior... ⚔️",
+                    "😢 **NO FUE ESTA VEZ**... La suerte es caprichosa... ⚔️",
+                    "😢 **VAYA**... Tu acha falló... ⚔️",
+                    "😢 **PERO NO TE RINDAS**... ¡La próxima será mejor! ⚔️"
+                ],
+                "high_pot":[
+                    "💰 **¡EL BOTE CRECE!** ¡El botín se acumula! ⚔️",
+                    "💰 **¡BOTE EN AUGE!** ¡El premio se hace legendario! ⚔️",
+                    "💰 **¡ACUMULANDO!** ¡El bote brilla con promesa! ⚔️",
+                    "💰 **¡FORTUNA EN ESPERA!** ¡El bote reclama su destino! ⚔️",
+                    "💰 **¡BOTE MÁGICO!** ¡El oro espera al afortunado! ⚔️"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DEL BOTE!!** ¡Has conquistado el tesoro! ⚔️",
+                    "🎉 **¡¡BOTE CONQUISTADO!!** ¡Eres el elegido! ⚔️",
+                    "🎉 **¡¡JACKPOT!!** ¡El bote es tuyo! ⚔️",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has ganado el gran premio! ⚔️",
+                    "🎉 **¡¡BOTE TUYO!!** ¡Una victoria épica! ⚔️"
+                ],
+                "not_gold":[
+                    "💸 **SIN ORO**... No tienes suficientes monedas... ⚔️",
+                    "💸 **FONDOS INSUFICIENTES**... Necesitas más oro... ⚔️",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tu tesoro... ⚔️",
+                    "💸 **NO ALCANZA**... Acumula más oro primero... ⚔️",
+                    "💸 **TESORO ESCASO**... Necesitas fortuna para jugar... ⚔️"
+                ]
             }
         },
         "banker":{
@@ -69,5 +92,24 @@
         "no_servers_available": "❌ ¡No hay kampamentos disponibles! ¡Ve a un kampamento orko! ⚔️",
         "server_access_error": "❌ ¡No puedo entrar al kampamento desde aquí! ¡Ve al kampamento! ⚔️",
         "reply_button_confirmation": "💬 ¡Putre ahora habla desde el kampamento de **{server_name}**! ¡Tus respuestas usarán esta personalidad hasta ke selektes otro! ⚔️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ ¡Mi acha falló! ¡No pude eliminar la última kanzion del kampamento! ⚔️",
+        "play_usage": "🎵 **Uso:** `!mc play <nombre de kanzion o URL>`",
+        "not_in_voice": "🎤 ¡Debes estar en el kampamento para usar esto, guerrero! ⚔️",
+        "nothing_playing": "🎵 ¡No se escucha nada en el kampamento! ⚔️",
+        "same_voice_channel": "🎤 ¡Debes estar en el mismo kampamento que el orko! ⚔️",
+        "not_connected": "🎤 ¡No estoy en ningún kampamento! ⚔️",
+        "queue_empty": "📭 ¡El kampamento está vazío! ⚔️",
+        "dj_permissions_required": "🚫 ¡Solo el jefe orko puede usar esto! ⚔️",
+        "playback_paused": "⏸️ ¡La batalla se detuvo! ⚔️",
+        "nothing_paused": "🎵 ¡No hay batalla pausada! ⚔️",
+        "playback_resumed": "▶️ ¡La batalla volvió! ⚔️",
+        "leaving_voice": "👋 ¡Saliendo del kampamento! ⚔️",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 ¡El volumen debe ser un número entre 0 y 100! ⚔️",
+        "already_playing": "🎵 ¡Ya peleando en el kampamento! ⚔️",
+        "queue_cleared": "🗑️ ¡Kampamento limpio! ⚔️",
+        "volume_adjust_failed": "❌ ¡No pude ajustar el volumen! ⚔️"
     }
 }

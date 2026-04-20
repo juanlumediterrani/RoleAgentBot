@@ -22,6 +22,7 @@
         "inactive_instructions": "Para activar la vigilancia:\n• Un administrador debe acceder al panel **Admin Me-tsuke**\n• Ejecutar **Vigilancia: Activar**\n• Configurar la frecuencia de las rondas\n\nUna vez activa, podrás señalar a visitantes sospechosos.",
         "hot_potato": "🔥 **La sospecha se desplaza:** Ronda {iteration} (velocidad x{multiplier})",
         "controls": "**Controles**\n- Activar o desactivar la vigilancia\n- Frecuencia de rondas",
+        "dm_accusation_header": "👁️ **INVESTIGACIÓN ME-TSUKE**",
         "admin_description": "Configura la sensibilidad y frecuencia de la vigilancia del Me-tsuke",
         "dropdown": {
             "ring_accuse": "Me-tsuke: Señalar",

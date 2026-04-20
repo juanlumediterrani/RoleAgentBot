@@ -32,7 +32,8 @@
         "role_management": "🎛️ Gestión de Artes"
       },
       "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin"
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subrutinas disponibles"
     },
     "help_menu": {
       "title": "📚 **Yuki - Registro de Artes**",
@@ -77,7 +78,10 @@
       "role_available": "✅ {role} - ACTIVO",
       "role_unavailable": "❌ {role} - EN REPOSO",
       "frequency_help": "📝 Ajusta la cadencia: Usa `!canvas` → Configuración → Frecuencia (rango: 1 a 168 horas)\nEjemplo: Configura frecuencia a 2 horas para recibir actualizaciones cada 2 horas.",
-      "music_help": "🎵 **Música** - `!mc play <nombre>` / `!mc queue` | `!mc help` para consultar el repertorio completo."
+      "music_help": "🎵 **Música** - `!mc play <nombre>` / `!mc queue` | `!mc help` para consultar el repertorio completo.",
+      "button_previous": "◀ Anterior",
+      "button_next": "Siguiente ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
     },
     "behavior_messages": {
       "conversation": {

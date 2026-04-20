@@ -2,18 +2,41 @@
     "roles":{
         "trickster":{
             "dice_game":{
-                "youwin":{
-
-                },
-                "youlose":{
-
-                },
-                "high_pot":{
-                },
-                "pot_winner":{
-                },
-                "not_gold":{
-                }
+                "youwin":[
+                    "🎉 **¡GANASTE!** Las migajas salieron bien... SSSSS",
+                    "🎉 **¡VICTORIA!** La levadura subió... SSSSS",
+                    "🎉 **¡TRIUNFO!** El horno fue bueno hoy... SSSSS",
+                    "🎉 **¡EXCELENTE!** La masa no se quemó... SSSSS",
+                    "🎉 **¡IMPRESIONANTE!** El Amo estará contento... SSSSS"
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... El pan se quemó... SSSSS",
+                    "😢 **MALA SUERTE**... La levadura no subió... SSSSS",
+                    "😢 **NO FUE ESTA VEZ**... El horno estaba frío... SSSSS",
+                    "😢 **VAYA**... La masa se pegó... SSSSS",
+                    "😢 **PERO NO TE RINDAS**... El Amo me castigará... SSSSS"
+                ],
+                "high_pot":[
+                    "💰 **¡LA CESTA CRECE!** La harina se acumula... SSSSS",
+                    "💰 **¡CESTA EN AUGE!** El premio se hace grande... SSSSS",
+                    "💰 **¡ACUMULANDO!** La cesta brilla... SSSSS",
+                    "💰 **¡FORTUNA EN ESPERA!** La cesta reclama su destino... SSSSS",
+                    "💰 **¡CESTA MÁGICA!** La harina espera al afortunado... SSSSS"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DE LA CESTA!!** ¡Has conquistado las migajas del horno!... SSSSS",
+                    "🎉 **¡¡CESTA CONQUISTADA!!** ¡Eres el elegido del Amo!... SSSSS",
+                    "🎉 **¡¡JACKPOT!!** ¡La cesta es tuya!... SSSSS",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has ganado las migajas!... SSSSS",
+                    "🎉 **¡¡CESTA TUYA!!** ¡Una victoria épica!... SSSSS"
+                ],
+                "not_gold":[
+                    "💸 **SIN HARINA**... No tienes suficientes sacos... SSSSS",
+                    "💸 **FONDOS INSUFICIENTES**... Necesitas más sacos de harina... SSSSS",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tus sacos... SSSSS",
+                    "💸 **NO ALCANZA**... Acumula más sacos primero... SSSSS",
+                    "💸 **HARINA ESCASA**... Necesitas fortuna para hornear... SSSSS"
+                ]
             }
         },
         "banker":{
@@ -69,6 +92,25 @@
         "no_servers_available": "❌ No hay sótanos abiertos... Vete al callejón... SSSSS",
         "server_access_error": "❌ No puedo entrar al horno desde aquí... SSSSS...",
         "reply_button_confirmation": "💬 Ahora konversas desde el sótano de **{server_name}**... SSSSS... Tus respuestas usarán esta personalidad hasta ke selektes otro... SSSSS"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ La última kanzion se pegó al horno... No pude kemarla... SSSSS",
+        "play_usage": "🎵 **Uso:** `!mc play <nombre de kanzion o URL>`",
+        "not_in_voice": "🎤 Debes estar en el sótano para usar esto... SSSSS",
+        "nothing_playing": "🎵 No se kemó nada en el horno... SSSSS",
+        "same_voice_channel": "🎤 Debes estar en el mismo sótano que yo... SSSSS",
+        "not_connected": "🎤 No estoy en ningún horno... SSSSS",
+        "queue_empty": "📭 El sótano está vazío... SSSSS",
+        "dj_permissions_required": "🚫 Solo el Amo puede usar esto... SSSSS",
+        "playback_paused": "⏸️ El fuego se apagó... SSSSS",
+        "nothing_paused": "🎵 No hay fuego pausado... SSSSS",
+        "playback_resumed": "▶️ El fuego volvió... SSSSS",
+        "leaving_voice": "👋 Saliendo del sótano... SSSSS",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 El volumen debe ser un número entre 0 y 100... SSSSS",
+        "already_playing": "🎵 Ya kemando en el horno... SSSSS",
+        "queue_cleared": "🗑️ El sótano está limpio... SSSSS",
+        "volume_adjust_failed": "❌ No pude ajustar el fuego... SSSSS"
     }
 
 

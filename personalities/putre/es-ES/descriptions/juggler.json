@@ -22,6 +22,7 @@
         "inactive_instructions": "Para activar la funcionalidad del ring:\n• Un admin debe ir a **Ring Admin**\n• Hacer clic en **Ring: On** para activar\n• Configurar la frecuencia para investigaciones automáticas\n\nUna vez activado, puedes acusar usuarios de llevar el Anillo Único!",
         "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
         "controls": "**Controles**\n- Activar o desactivar ring\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
+        "dm_accusation_header": "👁️ **ACUSACIÓN DEL ANILLO**",
         "admin_description": "Configura la funcionalidad y frecuencia de la caza del anillo",
         "dropdown": {
             "ring_accuse": "Anillo: Acusar",

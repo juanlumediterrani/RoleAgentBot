@@ -16,7 +16,8 @@
       "option_yes": "Sí",
       "option_no": "No",
       "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin"
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subroles disponibles"
     },
     "help_menu": {
       "title": "📚 ** Putre - Menú de Ayuda**",
@@ -61,7 +62,10 @@
       "role_available": "✅ {role} - RUGIENDO Y ZANGRIENTO",
       "role_unavailable": "❌ {role} - PUDRIENDOSE EN LA TIERRA",
       "frequency_help": "📝 Uza `!canvas` → el rol → Admin pa ajustar la frekuensia (de 1 a 168 oras)!",
-      "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!"
+      "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa leer el pergamino gordo de komos ase!",
+      "button_previous": "◀ Atrás",
+      "button_next": "Siguiente ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
     },
     "behavior_messages": {
       "conversation": {

@@ -92,21 +92,69 @@ def _get_personality_dir(server_id: str = None) -> str:
 
 
 def _get_shaman_path(server_id: str = None) -> str:
-    """Return path to databases/{personality}/{language}/descriptions/shaman.json."""
+    """Return path to databases/{server_id}/{personality}/descriptions/shaman.json, fallback to personalities/."""
     personality_dir = _get_personality_dir(server_id)
     parts = personality_dir.split(os.sep)
+
+    # Extract personality name from path
+    personality_name = None
     if 'personalities' in parts:
-        parts[parts.index('personalities')] = 'databases'
-    return os.path.join(os.sep.join(parts), 'descriptions', 'shaman.json')
+        idx = parts.index('personalities')
+        if idx + 1 < len(parts):
+            personality_name = parts[idx + 1]
+    elif 'databases' in parts:
+        idx = parts.index('databases')
+        if idx + 2 < len(parts):
+            personality_name = parts[idx + 2]
+
+    # Construct databases path if server_id is a numeric ID (Discord server IDs are large numbers)
+    if server_id and personality_name and str(server_id).isdigit():
+        db_path = os.path.join(project_root, 'databases', str(server_id), personality_name, 'descriptions', 'shaman.json')
+        if os.path.exists(db_path):
+            return db_path
+
+    # Fallback to personalities/ directory
+    if 'personalities' in parts:
+        return os.path.join(os.sep.join(parts), 'descriptions', 'shaman.json')
+    elif 'databases' in parts:
+        # Already in databases structure, use it as-is
+        return os.path.join(os.sep.join(parts), 'descriptions', 'shaman.json')
+
+    # Ultimate fallback - return the original personality_dir path
+    return os.path.join(personality_dir, 'descriptions', 'shaman.json')
 
 
 def _get_runesplane_path(server_id: str = None) -> str:
-    """Return path to databases/{personality}/{language}/descriptions/runesplane.json."""
+    """Return path to databases/{server_id}/{personality}/descriptions/runesplane.json, fallback to personalities/."""
     personality_dir = _get_personality_dir(server_id)
     parts = personality_dir.split(os.sep)
+
+    # Extract personality name from path
+    personality_name = None
     if 'personalities' in parts:
-        parts[parts.index('personalities')] = 'databases'
-    return os.path.join(os.sep.join(parts), 'descriptions', 'runesplane.json')
+        idx = parts.index('personalities')
+        if idx + 1 < len(parts):
+            personality_name = parts[idx + 1]
+    elif 'databases' in parts:
+        idx = parts.index('databases')
+        if idx + 2 < len(parts):
+            personality_name = parts[idx + 2]
+
+    # Construct databases path if server_id is a numeric ID (Discord server IDs are large numbers)
+    if server_id and personality_name and str(server_id).isdigit():
+        db_path = os.path.join(project_root, 'databases', str(server_id), personality_name, 'descriptions', 'runesplane.json')
+        if os.path.exists(db_path):
+            return db_path
+
+    # Fallback to personalities/ directory
+    if 'personalities' in parts:
+        return os.path.join(os.sep.join(parts), 'descriptions', 'runesplane.json')
+    elif 'databases' in parts:
+        # Already in databases structure, use it as-is
+        return os.path.join(os.sep.join(parts), 'descriptions', 'runesplane.json')
+
+    # Ultimate fallback - return the original personality_dir path
+    return os.path.join(personality_dir, 'descriptions', 'runesplane.json')
 
 
 def _load_shaman_json(server_id: str = None) -> dict:
@@ -182,6 +230,7 @@ ENGLISH_MESSAGES = {
     'runes_page_1_title': "🔮 **THE ELDER FUTHARK - RUNES I (Fehu to Wunjo)** 🔮",
     'runes_page_2_title': "🔮 **THE ELDER FUTHARK - RUNES II (Hagalaz to Sowilo)** 🔮",
     'runes_page_3_title': "🔮 **THE ELDER FUTHARK - RUNES III (Tiwaz to Othala)** 🔮",
+    'nav_page': "Page",
     'types_content': "🔮 **RUNE READING TYPES** 🔮\n\n**single** - Single Rune\n└ Direct answer - Uses 1 rune\n\n**three** - Three Runes\n└ Past, Present, Future - Uses 3 runes\n\n**cross** - Five Rune Cross\n└ Full situation map - Uses 5 runes\n\n**runic_cross** - Runic Cross\n└ Deep seven-rune reading - Uses 7 runes\n",
     'help_content': "🔮 **NORDIC RUNES WISDOM** 🔮\n\nThe Elder Futhark are ancient Norse symbols used for divination and guidance.\n\n**Available readings:**\n• **Single rune** - Direct answer to a specific question\n• **Three runes** - Past, Present, Future\n• **Five rune cross** - Full situation analysis\n• **Seven rune cross** - Deep spiritual guidance\n\nChoose your casting type and ask the ancient runes!",
     # labels for rune fields
@@ -254,75 +303,93 @@ def get_guidance_messages(category: str, server_id: str = None) -> dict:
         guidance_data = _load_runesplane_json(server_id).get('guidance', {})
     return guidance_data.get(category, {})
 
-def get_runes_list_content(page: int = 1, server_id: str = None) -> str:
-    """Generate runes list content dynamically from runesplane.json with pagination."""
-    # Load personality messages for page titles
+_RUNE_ORDER = [
+    ('fehu',     'ᚠ', 'Fehu'),
+    ('uruz',     'ᚢ', 'Uruz'),
+    ('thurisaz', 'ᚦ', 'Thurisaz'),
+    ('ansuz',    'ᚨ', 'Ansuz'),
+    ('raidho',   'ᚱ', 'Raidho'),
+    ('kenaz',    'ᚲ', 'Kenaz'),
+    ('gebo',     'ᚷ', 'Gebo'),
+    ('wunjo',    'ᚹ', 'Wunjo'),
+    ('hagalaz',  'ᚺ', 'Hagalaz'),
+    ('nauthiz',  'ᚾ', 'Nauthiz'),
+    ('isa',      'ᛁ', 'Isa'),
+    ('jera',     'ᛃ', 'Jera'),
+    ('eiwaz',    'ᛇ', 'Eiwaz'),
+    ('perthro',  'ᛈ', 'Perthro'),
+    ('algiz',    'ᛉ', 'Algiz'),
+    ('sowilo',   'ᛊ', 'Sowilo'),
+    ('tiwaz',    'ᛏ', 'Tiwaz'),
+    ('berkano',  'ᛒ', 'Berkano'),
+    ('ehwaz',    'ᛖ', 'Ehwaz'),
+    ('mannaz',   'ᛗ', 'Mannaz'),
+    ('laguz',    'ᛚ', 'Laguz'),
+    ('ingwaz',   'ᛜ', 'Ingwaz'),
+    ('dagaz',    'ᛞ', 'Dagaz'),
+    ('othala',   'ᛟ', 'Othala'),
+]
+RUNES_PER_PAGE = 8
+
+
+def get_runes_page_data(page: int = 1, server_id: str = None) -> list:
+    """Return structured rune data for the given page as a list of dicts."""
     messages = load_personality_messages(server_id)
-
-    # Labels from shaman.json
     labels_data = _load_shaman_json(server_id).get('nordic_runes', {}).get('labels', {})
-
-    # Rune translations from runesplane.json, fallback to inline RUNES
     runesplane = _load_runesplane_json(server_id)
     runes_data = runesplane.get('translations') or _runes_fallback_data()
-    
-    # Define rune symbols and names (Elder Futhark order)
-    rune_order = [
-        ('fehu', 'ᚠ', 'Fehu'),
-        ('uruz', 'ᚢ', 'Uruz'),
-        ('thurisaz', 'ᚦ', 'Thurisaz'),
-        ('ansuz', 'ᚨ', 'Ansuz'),
-        ('raidho', 'ᚱ', 'Raidho'),
-        ('kenaz', 'ᚲ', 'Kenaz'),
-        ('gebo', 'ᚷ', 'Gebo'),
-        ('wunjo', 'ᚹ', 'Wunjo'),
-        ('hagalaz', 'ᚺ', 'Hagalaz'),
-        ('nauthiz', 'ᚾ', 'Nauthiz'),
-        ('isa', 'ᛁ', 'Isa'),
-        ('jera', 'ᛃ', 'Jera'),
-        ('eiwaz', 'ᛇ', 'Eiwaz'),
-        ('perthro', 'ᛈ', 'Perthro'),
-        ('algiz', 'ᛉ', 'Algiz'),
-        ('sowilo', 'ᛊ', 'Sowilo'),
-        ('tiwaz', 'ᛏ', 'Tiwaz'),
-        ('berkano', 'ᛒ', 'Berkano'),
-        ('ehwaz', 'ᛖ', 'Ehwaz'),
-        ('mannaz', 'ᛗ', 'Mannaz'),
-        ('laguz', 'ᛚ', 'Laguz'),
-        ('ingwaz', 'ᛜ', 'Ingwaz'),
-        ('dagaz', 'ᛞ', 'Dagaz'),
-        ('othala', 'ᛟ', 'Othala')
-    ]
-    
-    # Calculate pagination - 8 runes per page
-    runes_per_page = 8
-    start_idx = (page - 1) * runes_per_page
-    end_idx = start_idx + runes_per_page
-    page_runes = rune_order[start_idx:end_idx]
-    
-    # Page titles with rune ranges - get from descriptions.json with fallback
-    page_titles = {
-        1: messages.get('runes_page_1_title', "🔮 **THE ELDER FUTHARK - RUNES I (Fehu to Wunjo)** 🔮"),
-        2: messages.get('runes_page_2_title', "🔮 **THE ELDER FUTHARK - RUNES II (Hagalaz to Sowilo)** 🔮"), 
-        3: messages.get('runes_page_3_title', "🔮 **THE ELDER FUTHARK - RUNES III (Tiwaz to Othala)** 🔮")
-    }
-    
-    content = page_titles.get(page, f"🔮 **THE ELDER FUTHARK - RUNES {page}** 🔮") + "\n\n" + "-"*55 + "\n\n"
 
-    # Generate content for this page by looping through runesplane.json data
-    title_meaning = labels_data.get("meaning", "Significado:")
-    title_keywords = labels_data.get("keywords", "Palabras Clave:")
-    title_interpretation = labels_data.get("interpretation", "Interpretación:")
-    
+    start_idx = (page - 1) * RUNES_PER_PAGE
+    page_runes = _RUNE_ORDER[start_idx:start_idx + RUNES_PER_PAGE]
+
+    result = []
     for rune_key, symbol, name in page_runes:
         rune_info = runes_data.get(rune_key, {})
-        meaning = rune_info.get('meaning', 'Unknown')
-        keywords = rune_info.get('keywords', [])
-        interpretation = rune_info.get('interpretation', 'No description')
-        
-        content += f"**{symbol} {name}**\n"
-        content += f"{title_meaning} {meaning}\n"
-        content += f"{title_keywords} {keywords}\n"
-        content += f"{title_interpretation} {interpretation}\n\n"
-    
+        fallback_rune = RUNES.get(rune_key, {})
+        result.append({
+            'key':            rune_key,
+            'symbol':         symbol,
+            'name':           name,
+            'meaning':        rune_info.get('meaning',        fallback_rune.get('meaning',      'Unknown')),
+            'keywords':       rune_info.get('keywords',       fallback_rune.get('keywords',     [])),
+            'interpretation': rune_info.get('interpretation', fallback_rune.get('description',  'No description')),
+            'labels':         labels_data,
+        })
+    return result
+
+
+def get_runes_list_content(page: int = 1, server_id: str = None) -> str:
+    """Generate runes list content dynamically from runesplane.json with pagination.
+
+    Format per rune:
+        **symbol name**: meaning
+        keyword_label: kw1, kw2, …
+    """
+    shaman_data = _load_shaman_json(server_id)
+    labels_data = shaman_data.get('nordic_runes', {}).get('labels', {})
+
+    runesplane = _load_runesplane_json(server_id)
+    runes_data = runesplane.get('translations') or _runes_fallback_data()
+
+    start_idx = (page - 1) * RUNES_PER_PAGE
+    page_runes = _RUNE_ORDER[start_idx:start_idx + RUNES_PER_PAGE]
+
+    # Page titles - get from shaman.json in databases (nordic_runes section), fallback to ENGLISH_MESSAGES
+    raw_title = shaman_data.get('nordic_runes', {}).get(f'runes_page_{page}_title')
+    if raw_title:
+        page_title = raw_title
+    else:
+        # Fallback to ENGLISH_MESSAGES
+        fallback_key = f'runes_page_{page}_title'
+        page_title = ENGLISH_MESSAGES.get(fallback_key, f'🔮 THE ELDER FUTHARK - RUNES {page} 🔮')
+
+    content = page_title + "\n\n"
+
+    for rune_key, symbol, name in page_runes:
+        rune_info = runes_data.get(rune_key, {})
+        fallback_rune = RUNES.get(rune_key, {})
+        meaning  = rune_info.get('meaning',  fallback_rune.get('meaning',  'Unknown'))
+        content += f"**{symbol} {name}**: \n"
+        content += f"{meaning}\n"
+
     return content

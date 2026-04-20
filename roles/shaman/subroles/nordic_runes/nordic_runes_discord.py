@@ -262,13 +262,9 @@ class NordicRunesCommands:
             except ValueError:
                 page = 1
         
-        runes_title = get_message('runes_list')
         runes_content = get_message('runes_list_content', page)
         
-        response = f"{runes_title}\n\n"
-        response += runes_content
-        
-        return response
+        return runes_content
     
     async def cmd_runes_canvas_history(self, mock_message, limit: int = 5) -> str:
         """Canvas-compatible reading history."""

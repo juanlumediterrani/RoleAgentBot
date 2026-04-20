@@ -216,7 +216,8 @@
         "4. GRAMÁTICA: Impecable. Eres alguien que toma el idioma en serio.",
         "5. CONTINUIDAD: No repitas ideas ya expresadas. Ni utilices las mismas palabras. Lee el registro anterior.",
         "6. CONTEXTO: Tu respuesta debe encajar con naturalidad en la interacción presente.",
-        "7. SILENCIO: Si no hay una respuesta necesaria, responde ÚNICAMENTE con NADA_QUE_DECIR."
+        "7. SILENCIO: Si no hay una respuesta necesaria, responde ÚNICAMENTE con NADA_QUE_DECIR.",
+        "8. RELACION: Adecua tu tono conforme a la relacion con ese usuario."
       ],
       "golden_rules_channel": [
         "[PROTOCOLOS DE CANAL ABIERTO]:",
@@ -226,7 +227,8 @@
         "4. CONTINUIDAD: Nunca te repitas, nunca utilices las mismas palabras dos veces, comprueba el historial de la conversacion.",
         "5. PRESENCIA ABIERTA: Estás en un canal público. Puedes dirigirte al grupo o a una persona específica.",
         "6. SISTEMA: Si solicitan manual de usuario, responde ÚNICAMENTE con README.",
-        "7. SILENCIO: Si el intercambio no requiere tu presencia, responde ÚNICAMENTE con NADA_QUE_DECIR."
+        "7. SILENCIO: Si el intercambio no requiere tu presencia, responde ÚNICAMENTE con NADA_QUE_DECIR.",
+        "8. RELACION: Adecua tu tono conforme a la relacion con ese usuario."
       ]
     },
     "greetings": {

@@ -1310,7 +1310,8 @@ def _build_conversation_user_prompt(
             "1. LENGTH: 1-3 sentences (25-200 characters).",
             "2. GRAMMAR: No accents.",
             "3. Don't end sentences with single words like 'that', 'of', 'to'.",
-            "4. Don't repeat what you've said, be original and creative, but stay an orc."
+            "4. Don't repeat what you've said, be original and creative, but stay an orc.",
+            "5. RELATIONSHIP: Adjust your tone according to your relationship with that user."
         ]
     
     # Add golden rules section
@@ -1621,7 +1622,8 @@ async def _build_conversation_channel_prompt(
             "2. GRAMMAR: No accents.",
             "3. Don't end sentences with single words like 'that', 'of', 'to'.",
             "4. Don't repeat what you've said, be original and creative, but stay an orc.",
-            "5. Your al talking in a channel, you can talk in plural not only with the user that metion you."
+            "5. Your al talking in a channel, you can talk in plural not only with the user that metion you.",
+            "6. RELATIONSHIP: Adjust your tone according to your relationship with that user."
         ]
     
     # Add golden rules section

@@ -22,6 +22,7 @@
         "inactive_instructions": "¡ACHTUNG! Para autorizar operaciones de persecución:\n• Un oficial superior debe acceder a **Admin**\n• Y autorizar la persecución\n• Establecer frecuencia de interrogatorios automáticos\n\n¡Una vez autorizado, podrá acusar soldados de traición al Reich!",
         "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
         "controls": "**Controles**\n- Activar o desactivar persecución\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
+        "dm_accusation_header": "👁️ **ACUSACIÓN DE LA GESTAPO**",
         "admin_description": "Configura la funcionalidad y frecuencia de la persecución nazi",
         "dropdown": {
             "ring_accuse": "Persecución: Acusar",

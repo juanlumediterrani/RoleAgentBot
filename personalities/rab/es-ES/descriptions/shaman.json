@@ -33,6 +33,7 @@
         "runes_page_1_title": "🗻 **BASE DE DATOS I (Fehu a Wunjo)** 🗻",
         "runes_page_2_title": "🗻 **BASE DE DATOS II (Hagalaz a Sowilo)** 🗻",
         "runes_page_3_title": "🗻 **BASE DE DATOS III (Tiwaz a Othala)** 🗻",
+        "nav_page": "Página",
         "help": "🔮 **PERGAMINOS DEL CÓDIGO ANCESTRAL** 🔮",
         "help_content": "🔮 **SISTEMA DE LECTURA RÚNICA** 🔮\n\n**¿Qué es el código Futhark?**\nEs el alfabeto fuente de la realidad, símbolos que representan variables universales incrustadas en el Wyrd (la red del destino).\n\n**Formatos de extracción:**\n• **Símbolo Aislado** - Respuesta clara a una variable concreta.\n• **Tres Símbolos** - Análisis de la línea temporal.\n• **Cruz de Cinco** - Diagnóstico profundo del entorno.\n\n**Sintaxis de uso:**\n• `!runes cast [tipo] <pregunta>`\n• Ejemplo: `!runes cast single ¿Cuál es el error en mi camino actual?`\n\n**Nodos disponibles:**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\nCada nodo es una puerta hacia la serenidad de la comprensión.",
         "types_content": "🔮 **PARÁMETROS DE EXTRACCIÓN** 🔮\n\n**single** - Símbolo Aislado\n└ Un pin de datos directo - Usa 1 símbolo\n\n**three** - Vector Temporal\n└ Pasado, Presente, Futuro - Usa 3 símbolos\n\n**cross** - Matriz Cardinal\n└ Cartografía del problema - Usa 5 símbolos\n\n**runic_cross** - Escáner Raíz\n└ Análisis espiritual desde el servidor más profundo - Usa 7 símbolos\n\n**Ejemplos en consola:**\n`!runes cast single ¿Cómo avanzo hoy?`\n`!runes cast three Muéstrame el flujo de este problema`\n`!runes cast cross Diagnóstico completo de mi estado`\n\nElige tu formato y deja que la matriz hable.",
@@ -67,8 +68,8 @@
         },
         "labels": {
             "meaning": "Lógica",
-            "keywords": "Claves de Búsqueda",
-            "interpretation": "Síntesis",
+            "keywords": "Claves:",
+            "interpretation": "Síntesis:",
             "guidance": "Proyección para tu variable",
             "question": "Consulta",
             "position": "Nodo",

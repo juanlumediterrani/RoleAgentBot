@@ -32,11 +32,13 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
     from .content import _get_personality_descriptions
     roles_messages = {}
     trickster_messages = {}
+    general_messages = {}
     try:
         server_id = get_server_key(guild) if guild else None
         personality_descriptions = _get_personality_descriptions(server_id)
         roles_messages = personality_descriptions.get("role_descriptions", {})
         trickster_messages = roles_messages.get("trickster", {})
+        general_messages = personality_descriptions.get("general", {})
     except Exception:
         pass
 
@@ -55,6 +57,11 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
         else:
             value = trickster_messages.get(key)
         
+        return str(value).strip() if value else fallback
+
+    def _general_text(key: str, fallback: str) -> str:
+        """Get text from general messages."""
+        value = general_messages.get(key)
         return str(value).strip() if value else fallback
 
     # Load all subroles from roles_config database (single source of truth)
@@ -91,19 +98,13 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
             active_descriptions.append(subrole_descriptions[subrole])
 
     parts = [
-        _trickster_text("canvas_trickster_overview_title", "🎭Canvas - Trickster"),
         _trickster_text("description", "Description: Trickster is a minigame based role."),
     ]
 
     if active_descriptions:
-        parts.append("**Available subroles**")
+        parts.append(f"**{_general_text('available_subroles', 'Available subroles')}**")
         parts.extend(active_descriptions)
 
-    parts += [
-        "",
-        "**Live state**",
-        f"**Live state:** dice bet {dice_state['bet']:,} | pot {dice_state['pot_balance']:,}",
-    ]
 
     return "\n".join(parts)
 
@@ -145,7 +146,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         pot_title = _trickster_text("dice_game.current_balance", "💎 **CURRENT POT:**")
         fixed_bet = _trickster_text("dice_game.fixed_bet", "💎 **FIXED BET:**")
         game_description = _trickster_text("dice_game.description", "Test your luck against the Dice POT! Roll the dice and win big prizes!")
-        dice_rules = _trickster_text("dice_game.rules", "-Triple Ones you won the POT!\n -n Hight Straight (4,5,6) you won x5 the bet.\n -Any Triple, you won x3 the bet.\n -The pairs will return you the bet.\n ")
+        dice_rules = _trickster_text("dice_game.rules", "-Triple Ones you won the POT!\n -n Hight Straight (4,5,6) you won x5 the bet.\n -Any Triple, you won x3 the bet.\n -The pairs will return you the bet.")
         parts = [
             title,
             game_description,

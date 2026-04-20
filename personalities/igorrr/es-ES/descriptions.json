@@ -16,7 +16,8 @@
       "option_yes": "Sí",
       "option_no": "No",
       "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin"
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Sub-labores disponibles"
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
@@ -101,7 +102,10 @@
       "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA**\n\nIgorrr está rascándose la sarna. Pide al Amo que active algo.\n\n**Labores posibles:**\n• 📡 News Watcher - Vigilante\n• 💎 Treasure Hunter - Buscador de chatarra\n• 🎭 Trickster - Mendigo y cenizas\n• 🌾 Banker - La despensa del Amo\n• 🎵 MC - El gramófono oxidado",
       "role_list_title": "☠️ Tareas y Castigos",
       "role_available": "✅ {role} - SIBILANTE Y LISTO",
-      "role_unavailable": "❌ {role} - RASCÁNDOSE LA SARNA"
+      "role_unavailable": "❌ {role} - RASCÁNDOSE LA SARNA",
+      "button_previous": "◀ Atrás",
+      "button_next": "Siguiente ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
     },
     "settings_labels": {
       "taboo": {

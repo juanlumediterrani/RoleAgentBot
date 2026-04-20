@@ -90,8 +90,6 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
             logger.warning(f"Could not load banker state for Canvas: {error}")
 
     content_parts = [
-        
-        get_messages(server_db_path, "title").strip() if get_messages and server_db_path else "title",
         get_messages(server_db_path, "description").strip() if get_messages and server_db_path else "description",
         "-" * 45,
         get_messages(server_db_path, "wallet_information").strip() if get_messages and server_db_path else "wallet_information",
@@ -152,9 +150,8 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
         beggar_state = _get_canvas_beggar_state(guild)
         
         # Get beggar messages from beggar_messages.py
-        title = get_canvas_message(server_db_path, "title") if get_canvas_message else "🪙 **RECAUDATIONS** 🪙"
         fund_title = get_canvas_message(server_db_path, "current_fund") if get_canvas_message else "Current found:"
-        description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week.\n Maybe you won some gold."
+        description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week. Maybe you won some gold."
         title_reason = get_canvas_message(server_db_path, "title_reason") if get_canvas_message else "Reason:"
         title_campaing = get_canvas_message(server_db_path, "title_campaign") if get_canvas_message else "**Current campaing**"
         title_instructions = get_canvas_message(server_db_path, "title_instructions") if get_canvas_message else "**Instructions**"
@@ -162,7 +159,6 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
         title_donations = get_canvas_message(server_db_path, "title_donations") if get_canvas_message else "📊 **Donations:**"
     
         parts = [
-            title,
             description,
             "-" * 45,
             title_campaing,
@@ -195,11 +191,9 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
         general = personality_descriptions.get("general", {})
         
         # Get beggar messages from beggar_messages.py
-        title = get_canvas_message(server_db_path, "title") if get_canvas_message else "🪙 **RECAUDATIONS** 🪙"
-        description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week.\n Maybe you won some gold."
+        description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week. Maybe you won some gold."
         
         return "\n".join([
-            title,
             description,
             "-" * 45,
             general.get("current_settings", "**Current Settings**"),
@@ -496,79 +490,6 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
             await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
             return
 
-        content_parts = [f"🏦 **BANKER - {action_name.upper()}** 🏦", ""]
-
-        if action_name == "balance":
-            wallet = db_banker.get_banker_wallet(user_id)
-            balance = wallet.get("balance", 0) if wallet else 0
-            content_parts.extend([
-                f"💰 **Your Balance:** {balance:,} :coin:",
-                f"👤 **Account:** {user_name}",
-                f"🏛️ **Server:** {server_id}",
-            ])
-        elif action_name == "tae":
-            try:
-                from agent_db import get_tae_config
-                tae_config = get_tae_config(server_id)
-                tae_rate = tae_config.get("rate", 1.0)
-                tae_enabled = tae_config.get("enabled", False)
-                content_parts.extend([
-                    "📊 **TAE Configuration**",
-                    f"📈 **Rate:** {tae_rate:.2%}",
-                    f"🔧 **Status:** {'✅ Enabled' if tae_enabled else '❌ Disabled'}",
-                    f"🏛️ **Server:** {server_id}",
-                ])
-            except Exception:
-                content_parts.extend([
-                    "📊 **TAE Configuration**",
-                    "❌ **Error:** Could not load TAE configuration",
-                ])
-        elif action_name == "bonus":
-            try:
-                from agent_db import get_bonus_config
-                bonus_config = get_bonus_config(server_id)
-                bonus_rate = bonus_config.get("rate", 10)
-                bonus_enabled = bonus_config.get("enabled", False)
-                content_parts.extend([
-                    "🎁 **Bonus Configuration**",
-                    f"💎 **Rate:** {bonus_rate}%",
-                    f"🔧 **Status:** {'✅ Enabled' if bonus_enabled else '❌ Disabled'}",
-                    f"🏛️ **Server:** {server_id}",
-                ])
-            except Exception:
-                content_parts.extend([
-                    "🎁 **Bonus Configuration**",
-                    "❌ **Error:** Could not load bonus configuration",
-                ])
-        else:
-            await interaction.response.send_message("❌ Unknown banker action.", ephemeral=True)
-            return
-
-        content = "\n".join(content_parts)
-
-        from .content import _build_canvas_role_embed
-        from discord_bot.canvas.ui import CanvasRoleDetailView
-
-        role_embed = _build_canvas_role_embed("banker", content, view.admin_visible, "overview", None, "")
-        view.current_embed = role_embed
-
-        next_view = CanvasRoleDetailView(
-            author_id=view.author_id,
-            role_name=view.role_name,
-            agent_config=view.agent_config,
-            admin_visible=view.admin_visible,
-            sections=view.sections,
-            current_detail="overview",
-            guild=view.guild,
-            previous_view=view,
-        )
-
-        try:
-            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
-        except discord.InteractionResponded:
-            await interaction.followup.edit_message(interaction.message.id, embed=role_embed, view=next_view)
-        except discord.NotFound:
-            await interaction.followup.send(embed=role_embed, view=next_view, ephemeral=True)
     except Exception as e:
         logger.exception(f"Canvas banker action failed: {e}")
         try:

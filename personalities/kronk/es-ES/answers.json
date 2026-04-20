@@ -2,18 +2,41 @@
     "roles":{
         "trickster":{
             "dice_game":{
-                "youwin":{
-
-                },
-                "youlose":{
-
-                },
-                "high_pot":{
-                },
-                "pot_winner":{
-                },
-                "not_gold":{
-                }
+                "youwin":[
+                    "🎉 **¡GANASTE!** ¡El metal se fundió bien! 🔨",
+                    "🎉 **¡VICTORIA!** ¡La forja te sonríe, orko! 🔨",
+                    "🎉 **¡TRIUNFO!** ¡Has vencido al fuego! 🔨",
+                    "🎉 **¡EXCELENTE!** ¡El acero está de tu lado! 🔨",
+                    "🎉 **¡IMPRESIONANTE!** ¡Una forja maestra! 🔨"
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... El fuego fue cruel hoy... 🔨",
+                    "😢 **MALA SUERTE**... El metal se rompió... 🔨",
+                    "😢 **NO FUE ESTA VEZ**... El yunke falló... 🔨",
+                    "😢 **VAYA**... El carbón no ardía... 🔨",
+                    "😢 **PERO NO TE RINDAS**... ¡La próxima será mejor! 🔨"
+                ],
+                "high_pot":[
+                    "💰 **¡EL POZO CRECE!** ¡El metal se acumula! 🔨",
+                    "💰 **¡POT EN AUGE!** ¡El premio se hace legendario! 🔨",
+                    "💰 **¡ACUMULANDO!** ¡El pozo brilla con promesa! 🔨",
+                    "💰 **¡FORTUNA EN ESPERA!** ¡El pozo reclama su destino! 🔨",
+                    "💰 **¡POZO MÁGICO!** ¡El oro espera al afortunado! 🔨"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DEL POZO!!** ¡Has conquistado el tesoro de la forja! 🔨",
+                    "🎉 **¡¡POZO CONQUISTADO!!** ¡Eres el elegido del orko! 🔨",
+                    "🎉 **¡¡JACKPOT!!** ¡El pozo es tuyo! 🔨",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has ganado el gran premio! 🔨",
+                    "🎉 **¡¡POZO TUYO!!** ¡Una victoria épica! 🔨"
+                ],
+                "not_gold":[
+                    "💸 **SIN ORO**... No tienes suficientes zakos... 🔨",
+                    "💸 **FONDOS INSUFICIENTES**... Necesitas más zakos... 🔨",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tu tesoro... 🔨",
+                    "💸 **NO ALCANZA**... Acumula más zakos primero... 🔨",
+                    "💸 **TESORO ESCASO**... Necesitas fortuna para jugar... 🔨"
+                ]
             }
         },
         "banker":{
@@ -69,6 +92,25 @@
         "no_servers_available": "❌ ¡No hay forjas disponibles! ¡Ve a una forja orko! 🔨",
         "server_access_error": "❌ ¡No puedo entrar a la forja desde aquí! ¡Ve a la forja! 🔨",
         "reply_button_confirmation": "💬 ¡Kronk ahora habla desde la forja de **{server_name}**! ¡Tus respuestas usarán esta personalidad hasta ke selektes otra! 🔨"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ ¡El metal no se fundió! ¡No pude eliminar la última kanzion de la forja! 🔨",
+        "play_usage": "🎵 **Uso:** `!mc play <nombre de kanzion o URL>`",
+        "not_in_voice": "🎤 ¡Kronk necesita que estés en la forja! 🔨",
+        "nothing_playing": "🎵 ¡Nada se funde en la forja! 🔨",
+        "same_voice_channel": "🎤 ¡Debes estar en la misma forja que Kronk! 🔨",
+        "not_connected": "🎤 ¡Kronk no está en ninguna forja! 🔨",
+        "queue_empty": "📭 ¡La forja está vazía! 🔨",
+        "dj_permissions_required": "🚫 ¡Solo el jefe orko puede usar esto! 🔨",
+        "playback_paused": "⏸️ ¡El fuego se detuvo! 🔨",
+        "nothing_paused": "🎵 ¡No hay fuego pausado! 🔨",
+        "playback_resumed": "▶️ ¡El fuego volvió! 🔨",
+        "leaving_voice": "👋 ¡Kronk sale de la forja! 🔨",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 ¡El volumen debe ser un número entre 0 y 100! 🔨",
+        "already_playing": "🎵 ¡Ya fundiendo en la forja! 🔨",
+        "queue_cleared": "🗑️ ¡Forja limpia! 🔨",
+        "volume_adjust_failed": "❌ ¡No pude ajustar el fuego! 🔨"
     }
 
 

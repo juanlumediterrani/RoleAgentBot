@@ -1433,13 +1433,11 @@ def build_canvas_role_news_watcher_detail(
 
     def _get_watcher_personal_intro_block() -> str:
         return "\n".join([
-            _watcher_text('title', 'News Watcher Personal'),
             _watcher_text('description', 'Build and maintain your personal news subscriptions. Choose a method first, then subscribe to categories or feeds, or review your keywords and premises.'),
         ])
 
     def _get_watcher_admin_intro_block() -> str:
         return "\n".join([
-            f"{_watcher_text('title', '📡 News Watcher')} Admin",
             _watcher_text("description", "Manage channel subscriptions with the same flow as personal view, but applied to channels. Choose a method, then manage categories, feeds, and server actions."),
         ])
 

@@ -4,6 +4,7 @@ import os
 import asyncio
 import discord
 import json
+import random
 from pathlib import Path
 
 # Import core components directly to avoid circular imports
@@ -980,7 +981,7 @@ class CanvasSectionSelect(discord.ui.Select):
             if not roles_content:
                 await interaction.response.send_message("❌ This Canvas section is not available.", ephemeral=True)
                 return
-            roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild)
+            roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild, current_page=1, roles_per_page=5)
             roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
             roles_view.current_embed = roles_embed  # Store embed for back navigation
             await interaction.response.edit_message(content=None, embed=roles_embed, view=roles_view)
@@ -1513,7 +1514,7 @@ class CanvasNavRolesButton(discord.ui.Button):
         if not roles_content:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
-        roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild)
+        roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild, current_page=1, roles_per_page=5)
         roles_view.message = interaction.message
         roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
         roles_view.current_embed = roles_embed  # Store embed for back navigation
@@ -1651,9 +1652,9 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
 
 
 class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, discord.ui.View):
-    """Interactive role navigation for enabled roles."""
+    """Interactive role navigation for enabled roles with pagination."""
 
-    def __init__(self, author_id: int, agent_config: dict, admin_visible: bool, sections: dict[str, str], message=None, guild=None):
+    def __init__(self, author_id: int, agent_config: dict, admin_visible: bool, sections: dict[str, str], message=None, guild=None, current_page: int = 1, roles_per_page: int = 5):
         super().__init__(timeout=900)  # 15 minutes
         self.author_id = author_id
         self.agent_config = agent_config
@@ -1662,7 +1663,10 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
         self.message = message  # Store the message to delete it later
         self.guild = guild
         self.current_embed = None  # Store current embed for back navigation
+        self.current_page = current_page
+        self.roles_per_page = roles_per_page
         self._add_role_buttons()
+        self._add_pagination_buttons()
         
         # Start the timeout timer
         self._reset_timeout()
@@ -1679,7 +1683,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
         return True
 
     def _add_role_buttons(self):
-        """Add a button for each enabled role."""
+        """Add buttons for enabled roles on current page (max 5 per page)."""
         server_id = get_server_key(self.guild) if self.guild else None
         _roles_desc = _get_personality_descriptions(server_id).get("role_descriptions", {})
         button_watcher = _roles_desc.get("news_watcher", {}).get("button", "Watcher")
@@ -1699,13 +1703,98 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
             "mc": button_mc,
             "juggler": button_juggler,
         }
-        for role_name in _get_enabled_roles(self.agent_config, getattr(self, 'guild', None)):
+        
+        # Get all enabled roles
+        all_enabled_roles = _get_enabled_roles(self.agent_config, getattr(self, 'guild', None))
+        
+        # Calculate pagination
+        total_roles = len(all_enabled_roles)
+        total_pages = (total_roles + self.roles_per_page - 1) // self.roles_per_page if total_roles > 0 else 1
+        self.current_page = max(1, min(self.current_page, total_pages))
+        
+        # Get roles for current page
+        start_idx = (self.current_page - 1) * self.roles_per_page
+        end_idx = start_idx + self.roles_per_page
+        page_roles = all_enabled_roles[start_idx:end_idx]
+        
+        # Add buttons for roles on current page
+        for role_name in page_roles:
             label = role_labels.get(role_name, role_name.replace("_", " ").title())
             self.add_item(CanvasRoleButton(label=label, role_name=role_name))
 
+    def _add_pagination_buttons(self):
+        """Add pagination buttons (previous/next) if there are multiple pages."""
+        # Get all enabled roles to calculate total pages
+        all_enabled_roles = _get_enabled_roles(self.agent_config, getattr(self, 'guild', None))
+        total_roles = len(all_enabled_roles)
+        total_pages = (total_roles + self.roles_per_page - 1) // self.roles_per_page if total_roles > 0 else 1
+        
+        # Only add pagination buttons if there are multiple pages
+        if total_pages > 1:
+            # Add previous button if not on first page
+            if self.current_page > 1:
+                self.add_item(CanvasRolesPageButton(label_key="button_previous", page_offset=-1, row=2, guild=self.guild))
+            
+            # Add next button if not on last page
+            if self.current_page < total_pages:
+                self.add_item(CanvasRolesPageButton(label_key="button_next", page_offset=1, row=2, guild=self.guild))
+        
         # Add navigation buttons using mixins
         self.add_smart_back_button()
         self.add_home_button()
+
+
+class CanvasRolesPageButton(discord.ui.Button):
+    """Button that navigates to previous or next page of roles."""
+
+    def __init__(self, label_key: str, page_offset: int, row: int = 2, guild=None):
+        # Get label from personality descriptions
+        server_id = get_server_key(guild) if guild else None
+        _roles_desc = _get_personality_descriptions(server_id).get("roles_view_messages", {})
+        label = _roles_desc.get(label_key, label_key.replace("button_", "").title())
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, row=row)
+        self.page_offset = page_offset
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        if not isinstance(view, CanvasRolesView):
+            await interaction.response.send_message("❌ Canvas role navigation is not available.", ephemeral=True)
+            return
+
+        # Calculate new page
+        new_page = view.current_page + self.page_offset
+        if new_page < 1:
+            new_page = 1
+
+        # Rebuild roles content with new page
+        from .content import _build_canvas_roles
+        roles_content = _build_canvas_roles(
+            view.agent_config,
+            view.admin_visible,
+            view.guild,
+            page=new_page,
+            roles_per_page=view.roles_per_page
+        )
+
+        # Update sections with new roles content
+        view.sections["roles"] = roles_content
+
+        # Create new view with updated page
+        new_view = CanvasRolesView(
+            author_id=view.author_id,
+            agent_config=view.agent_config,
+            admin_visible=view.admin_visible,
+            sections=view.sections,
+            message=interaction.message,
+            guild=view.guild,
+            current_page=new_page,
+            roles_per_page=view.roles_per_page
+        )
+        new_view.current_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
+
+        # Update message with new view
+        await interaction.response.edit_message(embed=new_view.current_embed, view=new_view)
+        new_view.message = interaction.message
 
 
 class CanvasRoleButton(discord.ui.Button):
@@ -2566,15 +2655,18 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
                         "",
                     ])
                     if prize == dice_state['pot_balance']:
-                        pot_winner_msg = answers.get("pot_won", "🎉 **POT WINNER!!!**")
+                        pot_winner_msgs = answers.get("pot_winner", ["🎉 **POT WINNER!!!**"])
+                        pot_winner_msg = random.choice(pot_winner_msgs) if isinstance(pot_winner_msgs, list) else pot_winner_msgs
                         content_parts.append(f"{prize_title} **{prize:,}** :coin:")
                         content_parts.append(f"\n{pot_winner_msg}\n")
                     elif prize > 0:
-                        winner_msg = answers.get("winner", "🎉 **WINNER!!!**")
+                        winner_msgs = answers.get("youwin", ["🎉 **WINNER!!!**"])
+                        winner_msg = random.choice(winner_msgs) if isinstance(winner_msgs, list) else winner_msgs
                         content_parts.append(f"{prize_title} **{prize:,}** :coin:")
                         content_parts.append(f"\n{winner_msg}\n")
                     else:
-                        loser_msg = answers.get("loser", "😢 **LOSER!**")
+                        loser_msgs = answers.get("youlose", ["😢 **LOSER!**"])
+                        loser_msg = random.choice(loser_msgs) if isinstance(loser_msgs, list) else loser_msgs
                         content_parts.append(f"{prize_title} **{prize:,}** :coin:")
                         content_parts.append(f"\n{loser_msg}\n")
                     

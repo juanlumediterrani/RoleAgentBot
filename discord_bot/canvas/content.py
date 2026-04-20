@@ -172,7 +172,7 @@ def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: st
         "behavior": behavior_content,
         "behavior_title": behavior_title,
         "behavior_description": behavior_description,
-        "roles": _build_canvas_roles(agent_config, admin_visible, guild),
+        "roles": _build_canvas_roles(agent_config, admin_visible, guild, page=1, roles_per_page=5),
         "personal": _build_canvas_personal(),
         "help": _build_canvas_help(guild),
     }
@@ -198,8 +198,6 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
         # Get home title from descriptions.json
         canvas_home_messages = personality_descriptions.get("canvas_home_messages", {})
         home_title = canvas_home_messages.get("title", "🧭 Canvas Hub")
-        # Remove ** for embed title
-        home_title = home_title.replace("**", "")
 
         titles = {
             "home": home_title,
@@ -212,8 +210,6 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
         # Get home title from descriptions.json
         canvas_home_messages = personality_descriptions.get("canvas_home_messages", {})
         home_title = canvas_home_messages.get("title", "🧭 Canvas Hub")
-        # Remove ** for embed title
-        home_title = home_title.replace("**", "")
 
         titles = {
             "home": home_title,
@@ -247,15 +243,25 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     if section_name == "home":
         personality_line = next((line for line in lines if line.startswith("**Personality:**")), "")
         roles_line = next((line for line in lines if line.startswith("**Active roles:**")), "")
-        description_parts = [part for part in [personality_line.replace("**", ""), roles_line.replace("**", "")] if part]
+        description_parts = [part for part in [personality_line, roles_line] if part]
         description = "".join(description_parts)
     elif section_name == "home_status":
         personality_line = next((line for line in lines if line.startswith("**Personality:**")), "")
         roles_line = next((line for line in lines if line.startswith("**Active roles:**")), "")
-        description_parts = [part for part in [personality_line.replace("**", ""), roles_line.replace("**", "")] if part]
+        description_parts = [part for part in [personality_line, roles_line] if part]
         description = "\n".join(description_parts)
     elif section_name == "roles":
-        description = ""  # Empty description - title will be the main content
+        # Extract description from first block content to avoid extra space between title and fields
+        blocks = _split_canvas_blocks(content)
+        if blocks and blocks[0][1]:
+            # Find the first line that's not the title and not a separator
+            for line in blocks[0][1]:
+                if line != titles.get("roles") and not line.startswith("─"):
+                    description = line
+                    break
+            else:
+                description = ""
+
     elif section_name == "personal":
         description = "Focus on private or user-specific workflows that continue naturally in DM."
     elif section_name == "help":
@@ -283,6 +289,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
             line for line in block_lines
             if not (section_name in {"home", "home_status"} and (line.startswith("**Personality:**") or line.startswith("**Active roles:**")))
             and not (section_name == "roles" and index == 0 and block_lines and line == titles.get("roles"))
+            and not (section_name == "roles" and index == 0 and line == description)  # Filter out description that's now in embed.description
         ]
         value = "\n".join(filtered_lines)[:1024]
         # Use block_title as field name, not as part of the value
@@ -314,10 +321,6 @@ def _split_canvas_blocks(content: str) -> list[tuple[str, list[str]]]:
     if current_lines:
         blocks.append((current_title, current_lines))
     return blocks
-
-
-def _normalize_canvas_title(title: str) -> str:
-    return str(title or "").replace("**", "").strip()
 
 
 
@@ -353,18 +356,15 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         detail_key = None
     
     role_titles = {
-        "news_watcher": _normalize_canvas_title(_get_embed_role_title("news_watcher", detail_key)),
-        "treasure_hunter": _normalize_canvas_title(_get_embed_role_title("treasure_hunter", detail_key)),
-        "trickster": _normalize_canvas_title(_get_embed_role_title("trickster", detail_key)),
-        "banker": _normalize_canvas_title(_get_embed_role_title("banker", detail_key)),
-        "mc": _normalize_canvas_title(_get_embed_role_title("mc", detail_key)),
-        "shaman": _normalize_canvas_title(_get_embed_role_title("shaman", detail_key)),
-        "juggler": _normalize_canvas_title(_get_embed_role_title("juggler", detail_key)),
+        "news_watcher": _get_embed_role_title("news_watcher", detail_key),
+        "treasure_hunter": _get_embed_role_title("treasure_hunter", detail_key),
+        "trickster": _get_embed_role_title("trickster", detail_key),
+        "banker": _get_embed_role_title("banker", detail_key),
+        "mc": _get_embed_role_title("mc", detail_key),
+        "shaman": _get_embed_role_title("shaman", detail_key),
+        "juggler": _get_embed_role_title("juggler", detail_key),
     }
     title = role_titles.get(role_name, "Canvas")
-    content_lines = content.splitlines()
-    if content_lines and content_lines[0].strip().replace("**", "").strip() == title:
-        content = "\n".join(content_lines[1:])
     blocks = _split_canvas_blocks(content)
     role_colors = {
         "news_watcher": discord.Color.blue(),
@@ -376,11 +376,19 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "juggler": discord.Color.orange(),
     }
      
+    # Extract first block's content as description to avoid extra space between title and fields
     description = ""
     blocks_to_process = blocks[:4]
+    if blocks_to_process and blocks_to_process[0][1]:
+        # Use the first line of the first block's content as description
+        first_block_lines = blocks_to_process[0][1]
+        if first_block_lines:
+            description = first_block_lines[0]
+            # Remove it from the block to avoid duplication
+            blocks_to_process[0] = (blocks_to_process[0][0], first_block_lines[1:])
 
     embed = discord.Embed(
-        title=_normalize_canvas_title(title),
+        title=title,
         description=description,
         color=role_colors.get(role_name, discord.Color.blurple()),
     )
@@ -562,7 +570,8 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     # Helper function to resolve general.button references
     def _resolve_button_label(label_text: str) -> str:
         if label_text and label_text.startswith("general.button_"):
-            key = label_text.split(".", 2)[2] if "." in label_text else label_text
+            parts = label_text.split(".", 2)
+            key = parts[2] if len(parts) >= 3 else label_text
             return general.get(f"button_{key}", label_text)
         return label_text
     
@@ -1262,7 +1271,6 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     
     status_lines.extend([
         f"{homedescription}",
-        "",
         "─" * 45,
         "",
         
@@ -1307,8 +1315,8 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     return "\n".join(status_lines)
 
 
-def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> str:
-    """Build the role navigation Canvas view - now uses database as primary source."""
+def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, page: int = 1, roles_per_page: int = 5) -> str:
+    """Build the role navigation Canvas view - now uses database as primary source with pagination."""
     # Initialize roles system to ensure database is primary source
     from discord_bot.discord_utils import initialize_roles_from_database
     initialize_roles_from_database(agent_config, guild)
@@ -1320,7 +1328,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
     
     # Title and description from descriptions.json with fallback
     title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_id} 🎭")
-    description = roles_messages.get("description", "🌟 The role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.")
+    description = roles_messages.get("description", "🌟 The role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.").strip()
     
     # Helper messages
     enabled_status = roles_messages.get("enabled_status", "ACTIVE")
@@ -1336,7 +1344,6 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
         title,  # Add title as first line
         description,
         "──────────────────────────────",
-        ""
     ]
     
     # Track active and inactive roles
@@ -1354,74 +1361,59 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
         description = str(role_data.get("description", "")).strip() or role_key
         return {"title": title, "description": description}
     
-    # News Watcher
-    if is_role_enabled_check("news_watcher", None, guild):
-        active_roles.append("news_watcher")
-        interval = 1  # Default interval for news_watcher
-        role_info = get_role_info("news_watcher")
-        parts.append(
-            f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
-            f"• {role_info['description']}\n"
-            ""
-        )
+    # Define all possible roles with their intervals
+    role_configs = [
+        ("news_watcher", 1),
+        ("treasure_hunter", 1),
+        ("trickster", None),
+        ("banker", 24),
+        ("mc", None),
+        ("juggler", None),
+        ("shaman", None),
+    ]
     
-    # Treasure Hunter
-    if is_role_enabled_check("treasure_hunter", None, guild):
-        active_roles.append("treasure_hunter")
-        interval = 1  # Default interval for treasure_hunter
-        role_info = get_role_info("treasure_hunter")
-        parts.append(
-            f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
-            f"• {role_info['description']}\n"
-            ""
-        )
-    
-    # Trickster
-    if is_role_enabled_check("trickster", None, guild):
-        active_roles.append("trickster")
-        role_info = get_role_info("trickster")
-        parts.append(
-            f" **{role_info['title']}** {enabled_status}\n"
-            f"• {role_info['description']}\n"
-            ""
-        )
-    
-    # Banker
-    if is_role_enabled_check("banker", None, guild):
-        active_roles.append("banker")
-        interval = 24  # Default interval for banker
-        role_info = get_role_info("banker")
-        parts.append(
-            f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
-            f"• {role_info['description']}\n"
-            ""
-        )
-    
-    # MC
-    if is_role_enabled_check("mc", None, guild):
-        active_roles.append("mc")
-        role_info = get_role_info("mc")
-        parts.append(
-            f" **{role_info['title']}** {enabled_status}\n"
-            f"• {role_info['description']}\n"
-            ""
-        )
-    
-    # Juggler
-    if is_role_enabled_check("juggler", None, guild):
-        active_roles.append("juggler")
-        role_info = get_role_info("juggler")
-        parts.append(
-            f" **{role_info['title']}** {enabled_status}\n"
-            f"• {role_info['description']}\n"
-            ""
-        )
+    # Collect all active roles first
+    for role_name, interval in role_configs:
+        if is_role_enabled_check(role_name, None, guild):
+            active_roles.append((role_name, interval))
     
     # Check for inactive roles
-    all_possible_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler"]
+    all_possible_roles = [r[0] for r in role_configs]
     for role in all_possible_roles:
-        if role not in active_roles:
+        if role not in [r[0] for r in active_roles]:
             inactive_roles.append(role)
+    
+    # Calculate pagination
+    total_roles = len(active_roles)
+    total_pages = (total_roles + roles_per_page - 1) // roles_per_page if total_roles > 0 else 1
+    page = max(1, min(page, total_pages))  # Ensure page is within valid range
+    
+    # Get roles for current page
+    start_idx = (page - 1) * roles_per_page
+    end_idx = start_idx + roles_per_page
+    page_roles = active_roles[start_idx:end_idx]
+    
+    # Add roles for current page
+    for role_name, interval in page_roles:
+        role_info = get_role_info(role_name)
+        if interval is not None:
+            parts.append(
+                f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
+                f"• {role_info['description']}\n"
+                ""
+            )
+        else:
+            parts.append(
+                f" **{role_info['title']}** {enabled_status}\n"
+                f"• {role_info['description']}\n"
+                ""
+            )
+    
+    # Add page indicator if there are multiple pages
+    if total_pages > 1:
+        page_indicator = roles_messages.get("page_indicator", "**Page {page}/{total_pages}**")
+        parts.append(page_indicator.format(page=page, total_pages=total_pages))
+        parts.append("")
     
     # Add inactive roles section if any exist
     if inactive_roles:
@@ -1439,7 +1431,8 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None) -> 
                 "trickster": "🎭",
                 "banker": "💰",
                 "mc": "🎵",
-                "juggler": "🤹"
+                "juggler": "🤹",
+                "shaman": "🔮"
             }
             icon = role_icons.get(role, "📋")
             parts.append(f"{icon} {role_info['title']} {inactive_status}")

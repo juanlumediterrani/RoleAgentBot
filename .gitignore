@@ -13,12 +13,12 @@ __pycache__/
 *.db
 *.db-shm
 *.db-wal
-data/
-databases/
+#data/
+#databases/
 
 # Logs
-logs/
-*.log
+#logs/
+#*.log
 
 # Configuración de IDEs
 .vscode/

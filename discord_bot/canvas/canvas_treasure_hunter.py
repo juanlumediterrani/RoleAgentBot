@@ -235,7 +235,6 @@ def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, g
     objective_count = len(state.get("objectives", []))
 
     parts = [
-        _treasure_text("title", "💎 Treasure Hunter Canvas"),
         _treasure_text("description", "Item-tracking and alerts setup for different games."),
         f"**{_treasure_text('user_flows_title', 'User flows')}**",
         f"- {_treasure_text('user_flows_1', 'Select the game that you want to track.')}",
@@ -245,7 +244,7 @@ def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, g
         f"- {_treasure_text('task_map_2', 'Alerts: Receive some alerts when the prize of the items touch som max/min prize')}",
         "",
         f"**{_treasure_text('available_subroles_title', 'Available Subroles')}**",
-        f"**POE2 state:** {'On' if state.get('activated', False) else 'Off'} | league {state.get('league', 'Standard')} | {objective_count} tracked item(s)\n",
+        f"**POE2 state:** {'On' if state.get('activated', False) else 'Off'} | league {state.get('league', 'Standard')} | {objective_count} tracked item(s)",
     ]
     if admin_visible:
         parts.extend([

@@ -17,6 +17,7 @@ from agent_db import AgentDatabase
 from behavior.db_behavior import get_behavior_db_instance
 from behavior.greet import ReplyButton, ReplyButtonView
 from discord_bot.discord_utils import is_admin, get_db_for_server, set_role_enabled, send_personality_embed_dm
+from discord_bot.canvas.content import _get_personality_descriptions
 from .ring_db import RingDB, get_ring_db_instance
 
 logger = get_logger('ring_discord')
@@ -302,23 +303,71 @@ async def _record_accusation(server_id: str, accusation_text: str, guild=None, t
                     if target_user:
                         server_id = str(guild.id)
                         
-                        # Send personality embed first (server-specific avatar and name)
-                        await send_personality_embed_dm(target_user, bot, guild, server_id)
-                        
                         # Generate the accusation before sending
                         accusation = await execute_ring_accusation(guild, target_user_id, target_user_name, user_name=accuser_name, accuser_id=accuser_id)
+                        
+                        # Create unified message with personality embed + accusation + reply button (like greetings)
+                        from discord_bot.discord_utils import get_server_personality_display_name, get_server_personality_avatar_path
+                        import os
+                        
+                        # Get personality display name (server-specific priority)
+                        display_name = None
+                        if server_id:
+                            personality_name = get_server_personality_display_name(server_id)
+                            if personality_name:
+                                display_name = personality_name
+                        
+                        # Fallback to guild nickname or global display name
+                        if not display_name and guild:
+                            bot_member = guild.me
+                            if bot_member and bot_member.nick:
+                                display_name = bot_member.nick
+                        if not display_name:
+                            display_name = bot.user.display_name
+                        
+                        # Get local personality avatar file (server-specific)
+                        avatar_file = None
+                        avatar_attachment_name = None
+                        if server_id:
+                            local_avatar_path = get_server_personality_avatar_path(server_id)
+                            if local_avatar_path and os.path.exists(local_avatar_path):
+                                avatar_attachment_name = os.path.basename(local_avatar_path)
+                                avatar_file = discord.File(local_avatar_path, filename=avatar_attachment_name)
+                        
+                        # Fallback: global bot avatar URL if no local file
+                        fallback_avatar_url = None
+                        if not avatar_file:
+                            fallback_avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
+                        
+                        # Get dm_accusation_header from juggler.json
+                        personality_descriptions = _get_personality_descriptions(server_id)
+                        juggler_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {})
+                        ring_messages = juggler_messages.get("ring", {})
+                        dm_accusation_header = ring_messages.get("dm_accusation_header", "👁️ **RING ACCUSATION**")
+                        
+                        # Create personality embed with accusation as description
+                        embed = discord.Embed(
+                            title=f"{display_name}",
+                            description=f"{dm_accusation_header}\n{accusation}",
+                            color=discord.Color.blue()
+                        )
+                        
+                        if avatar_file:
+                            embed.set_thumbnail(url=f"attachment://{avatar_attachment_name}")
+                        elif fallback_avatar_url:
+                            embed.set_thumbnail(url=fallback_avatar_url)
                         
                         # Create the reply button view for this server
                         view = ReplyButtonView(guild, server_id, timeout=300.0)
                         
-                        # Send header + accusation text + reply button in a single message
-                        combined_message = await target_user.send(
-                            f"👁️ **RING ACCUSATION**\n{accusation}",
-                            view=view
-                        )
+                        # Send unified message with embed, avatar (if local), and reply button
+                        if avatar_file:
+                            combined_message = await target_user.send(embed=embed, file=avatar_file, view=view)
+                        else:
+                            combined_message = await target_user.send(embed=embed, view=view)
                         view.message = combined_message
                         
-                        logger.info(f"🎭 [RING] Immediate accusation sent via DM to {target_user_name} with personality embed and reply button")
+                        logger.info(f"🎭 [RING] Immediate accusation sent via DM to {target_user_name} with unified personality embed and reply button")
                     else:
                         logger.warning(f"🎭 [RING] Could not find target user {target_user_id} for DM")
                 else:

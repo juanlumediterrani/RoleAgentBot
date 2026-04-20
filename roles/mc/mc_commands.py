@@ -282,7 +282,24 @@ class MCCommands:
                     'connected_to_voice': "🎤 **Connected to {channel_name}**",
                     'no_dm_permission': "📭 **I can't send you a private message.**\n**Please enable server DMs or use another channel.**",
                     'now_playing': "🎵 **Now Playing**\n🎶 {song}\n👤 {artist}\n⏱️ {duration}\n🎤 Added by: {user_name}",
-                    'searching_for_song': "🔍 **Searching for song...**"
+                    'searching_for_song': "🔍 **Searching for song...**",
+                    'could_not_remove_last_song': "❌ **Could not remove the last song.**",
+                    'play_usage': "🎵 **Usage:** `!mc play <song name or song URL>`",
+                    'not_in_voice': "🎤 **You must be in a voice channel to use this command.**",
+                    'nothing_playing': "🎵 **Nothing is playing.**",
+                    'same_voice_channel': "🎤 **You must be in the same voice channel as the bot.**",
+                    'not_connected': "🎤 **I am not connected to any channel.**",
+                    'queue_empty': "📭 **The queue is empty.**",
+                    'dj_permissions_required': "🚫 **You need the DJ role or administrator permissions to use this command.**",
+                    'playback_paused': "⏸️ **Playback paused.**",
+                    'nothing_paused': "🎵 **Nothing is paused.**",
+                    'playback_resumed': "▶️ **Playback resumed.**",
+                    'leaving_voice': "👋 **Leaving the voice channel.**",
+                    'volume_usage': "🎵 **Usage:** `!mc volume <0-100>`",
+                    'volume_number_error': "🎵 **Volume must be a number between 0 and 100.**",
+                    'already_playing': "🎵 **I am already playing.**",
+                    'queue_cleared': "🧹 **Queue clear**",
+                    'volume_adjust_failed': "❌ **I couldn't adjust the volume**"
                 }
                 message = fallbacks.get(key, default or f"Message not found: {key}")
             
@@ -300,7 +317,7 @@ class MCCommands:
     async def cmd_play(self, message, args):
         """Play a song or add one to the queue"""
         if not args:
-            await self._send_message(message.channel, "🎵 **Usage:** `!mc play <song name or song URL>`")
+            await self._send_message(message.channel, self.get_mc_message("play_usage", "🎵 **Usage:** `!mc play <song name or song URL>`"))
             return
         
         query = ' '.join(args)
@@ -448,7 +465,7 @@ class MCCommands:
         
         # Verify that user is in a voice channel
         if not message.author.voice:
-            await self._send_message(message.channel, "🎤 **You must be in a voice channel to use this command.**")
+            await self._send_message(message.channel, self.get_mc_message("not_in_voice", "🎤 **You must be in a voice channel to use this command.**"))
             return
         
         voice_channel = message.author.voice.channel
@@ -554,11 +571,11 @@ class MCCommands:
         server_id = str(message.guild.id)
         
         if server_id not in self.voice_clients or not self.voice_clients[server_id].is_playing():
-            await self._send_message(message.channel, "🎵 **Nothing is playing.**")
+            await self._send_message(message.channel, self.get_mc_message("nothing_playing", "🎵 **Nothing is playing.**"))
             return
         
         if not message.author.voice or message.author.voice.channel != self.voice_clients[server_id].channel:
-            await self._send_message(message.channel, "🎤 **You must be in the same voice channel as the bot.**")
+            await self._send_message(message.channel, self.get_mc_message("same_voice_channel", "🎤 **You must be in the same voice channel as the bot."))
             return
         
         self.voice_clients[server_id].stop()
@@ -569,7 +586,7 @@ class MCCommands:
         server_id = str(message.guild.id)
         
         if server_id not in self.voice_clients or not self.voice_clients[server_id].is_connected():
-            await self._send_message(message.channel, "🎤 **I am not connected to any channel.**")
+            await self._send_message(message.channel, self.get_mc_message("not_connected", "🎤 **I am not connected to any channel.**"))
             return
         
         self.voice_clients[server_id].stop()
@@ -594,11 +611,11 @@ class MCCommands:
         if args and args[0].lower() == 'resume':
 
             if server_id not in self.voice_clients or not self.voice_clients[server_id].is_connected():
-                await self._send_message(message.channel, "🎤 **I am not connected to any channel.**")
+                await self._send_message(message.channel, self.get_mc_message("not_connected", "🎤 **I am not connected to any channel.**"))
                 return
             
             if self.voice_clients[server_id].is_playing():
-                await self._send_message(message.channel, "🎵 **I am already playing.**")
+                await self._send_message(message.channel, self.get_mc_message("already_playing", "🎵 **I am already playing.**"))
                 return
 
             await self._play_next(server_id, message.channel)
@@ -610,7 +627,7 @@ class MCCommands:
             db_mc = get_mc_db_instance(server_id)
             
             db_mc.clear_queue(server_id, str(message.channel.id))
-            await self._send_message(message.channel, "🧹 **Queue clear**")
+            await self._send_message(message.channel, self.get_mc_message("queue_cleared", "🧹 **Queue clear**"))
             return
 
         from db_role_mc import get_mc_db_instance
@@ -619,7 +636,7 @@ class MCCommands:
         queue = db_mc.get_queue(server_id, str(message.channel.id))
         
         if not queue:
-            await self._send_message(message.channel, "📭 **The queue is empty.**")
+            await self._send_message(message.channel, self.get_mc_message("queue_empty", "📭 **The queue is empty.**"))
             return
         
         # Crear embed con la cola
@@ -651,7 +668,7 @@ class MCCommands:
         server_id = str(message.guild.id)
 
         if not self._check_dj_permissions(message.author):
-            await self._send_message(message.channel, "🚫 **You need the DJ role or administrator permissions to use this command.**")
+            await self._send_message(message.channel, self.get_mc_message("dj_permissions_required", "🚫 **You need the DJ role or administrator permissions to use this command.**"))
             return
 
         from db_role_mc import get_mc_db_instance
@@ -671,7 +688,7 @@ class MCCommands:
         queue = db_mc.get_queue(server_id, str(message.channel.id))
 
         if not queue:
-            await self._send_message(message.channel, "📭 **The queue is empty.**")
+            await self._send_message(message.channel, self.get_mc_message("queue_empty", "📭 **The queue is empty.**"))
             return
 
         # Get the last position (highest position number)
@@ -683,44 +700,44 @@ class MCCommands:
         if success:
             await self._send_message(message.channel, self.get_mc_message("last_song_removed", "🔙 **Last song removed from queue.**"))
         else:
-            await self._send_message(message.channel, "❌ **Could not remove the last song.**")
+            await self._send_message(message.channel, self.get_mc_message("could_not_remove_last_song", "❌ **Could not remove the last song.**"))
 
     async def cmd_pause(self, message, args):
         """Pause the reproduction"""
         server_id = str(message.guild.id)
         
         if server_id not in self.voice_clients or not self.voice_clients[server_id].is_playing():
-            await self._send_message(message.channel, "🎵 **Nothing is playing.**")
+            await self._send_message(message.channel, self.get_mc_message("nothing_playing", "🎵 **Nothing is playing.**"))
             return
         
         if not self._check_same_voice_channel(message.author, self.voice_clients[server_id]):
-            await self._send_message(message.channel, "🎤 **You must be in the same voice channel as the bot.**")
+            await self._send_message(message.channel, self.get_mc_message("same_voice_channel", "🎤 **You must be in the same voice channel as the bot."))
             return
         
         self.voice_clients[server_id].pause()
-        await self._send_message(message.channel, "⏸️ **Playback paused.**")
+        await self._send_message(message.channel, self.get_mc_message("playback_paused", "⏸️ **Playback paused."))
     
     async def cmd_resume(self, message, args):
         """Resume the reproduction"""
         server_id = str(message.guild.id)
         
         if server_id not in self.voice_clients or not self.voice_clients[server_id].is_paused():
-            await self._send_message(message.channel, "🎵 **Nothing is paused.**")
+            await self._send_message(message.channel, self.get_mc_message("nothing_paused", "🎵 **Nothing is paused."))
             return
         
         if not self._check_same_voice_channel(message.author, self.voice_clients[server_id]):
-            await self._send_message(message.channel, "🎤 **You must be in the same voice channel as the bot.**")
+            await self._send_message(message.channel, self.get_mc_message("same_voice_channel", "🎤 **You must be in the same voice channel as the bot."))
             return
         
         self.voice_clients[server_id].resume()
-        await self._send_message(message.channel, "▶️ **Playback resumed.**")
+        await self._send_message(message.channel, self.get_mc_message("playback_resumed", "▶️ **Playback resumed."))
     
     async def cmd_nowplaying(self, message, args):
         """Show the current song"""
         server_id = str(message.guild.id)
         
         if server_id not in self.now_playing:
-            await self._send_message(message.channel, "🎵 **Nothing is playing.**")
+            await self._send_message(message.channel, self.get_mc_message("nothing_playing", "🎵 **Nothing is playing."))
             return
         
         current = self.now_playing[server_id]
@@ -746,7 +763,7 @@ class MCCommands:
         history = db_mc.get_history(server_id, str(message.channel.id), 10)
         
         if not history:
-            await message.channel.send("📭 **The history its empty**")
+            await message.channel.send(self.get_mc_message("history_empty", "📭 **The history its empty**"))
             return
         
         embed = discord.Embed(
@@ -773,11 +790,11 @@ class MCCommands:
         server_id = str(message.guild.id)
         
         if server_id not in self.voice_clients:
-            await self._send_message(message.channel, "🎵 **I am not connected to any channel.**")
+            await self._send_message(message.channel, self.get_mc_message("not_connected", "🎵 **I am not connected to any channel."))
             return
         
         if not self._check_dj_permissions(message.author):
-            await self._send_message(message.channel, "🚫 **You need the DJ role or administrator permissions to use this command.**")
+            await self._send_message(message.channel, self.get_mc_message("dj_required", "🚫 **You need the DJ role or administrator permissions to use this command."))
             return
         
         await self.voice_clients[server_id].disconnect()
@@ -785,24 +802,24 @@ class MCCommands:
         if server_id in self.now_playing:
             del self.now_playing[server_id]
         
-        await self._send_message(message.channel, "👋 **Leaving the voice channel.**")
+        await self._send_message(message.channel, self.get_mc_message("leaving_voice", "👋 **Leaving the voice channel."))
     
     async def cmd_volume(self, message, args):
         """Set the volume (0-100)."""
         server_id = str(message.guild.id)
         
         if server_id not in self.voice_clients or not self.voice_clients[server_id].is_connected():
-            await self._send_message(message.channel, "🎤 **I am not connected to any channel.**")
+            await self._send_message(message.channel, self.get_mc_message("not_connected", "🎤 **I am not connected to any channel.**"))
             return
         
         if not args:
-            await self._send_message(message.channel, "🎵 **Usage:** `!mc volume <0-100>`")
+            await self._send_message(message.channel, self.get_mc_message("volume_usage", "🎵 **Usage:** `!mc volume <0-100>`"))
             return
         
         try:
             volume = int(args[0])
             if volume < 0 or volume > 100:
-                await self._send_message(message.channel, "🎵 **Volume must be between 0 and 100.**")
+                await self._send_message(message.channel, self.get_mc_message("volume_range_error", "🎵 **Volume must be between 0 and 100."))
                 return
             
             volume_float = volume / 100.0
@@ -810,10 +827,10 @@ class MCCommands:
             
             await self._send_message(message.channel, self.get_mc_message("volume_set", f"🔊 **Volume set to {volume}%**", volume=volume))
         except ValueError:
-            await self._send_message(message.channel, "🎵 **Volume must be a number between 0 and 100.**")
+            await self._send_message(message.channel, self.get_mc_message("volume_number_error", "🎵 **Volume must be a number between 0 and 100."))
         except Exception as e:
             logger.exception(f"Error ajustando volumen: {e}")
-            await self._send_message(message.channel, "❌ **I couldn't adjust the volumen**")
+            await self._send_message(message.channel, self.get_mc_message("volume_adjust_failed", "❌ **I couldn't adjust the volume**"))
     
     async def cmd_help(self, message, args):
         """Show the MC commands"""

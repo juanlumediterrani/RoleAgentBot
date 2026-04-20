@@ -2,18 +2,41 @@
     "roles":{
         "trickster":{
             "dice_game":{
-                "youwin":{
-
-                },
-                "youlose":{
-
-                },
-                "high_pot":{
-                },
-                "pot_winner":{
-                },
-                "not_gold":{
-                }
+                "youwin":[
+                    "🎉 **Has ganado.** La suerte te sonríe hoy.",
+                    "🎉 **Victoria.** La fortuna te acompaña.",
+                    "🎉 **Triunfo.** Has vencido al azar.",
+                    "🎉 **Excelente.** Los dados están de tu lado.",
+                    "🎉 **Impresionante.** Una jugada maestra."
+                ],
+                "youlose":[
+                    "😢 **Has perdido.** Los dados fueron crueles hoy.",
+                    "😢 **Mala suerte.** Intenta otra vez.",
+                    "😢 **No fue esta vez.** El destino es caprichoso.",
+                    "😢 **Vaya.** Los dados no te favorecieron.",
+                    "😢 **Pero no te rindas.** La próxima será mejor."
+                ],
+                "high_pot":[
+                    "💰 **La copa de Sake crece.** La fortuna acumula poder.",
+                    "💰 **Copa de Sake en auge.** El premio se hace legendario.",
+                    "💰 **Acumulando.** La copa brilla con promesa.",
+                    "💰 **Fortuna en espera.** La copa de Sake reclama su destino.",
+                    "💰 **Copa de Sake mágica.** Las monedas esperan al afortunado."
+                ],
+                "pot_winner":[
+                    "🎉 **Ganador de la copa.** Has conquistado la copa de Sake.",
+                    "🎉 **Copa de Sake conquistada.** Eres el elegido.",
+                    "🎉 **Jackpot.** La copa de Sake es tuya.",
+                    "🎉 **Fortuna legendaria.** Has ganado el gran premio.",
+                    "🎉 **Copa de Sake tuya.** Una victoria épica."
+                ],
+                "not_gold":[
+                    "💸 **Sin monedas.** No tienes suficientes fondos.",
+                    "💸 **Fondos insuficientes.** Necesitas más monedas.",
+                    "💸 **Bolsillos vacíos.** Revisa tu tesoro.",
+                    "💸 **No alcanza.** Acumula más monedas primero.",
+                    "💸 **Tesoro escaso.** Necesitas fortuna para jugar."
+                ]
             }
         },
         "banker":{
@@ -69,6 +92,25 @@
         "no_servers_available": "❌ No se detectan salas disponibles. Por favor, inicia la conversación desde un servidor.",
         "server_access_error": "❌ No es posible acceder en este momento. Por favor, intenta desde un servidor activo.",
         "reply_button_confirmation": "💬 Ahora conversas desde la sala de **{server_name}**. Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor."
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ No fue posible eliminar la última canción de la lista.",
+        "play_usage": "🎵 **Uso:** `!mc play <nombre de canción o URL>`",
+        "not_in_voice": "🎤 Debes estar en un canal de voz para usar este comando.",
+        "nothing_playing": "🎵 No se está reproduciendo nada en este momento.",
+        "same_voice_channel": "🎤 Debes estar en el mismo canal de voz que el bot.",
+        "not_connected": "🎤 No estoy conectado a ningún canal.",
+        "queue_empty": "📭 La lista de reproducción está vacía.",
+        "dj_permissions_required": "🚫 Necesitas el rol de DJ o permisos de administrador para usar este comando.",
+        "playback_paused": "⏸️ Reproducción pausada.",
+        "nothing_paused": "🎵 No hay nada pausado.",
+        "playback_resumed": "▶️ Reproducción reanudada.",
+        "leaving_voice": "👋 Saliendo del canal de voz.",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 El volumen debe ser un número entre 0 y 100.",
+        "already_playing": "🎵 Ya estoy reproduciendo.",
+        "queue_cleared": "🗑️ Lista de reproducción limpiada.",
+        "volume_adjust_failed": "❌ No pude ajustar el volumen."
     }
 
 

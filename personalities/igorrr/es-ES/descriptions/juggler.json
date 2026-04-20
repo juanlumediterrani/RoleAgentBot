@@ -36,6 +36,7 @@
         "witness_statement": "🗣️ **Testigo:** {statement}",
         "alibi_confirmed": "✅ **Coartada:** {alibi}",
         "motive_detected": "💭 **Motivo:** {motive}",
+        "dm_accusation_header": "👁️ **INTERROGATORIO DEL HORNO**",
         "dropdown": {
             "ring_accuse": "Masa: Acusar",
             "ring_accuse_description": "Acusar a un usuario de robar la masa madre",

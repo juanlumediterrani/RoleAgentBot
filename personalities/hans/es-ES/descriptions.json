@@ -16,7 +16,8 @@
       "option_yes": "Sí",
       "option_no": "No",
       "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin"
+      "button_admin": "🔧 Admin",
+      "available_subroles": "SUBMÓDULOS DISPONIBLES"
     },
     "help_menu": {
       "title": "📚 ** Her Hans - MANUAL DE INSTRUCCIONES**",
@@ -61,7 +62,10 @@
       "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA! 🦅⚖️",
       "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO! 📉💥",
       "frequency_help": "📝 ¡Use `!canvas` → el rol correspondiente → Admin para ajustar la frecuencia (de 1 a 168 horas), ¡SCHNELL!",
-      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!"
+      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para leer el manual completo!",
+      "button_previous": "◀ Retroceder",
+      "button_next": "Avanzar ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
     },
     "behavior_messages": {
       "conversation": {

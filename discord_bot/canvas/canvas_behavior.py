@@ -180,7 +180,7 @@ def build_canvas_behavior_detail(
         keywords = ", ".join(state.get("keywords", [])) or "(none)"
 
         content = "\n".join([
-            f"{taboo_title_keywords}\n",
+            f"{taboo_title_keywords}",
             f"- {keywords}",
             "─" * 45,
         ])
@@ -199,7 +199,7 @@ def build_canvas_behavior_detail(
         greetings_title = greetings_title
         greetings_description = greetings_description
         content = "\n".join([
-            f"{title_status}\n",
+            f"{title_status}",
             f"- {'✅ Enabled' if greeting_enabled else '❌ Disabled'}",
             "",
             "─" * 45,
@@ -234,7 +234,7 @@ def build_canvas_behavior_detail(
         welcome_title = welcome_title
         welcome_description = welcome_description
         content = "\n".join([
-            f"{title_status}\n",
+            f"{title_status}",
             f"- {'✅ Enabled' if welcome_enabled else '❌ Disabled'}",
             "",
             "─" * 45,
@@ -286,7 +286,7 @@ def build_canvas_behavior_detail(
         commentary_title = commentary_title
         commentary_description = commentary_description
         content = "\n".join([
-            f"{title_status}\n",
+            f"{title_status}",
             f"- {'✅ Enabled' if enabled else '❌ Disabled'}",
             f"- Interval: {interval_minutes} minutes",
             f"- Channel: {f'<#{channel_id}>' if channel_id else 'Not set'}" if enabled else "- Channel: N/A (disabled)",
@@ -320,10 +320,10 @@ def build_canvas_behavior_detail(
         taboo_title = taboo_title
         taboo_description = taboo_description
         content = "\n".join([
-            f"{title_status}\n",
+            f"{title_status}",
             f"- {'On' if state.get('enabled', False) else 'Off'}",
             "",
-            f"{taboo_title_keywords}\n",
+            f"{taboo_title_keywords}",
             f"- {keywords}",
             "─" * 45,
         ])
@@ -390,14 +390,14 @@ def build_canvas_behavior_detail(
         # Build three sections
         # Section 1: Language (now second as requested)
         language_section = [
-            "🌐 **Server Language**\n",
+            "🌐 **Server Language**",
             f"- Current: {language_display} ({current_language})",
             "",
         ]
 
         # Section 2: Roles (now third)
         roles_section = [
-            "🎛️ **Role Management**\n",
+            "🎛️ **Role Management**",
             *status_lines,
             "",
             "💡 **Database is primary source** - Changes are persisted immediately",

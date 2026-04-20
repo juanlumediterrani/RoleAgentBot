@@ -16,7 +16,8 @@
       "option_yes": "Sí",
       "option_no": "No",
       "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin"
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subrutinas disponibles"
     },
     "help_menu": {
       "title": "📚 ** Role Agent - Registro de Asistencia**",
@@ -61,7 +62,10 @@
       "role_available": "✅ {role} - SINCRONIZADO Y FLUYENDO",
       "role_unavailable": "❌ {role} - DESCONECTADO EN LA ARENA",
       "frequency_help": "📝 Ajusta el ciclo temporal: usa `!canvas` → el rol correspondiente → Admin (rango: 1 a 168 horas)",
-      "music_help": "🎵 **Resonancia Sintética** - `!mc play <frecuencia>` / `!mc queue` | `!mc help` para leer el registro completo de melodías."
+      "music_help": "🎵 **Resonancia Sintética** - `!mc play <frecuencia>` / `!mc queue` | `!mc help` para leer el registro completo de melodías.",
+      "button_previous": "◀ Atrás",
+      "button_next": "Siguiente ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
     },
     "behavior_messages": {
       "conversation": {

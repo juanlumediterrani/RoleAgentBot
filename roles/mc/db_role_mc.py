@@ -323,6 +323,9 @@ class DatabaseRoleMC:
                         WHERE server_id = ? AND channel_id = ? AND position = ?
                     ''', (server_id, channel_id, position))
                     
+                    # Check if the song was marked as inactive
+                    removed = cursor.rowcount > 0
+                    
                     # Reorder remaining positions
                     cursor.execute('''
                         UPDATE mc_queue SET position = position - 1 
@@ -330,7 +333,7 @@ class DatabaseRoleMC:
                     ''', (server_id, channel_id, position))
                     
                     conn.commit()
-                    return cursor.rowcount > 0
+                    return removed
         except Exception as e:
             logger.exception(f"Error removing song from queue: {e}")
             return False

@@ -12,9 +12,11 @@ _personality_answers = core._personality_answers
 logger = get_logger('canvas_juggler')
 
 
-def _get_ring_message(key: str, fallback: str) -> str:
+def _get_ring_message(key: str, fallback: str, server_id: str = None) -> str:
     """Get ring message from answers.json with fallback."""
-    ring_messages = _personality_answers.get("ring_messages", {})
+    from .content import _get_personality_descriptions
+    personality_descriptions = _get_personality_descriptions(server_id)
+    ring_messages = personality_descriptions.get("ring_messages", {})
     return ring_messages.get(key, fallback)
 
 
@@ -42,16 +44,17 @@ def build_canvas_role_juggler(agent_config: dict, admin_visible: bool, guild=Non
     
     personality_descriptions = _get_personality_descriptions(str(guild.id) if guild else None)
     juggler_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {})
+    general_messages = personality_descriptions.get("general", {})
     
-    title = juggler_messages.get("title", "**🎯 Centro de Coordinación de Servicios**")
     description = juggler_messages.get("description", "Nexo que gesta múltiples flujos operativos para mantener la armonía de la red.")
-    
-    content = f"{title}\n{description}\n"
+
+    content = f"{description}\n"
     
     # Add subrole descriptions if any
     subrole_descriptions = juggler_messages.get("canvas_juggler_subrole_descriptions", {})
     if subrole_descriptions:
-        content += "\n**Subroles:**\n"
+        available_subroles_label = general_messages.get("available_subroles", "Available subroles")
+        content += f"\n**{available_subroles_label}**\n"
         for subrole, description in subrole_descriptions.items():
             content += f"{description}\n"
     
@@ -104,7 +107,7 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
                 "-" * 45,
             ])
         else:
-            parts.extend([inactive_title, "", inactive_instructions])
+            parts.extend([inactive_title, inactive_instructions])
 
         # Use general descriptions for status
         general = personality_descriptions.get("general", {})
@@ -298,7 +301,7 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
                 server_name,
             )
 
-            target_changed_msg = _get_ring_message("target_changed", "✅ Ring target changed to {target_name}")
+            target_changed_msg = _get_ring_message("target_changed", "✅ Ring target changed to {target_name}", server_id)
             await interaction.followup.send(target_changed_msg.format(target_name=target_name), ephemeral=True)
 
             # Refresh the view
@@ -335,8 +338,8 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             state["enabled"] = enabled
             _save_ring_state(server_id, "canvas_admin")
             
-            enabled_msg = _get_ring_message("enabled", "✅ Ring enabled in roles_config.")
-            disabled_msg = _get_ring_message("disabled", "✅ Ring disabled in roles_config.")
+            enabled_msg = _get_ring_message("enabled", "✅ Ring enabled in roles_config.", server_id)
+            disabled_msg = _get_ring_message("disabled", "✅ Ring disabled in roles_config.", server_id)
             message = enabled_msg if enabled else disabled_msg
         else:
             message = "❌ Failed to update ring configuration."

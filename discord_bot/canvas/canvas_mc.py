@@ -63,7 +63,6 @@ def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None, gu
         return str(value).strip() if value else fallback
 
     parts = [
-        _mc_text("title", "🎵 Canvas - MC Music"),
         _mc_text("canvas_mc_description", "Use the dropdown below to control music playback."),
     ]
 
@@ -72,7 +71,7 @@ def build_canvas_role_mc(last_action=None, queue_info=None, mc_messages=None, gu
 
     if last_action is None and queue_info is None and mc_messages is None:
         parts.append(_mc_text("voice_channel_required_title", "**Voice channel required**"))
-        parts.append(_mc_text("canvas_mc_voice_required", "You must be in a voice channel to use MC\nBot will auto-connect to your channel"))
+        parts.append(_mc_text("canvas_mc_voice_required", "You must be in a voice channel to use MC Bot will auto-connect to your channel"))
 
     if queue_info:
         parts.append(_mc_text("current_queue_title", "**Current queue**"))

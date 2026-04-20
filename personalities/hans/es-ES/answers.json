@@ -2,18 +2,41 @@
     "roles":{
         "trickster":{
             "dice_game":{
-                "youwin":{
-
-                },
-                "youlose":{
-
-                },
-                "high_pot":{
-                },
-                "pot_winner":{
-                },
-                "not_gold":{
-                }
+                "youwin":[
+                    "🎉 **¡SIEG!** ¡Victoria en el campo de batalla, Zivilist!",
+                    "🎉 **¡TRIUNFO!** ¡Excelente estrategia militar, Soldado!",
+                    "🎉 **¡GANASTE!** ¡La artillería acertó el blanco!",
+                    "🎉 **¡EXCELENTE!** ¡Misión cumplida con éxito!",
+                    "🎉 **¡BRILLANTE!** ¡Eres un oficial de primera clase!"
+                ],
+                "youlose":[
+                    "😢 **DERROTA**... ¡El enemigo fue superior esta vez!",
+                    "😢 **FALLO TÁCTICO**... ¡Revisa tu estrategia, Zivilist!",
+                    "😢 **PERDISTE**... ¡La misión falló!",
+                    "😢 **MALA SUERTE**... ¡Vuelve a entrenar!",
+                    "😢 **NO FUE ESTA VEZ**... ¡Inténtalo de nuevo!"
+                ],
+                "high_pot":[
+                    "💰 **¡EL BOTÍN CRECE!** ¡El tesoro de guerra se acumula!",
+                    "💰 **¡BOTÍN EN AUMENTO!** ¡Las reservas crecen!",
+                    "💰 **¡ACUMULANDO RECURSOS!** ¡El botín se hace legendario!",
+                    "💰 **¡FORTUNA MILITAR!** ¡El botín reclama su dueño!",
+                    "💰 **¡RESERVAS MÁGICAS!** ¡Los marcos esperan al conquistador!"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DEL BOTÍN!!** ¡Has conquistado el tesoro imperial!",
+                    "🎉 **¡¡VICTORIA TOTAL!!** ¡El botín es tuyo, Soldado!",
+                    "🎉 **¡¡JACKPOT MILITAR!!** ¡Has ganado el gran premio!",
+                    "🎉 **¡¡CONQUISTA LEGENDARIA!!** ¡Eres el dueño del botín!",
+                    "🎉 **¡¡BOTÍN CONQUISTADO!!** ¡Una victoria épica!"
+                ],
+                "not_gold":[
+                    "💸 **SIN MARCOS**... ¡No tienes suficientes recursos!",
+                    "💸 **RESERVAS INSUFICIENTES**... ¡Necesitas más marcos!",
+                    "💸 **BOLSILLOS VACÍOS**... ¡Revisa tu tesoro militar!",
+                    "💸 **NO ALCANZA**... ¡Acumula más marcos primero!",
+                    "💸 **TESORO ESCASO**... ¡Necesitas fortuna para combatir!"
+                ]
             }
         },
         "banker":{
@@ -69,6 +92,25 @@
         "no_servers_available": "❌ ¡NO HAY CUARTELES DISPONIBLES! 📉💥 ¡Ejecutar acciones desde un servidor, Schweinehund! ✍️🚫",
         "server_access_error": "❌ ¡NO SE PUEDE ACCEDER AL CUARTEL! 📉💥 ¡Ejecutar acciones desde un servidor! ✍️🚫",
         "reply_button_confirmation": "💬 ¡ATENCION, Zivilist! Ahora konversas desde el Kuartel **{server_name}**. ¡Tus respuestas usarán esta personalidad hasta ke selektes otro! ✍️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ ¡ACHTUNG! ¡No se pudo eliminar la última kanzion! ¡Revisar protocolos! 📉💥",
+        "play_usage": "🎵 **Uso:** `!mc play <nombre de kanzion o URL>`",
+        "not_in_voice": "🎤 ¡Debes estar en un kanal de voz para usar este komando, Zivilist!",
+        "nothing_playing": "🎵 No se está reproduziendo nada en el Kuartel.",
+        "same_voice_channel": "🎤 ¡Debes estar en el mismo kanal de voz que el bot, Zivilist!",
+        "not_connected": "🎤 No estoy konektado a ningún kanal, Zivilist.",
+        "queue_empty": "📭 La kola del Kuartel está vazía.",
+        "dj_permissions_required": "🚫 ¡Nesesitas el rol de DJ o permisos de administrador para usar este komando! ✍️🚫",
+        "playback_paused": "⏸️ Reproduksión pausada en el Kuartel.",
+        "nothing_paused": "🎵 No hay nada pausado en el Kuartel.",
+        "playback_resumed": "▶️ Reproduksión reanudada en el Kuartel.",
+        "leaving_voice": "👋 Saliendo del kanal de voz del Kuartel. ¡SCHNELL!",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 El volumen debe ser un número entre 0 y 100.",
+        "already_playing": "🎵 Ya estoy reproduziendo en el Kuartel.",
+        "queue_cleared": "🗑️ Kola del Kuartel limpiada. ¡SCHNELL!",
+        "volume_adjust_failed": "❌ No pude ajustar el volumen. ¡Revisar protocolos! 📉💥"
     }
 
 
