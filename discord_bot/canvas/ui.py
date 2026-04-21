@@ -914,6 +914,8 @@ from .canvas_shaman import (
 )
 from .canvas_treasure_hunter import (
     Poe2ItemModal as _Poe2ItemModal,
+    Poe2PurchaseLiquidateView as _Poe2PurchaseLiquidateView,
+    Poe2PurchaseItemSelectView as _Poe2PurchaseItemSelectView,
     handle_canvas_treasure_hunter_action as _HandleCanvasTreasureHunterAction,
 )
 from .canvas_banker import (
@@ -1062,7 +1064,13 @@ class CanvasRoleSelect(discord.ui.Select):
 
     async def _handle_list_option(self, interaction: discord.Interaction, view):
         """Handle the 'list' option to show all available roles."""
-        all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc"]
+        # Filter roles that are enabled in agent_config globally
+        # Roles disabled in agent_config should not appear at all (like they don't exist)
+        roles_cfg = (view.agent_config or {}).get("roles", {})
+        all_roles = [
+            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc"]
+            if roles_cfg.get(role, {}).get("enabled", False)
+        ]
         enabled_roles = _get_enabled_roles(view.agent_config, interaction.guild)
         
         role_labels = {
@@ -1079,10 +1087,17 @@ class CanvasRoleSelect(discord.ui.Select):
             description="Complete list of available roles and their status",
             color=discord.Color.blue()
         )
-        
+
+        # Get localized labels
+        server_id = get_server_key(interaction.guild) if interaction.guild else None
+        general = _get_personality_descriptions(server_id).get("general", {})
+        action_labels = general.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+
         for role_name in all_roles:
             label, description = role_labels.get(role_name, (role_name.replace("_", " ").title(), "Role surface"))
-            status = "✅ Enabled" if role_name in enabled_roles else "❌ Disabled"
+            status = f"✅ {label_enabled}" if role_name in enabled_roles else f"❌ {label_disabled}"
             embed.add_field(
                 name=f"{label} {status}",
                 value=description,
@@ -1093,10 +1108,10 @@ class CanvasRoleSelect(discord.ui.Select):
 
 
 class CanvasRoleDetailSelect(discord.ui.Select):
-    def __init__(self, role_name: str, admin_visible: bool, server_id: str = None):
+    def __init__(self, role_name: str, admin_visible: bool, server_id: str = None, agent_config: dict = None):
         options = [
             discord.SelectOption(label=label, value=detail_name, description=f"Focus on {label.lower()} tasks")
-            for label, detail_name in _get_canvas_role_detail_items(role_name, None, admin_visible, role_name, server_id)
+            for label, detail_name in _get_canvas_role_detail_items(role_name, None, admin_visible, role_name, server_id, agent_config)
         ]
         super().__init__(placeholder="Choose a role surface...", min_values=1, max_values=1, options=options[:25], row=3)
         self.role_name = role_name
@@ -1168,23 +1183,158 @@ class CanvasRoleActionSelect(discord.ui.Select):
             from .canvas_banker import BeggarDonationModal as _BeggarDonationModal
             await interaction.response.send_modal(_BeggarDonationModal(interaction.guild, view.author_id, view))
             return
-        if action_name in {"watcher_frequency", "hunter_frequency"}:
+        if action_name == "watcher_frequency":
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
                 return
             await interaction.response.send_modal(RoleFrequencyModal(self.role_name, action_name, view.agent_config, view, view.author_id))
             return
         if self.role_name == "treasure_hunter" and action_name in {"poe2_item_add", "poe2_item_remove"}:
+            # Check if treasure_hunter is enabled globally in agent_config
+            th_global_enabled = (view.agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
+            if not th_global_enabled:
+                from .content import _get_personality_descriptions
+                server_id = str(interaction.guild.id) if interaction.guild else None
+                descriptions = _get_personality_descriptions(server_id)
+                treasure_translations = descriptions.get("treasure_hunter", {}).get("poe2", {})
+                error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
+                await interaction.response.send_message(error_message, ephemeral=True)
+                return
             # Allow POE2 item operations in DM
             guild = interaction.guild  # Will be None in DM
             await interaction.response.send_modal(Poe2ItemModal(action_name, view.author_id, guild, view))
             return
+        if self.role_name == "treasure_hunter" and action_name in {"poe2_purchase_add", "poe2_purchase_remove"}:
+            # Check if treasure_hunter is enabled globally in agent_config
+            th_global_enabled = (view.agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
+            if not th_global_enabled:
+                from .content import _get_personality_descriptions
+                server_id = str(interaction.guild.id) if interaction.guild else None
+                descriptions = _get_personality_descriptions(server_id)
+                treasure_translations = descriptions.get("treasure_hunter", {}).get("poe2", {})
+                error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
+                await interaction.response.send_message(error_message, ephemeral=True)
+                return
+            # Allow POE2 purchase operations in DM
+            guild = interaction.guild  # Will be None in DM
+            if action_name == "poe2_purchase_add":
+                # Get tracked items and prices for the Select view
+                from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
+                manager = get_poe2_manager()
+                if manager is None:
+                    from .content import _get_personality_descriptions
+                    server_id = str(interaction.guild.id) if interaction.guild else None
+                    descriptions = _get_personality_descriptions(server_id)
+                    treasure_translations = descriptions.get("treasure_hunter", {}).get("poe2", {})
+                    error_message = treasure_translations.get("poe2_manager_not_available", "❌ POE2 manager is not available.")
+                    await interaction.response.send_message(error_message, ephemeral=True)
+                    return
+                
+                server_id = "" if guild is None else str(guild.id)
+                user_id = str(view.author_id)
+                league = manager.get_user_league(user_id, server_id)
+
+                # Get tracked items from user's subscription for this server (not from global objectives)
+                roles_db = manager._get_roles_db(server_id)
+                subscription = roles_db.get_poe2_subscription(user_id, server_id)
+                tracked_items = subscription.get('tracked_items', []) if subscription else []
+                
+                # Get current prices from POE2 manager's global price database
+                current_prices = {}
+                for item in tracked_items:
+                    item_name = item.get('item_name', '')
+                    item_id = item.get('item_id')
+                    try:
+                        # Get current price using new per-item table method
+                        if item_id:
+                            price_data = manager.get_latest_price_for_item(league, item_id)
+                            if price_data:
+                                current_price = price_data.get('price')
+                                logger.info(f"Current price for {item_name} in {league}: {current_price}")
+                                current_prices[item_name] = current_price
+                            else:
+                                logger.info(f"No price data found for {item_name} in {league}")
+                        else:
+                            logger.warning(f"Item ID not found for {item_name}")
+                    except Exception as e:
+                        logger.exception(f"Error getting price for {item_name}: {e}")
+                logger.info(f"Final current_prices dict: {current_prices}")
+                
+                if tracked_items:
+                    # Get translations for the message
+                    from .content import _get_personality_descriptions
+                    server_id = str(guild.id) if guild else None
+                    descriptions = _get_personality_descriptions(server_id)
+                    treasure_translations = descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("poe2", {})
+                    select_message = treasure_translations.get("select_purchase_item_message", "Select an item to register a purchase:")
+                    
+                    await interaction.response.send_message(
+                        select_message,
+                        view=_Poe2PurchaseItemSelectView(view.author_id, guild, view, tracked_items, current_prices),
+                        ephemeral=True
+                    )
+                else:
+                    from .content import _get_personality_descriptions
+                    server_id = str(guild.id) if guild else None
+                    descriptions = _get_personality_descriptions(server_id)
+                    treasure_translations = descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("poe2", {})
+                    error_message = treasure_translations.get("no_tracked_items_error", "❌ No tracked items found. Add items to your tracking list first.")
+                    await interaction.response.send_message(error_message, ephemeral=True)
+            else:
+                # Get purchases from user's subscription
+                server_id = "" if guild is None else str(guild.id)
+                user_id = str(view.author_id)
+                from agent_roles_db import get_roles_db_instance
+                roles_db = get_roles_db_instance(server_id)
+                subscription = roles_db.get_poe2_subscription(user_id, server_id)
+                purchases = subscription.get("purchases", []) if subscription else []
+
+                if purchases:
+                    from .content import _get_personality_descriptions
+                    server_id_str = str(guild.id) if guild else None
+                    descriptions = _get_personality_descriptions(server_id_str)
+                    treasure_translations = descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("poe2", {})
+                    select_message = treasure_translations.get("select_purchase_item_message", "Select a purchase to liquidate:")
+
+                    await interaction.response.send_message(
+                        select_message,
+                        view=_Poe2PurchaseLiquidateView(view.author_id, guild, view, purchases),
+                        ephemeral=True
+                    )
+                else:
+                    from .content import _get_personality_descriptions
+                    server_id_str = str(guild.id) if guild else None
+                    descriptions = _get_personality_descriptions(server_id_str)
+                    treasure_translations = descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("poe2", {})
+                    error_message = treasure_translations.get("no_purchases", "❌ No purchases found.")
+                    await interaction.response.send_message(error_message, ephemeral=True)
+            return
         if self.role_name == "treasure_hunter" and action_name in {"league_standard", "league_fate_of_the_vaal", "league_hardcore"}:
+            # Check if treasure_hunter is enabled globally in agent_config
+            th_global_enabled = (view.agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
+            if not th_global_enabled:
+                from .content import _get_personality_descriptions
+                server_id = str(interaction.guild.id) if interaction.guild else None
+                descriptions = _get_personality_descriptions(server_id)
+                treasure_translations = descriptions.get("treasure_hunter", {}).get("poe2", {})
+                error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
+                await interaction.response.send_message(error_message, ephemeral=True)
+                return
             # Allow league changes in DM (user-specific setting)
             guild = interaction.guild  # Will be None in DM
             await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
             return
         if self.role_name == "treasure_hunter" and action_name in {"poe2_on", "poe2_off"}:
+            # Check if treasure_hunter is enabled globally in agent_config
+            th_global_enabled = (view.agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
+            if not th_global_enabled:
+                from .content import _get_personality_descriptions
+                server_id = str(interaction.guild.id) if interaction.guild else None
+                descriptions = _get_personality_descriptions(server_id)
+                treasure_translations = descriptions.get("treasure_hunter", {}).get("poe2", {})
+                error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
+                await interaction.response.send_message(error_message, ephemeral=True)
+                return
             # Keep admin restrictions for activation/deactivation
             if not interaction.guild or not view.admin_visible:
                 await interaction.response.send_message("❌ This option is admin-only and requires a server.", ephemeral=True)
@@ -1264,6 +1414,44 @@ class CanvasRoleActionSelect(discord.ui.Select):
         # This should never be reached as all roles have specific handlers
         await interaction.response.send_message("❌ This role option is not available.", ephemeral=True)
         return
+
+
+class CanvasConversationActionSelect(discord.ui.Select):
+    """Dropdown for conversation view with only GDPR forget_me option."""
+    
+    def __init__(self, admin_visible: bool, guild=None):
+        from .content import _get_personality_descriptions
+        server_id = get_server_key(guild) if guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        general = descriptions.get("general", {})
+        
+        label_forget_me = general.get("forget_me_label", "🧹 Forget me (erase my data)")
+        desc_forget_me = general.get(
+            "forget_me_description",
+            "Erase your personal data from every server this bot knows (GDPR Art. 17)",
+        )
+        generic_option_label = descriptions.get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
+        
+        options = [
+            discord.SelectOption(label=label_forget_me, value="forget_me", description=desc_forget_me)
+        ]
+        
+        super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options, row=2)
+    
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        if not isinstance(view, CanvasBehaviorView):
+            from agent_runtime import get_personality_message
+            server_id = get_server_key(interaction.guild) if interaction.guild else None
+            error_msg = get_personality_message("answers.json", ["general", "error_selection_unavailable"], server_id, "❌ Canvas behavior action selection is not available.")
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
+        action_name = self.values[0]
+        if action_name == "forget_me":
+            from discord_bot.gdpr import send_forget_me_prompt
+            await send_forget_me_prompt(interaction)
+            return
 
 
 class CanvasBehaviorActionSelect(discord.ui.Select):
@@ -1929,16 +2117,32 @@ class CanvasTreasureHunterPoe2Button(discord.ui.Button):
         detail_embed = _build_canvas_role_embed("treasure_hunter", content, view.admin_visible, detail_name, None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
         next_view.current_embed = detail_embed
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
+
+
+class CanvasTricksterDicePlayButton(discord.ui.Button):
+    """Button that executes the dice_play action for Trickster."""
+
+    def __init__(self, label: str = "🎲 Play", style=discord.ButtonStyle.success):
+        super().__init__(label=label, style=style)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        if not isinstance(view, CanvasRoleDetailView):
+            await interaction.response.send_message("❌ Canvas role detail navigation is not available.", ephemeral=True)
+            return
+
+        # Execute dice_play action
+        await _handle_canvas_dice_action(interaction, "dice_play", view)
 class RoleFrequencyModal(CanvasModal):
+    """Modal for setting Watcher frequency - Hunter frequency is controlled from agent_config.json only."""
     def __init__(self, role_name: str, action_name: str, agent_config: dict, view, author_id: int):
-        title = "Watcher Frequency" if action_name == "watcher_frequency" else "Hunter Frequency"
-        super().__init__(title=title, author_id=author_id)
+        # Only watcher_frequency is supported now
+        super().__init__(title="Watcher Frequency", author_id=author_id)
         self.role_name = role_name
         self.action_name = action_name
         self.agent_config = agent_config
         self.view = view
-        placeholder = "1-24 hours" if action_name == "watcher_frequency" else "1-168 hours"
-        self.value_input = discord.ui.TextInput(label="Hours", placeholder=placeholder, required=True, max_length=10)
+        self.value_input = discord.ui.TextInput(label="Hours", placeholder="1-24 hours", required=True, max_length=10)
         self.add_item(self.value_input)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -1954,33 +2158,24 @@ class RoleFrequencyModal(CanvasModal):
             await interaction.response.send_message("❌ Enter a valid number of hours.", ephemeral=True)
             return
 
-        applied_text = ""
-        if self.action_name == "watcher_frequency":
-            if hours < 1 or hours > 24:
-                await interaction.response.send_message("❌ Watcher frequency must be between 1 and 24 hours.", ephemeral=True)
-                return
-            if get_news_watcher_db_instance is None:
-                await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
-                return
-            try:
-                db_watcher = get_news_watcher_db_instance(str(interaction.guild.id))
-                ok = db_watcher.set_frequency_setting(hours)
-            except Exception as e:
-                logger.exception(f"Canvas watcher frequency update failed: {e}")
-                ok = False
-            if not ok:
-                await interaction.response.send_message("❌ Could not update watcher frequency.", ephemeral=True)
-                return
-            current_method = _get_canvas_watcher_method_label(str(interaction.guild.id))
-            applied_text = f"Watcher frequency updated to `{hours}` hours.\nCurrent method: {current_method}"
-        else:  # hunter_frequency
-            if hours < 1 or hours > 168:
-                await interaction.response.send_message("❌ Hunter frequency must be between 1 and 168 hours.", ephemeral=True)
-                return
-            roles_cfg = self.agent_config.setdefault("roles", {})
-            hunter_cfg = roles_cfg.setdefault("treasure_hunter", {})
-            hunter_cfg["interval_hours"] = hours
-            applied_text = f"Hunter frequency updated to `{hours}` hours.\nCurrent admin interval now matches the Canvas setting."
+        # Only handle watcher_frequency (hunter_frequency is controlled from agent_config.json only)
+        if hours < 1 or hours > 24:
+            await interaction.response.send_message("❌ Watcher frequency must be between 1 and 24 hours.", ephemeral=True)
+            return
+        if get_news_watcher_db_instance is None:
+            await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
+            return
+        try:
+            db_watcher = get_news_watcher_db_instance(str(interaction.guild.id))
+            ok = db_watcher.set_frequency_setting(hours)
+        except Exception as e:
+            logger.exception(f"Canvas watcher frequency update failed: {e}")
+            ok = False
+        if not ok:
+            await interaction.response.send_message("❌ Could not update watcher frequency.", ephemeral=True)
+            return
+        current_method = _get_canvas_watcher_method_label(str(interaction.guild.id))
+        applied_text = f"Watcher frequency updated to `{hours}` hours.\nCurrent method: {current_method}"
 
         # Rebuild the Canvas role detail view with updated state
         content = ""  # Action view content is no longer needed
@@ -2585,16 +2780,15 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
     
     # Get current dice state and personality messages
     dice_state = _get_canvas_dice_state(guild)
-    answers = {}
+    from agent_runtime import get_personality_message
+    answers = get_personality_message("answers.json", ["roles", "trickster", "dice_game"], server_key, {})
     descriptions = _get_personality_descriptions(get_server_key(guild) if guild else None).get("role_descriptions", {}).get("trickster", {}).get("dice_game", {})
     trickster_messages = _get_personality_descriptions(get_server_key(guild) if guild else None).get("role_descriptions", {}).get("trickster", {})
     
-    # Build the base content with personality title and pot balance
-    title = descriptions.get("current_pot_title", "🎲 **DICE GAME** 🎲")
+    # Build the base content with pot balance (title is handled by embed)
     pot_title = descriptions.get("current_balance", "💎 **CURRENT POT:**")
     fixed_bet = descriptions.get("fixed_bet", "💎 **FIXED BET:**")
     content_parts = [
-        title,
         "─" * 45,
         ""
     ]
@@ -2898,6 +3092,8 @@ class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixi
             from .canvas_personality import CanvasPersonalitySelect, _get_personality_descriptions as _get_pers_desc
             personality_msgs = _get_pers_desc(get_server_key(guild) if guild else None).get("behavior_messages", {}).get("personality", {})
             self.add_item(CanvasPersonalitySelect(admin_visible, personality_msgs))
+        elif current_detail == "conversation":
+            self.add_item(CanvasConversationActionSelect(admin_visible, guild))
         elif current_detail in ["greetings", "welcome", "commentary", "taboo", "settings", "role_control"]:
             self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible, guild))
         self._add_behavior_buttons()
@@ -2965,7 +3161,7 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
         self.current_embed = None  # Store current embed for back navigation
         
         server_id = get_server_key(guild) if guild else None
-        role_details = _get_canvas_role_detail_items(role_name, current_detail, admin_visible, role_name, server_id)
+        role_details = _get_canvas_role_detail_items(role_name, current_detail, admin_visible, role_name, server_id, self.agent_config)
         current_actions = _get_canvas_role_action_items_for_detail(role_name, current_detail, admin_visible, self.agent_config, server_id)
         if current_actions:
             # For News Watcher, create dynamic dropdowns
@@ -2986,6 +3182,11 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
                 self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config, self.guild))
         for label, detail_name in role_details:
             self.add_item(CanvasRoleDetailButton(label=label, role_name=role_name, detail_name=detail_name))
+            # Add dice_play button after personal button for trickster dice view
+            if role_name == "trickster" and current_detail == "dice" and detail_name == "dice":
+                server_id = get_server_key(guild) if guild else None
+                button_label = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("trickster", {}).get("dice_game", {}).get("dice_play_button", "🎲 Play")
+                self.add_item(CanvasTricksterDicePlayButton(label=button_label, style=discord.ButtonStyle.success))
         self._add_role_buttons()
         
         # Add navigation buttons using mixins
@@ -2998,10 +3199,13 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
     def _add_role_buttons(self):
         """Add role-specific buttons."""
         # Add POE2 button only for treasure_hunter main overview (not subrol views)
+        # AND only if treasure_hunter is enabled globally in agent_config
         if self.role_name == "treasure_hunter" and self.current_detail == "overview":
-            server_id = get_server_key(self.guild) if self.guild else None
-            button_poe2 = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("treasure_hunter", {}).get("button_poe2", "👺 POE2")
-            self.add_item(CanvasTreasureHunterPoe2Button(label=button_poe2, style=discord.ButtonStyle.green))
+            th_global_enabled = (self.agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
+            if th_global_enabled:
+                server_id = get_server_key(self.guild) if self.guild else None
+                button_poe2 = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("treasure_hunter", {}).get("button_poe2", "👺 POE2")
+                self.add_item(CanvasTreasureHunterPoe2Button(label=button_poe2, style=discord.ButtonStyle.green))
         return
 
     async def on_timeout(self) -> None:

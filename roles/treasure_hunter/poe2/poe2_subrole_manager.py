@@ -7,9 +7,10 @@ import json
 import sqlite3
 import os
 import threading
+import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Callable
 
 try:
     from agent_logging import get_logger
@@ -27,6 +28,14 @@ from agent_roles_db import get_roles_db_instance
 class POE2SubroleManager:
     """Enhanced POE2 subrole management with admin controls and shared databases."""
     
+    # Default objectives for each league
+    DEFAULT_OBJECTIVES = {
+        "Standard": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"],
+        "Fate of the Vaal": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"],
+        "Hardcore": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"],
+        "Hardcore Fate of the Vaal": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"]
+    }
+    
     def __init__(self):
         self.client = Poe2ScoutClient()
         self._activation_status = {}  # {server_id: bool} - Server activation
@@ -35,17 +44,21 @@ class POE2SubroleManager:
         self._user_preferences = {}  # {user_id: {league: str, objectives: []}} - User preferences
         self._lock = threading.Lock()
         
+        # Background tasks tracking
+        self._background_tasks = set()  # Track active asyncio tasks
+        self._pending_downloads = {}  # {(league, item_name): asyncio.Task}
+        self._initialized_leagues = set()  # Leagues with initialized default items
+        
+        # Placeholder items waiting for download completion
+        # {user_id: [{"item_name": str, "league": str, "status": str}]}
+        self._placeholder_items = {}
+        
         # Ensure shared market data directory exists
         self.databases_dir = get_data_dir() / "shared_poe2"
         self.databases_dir.mkdir(parents=True, exist_ok=True)
         
         # Default objectives for each league
-        self._default_objectives = {
-            "Standard": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"],
-            "Fate of the Vaal": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"],
-            "Hardcore": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"],
-            "Hardcore Fate of the Vaal": ["Ancient Rib", "Ancient Collarbone", "Ancient Jawbone"]
-        }
+        self._default_objectives = dict(self.DEFAULT_OBJECTIVES)
     
     def is_admin(self, ctx) -> bool:
         """Check if user has admin permissions."""
@@ -109,6 +122,33 @@ class POE2SubroleManager:
             logger.error(f"❌ Failed to activate POE2 subrole on server {server_id}: {e}")
             return False
     
+    async def activate_subrole_async(self, server_id: str) -> Tuple[bool, str]:
+        """Activate POE2 subrole on a server with async initialization.
+        
+        This version initializes the default league the first time the subrol is activated.
+        Non-blocking - runs downloads in background.
+        """
+        try:
+            # Check if this is the first activation (Standard league not initialized)
+            is_first_activation = "Standard" not in self._initialized_leagues
+            
+            # Activate the subrol
+            success = self.activate_subrole(server_id)
+            if not success:
+                return False, "Failed to activate POE2 subrole"
+            
+            # If first activation, initialize default league
+            if is_first_activation:
+                logger.info(f"🚀 First activation of POE2 on server {server_id}, initializing default league...")
+                await self.initialize_default_league_on_startup()
+                return True, "POE2 activated and default league initialized with background downloads"
+            
+            return True, "POE2 activated successfully"
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to activate POE2 subrole async on server {server_id}: {e}")
+            return False, f"Error activating POE2: {e}"
+    
     def deactivate_subrole(self, server_id: str) -> bool:
         """Deactivate POE2 subrole on a server."""
         try:
@@ -167,7 +207,8 @@ class POE2SubroleManager:
             roles_db = self._get_roles_db(server_id)
             current_subscription = roles_db.get_poe2_subscription(user_id, server_id)
             tracked_items = current_subscription.get('tracked_items', []) if current_subscription else []
-            if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items):
+            purchases = current_subscription.get('purchases', []) if current_subscription else []
+            if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases):
                 return False
             
             with self._lock:
@@ -315,24 +356,28 @@ class POE2SubroleManager:
             return {}
     
     def init_price_history_db(self, league: str) -> sqlite3.Connection:
-        """Initialize price history database for a league."""
+        """Initialize price history database for a league with per-item table structure."""
         db_path = self.get_price_history_path(league)
         conn = sqlite3.connect(str(db_path))
         
-        # Create tables if they don't exist
+        # Create items registry to track which items have tables
         conn.execute('''
-            CREATE TABLE IF NOT EXISTS price_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+            CREATE TABLE IF NOT EXISTS items_registry (
+                item_id INTEGER PRIMARY KEY,
                 item_name TEXT NOT NULL,
-                item_id INTEGER NOT NULL,
                 league TEXT NOT NULL,
-                price REAL NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                quantity INTEGER,
-                raw_data TEXT
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(item_id, league)
             )
         ''')
         
+        # Create index on items_registry
+        conn.execute('''
+            CREATE INDEX IF NOT EXISTS idx_items_registry_league 
+            ON items_registry(league)
+        ''')
+        
+        # Create objectives table (unchanged)
         conn.execute('''
             CREATE TABLE IF NOT EXISTS objectives (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -345,8 +390,227 @@ class POE2SubroleManager:
             )
         ''')
         
+        # Create index on objectives
+        conn.execute('''
+            CREATE INDEX IF NOT EXISTS idx_objectives_user_league 
+            ON objectives(user_id, league)
+        ''')
+        
         conn.commit()
         return conn
+    
+    def _get_item_table_name(self, item_id: int) -> str:
+        """Generate table name for an item."""
+        return f"prices_item_{item_id}"
+    
+    def create_item_price_table(self, conn: sqlite3.Connection, item_id: int, item_name: str, league: str) -> None:
+        """Create a price table for a specific item if it doesn't exist."""
+        table_name = self._get_item_table_name(item_id)
+        
+        # Create the price table for this item (no raw_data column)
+        conn.execute(f'''
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                price REAL NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                quantity INTEGER
+            )
+        ''')
+        
+        # Create index on timestamp for efficient queries
+        conn.execute(f'''
+            CREATE INDEX IF NOT EXISTS idx_{table_name}_timestamp 
+            ON {table_name}(timestamp)
+        ''')
+        
+        # Register the item
+        conn.execute('''
+            INSERT OR IGNORE INTO items_registry (item_id, item_name, league)
+            VALUES (?, ?, ?)
+        ''', (item_id, item_name, league))
+        
+        conn.commit()
+    
+    def get_registered_items(self, league: str) -> List[Dict]:
+        """Get all registered items for a league."""
+        try:
+            conn = self.init_price_history_db(league)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT item_id, item_name, created_at 
+                FROM items_registry 
+                WHERE league = ?
+                ORDER BY item_name
+            ''', (league,))
+            
+            items = [
+                {
+                    'item_id': row[0],
+                    'item_name': row[1],
+                    'created_at': row[2]
+                }
+                for row in cursor.fetchall()
+            ]
+            
+            conn.close()
+            return items
+        except Exception as e:
+            logger.error(f"❌ Error getting registered items for {league}: {e}")
+            return []
+    
+    def insert_price_for_item(self, league: str, item_id: int, item_name: str, 
+                              price: float, quantity: int = None, 
+                              timestamp: datetime = None) -> bool:
+        """Insert a price entry for a specific item."""
+        try:
+            conn = self.init_price_history_db(league)
+            
+            # Ensure table exists
+            self.create_item_price_table(conn, item_id, item_name, league)
+            
+            table_name = self._get_item_table_name(item_id)
+            
+            if timestamp is None:
+                timestamp = datetime.now()
+            
+            conn.execute(f'''
+                INSERT INTO {table_name} (price, timestamp, quantity)
+                VALUES (?, ?, ?)
+            ''', (price, timestamp, quantity))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logger.error(f"❌ Error inserting price for item {item_id} in {league}: {e}")
+            return False
+    
+    def insert_prices_bulk_for_item(self, league: str, item_id: int, item_name: str,
+                                    price_entries: List[Dict]) -> int:
+        """Insert multiple price entries for an item efficiently."""
+        try:
+            conn = self.init_price_history_db(league)
+            
+            # Ensure table exists
+            self.create_item_price_table(conn, item_id, item_name, league)
+            
+            table_name = self._get_item_table_name(item_id)
+            inserted = 0
+            
+            for entry in price_entries:
+                try:
+                    conn.execute(f'''
+                        INSERT OR IGNORE INTO {table_name} (price, timestamp, quantity)
+                        VALUES (?, ?, ?)
+                    ''', (
+                        entry.get('price'),
+                        entry.get('timestamp', datetime.now()),
+                        entry.get('quantity')
+                    ))
+                    inserted += 1
+                except Exception as e:
+                    logger.warning(f"⚠️ Error inserting price entry for {item_name}: {e}")
+                    continue
+            
+            conn.commit()
+            conn.close()
+            return inserted
+        except Exception as e:
+            logger.error(f"❌ Error in bulk insert for item {item_id} in {league}: {e}")
+            return 0
+    
+    def get_latest_price_for_item(self, league: str, item_id: int) -> Optional[Dict]:
+        """Get the latest price for a specific item."""
+        try:
+            conn = self.init_price_history_db(league)
+            table_name = self._get_item_table_name(item_id)
+            
+            cursor = conn.cursor()
+            cursor.execute(f'''
+                SELECT price, timestamp, quantity 
+                FROM {table_name}
+                ORDER BY timestamp DESC
+                LIMIT 1
+            ''')
+            
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row:
+                return {
+                    'price': row[0],
+                    'timestamp': row[1],
+                    'quantity': row[2]
+                }
+            return None
+        except sqlite3.OperationalError as e:
+            # Table doesn't exist yet - this is normal during initialization
+            # when background downloads haven't completed yet
+            if "no such table" in str(e).lower():
+                logger.debug(f"[BG] Price table for item {item_id} not ready yet (background download in progress)")
+            else:
+                logger.error(f"❌ Database error getting latest price for item {item_id} in {league}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error getting latest price for item {item_id} in {league}: {e}")
+            return None
+    
+    def get_price_history_for_item(self, league: str, item_id: int, 
+                                   days: int = 30) -> List[Dict]:
+        """Get price history for a specific item."""
+        try:
+            conn = self.init_price_history_db(league)
+            table_name = self._get_item_table_name(item_id)
+            
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            cursor = conn.cursor()
+            cursor.execute(f'''
+                SELECT price, timestamp, quantity 
+                FROM {table_name}
+                WHERE timestamp > ?
+                ORDER BY timestamp ASC
+            ''', (cutoff_date,))
+            
+            history = [
+                {
+                    'price': row[0],
+                    'timestamp': row[1],
+                    'quantity': row[2]
+                }
+                for row in cursor.fetchall()
+            ]
+            
+            conn.close()
+            return history
+        except sqlite3.OperationalError as e:
+            # Table doesn't exist yet - this is normal during initialization
+            if "no such table" in str(e).lower():
+                logger.debug(f"[BG] Price table for item {item_id} not ready yet (background download in progress)")
+            else:
+                logger.error(f"❌ Database error getting price history for item {item_id} in {league}: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"❌ Error getting price history for item {item_id} in {league}: {e}")
+            return []
+    
+    def get_price_statistics_for_item(self, league: str, item_id: int, 
+                                       days: int = 30) -> Tuple[Optional[float], Optional[float]]:
+        """Get min and max price for an item over specified days."""
+        try:
+            history = self.get_price_history_for_item(league, item_id, days)
+            if not history:
+                return None, None
+            
+            prices = [h['price'] for h in history if h['price'] is not None]
+            if not prices:
+                return None, None
+            
+            return min(prices), max(prices)
+        except Exception as e:
+            logger.error(f"❌ Error getting price statistics for item {item_id}: {e}")
+            return None, None
     
     def add_objective(self, server_id: str, user_id: str, item_name: str) -> Tuple[bool, str]:
         """Add an item to objectives for a user on a server."""
@@ -399,9 +663,20 @@ class POE2SubroleManager:
             roles_db = self._get_roles_db(server_id)
             subscription = roles_db.get_poe2_subscription(user_id, server_id)
             tracked_items = subscription.get('tracked_items', []) if subscription else []
-            if item_name not in tracked_items:
-                tracked_items.append(item_name)
-            if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items):
+            purchases = subscription.get('purchases', []) if subscription else []
+            
+            # Check if item already tracked (by name)
+            existing = next((item for item in tracked_items if isinstance(item, dict) and item.get('item_name') == item_name), None)
+            if existing:
+                tracked_items.remove(existing)
+            
+            # Add item with item_id
+            tracked_items.append({
+                'item_name': item_name,
+                'item_id': item_id
+            })
+            
+            if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases):
                 conn.close()
                 return False, f"Error saving subscription for '{item_name}'."
             
@@ -421,7 +696,7 @@ class POE2SubroleManager:
             return False, f"Error adding item '{item_name}'."
     
     def _download_item_history(self, item_name: str, league: str, item_id: int):
-        """Download and store price history for an item."""
+        """Download and store price history for an item using per-item table structure."""
         try:
             # Get price history from API
             history = self.client.get_item_history(item_name, league=league, days=30)
@@ -430,29 +705,18 @@ class POE2SubroleManager:
                 logger.warning(f"No price history found for {item_name} in {league}")
                 return
             
-            # Store in database
-            db_path = self.get_price_history_path(league)
-            conn = sqlite3.connect(str(db_path))
-            cursor = conn.cursor()
-            
+            # Convert entries to dict format for bulk insert
+            price_entries = []
             for entry in history:
-                cursor.execute('''
-                    INSERT OR REPLACE INTO price_history 
-                    (item_name, item_id, league, price, timestamp, quantity, raw_data)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    item_name,
-                    item_id,
-                    league,
-                    entry.price,
-                    entry.time or datetime.now().isoformat(),
-                    entry.quantity,
-                    str(entry.raw) if entry.raw else None
-                ))
+                price_entries.append({
+                    'price': entry.price,
+                    'timestamp': entry.time or datetime.now().isoformat(),
+                    'quantity': entry.quantity
+                })
             
-            conn.commit()
-            conn.close()
-            logger.info(f"Stored {len(history)} price entries for {item_name} in {league}")
+            # Store using new per-item table structure (no raw_data)
+            inserted = self.insert_prices_bulk_for_item(league, item_id, item_name, price_entries)
+            logger.info(f"Stored {inserted}/{len(history)} price entries for {item_name} (ID: {item_id}) in {league}")
         
         except Exception as e:
             logger.error(f"Error downloading history for {item_name}: {e}")
@@ -482,9 +746,10 @@ class POE2SubroleManager:
                 roles_db = self._get_roles_db(server_id)
                 subscription = roles_db.get_poe2_subscription(user_id, server_id)
                 tracked_items = subscription.get('tracked_items', []) if subscription else []
-                tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item != item_name]
+                purchases = subscription.get('purchases', []) if subscription else []
+                tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item.get('item_name') != item_name]
                 if tracked_items:
-                    roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items)
+                    roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases)
                 else:
                     roles_db.delete_poe2_subscription(user_id, server_id)
                 conn.commit()
@@ -509,9 +774,10 @@ class POE2SubroleManager:
                     roles_db = self._get_roles_db(server_id)
                     subscription = roles_db.get_poe2_subscription(user_id, server_id)
                     tracked_items = subscription.get('tracked_items', []) if subscription else []
-                    tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item != item_to_remove]
+                    purchases = subscription.get('purchases', []) if subscription else []
+                    tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item.get('item_name') != item_to_remove]
                     if tracked_items:
-                        roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items)
+                        roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases)
                     else:
                         roles_db.delete_poe2_subscription(user_id, server_id)
                     
@@ -532,7 +798,7 @@ class POE2SubroleManager:
             return False, f"Error removing objective: {e}"
     
     def list_objectives(self, server_id: str, user_id: str) -> Tuple[bool, str]:
-        """List all objectives for a user with current prices."""
+        """List all objectives for a user with current prices using per-item table structure."""
         if not server_id or not self.is_activated(server_id):
             active_servers = self.get_active_servers()
             if not active_servers:
@@ -553,9 +819,9 @@ class POE2SubroleManager:
             ''', (league, user_id))
             
             objectives = cursor.fetchall()
+            conn.close()
             
             if not objectives:
-                conn.close()
                 return True, "No objectives configured."
             
             response = f"🔮 **POE2 Objectives - {league}**\n\n"
@@ -563,23 +829,15 @@ class POE2SubroleManager:
             for i, (name, item_id, active, created_at) in enumerate(objectives, 1):
                 status = "✅" if active else "❌"
                 
-                # Get latest price
-                cursor.execute('''
-                    SELECT price FROM price_history 
-                    WHERE item_name = ? AND league = ?
-                    ORDER BY timestamp DESC 
-                    LIMIT 1
-                ''', (name, league))
-                
-                price_result = cursor.fetchone()
-                current_price = price_result[0] if price_result else None
+                # Get latest price using new per-item table
+                price_data = self.get_latest_price_for_item(league, item_id) if item_id else None
+                current_price = price_data['price'] if price_data else None
                 
                 if current_price:
                     response += f"  {i}. {status} {name} - **{current_price:.2f} Div**\n"
                 else:
                     response += f"  {i}. {status} {name} - *No data*\n"
             
-            conn.close()
             return True, response
             
         except Exception as e:
@@ -595,15 +853,488 @@ class POE2SubroleManager:
             logger.error(f"❌ Failed to get all POE2 subscriptions for server {server_id}: {e}")
             return []
 
-    def get_price_history(self, item_name: str, league: str):
-        """Get global price history for an item in a league."""
+    # ─── Background Task Management ─────────────────────────────────────────
+    
+    def _register_background_task(self, task: asyncio.Task) -> asyncio.Task:
+        """Register a background task and clean up completed tasks."""
+        self._background_tasks.discard(task)
+        task.add_done_callback(self._background_tasks.discard)
+        self._background_tasks.add(task)
+        return task
+    
+    async def _download_item_history_async(self, item_name: str, league: str, item_id: int) -> bool:
+        """Async wrapper for downloading item history in background."""
         try:
-            from ..db_role_treasure_hunter import get_poe_db_instance
-            db_instance = get_poe_db_instance("default", league)
-            return db_instance.get_price_history(item_name, league)
+            await asyncio.to_thread(self._download_item_history, item_name, league, item_id)
+            logger.info(f"✅ Background download completed: {item_name} in {league}")
+            return True
         except Exception as e:
-            logger.error(f"❌ Failed to get price history for {item_name} in {league}: {e}")
+            logger.error(f"❌ Background download failed for {item_name} in {league}: {e}")
+            return False
+        finally:
+            # Clear pending download tracking
+            key = (league, item_name)
+            if key in self._pending_downloads:
+                del self._pending_downloads[key]
+    
+    def start_item_download_background(self, item_name: str, league: str, item_id: int) -> asyncio.Task:
+        """Start a background task to download item history without blocking."""
+        key = (league, item_name)
+        
+        # Check if already downloading
+        if key in self._pending_downloads:
+            logger.info(f"⏳ Download already in progress for {item_name} in {league}")
+            return self._pending_downloads[key]
+        
+        # Create new background task
+        task = asyncio.create_task(
+            self._download_item_history_async(item_name, league, item_id)
+        )
+        self._pending_downloads[key] = task
+        self._register_background_task(task)
+        
+        logger.info(f"🔄 Background download started: {item_name} in {league}")
+        return task
+    
+    # ─── League Initialization ──────────────────────────────────────────────
+    
+    async def initialize_league_if_needed(self, league: str) -> bool:
+        """Initialize a league with default items if not already initialized.
+        
+        This downloads the item list and default objectives for the league.
+        Non-blocking - runs downloads in background.
+        """
+        if league in self._initialized_leagues:
+            logger.info(f"✅ League {league} already initialized")
+            return True
+        
+        logger.info(f"🚀 Initializing league: {league}")
+        
+        try:
+            # Download item list for the league
+            if self.should_refresh_item_list(league):
+                success = await self.download_item_list(league)
+                if not success:
+                    logger.warning(f"⚠️ Failed to download item list for {league}")
+                    return False
+            
+            # Initialize price history database
+            self.init_price_history_db(league)
+            
+            # Start background downloads for default items
+            items = self.load_item_list(league)
+            default_items = self._default_objectives.get(league, self._default_objectives["Standard"])
+            
+            for item_name in default_items:
+                item_id = items.get(item_name.lower())
+                if item_id:
+                    self.start_item_download_background(item_name, league, item_id)
+                    logger.info(f"🔄 Started background download for default item: {item_name}")
+                else:
+                    logger.warning(f"⚠️ Item ID not found for default item: {item_name}")
+            
+            self._initialized_leagues.add(league)
+            logger.info(f"✅ League {league} initialization started (background downloads running)")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Error initializing league {league}: {e}")
+            return False
+    
+    async def initialize_default_league_on_startup(self) -> bool:
+        """Initialize the default league (Standard) on bot startup if treasure_hunter is enabled in agent_config."""
+        try:
+            default_league = "Standard"
+            logger.info(f"🚀 Startup initialization of default league: {default_league}")
+            return await self.initialize_league_if_needed(default_league)
+        except Exception as e:
+            logger.error(f"❌ Error during startup league initialization: {e}")
+            return False
+    
+    # ─── User Subscription with Default Items ─────────────────────────────────
+    
+    async def create_user_subscription(self, user_id: str, server_id: str, league: str) -> Tuple[bool, str]:
+        """Create a new user subscription with default items copied to their account.
+        
+        Initializes the league if needed, then copies default items to user's subscription.
+        """
+        try:
+            # First ensure the league is initialized
+            await self.initialize_league_if_needed(league)
+            
+            # Get roles database
+            roles_db = self._get_roles_db(server_id)
+            
+            # Get default items for this league
+            default_items = self._default_objectives.get(league, self._default_objectives["Standard"])
+            
+            # Build tracked items list with item_ids
+            items = self.load_item_list(league)
+            tracked_items = []
+            
+            for item_name in default_items:
+                item_id = items.get(item_name.lower())
+                if item_id:
+                    tracked_items.append({
+                        'item_name': item_name,
+                        'item_id': item_id,
+                        'source': 'default'  # Mark as default item
+                    })
+            
+            # Save subscription
+            success = roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items)
+            if not success:
+                return False, "Failed to save subscription"
+            
+            # Add objectives to database
+            conn = self.init_price_history_db(league)
+            cursor = conn.cursor()
+            
+            for item in tracked_items:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO objectives (item_name, item_id, league, active, user_id)
+                    VALUES (?, ?, ?, 1, ?)
+                ''', (item['item_name'], item['item_id'], league, user_id))
+            
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"✅ Created subscription for user {user_id} in {league} with {len(tracked_items)} default items")
+            return True, f"Subscription created with {len(tracked_items)} default items"
+            
+        except Exception as e:
+            logger.error(f"❌ Error creating user subscription: {e}")
+            return False, f"Error creating subscription: {e}"
+    
+    # ─── Placeholder Management ───────────────────────────────────────────────
+    
+    def add_placeholder_item(self, user_id: str, item_name: str, league: str) -> None:
+        """Add a placeholder item for a user while waiting for download."""
+        if user_id not in self._placeholder_items:
+            self._placeholder_items[user_id] = []
+        
+        self._placeholder_items[user_id].append({
+            'item_name': item_name,
+            'league': league,
+            'status': 'downloading',
+            'added_at': datetime.now().isoformat()
+        })
+        logger.info(f"⏳ Added placeholder for {item_name} in {league} for user {user_id}")
+    
+    def remove_placeholder_item(self, user_id: str, item_name: str, league: str) -> None:
+        """Remove a placeholder item when download completes."""
+        if user_id in self._placeholder_items:
+            self._placeholder_items[user_id] = [
+                p for p in self._placeholder_items[user_id]
+                if not (p['item_name'] == item_name and p['league'] == league)
+            ]
+            logger.info(f"✅ Removed placeholder for {item_name} in {league} for user {user_id}")
+    
+    def get_placeholder_items(self, user_id: str, league: str = None) -> List[Dict]:
+        """Get placeholder items for a user, optionally filtered by league."""
+        placeholders = self._placeholder_items.get(user_id, [])
+        if league:
+            return [p for p in placeholders if p['league'] == league]
+        return placeholders
+    
+    def is_item_downloading(self, item_name: str, league: str) -> bool:
+        """Check if an item is currently being downloaded."""
+        key = (league, item_name)
+        if key in self._pending_downloads:
+            task = self._pending_downloads[key]
+            return not task.done()
+        return False
+    
+    # ─── Enhanced Add Objective with Background Download ──────────────────────
+    
+    async def add_objective_async(self, server_id: str, user_id: str, item_name: str) -> Tuple[bool, str]:
+        """Add an item to objectives with non-blocking background download and placeholder support."""
+        # Check activation
+        if not server_id or not self.is_activated(server_id):
+            active_servers = self.get_active_servers()
+            if not active_servers:
+                return False, "POE2 subrole is not activated on any server."
+            server_id = active_servers[0]
+        
+        league = self.get_user_league(user_id, server_id)
+        
+        # Get item ID from item list
+        items = self.load_item_list(league)
+        item_id = items.get(item_name.lower())
+        
+        if not item_id:
+            return False, f"Item '{item_name}' not found in {league} league."
+        
+        try:
+            # Check if item exists in global objectives database (by league)
+            conn = self.init_price_history_db(league)
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT id FROM objectives
+                WHERE item_name = ? AND league = ? AND user_id = ?
+            ''', (item_name, league, user_id))
+
+            item_exists_in_objectives = cursor.fetchone() is not None
+
+            # Check if item is already in user's subscription for this server
+            roles_db = self._get_roles_db(server_id)
+            subscription = roles_db.get_poe2_subscription(user_id, server_id)
+            tracked_items = subscription.get('tracked_items', []) if subscription else []
+            purchases = subscription.get('purchases', []) if subscription else []
+
+            # Check if item is already in tracked_items for this server
+            already_in_subscription = any(
+                isinstance(item, dict) and item.get('item_name') == item_name
+                for item in tracked_items
+            )
+
+            if already_in_subscription:
+                conn.close()
+                return False, f"Item '{item_name}' is already in your tracking list."
+
+            # If item doesn't exist in objectives, add it to global DB
+            if not item_exists_in_objectives:
+                # Add placeholder immediately
+                self.add_placeholder_item(user_id, item_name, league)
+
+                # Add to objectives database
+                cursor.execute('''
+                    INSERT INTO objectives (item_name, item_id, league, active, user_id)
+                    VALUES (?, ?, ?, 1, ?)
+                ''', (item_name, item_id, league, user_id))
+                conn.commit()
+
+            # Update subscription for this server
+            tracked_items.append({
+                'item_name': item_name,
+                'item_id': item_id
+            })
+
+            if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases):
+                conn.close()
+                self.remove_placeholder_item(user_id, item_name, league)
+                return False, f"Error saving subscription for '{item_name}'."
+
+            conn.close()
+
+            # Start background download only if item was just added to objectives
+            if not item_exists_in_objectives:
+                task = self.start_item_download_background(item_name, league, item_id)
+
+                # Set up callback to remove placeholder when done
+                def on_download_done(t):
+                    self.remove_placeholder_item(user_id, item_name, league)
+
+                task.add_done_callback(on_download_done)
+
+                return True, f"Added '{item_name}' to objectives (downloading price data...)"
+            else:
+                return True, f"Added '{item_name}' to tracking list (already tracked globally)"
+            
+        except Exception as e:
+            logger.error(f"Error in async add_objective: {e}")
+            self.remove_placeholder_item(user_id, item_name, league)
+            return False, f"Error adding item '{item_name}'."
+    
+    def get_user_tracked_items_with_status(self, user_id: str, server_id: str) -> List[Dict]:
+        """Get tracked items for a user including placeholders and download status."""
+        try:
+            league = self.get_user_league(user_id, server_id)
+            
+            # Get regular objectives
+            conn = self.init_price_history_db(league)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT item_name, item_id, active, created_at 
+                FROM objectives 
+                WHERE league = ? AND user_id = ?
+                ORDER BY id
+            ''', (league, user_id))
+            
+            objectives = []
+            for row in cursor.fetchall():
+                name, item_id, active, created_at = row
+                
+                # Check if item is still downloading
+                is_downloading = self.is_item_downloading(name, league)
+                
+                objectives.append({
+                    'item_name': name,
+                    'item_id': item_id,
+                    'active': bool(active),
+                    'created_at': created_at,
+                    'is_placeholder': False,
+                    'is_downloading': is_downloading,
+                    'status': 'downloading' if is_downloading else 'ready'
+                })
+            
+            conn.close()
+            
+            # Add placeholder items
+            placeholders = self.get_placeholder_items(user_id, league)
+            for ph in placeholders:
+                objectives.append({
+                    'item_name': ph['item_name'],
+                    'item_id': None,
+                    'active': True,
+                    'created_at': ph['added_at'],
+                    'is_placeholder': True,
+                    'is_downloading': True,
+                    'status': ph['status']
+                })
+            
+            return objectives
+            
+        except Exception as e:
+            logger.error(f"Error getting tracked items with status: {e}")
             return []
+    
+    # ─── Price Update Task Methods ──────────────────────────────────────────
+    
+    async def update_all_registered_item_prices(self, league: str) -> Dict[int, Dict]:
+        """Update prices for all registered items in a league with cooperative multitasking.
+        
+        This downloads the latest price for each item and stores it.
+        Yields control between items to avoid blocking the main runtime.
+        Returns a dict mapping item_id to price data.
+        """
+        import asyncio
+        updated_items = {}
+        
+        try:
+            # Get all registered items for this league
+            registered_items = self.get_registered_items(league)
+            
+            if not registered_items:
+                logger.info(f"[BG] No registered items found for league {league}")
+                return updated_items
+            
+            logger.info(f"[BG] 🔄 Updating prices for {len(registered_items)} items in {league}")
+            
+            # Ensure item list is loaded
+            items_catalog = self.load_item_list(league)
+            
+            for i, item in enumerate(registered_items):
+                item_id = item['item_id']
+                item_name = item['item_name']
+                
+                try:
+                    # Yield control every few items to avoid blocking
+                    if i % 3 == 0:
+                        await asyncio.sleep(0)
+                    
+                    # Download latest price from API
+                    history_entries = self.client.get_item_history(item_name, league=league, days=1)
+                    
+                    if not history_entries:
+                        logger.debug(f"[BG] No recent price data for {item_name} in {league}")
+                        continue
+                    
+                    # Store the new price entries
+                    price_entries = []
+                    for entry in history_entries:
+                        price_entries.append({
+                            'price': entry.price,
+                            'timestamp': entry.time or datetime.now().isoformat(),
+                            'quantity': entry.quantity
+                        })
+                    
+                    # Run DB operations in thread pool to avoid blocking
+                    inserted = await asyncio.to_thread(
+                        self.insert_prices_bulk_for_item, 
+                        league, item_id, item_name, price_entries
+                    )
+                    
+                    # Get latest price and statistics (also in thread pool)
+                    latest = await asyncio.to_thread(
+                        self.get_latest_price_for_item, league, item_id
+                    )
+                    min_price, max_price = await asyncio.to_thread(
+                        self.get_price_statistics_for_item, league, item_id, 30
+                    )
+                    
+                    if latest:
+                        updated_items[item_id] = {
+                            'item_name': item_name,
+                            'item_id': item_id,
+                            'current_price': latest['price'],
+                            'timestamp': latest['timestamp'],
+                            'min_price': min_price,
+                            'max_price': max_price,
+                            'entries_inserted': inserted
+                        }
+                        logger.debug(f"[BG] ✅ Updated {item_name}: {latest['price']:.2f} Div")
+                    
+                except Exception as e:
+                    logger.error(f"[BG] ❌ Error updating price for {item_name} (ID: {item_id}): {e}")
+                    continue
+            
+            logger.info(f"[BG] ✅ Price update completed for {league}: {len(updated_items)} items updated")
+            return updated_items
+            
+        except Exception as e:
+            logger.error(f"[BG] ❌ Error in update_all_registered_item_prices for {league}: {e}")
+            return updated_items
+    
+    async def run_price_update_task(self) -> Dict[str, Dict[int, Dict]]:
+        """Run the scheduled price update task for all initialized leagues with low priority.
+        
+        This is called by the treasure_hunter role at configured intervals.
+        Yields control between leagues to avoid blocking the main runtime.
+        Returns updated price data for all leagues.
+        """
+        import asyncio
+        all_updates = {}
+        
+        try:
+            logger.info("[BG] 🚀 Starting scheduled price update task for POE2")
+            
+            # Yield control immediately
+            await asyncio.sleep(0)
+            
+            # Update prices for all initialized leagues
+            for league in self._initialized_leagues:
+                try:
+                    # Yield control before processing each league
+                    await asyncio.sleep(0)
+                    
+                    updated = await self.update_all_registered_item_prices(league)
+                    all_updates[league] = updated
+                    
+                    # Small delay between leagues to prevent blocking
+                    await asyncio.sleep(0.01)  # 10ms
+                except Exception as e:
+                    logger.error(f"[BG] ❌ Error updating prices for league {league}: {e}")
+                    continue
+            
+            total_items = sum(len(items) for items in all_updates.values())
+            logger.info(f"[BG] ✅ Scheduled price update completed: {total_items} items across {len(all_updates)} leagues")
+            return all_updates
+            
+        except Exception as e:
+            logger.error(f"[BG] ❌ Error in run_price_update_task: {e}")
+            return all_updates
+    
+    def check_price_signal(self, current_price: float, min_price: float, max_price: float) -> Optional[str]:
+        """Check if current price is in buy or sell zone.
+        
+        Returns 'COMPRA' if price is near minimum (good buy opportunity)
+        Returns 'VENTA' if price is near maximum (good sell opportunity)
+        Returns None if price is in neutral zone
+        """
+        UMBRAL_COMPRA = 0.15  # 15% above minimum
+        UMBRAL_VENTA = 0.15   # 15% below maximum
+        
+        if min_price is None or max_price is None or current_price is None:
+            return None
+        
+        if current_price <= min_price * (1 + UMBRAL_COMPRA):
+            return "COMPRA"
+        if current_price >= max_price * (1 - UMBRAL_VENTA):
+            return "VENTA"
+        return None
 
 
 # Global instance
