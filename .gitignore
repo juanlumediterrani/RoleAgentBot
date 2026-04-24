@@ -14,11 +14,11 @@ __pycache__/
 *.db-shm
 *.db-wal
 #data/
-#databases/
+databases/
 
 # Logs
-#logs/
-#*.log
+logs/
+*.log
 
 # Configuración de IDEs
 .vscode/
