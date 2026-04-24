@@ -10,7 +10,6 @@ from agent_logging import get_logger
 from agent_mind import call_llm, _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
 from agent_engine import _build_system_prompt, _get_personality
 from discord_bot.discord_utils import get_server_key, get_db_for_server
-from behavior.db_behavior import get_behavior_db_instance
 
 logger = get_logger('welcome_behavior')
 
@@ -101,16 +100,6 @@ async def handle_member_join(member, discord_cfg):
         await welcome_channel.send(f"🎉 {member.mention} {saludo}")
         logger.info(f"Welcome message sent to {member.name} in {member.guild.name}")
         
-        # Record greeting in behavior database (databases/<server_id>/behavior_*.db)
-        try:
-            behavior_db = get_behavior_db_instance(server_name)
-            await asyncio.to_thread(
-                behavior_db.record_greeting_sent,
-                member.id, member.display_name, member.guild.id, saludo, 'welcome'
-            )
-        except Exception as behavior_error:
-            logger.warning(f"Could not record greeting in behavior database: {behavior_error}")
-
         # Register interaction in agent database (databases/<server_id>/agent_*.db)
         try:
             db_instance = get_db_for_server(member.guild)

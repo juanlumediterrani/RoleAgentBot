@@ -45,8 +45,7 @@ behavior/                              ← reactive systems mounted inside the m
 ├── greet.py                           ← offline → online presence greetings
 ├── welcome.py                         ← member join greetings
 ├── taboo/                             ← taboo word reactions
-├── commentary/                        ← role-aware commentary
-└── db_behavior.py                     ← per-server behavior DB
+└── commentary/                        ← role-aware commentary
 ```
 
 Two cooperating execution layers:
@@ -333,14 +332,14 @@ on_presence_update(before, after)
     ├── discord.ui.View + ReplyButton
     │   └── ReplyButton.callback → pin_dm_session(user_id, server_id)
     ├── member.send(greeting, view=view)
-    └── record_greeting_sent() + log interaction
+    └── record_pending_greeting() + log interaction
 ```
 
 `behavior/welcome.py` follows the same skeleton for `on_member_join`.
 
 ### 7.4 Greeting DM reply
 
-Greetings are tracked in `behavior/db_behavior.py::greetings` with `needs_reply` / `replied` flags. When a user sends a DM, `_process_chat_message()` scans all server DBs for an unreplied greeting, marks it replied, and resets the "should greet again" counter. This allows greeting cooldowns to reset naturally once the user engages in DM.
+Pending DM greetings are tracked in-memory by `behavior/greet.py` (`_pending_greeting_replies`). When a user sends a DM or messages in a guild, `_process_chat_message()` calls `mark_user_replied()` which clears the pending entry, allowing greeting cooldowns to reset naturally once the user engages.
 
 ---
 
@@ -616,7 +615,6 @@ databases/
     │   ├── descriptions.json
     │   └── personality_backup_*.json
     ├── agent.db                     ← AgentDatabase (§13.2)
-    ├── behavior.db                  ← behaviors + greetings + role toggles
     ├── banker.db, news_watcher.db, mc.db, trickster.db, shaman.db, juggler.db …
     └── treasure_hunter/             ← PoE2 per-league state
 ```
@@ -648,9 +646,8 @@ Falls back to relocation-by-id when the active server is ambiguous.
 1. Database initialization (agent, roles, behavior, role-specific).
 2. Default roles loading (enabled set).
 3. News-watcher feed health bootstrap (if enabled).
-4. Roles configuration migration from `behavior.db`.
-5. Server-specific logging setup.
-6. Mark as active server (only on startup).
+4. Server-specific logging setup.
+5. Mark as active server (only on startup).
 
 Called both by `on_ready()` (per guild, `is_startup=True`) and by `on_guild_join()` (`is_startup=False`). The legacy `initialize_databases_for_guild()` is kept with a deprecation warning for backward compatibility.
 
@@ -746,8 +743,7 @@ RoleAgentBot/
 │   ├── greet.py
 │   ├── welcome.py
 │   ├── taboo/
-│   ├── commentary/
-│   └── db_behavior.py
+│   └── commentary/
 ├── discord_bot/
 │   ├── agent_discord.py
 │   ├── db_init.py

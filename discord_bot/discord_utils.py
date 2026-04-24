@@ -484,11 +484,6 @@ def check_chat_rate_limit(user_id):
 
 # --- DYNAMIC GREETING CONFIGURATION ---
 
-try:
-    from behavior.db_behavior import get_behavior_db_instance as get_behaviors_db_instance
-except Exception:
-    get_behaviors_db_instance = None
-
 _greeting_config = {}
 
 

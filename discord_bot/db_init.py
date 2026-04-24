@@ -6,7 +6,6 @@ Handles comprehensive database creation when bot joins new servers.
 from agent_logging import get_logger
 from agent_db import get_db_instance
 from agent_roles_db import get_roles_db_instance
-from behavior.db_behavior import get_behavior_db_instance
 import asyncio
 import sqlite3
 import os
@@ -438,16 +437,7 @@ def initialize_all_databases_for_server(server_id: str, agent_config: dict = Non
     except Exception as e:
         logger.error(f"❌ Failed to initialize roles database for server {server_id}: {e}")
     
-    # 3. Behavior Database
-    total_count += 1
-    try:
-        behavior_db = get_behavior_db_instance(server_id)
-        logger.info(f"✅ Behavior database initialized for server {server_id}")
-        success_count += 1
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize behavior database for server {server_id}: {e}")
-    
-    # 4. Role-specific Databases
+    # 3. Role-specific Databases
     role_databases = [
         ("banker", "roles.banker.banker_db", "BankerRolesDB"),
         ("news_watcher", "roles.news_watcher.db_role_news_watcher", "DatabaseRoleNewsWatcher"),

@@ -329,10 +329,10 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             
         roles_db = get_roles_db_instance(server_key)
         
-        # Save to server_config
+        # Save to server_config as subrole of juggler
         try:
             from .server_config import set_role_config_value
-            set_role_config_value(server_id, "ring", "enabled", enabled)
+            set_role_config_value(server_id, "juggler", "config.subroles.ring.enabled", enabled)
             ok = True
         except Exception as e:
             logger.error(f"Failed to update ring config in server_config: {e}")
@@ -368,13 +368,13 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             await interaction.response.send_message("❌ Ring configuration system is not available.", ephemeral=True)
             return
             
-        # Update frequency in server_config
+        # Update frequency in server_config as subrole of juggler
         try:
             from .server_config import set_role_config_value
-            set_role_config_value(server_id, "ring", "config.frequency_hours", hours)
-            set_role_config_value(server_id, "ring", "config.base_frequency_hours", hours)
-            set_role_config_value(server_id, "ring", "config.current_frequency_hours", hours)
-            set_role_config_value(server_id, "ring", "config.frequency_iteration", 0)
+            set_role_config_value(server_id, "juggler", "config.subroles.ring.config.frequency_hours", hours)
+            set_role_config_value(server_id, "juggler", "config.subroles.ring.config.base_frequency_hours", hours)
+            set_role_config_value(server_id, "juggler", "config.subroles.ring.config.current_frequency_hours", hours)
+            set_role_config_value(server_id, "juggler", "config.subroles.ring.config.frequency_iteration", 0)
             ok = True
         except Exception as e:
             logger.error(f"Failed to update ring frequency in server_config: {e}")

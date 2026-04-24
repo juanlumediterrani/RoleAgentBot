@@ -18,7 +18,6 @@ from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality
 from agent_mind import call_llm, _build_conversation_user_prompt
 from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
 from agent_db import set_current_server, get_server_id, get_db_instance
-from behavior.db_behavior import get_behavior_db_instance
 from agent_logging import get_logger, update_log_file_path, server_log_context
 from discord_bot.discord_utils import (
     get_server_key, send_dm_or_channel,
@@ -1471,28 +1470,15 @@ async def _process_chat_message(message):
                 {"response": nothing_to_say_description, "is_public": is_public, "is_mention": is_mention, "nothing_to_say": True}
             )
             
-            # Mark user as replied to greeting if they message the bot
+            # Mark user as replied to greeting if they message the bot (in-memory tracker)
+            from behavior.greet import mark_user_replied
             if message.guild:
-                from behavior.db_behavior import get_behavior_db_instance
                 from discord_bot.discord_utils import get_server_key
-                server_id = get_server_key(message.guild)
-                behavior_db = get_behavior_db_instance(server_id)
-                await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, message.guild.id)
+                server_key = get_server_key(message.guild)
+                mark_user_replied(message.author.id, server_key)
             else:
-                import glob
-                from behavior.db_behavior import get_behavior_db_instance
-                
-                db_paths = glob.glob("databases/*/behavior*.db")
-                for db_path in db_paths:
-                    try:
-                        server_id = os.path.basename(os.path.dirname(db_path))
-                        behavior_db = get_behavior_db_instance(server_id)
-                        replied = await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, "dm_context")
-                        if replied:
-                            logger.info(f"Marked user {message.author.name} as replied via DM for server {server_id}")
-                            break
-                    except Exception as e:
-                        logger.error(f"Error marking user replied via DM: {e}")
+                # DM: clear pending greetings across all servers for this user
+                mark_user_replied(message.author.id, None)
             
             # Return early - don't send response
             return
@@ -1509,33 +1495,16 @@ async def _process_chat_message(message):
             {"response": response, "is_public": is_public, "is_mention": is_mention}
         )
 
-        # Mark user as replied to greeting if they message the bot
+        # Mark user as replied to greeting if they message the bot (in-memory tracker)
+        from behavior.greet import mark_user_replied
         if message.guild:
-            # Server message - use guild context
-            from behavior.db_behavior import get_behavior_db_instance
             from discord_bot.discord_utils import get_server_key
-            server_id = get_server_key(message.guild)
-            behavior_db = get_behavior_db_instance(server_id)
-            await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, message.guild.id)
+            server_key = get_server_key(message.guild)
+            mark_user_replied(message.author.id, server_key)
         else:
-            # DM message - check all guilds where user might have received greetings
-            import os
-            import glob
-            from behavior.db_behavior import get_behavior_db_instance
-            
-            # Get all server databases
-            db_paths = glob.glob("databases/*/behavior*.db")
-            for db_path in db_paths:
-                try:
-                    # Extract server name from path (use different var to avoid shadowing outer server_id)
-                    _loop_server_id = os.path.basename(os.path.dirname(db_path))
-                    behavior_db = get_behavior_db_instance(_loop_server_id)
-                    # Try to mark user as replied in this server
-                    replied = await asyncio.to_thread(behavior_db.mark_user_replied, message.author.id, "dm_context")
-                    if replied:
-                        logger.info(f"Marked user {message.author.name} as replied via DM for server {_loop_server_id}")
-                except Exception as e:
-                    logger.debug(f"Could not mark user replied for server {_loop_server_id}: {e}")
+            # DM: clear pending greetings across all servers for this user
+            if mark_user_replied(message.author.id, None):
+                logger.info(f"Marked user {message.author.name} as replied via DM (all servers)")
 
         # If a DM was received, reset ring unanswered counter for this user across all servers
         if message.guild is None:

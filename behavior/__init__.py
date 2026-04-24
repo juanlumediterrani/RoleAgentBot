@@ -1,8 +1,5 @@
 """
-Behavior management system for server-specific behavior settings.
-Handles greetings, welcome, commentary, and other behavior states with persistence.
+Behavior management system.
+Behavior toggles (greetings/welcome/commentary/taboo) live in server_config.json.
+This package only contains runtime modules (greet, welcome, taboo handler, memory).
 """
-
-from .db_behavior import get_behavior_db_instance
-
-__all__ = ['get_behavior_db_instance']

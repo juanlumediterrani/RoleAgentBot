@@ -117,6 +117,36 @@
         "title": "🎛️  **Igorrr - Control de Cadenas**",
         "description": "**Descripción** -Activa o apaga las labores del sótano desde aquí.",
         "button": "🎛️ Control"
+      },
+      "settings": {
+        "title": "⚙️  **Igorrr - Konfigurazion del Kampamento**",
+        "description": "**Descripción**\\n -Ajusta el idioma del kampamento y aktiva los labores.",
+        "button": "⚙️ Konfigurazion"
+      },
+      "personality": {
+        "title": "🎭  **Igorrr - Cambio de Piel**",
+        "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\\n -Descarga mi piel actual antes de mudarme.\\n -Migra mis recuerdos al cambiar.",
+        "button": "🎭 Piel",
+        "option_change": "Cambiar Piel",
+        "option_change_desc": "Cambiar a una personalidad diferente",
+        "option_download": "Descargar Piel Actual",
+        "option_download_desc": "Exportar personalidad como ZIP",
+        "placeholder": "Elige una acción de piel...",
+        "modal_personality_label": "Nueva Piel",
+        "modal_download_label": "¿Descargar piel anterior? (si/no)",
+        "modal_delete_memory_label": "¿Borrar mi memoria? (si/no)",
+        "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
+        "download_success": "✅ ¡Piel `{personality}` exportada! Guarda bien ese archivo...",
+        "change_success": "✅ ¡Piel cambiada de `{old}` a `{new}`! Ya estoy usando mi nueva piel... SSSSS...",
+        "progress_change_personality": "⏳ Cambiando piel de `{old}` a `{new}`...",
+        "progress_language_update": "⏳ Actualizando `{personality}` al idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva piel...",
+        "select_personality_instruction": "Elige una piel nueva del menú:",
+        "choose_personality_placeholder": "Elige una piel (idioma: {language})...",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?** Selecciona tus opciones:",
+        "selected_personality": "**Piel seleccionada: {personality}**",
+        "selected_personality_with_language": "**Piel seleccionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma piel."
       }
     },
     "canvas_role_messages": {
@@ -163,36 +193,6 @@
         "title": "**🎛️ Igorrr - Control de Cadenas**",
         "description": "**Descripción**\\n -Activa o apaga mis labores. No me hagas trabajar de más... SSSSS.",
         "button": "🎛️ Control"
-      },
-      "settings": {
-        "title": "⚙️  **Igorrr - Konfigurazion del Kampamento**",
-        "description": "**Descripción**\\n -Ajusta el idioma del kampamento y aktiva los labores.",
-        "button": "⚙️ Konfigurazion"
-      },
-      "personality": {
-        "title": "🎭  **Igorrr - Cambio de Piel**",
-        "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\\n -Descarga mi piel actual antes de mudarme.\\n -Migra mis recuerdos al cambiar.",
-        "button": "🎭 Piel",
-        "option_change": "Cambiar Piel",
-        "option_change_desc": "Cambiar a una personalidad diferente",
-        "option_download": "Descargar Piel Actual",
-        "option_download_desc": "Exportar personalidad como ZIP",
-        "placeholder": "Elige una acción de piel...",
-        "modal_personality_label": "Nueva Piel",
-        "modal_download_label": "¿Descargar piel anterior? (si/no)",
-        "modal_delete_memory_label": "¿Borrar mi memoria? (si/no)",
-        "modal_download_memory_label": "¿Descargar memoria primero? (si/no)",
-        "download_success": "✅ ¡Piel `{personality}` exportada! Guarda bien ese archivo...",
-        "change_success": "✅ ¡Piel cambiada de `{old}` a `{new}`! Ya estoy usando mi nueva piel... SSSSS...",
-        "progress_change_personality": "⏳ Cambiando piel de `{old}` a `{new}`...",
-        "progress_language_update": "⏳ Actualizando `{personality}` al idioma `{language}`...",
-        "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva piel...",
-        "select_personality_instruction": "Elige una piel nueva del menú:",
-        "choose_personality_placeholder": "Elige una piel (idioma: {language})...",
-        "confirm_change_message": "**¿Confirmar cambio a {personality}?** Selecciona tus opciones:",
-        "selected_personality": "**Piel seleccionada: {personality}**",
-        "selected_personality_with_language": "**Piel seleccionada: {personality} (Idioma: {language})**",
-        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma piel."
       }
     },
     "readme": {

@@ -256,9 +256,9 @@ def _get_canvas_ring_state(guild) -> dict:
         ring_config = {}
         
         try:
-            from .server_config import is_role_enabled, get_role_config_value
-            ring_enabled = is_role_enabled(server_id, "ring", default_enabled=False)
-            ring_config = get_role_config_value(server_id, "ring", "config", default={})
+            from .server_config import get_role_config_value
+            ring_enabled = get_role_config_value(server_id, "juggler", "config.subroles.ring.enabled", default=False)
+            ring_config = get_role_config_value(server_id, "juggler", "config.subroles.ring.config", default={})
         except Exception as e:
             logger.warning(f"Error checking ring enabled in server_config: {e}")
         

@@ -91,7 +91,6 @@ except ImportError:
     get_roles_db_instance = None
 get_poe2_manager = core.get_poe2_manager
 get_banker_db_instance = None  # Now using roles_db directly
-get_behavior_db_instance = core.get_behavior_db_instance
 _discord_cfg = core._discord_cfg
 _personality_name = core._personality_name
 _insult_cfg = core._insult_cfg
@@ -147,21 +146,6 @@ from .canvas_behavior import (
 def _build_canvas_setup_not_available() -> str:
     """Build message for when setup is only available to administrators."""
     return "❌ This setup is only available to administrators."
-
-def _get_behavior_db_for_guild(guild):
-    """Get behavior database instance for a guild."""
-    try:
-        from discord_bot.discord_utils import get_behaviors_db_instance, get_server_key
-        if get_behaviors_db_instance is None:
-            return None
-        # Handle None guild case - use default server
-        if guild is None:
-            return get_behaviors_db_instance(None)
-        return get_behaviors_db_instance(get_server_key(guild))
-    except Exception as e:
-        logger.error(f"Error getting behavior database for guild: {e}")
-        return None
-
 
 def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: str, welcome_name: str, nowelcome_name: str,
                            role_cmd_name: str, talk_cmd_name: str, admin_visible: bool, server_id: str = "default",
@@ -1614,9 +1598,6 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
     # Track active and inactive roles
     active_roles = []
     inactive_roles = []
-    
-    # Get database for role information
-    db = _get_behavior_db_for_guild(guild)
     
     role_descriptions = _personality_descriptions.get("role_descriptions", {})
 

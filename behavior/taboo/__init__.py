@@ -1,8 +1,5 @@
 """
-Taboo role - Server-specific forbidden words management.
-Detects and responds to inappropriate language with customizable warnings.
+Taboo behavior package.
+Configuration (enabled flag and keywords) is stored in server_config.json.
+This package only contains the runtime trigger handler.
 """
-
-from .db_taboo import get_taboo_db_instance
-
-__all__ = ['get_taboo_db_instance']

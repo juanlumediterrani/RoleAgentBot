@@ -11,21 +11,20 @@ from agent_logging import get_logger
 def build_taboo_prompt(taboo_keyword: str, user_display_name: str, message_content: str, taboo_prompt_cfg: dict) -> str:
     """
     Build the complete taboo prompt following the specified structure.
-    
+
     Args:
         taboo_keyword: The forbidden word that was detected
         user_display_name: Name of the user who said the word
         message_content: The full message content
         taboo_prompt_cfg: Configuration from prompts.json/behaviors/taboo
-        
+
     Returns:
         Formatted prompt string with all components
     """
-    # Get configuration with English fallbacks
-    taboo_task = taboo_prompt_cfg.get("task", 
+    taboo_task = taboo_prompt_cfg.get("task",
         "TASK: The human used the word {word} in a public channel, that word is sacred! Make them regret using it in vain!"
     ).format(word=taboo_keyword)
-    
+
     taboo_golden_rules = "\n".join(taboo_prompt_cfg.get("golden_rules", [
         "[GOLDEN RULES]:",
         "1. LENGTH: 1-3 sentences (25-150 characters).",
@@ -34,51 +33,43 @@ def build_taboo_prompt(taboo_keyword: str, user_display_name: str, message_conte
         "4. Don't repeat what you've already said (check interactions), be original and creative.",
         "5. You will speak in a public channel with many humans."
     ]))
-    
-    taboo_message_title = taboo_prompt_cfg.get("message_title", 
+
+    taboo_message_title = taboo_prompt_cfg.get("message_title",
         "## A HUMAN CALLED {user_name} SAID THE FOLLOWING BLASPHEMY:"
     ).format(user_name=user_display_name)
-    
-    taboo_response_title = taboo_prompt_cfg.get("response_title", 
+
+    taboo_response_title = taboo_prompt_cfg.get("response_title",
         "## RESPOND ONLY WITH PERSONALITY WARNING:"
     )
-    
-    # Build contextual user content with memory blocks
+
     taboo_user_message = f"{taboo_message_title}\n{message_content}\n\n{'-'*45}\n{taboo_task}\n{taboo_golden_rules}\n{taboo_response_title}"
-    
+
     return taboo_user_message
 
 
 def get_taboo_fallback_message() -> str:
-    """
-    Get fallback taboo message in English.
-    
-    Returns:
-        Default taboo warning message
-    """
+    """Get fallback taboo message in English."""
     return "TABOO WARNING: Careful human, that word is sacred for the orcs! Only tribe members can use it. Better use it with respect or I'll smash your face!"
 
 
 async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> bool:
     """
     Process taboo word trigger and send response.
-    
+
     Args:
         message: Discord message object
         taboo_keyword: The forbidden word that was detected
         server_id: Server name for context
-        
+
     Returns:
         True if taboo was processed, False otherwise
     """
     logger = get_logger('taboo')
 
     try:
-        # Get taboo configuration from server-specific personality prompts.json/behaviors/taboo
         personality = _get_personality(server_id) if server_id else _get_personality()
         taboo_prompt_cfg = personality.get("behaviors", {}).get("taboo", {})
 
-        # Build the complete taboo prompt using the extracted function
         taboo_user_message = build_taboo_prompt(
             taboo_keyword=taboo_keyword,
             user_display_name=message.author.display_name,
@@ -86,20 +77,16 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
             taboo_prompt_cfg=taboo_prompt_cfg
         )
 
-        # Use call_llm to get full memory context and generate response
         from agent_engine import _build_system_prompt
         from agent_mind import _build_prompt_memory_block, _build_prompt_channel_messages_block
 
-        # Build system prompt with personality (server-specific)
         server_personality = personality
         system_instruction = _build_system_prompt(server_personality, server_id)
-        
-        # Add memory block below system prompt
+
         memory_block = _build_prompt_memory_block(server=server_id)
         if memory_block:
             system_instruction = f"{system_instruction}\n\n{memory_block}"
-        
-        # Add channel messages block below memories
+
         channel_messages_block = await _build_prompt_channel_messages_block(
             channel_id=message.channel.id,
             server=server_id,
@@ -108,7 +95,7 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
         )
         if channel_messages_block:
             system_instruction = f"{system_instruction}\n\n{channel_messages_block}"
-        
+
         taboo_response = call_llm(
             system_instruction=system_instruction,
             prompt=taboo_user_message,
@@ -125,16 +112,13 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
             logger=logger,
             server_id=server_id
         )
-        
-        # If LLM response is good, use it, otherwise fallback to taboo function
+
+        fallback_msg = get_taboo_fallback_message()
         if taboo_response and str(taboo_response).strip():
             await message.channel.send(str(taboo_response).strip())
         else:
-            # Fallback to taboo function message
-            fallback_msg = get_taboo_fallback_message()
             await message.channel.send(fallback_msg)
-        
-        # Register the taboo interaction in the database
+
         try:
             from discord_bot.discord_utils import get_db_for_server
             db_instance = get_db_for_server(message.guild)
@@ -155,9 +139,9 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
             )
         except Exception as e:
             logger.warning(f"Failed to register taboo interaction: {e}")
-        
+
         return True
-        
+
     except Exception as e:
         logger.exception(f"Error processing taboo trigger: {e}")
         return False

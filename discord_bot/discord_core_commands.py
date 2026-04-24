@@ -50,11 +50,6 @@ try:
 except Exception:
     get_server_language = None
 
-try:
-    from behavior.db_behavior import get_behavior_db_instance
-except Exception:
-    get_behavior_db_instance = None
-
 logger = get_logger('discord_core')
 
 def _get_discord_config(server_id: str) -> dict:

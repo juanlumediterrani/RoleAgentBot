@@ -8,7 +8,6 @@ _discord_cfg = core._discord_cfg
 _talk_state_by_guild_id = core._talk_state_by_guild_id
 get_taboo_state = core.get_taboo_state
 get_greeting_enabled = core.get_greeting_enabled
-get_behavior_db_instance = core.get_behavior_db_instance
 
 
 def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible: bool, guild=None) -> list[tuple[str, str, str]]:
@@ -150,7 +149,6 @@ def build_canvas_behavior_detail(
     guild=None,
     agent_config: dict = None,
     setup_not_available_builder=None,
-    behavior_db_loader=None,
     author_id: str = None,
 ) -> tuple[str, str, str] | None:
     """Return (title, description, content) tuple for behavior details."""
@@ -489,7 +487,6 @@ def build_canvas_behavior_detail(
         # Note: Roles initialization happens once at server startup in init_roles_config.py
         from .server_config import get_server_language, get_available_languages
 
-        db = behavior_db_loader(guild) if callable(behavior_db_loader) else None
         server_id = str(guild.id) if guild else "0"
         
         # Get current server language

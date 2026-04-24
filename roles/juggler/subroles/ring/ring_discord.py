@@ -16,7 +16,6 @@ from agent_engine import PERSONALITY, _build_system_prompt
 from agent_mind import call_llm
 from agent_logging import get_logger
 from agent_db import AgentDatabase
-from behavior.db_behavior import get_behavior_db_instance
 from behavior.greet import ReplyButton, ReplyButtonView
 from discord_bot.discord_utils import is_admin, get_db_for_server, set_role_enabled, send_personality_embed_dm
 from discord_bot.canvas.content import _get_personality_descriptions
@@ -54,8 +53,8 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
             ring_enabled = False
             
             try:
-                from discord_bot.canvas.server_config import is_role_enabled
-                ring_enabled = is_role_enabled(server_id, "ring", default_enabled=False)
+                from discord_bot.canvas.server_config import get_role_config_value
+                ring_enabled = get_role_config_value(server_id, "juggler", "config.subroles.ring.enabled", default=False)
             except Exception as e:
                 logger.warning(f"Error checking ring enabled in server_config: {e}")
             
@@ -76,10 +75,10 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
                     except Exception as e:
                         logger.warning(f"Error checking trickster enabled in server_config behavior: {e}")
             
-            # Get ring config from server_config
+            # Get ring config from server_config as subrole of juggler
             try:
                 from discord_bot.canvas.server_config import get_role_config_value
-                ring_config = get_role_config_value(server_id, "ring", "config", default={})
+                ring_config = get_role_config_value(server_id, "juggler", "config.subroles.ring.config", default={})
                 accused_user_id = ring_config.get('accused_user_id', '') if ring_config else ''
             except Exception as e:
                 logger.warning(f"Error getting ring config from server_config: {e}")

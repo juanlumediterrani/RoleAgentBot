@@ -987,7 +987,6 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 # Invalidate all database caches
                 _invalidate_db_cache('agent_db', 'invalidate_db_instance', 'agent', server_id)
                 _invalidate_db_cache('agent_roles_db', 'invalidate_roles_db_instance', 'roles', server_id)
-                _invalidate_db_cache('behavior.db_behavior', 'invalidate_behavior_db_instance', 'behavior', server_id)
                 _invalidate_db_cache('roles.news_watcher.db_role_news_watcher', 'invalidate_news_watcher_db_instance', 'news_watcher', server_id)
                 _invalidate_db_cache('roles.treasure_hunter.db_role_treasure_hunter', 'invalidate_poe_db_instance', 'POE', server_id)
                 

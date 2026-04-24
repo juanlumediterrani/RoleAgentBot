@@ -27,8 +27,8 @@ class RingDB:
         try:
             from discord_bot.canvas.server_config import get_role_config_value, set_role_config_value
             
-            # Get existing config
-            config = get_role_config_value(self.server_id, "ring", "config", default={})
+            # Get existing config as subrole of juggler
+            config = get_role_config_value(self.server_id, "juggler", "config.subroles.ring.config", default={})
             if config is None:
                 config = {}
             
@@ -46,9 +46,9 @@ class RingDB:
                 except json.JSONDecodeError:
                     config['extra'] = config_data
             
-            # Save using server_config
-            set_role_config_value(self.server_id, "ring", "config", config)
-            set_role_config_value(self.server_id, "ring", "enabled", enabled)
+            # Save using server_config as subrole of juggler
+            set_role_config_value(self.server_id, "juggler", "config.subroles.ring.config", config)
+            set_role_config_value(self.server_id, "juggler", "config.subroles.ring.enabled", enabled)
             
             return True
             
@@ -60,7 +60,7 @@ class RingDB:
         """Get ring configuration for a server."""
         try:
             from discord_bot.canvas.server_config import get_role_config_value
-            config = get_role_config_value(self.server_id, "ring", "config", default={})
+            config = get_role_config_value(self.server_id, "juggler", "config.subroles.ring.config", default={})
             return config if isinstance(config, dict) else {}
         except Exception as e:
             logger.error(f"Failed to get ring config: {e}")

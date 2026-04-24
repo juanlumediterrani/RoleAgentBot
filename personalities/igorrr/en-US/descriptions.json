@@ -117,6 +117,36 @@
         "title": "🎛️  **Igorrr - Chain Control**",
         "description": "**Description** -Activate or deactivate basement tasks from here.",
         "button": "🎛️ Control"
+      },
+      "settings": {
+        "title": "⚙️  **Igorrr - Kamp Konfiguration**",
+        "description": "**Description**\\n -Adjust the kamp language and aktivate tasks.",
+        "button": "⚙️ Konfiguration"
+      },
+      "personality": {
+        "title": "🎭  **Igorrr - Skin Change**",
+        "description": "**Description**\\n -Change my personality for this server.\\n -Download my current skin before moving.\\n -Migrate my memories when changing.",
+        "button": "🎭 Skin",
+        "option_change": "Change Skin",
+        "option_change_desc": "Change to a different personality",
+        "option_download": "Download Current Skin",
+        "option_download_desc": "Export personality as ZIP",
+        "placeholder": "Choose a skin action...",
+        "modal_personality_label": "New Skin",
+        "modal_download_label": "Download previous skin? (yes/no)",
+        "modal_delete_memory_label": "Delete my memory? (yes/no)",
+        "modal_download_memory_label": "Download memory first? (yes/no)",
+        "download_success": "✅ Skin `{personality}` exported! Guard that file well...",
+        "change_success": "✅ Skin changed from `{old}` to `{new}`! Already using my new skin... SSSSS...",
+        "progress_change_personality": "⏳ Changing skin from `{old}` to `{new}`...",
+        "progress_language_update": "⏳ Updating `{personality}` to language `{language}`...",
+        "generating_memory_synthesis": "🧠 Generating initial memory synthesis for the new skin...",
+        "select_personality_instruction": "Choose a new skin from the menu:",
+        "choose_personality_placeholder": "Choose a skin (language: {language})...",
+        "confirm_change_message": "**Confirm change to {personality}?** Select your options:",
+        "selected_personality": "**Selected skin: {personality}**",
+        "selected_personality_with_language": "**Selected skin: {personality} (Language: {language})**",
+        "language_change_note": "⚠️ **Note:** Changing language for the same skin."
       }
     },
     "canvas_role_messages": {
@@ -163,36 +193,6 @@
         "title": "**🎛️ Igorrr - Chain Control**",
         "description": "**Description**\\n -Activate or deactivate my tasks. Don't make me work too much... SSSSS.",
         "button": "🎛️ Control"
-      },
-      "settings": {
-        "title": "⚙️  **Igorrr - Kamp Konfiguration**",
-        "description": "**Description**\\n -Adjust the kamp language and aktivate tasks.",
-        "button": "⚙️ Konfiguration"
-      },
-      "personality": {
-        "title": "🎭  **Igorrr - Skin Change**",
-        "description": "**Description**\\n -Change my personality for this server.\\n -Download my current skin before moving.\\n -Migrate my memories when changing.",
-        "button": "🎭 Skin",
-        "option_change": "Change Skin",
-        "option_change_desc": "Change to a different personality",
-        "option_download": "Download Current Skin",
-        "option_download_desc": "Export personality as ZIP",
-        "placeholder": "Choose a skin action...",
-        "modal_personality_label": "New Skin",
-        "modal_download_label": "Download previous skin? (yes/no)",
-        "modal_delete_memory_label": "Delete my memory? (yes/no)",
-        "modal_download_memory_label": "Download memory first? (yes/no)",
-        "download_success": "✅ Skin `{personality}` exported! Guard that file well...",
-        "change_success": "✅ Skin changed from `{old}` to `{new}`! Already using my new skin... SSSSS...",
-        "progress_change_personality": "⏳ Changing skin from `{old}` to `{new}`...",
-        "progress_language_update": "⏳ Updating `{personality}` to language `{language}`...",
-        "generating_memory_synthesis": "🧠 Generating initial memory synthesis for the new skin...",
-        "select_personality_instruction": "Choose a new skin from the menu:",
-        "choose_personality_placeholder": "Choose a skin (language: {language})...",
-        "confirm_change_message": "**Confirm change to {personality}?** Select your options:",
-        "selected_personality": "**Selected skin: {personality}**",
-        "selected_personality_with_language": "**Selected skin: {personality} (Language: {language})**",
-        "language_change_note": "⚠️ **Note:** Changing language for the same skin."
       }
     },
     "readme": {

@@ -783,7 +783,6 @@ except ImportError:
 
 try:
     from roles.trickster.subroles.dice_game.dice_game import DiceGame
-    from behavior.db_behavior import get_behavior_db_instance
     
     # Get variables from core
     _discord_cfg = core._discord_cfg
@@ -805,7 +804,6 @@ except ImportError:
     get_news_watcher_db_instance = None
     get_roles_db_instance = None
     DiceGame = None
-    get_behavior_db_instance = None
     
     # Core fallbacks
     _discord_cfg = {}

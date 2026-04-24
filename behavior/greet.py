@@ -10,12 +10,60 @@ from agent_logging import get_logger
 from agent_mind import call_llm, _build_conversation_user_prompt, _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
 from agent_engine import _build_system_prompt, _get_personality
 from discord_bot.discord_utils import get_greeting_enabled, get_server_key, get_db_for_server, send_dm_with_personality
-from behavior.db_behavior import get_behavior_db_instance
 
 logger = get_logger('greet_behavior')
 
 # Track last greetings per user to avoid spam
 _last_greetings = {}
+
+# In-memory tracking of DM greetings pending a user reply.
+# Structure: { user_id_str: { server_key: greeting_sent_ts } }
+# When a user replies (DM or in guild), their entry is cleared so a new presence greeting
+# can be sent later. Previously persisted in behavior.db; now ephemeral.
+_pending_greeting_replies: dict[str, dict[str, float]] = {}
+
+
+def record_pending_greeting(user_id, server_key: str):
+    """Mark that a greeting was sent to user and is awaiting a reply."""
+    try:
+        uid = str(user_id)
+        _pending_greeting_replies.setdefault(uid, {})[server_key] = time.time()
+    except Exception as e:
+        logger.warning(f"Could not record pending greeting for {user_id}/{server_key}: {e}")
+
+
+def mark_user_replied(user_id, server_key: str | None = None) -> bool:
+    """Clear pending greeting(s) for a user.
+
+    Args:
+        user_id: Discord user id.
+        server_key: Specific server to clear; if None clears all servers for that user.
+
+    Returns:
+        True if any pending entry was cleared.
+    """
+    try:
+        uid = str(user_id)
+        if uid not in _pending_greeting_replies:
+            return False
+        if server_key is None:
+            _pending_greeting_replies.pop(uid, None)
+            return True
+        entry = _pending_greeting_replies.get(uid, {})
+        if server_key in entry:
+            entry.pop(server_key, None)
+            if not entry:
+                _pending_greeting_replies.pop(uid, None)
+            return True
+        return False
+    except Exception as e:
+        logger.warning(f"Could not mark user replied {user_id}/{server_key}: {e}")
+        return False
+
+
+def has_unreplied_greeting(user_id) -> bool:
+    """Check if user has any pending (unreplied) greeting in any server."""
+    return str(user_id) in _pending_greeting_replies and bool(_pending_greeting_replies[str(user_id)])
 
 # Global rate limiting for Vertex AI - minimum seconds between any greetings
 _LAST_GLOBAL_GREETING_TIME = 0
@@ -234,12 +282,8 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
         _last_greetings[last_greeting_key] = current_time
         _last_greetings[f"{last_greeting_key}_recent"] = current_time
         
-        # Record greeting in database
-        behavior_db = get_behavior_db_instance(server_name)
-        await asyncio.to_thread(
-            behavior_db.record_greeting_sent,
-            user_id, user_name, guild.id, saludo, 'presence'
-        )
+        # Record greeting in memory so we don't spam the user until they reply
+        record_pending_greeting(user_id, server_name)
         
         # Register interaction
         try:
@@ -354,30 +398,12 @@ async def _has_unreplied_greeting_any_server(user_id: str) -> bool:
         True if user has unreplied greeting in any server, False otherwise
     """
     try:
-        # Import here to avoid circular imports
-        from agent_db import get_all_server_keys
-        from behavior.db_behavior import get_behavior_db_instance
-        
-        # Get all server keys
-        server_keys = await asyncio.to_thread(get_all_server_keys)
-        
-        # Check each server's behavior database
-        for server_key in server_keys:
-            behavior_db = get_behavior_db_instance(server_key)
-            greeting_status = await asyncio.to_thread(
-                behavior_db.get_last_greeting_status, 
-                user_id, 
-                "any_guild"  # Use special marker to check across all guilds in this server
-            )
-            
-            if greeting_status.get('has_unreplied_greeting', False):
-                logger.info(f"Found unreplied greeting for user {user_id} in server {server_key}")
-                return True
-        
+        if has_unreplied_greeting(user_id):
+            logger.info(f"Found unreplied greeting for user {user_id} in memory tracker")
+            return True
         return False
-        
     except Exception as e:
-        logger.error(f"Error checking unreplied greetings across servers for {user_id}: {e}")
+        logger.error(f"Error checking unreplied greetings for {user_id}: {e}")
         # If we can't check properly, err on the side of not sending duplicate greetings
         return False
 

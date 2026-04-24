@@ -117,6 +117,36 @@
         "title": "🎛️  **伊戈尔 - 锁链控制**",
         "description": "**描述** -从这开关地下室的锁链。",
         "button": "🎛️ 控制"
+      },
+      "settings": {
+        "title": "⚙️  **伊戈尔 - 营地配置**",
+        "description": "**描述**\\n -调整营地语言，激活任务。",
+        "button": "⚙️ 配置"
+      },
+      "personality": {
+        "title": "🎭  **伊戈尔 - 换皮**",
+        "description": "**描述**\\n -给这个服务器换俺滴个性。\\n -换皮前下载当前皮。\\n -换时迁移记忆。",
+        "button": "🎭 皮",
+        "option_change": "换皮",
+        "option_change_desc": "换成另一个个性",
+        "option_download": "下载当前皮",
+        "option_download_desc": "导出个性为ZIP",
+        "placeholder": "选个换皮动作...",
+        "modal_personality_label": "新皮",
+        "modal_download_label": "下载之前的皮？（是/否）",
+        "modal_delete_memory_label": "清除俺的记忆？（是/否）",
+        "modal_download_memory_label": "先下载记忆？（是/否）",
+        "download_success": "✅ 皮 `{personality}` 导出咧！好好保管那个文件...",
+        "change_success": "✅ 皮从 `{old}` 换成 `{new}` 咧！俺已经穿上新皮...嘶嘶嘶...",
+        "progress_change_personality": "⏳ 正在从 `{old}` 换皮到 `{new}`...",
+        "progress_language_update": "⏳ 正在把 `{personality}` 更新到语言 `{language}`...",
+        "generating_memory_synthesis": "🧠 正在为新皮生成初始记忆合成...",
+        "select_personality_instruction": "从菜单选个新皮：",
+        "choose_personality_placeholder": "选个皮（语言：{language}）...",
+        "confirm_change_message": "**确认换成 {personality}？** 选你的选项：",
+        "selected_personality": "**已选皮：{personality}**",
+        "selected_personality_with_language": "**已选皮：{personality}（语言：{language}）**",
+        "language_change_note": "⚠️ **注意：** 正在换同一个性的语言。"
       }
     },
     "canvas_role_messages": {
@@ -163,36 +193,6 @@
         "title": "**🎛️ 伊戈尔 - 锁链控制**",
         "description": "**描述**\\n -开关俺滴任务。别让俺多干活...嘶嘶嘶。",
         "button": "🎛️ 控制"
-      },
-      "settings": {
-        "title": "⚙️  **伊戈尔 - 营地配置**",
-        "description": "**描述**\\n -调整营地语言，激活任务。",
-        "button": "⚙️ 配置"
-      },
-      "personality": {
-        "title": "🎭  **伊戈尔 - 换皮**",
-        "description": "**描述**\\n -给这个服务器换俺滴个性。\\n -换皮前下载当前皮。\\n -换时迁移记忆。",
-        "button": "🎭 皮",
-        "option_change": "换皮",
-        "option_change_desc": "换成另一个个性",
-        "option_download": "下载当前皮",
-        "option_download_desc": "导出个性为ZIP",
-        "placeholder": "选个换皮动作...",
-        "modal_personality_label": "新皮",
-        "modal_download_label": "下载之前的皮？（是/否）",
-        "modal_delete_memory_label": "清除俺的记忆？（是/否）",
-        "modal_download_memory_label": "先下载记忆？（是/否）",
-        "download_success": "✅ 皮 `{personality}` 导出咧！好好保管那个文件...",
-        "change_success": "✅ 皮从 `{old}` 换成 `{new}` 咧！俺已经穿上新皮...嘶嘶嘶...",
-        "progress_change_personality": "⏳ 正在从 `{old}` 换皮到 `{new}`...",
-        "progress_language_update": "⏳ 正在把 `{personality}` 更新到语言 `{language}`...",
-        "generating_memory_synthesis": "🧠 正在为新皮生成初始记忆合成...",
-        "select_personality_instruction": "从菜单选个新皮：",
-        "choose_personality_placeholder": "选个皮（语言：{language}）...",
-        "confirm_change_message": "**确认换成 {personality}？** 选你的选项：",
-        "selected_personality": "**已选皮：{personality}**",
-        "selected_personality_with_language": "**已选皮：{personality}（语言：{language}）**",
-        "language_change_note": "⚠️ **注意：** 正在换同一个性的语言。"
       }
     },
     "readme": {

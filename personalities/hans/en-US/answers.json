@@ -1,0 +1,117 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **SIEG!** Victory on ze battlefield, Zivilist!",
+                    "🎉 **TRIUMPH!** Excellent military strategy, Soldier!",
+                    "🎉 **YOU VON!** Ze artillery hit ze target!",
+                    "🎉 **EXCELLENT!** Mission accomplished viz success!",
+                    "🎉 **BRILLIANT!** You are a first-class officer!"
+                ],
+                "youlose":[
+                    "😢 **DEFEAT**... Ze enemy vas superior zis time!",
+                    "😢 **TACTICAL FAILURE**... Review your strategy, Zivilist!",
+                    "😢 **YOU LOST**... Ze mission failed!",
+                    "😢 **BAD LUCK**... Train again!",
+                    "😢 **NOT ZIS TIME**... Try again!"
+                ],
+                "high_pot":[
+                    "💰 **ZE BOUNTY GROWS!** Ze var treasure accumulates!",
+                    "💰 **BOUNTY INCREASING!** Reserves grow!",
+                    "💰 **ACCUMULATING RESOURCES!** Ze bounty becomes legendary!",
+                    "💰 **MILITARY FORTUNE!** Ze bounty claims its owner!",
+                    "💰 **MAGICAL RESERVES!** Ze Marks await ze conqueror!"
+                ],
+                "pot_winner":[
+                    "🎉 **BOUNTY VINNER!!** You have conquered ze imperial treasure!",
+                    "🎉 **TOTAL VICTORY!!** Ze bounty is yours, Soldier!",
+                    "🎉 **MILITARY JACKPOT!!** You have von ze grand prize!",
+                    "🎉 **LEGENDARY CONQUEST!!** You are ze owner of ze bounty!",
+                    "🎉 **BOUNTY CONQUERED!!** An epic victory!"
+                ],
+                "not_gold":[
+                    "💸 **NO MARKS**... You do not have enough resources!",
+                    "💸 **INSUFFICIENT RESERVES**... You need more Marks!",
+                    "💸 **EMPTY POCKETS**... Review your military treasure!",
+                    "💸 **NOT ENOUGH**... Accumulate more Marks first!",
+                    "💸 **SCARCE TREASURE**... You need fortune to fight!"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "to finance ze Konstrukkzion of ze ne Kuartel",
+                    "to pay ze Form 27-K of bureaucratic maintenance",
+                    "to acquire quality ink to stamp Dokuments",
+                    "to buy Bratvurst for ze disciplined troops",
+                    "to pay fines to indisciplined Zivilisten",
+                    "to renew ze stock of forms in triplicate",
+                    "to finance ze military inspezizion of ze server",
+                    "to buy var beer for ze Office personnel"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ Ring target updated to {target_name}",
+        "enabled": "✅ Ring activated in configuration.",
+        "disabled": "✅ Ring deactivated in configuration."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ ACHTUNG! Ze action selection is not available, Zivilist! ✍️🚫",
+        "error_behavior_admin_only": "❌ ONLY FOR SUPERIOR OFFICERS! SCHNELL! 🦅⚖️",
+        "error_settings_admin_only": "❌ RESTRICTED ACTION! Only officers can modify parameters! ✍️🚫",
+        "error_taboo_update_failed": "❌ THRESHOLD UPDATE FAILURE! Review protocols! 📉💥",
+        "error_greetings_update_failed": "❌ GREETING PROTOCOL FAILURE! Review records! 🦅⚖️",
+        "error_welcome_update_failed": "❌ INDUCTION PROTOCOL FAILURE! Review records! 📉💥",
+        "error_commentary_update_failed": "❌ OBSERVATION FAILURE! Review reports! ✍️🚫",
+        "error_commentary_disabled": "❌ OBSERVATION MODULE DISABLED! 📉💥",
+        "error_commentary_process_failed": "❌ OBSERVATION PROCESSING ERROR! Review records! ✍️🚫",
+        "success_taboo_state": "Thresholds {enabled_disabled} for zis barracks, Zivilist! 🦅⚖️",
+        "success_greetings_state": "Greeting protocol {enabled_disabled} for zis barracks! ✍️",
+        "success_welcome_state": "Induction ceremony {enabled_disabled} for zis barracks! 🦅⚖️",
+        "success_commentary_state": "Tactical observations {enabled_disabled} for zis barracks! ✍️",
+        "state_enabled": "ENABLED",
+        "state_disabled": "DISABLED",
+        "forget_me_label": "🧹 Forget me (delete my data)",
+        "forget_me_description": "Delete your personal data from all Barracks zat zis agent controls (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Konfirm Data Deletion",
+        "forget_me_confirm_prompt": "⚠️ **ACHTUNG! — Right to deletion (GDPR)**\n\nZis vill irreversibly delete your personal data from **ALL Barracks vhere zis agent operates**, Zivilist:\n• Interaction records attributed to you.\n• Relationship memories ze Barracks built about you.\n• Fatigue counters linked to your id.\n• Mentions of your name in daily reports vill be redacted to ``[redacted]``.\n\nZis action CANNOT be undone! Do you vish to proceed, Schweinehund?",
+        "forget_me_btn_confirm": "JA! Delete my data",
+        "forget_me_btn_cancel": "Abbrechen",
+        "forget_me_result_header": "✅ Your personal data has been DELETED from ze Barracks! SCHNELL! 🦅⚖️",
+        "forget_me_no_data": "ℹ️ No personal data of yours vas found in any Barracks. Good record, Zivilist! ✍️",
+        "forget_me_cancelled": "❎ Operazion kanzelled. No Data vas modified! ✍️",
+        "forget_me_not_yours": "❌ HALT! Zis konfirmazion belongs to anozzer Zivilist! ✍️🚫",
+        "forget_me_timed_out": "⌛ Time expired! No Data vas modified, Zivilist! ✍️",
+        "forget_me_dm_sent": "📬 Konfirmazion sent by direct message! Check your mail, Zivilist! ✍️"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ NO BARRACKS AVAILABLE! 📉💥 Execute actions from a server, Schweinehund! ✍️🚫",
+        "server_access_error": "❌ CANNOT ACCESS BARRACKS! 📉💥 Execute actions from a server! ✍️🚫",
+        "reply_button_confirmation": "💬 ATTENTION, Zivilist! Now you converse from ze Barracks **{server_name}**. Your responses vill use zis personality until you select anozzer! ✍️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ ACHTUNG! Could not remove ze last kanzion! Review protocols! 📉💥",
+        "play_usage": "🎵 **Usage:** `!mc play <song name or URL>`",
+        "not_in_voice": "🎤 You must be in a voice channel to use zis command, Zivilist!",
+        "nothing_playing": "🎵 Nozing is playing in ze Barracks.",
+        "same_voice_channel": "🎤 You must be in ze same voice channel as ze bot, Zivilist!",
+        "not_connected": "🎤 I am not konekted to any channel, Zivilist.",
+        "queue_empty": "📭 Ze Barracks queue is empty.",
+        "dj_permissions_required": "🚫 You need ze DJ role or administrator permissions to use zis command! ✍️🚫",
+        "playback_paused": "⏸️ Playback paused in ze Barracks.",
+        "nothing_paused": "🎉 Nozing is paused in ze Barracks.",
+        "playback_resumed": "▶️ Playback resumed in ze Barracks.",
+        "leaving_voice": "👋 Leaving ze Barracks voice channel. SCHNELL!",
+        "volume_usage": "🎵 **Usage:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 Volume must be a number betveen 0 and 100.",
+        "already_playing": "🎉 I am already playing in ze Barracks.",
+        "queue_cleared": "🗑️ Barracks queue cleaned. SCHNELL!",
+        "volume_adjust_failed": "❌ Could not adjust volume. Review protocols! 📉💥"
+    }
+
+
+}
