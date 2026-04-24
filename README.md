@@ -133,17 +133,51 @@ python run.py
 
 ### Docker Deployment
 
+The project includes multiple Docker Compose configurations for different deployment scenarios. See `docker/README.md` for detailed documentation.
+
+#### Available Configurations
+
+- **Production** (`docker-compose.production.yml`) - Multi-bot setup with shared libraries and automatic restart
+- **Development** (`docker-compose.dev.yml`) - Single bot with limited resources and detailed logging
+- **Default** (`docker-compose.default.yml`) - Basic configuration using `agent_config.json` as-is
+- **ARMv7** (`docker/armv7/`) - Optimized for ARM architecture (Raspberry Pi, etc.)
+
+#### Quick Start with Docker Compose
+
+```bash
+# Using default configuration
+docker compose -f docker/docker-compose.default.yml up --build -d
+
+# Using development configuration
+docker compose -f docker/docker-compose.dev.yml up --build -d
+
+# Using production configuration (requires multiple Discord tokens)
+docker compose -f docker/docker-compose.production.yml up --build -d
+```
+
+#### Manual Docker Build
+
 ```bash
 # Build the image
-docker build -t roleagentbot .
+docker build -f docker/Dockerfile -t roleagentbot .
 
 # Run the container
 docker run -d --name roleagentbot \
-  -v $(pwd)/data:/app/data \
+  -v $(pwd)/databases:/app/databases \
   -v $(pwd)/logs:/app/logs \
   -v $(pwd)/.env:/app/.env \
   roleagentbot
 ```
+
+#### Docker Features
+
+- **FFmpeg & yt-dlp**: Included for MC (Music Controller) role
+- **PyNaCl**: Required for Discord voice connections
+- **Multi-architecture**: Support for ARMv7 devices
+- **Volume persistence**: Databases and logs persist across container restarts
+- **Environment configuration**: Personality and roles configurable via environment variables
+
+For detailed deployment options, troubleshooting, and advanced configurations, see [docker/README.md](docker/README.md).
 
 ## ⚙️ Configuration
 
