@@ -37,7 +37,7 @@
     "playback_resumed": "▶️ ¡Marcha reanudada!",
     "playback_stopped": "⏹️ ¡Marcha detenida y formación disuelta!",
     "queue_displayed": "📋 ¡Formación inspeccionada!",
-    "queue_cleared": "🗑️ ¡Formación limpiada!",
+    "mc_clear": "🗑️ ¡Formación limpiada!",
     "last_song_removed": "🔙 ¡Última marcha eliminada de formación!",
     "history_displayed": "📜 ¡Historial revisado!",
     "dropdown":{

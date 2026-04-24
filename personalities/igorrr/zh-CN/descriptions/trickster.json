@@ -26,7 +26,7 @@
         "historyvoid": " 还没人玩过...真无聊",
         "history": " **📜 苦难历史 **",
         "help": " **碎屑帮助**\n 跟伊戈尔滴碎屑一起烤，赌面粉袋子然后输掉！用 'dice play' 来受罪。\n 如果你掷出三个一，炉子可能会还你点啥...也许。",
-        "title": "🍞 **炉子碎屑 🍞**\n",
+        "title": "🍞 **炉子碎屑 🍞**",
         "current_balance": "已收面粉袋子：",
         "fixed_bet": "每次投掷价格：",
         "possible_plays": "🎯 **可能玩法：** {jugadas}\n",

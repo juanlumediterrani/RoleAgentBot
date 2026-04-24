@@ -15,26 +15,6 @@
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
       "option_no": "No",
-      "action_descriptions": {
-        "boolean_toggle": "Alternar activación/desactivación",
-        "number_input_target": "Entrada numérica",
-        "text_input_target": "Entrada de texto",
-        "action": "Acción inmediata"
-      },
-      "action_labels": {
-        "on": "Activar",
-        "off": "Desactivar",
-        "now": "Ahora",
-        "frequency": "Frecuencia",
-        "add_keyword": "Añadir Palabra",
-        "remove_keyword": "Eliminar Palabra",
-        "server_language": "🌐 Idioma del Servidor",
-        "role_management": "🎛️ Gestión de Roles",
-        "current": "Actual:",
-        "enabled": "Activado",
-        "disabled": "Desactivado",
-        "always_enabled": "Siempre activado"
-      },
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
       "available_subroles": "SUBMÓDULOS DISPONIBLES"
@@ -137,6 +117,11 @@
         "description": "**CENTRO DE CONTROL TÁCTICO:** 🦅⚖️ -¡Activar y desactivar unidades operativas desde el puesto de mando! -¡Supervisar estado de todas las fuerzas desplegadas en el campo! ✍️🚫",
         "button": "🎛️ Comando"
       },
+      "settings": {
+        "title": "⚙️  **Her Hans - CONFIGURACION DEL CUARTEL**",
+        "description": "**PROTOCOLO DE AJUSTES:** 🦅⚖️ -¡Gestionar el idioma del servidor y la activacion de modulos operativos! ¡SOLO PARA OFICIALES SUPERIORES! ✍️🚫",
+        "button": "⚙️ Configuracion"
+      },
       "personality": {
         "title": "🎭  **Her Hans - INFILTRACION**",
         "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️ -¡Cambiar el personaje del agente para este servidor en el menu deplegable de más abajo! -¡Descarga una copia de seguridad de la identidad actual con los cambios de en su personalidad! -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
@@ -196,7 +181,21 @@
         "recuerdas cuando",
         "no te acuerdas",
         "kien te acuerdas"
-      ]
+      ],
+      "action_labels": {
+        "on": "Activar",
+        "off": "Desactivar",
+        "now": "Ahora",
+        "frequency": "Frecuencia",
+        "add_keyword": "Añadir Palabra",
+        "remove_keyword": "Eliminar Palabra",
+        "server_language": "🌐 Idioma del Servidor",
+        "role_management": "🎛️ Gestion de Roles",
+        "current": "Actual:",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "always_enabled": "Siempre activado"
+      }
     },
     "welcome_channel_keywords": {
       "language_specific": [

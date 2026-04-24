@@ -26,7 +26,7 @@
         "historyvoid": " Nadie ha jugado todavía... qué aburrido",
         "history": " **📜  Historial de sufrimientos **",
         "help": " **Ayuda de las Migajas**\n Hornea con las migajas de Igorrr, apuesta sacos de harina y pierde! Usa 'dice play' para sufrir.\n Si sacas tres unos, el horno te devolverá algo... quizás.",
-        "title": "🍞 **MIGAJAS DEL HORNO 🍞**\n",
+        "title": "🍞 **MIGAJAS DEL HORNO 🍞**",
         "current_balance": "Sacos de harina acumulados:",
         "fixed_bet": "Precio por tirar:",
         "possible_plays": "🎯 **Jugadas posibles:** {jugadas}\n",

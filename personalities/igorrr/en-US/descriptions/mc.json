@@ -1,16 +1,16 @@
 {
-    "title": "**️ Igorrr's Rusty Gramophone**",
+    "title": "*🎷 Igorrr's Rusty Gramophone**",
     "description": "Igorrr drags his feet to the noise corner to make everyone suffer.",
-    "button": "️ Rusty Gramophone",
+    "button": "️🎷 Rusty Gramophone",
     "subrole_buttons": {
-        "overview": "️ Sack"
+        "overview": "️🎼 Sack"
     },
-    "canvas_mc_subtitle": "Kontrol Keys",
+    "canvas_mc_subtitle": "🎼 Kontrol Keys",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Use the dropdown menu to ask me for noises, to see the sack, or to put more human noises in.",
     "canvas_mc_voice_required": "Requires you to be konekted to a voice kanal",
-    "canvas_mc_admin_title": "️ Rusty Gramophone • admin view",
-    "select_mc_action": "️ Choose your sonic torture...",
+    "canvas_mc_admin_title": "️🎷 Rusty Gramophone • admin view",
+    "select_mc_action": "️🎼 Choose your sonic torture...",
     "play_song_title": "Play Noise Now",
     "add_song_title": "Put Noise in the Sack",
     "last_action_title": "**Last Aktion**",

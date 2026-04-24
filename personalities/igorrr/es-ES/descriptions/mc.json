@@ -1,16 +1,16 @@
 {
-    "title": "**️ El Gramófono Oxidado de Igorrr**",
+    "title": "*🎷 El Gramófono Oxidado de Igorrr**",
     "description": "Igorrr arrastra sus pies hasta el rincón del ruido para hacer sufrir a todos.",
-    "button": "️ Gramófono Oxidado",
+    "button": "️🎷 Gramófono Oxidado",
     "subrole_buttons": {
-        "overview": "️ Saco"
+        "overview": "️🎼 Saco"
     },
-    "canvas_mc_subtitle": "Klavijas de kontrol",
+    "canvas_mc_subtitle": "🎼 Klavijas de kontrol",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Uza el menu dezplegabe para pedime ruidos, pa ve el saco, o pa meter ma ruidos umano.",
     "canvas_mc_voice_required": "Requiere ke eztes konectado a un kanal de voz",
-    "canvas_mc_admin_title": "️ Gramófono Oxidado • admin view",
-    "select_mc_action": "️ Elige tu tortura sonora...",
+    "canvas_mc_admin_title": "️🎷 Gramófono Oxidado • admin view",
+    "select_mc_action": "️🎼 Elige tu tortura sonora...",
     "play_song_title": "Poner Ruido Ahora",
     "add_song_title": "Meter Ruido en el Saco",
     "last_action_title": "**Última Aksion**",

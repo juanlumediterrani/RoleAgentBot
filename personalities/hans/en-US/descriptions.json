@@ -1,0 +1,219 @@
+{
+  "discord": {
+    "general": {
+      "status": "**OPERATIONAL STATUS:**",
+      "active": "✅ IN MARCH! 🦅⚖️",
+      "inactive": "❌ OUT OF SERVICE! 📉💥",
+      "none": "NONE",
+      "every": "EVERY",
+      "for": "FOR",
+      "base_frequency": "**BASE FREQUENCY:**",
+      "current_frequency": "**CURRENT FREQUENCY:**",
+      "current_settings": "🔧 **OFFICIAL CONFIGURATION:** 🦅⚖️",
+      "frequency_format": "Every {hours}h",
+      "button_confirm": "Confirm",
+      "button_confirm_changes": "Confirm Changes",
+      "option_yes": "Yes",
+      "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "AVAILABLE SUBMODULES"
+    },
+    "help_menu": {
+      "title": "📚 ** Herr Hans - INSTRUCTION MANUAL**",
+      "description": "**OFFICIAL DESCRIPTION** 🦅⚖️ ACHTUNG! Herr Hans is a disciplinary agent viz persistent memory and absolute authority. Follow ze rules or suffer ze consequences, Zivilist! ✍️🚫",
+      "separator": "═══════════════════════════════════════",
+      "roles_section": "**OPERATION MODULES** Ze modules are authorized capabilities to maintain order and discipline among ze recruits.",
+      "behavior_section": "**BEHAVIOR PROTOCOLS** SCHNELL! Configure ze behavior protocols. ONLY FOR SUPERIOR OFFICERS!",
+      "tips_section": "**STRICT ORDERS** -Ask how a command vorks: 'how does ze command dice vork'! -Ze best capabilities are inside each operational module!"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 Herr Hans • HEADQUARTERS",
+      "button_home": "🧭 Headquarters",
+      "button_back": "← Go Back",
+      "button_roles": "🎪 Modules",
+      "button_behavior": "🤖 Protocols",
+      "button_help": "📝 Manual",
+      "generic_option_label": "SELECT OPTION, RECRUIT!",
+      "personalitystatus": "**Personality loaded:**",
+      "description": "Ze Canvas panel allows total control over all operations!",
+      "interestingthings": "**Active Operations:**",
+      "recentsynthesistitle": "🧐 **Current Report**",
+      "dailymemorytitle": "🗺️ **Front Analysis**",
+      "personalsynthesistitle": "👞 **Recruit File**",
+      "dm_default_server_title": "🔔 **USING DEFAULT SERVER: {server_name}**",
+      "dm_default_server_message": "*Navigating from DM, using ze first available server!*",
+      "dm_default_server_separator": "═══════════════════════════════════════"
+    },
+    "roles_view_messages": {
+      "title": "🎭 HERR HANS SPECIAL UNITS 🎭",
+      "description": "🌟 Navigate ze different operational units deployed for Herr Hans!",
+      "role_categories": "═════════════════════════════════",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ OUT OF SERVICE 📉💥",
+      "interval_info": "//⏰ EVERY {interval}h",
+      "subroles_info": "🎪 **ACTIVE SUBMODULES:** {subroles}",
+      "admin_note": "🔧 **OFFICIAL CONFIGURATION:** 🦅⚖️",
+      "user_note": "👤 **RECRUIT FUNCTIONS:**",
+      "help_commands": "💡 **HELP COMMANDS:**",
+      "canvas_details": "🎨 **CANVAS DETAILS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **NO UNITS DEPLOYED** 📉💥 No specialized units are active! Ask an officer to deploy units using `!canvas setup`! **Units available for deployment:** • 📡 News Watcher - News Vigilant • 💎 Treasure Hunter - Treasure Hunter • 🎭 Trickster - Special Operations Division • 💰 Banker - Clan Economy • 🎵 MC - Military Music",
+      "role_list_title": "☠️ MILITARY UNITS AND OPERATIONS",
+      "role_available": "✅ {role} - UNIT DEPLOYED AND OPERATIONAL! 🦅⚖️",
+      "role_unavailable": "❌ {role} - UNIT OUT OF SERVICE! 📉💥",
+      "frequency_help": "📝 Use `!canvas` → ze corresponding role → Admin to adjust frequency (from 1 to 168 hours), SCHNELL!",
+      "music_help": "🎵 **HERR HANS MUSIC** - `!mc play <march>` / `!mc queue` | `!mc help` to read ze full manual!",
+      "button_previous": "◀ Go Back",
+      "button_next": "Go Forward ▶",
+      "page_indicator": "**Page {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **Herr Hans - MILITARY INTERROGATION**",
+        "description": "**INTELLIGENCE PROTOCOL:** 🦅⚖️ -Herr Hans executes interrogation protocols in DM and mentions! -Operational persistent memory to record all previous missions! -Reacts according to tactical parameters and forbidden keywords! Configure in security protocols! ✍️🚫",
+        "button": "💬 Interrogation"
+      },
+      "greetings": {
+        "title": "👋  **Herr Hans - MILITARY SALUTE PROTOCOL**",
+        "description": "**FORMATION REGULATIONS:** 🦅⚖️ -Execute regulatory salutes ven detecting recruits online! -Tactical vaiting time: 5 minutes before declaring absence! -(In development): Mandatory response system to military salute! ✍️🚫",
+        "button": "👋 Formation"
+      },
+      "welcome": {
+        "title": "🍺  **Herr Hans - INDUCTION PROTOCOL**",
+        "description": "**RECRUITMENT PROCEDURE:** 🦅⚖️ -Execute official induction ceremony for new recruits! -Register presence in headquarters and assign identification number! ✍️🚫",
+        "button": "🍺 Induction"
+      },
+      "taboo": {
+        "title": "🚫  **Herr Hans - SECURITY PROTOCOL**",
+        "description": "**DISCIPLINE REGULATIONS:** 🦅⚖️ -Configure automatic response system to forbidden words in channels and DM! -Activate/deactivate security alerts and restricted keywords! ✍️🚫",
+        "title_keywords": "**CURRENT RESTRICTED VOCABULARY:**",
+        "button": "🚫 Security"
+      },
+      "memory": {
+        "title": "🧠  **Herr Hans - CAMPAIGN MEMORY**",
+        "description": "**INTELLIGENCE FILES:** 🦅⚖️ -Consult ze agent's operational memory files! -Front analysis, recent reports and recruit files! 📉💥",
+        "button": "🧠 Memory",
+        "dropdown": {
+          "long": {
+            "label": "Front Analysis",
+            "emoji": "🗺️",
+            "description": "Ze complete daily record of ze tactical situation"
+          },
+          "recent": {
+            "label": "Current Report",
+            "emoji": "🧐",
+            "description": "Ze most recent reports of ze operations"
+          },
+          "relationship": {
+            "label": "Recruit File",
+            "emoji": "👞",
+            "description": "Ze files of each recruit under my supervision"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **Herr Hans - UNIT COMMAND**",
+        "description": "**TACTICAL CONTROL CENTER:** 🦅⚖️ -Activate and deactivate operational units from ze command post! -Supervise ze status of all forces deployed in ze field! ✍️🚫",
+        "button": "🎛️ Command"
+      },
+      "settings": {
+        "title": "⚙️  **Herr Hans - HEADQUARTERS CONFIGURATION**",
+        "description": "**ADJUSTMENT PROTOCOL:** 🦅⚖️ -Manage ze server language and activation of operational modules! ONLY FOR SUPERIOR OFFICERS! ✍️🚫",
+        "button": "⚙️ Configuration"
+      },
+      "personality": {
+        "title": "🎭  **Herr Hans - INFILTRATION**",
+        "description": "**DIGITAL CAMOUFLAGE PROTOCOL:** 🦅⚖️ -Change ze agent's character for zis server in ze dropdown menu below! -Download a backup copy of ze current identity viz ze changes in its personality! -You can download ze agent's current memory to make a backup. ✍️🚫",
+        "button": "🎭 INFILTRATION",
+        "option_change": "Change Identity",
+        "option_change_desc": "Change to a different operational personality!",
+        "option_download": "Download Current Identity",
+        "option_download_desc": "Export identity as encrypted ZIP file!",
+        "placeholder": "Choose an identity operation...",
+        "modal_personality_label": "New Operational Identity",
+        "modal_download_label": "Download previous identity? (yes/no)",
+        "modal_delete_memory_label": "Delete intelligence files? (yes/no)",
+        "modal_download_memory_label": "Download intelligence first? (yes/no)",
+        "download_success": "✅ IDENTITY `{personality}` EXPORTED SUCCESSFULLY, COMMANDER!!",
+        "change_success": "✅ IDENTITY CHANGED FROM `{old}` TO `{new}`!! ZE NEW IDENTITY IS ACTIVE AND OPERATIONAL, COMMANDER!!",
+        "progress_change_personality": "⏳ Changing identity from `{old}` to `{new}`...",
+        "progress_language_update": "⏳ Updating `{personality}` to language `{language}`...",
+        "generating_memory_synthesis": "🧠 Generating initial memory synthesis for ze new identity...",
+        "select_personality_instruction": "Select a new identity from ze dropdown menu:",
+        "choose_personality_placeholder": "Choose an identity (language: {language})...",
+        "confirm_change_message": "**Confirm change to {personality}?** Select your options below:",
+        "selected_personality": "**Selected identity: {personality}**",
+        "selected_personality_with_language": "**Selected identity: {personality} (Language: {language})**",
+        "language_change_note": "⚠️ **Note:** Changing language for ze same identity."
+      }
+    },
+    "readme": {
+      "label_user_question": "**RECRUIT QUESTION:**",
+      "task": "Answer ze recruit's question using ze official documentation!",
+      "label_documentation": "**OFFICIAL DOCUMENTATION:**"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "do you remember",
+        "you remember",
+        "make memory",
+        "remember",
+        "you remember that",
+        "remember when",
+        "remember",
+        "do you remember",
+        "do you remember",
+        "make memory of",
+        "remember of",
+        "remember something",
+        "it sounds familiar",
+        "you remember",
+        "remember",
+        "make memory",
+        "do you remember?",
+        "do you remember?",
+        "remember of",
+        "remember when",
+        "it sounds something",
+        "remember that",
+        "you remember when",
+        "you do not remember",
+        "who do you remember"
+      ],
+      "action_labels": {
+        "on": "Activate",
+        "off": "Deactivate",
+        "now": "Now",
+        "frequency": "Frequency",
+        "add_keyword": "Add Word",
+        "remove_keyword": "Remove Word",
+        "server_language": "🌐 Server Language",
+        "role_management": "🎛️ Role Management",
+        "current": "Current:",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "always_enabled": "Always enabled"
+      }
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "welcome",
+        "welcomes",
+        "welcomed",
+        "welcomed"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "lounge",
+        "room"
+      ]
+    },
+    "reply_button": {
+      "label": "Reply",
+      "emoji": "💬",
+      "confirmation_message": "💬 You are talking viz me as if you were in **{server_name}**. All your responses vill use zis personality until you select another server."
+    }
+  }
+}
