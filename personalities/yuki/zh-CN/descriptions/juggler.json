@@ -1,0 +1,45 @@
+{
+    "title": "🎎 **女将さん（おかみさん）** 🎎",
+    "description": "一位精通多种传统艺术的芸者（げいしゃ），以优雅与风度为茶室的访客提供娱乐。",
+    "button": "🎎 女将さん",
+    "canvas_juggler_subrole_descriptions": {
+        "ring": "👁️ **目付（めつけ）** —— 维持花街秩序的 surveillance circle"
+    },
+    "subrole_buttons": {
+        "ring": "👁️ 目付"
+    },
+    "ring": {
+        "title": "👁️ **目付（めつけ）** 👁️",
+        "description": "🔍 surveillance circle。作为花街的 inspector，雪维持着一张 contacts 网络，得以在不打破茶室 discretion 的前提下进行质询与追查。",
+        "status_active": "✅ **监视激活** —— 雪正在履行 inspector 之职",
+        "status_inactive": "❌ **休止中** —— 监视未激活",
+        "current_target": "🎯 **当前 suspect：**",
+        "target_unknown": "👤 尚未识别出任何 suspect",
+        "investigation_title": "🔍 **标记一位访客：**",
+        "investigation_instructions": "• 从下方菜单使用 **目付：标记**\n• 写下 mention（@）或 suspect 访客的 ID\n• 雪将启动一次 direct indagación\n• 结果将对频道中的所有人可见",
+        "investigation_warning": "⚠️ **限制：**\n• 访客不能标记自己\n• Bots 不是调查对象\n• 监视必须由管理员激活",
+        "inactive_title": "⚠️ **监视未激活**",
+        "inactive_instructions": "要激活监视：\n• 管理员必须进入 **管理员 目付** 面板\n• 执行 **监视：激活**\n• 配置回合频率\n\n激活后，你便可以标记 suspect 访客。",
+        "hot_potato": "🔥 **嫌疑正在转移：** 回合 {iteration}（速度 x{multiplier}）",
+        "controls": "**控制**\n- 激活或关闭监视\n- 回合频率",
+        "dm_accusation_header": "👁️ **目付（めつけ）调查**",
+        "accused_label": "被告：",
+        "admin_description": "配置目付（めつけ）监视的灵敏度与频率",
+        "dropdown": {
+            "ring_accuse": "目付：标记",
+            "ring_accuse_description": "指出一位访客为 suspect 以供调查",
+            "ring_on": "监视：激活",
+            "ring_on_description": "启动花街的监视",
+            "ring_off": "监视：关闭",
+            "ring_off_description": "停止花街的监视",
+            "ring_frequency": "监视：频率",
+            "ring_frequency_description": "配置嫌疑转移的回合频率（影响速度）"
+        }
+    },
+    "dropdown": {
+        "select_juggler_action": "🎎 选择 entertainment 动作...",
+        "config_juggler": "配置 Entertainment",
+        "config_juggler_description": "调整芸者 entertainment 的配置",
+        "config_juggler_emoji": "🎎"
+    }
+}

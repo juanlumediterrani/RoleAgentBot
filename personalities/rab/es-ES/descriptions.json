@@ -23,8 +23,8 @@
       "title": "📚 ** RAB - Registro de Asistencia**",
       "description": "**Descripción** RAB es un ente sintético con memoria persistente, capaz de transmigrar entre diferentes roles y mantener interacciones profundas con los buscadores (usuarios).",
       "separator": "---------------------------------------------",
-      "roles_section": "**Módulos y Pieles** Los módulos son vidas que el bot puede asumir para otorgar servicios específicos a los usuarios.",
-      "behavior_section": "**Protocolos de Comportamiento** Configuración de las rutinas de interacción del androide. Exclusivo para Administradores.",
+      "roles_section": "**Módulos y Pieles** Los módulos son 'roles' que el bot puede asumir para otorgar servicios específicos a los usuarios.",
+      "behavior_section": "**Protocolos de Comportamiento** Configuración de las rutinas de interacción del androide. Exclusivo para Administradores (Cualquier peregrino puede borrar alli su informacion).",
       "tips_section": "**Sugerencias de navegación** -Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?' -La verdadera sabiduría reside en la experiencia de cada rol."
     },
     "canvas_home_messages": {
@@ -37,6 +37,7 @@
       "generic_option_label": "Selecciona un camino...",
       "personalitystatus": "Conciencia Activa:",
       "description": "El panel canvas es tu interfaz directa con el núcleo del sistema.",
+      "interestingthings": "**Datos del Nexo:**",
       "recentsynthesistitle": "🔁 **Flujo de Datos Reciente**",
       "dailymemorytitle": "💾 **Memoria de Silicio**",
       "personalsynthesistitle": "📂 **Vínculo con el Peregrino**",
@@ -69,27 +70,28 @@
     },
     "behavior_messages": {
       "conversation": {
-        "title": "**💬 RAB - Sincronía**",
+        "title": "💬  **RAB - Sincronía**",
         "description": "**Descripción:** -El androide responderá a mensajes directos y menciones. -Posee memoria en sus circuitos; recordará los ecos de conversaciones pasadas si fueron significativos. -Reaccionará a fluctuaciones específicas según los roles. En el módulo tabú se configuran palabras que alteran su código.",
         "button": "💬 Sincronía"
       },
       "greetings": {
-        "title": "**👋 RAB - Recepción**",
+        "title": "👋  **RAB - Recepción**",
         "description": "**Descripción:** -Saluda a los buscadores al conectarse a la red. -Mantiene el enlace durante 5 min antes de considerar al usuario ausente.",
         "button": "👋 Recepción"
       },
       "welcome": {
-        "title": "**🍺 RAB - Peregrinaje**",
+        "title": "🍺  **RAB - Peregrinaje**",
         "description": "**Descripción:** -Da la bienvenida a los nuevos peregrinos que llegan al nexo.",
         "button": "🍺 Bienvenida"
       },
       "taboo": {
-        "title": "**🚫 RAB - Frecuencias Tabú**",
+        "title": "🚫  **RAB - Frecuencias Tabú**",
         "description": "**Como funciona:** -Configura palabras que generen una disonancia en el código del androide, obligándole a reaccionar. -Se pueden añadir, activar o desactivar estas secuencias.",
         "title_keywords": "Frecuencias disonantes actuales:",
         "button": "🚫 Tabú"
       },
       "memory": {
+        "title": "🧠 **RAB - Archivos de Memoria**",
         "description": "**Descripción** -Accede a los registros de memoria del androide: análisis del día, procesos recientes y perfiles de usuarios.",
         "button": "🧠 Archivos",
         "dropdown": {
@@ -111,17 +113,17 @@
         }
       },
       "role_control": {
-        "title": "**🎛️ RAB - Transmigración**",
+        "title": "🎛️  **RAB - Transmigración**",
         "description": "**Descripción** -Activa o induce el letargo de los diferentes módulos desde aquí.",
         "button": "🎛️ Transmigración"
       },
       "settings": {
-        "title": "**⚙️ RAB - Ajustes del Nexo**",
+        "title": "⚙️  **RAB - Ajustes del Nexo**",
         "description": "**Descripción** -Gestiona el idioma del servidor y la activación de módulos.",
         "button": "⚙️ Ajustes"
       },
       "personality": {
-        "title": "**🎭 RAB - Matriz de Identidad**",
+        "title": "🎭  **RAB - Matriz de Identidad**",
         "description": "**Descripción** -Altera la esencia y personalidad del androide en este servidor. -Permite salvaguardar el estado actual del alma digital. -Migra los registros al efectuar un cambio.",
         "button": "🎭 Identidad",
         "option_change": "Inyectar Nueva Esencia",

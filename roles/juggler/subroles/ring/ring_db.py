@@ -61,7 +61,7 @@ class RingDB:
         try:
             from discord_bot.canvas.server_config import get_role_config_value
             config = get_role_config_value(self.server_id, "ring", "config", default={})
-            return config
+            return config if isinstance(config, dict) else {}
         except Exception as e:
             logger.error(f"Failed to get ring config: {e}")
             return {}

@@ -1,5 +1,5 @@
 {
-    "title": "**📡 Servicio de Inteligencia Militar**",
+    "title": "📡  **Servicio de Inteligencia Militar**",
     "description": "Suscríbase a categorías de inteligencia estratégica y reciba alertas según el método de análisis autorizado.",
     "button": "📡 Inteligencia",
     "alert_title": "**:eagle: Águilas de Reconocimiento de Her Hans :eagle:**",
@@ -13,7 +13,6 @@
     "title_your_subscriptions": "**Suscripciones del Personal:**",
     "title_no_active_subscriptions": "-Sin suscripciones activas",
     "title_configuration_status": "**Estado de Configuración**",
-    "not_selected_method": "No seleccionado",
     "keywords_title": "🔍 **Palabras Clave de Inteligencia:**",
     "no_keywords": "Ninguna configurada",
     "premises_title": "🤖 **Directivas de Análisis:**",

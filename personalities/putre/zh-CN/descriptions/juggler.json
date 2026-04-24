@@ -1,0 +1,46 @@
+{
+    "title": "**🤹 普特雷杂耍**",
+    "description": "兽人杂耍同时耍多个活儿，用技能给部落逗乐。",
+    "button": "🤹 杂耍",
+    "canvas_juggler_subrole_descriptions": {
+        "ring": "👁️ **戒指猎人** - 指控可疑的人拿了唯一戒指"
+    },
+    "subrole_buttons": {
+        "ring": "👁️ 戒指"
+    },
+    "ring": {
+        "title": "👁️ **普特雷戒指猎人** 👁️",
+        "description": "🔍 戒指猎人会追你到时间尽头，指控别人来避免这苦差。",
+        "status_active": "✅ **追捕中** - 普特雷在找戒指",
+        "status_inactive": "❌ **追捕暂停** - 普特雷在休息",
+        "current_target": "🎯 **当前目标：**",
+        "target_unknown": "👤 没选可疑对象",
+        "investigation_title": "🔍** 发起指控：**",
+        "investigation_instructions": "• 嗷呜！用下面菜单的 **戒指：指控** 笨蛋两脚兽\n• 写：@用户名 或 嫌疑人ID！\n• 普特雷会生成威胁指控来恐吓！\n• 指控会发到频道让所有人看见！",
+        "investigation_warning": "⚠️ 小心笨蛋！：\n• 不能指控自己，白痴！\n• 不能指控机器人，他们没有血！\n• 戒指必须先由兽人首领激活！",
+        "inactive_title": "⚠️ **追捕暂停**",
+        "inactive_instructions": "激活戒指功能：\n• 管理员去 **戒指管理**\n• 点 **戒指：开** 激活\n• 配置自动调查频率\n\n激活后可以指控用户拿了唯一戒指！",
+        "hot_potato": "🔥 **烫手山芋：** 第 {iteration} 轮 (频率降低 {multiplier}x)",
+        "controls": "**控制**\n- 开关戒指\n- 可编辑频率框 (设基础频率并重置烫手山芋)",
+        "motive_detected": "💭 **动机:** {motive}",
+        "dm_accusation_header": "👁️ **戒指指控**",
+        "accused_label": "被指控:",
+        "admin_description": "配置戒指追捕功能和频率",
+        "dropdown": {
+            "ring_accuse": "戒指：指控",
+            "ring_accuse_description": "指控用户拿了唯一戒指",
+            "ring_on": "追捕：开",
+            "ring_on_description": "开始追捕唯一戒指",
+            "ring_off": "追捕：关",
+            "ring_off_description": "停止追捕唯一戒指",
+            "ring_frequency": "追捕：频率",
+            "ring_frequency_description": "配置轮次频率 (影响烫手山芋)"
+        }
+    },
+    "dropdown": {
+        "select_juggler_action": "🤹 选杂耍动作...",
+        "config_juggler": "配置杂耍",
+        "config_juggler_description": "调整杂耍设置",
+        "config_juggler_emoji": "🤹"
+    }
+}

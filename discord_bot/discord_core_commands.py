@@ -403,8 +403,6 @@ def register_core_commands(bot, agent_config):
         if is_role_enabled_check("news_watcher", agent_config, ctx.guild):
             help_msg += "• `!forcewatcher` - Force news check immediately (admin only)\n"
             help_msg += "• `!testwatcher` - Test news watcher without admin (debug)\n"
-        if is_role_enabled_check("treasure_hunter", agent_config, ctx.guild):
-            help_msg += "• `!hunterfrequency <hours>` - Set treasure hunter interval (admin only)\n"
         help_msg += f"• `!{greet_name}` / `!{nogreet_name}` - Toggle presence greetings\n"
         help_msg += f"• `!{welcome_name}` / `!{nowelcome_name}` - Toggle welcome messages\n"
         help_msg += f"• `!{insult_name}` - Send an orc insult\n\n"

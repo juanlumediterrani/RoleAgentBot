@@ -62,31 +62,30 @@ def initialize_global_feeds_db():
                 # Crypto - Español
                 ("Economía Digital", "https://www.economia3.com/feed/", "crypto", "es"),
                 ("Investing.com ES", "https://es.investing.com/rss/news.rss", "crypto", "es"),
-                ("BitcoinEspaña", "https://www.bitcoinespana.com/feed/", "crypto", "es"),
+                # BitcoinEspaña - REMOVED: Domain expired, redirects to legendarynames.com
                 # Crypto - Inglés
                 ("Cointelegraph", "https://cointelegraph.com/rss", "crypto", "en"),
                 ("Decrypt", "https://decrypt.co/feed", "crypto", "en"),
                 ("The Block", "https://www.theblock.co/rss.xml", "crypto", "en"),
                 # Crypto - Chino
-                ("Odaily Starry", "https://www.odaily.news/rss", "crypto", "zh"),
-                ("The Block CN", "https://www.theblock.co/rss.xml?lang=zh", "crypto", "zh"),
-                ("Decrypt CN", "https://decrypt.co/feed?lang=zh", "crypto", "zh"),
+                # Odaily Starry - REMOVED: Not an RSS feed, returns HTML page
+                # The Block CN - REMOVED: Empty feed
+                # Decrypt CN - REMOVED: Empty feed
                 
                 # Economy - Español
                 ("El País Economía", "https://elpais.com/rss/feed.html?section=economia", "economy", "es"),
                 ("Investing.com ES Economy", "https://es.investing.com/rss/news_301.rss", "economy", "es"),
-                ("El Mundo Economía", "https://elmundo.es/rss/economia.html", "economy", "es"),
+                ("El Mundo Economía", "https://e00-elmundo.uecdn.es/elmundo/rss/economia.xml", "economy", "es"),
                 # Economy - Inglés
                 ("Bloomberg Markets", "https://feeds.bloomberg.com/markets/news.rss", "economy", "en"),
                 ("CNBC Markets", "https://www.cnbc.com/id/100003114/device/rss/rss.html", "economy", "en"),
                 ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories/", "economy", "en"),
                 # Economy - Chino
                 ("36Kr Economy", "https://36kr.com/feed", "economy", "zh"),
-                ("Sina Finance", "https://finance.sina.com.cn/roll/index.d.html", "economy", "zh"),
-                ("Bloomberg China", "https://www.bloomberg.com/feed", "economy", "zh"),
+                # Sina Finance - REMOVED: Not an RSS feed, redirects with JavaScript
                 
                 # General - Español
-                ("El País", "https://elpais.com/rss/feed.html", "general", "es"),
+                ("El País", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", "general", "es"),
                 ("20minutos", "https://www.20minutos.es/rss/", "general", "es"),
                 ("El Mundo", "https://elmundo.es/rss/portada.xml", "general", "es"),
                 # General - Inglés
@@ -95,20 +94,20 @@ def initialize_global_feeds_db():
                 ("ABC News", "https://feeds.abcnews.com/abcnews/topstories", "general", "en"),
                 # General - Chino
                 ("China Daily", "http://www.chinadaily.com.cn/rss/china_rss.xml", "general", "zh"),
-                ("Sina News", "https://news.sina.com.cn/rss/roll/news.d.html", "general", "zh"),
-                ("Xinhua News", "http://www.xinhuanet.com/english/rss/newsrss.xml", "general", "zh"),
+                # Sina News - REMOVED: Page not found (404)
+                ("Xinhua News", "http://www.xinhuanet.com/english/rss/chinarss.xml", "general", "zh"),
                 
                 # International - Español
-                ("El País Internacional", "https://elpais.com/rss/feed.html?section=internacional", "international", "es"),
+                # El País Internacional - REMOVED: Redirects to general feed, no specific international feed
                 ("ABC Internacional", "https://www.abc.es/rss/feeds/abc_internacional.xml", "international", "es"),
-                ("El Mundo Internacional", "https://elmundo.es/rss/internacional.html", "international", "es"),
+                ("El Mundo Internacional", "https://e00-elmundo.uecdn.es/elmundo/rss/internacional.xml", "international", "es"),
                 # International - Inglés
                 ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml", "international", "en"),
                 ("Al Jazeera English", "https://www.aljazeera.com/xml/rss/all.xml", "international", "en"),
                 ("CNN World", "http://rss.cnn.com/rss/edition_world.rss", "international", "en"),
                 # International - Chino
                 ("China Daily World", "http://www.chinadaily.com.cn/rss/world_rss.xml", "international", "zh"),
-                ("CCTV World", "https://english.cctv.com/rss/news/world.xml", "international", "zh"),
+                # CCTV World - REMOVED: Encoding error (UTF-8 decode error)
                 ("Xinhua World", "http://www.xinhuanet.com/english/rss/worldrss.xml", "international", "zh"),
                 
                 # Technology - Español
@@ -121,8 +120,8 @@ def initialize_global_feeds_db():
                 ("The Verge", "https://www.theverge.com/rss/index.xml", "technology", "en"),
                 # Technology - Chino
                 ("TechNode", "https://technode.com/feed/", "technology", "zh"),
-                ("Sina Tech", "https://tech.sina.com.cn/roll/index.d.html", "technology", "zh"),
-                ("PingWest", "https://pingwest.com/feed", "technology", "zh"),
+                # Sina Tech - REMOVED: Page not found (404)
+                # PingWest - REMOVED: Page not found (404)
             ]
             
             cursor.executemany('''

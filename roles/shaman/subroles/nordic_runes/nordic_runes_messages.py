@@ -124,37 +124,38 @@ def _get_shaman_path(server_id: str = None) -> str:
     return os.path.join(personality_dir, 'descriptions', 'shaman.json')
 
 
+def _get_server_language(server_id: str = None) -> str:
+    """Resolve the active language for a server from databases/<server_id>/server_config.json.
+
+    Falls back to AGENT_CFG.default_language (or 'en-US').
+    """
+    default_language = AGENT_CFG.get("default_language", "en-US")
+    if not server_id:
+        return default_language
+    try:
+        import json
+        server_config_path = os.path.join(project_root, "databases", str(server_id), "server_config.json")
+        if os.path.exists(server_config_path):
+            with open(server_config_path, encoding="utf-8") as f:
+                return json.load(f).get("language", default_language)
+    except Exception as e:
+        logger.debug(f"Could not read server_config.json for language ({server_id}): {e}")
+    return default_language
+
+
 def _get_runesplane_path(server_id: str = None) -> str:
-    """Return path to databases/{server_id}/{personality}/descriptions/runesplane.json, fallback to personalities/."""
-    personality_dir = _get_personality_dir(server_id)
-    parts = personality_dir.split(os.sep)
+    """Return path to manuals/<language>/runesplane.json, falling back to manuals/en-US/runesplane.json.
 
-    # Extract personality name from path
-    personality_name = None
-    if 'personalities' in parts:
-        idx = parts.index('personalities')
-        if idx + 1 < len(parts):
-            personality_name = parts[idx + 1]
-    elif 'databases' in parts:
-        idx = parts.index('databases')
-        if idx + 2 < len(parts):
-            personality_name = parts[idx + 2]
-
-    # Construct databases path if server_id is a numeric ID (Discord server IDs are large numbers)
-    if server_id and personality_name and str(server_id).isdigit():
-        db_path = os.path.join(project_root, 'databases', str(server_id), personality_name, 'descriptions', 'runesplane.json')
-        if os.path.exists(db_path):
-            return db_path
-
-    # Fallback to personalities/ directory
-    if 'personalities' in parts:
-        return os.path.join(os.sep.join(parts), 'descriptions', 'runesplane.json')
-    elif 'databases' in parts:
-        # Already in databases structure, use it as-is
-        return os.path.join(os.sep.join(parts), 'descriptions', 'runesplane.json')
-
-    # Ultimate fallback - return the original personality_dir path
-    return os.path.join(personality_dir, 'descriptions', 'runesplane.json')
+    This file is used only for LLM rune analysis (translations / positions / guidance)
+    and is selected by the server language from server_config.json.
+    """
+    language = _get_server_language(server_id)
+    primary = os.path.join(project_root, 'manuals', language, 'runesplane.json')
+    if os.path.exists(primary):
+        return primary
+    # Fallback to en-US even if it does not exist yet; _load_runesplane_json
+    # will then fall back to the inline RUNES data in nordic_runes_messages.py.
+    return os.path.join(project_root, 'manuals', 'en-US', 'runesplane.json')
 
 
 def _load_shaman_json(server_id: str = None) -> dict:

@@ -1,0 +1,115 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **你赢了！** 碎屑卖得不错...嘶嘶嘶",
+                    "🎉 **胜利！** 酵母发起来咧...嘶嘶嘶",
+                    "🎉 **大捷！** 今天炉子很仁慈...嘶嘶嘶",
+                    "🎉 **太棒咧！** 面团没烧焦...嘶嘶嘶",
+                    "🎉 **厉害！** 主人会高兴滴...嘶嘶嘶"
+                ],
+                "youlose":[
+                    "😢 **你输咧**...面包焦咧...嘶嘶嘶",
+                    "😢 **运气差**...酵母没发...嘶嘶嘶",
+                    "😢 **不是这次**...炉子冰凉...嘶嘶嘶",
+                    "😢 **哎呀**...面团粘住咧...嘶嘶嘶",
+                    "😢 **但别放弃**...主人会惩罚俺滴...嘶嘶嘶"
+                ],
+                "high_pot":[
+                    "💰 **篮子变大咧！** 面粉堆起来咧...嘶嘶嘶",
+                    "💰 **篮子涨咧！** 奖品变大咧...嘶嘶嘶",
+                    "💰 **在积累！** 篮子发亮咧...嘶嘶嘶",
+                    "💰 **等待财富！** 篮子认领它滴命运...嘶嘶嘶",
+                    "💰 **魔法篮子！** 面粉等着幸运儿...嘶嘶嘶"
+                ],
+                "pot_winner":[
+                    "🎉 **🎉 篮子赢家！！** 你征服了火炉滴碎屑！...嘶嘶嘶",
+                    "🎉 **🎉 篮子被征服！！** 你是主人选中滴人！...嘶嘶嘶",
+                    "🎉 **🎉 大奖！！** 篮子是你滴咧！...嘶嘶嘶",
+                    "🎉 **🎉 传奇财富！！** 你赢咧碎屑！...嘶嘶嘶",
+                    "🎉 **🎉 篮子归你！！** 一场史诗胜利！...嘶嘶嘶"
+                ],
+                "not_gold":[
+                    "💸 **没面粉**...你滴袋子不够...嘶嘶嘶",
+                    "💸 **资金不足**...你需要更多面粉袋子...嘶嘶嘶",
+                    "💸 **口袋空空**...检查你滴袋子...嘶嘶嘶",
+                    "💸 **不够**...先攒够袋子...嘶嘶嘶",
+                    "💸 **面粉稀缺**...你需要运气来烤面包...嘶嘶嘶"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "买不尖叫滴新鲜酵母",
+                    "交主人因为烤焦面包罚滴款",
+                    "买真滴没象鼻虫滴面粉",
+                    "贿赂偷谷仓滴大老鼠",
+                    "修理要塌滴炉门",
+                    "买没疥疮滴水和面",
+                    "付钱给送湿柴滴炭商",
+                    "在离主人远滴地方建个自己滴洞"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ 戒指现在指向 {target_name}",
+        "enabled": "✅ 戒指在配置里激活咧。",
+        "disabled": "✅ 戒指在配置里关闭咧。"
+    },
+    "general": {
+        "error_selection_unavailable": "❌ 动作烧掉咧...嘶嘶嘶...不可用。",
+        "error_behavior_admin_only": "❌ 只给主人！你别碰面团！嘶嘶嘶...",
+        "error_settings_admin_only": "❌ 主人不许你碰抽搐！滚去小巷子！嘶嘶嘶",
+        "error_taboo_update_failed": "❌ 禁词从炉子里逃跑咧...检查烟灰...嘶嘶嘶",
+        "error_greetings_update_failed": "❌ 嘶嘶声灭掉咧...检查炉子...嘶嘶嘶",
+        "error_welcome_update_failed": "❌ 欢迎烧掉咧...检查烟灰...嘶嘶嘶",
+        "error_commentary_update_failed": "❌ 评论碳化咧...检查炉子...嘶嘶嘶",
+        "error_commentary_disabled": "❌ 评论冷得像尸体...嘶嘶嘶",
+        "error_commentary_process_failed": "❌ 俺吐不出评论...主人会惩罚俺滴...嘶嘶嘶",
+        "success_taboo_state": "闻着臭滴词在地下室 {enabled_disabled} 咧...嘶嘶嘶",
+        "success_greetings_state": "嘶嘶声对面粉袋子 {enabled_disabled} 咧...嘶嘶嘶",
+        "success_welcome_state": "欢迎对新袋子 {enabled_disabled} 咧...嘶嘶嘶",
+        "success_commentary_state": "评论从炉子 {enabled_disabled} 咧...嘶嘶嘶",
+        "state_enabled": "在烤",
+        "state_disabled": "冷咧",
+        "forget_me_label": "🧹 忘记俺（删掉俺滴数据）",
+        "forget_me_description": "烧掉你在所有地下室和所有火炉里滴数据...嘶嘶嘶（GDPR 第17条）",
+        "forget_me_confirm_title": "🧹 确认...烧数据...嘶嘶嘶",
+        "forget_me_confirm_prompt": "⚠️ **忘记俺...嘶嘶嘶...删除权（GDPR）**\n\n俺要烧掉你在**所有俺运营滴地下室**里滴数据...嘶嘶嘶：\n• 互动记录...出卖你滴那些...\n• 俺给你建滴记忆...俺滴小秘密...\n• 疲劳计数器...你烦俺滴次数...\n• 你滴名字在摘要里...俺用烟灰涂掉 ``[已删除]``...\n\n没有回头路...嘶嘶嘶...你确定要俺忘记？",
+        "forget_me_btn_confirm": "是...全烧咧...嘶嘶嘶",
+        "forget_me_btn_cancel": "不...留着吧...",
+        "forget_me_result_header": "✅ 你滴数据在炉子里烧掉咧...嘶嘶嘶...啥也不剩咧...",
+        "forget_me_no_data": "ℹ️ 在任何地下室都没找到你滴东西...嘶嘶嘶...你确定你存在过？",
+        "forget_me_cancelled": "❎ 取消咧...嘶嘶嘶...你滴数据还在地下室里...",
+        "forget_me_not_yours": "❌ 嘶嘶嘶！这不是你滴！是另一个面粉袋子滴！",
+        "forget_me_timed_out": "⌛ 余烬凉咧...嘶嘶嘶...啥也没烧掉...",
+        "forget_me_dm_sent": "📬 俺把确认信发给你咧...嘶嘶嘶...检查小巷子滴邮箱..."
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ 没有开着滴地下室...滚去小巷子...嘶嘶嘶",
+        "server_access_error": "❌ 从这儿进不去炉子...嘶嘶嘶...",
+        "reply_button_confirmation": "💬 现在你从 **{server_name}** 滴地下室跟俺说话...嘶嘶嘶...你滴回复都会用这个个性，直到你选另一个...嘶嘶嘶"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ 最后一首歌粘在炉子上咧...俺烧不掉...嘶嘶嘶",
+        "play_usage": "🎵 **用法：** `!mc play <歌名或URL>`",
+        "not_in_voice": "🎤 你得在地下室里才能用这个...嘶嘶嘶",
+        "nothing_playing": "🎵 炉子里啥也没烧...嘶嘶嘶",
+        "same_voice_channel": "🎤 你得跟俺在同一个地下室...嘶嘶嘶",
+        "not_connected": "🎤 俺不在任何炉子里...嘶嘶嘶",
+        "queue_empty": "📭 地下室空咧...嘶嘶嘶",
+        "dj_permissions_required": "🚫 只有主人能用这个...嘶嘶嘶",
+        "playback_paused": "⏸️ 火灭咧...嘶嘶嘶",
+        "nothing_paused": "🎵 没有暂停滴火...嘶嘶嘶",
+        "playback_resumed": "▶️ 火回来咧...嘶嘶嘶",
+        "leaving_voice": "👋 离开地下室...嘶嘶嘶",
+        "volume_usage": "🎵 **用法：** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 音量得是0到100之间滴数...嘶嘶嘶",
+        "already_playing": "🎵 炉子已经在烧咧...嘶嘶嘶",
+        "queue_cleared": "🗑️ 地下室干净咧...嘶嘶嘶",
+        "volume_adjust_failed": "❌ 调不了火...嘶嘶嘶"
+    }
+}

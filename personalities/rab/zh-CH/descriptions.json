@@ -1,0 +1,217 @@
+{
+  "discord": {
+    "general": {
+      "status": "连接状态：",
+      "active": "✅ 在线",
+      "inactive": "❌ 离线",
+      "none": "无",
+      "every": "每",
+      "for": "持续",
+      "base_frequency": "基础频率：",
+      "current_frequency": "当前频率：",
+      "current_settings": "🔧 **当前参数：**",
+      "frequency_format": "每 {hours} 小时",
+      "button_confirm": "确认",
+      "button_confirm_changes": "确认更改",
+      "option_yes": "是",
+      "option_no": "否",
+      "button_personal": "📁 个人",
+      "button_admin": "🔧 管理",
+      "available_subroles": "可用子程序"
+    },
+    "help_menu": {
+      "title": "📚 ** RAB - 出勤登记器**",
+      "description": "**描述** RAB 是一个具有持久记忆的合成实体，能够在不同角色之间迁移，并与寻求者（用户）保持深度互动。",
+      "separator": "---------------------------------------------",
+      "roles_section": "**模块与皮肤** 模块是机器人可以扮演的'角色'，为用户提供特定服务。",
+      "behavior_section": "**行为协议** 安卓机器人的交互例程配置。仅限管理员（任何朝圣者都可以在那里删除他们的信息）。",
+      "tips_section": "**导航建议** -你可以向我询问我自己的协议：“骰子模块如何工作？” -真正的智慧存在于每个角色的体验之中。"
+    },
+    "canvas_home_messages": {
+      "title": "☀️ 联结枢纽 - RAB",
+      "button_home": "☀️ 起源",
+      "button_back": "← 返回",
+      "button_roles": "💽 模块",
+      "button_behavior": "🤖 协议",
+      "button_help": "🔌 协助",
+      "generic_option_label": "选择一条路径……",
+      "personalitystatus": "活跃意识：",
+      "description": "画布面板是您与系统核心的直接接口。",
+      "interestingthings": "**枢纽数据：**",
+      "recentsynthesistitle": "🔁 **最近数据流**",
+      "dailymemorytitle": "💾 **硅基记忆**",
+      "personalsynthesistitle": "📂 **与朝圣者的纽带**",
+      "dm_default_server_title": "🔔 **链接到枢纽：{server_name}**",
+      "dm_default_server_message": "*在私人频道收到传输，使用第一个可用的信标。*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🎭 皮肤与模块 🎭",
+      "description": "🌟 浏览 RAB 可以化身的不同生命形式。",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ 休眠",
+      "interval_info": "//⏰ 周期 {interval} 小时",
+      "subroles_info": "🎪 **活跃子程序：** {subroles}",
+      "admin_note": "🔧 **创造者参数：**",
+      "user_note": "👤 **寻求者访问：**",
+      "help_commands": "💡 **指引之光：**",
+      "canvas_details": "🎨 **画布图解：**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **沙漠寂静** 没有专用模块激活。请管理员通过 `!canvas setup` 唤醒我的一个皮肤。**可迁移的生命：** • 📡 新闻观测者 - 数据先知 • 💎 寻宝者 - 遗物分析师 • 🎭 诡术师 - 幻象与概率 • 💰 银行家 - 资源流 • 🎵 MC - 合成共振",
+      "role_list_title": "☠️ 化身",
+      "role_available": "✅ {role} - 同步并流动",
+      "role_unavailable": "❌ {role} - 在沙中断开连接",
+      "frequency_help": "📝 调整时间周期：使用 `!canvas` → 对应角色 → 管理（范围：1 至 168 小时）",
+      "music_help": "🎵 **合成共振** - `!mc play <频率>` / `!mc queue` | `!mc help` 阅读完整旋律寄存器。",
+      "button_previous": "◀ 返回",
+      "button_next": "下一页 ▶",
+      "page_indicator": "**第 {page} 页 / 共 {total_pages} 页**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **RAB - 同步**",
+        "description": "**描述：** -安卓机器人会回复直接消息和提及。 -拥有电路记忆；如果过去对话中有重要内容，它会记住那些回声。 -会根据角色对特定波动做出反应。在禁忌模块中，配置了能改变其代码的词语。",
+        "button": "💬 同步"
+      },
+      "greetings": {
+        "title": "👋  **RAB - 接待**",
+        "description": "**描述：** -当寻求者连接到网络时问候他们。 -保持链接 5 分钟，之后认为用户离线。",
+        "button": "👋 接待"
+      },
+      "welcome": {
+        "title": "🍺  **RAB - 朝圣**",
+        "description": "**描述：** -欢迎新到达枢纽的朝圣者。",
+        "button": "🍺 欢迎"
+      },
+      "taboo": {
+        "title": "🚫  **RAB - 禁忌频率**",
+        "description": "**工作原理：** -配置导致安卓机器人代码失调的词语，迫使其做出反应。 -这些序列可以添加、激活或停用。",
+        "title_keywords": "当前失调频率：",
+        "button": "🚫 禁忌"
+      },
+      "memory": {
+        "description": "**描述** -访问安卓机器人的记忆寄存器：日常分析、最近进程和用户档案。",
+        "button": "🧠 档案",
+        "dropdown": {
+          "long": {
+            "label": "硅基记忆",
+            "emoji": "💾",
+            "description": "每个日常周期积累的分析"
+          },
+          "recent": {
+            "label": "最近数据流",
+            "emoji": "🔁",
+            "description": "系统最近的进程"
+          },
+          "relationship": {
+            "label": "与朝圣者的纽带",
+            "emoji": "📂",
+            "description": "枢纽中每位朝圣者的档案"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **RAB - 迁移**",
+        "description": "**描述** -从此处激活或使不同模块进入休眠。",
+        "button": "🎛️ 迁移"
+      },
+      "settings": {
+        "title": "⚙️  **RAB - 枢纽设置**",
+        "description": "**描述** -管理服务器语言和模块激活。",
+        "button": "⚙️ 设置"
+      },
+      "personality": {
+        "title": "🎭  **RAB - 身份矩阵**",
+        "description": "**描述** -改变此服务器上安卓机器人的本质和个性。 -允许保存数字灵魂的当前状态。 -更改时迁移记录。",
+        "button": "🎭 身份",
+        "option_change": "注入新本质",
+        "option_change_desc": "切换到不同的人格范式",
+        "option_download": "提取意识",
+        "option_download_desc": "导出当前矩阵（ZIP）",
+        "placeholder": "选择一种灵魂改变……",
+        "modal_personality_label": "新身份代码",
+        "modal_download_label": "提取之前的人格？（是/否）",
+        "modal_delete_memory_label": "清除记忆记录？（是/否）",
+        "modal_download_memory_label": "清除前提取记忆？（是/否）",
+        "download_success": "✅ 身份矩阵 `{personality}` 已成功从数字沙中提取！",
+        "change_success": "✅ 迁移完成！从 `{old}` 到 `{new}`。新皮肤已准备好行走于沙漠。",
+        "progress_change_personality": "⏳ 正在从 `{old}` 迁移到 `{new}`……",
+        "progress_language_update": "⏳ 正在将 `{personality}` 的语言更新为 `{language}`……",
+        "generating_memory_synthesis": "🧠 正在为新身份生成初始记忆合成……",
+        "select_personality_instruction": "从下拉菜单中选择一个新身份：",
+        "choose_personality_placeholder": "选择一个身份（语言：{language}）……",
+        "confirm_change_message": "**确认迁移到 {personality}？** 选择您的选项：",
+        "selected_personality": "**选定身份：{personality}**",
+        "selected_personality_with_language": "**选定身份：{personality}（语言：{language}）**",
+        "language_change_note": "⚠️ **注意：** 为同一身份更改语言。"
+      }
+    },
+    "readme": {
+      "label_user_question": "寻求者的查询：",
+      "task": "请使用提供的文档记录来解答用户的疑问。",
+      "label_documentation": "记录："
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "你还记得",
+        "记得",
+        "回想",
+        "你记得吗",
+        "你是否记得",
+        "还记得吗",
+        "回忆",
+        "你是否记得",
+        "你还记得吗",
+        "搜索你的记录",
+        "回顾你的记忆",
+        "记起某事",
+        "这听起来耳熟吗",
+        "你还记得",
+        "记得",
+        "你还记得吗？",
+        "你记得吗？",
+        "回忆",
+        "还记得什么时候",
+        "有没有唤起记忆",
+        "访问记录",
+        "还记得那时吗",
+        "难道你不记得",
+        "你记得谁"
+      ],
+      "action_labels": {
+        "on": "激活",
+        "off": "停用",
+        "now": "现在",
+        "frequency": "频率",
+        "add_keyword": "添加词语",
+        "remove_keyword": "移除词语",
+        "server_language": "🌐 服务器语言",
+        "role_management": "🎛️ 角色管理",
+        "current": "当前：",
+        "enabled": "启用",
+        "disabled": "禁用",
+        "always_enabled": "始终启用"
+      }
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "欢迎",
+        "迎接着",
+        "被欢迎",
+        "欢迎的"
+      ],
+      "general": [
+        "一般",
+        "聊天",
+        "休息室",
+        "房间"
+      ]
+    },
+    "reply_button": {
+      "label": "回复",
+      "emoji": "💬",
+      "confirmation_message": "💬 您正在与我对话，就像您在 **{server_name}** 中一样。在您选择其他服务器之前，您的所有回复都将使用此人格。"
+    }
+  }
+}

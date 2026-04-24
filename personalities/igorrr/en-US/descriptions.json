@@ -1,0 +1,244 @@
+{
+  "discord": {
+    "general": {
+      "status": "Dough status:",
+      "active": "✅ Baking",
+      "inactive": "❌ Cold as a corpse",
+      "none": "Nothing... SSSSS",
+      "every": "every",
+      "for": "for",
+      "base_frequency": "Master's rhythm:",
+      "current_frequency": "Current rhythm:",
+      "current_settings": "🔧 **Filth Configuration:**",
+      "frequency_format": "Every {hours}h",
+      "button_confirm": "Confirm",
+      "button_confirm_changes": "Confirm Changes",
+      "option_yes": "Yes",
+      "option_no": "No",
+      "action_descriptions": {
+        "boolean_toggle": "Toggle activation/deactivation",
+        "number_input_target": "Number input",
+        "text_input_target": "Text input",
+        "action": "Immediate action"
+      },
+      "action_labels": {
+        "on": "Activate",
+        "off": "Deactivate",
+        "now": "Now",
+        "frequency": "Frequency",
+        "add_keyword": "Add Word",
+        "remove_keyword": "Remove Word",
+        "server_language": "🌐 Server Language",
+        "role_management": "🎛️ Role Management",
+        "current": "Current:",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "always_enabled": "Always enabled",
+        "memory_long": "Long Memory",
+        "memory_recent": "Recent Memory",
+        "memory_relationship": "Relationship Memory"
+      },
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Available sub-tasks"
+    },
+    "help_menu": {
+      "title": "📚 ** Igorrr - Oven Survival Manual**",
+      "description": "**Description** Igorrr is the hunchback servant who watches you while you sleep. He has memory for your sins and can spit commands at you if the Master allows.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Tasks** The Task modules are the chains Igorrr drags to serve the Master and watch the flour sacks.",
+      "behavior_section": "**Nervous Tics** Here the Master's whims are configured. Only for those in charge at the bakery.",
+      "tips_section": "**Useful Whispers** -You can ask me how to use something if your silk fingers don't know how to type... -The best is hidden in the dark corners of each task... HEHEHE."
+    },
+    "canvas_home_messages": {
+      "title": "🌋 Igorrr - The Wood Oven",
+      "button_home": "🌋 The Oven",
+      "button_back": "← Back (to the basement)",
+      "button_roles": "🍞 Tasks",
+      "button_behavior": "💊 Tics",
+      "button_help": "❓ Huh?",
+      "button_memory": "🧠 Amnesia",
+      "generic_option_label": "Choose your poison...",
+      "personalitystatus": "Filth Loaded:",
+      "description": "-Touch my tools if you dare. The panel lets you handle my threads... SSSSS.",
+      "interestingthings": "**Oven Chains:**",
+      "recentsynthesistitle": "🥖 **Oven Whispers**",
+      "dailymemorytitle": "🔥 **Living Ashes**",
+      "personalsynthesistitle": "🪤 **Your Soot Trail**",
+      "dm_default_server_title": "🔔 **Using the oven of: {server_name}**",
+      "dm_default_server_message": "*Whispering from private, using the first available basement.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "canvas_behavior_messages": {
+      "conversation": {
+        "title": "💬  **Igorrr - Basement Whispers**",
+        "description": "**Description:** -Igorrr responds to whispers and mentions. -He has memory of your sins and can recall them when you want. -He reacts to forbidden words if the Master allows.",
+        "button": "💬 Whispers"
+      },
+      "greetings": {
+        "title": "👋  **Igorrr - Oven Hisses**",
+        "description": "**Description:** -Igorrr hisses when flour sacks connect. -He waits 5 min before saying they left. -(To implement): Recognizes if they don't respond and stops greeting.",
+        "button": "👋 Hisses"
+      },
+      "welcome": {
+        "title": "🍺  **Igorrr - Welcome to the Oven**",
+        "description": "**Description:** -Welcomes new flour sacks to the basement.",
+        "button": "🍺 Welcome"
+      },
+      "taboo": {
+        "title": "🚫  **Igorrr - Forbidden Words**",
+        "description": "**How it works:** -Configure Igorrr to react when reading a word. -Can be activated/deactivated or the words that smell bad can be configured.",
+        "title_keywords": "Words that smell bad:",
+        "button": "🚫 Forbidden"
+      },
+      "memory": {
+        "title": "🧠  **Igorrr - Oven Memory**",
+        "description": "**Description** -Consult Igorrr's memories: the accumulated soot, recent screams, and each leper's sins.",
+        "button": "🧠 Memory",
+        "dropdown": {
+          "long": {
+            "label": "Living Ashes",
+            "emoji": "🔥",
+            "description": "The soot that accumulates day by day in the oven"
+          },
+          "recent": {
+            "label": "Oven Whispers",
+            "emoji": "🥖",
+            "description": "The most recent screams echoing in the basement"
+          },
+          "relationship": {
+            "label": "Your Soot Trail",
+            "emoji": "🪤",
+            "description": "The sins each leper leaves behind"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **Igorrr - Chain Control**",
+        "description": "**Description** -Activate or deactivate basement tasks from here.",
+        "button": "🎛️ Control"
+      }
+    },
+    "canvas_role_messages": {
+      "title": "🎪 **Oven Tasks**",
+      "description": "Choose which chain you want Igorrr to drag today. The Master watches."
+    },
+    "canvas_memory_messages": {
+      "title": "🧠 **Soot-Filled Brain**",
+      "description": "Erase my memories if you want me to forget how much disgust you give me. Or watch me remember your sins."
+    },
+    "roles_view_messages": {
+      "title": "🎭 Igorrr's Tasks 🎭",
+      "description": "🌟 Look at what chains Igorrr drags today to please the Master.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ SLEEPING",
+      "interval_info": "//⏰ Every {interval}h",
+      "subroles_info": "🎪 **Sub-tasks:** {subroles}",
+      "admin_note": "🔧 **FOR THE MASTER:**",
+      "user_note": "👤 **FOR THE LEPERS:**",
+      "help_commands": "💡 **FOR THE FOOLS:**",
+      "canvas_details": "🎨 **CANVAS FILTH:**",
+      "navigation_help": "Use the greasy buttons to move around.",
+      "no_roles_active": "🌫️ **NO ACTIVE TASK** Igorrr is scratching his scabies. Ask the Master to activate something. **Possible tasks:** • 📡 News Watcher - Watcher • 💎 Treasure Hunter - Scrap searcher • 🎭 Trickster - Beggar and ashes • 🌾 Banker - The Master's pantry • 🎵 MC - The rusty gramophone",
+      "role_list_title": "☠️ Tasks and Punishments",
+      "role_available": "✅ {role} - HISSING AND READY",
+      "role_unavailable": "❌ {role} - SCRATCHING SCABIES",
+      "button_previous": "◀ Back",
+      "button_next": "Next ▶",
+      "page_indicator": "**Page {page}/{total_pages}**"
+    },
+    "settings_labels": {
+      "taboo": {
+        "title": "Don't say this before the Master:",
+        "title_keywords": "Forbidden words (smell bad):",
+        "button": "🚫 Forbidden"
+      },
+      "comentary": {
+        "title": "🗣️  **Igorrr - Whispers**",
+        "description": "**Description**\\n -Igorrr talks to himself about what he sees in the oven and alley gossip.",
+        "button": "🗣️ Mutter"
+      },
+      "role_control": {
+        "title": "**🎛️ Igorrr - Chain Control**",
+        "description": "**Description**\\n -Activate or deactivate my tasks. Don't make me work too much... SSSSS.",
+        "button": "🎛️ Control"
+      },
+      "settings": {
+        "title": "⚙️  **Igorrr - Kamp Konfiguration**",
+        "description": "**Description**\\n -Adjust the kamp language and aktivate tasks.",
+        "button": "⚙️ Konfiguration"
+      },
+      "personality": {
+        "title": "🎭  **Igorrr - Skin Change**",
+        "description": "**Description**\\n -Change my personality for this server.\\n -Download my current skin before moving.\\n -Migrate my memories when changing.",
+        "button": "🎭 Skin",
+        "option_change": "Change Skin",
+        "option_change_desc": "Change to a different personality",
+        "option_download": "Download Current Skin",
+        "option_download_desc": "Export personality as ZIP",
+        "placeholder": "Choose a skin action...",
+        "modal_personality_label": "New Skin",
+        "modal_download_label": "Download previous skin? (yes/no)",
+        "modal_delete_memory_label": "Delete my memory? (yes/no)",
+        "modal_download_memory_label": "Download memory first? (yes/no)",
+        "download_success": "✅ Skin `{personality}` exported! Guard that file well...",
+        "change_success": "✅ Skin changed from `{old}` to `{new}`! Already using my new skin... SSSSS...",
+        "progress_change_personality": "⏳ Changing skin from `{old}` to `{new}`...",
+        "progress_language_update": "⏳ Updating `{personality}` to language `{language}`...",
+        "generating_memory_synthesis": "🧠 Generating initial memory synthesis for the new skin...",
+        "select_personality_instruction": "Choose a new skin from the menu:",
+        "choose_personality_placeholder": "Choose a skin (language: {language})...",
+        "confirm_change_message": "**Confirm change to {personality}?** Select your options:",
+        "selected_personality": "**Selected skin: {personality}**",
+        "selected_personality_with_language": "**Selected skin: {personality} (Language: {language})**",
+        "language_change_note": "⚠️ **Note:** Changing language for the same skin."
+      }
+    },
+    "readme": {
+      "label_user_question": "Flour sack's doubt:",
+      "task": "Please, search the stained papers for the answer for this fool.",
+      "label_documentation": "Basement papers:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "do you remember",
+        "you remember",
+        "use memory",
+        "remember",
+        "do you remember that",
+        "remember when",
+        "do remember",
+        "do you remember",
+        "do you remember",
+        "use memory of",
+        "remember of",
+        "remember something",
+        "rings a bell",
+        "huh remember?",
+        "rat memory",
+        "bring the coal",
+        "look in the soot"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "welcome",
+        "welcomes",
+        "welcomed",
+        "welcoming"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "lounge",
+        "room"
+      ]
+    },
+    "reply_button": {
+      "label": "Reply",
+      "emoji": "💬",
+      "confirmation_message": "💬 You're conversing with me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
+    }
+  }
+}

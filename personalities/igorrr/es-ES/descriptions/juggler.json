@@ -37,6 +37,7 @@
         "alibi_confirmed": "✅ **Coartada:** {alibi}",
         "motive_detected": "💭 **Motivo:** {motive}",
         "dm_accusation_header": "👁️ **INTERROGATORIO DEL HORNO**",
+        "accused_label": "Acusado:",
         "dropdown": {
             "ring_accuse": "Masa: Acusar",
             "ring_accuse_description": "Acusar a un usuario de robar la masa madre",

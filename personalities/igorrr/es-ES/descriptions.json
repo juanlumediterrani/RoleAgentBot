@@ -61,6 +61,7 @@
       "generic_option_label": "Elige tu veneno...",
       "personalitystatus": "Mugre Cargada:",
       "description": "-Toca mis herramientas si te atreves. El panel te deja manejar mis hilos... SSSSS.",
+      "interestingthings": "**Cadenas del Horno:**",
       "recentsynthesistitle": "🥖 **Murmullos del Horno**",
       "dailymemorytitle": "🔥 **Cenizas vivas**",
       "personalsynthesistitle": "🪤 **Tu Rastro de Hollín**",
@@ -70,28 +71,28 @@
     },
     "canvas_behavior_messages": {
       "conversation": {
-        "title": "**💬 Igorrr - Murmullos del Sótano**",
+        "title": "💬  **Igorrr - Murmullos del Sótano**",
         "description": "**Descripción:** -Igorrr responde a susurros y menciones. -Tiene memoria de tus pecados y puede recordarlos cuando quieras. -Reacciona a palabras prohibidas si el Amo lo permite.",
         "button": "💬 Murmullos"
       },
       "greetings": {
-        "title": "**👋 Igorrr - Susurros del horno**",
+        "title": "👋  **Igorrr - Susurros del horno**",
         "description": "**Descripción:** -Igorrr sisea cuando los sacos de harina se conectan. -Espera 5 min antes de decir que se fue. -(Por implementar): Reconoce si no le responden y deja de saludar.",
         "button": "👋 Siseos"
       },
       "welcome": {
-        "title": "**🍺 Igorrr - Bienvenida al Horno**",
+        "title": "🍺  **Igorrr - Bienvenida al Horno**",
         "description": "**Descripción:** -Da la bienvenida a los sacos de harina nuevos al sótano.",
         "button": "🍺 Bienvenida"
       },
       "taboo": {
-        "title": "**🚫 Igorrr - Palabras Prohibidas**",
+        "title": "🚫  **Igorrr - Palabras Prohibidas**",
         "description": "**Como funciona:** -Configura a Igorrr para que reaccione al leer una palabra. -Se puede activar/desactivar o configurar las palabras que huelen mal.",
         "title_keywords": "Palabras que huelen mal:",
         "button": "🚫 Prohibido"
       },
       "memory": {
-        "title": "**🧠 Igorrr - Memoria del Horno**",
+        "title": "🧠  **Igorrr - Memoria del Horno**",
         "description": "**Descripción** -Consulta los recuerdos de Igorrr: el hollín acumulado, los gritos recientes y los pecados de cada leproso.",
         "button": "🧠 Memoria",
         "dropdown": {
@@ -113,7 +114,7 @@
         }
       },
       "role_control": {
-        "title": "**🎛️ Igorrr - Control de Cadenas**",
+        "title": "🎛️  **Igorrr - Control de Cadenas**",
         "description": "**Descripción** -Activa o apaga las labores del sótano desde aquí.",
         "button": "🎛️ Control"
       }
@@ -154,7 +155,7 @@
         "button": "🚫 Prohibido"
       },
       "comentary": {
-        "title": "**🗣️ Igorrr - Murmullos**",
+        "title": "🗣️  **Igorrr - Murmullos**",
         "description": "**Descripción**\\n -Igorrr habla solo sobre lo que ve en el horno y los chismes del callejón.",
         "button": "🗣️ Murmurar"
       },
@@ -164,12 +165,12 @@
         "button": "🎛️ Control"
       },
       "settings": {
-        "title": "**⚙️ Igorrr - Konfigurazion del Kampamento**",
+        "title": "⚙️  **Igorrr - Konfigurazion del Kampamento**",
         "description": "**Descripción**\\n -Ajusta el idioma del kampamento y aktiva los labores.",
         "button": "⚙️ Konfigurazion"
       },
       "personality": {
-        "title": "**🎭 Igorrr - Cambio de Piel**",
+        "title": "🎭  **Igorrr - Cambio de Piel**",
         "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\\n -Descarga mi piel actual antes de mudarme.\\n -Migra mis recuerdos al cambiar.",
         "button": "🎭 Piel",
         "option_change": "Cambiar Piel",

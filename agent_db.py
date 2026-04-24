@@ -1689,12 +1689,13 @@ class AgentDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('DELETE FROM interacciones WHERE fecha < ?', (deadline,))
+                deleted = cursor.rowcount if cursor.rowcount is not None and cursor.rowcount >= 0 else 0
                 cursor.execute('DROP TABLE IF EXISTS peticiones_oro')
                 cursor.execute('DROP TABLE IF EXISTS busquedas_anillo')
                 cursor.execute('DROP TABLE IF EXISTS noticias_leidas')
                 conn.commit()
                 logger.info(f"🧹 Cleaned interactions before {deadline} and duplicate tables")
-                return cursor.rowcount
+                return deleted
 
     def forget_user(self, user_id, user_name: str = None, extra_names=None) -> dict:
         """GDPR — right to erasure (Art. 17).

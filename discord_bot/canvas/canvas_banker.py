@@ -214,20 +214,22 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
 
 
 class BankerConfigModal(CanvasModal):
-    def __init__(self, action_name: str, author_id: int):
+    def __init__(self, action_name: str, author_id: int, guild=None):
         title = "Banker TAE" if action_name == "config_tae" else "Banker Bonus"
         super().__init__(title=title, author_id=author_id)
         self.action_name = action_name
+        self.guild = guild
         label = "TAE value" if action_name == "config_tae" else "Bonus value"
         placeholder = "0-1000" if action_name == "config_tae" else "0-10000"
         self.value_input = discord.ui.TextInput(label=label, placeholder=placeholder, required=True, max_length=10)
         self.add_item(self.value_input)
 
     async def on_submit(self, interaction: discord.Interaction):
-        if not interaction.guild:
+        eff_guild = interaction.guild or self.guild
+        if not eff_guild:
             await interaction.response.send_message("❌ Banker config is only available in a server.", ephemeral=True)
             return
-        if not is_admin(interaction):
+        if not is_admin(interaction, guild=eff_guild):
             await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
             return
         if get_roles_db_instance is None:
@@ -249,12 +251,12 @@ class BankerConfigModal(CanvasModal):
                 return
 
         try:
-            db_banker = get_roles_db_instance(str(interaction.guild.id))
+            db_banker = get_roles_db_instance(str(eff_guild.id))
             if self.action_name == "config_tae":
-                ok = db_banker.set_tae(str(interaction.guild.id), amount)
+                ok = db_banker.set_tae(str(eff_guild.id), amount)
                 label = "TAE"
             else:
-                ok = db_banker.set_tae(str(interaction.guild.id), amount)
+                ok = db_banker.set_tae(str(eff_guild.id), amount)
                 label = "TAE (affects bonus)"
         except Exception as e:
             logger.exception(f"Canvas banker config failed: {e}")
@@ -266,7 +268,7 @@ class BankerConfigModal(CanvasModal):
             return
 
         try:
-            current_tae = db_banker.get_tae(str(interaction.guild.id))
+            current_tae = db_banker.get_tae(str(eff_guild.id))
             current_bonus = current_tae * 10
         except Exception:
             current_tae = amount if label == "TAE" else "Unknown"
@@ -307,7 +309,11 @@ class BeggarDonationModal(CanvasModal):
             from roles.banker.subroles.beggar.beggar_discord import BeggarDonationView
             from roles.banker.subroles.beggar.beggar_db import get_beggar_config
 
-            server_id = str(interaction.guild.id)
+            eff_guild = interaction.guild or getattr(self, 'guild', None)
+            if not eff_guild:
+                await interaction.response.send_message("❌ Donations require a server context.", ephemeral=True)
+                return
+            server_id = str(eff_guild.id)
             beggar_config = get_beggar_config(server_id)
             current_reason = beggar_config.get_current_reason()
 
@@ -354,8 +360,12 @@ class BeggarFrequencyModal(CanvasModal):
             from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
             from .ui import CanvasRoleDetailView
 
-            server_key = get_server_key(interaction.guild)
-            server_id = str(interaction.guild.id)
+            eff_guild = interaction.guild or getattr(self.view, 'guild', None)
+            if not eff_guild:
+                await interaction.response.send_message("❌ This option requires a server context.", ephemeral=True)
+                return
+            server_key = get_server_key(eff_guild)
+            server_id = str(eff_guild.id)
             beggar_config = get_beggar_config(server_id)
 
             # Update frequency in beggar config (saved under banker.config.beggar)
@@ -365,7 +375,7 @@ class BeggarFrequencyModal(CanvasModal):
                 applied_text = "Failed to update beggar frequency."
 
             current_detail = "beggar_admin"
-            content = _build_canvas_role_detail_view("banker", current_detail, self.view.agent_config, self.view.admin_visible, interaction.guild, self.view.author_id)
+            content = _build_canvas_role_detail_view("banker", current_detail, self.view.agent_config, self.view.admin_visible, eff_guild, self.view.author_id)
             if content is None:
                 content = "Beggar admin configuration"
 
@@ -402,10 +412,14 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
         return
 
     try:
-        server_key = get_server_key(interaction.guild)
+        eff_guild = interaction.guild or getattr(view, 'guild', None)
+        if not eff_guild:
+            await interaction.response.send_message("❌ Banker actions require a server context.", ephemeral=True)
+            return
+        server_key = get_server_key(eff_guild)
         db_banker = get_roles_db_instance(server_key)
-        server_id = str(interaction.guild.id)
-        server_name = interaction.guild.name
+        server_id = str(eff_guild.id)
+        server_name = eff_guild.name
         user_id = str(view.author_id)
 
         user_name = interaction.user.display_name
@@ -466,7 +480,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
             from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
             from .ui import CanvasRoleDetailView
 
-            content = _build_canvas_role_detail_view("banker", current_detail, view.agent_config, view.admin_visible, interaction.guild, view.author_id)
+            content = _build_canvas_role_detail_view("banker", current_detail, view.agent_config, view.admin_visible, eff_guild, view.author_id)
             if content is None:
                 content = "Beggar admin configuration"
 

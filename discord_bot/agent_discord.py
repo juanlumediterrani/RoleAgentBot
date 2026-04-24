@@ -383,7 +383,7 @@ async def news_watcher_subscription_processor():
                         from roles.news_watcher.subscription_processor import process_server_subscriptions
                         
                         # Process this server's subscriptions (non-blocking)
-                        await process_server_subscriptions(bot, agent_config, server_id)
+                        await process_server_subscriptions(bot, server_id, agent_config)
                         
                         logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Server {server_id} processing completed")
                         

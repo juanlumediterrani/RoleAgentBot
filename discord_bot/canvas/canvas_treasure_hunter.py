@@ -579,9 +579,12 @@ async def handle_canvas_treasure_hunter_action(interaction: discord.Interaction,
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
 
+    # Effective guild: fall back to view.guild in DM.
+    eff_guild = interaction.guild or getattr(view, 'guild', None)
+
     # Get translations
     from .content import _get_personality_descriptions
-    server_id = str(interaction.guild.id) if interaction.guild else None
+    server_id = str(eff_guild.id) if eff_guild else None
     descriptions = _get_personality_descriptions(server_id)
     treasure_translations = descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("poe2", {})
 
@@ -591,7 +594,7 @@ async def handle_canvas_treasure_hunter_action(interaction: discord.Interaction,
         return
 
     manager = get_poe2_manager()
-    server_id = "" if interaction.guild is None else str(interaction.guild.id)
+    server_id = "" if eff_guild is None else str(eff_guild.id)
     user_id = str(interaction.user.id)
 
     from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
@@ -650,19 +653,19 @@ async def handle_canvas_treasure_hunter_action(interaction: discord.Interaction,
     # Handle purchase add/remove actions (user actions, not admin-only)
     if action_name in {"poe2_purchase_add", "poe2_purchase_remove"}:
         if action_name == "poe2_purchase_add":
-            modal = Poe2PurchaseAddModal(interaction.user.id, interaction.guild, view)
+            modal = Poe2PurchaseAddModal(interaction.user.id, eff_guild, view)
         else:
-            modal = Poe2PurchaseRemoveModal(interaction.user.id, interaction.guild, view)
+            modal = Poe2PurchaseRemoveModal(interaction.user.id, eff_guild, view)
         await interaction.response.send_modal(modal)
         return
 
     # Handle item add/remove actions (user actions, not admin-only)
     if action_name in {"poe2_item_add", "poe2_item_remove"}:
-        modal = Poe2ItemModal(action_name, interaction.user.id, interaction.guild, view)
+        modal = Poe2ItemModal(action_name, interaction.user.id, eff_guild, view)
         await interaction.response.send_modal(modal)
         return
 
-    if not view.admin_visible or not is_admin(interaction):
+    if not view.admin_visible or not is_admin(interaction, guild=eff_guild):
         await interaction.followup.send("❌ This POE2 option is admin-only.", ephemeral=True)
         return
 
@@ -682,6 +685,16 @@ async def handle_canvas_treasure_hunter_action(interaction: discord.Interaction,
     if not ok:
         await interaction.followup.send("❌ Could not update POE2 activation state.", ephemeral=True)
         return
+
+    # Save activation state to server_config.json (per-server setting)
+    try:
+        from .server_config import set_role_config_value
+        server_key = core.get_server_key(view.guild) if view.guild else None
+        if server_key:
+            set_role_config_value(server_key, "treasure_hunter", "poe2_activated", (action_name == "poe2_on"))
+            logger.info(f"POE2 activation state saved to server_config.json: {(action_name == 'poe2_on')}")
+    except Exception as e:
+        logger.error(f"Failed to save POE2 activation state to server_config.json: {e}")
 
     target_detail = view.current_detail if view.current_detail in {"personal", "league"} else "admin"
     content = _build_canvas_role_detail_view(
@@ -847,6 +860,16 @@ def build_canvas_role_treasure_hunter_detail(
             return "❌ This setup is only available to administrators."
 
         state = _get_canvas_poe2_state(guild, author_id)
+        # Check server_config for updated activation state first (per-server setting)
+        try:
+            from .server_config import get_role_config_value
+            server_key = core.get_server_key(guild) if guild else None
+            if server_key:
+                poe2_activated = get_role_config_value(server_key, "treasure_hunter", "poe2_activated", default=None)
+                if poe2_activated is not None:
+                    state["activated"] = poe2_activated
+        except Exception as e:
+            logger.warning(f"Failed to read POE2 activation from server_config.json: {e}")
         return "\n".join([
             _treasure_text("title", "💎 Treasure Hunter Admin"),
             _treasure_text("description", "Configure POE2 tracking and automation settings"),

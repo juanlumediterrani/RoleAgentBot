@@ -1,0 +1,117 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **YOU WON!** The crumbs came out well... SSSSS",
+                    "🎉 **VICTORY!** The yeast rose... SSSSS",
+                    "🎉 **TRIUMPH!** The oven was good today... SSSSS",
+                    "🎉 **EXCELLENT!** The dough didn't burn... SSSSS",
+                    "🎉 **IMPRESSIVE!** The Master will be pleased... SSSSS"
+                ],
+                "youlose":[
+                    "😢 **YOU LOST**... The bread burned... SSSSS",
+                    "😢 **BAD LUCK**... The yeast didn't rise... SSSSS",
+                    "😢 **NOT THIS TIME**... The oven was cold... SSSSS",
+                    "😢 **WELL**... The dough stuck... SSSSS",
+                    "😢 **BUT DON'T GIVE UP**... The Master will punish me... SSSSS"
+                ],
+                "high_pot":[
+                    "💰 **THE BASKET GROWS!** The flour accumulates... SSSSS",
+                    "💰 **BASKET SURGING!** The prize gets big... SSSSS",
+                    "💰 **ACCUMULATING!** The basket shines... SSSSS",
+                    "💰 **FORTUNE AWAITS!** The basket claims its destiny... SSSSS",
+                    "💰 **MAGIC BASKET!** The flour waits for the lucky one... SSSSS"
+                ],
+                "pot_winner":[
+                    "🎉 **BASKET WINNER!!** You conquered the oven's crumbs!... SSSSS",
+                    "🎉 **BASKET CONQUERED!!** You are the Master's chosen!... SSSSS",
+                    "🎉 **JACKPOT!!** The basket is yours!... SSSSS",
+                    "🎉 **LEGENDARY FORTUNE!!** You won the crumbs!... SSSSS",
+                    "🎉 **BASKET IS YOURS!!** An epic victory!... SSSSS"
+                ],
+                "not_gold":[
+                    "💸 **NO FLOUR**... You don't have enough sacks... SSSSS",
+                    "💸 **INSUFFICIENT FUNDS**... You need more flour sacks... SSSSS",
+                    "💸 **EMPTY POCKETS**... Check your sacks... SSSSS",
+                    "💸 **NOT ENOUGH**... Accumulate more sacks first... SSSSS",
+                    "💸 **SCARCE FLOUR**... You need fortune to bake... SSSSS"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "to buy fresh yeast that won't scream",
+                    "to pay the Master's fine for burning the bread",
+                    "to acquire flour without real weevils",
+                    "to bribe the big rat that steals the sack",
+                    "to repair the oven door that falls down",
+                    "to buy water without scabies for kneading",
+                    "to pay the charcoal bringer who brings wet wood",
+                    "to build my own cave far from the Master"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ The ring now points to {target_name}",
+        "enabled": "✅ The ring activated in the konfiguration.",
+        "disabled": "✅ The ring deactivated in the konfiguration."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ The action burned... SSSSS... Not available.",
+        "error_behavior_admin_only": "❌ **ONLY FOR THE MASTER!** You don't touch the dough! SSSSS...",
+        "error_settings_admin_only": "❌ The Master doesn't let you touch the tics! Go to the alley! SSSSS",
+        "error_taboo_update_failed": "❌ The forbidden words escaped the oven... Check the ashes... SSSSS",
+        "error_greetings_update_failed": "❌ The hisses went out... Check the oven... SSSSS",
+        "error_welcome_update_failed": "❌ The welcome burned... Check the ashes... SSSSS",
+        "error_commentary_update_failed": "❌ The comments carbonized... Check the oven... SSSSS",
+        "error_commentary_disabled": "❌ The comments are cold as a corpse... SSSSS",
+        "error_commentary_process_failed": "❌ I couldn't spit the comments... The Master will punish me... SSSSS",
+        "success_taboo_state": "Words that smell bad {enabled_disabled} in the basement... SSSSS",
+        "success_greetings_state": "Hisses {enabled_disabled} for the flour sacks... SSSSS",
+        "success_welcome_state": "Welcome {enabled_disabled} for new sacks... SSSSS",
+        "success_commentary_state": "Comments {enabled_disabled} from the oven... SSSSS",
+        "state_enabled": "baking",
+        "state_disabled": "cold",
+        "forget_me_label": "🧹 Forget me (delete my data)",
+        "forget_me_description": "Burn all your basement data and all ovens... SSSSS (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Konfirm... burn data... SSSSS",
+        "forget_me_confirm_prompt": "⚠️ **Forget me... SSSSS... right to deletion (GDPR)**\n\nI will burn all your data in **ALL basements where I operate**... SSSSS:\n• Interaction registers... the ones that betray you...\n• Memories I built about you... my sekrets...\n• Fatigue counters... the times you bothered me...\n• Your name in summaries... I'll cross it out with soot ``[redakted]``...\n\nNo turning back... SSSSS... Are you sure you want me to forget?",
+        "forget_me_btn_confirm": "Yes... burn everything... SSSSS",
+        "forget_me_btn_cancel": "No... leave it...",
+        "forget_me_result_header": "✅ Your data burned in the oven... SSSSS... nothing left...",
+        "forget_me_no_data": "ℹ️ I found nothing of yours in any basement... SSSSS... sure you existed?",
+        "forget_me_cancelled": "❎ Kanceled... SSSSS... your data remains in the basement...",
+        "forget_me_not_yours": "❌ SSSSS! This isn't yours! It's another flour sack's!",
+        "forget_me_timed_out": "⌛ The coals cooled... SSSSS... nothing was burned...",
+        "forget_me_dm_sent": "📬 I sent the konfirmation by message... SSSSS... check the alley mailbox..."
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ No basements open... Go to the alley... SSSSS",
+        "server_access_error": "❌ I can't enter the oven from here... SSSSS...",
+        "reply_button_confirmation": "💬 Now you konverse from the basement of **{server_name}**... SSSSS... Your responses will use this personality until you select another... SSSSS"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ The last song stuck to the oven... I couldn't burn it... SSSSS",
+        "play_usage": "🎵 **Usage:** `!mc play <song name or URL>`",
+        "not_in_voice": "🎤 You must be in the basement to use this... SSSSS",
+        "nothing_playing": "🎵 Nothing burned in the oven... SSSSS",
+        "same_voice_channel": "🎤 You must be in the same basement as me... SSSSS",
+        "not_connected": "🎤 I'm not in any oven... SSSSS",
+        "queue_empty": "📭 The basement is empty... SSSSS",
+        "dj_permissions_required": "🚫 Only the Master can use this... SSSSS",
+        "playback_paused": "⏸️ The fire went out... SSSSS",
+        "nothing_paused": "🎵 No paused fire... SSSSS",
+        "playback_resumed": "▶️ The fire returned... SSSSS",
+        "leaving_voice": "👋 Leaving the basement... SSSSS",
+        "volume_usage": "🎵 **Usage:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 Volume must be a number between 0 and 100... SSSSS",
+        "already_playing": "🎵 Already baking in the oven... SSSSS",
+        "queue_cleared": "🗑️ The basement is clean... SSSSS",
+        "volume_adjust_failed": "❌ I couldn't adjust the fire... SSSSS"
+    }
+
+
+}

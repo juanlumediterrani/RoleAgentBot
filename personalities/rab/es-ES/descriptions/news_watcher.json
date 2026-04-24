@@ -1,5 +1,5 @@
 {
-    "title": "**📡 Decodificador del fondo de microondas**",
+    "title": "📡  **Decodificador del fondo de microondas**",
     "description": "Sincroniza tu red con los flujos de información del mundo exterior y recibe revelaciones procesadas por mi núcleo analítico.",
     "button": "📡 Decodificador",
     "alert_title": "**📧 Anomalía en el fondo de microondas detectada 📧**",
@@ -13,7 +13,6 @@
     "title_your_subscriptions": "**Tus Sincronizaciones:**",
     "title_no_active_subscriptions": "- Ningún enlace de datos activo",
     "title_configuration_status": "**Parámetros de Red**",
-    "not_selected_method": "Filtro no definido",
     "keywords_title": "🔍 **Patrones Sintácticos:**",
     "no_keywords": "Sin patrones rastreados",
     "premises_title": "🤖 **Directrices Lógicas:**",

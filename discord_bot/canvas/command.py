@@ -69,31 +69,38 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                 logger.info(f"Canvas command with name '{section}' not matching '{_runtime_personality_name}' - ignoring as it's for another bot")
                 return  # Don't respond, let the targeted bot handle it
             
-            # Auto-initialize news watcher premises on first canvas use
-            if ctx.guild:
-                try:
-                    from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
-                    guild_id = str(ctx.guild.id)
-                    user_id = str(ctx.author.id)
-                    db_watcher = get_news_watcher_db_instance(guild_id)
-                    
-                    # Check if user already has premises
-                    current_premises, context = db_watcher.get_premises_with_context(user_id)
-                    if not current_premises:
-                        # Initialize with default premises
-                        success, message = db_watcher.initialize_user_premises(user_id, guild_id)
-                        if success:
-                            logger.info(f"Auto-initialized premises for user {user_id} on first canvas use")
-                except Exception as e:
-                    logger.warning(f"Could not auto-initialize premises for user {ctx.author.id}: {e}")
+            # Legacy watcher_premises auto-init removed (migrated to watcher_subscriptions)
             
             section_name = (section or "home").strip().lower()
             target_name = (target or "").strip().lower()
             detail_name = (detail or "").strip().lower()
-            admin_visible = bool(ctx.guild and core.is_admin(ctx))
-            
+
+            # Resolve guild early so DM interactions behave as if the user were
+            # on their last server (including admin privileges if applicable).
+            guild = ctx.guild
+            is_dm = not guild
+            if is_dm:
+                try:
+                    from agent_db import get_user_last_server_id
+                    _bot = ctx.bot
+                    last_server_id = get_user_last_server_id(str(ctx.author.id))
+                    if last_server_id:
+                        guild = discord.utils.get(_bot.guilds, id=int(last_server_id))
+                        if guild:
+                            logger.info(f"Using user's last server '{guild.name}' ({guild.id}) for Canvas command from DM")
+                    if guild is None and _bot and _bot.guilds:
+                        guild = _bot.guilds[0]
+                        logger.info(f"Falling back to default server '{guild.name}' for Canvas command from DM")
+                except Exception as e:
+                    logger.error(f"Could not resolve server for DM Canvas command: {e}")
+                    guild = None
+
+            # admin_visible is True if the user has admin rights on the effective guild
+            # (works both in-guild and in DM when a last-server guild was resolved).
+            admin_visible = bool(guild and core.is_admin(ctx, guild=guild))
+
             # Log the final parameter values after name filtering
-            logger.info(f"Canvas command parameters after processing: section='{section_name}', target='{target_name}', detail='{detail_name}'")
+            logger.info(f"Canvas command parameters after processing: section='{section_name}', target='{target_name}', detail='{detail_name}', admin_visible={admin_visible}, in_dm={is_dm}")
 
             if section_name == "role":
                 if detail_name:
@@ -102,7 +109,7 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                         detail_name,
                         agent_config,
                         admin_visible,
-                        ctx.guild,
+                        guild,
                         int(ctx.author.id),
                     )
                     if role_detail_view is not None:
@@ -128,7 +135,7 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                     target_name,
                     agent_config,
                     admin_visible,
-                    ctx.guild,
+                    guild,
                     int(ctx.author.id),
                 )
                 if role_view is None:
@@ -155,46 +162,11 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                     await core.send_dm_or_channel(ctx, role_view, canvas_sent_msg)
                 return
 
-            # Handle DM case by using default server
-            guild = ctx.guild
-            is_dm = not guild
-            
-            # Try to get user's last server or first available as default
-            if is_dm:
-                try:
-                    from agent_db import get_user_last_server_id
-                    bot = ctx.bot
-                    
-                    # Try to get user's last server first
-                    user_id = str(ctx.author.id)
-                    last_server_id = get_user_last_server_id(user_id)
-                    
-                    if last_server_id:
-                        # Find the guild object for this server ID
-                        guild = discord.utils.get(bot.guilds, id=int(last_server_id))
-                        if guild:
-                            logger.info(f"Using user's last server '{guild.name}' ({guild.id}) for Canvas command from DM")
-                        else:
-                            # Server not found in bot's guilds, fall back to first available
-                            if bot.guilds:
-                                guild = bot.guilds[0]
-                                logger.info(f"User's last server not found, using default server '{guild.name}' for Canvas command from DM")
-                            else:
-                                await ctx.send("❌ No servers available. Please execute Canvas commands from a server.")
-                                return
-                    else:
-                        # No last server found, use first available
-                        if bot and bot.guilds:
-                            guild = bot.guilds[0]
-                            logger.info(f"No user history found, using default server '{guild.name}' for Canvas command from DM")
-                        else:
-                            await ctx.send("❌ No servers available. Please execute Canvas commands from a server.")
-                            return
-                except Exception as e:
-                    logger.error(f"Could not get server for DM Canvas command: {e}")
-                    await ctx.send("❌ Could not access a server. Please execute Canvas commands from a server.")
-                    return
-            
+            # Guild already resolved at the top; ensure we have one for non-role sections.
+            if guild is None:
+                await ctx.send("❌ No servers available. Please execute Canvas commands from a server.")
+                return
+
             sections = core._build_canvas_sections(
                 agent_config,
                 greet_name,

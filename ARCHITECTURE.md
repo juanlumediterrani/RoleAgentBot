@@ -207,6 +207,28 @@ Every 7 days, `execute_weekly_personality_evolution_all_servers` runs per guild:
 
 If the LLM or parsing fails, nothing is written (safe rollback). If the server personality has not been migrated yet, the task fails gracefully with a clear error.
 
+### 5.5 Personality development tools
+
+`tools/compare_personality.py` helps when creating or translating personalities:
+
+- **`translate <personality> <lang>`** — compares `<personality>/<lang>` against `<personality>/es-ES` to detect missing keys, empty values, list length mismatches, and extra keys. Useful for verifying translation completeness.
+- **`extend <personality>`** — compares `<personality>/es-ES` against `rab/es-ES` (canonical reference) to identify missing sections when extending a personality with new roles/features.
+
+The script recursively walks all JSON files (including `descriptions/*.json`) and reports:
+- Missing files in the target
+- Missing keys (present in reference, absent in target)
+- Empty values (strings, lists, dicts)
+- List length mismatches (with ratio)
+- Extra keys (present only in target)
+- JSON syntax errors
+
+Example usage:
+
+```bash
+python3 tools/compare_personality.py extend yuki
+python3 tools/compare_personality.py translate rab en-US
+```
+
 ---
 
 ## 6. Memory Architecture
@@ -396,10 +418,10 @@ For every enabled role with a `script`, `run.py::launch_role()` runs the script 
 
 #### `treasure_hunter`
 
-- Scheduled price watcher, currently implemented for **Path of Exile 2**.
-- Keeps a global `item_name → item_id` map and a per-league shared price history.
-- Hourly subprocess updates prices and checks thresholds; notifications are generated through `call_llm()` using role-specific task prompts.
-- Also owns an in-process hourly loop inside the main bot for checks that need the Discord client.
+- Global scheduled price watcher (controlled by `agent_config.json`), currently implemented for **Path of Exile 2**.
+- Keeps a global `item_name → item_id` map and per-league price history stored in item-specific tables.
+- Non-blocking subprocess updates prices with cooperative yielding; notifications are generated through `call_llm()` using role-specific task prompts.
+- Frequency is configured globally via `roles.treasure_hunter.interval_hours` in `agent_config.json` (no per-server frequency control).
 
 #### `trickster` (subrole `dice_game`)
 

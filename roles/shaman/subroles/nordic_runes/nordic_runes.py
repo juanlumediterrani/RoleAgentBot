@@ -11,6 +11,7 @@ import random
 from .nordic_runes_messages import (
     get_rune, get_reading_type, READING_TYPES, get_all_runes,
     get_guidance_messages, get_message, load_personality_messages,
+    _get_runesplane_path, _load_runesplane_json,
 )
 from roles.trickster.subroles.base_role import BaseRole
 
@@ -436,28 +437,17 @@ class NordicRunes:
                     nordic_data = descriptions.get('discord', {}).get('roles_view_messages', {}).get('shaman', {}).get('nordic_runes', {})
                     labels = nordic_data.get('labels', {})
 
-                    # Load translations and positions from separate runesplane.json file
-                    # Load from databases/{personality}/{language}/descriptions/runesplane.json
-                    personality_dir = _get_personality_dir(server_id)
-                    path_parts = personality_dir.split(os.sep)
-                    if 'personalities' in path_parts:
-                        # Convert personalities/{personality}/{language} to databases/{personality}/{language}
-                        personalities_idx = path_parts.index('personalities')
-                        path_parts[personalities_idx] = 'databases'
-                        database_dir = os.sep.join(path_parts)
-                        runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
-                    else:
-                        # Already in databases/ structure or other structure, use as-is
-                        runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
-
+                    # Load translations and positions from language-scoped runesplane.json
+                    # (manuals/<language>/runesplane.json, with en-US fallback).
+                    runesplane_path = _get_runesplane_path(server_id)
                     if os.path.exists(runesplane_path):
                         with open(runesplane_path, 'r', encoding='utf-8') as f:
                             runesplane_data = json.load(f)
                             positions = runesplane_data.get('positions', {})
                             rune_translations = runesplane_data.get('translations', {})
                     else:
-                        # Fallback to inline RUNES data from nordic_runes_messages
-                        from .nordic_runes_messages import RUNES, _runes_fallback_data
+                        # Final fallback to inline RUNES data from nordic_runes_messages
+                        from .nordic_runes_messages import _runes_fallback_data
                         positions = {}
                         rune_translations = _runes_fallback_data()
 
@@ -518,27 +508,9 @@ class NordicRunes:
                 with open(descriptions_path, encoding="utf-8") as f:
                     descriptions_data = json.load(f)
 
-                # Navigate to guidance data - try runesplane.json first
-                # Load from databases/{personality}/{language}/descriptions/runesplane.json
-                personality_dir = _get_personality_dir(server_id)
-                path_parts = personality_dir.split(os.sep)
-                if 'personalities' in path_parts:
-                    # Convert personalities/{personality}/{language} to databases/{personality}/{language}
-                    personalities_idx = path_parts.index('personalities')
-                    path_parts[personalities_idx] = 'databases'
-                    database_dir = os.sep.join(path_parts)
-                    runesplane_path = os.path.join(database_dir, "descriptions", "runesplane.json")
-                else:
-                    # Already in databases/ structure or other structure, use as-is
-                    runesplane_path = os.path.join(personality_dir, "descriptions", "runesplane.json")
-
-                if os.path.exists(runesplane_path):
-                    with open(runesplane_path, encoding="utf-8") as f:
-                        runesplane_data = json.load(f)
-                        guidance = runesplane_data.get("guidance", {})
-                else:
-                    # Fallback to empty guidance (no personalities/ fallback)
-                    guidance = {}
+                # Navigate to guidance data from language-scoped runesplane.json
+                # (manuals/<language>/runesplane.json, with en-US fallback).
+                guidance = _load_runesplane_json(server_id).get("guidance", {})
                 
                 # Format all guidance categories
                 for category, category_data in guidance.items():

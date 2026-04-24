@@ -87,9 +87,7 @@
             "poe2_on": "Análisis: Activar",
             "poe2_on_description": "Iniciar el módulo de análisis de mercado",
             "poe2_off": "Análisis: Desactivar",
-            "poe2_off_description": "Detener el módulo de análisis",
-            "hunter_frequency": "Actualización: Frecuencia",
-            "hunter_frequency_description": "Ajustar cada cuánto tiempo se actualiza el análisis"
+            "poe2_off_description": "Detener el módulo de análisis"
         }
     }
 }

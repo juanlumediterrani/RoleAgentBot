@@ -310,7 +310,7 @@ class CanvasSmartBackButton(discord.ui.Button):
             logger.info(f"🔧 Behavior personality view -> conversation")
             from .canvas_behavior import build_canvas_behavior_detail
             from .content import _build_canvas_behavior_embed
-            title, description, content = build_canvas_behavior_detail("conversation", view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+            title, description, content = build_canvas_behavior_detail("conversation", view.admin_visible, view.guild, view.agent_config, author_id=str(view.author_id)) or (None, None, "")
             if content:
                 behavior_view = CanvasBehaviorView(
                     author_id=view.author_id,
@@ -440,7 +440,7 @@ class CanvasSmartBackButton(discord.ui.Button):
                         target_detail, 
                         None, 
                         detail_view.auto_response_preview,
-                        server_id=get_server_key(interaction.guild) if interaction.guild else None
+                        server_id=get_server_key(view.guild) if view.guild else None
                     )
                     
                     await interaction.response.edit_message(embed=detail_embed, view=detail_view)
@@ -486,7 +486,7 @@ class CanvasSmartBackButton(discord.ui.Button):
                         target_detail, 
                         None, 
                         detail_view.auto_response_preview,
-                        server_id=get_server_key(interaction.guild) if interaction.guild else None
+                        server_id=get_server_key(view.guild) if view.guild else None
                     )
                     
                     await interaction.response.edit_message(embed=detail_embed, view=detail_view)
@@ -981,8 +981,9 @@ class CanvasSectionSelect(discord.ui.Select):
             if not roles_content:
                 await interaction.response.send_message("❌ This Canvas section is not available.", ephemeral=True)
                 return
-            roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild, current_page=1, roles_per_page=5)
-            roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
+            roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=guild, current_page=1, roles_per_page=5)
+            server_id = get_server_key(guild) if guild else None
+            roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible, server_id=server_id)
             roles_view.current_embed = roles_embed  # Store embed for back navigation
             await interaction.response.edit_message(content=None, embed=roles_embed, view=roles_view)
             # Set the message reference for timeout deletion
@@ -990,7 +991,7 @@ class CanvasSectionSelect(discord.ui.Select):
             return
         if selected == "behavior":
             guild = interaction.guild or view.guild
-            result = _build_canvas_behavior_detail("conversation", view.admin_visible, guild, view.agent_config)
+            result = _build_canvas_behavior_detail("conversation", view.admin_visible, guild, view.agent_config, author_id=str(view.author_id))
             if not result:
                 await interaction.response.send_message("❌ This Canvas section is not available.", ephemeral=True)
                 return
@@ -1168,22 +1169,25 @@ class CanvasRoleActionSelect(discord.ui.Select):
             return
         action_name = self.values[0]
         view.auto_response_preview = _get_canvas_auto_response_preview(self.role_name, action_name)
+        # Effective guild: use interaction guild when in-server, fall back to the
+        # view's resolved guild (e.g. user's last server) when in DM.
+        eff_guild = interaction.guild or getattr(view, 'guild', None)
         if self.role_name == "banker" and action_name in {"config_tae", "config_bonus"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
                 return
-            await interaction.response.send_modal(BankerConfigModal(action_name, view.author_id))
+            await interaction.response.send_modal(BankerConfigModal(action_name, view.author_id, eff_guild))
             return
         if self.role_name == "banker" and action_name == "beggar_donate":
-            if not interaction.guild:
+            if not eff_guild:
                 await interaction.response.send_message("❌ Donations are only available in a server.", ephemeral=True)
                 return
             # Open donation modal
             from .canvas_banker import BeggarDonationModal as _BeggarDonationModal
-            await interaction.response.send_modal(_BeggarDonationModal(interaction.guild, view.author_id, view))
+            await interaction.response.send_modal(_BeggarDonationModal(eff_guild, view.author_id, view))
             return
         if action_name == "watcher_frequency":
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
                 return
             await interaction.response.send_modal(RoleFrequencyModal(self.role_name, action_name, view.agent_config, view, view.author_id))
@@ -1199,9 +1203,8 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
                 await interaction.response.send_message(error_message, ephemeral=True)
                 return
-            # Allow POE2 item operations in DM
-            guild = interaction.guild  # Will be None in DM
-            await interaction.response.send_modal(Poe2ItemModal(action_name, view.author_id, guild, view))
+            # Allow POE2 item operations in DM (use view's resolved guild as fallback)
+            await interaction.response.send_modal(Poe2ItemModal(action_name, view.author_id, eff_guild, view))
             return
         if self.role_name == "treasure_hunter" and action_name in {"poe2_purchase_add", "poe2_purchase_remove"}:
             # Check if treasure_hunter is enabled globally in agent_config
@@ -1214,8 +1217,8 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
                 await interaction.response.send_message(error_message, ephemeral=True)
                 return
-            # Allow POE2 purchase operations in DM
-            guild = interaction.guild  # Will be None in DM
+            # Allow POE2 purchase operations in DM (use view's resolved guild as fallback)
+            guild = eff_guild
             if action_name == "poe2_purchase_add":
                 # Get tracked items and prices for the Select view
                 from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
@@ -1335,16 +1338,16 @@ class CanvasRoleActionSelect(discord.ui.Select):
                 await interaction.response.send_message(error_message, ephemeral=True)
                 return
             # Keep admin restrictions for activation/deactivation
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 await interaction.response.send_message("❌ This option is admin-only and requires a server.", ephemeral=True)
                 return
             await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
             return
         if self.role_name == "trickster" and action_name in {"dice_fixed_bet", "dice_pot_value"}:
-            if not interaction.guild:
+            if not eff_guild:
                 await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
                 return
-            await interaction.response.send_modal(TricksterActionModal(action_name, view.author_id, interaction.guild, view.admin_visible, view))
+            await interaction.response.send_modal(TricksterActionModal(action_name, view.author_id, eff_guild, view.admin_visible, view))
             return
         if self.role_name == "trickster" and action_name in {"dice_play", "dice_ranking", "dice_history", "dice_help"}:
             # For dice actions, allow DM execution by using default server
@@ -1357,29 +1360,29 @@ class CanvasRoleActionSelect(discord.ui.Select):
             from .canvas_juggler import handle_canvas_juggler_modal_submit
             # Handle ring actions that need modal input
             if action_name in {"ring_accuse", "ring_frequency"}:
-                await interaction.response.send_modal(JugglerActionModal(action_name, view.author_id, interaction.guild, view.admin_visible, view))
+                await interaction.response.send_modal(JugglerActionModal(action_name, view.author_id, eff_guild, view.admin_visible, view))
                 return
             # Handle ring toggle actions
             if action_name in {"ring_on", "ring_off"}:
-                if not interaction.guild or not view.admin_visible:
+                if not view.admin_visible:
                     await interaction.response.send_message("❌ This juggler option is admin-only.", ephemeral=True)
                     return
-                await handle_canvas_juggler_modal_submit(interaction, action_name, "", interaction.guild, view.author_id, view.admin_visible, view)
+                await handle_canvas_juggler_modal_submit(interaction, action_name, "", eff_guild, view.author_id, view.admin_visible, view)
                 return
         if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now", "watcher_run_personal"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 await interaction.response.send_message("❌ This watcher option is admin-only.", ephemeral=True)
                 return
             await _handle_canvas_watcher_action(interaction, action_name, view)
             return
         if self.role_name == "trickster" and action_name in {"announcements_on", "announcements_off"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 await interaction.response.send_message("❌ This trickster option is admin-only.", ephemeral=True)
                 return
             await _handle_canvas_trickster_action(interaction, action_name, view)
             return
         if self.role_name == "banker" and action_name in {"beggar_on", "beggar_off", "beggar_frequency", "beggar_force_minigame"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
                 return
             await _handle_canvas_banker_action(interaction, action_name, view)
@@ -1522,7 +1525,7 @@ class MemoryTypeSelect(discord.ui.Select):
         view.agent_config["selected_memory_type"] = action_name.replace("memory_", "")
         
         # Rebuild the view with updated memory type
-        title, description, content = _build_canvas_behavior_detail("memory", view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+        title, description, content = _build_canvas_behavior_detail("memory", view.admin_visible, view.guild, view.agent_config, author_id=str(view.author_id)) or (None, None, "")
         behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
         
         # Update the view with new MemoryTypeSelect that has the updated agent_config
@@ -1560,10 +1563,13 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             return
         action_name = self.values[0]
         view.auto_response_preview = _get_canvas_auto_response_preview(action_name=action_name)
-        
+
+        # Effective guild: support DM by falling back to the view's resolved guild.
+        eff_guild = interaction.guild or getattr(view, 'guild', None)
+
         # Load answers.json for general messages
         from agent_runtime import get_personality_message
-        server_id = get_server_key(interaction.guild) if interaction.guild else None
+        server_id = get_server_key(eff_guild) if eff_guild else None
         general_answers = get_personality_message("answers.json", ["general"], server_id, {})
         
         if action_name == "forget_me":
@@ -1574,25 +1580,25 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
 
         if action_name in {"memory_long", "memory_recent", "memory_relationship"}:
             # Handle memory type selection via dropdown
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
                 await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             # Store selected memory type in view for dropdown
             view.selected_memory_type = action_name.replace("memory_", "")
-            title, description, content = _build_canvas_behavior_detail("memory", view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+            title, description, content = _build_canvas_behavior_detail("memory", view.admin_visible, view.guild, view.agent_config, author_id=str(view.author_id)) or (None, None, "")
             behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
             await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             return
         if action_name in {"taboo_add", "taboo_del"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible or not eff_guild:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
                 await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
-            await interaction.response.send_modal(TabooKeywordModal(action_name, int(interaction.guild.id), view))
+            await interaction.response.send_modal(TabooKeywordModal(action_name, int(eff_guild.id), view))
             return
         if action_name == "language_settings":
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 error_settings_admin_only = general_answers.get("error_settings_admin_only", "❌ This settings option is admin-only.")
                 await interaction.response.send_message(error_settings_admin_only, ephemeral=True)
                 return
@@ -1609,7 +1615,7 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             )
             return
         if action_name == "role_control":
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible:
                 error_settings_admin_only = general_answers.get("error_settings_admin_only", "❌ This settings option is admin-only.")
                 await interaction.response.send_message(error_settings_admin_only, ephemeral=True)
                 return
@@ -1618,14 +1624,14 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             await interaction.response.send_message("🎛️ **Gestión de Roles** - Selecciona un rol para activar/desactivar:", view=role_view, ephemeral=True)
             return
         if action_name in {"taboo_on", "taboo_off"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible or not eff_guild:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
                 await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
-            guild_id = int(interaction.guild.id)
+            guild_id = int(eff_guild.id)
             enabled = action_name == "taboo_on"
             if update_taboo_state(guild_id, enabled=enabled):
-                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config, author_id=str(view.author_id)) or (None, None, "")
                 
                 # Get success message from answers
                 success_taboo_state = general_answers.get("success_taboo_state", "Taboo {enabled_disabled} for this server.")
@@ -1642,15 +1648,15 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         
         # Handle greetings toggle
         if action_name in {"greetings_on", "greetings_off"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible or not eff_guild:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
                 await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
             enabled = action_name == "greetings_on"
             try:
                 from discord_bot.discord_utils import set_greeting_enabled
-                set_greeting_enabled(interaction.guild, enabled)
-                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+                set_greeting_enabled(eff_guild, enabled)
+                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config, author_id=str(view.author_id)) or (None, None, "")
                 
                 # Get success message from answers
                 success_greetings_state = general_answers.get("success_greetings_state", "Greetings {enabled_disabled} for this server.")
@@ -1668,7 +1674,7 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
         
         # Handle welcome toggle
         if action_name in {"welcome_on", "welcome_off"}:
-            if not interaction.guild or not view.admin_visible:
+            if not view.admin_visible or not eff_guild:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
                 await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
@@ -1681,12 +1687,12 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                 # Save to server_config.json
                 try:
                     from discord_bot.canvas.server_config import set_welcome_enabled
-                    guild_id = str(interaction.guild.id)
+                    guild_id = str(eff_guild.id)
                     set_welcome_enabled(guild_id, enabled, f"{interaction.user.name}")
                 except Exception as e:
                     logger.error(f"Failed to save welcome state to server_config: {e}")
                 
-                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config, author_id=str(view.author_id)) or (None, None, "")
                 
                 # Get success message from answers
                 success_welcome_state = general_answers.get("success_welcome_state", "Welcome messages {enabled_disabled} for this server.")
@@ -1741,9 +1747,10 @@ class CanvasNavRolesButton(discord.ui.Button):
         if not roles_content:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
-        roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=interaction.guild, current_page=1, roles_per_page=5)
+        roles_view = CanvasRolesView(view.author_id, view.agent_config, view.admin_visible, view.sections, guild=guild, current_page=1, roles_per_page=5)
         roles_view.message = interaction.message
-        roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
+        server_id = get_server_key(guild) if guild else None
+        roles_embed = _build_canvas_embed("roles", roles_content, view.admin_visible, server_id=server_id)
         roles_view.current_embed = roles_embed  # Store embed for back navigation
         await _safe_edit_interaction_message(interaction, content=None, embed=roles_embed, view=roles_view)
         roles_view.message = interaction.message
@@ -1776,7 +1783,7 @@ class CanvasNavBehaviorButton(discord.ui.Button):
             )
             view.guild = guild
         guild = interaction.guild or view.guild
-        result = _build_canvas_behavior_detail("conversation", view.admin_visible, guild, view.agent_config)
+        result = _build_canvas_behavior_detail("conversation", view.admin_visible, guild, view.agent_config, author_id=str(view.author_id))
         if not result:
             await _safe_send_interaction_message(interaction, "❌ This Canvas section is not available.", ephemeral=True)
             return
@@ -1859,7 +1866,7 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
             return
         title = self.sections.get("behavior_title") if section_name == "behavior" else None
         description = self.sections.get("behavior_description") if section_name == "behavior" else None
-        embed = _build_canvas_embed(section_name, content, self.admin_visible, title, description)
+        embed = _build_canvas_embed(section_name, content, self.admin_visible, title, description, server_id=server_id if guild else None)
         await _safe_edit_interaction_message(interaction, content=None, embed=embed, view=self)
 
     async def _check_user_permission(self, interaction: discord.Interaction) -> bool:
@@ -2017,7 +2024,8 @@ class CanvasRolesPageButton(discord.ui.Button):
             current_page=new_page,
             roles_per_page=view.roles_per_page
         )
-        new_view.current_embed = _build_canvas_embed("roles", roles_content, view.admin_visible)
+        server_id = get_server_key(view.guild) if view.guild else None
+        new_view.current_embed = _build_canvas_embed("roles", roles_content, view.admin_visible, server_id=server_id)
 
         # Update message with new view
         await interaction.response.edit_message(embed=new_view.current_embed, view=new_view)
@@ -2037,11 +2045,12 @@ class CanvasRoleButton(discord.ui.Button):
             await interaction.response.send_message("❌ Canvas role navigation is not available.", ephemeral=True)
             return
 
+        eff_guild = interaction.guild or getattr(view, 'guild', None)
         content = _build_canvas_role_view(
             self.role_name,
             view.agent_config,
             view.admin_visible,
-            interaction.guild,
+            eff_guild,
             view.author_id,
         )
         if not content:
@@ -2054,11 +2063,11 @@ class CanvasRoleButton(discord.ui.Button):
             agent_config=view.agent_config,
             admin_visible=view.admin_visible,
             sections=view.sections,
-            guild=interaction.guild,
+            guild=eff_guild,
             previous_view=view  # Pass current CanvasRolesView as previous_view for back navigation
         )
         detail_view.message = interaction.message
-        role_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, "overview", None, detail_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
+        role_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, "overview", None, detail_view.auto_response_preview, server_id=get_server_key(eff_guild) if eff_guild else None)
         detail_view.current_embed = role_embed
         await interaction.response.edit_message(content=None, embed=role_embed, view=detail_view)
         # Set the message reference for timeout deletion
@@ -2111,7 +2120,7 @@ class CanvasRoleDetailButton(discord.ui.Button):
             previous_view=view  # Pass current view as previous_view for back navigation
         )
         next_view.message = interaction.message
-        detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, self.detail_name, None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
+        detail_embed = _build_canvas_role_embed(self.role_name, content, view.admin_visible, self.detail_name, None, next_view.auto_response_preview, server_id=get_server_key(view.guild) if view.guild else None)
         next_view.current_embed = detail_embed
         await interaction.response.edit_message(content=None, embed=detail_embed, view=next_view)
 
@@ -2185,10 +2194,11 @@ class RoleFrequencyModal(CanvasModal):
         self.add_item(self.value_input)
 
     async def on_submit(self, interaction: discord.Interaction):
-        if not interaction.guild:
+        eff_guild = interaction.guild or getattr(self.view, 'guild', None)
+        if not eff_guild:
             await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
             return
-        if not is_admin(interaction):
+        if not is_admin(interaction, guild=eff_guild):
             await interaction.response.send_message("❌ This option is admin-only.", ephemeral=True)
             return
         try:
@@ -2205,7 +2215,7 @@ class RoleFrequencyModal(CanvasModal):
             await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
             return
         try:
-            db_watcher = get_news_watcher_db_instance(str(interaction.guild.id))
+            db_watcher = get_news_watcher_db_instance(str(eff_guild.id))
             ok = db_watcher.set_frequency_setting(hours)
         except Exception as e:
             logger.exception(f"Canvas watcher frequency update failed: {e}")
@@ -2213,7 +2223,7 @@ class RoleFrequencyModal(CanvasModal):
         if not ok:
             await interaction.response.send_message("❌ Could not update watcher frequency.", ephemeral=True)
             return
-        current_method = _get_canvas_watcher_method_label(str(interaction.guild.id))
+        current_method = _get_canvas_watcher_method_label(str(eff_guild.id))
         applied_text = f"Watcher frequency updated to `{hours}` hours.\nCurrent method: {current_method}"
 
         # Rebuild the Canvas role detail view with updated state
@@ -2228,7 +2238,7 @@ class RoleFrequencyModal(CanvasModal):
             guild=self.view.guild,
         )
         next_view.auto_response_preview = applied_text
-        role_embed = _build_canvas_role_embed(self.role_name, content, self.view.admin_visible, "admin", None, next_view.auto_response_preview, server_id=get_server_key(interaction.guild) if interaction.guild else None)
+        role_embed = _build_canvas_role_embed(self.role_name, content, self.view.admin_visible, "admin", None, next_view.auto_response_preview, server_id=get_server_key(eff_guild) if eff_guild else None)
         await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
 
 
@@ -2299,7 +2309,7 @@ class TabooKeywordModal(CanvasModal):
                 success = True
         
         # Rebuild the Canvas behavior view with updated state
-        title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config) or (None, None, "")
+        title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config, author_id=str(self.view.author_id)) or (None, None, "")
         next_view = CanvasBehaviorView(
             author_id=self.view.author_id,
             sections=self.view.sections,
@@ -2475,7 +2485,7 @@ class RoleManagementDropdown(discord.ui.Select):
         self.options = new_options
         
         # Update the view
-        title, description, content = _build_canvas_behavior_detail(self.canvas_view.current_detail, self.canvas_view.admin_visible, self.canvas_view.guild, self.canvas_view.agent_config) or (None, None, "")
+        title, description, content = _build_canvas_behavior_detail(self.canvas_view.current_detail, self.canvas_view.admin_visible, self.canvas_view.guild, self.canvas_view.agent_config, author_id=str(self.canvas_view.author_id)) or (None, None, "")
         self.canvas_view.auto_response_preview = success_msg
         behavior_embed = _build_canvas_behavior_embed(content or "", self.canvas_view.admin_visible, self.canvas_view.auto_response_preview, title, description)
         
@@ -2594,7 +2604,8 @@ class LanguageSelect(discord.ui.Select):
                 self.canvas_view.current_detail, 
                 self.canvas_view.admin_visible, 
                 self.canvas_view.guild, 
-                self.canvas_view.agent_config
+                self.canvas_view.agent_config,
+                author_id=str(self.canvas_view.author_id)
             ) or (None, None, "")
             
             self.canvas_view.auto_response_preview = f"✅ Server language set to: {selected_language}"
@@ -3270,7 +3281,7 @@ class CanvasBehaviorDetailButton(discord.ui.Button):
             await interaction.response.send_message("❌ Canvas behavior navigation is not available.", ephemeral=True)
             return
 
-        title, description, content = _build_canvas_behavior_detail(self.detail_name, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+        title, description, content = _build_canvas_behavior_detail(self.detail_name, view.admin_visible, view.guild, view.agent_config, author_id=str(view.author_id)) or (None, None, "")
         if not content:
             await interaction.response.send_message("❌ This behavior detail is not available.", ephemeral=True)
             return

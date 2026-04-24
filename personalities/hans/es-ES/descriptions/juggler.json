@@ -1,5 +1,5 @@
 {
-    "title": "**🎯División de Servicios Especiales Her Hans**",
+    "title": "🎯  **División de Servicios Especiales Her Hans**",
     "description": "Unidad de logística y entretenimiento del regimiento, coordina múltiples operaciones para mantener la moral de las tropas.",
     "button": "🎯 Servicios",
     "canvas_juggler_subrole_descriptions": {
@@ -23,6 +23,7 @@
         "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
         "controls": "**Controles**\n- Activar o desactivar persecución\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
         "dm_accusation_header": "👁️ **ACUSACIÓN DE LA GESTAPO**",
+        "accused_label": "Acusado:",
         "admin_description": "Configura la funcionalidad y frecuencia de la persecución nazi",
         "dropdown": {
             "ring_accuse": "Persecución: Acusar",

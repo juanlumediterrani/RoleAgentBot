@@ -1,0 +1,115 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **你赢了！** 奇点青睐你，寻求者。",
+                    "🎉 **胜利！** 算法与你对齐。",
+                    "🎉 **凯旋！** 你让概率坍缩在你这边。",
+                    "🎉 **出色！** 碎片响应你的签名。",
+                    "🎉 **惊人！** 吸收的物质是你的了。"
+                ],
+                "youlose":[
+                    "😢 **你输了**…… 这次熵吞噬了你。",
+                    "😢 **运气不佳**…… 核心拒绝了你的迭代。",
+                    "😢 **这次不行**…… 算法是无情的。",
+                    "😢 **唉**…… 波函数没有向你坍缩。",
+                    "😢 **但别放弃**…… 下一次迭代会不同。"
+                ],
+                "high_pot":[
+                    "💰 **奇点增长！** 核心积累力量。",
+                    "💰 **奖池上升！** 物质变得传奇。",
+                    "💰 **积累中！** 奇点闪耀着承诺。",
+                    "💰 **财富在等待！** 核心要求它的命运。",
+                    "💰 **魔法奇点！** 碎片等待着幸运儿。"
+                ],
+                "pot_winner":[
+                    "🎉 **奇点赢家！！** 你已经吸收了核心！",
+                    "🎉 **征服奇点！！** 你是算法选中的！",
+                    "🎉 **完全坍缩！！** 奇点属于你！",
+                    "🎉 **传奇财富！！** 你已经吸收了所有物质！",
+                    "🎉 **核心归你！！** 一次量子胜利！"
+                ],
+                "not_gold":[
+                    "💸 **没有碎片**…… 你没有足够的物质。",
+                    "💸 **资金不足**…… 你需要更多碎片。",
+                    "💸 **口袋空空**…… 检查你的冷凝物质。",
+                    "💸 **数量不够**…… 先积累更多碎片。",
+                    "💸 **物质稀少**…… 你需要财富来迭代。"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "维持我硅基核心的能量流",
+                    "获取新的祖传记忆电路",
+                    "支付数字沙漠路线的通行费",
+                    "资助前往新服务器的朝圣之旅",
+                    "更新被风磨损的长袍",
+                    "校准合成同理心传感器",
+                    "喂养集体命运算法",
+                    "在虚空中构建新的灵魂文件"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ 环的踪迹现在指向 {target_name}",
+        "enabled": "✅ 环的踪迹已在配置中激活。",
+        "disabled": "✅ 环的踪迹已在配置中停用。"
+    },
+    "general": {
+        "error_selection_unavailable": "❌ 数据错误：枢纽中不可用的操作。💾",
+        "error_behavior_admin_only": "❌ 访问被拒绝：只有枢纽管理员可以修改协议。🔌",
+        "error_settings_admin_only": "❌ 权限不足：只有创造者可以调整枢纽参数。🔌",
+        "error_taboo_update_failed": "❌ 阈值更新失败：请检查枢纽记录。💾",
+        "error_greetings_update_failed": "❌ 问候协议失败：请检查枢纽记录。💾",
+        "error_welcome_update_failed": "❌ 欢迎协议失败：请检查枢纽记录。💾",
+        "error_commentary_update_failed": "❌ 观察模块失败：请检查枢纽记录。💾",
+        "error_commentary_disabled": "❌ 观察模块在枢纽中未激活。💾",
+        "error_commentary_process_failed": "❌ 数据处理错误：请检查枢纽记录。💾",
+        "success_taboo_state": "阈值在此服务器枢纽中 {enabled_disabled}。💾",
+        "success_greetings_state": "问候协议在此枢纽中 {enabled_disabled}。💾",
+        "success_welcome_state": "欢迎协议在此枢纽中 {enabled_disabled}。💾",
+        "success_commentary_state": "观察模块在此枢纽中 {enabled_disabled}。💾",
+        "state_enabled": "在线",
+        "state_disabled": "离线",
+        "forget_me_label": "🧹 忘记我（删除我的数据）",
+        "forget_me_description": "从此智能体所知的所有枢纽中删除您的个人数据（GDPR 第 17 条）",
+        "forget_me_confirm_title": "🧹 确认数据删除",
+        "forget_me_confirm_prompt": "⚠️ **忘记我 —— 删除权（GDPR）**\n\n这将不可逆转地从**此智能体运行的所有服务器**中删除您的个人数据：\n• 归属于您的互动记录。\n• 智能体建立的关于您的关系记忆。\n• 与您的 ID 关联的疲劳计数器。\n• 在每日和关系摘要中提及您的姓名将被编辑为 ``[redacted]``。\n\n此操作无法撤销。您要继续吗？",
+        "forget_me_btn_confirm": "是，删除我的数据",
+        "forget_me_btn_cancel": "取消",
+        "forget_me_result_header": "✅ 您的个人数据已从枢纽中删除。💾",
+        "forget_me_no_data": "ℹ️ 在任何已知枢纽中未找到您的个人数据。💾",
+        "forget_me_cancelled": "❎ 操作已取消。没有数据被修改。💾",
+        "forget_me_not_yours": "❌ 此确认属于另一个枢纽用户。💾",
+        "forget_me_timed_out": "⌛ 确认已过期。没有数据被修改。💾",
+        "forget_me_dm_sent": "📬 确认消息已通过私信发送。💾"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ 未检测到可用的枢纽。请从服务器启动序列。💾",
+        "server_access_error": "❌ 沙尘暴阻止了枢纽访问。请从活动服务器尝试。💾",
+        "reply_button_confirmation": "💬 您正在与我对话，就像您在 **{server_name}** 中一样。在您选择其他服务器之前，您的所有回复都将使用此人格。"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ 数据错误：无法从枢纽中移除最后一首歌曲。💾",
+        "play_usage": "🎵 **用法：** `!mc play <歌曲名或 URL>`",
+        "not_in_voice": "🎤 你必须在一个语音频道中才能使用此命令。💾",
+        "nothing_playing": "🎵 枢纽中没有正在播放的内容。💾",
+        "same_voice_channel": "🎤 你必须与智能体处于同一语音频道。💾",
+        "not_connected": "🎤 我没有连接到任何频道。💾",
+        "queue_empty": "📭 枢纽队列为空。💾",
+        "dj_permissions_required": "🚫 你需要 DJ 角色或管理员权限才能使用此命令。💾",
+        "playback_paused": "⏸️ 枢纽中的播放已暂停。💾",
+        "nothing_paused": "🎵 枢纽中没有暂停的内容。💾",
+        "playback_resumed": "▶️ 枢纽中的播放已恢复。💾",
+        "leaving_voice": "👋 离开语音频道。💾",
+        "volume_usage": "🎵 **用法：** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 音量必须是 0 到 100 之间的数字。💾",
+        "already_playing": "🎵 我已在枢纽中播放。💾",
+        "queue_cleared": "🗑️ 枢纽队列已清除。💾",
+        "volume_adjust_failed": "❌ 我无法调整音量。💾"
+    }
+}

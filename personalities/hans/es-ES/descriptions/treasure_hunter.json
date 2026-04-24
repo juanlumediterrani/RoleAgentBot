@@ -1,5 +1,5 @@
 {
-    "title": "**💎 Her Hans Cazador de Recursos Estratégicos**",
+    "title": "💎  **Her Hans Cazador de Recursos Estratégicos**",
     "description": "Haga que Her Hans monitoree precios de objetos estratégicos en diferentes juegos y le envíe alertas cuando el precio esté en zona máxima/mínima.",
     "button": "💎 Recursos",
     "button_poe2": "👺 POE2",
@@ -18,7 +18,7 @@
     "admin_flows_title": "Procedimiento para oficiales",
     "admin_flows_1": "Navegue dentro de los subroles para activarlos y configurarlos, desde la vista de oficial.",
     "poe2": {
-        "title": "**💎 {_bot} Recursos en Path of Exile 2**",
+        "title": "💎  **{_bot} Recursos en Path of Exile 2**",
         "description": "Haga que Her Hans monitoree precios y le envíe alertas estratégicas",
         "game_description": "Pon a prueba tu estrategia con el bote de Her Hans! 🎲 Lanza tres dados contra la banca y llévate todo el oro al lanzar un trío de unos!\n -Parejas:x1\n -Tríos:x3\n -Escalera alta:x5\n",
         "current_league": "🏆 **Campo Actual**: {league}",
@@ -88,9 +88,7 @@
             "poe2_on": "POE2: Activar",
             "poe2_on_description": "Activar subrol POE2",
             "poe2_off": "POE2: Desactivar",
-            "poe2_off_description": "Desactivar subrol POE2",
-            "hunter_frequency": "Cazador: Frecuencia",
-            "hunter_frequency_description": "Establecer frecuencia de monitoreo"
+            "poe2_off_description": "Desactivar subrol POE2"
         }
     }
 }

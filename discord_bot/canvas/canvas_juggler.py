@@ -183,7 +183,7 @@ class JugglerActionModal(discord.ui.Modal, title="Juggler Action"):
 
         label_map = {
             "ring_frequency": "Hours",
-            "ring_accuse": ring_dropdown_messages.get("ring_accuse_description", "User mention, id, or name"),
+            "ring_accuse": ring_dropdown_messages.get("ring_accuse_description", "User mention, id, or name")[:45],
         }
         placeholder_map = {
             "ring_frequency": "24",

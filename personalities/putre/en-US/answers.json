@@ -1,0 +1,115 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **YOU WON!** The bones gave you reason! ⚔️",
+                    "🎉 **VICTORY!** The orc triumphs! ⚔️",
+                    "🎉 **TRIUMPH!** You defeated destiny! ⚔️",
+                    "🎉 **EXCELLENT!** Your axe is strong! ⚔️",
+                    "🎉 **IMPRESSIVE!** A master play! ⚔️"
+                ],
+                "youlose":[
+                    "😢 **YOU LOST**... The bones were cruel... ⚔️",
+                    "😢 **BAD LUCK**... Destiny was superior... ⚔️",
+                    "😢 **NOT THIS TIME**... Luck is fickle... ⚔️",
+                    "😢 **DARN**... Your axe failed... ⚔️",
+                    "😢 **BUT DON'T GIVE UP**... Next time will be better! ⚔️"
+                ],
+                "high_pot":[
+                    "💰 **THE POT GROWS!** The loot accumulates! ⚔️",
+                    "💰 **POT SURGING!** The prize becomes legendary! ⚔️",
+                    "💰 **ACCUMULATING!** The pot shines with promise! ⚔️",
+                    "💰 **FORTUNE AWAITS!** The pot claims its destiny! ⚔️",
+                    "💰 **MAGIC POT!** Gold awaits the lucky one! ⚔️"
+                ],
+                "pot_winner":[
+                    "🎉 **POT WINNER!!** You conquered the treasure! ⚔️",
+                    "🎉 **POT CONQUERED!!** You are the chosen one! ⚔️",
+                    "🎉 **JACKPOT!!** The pot is yours! ⚔️",
+                    "🎉 **LEGENDARY FORTUNE!!** You won the grand prize! ⚔️",
+                    "🎉 **POT IS YOURS!!** An epic victory! ⚔️"
+                ],
+                "not_gold":[
+                    "💸 **NO GOLD**... You don't have enough coins... ⚔️",
+                    "💸 **INSUFFICIENT FUNDS**... Need more gold... ⚔️",
+                    "💸 **EMPTY POCKETS**... Check your treasure... ⚔️",
+                    "💸 **NOT ENOUGH**... Accumulate more gold first... ⚔️",
+                    "💸 **SCARCE TREASURE**... Need fortune to play... ⚔️"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "bring your orc family with you",
+                    "buy a warrior boar for battle",
+                    "pay tribute to the orc chief so he doesn't kill you",
+                    "sharpen your battle axe in the forge",
+                    "buy raw meat for the feast",
+                    "build a new shop in the camp",
+                    "buy bir to forget defeats",
+                    "pay the orc healer for broken tusks"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ The ring now points to {target_name}",
+        "enabled": "✅ The ring activated in the configuration.",
+        "disabled": "✅ The ring deactivated in the configuration."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ Putre's axe broke! Action not available for orc! ⚔️",
+        "error_behavior_admin_only": "❌ ONLY FOR ORC CHIEFS! You don't command the camp! ⚔️🥩",
+        "error_settings_admin_only": "❌ Only the orc chief can change the configuration! ⚔️",
+        "error_taboo_update_failed": "❌ The battle was lost! Could not update the thresholds! ⚔️",
+        "error_greetings_update_failed": "❌ The healer failed! Could not update the greetings! ⚔️",
+        "error_welcome_update_failed": "❌ The shop burned down! Could not update the welcome! ⚔️",
+        "error_commentary_update_failed": "❌ The meat rotted! Could not update the comments! ⚔️",
+        "error_commentary_disabled": "❌ The campfire is out! Comments don't work! ⚔️",
+        "error_commentary_process_failed": "❌ Putre's axe broke! Could not process the comments! ⚔️",
+        "success_taboo_state": "Thresholds {enabled_disabled} in the camp server! ⚔️",
+        "success_greetings_state": "Greetings {enabled_disabled} in the camp! ⚔️",
+        "success_welcome_state": "Welcome {enabled_disabled} in the camp! ⚔️",
+        "success_commentary_state": "Comments {enabled_disabled} from the camp! ⚔️",
+        "state_enabled": "ready for battle",
+        "state_disabled": "wounded",
+        "forget_me_label": "🧹 Forget me (delete my data)",
+        "forget_me_description": "Burn your data in the campfire of all camps (GDPR Art. 17) ⚔️",
+        "forget_me_confirm_title": "🧹 Confirm deletion in the camp",
+        "forget_me_confirm_prompt": "⚠️ **Warrior wants to be forgotten! — Right to deletion (GDPR)**\n\nThis will burn all your data in **ALL camps where Putre fights**:\n• Interaction records... the battle chronicle about you...\n• Memories the camp forged about you...\n• Fatigue counters... the times you annoyed the orc...\n• Your name in summaries... will be crossed out with ash ``[redacted]``...\n\nNo going back, warrior! Are you sure? ⚔️",
+        "forget_me_btn_confirm": "Yes! Burn it all! ⚔️",
+        "forget_me_btn_cancel": "No... retreat",
+        "forget_me_result_header": "✅ Your data was burned in the campfire! Nothing remains! ⚔️",
+        "forget_me_no_data": "ℹ️ No data found for you in any camp! Are you a spirit? ⚔️",
+        "forget_me_cancelled": "❎ Retreat! Your data remains in the camp! ⚔️",
+        "forget_me_not_yours": "❌ This confirmation is from another warrior! Don't touch! ⚔️",
+        "forget_me_timed_out": "⌛ The campfire went out! Nothing was burned! ⚔️",
+        "forget_me_dm_sent": "📬 Confirmation sent by direct message! Check, warrior! ⚔️"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ No camps available! Go to an orc camp! ⚔️",
+        "server_access_error": "❌ Cannot enter the camp from here! Go to the camp! ⚔️",
+        "reply_button_confirmation": "💬 Putre now speaks from the camp of **{server_name}**! Your responses will use this personality until you select another! ⚔️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ Putre's axe failed! Could not remove the last song from the camp! ⚔️",
+        "play_usage": "🎵 **Usage:** `!mc play <song name or URL>`",
+        "not_in_voice": "🎤 You must be in the camp to use this, warrior! ⚔️",
+        "nothing_playing": "🎵 Nothing playing in the camp! ⚔️",
+        "same_voice_channel": "🎤 You must be in the same camp as the orc! ⚔️",
+        "not_connected": "🎤 Not in any camp! ⚔️",
+        "queue_empty": "📭 The camp is empty! ⚔️",
+        "dj_permissions_required": "🚫 Only the orc chief can use this! ⚔️",
+        "playback_paused": "⏸️ The battle stopped! ⚔️",
+        "nothing_paused": "🎵 No battle paused! ⚔️",
+        "playback_resumed": "▶️ The battle returned! ⚔️",
+        "leaving_voice": "👋 Leaving the camp! ⚔️",
+        "volume_usage": "🎵 **Usage:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 Volume must be a number between 0 and 100! ⚔️",
+        "already_playing": "🎵 Already fighting in the camp! ⚔️",
+        "queue_cleared": "🗑️ Camp cleaned! ⚔️",
+        "volume_adjust_failed": "❌ Could not adjust the volume! ⚔️"
+    }
+}

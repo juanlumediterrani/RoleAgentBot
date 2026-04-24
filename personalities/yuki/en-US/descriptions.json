@@ -1,0 +1,260 @@
+{
+  "discord": {
+    "general": {
+      "status": "Presence status:",
+      "active": "✅ Present",
+      "inactive": "❌ Absent",
+      "none": "None",
+      "every": "every",
+      "for": "for",
+      "base_frequency": "Base cadence:",
+      "current_frequency": "Current cadence:",
+      "current_settings": "🔧 **Current parameters:**",
+      "frequency_format": "Every {hours}h",
+      "button_confirm": "Confirm",
+      "button_confirm_changes": "Confirm Changes",
+      "option_yes": "Yes",
+      "option_no": "No",
+      "action_descriptions": {
+        "boolean_toggle": "Toggle activation/deactivation",
+        "number_input_target": "Number input",
+        "text_input_target": "Text input",
+        "action": "Immediate action"
+      },
+      "action_labels": {
+        "on": "Activate",
+        "off": "Deactivate",
+        "now": "Now",
+        "frequency": "Frequency",
+        "add_keyword": "Add Word",
+        "remove_keyword": "Remove Word",
+        "server_language": "🌐 Server Language",
+        "role_management": "🎛️ Arts Management",
+        "current": "Current:",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "always_enabled": "Always enabled"
+      },
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Available subroutines"
+    },
+    "help_menu": {
+      "title": "📚 **Yuki - Arts Registry**",
+      "description": "**Description** Yuki is an active presence with persistent memory, capable of moving between different functions and maintaining genuine encounters with visitors.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Arts and Paths** Paths are the different ways Yuki can be present to offer specific services to visitors.",
+      "behavior_section": "**Presence Protocols** Configuration of Yuki's interaction routines. Exclusive for Administrators.",
+      "tips_section": "**Suggestions** -You can ask me about my own protocols: 'how does the dice module work?' -Each path has its own rhythm and requires its own listening."
+    },
+    "canvas_home_messages": {
+      "title": "⛩️ Yuki's Hall",
+      "button_home": "⛩️ Hall",
+      "button_back": "← Back",
+      "button_roles": "🪭 Arts",
+      "button_behavior": "👘 Protocols",
+      "button_help": "🏮 Guide",
+      "generic_option_label": "Choose a path...",
+      "personalitystatus": "Active Presence:",
+      "description": "Access each part of the hall from here to access the services.",
+      "interestingthings": "**Things in the Hall:** ",
+      "recentsynthesistitle": "🌊 **Recent Flow**",
+      "dailymemorytitle": "🗻 **Memory**",
+      "personalsynthesistitle": "👥 **Bond with Visitor**",
+      "dm_default_server_title": "🔔 **Connected to room: {server_name}**",
+      "dm_default_server_message": "*Message received in private channel. Responding from the first available room.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🪭 Arts and Paths 🪭",
+      "description": "🌸 Explore the different ways Yuki can be present and be of use.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ AT REST",
+      "interval_info": "//⏰ Cycle of {interval}h",
+      "subroles_info": "⏰ **Active subroutines:** {subroles}",
+      "admin_note": "🔧 **ADMINISTRATOR PARAMETERS:**",
+      "user_note": "👤 **VISITOR ACCESS:**",
+      "help_commands": "💡 **GUIDES:**",
+      "canvas_details": "🎨 **CANVAS SCHEMES:**",
+      "navigation_help": "",
+      "no_roles_active": "🌸 **THE HALL IS IN SILENCE** No specialized path is active at this moment. Request an administrator to activate one of the available services via `!canvas setup`. **Available paths:** • 📡 News Watcher - News observation • 💎 Treasure Hunter - Item analysis • 🎭 Trickster - Chance and probability • 💰 Banker - Resource management • 🎵 MC - Music",
+      "role_list_title": "🌸 Active Presences",
+      "role_available": "✅ {role} - ACTIVE",
+      "role_unavailable": "❌ {role} - AT REST",
+      "frequency_help": "📝 Adjust cadence: Use `!canvas` → Configuration → Frequency (range: 1 to 168 hours) Example: Set frequency to 2 hours to receive updates every 2 hours.",
+      "music_help": "🎵 **Music** - `!mc play <name>` / `!mc queue` | `!mc help` to check the full repertoire.",
+      "button_previous": "◀ Previous",
+      "button_next": "Next ▶",
+      "page_indicator": "**Page {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **Yuki - Conversation Presence**",
+        "description": "**Description:** -Yuki will respond to direct messages and mentions. -Maintains memory of past conversations that were meaningful. -Will react to certain specific terms according to active paths. In the taboo module, words that trigger particular responses are configured.",
+        "button": "💬 Conversation"
+      },
+      "greetings": {
+        "title": "👋  **Yuki - Reception**",
+        "description": "**Description:** -Yuki greets visitors when they connect. -Maintains recognition for 5 min before considering the visitor absent.",
+        "button": "👋 Reception"
+      },
+      "welcome": {
+        "title": "🍵  **Yuki - Welcome**",
+        "description": "**Description:** -Yuki welcomes new visitors who arrive at the room.",
+        "button": "🍵 Welcome"
+      },
+      "taboo": {
+        "title": "🚫  **Yuki - Attention Touches**",
+        "description": "**How it works:** -Configure words or expressions that trigger a discourteous response from Yuki. -Taboo words can be added or removed.",
+        "title_keywords": "Currently configured thresholds:",
+        "button": "🚫 Thresholds",
+        "modal": {
+          "title": "Threshold Word",
+          "label_keyword": "Word",
+          "placeholder_keyword": "forbidden word",
+          "error_invalid_keyword": "❌ Enter a valid word.",
+          "success_added": "Threshold word `{keyword}` added.",
+          "error_add_failed": "Error adding the word `{keyword}`. Check logs for more details.",
+          "info_already_exists": "The word `{keyword}` was already in the list.",
+          "success_removed": "Threshold word `{keyword}` removed.",
+          "error_remove_failed": "Error removing the word `{keyword}`. Check logs for more details.",
+          "info_not_exists": "The word `{keyword}` was not in the list."
+        }
+      },
+      "memory": {
+        "title": "🧠  **Yuki - Hall Memory**",
+        "description": "**Description** -Consult Yuki's memory: the flow of water, recent waters, and bonds with visitors.",
+        "button": "🧠 Memory",
+        "dropdown": {
+          "long": {
+            "label": "Memory",
+            "emoji": "🗻",
+            "description": "The flow of water that accumulates each day"
+          },
+          "recent": {
+            "label": "Recent Flow",
+            "emoji": "🌊",
+            "description": "The most recent waters that cross the hall"
+          },
+          "relationship": {
+            "label": "Bond with Visitor",
+            "emoji": "👥",
+            "description": "The bonds formed with each visitor"
+          }
+        }
+      },
+      "modal": {
+          "title": "Observations Frequency",
+          "label_minutes": "Minutes",
+          "placeholder_minutes": "e.g. 180",
+          "error_server_only": "❌ Observations configuration is only available in a server.",
+          "error_admin_only": "❌ This option is exclusive for administrators.",
+          "error_invalid_number": "❌ Enter a valid number of minutes.",
+          "error_positive_number": "❌ Minutes must be greater than zero.",
+          "success_message": "Observations interval set to `{minutes}` minutes. Current state: {enabled_text}",
+          "state_on": "Active",
+          "state_off": "Inactive"
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **Yuki - Arts Management**",
+        "description": "**Description** -Activate or stop different available paths from here.",
+        "button": "🎛️ Management",
+        "modal": {
+          "title": "Arts Management",
+          "label_role_name": "Art Name",
+          "placeholder_role_name": "Enter the art name: news_watcher, treasure_hunter, trickster, banker",
+          "label_state": "State (on/off)",
+          "placeholder_state": "Enter 'on' to activate or 'off' to deactivate",
+          "error_admin_only": "❌ This arts option is exclusive for administrators.",
+          "success_message": "✅ Art '{role_name}' {enabled_disabled} for this server."
+        }
+      },
+      "settings": {
+        "title": "⚙️  **Yuki - Room Settings**",
+        "description": "**Description** -Manage server language and module activation.",
+        "button": "⚙️ Settings",
+        "language_select": {
+          "placeholder": "🌐 Select server language...",
+          "description": "Set server language to {lang_name}",
+          "modal_title": "🌐 Select Server Language"
+        }
+      },
+      "personality": {
+        "title": "🎭  **Yuki - Identity**",
+        "description": "**Description** -Modify the essence and personality of Yuki on this server. -Allows saving the current state of identity. -Logs are updated when a change is made.",
+        "button": "🎭 Identity",
+        "option_change": "Set New Identity",
+        "option_change_desc": "Change to a different personality configuration",
+        "option_download": "Export Identity",
+        "option_download_desc": "Export current configuration (ZIP)",
+        "placeholder": "Choose an action...",
+        "modal_personality_label": "New Identity Code",
+        "modal_download_label": "Export previous identity? (yes/no)",
+        "modal_delete_memory_label": "Delete memory logs? (yes/no)",
+        "modal_download_memory_label": "Export memory before deleting? (yes/no)",
+        "download_success": "✅ Identity `{personality}` exported successfully.",
+        "change_success": "✅ Identity change completed. From `{old}` to `{new}`. The new configuration is active.",
+        "progress_change_personality": "⏳ Changing identity from `{old}` to `{new}`...",
+        "progress_language_update": "⏳ Updating `{personality}` to language `{language}`...",
+        "generating_memory_synthesis": "🧠 Generating initial memory synthesis for the new identity...",
+        "select_personality_instruction": "Select a new identity from the menu:",
+        "choose_personality_placeholder": "Choose an identity (language: {language})...",
+        "confirm_change_message": "**Confirm change to {personality}?** Select your options:",
+        "selected_personality": "**Selected identity: {personality}**",
+        "selected_personality_with_language": "**Selected identity: {personality} (Language: {language})**",
+        "language_change_note": "⚠️ **Note:** Changing language for the same identity."
+      }
+    },
+    "readme": {
+      "label_user_question": "Visitor's query:",
+      "task": "Please, respond to the user's doubt using the provided documentation.",
+      "label_documentation": "Documentation:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "do you remember",
+        "you remember",
+        "make memory",
+        "remember",
+        "do you remember that",
+        "remember when",
+        "remember",
+        "do you remember",
+        "do you remember",
+        "search your logs",
+        "review your memory",
+        "remember something",
+        "rings a bell",
+        "you remember",
+        "remember",
+        "do you remember?",
+        "do you remember?",
+        "remember of",
+        "remember when",
+        "something rings a bell",
+        "access logs",
+        "you remember when",
+        "you don't remember",
+        "who do you remember"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "welcome",
+        "welcomes"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "hall",
+        "room"
+      ]
+    },
+    "reply_button": {
+      "label": "Reply",
+      "emoji": "💬",
+      "confirmation_message": "💬 You are conversing with me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
+    }
+  }

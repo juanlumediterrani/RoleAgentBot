@@ -592,6 +592,8 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
             "trickster": "trickster.json",
             "banker": "banker.json",
             "mc": "mc.json",
+            "juggler": "juggler.json",
+            "shaman": "shaman.json",
         }
         
         # For main roles, load from individual description files
@@ -627,6 +629,18 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                     if title:
                         return title
         
+        # For banker subroles, load from banker.json
+        banker_subrole_names = {"beggar"}
+        if role_name in banker_subrole_names:
+            banker_path = descriptions_dir / "banker.json"
+            if banker_path.exists():
+                banker_desc = json.loads(banker_path.read_text(encoding='utf-8'))
+                subrole_section = banker_desc.get(role_name, {})
+                if isinstance(subrole_section, dict):
+                    title = subrole_section.get("title", "").replace("**", "").strip()
+                    if title:
+                        return title
+
         # For juggler subroles, load from juggler.json
         juggler_subrole_names = {"ring"}
         if role_name in juggler_subrole_names:

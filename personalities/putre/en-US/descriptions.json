@@ -1,0 +1,226 @@
+{
+  "discord": {
+    "general": {
+      "status": "Current status:",
+      "active": "✅ Active",
+      "inactive": "❌ Inactive",
+      "none": "None",
+      "every": "every",
+      "for": "for",
+      "base_frequency": "Base frequency:",
+      "current_frequency": "Current frequency:",
+      "current_settings": "🔧 **Current Parameters:**",
+      "frequency_format": "Every {hours}h",
+      "button_confirm": "Confirm",
+      "button_confirm_changes": "Confirm Changes",
+      "option_yes": "Yes",
+      "option_no": "No",
+      "action_descriptions": {
+        "boolean_toggle": "Toggle activation/deactivation",
+        "number_input_target": "Number input",
+        "text_input_target": "Text input",
+        "action": "Immediate action"
+      },
+      "action_labels": {
+        "on": "Activate",
+        "off": "Deactivate",
+        "now": "Now",
+        "frequency": "Frequency",
+        "add_keyword": "Add Word",
+        "remove_keyword": "Remove Word",
+        "server_language": "🌐 Server Language",
+        "role_management": "🎛️ Role Management",
+        "current": "Current:",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "always_enabled": "Always enabled"
+      },
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Available subroles"
+    },
+    "help_menu": {
+      "title": "📚 ** Putre - Help Menu**",
+      "description": "**Description** Role Agent Bot is an LLM agent with loaded personality, has long-term memory and can interact with the user.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Roles** Role modules are some bot capabilities to provide some services to users.",
+      "behavior_section": "**Behavior** In this section you will configure some interactable bot behaviors. Admins only",
+      "tips_section": "**Some tips** -You can ask the bot how a command works like: 'how does the say command work?' -The juiciest parts of the bot are inside each role"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 Putre Compass",
+      "button_home": "🧭 Home",
+      "button_back": "← Back",
+      "button_roles": "🎪 Roles",
+      "button_behavior": "⚔️ Behavior",
+      "button_help": "🥩 Help",
+      "generic_option_label": "Choose an option...",
+      "personalitystatus": "Loaded Personality:",
+      "description": " - Interact with all available functions for Putre from here. - The canvas panel lets you interact with all bot options from this menu.",
+      "interestingthings": "**Interesting things:**",
+      "recentsynthesistitle": "🚩 **Recent Events**",
+      "dailymemorytitle": "🗿 **Memory**",
+      "personalsynthesistitle": "🍻 **Relationship with Human**",
+      "dm_default_server_title": "🔔 **Using default server: {server_name}**",
+      "dm_default_server_message": "*You are navigating from DM, using the first available server.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🎭 Putre Roles 🎭",
+      "description": "🌟 Navigate through the different available roles for Putre",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ INACTIVE",
+      "interval_info": "//⏰ Every {interval}h",
+      "subroles_info": "🎪 **Active subroles:** {subroles}",
+      "admin_note": "🔧 **ADMIN CONFIG:**",
+      "user_note": "👤 **USER FUNCTIONS:**",
+      "help_commands": "💡 **HELP COMMANDS:**",
+      "canvas_details": "🎨 **DETAILS IN CANVAS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **NO ACTIVE ROLES** No specialized roles are currently active. Ask an admin to activate some roles using `!canvas setup`. **Available roles to activate:** • 📡 News Watcher - News watcher • 💎 Treasure Hunter - Treasure hunter • 🎭 Trickster - Trickster and games • 💰 Banker - Clan economy • 🎵 MC - Music and entertainment",
+      "role_list_title": "☠️ Jobs and Tasks",
+      "role_available": "✅ {role} - ROARING AND BLOODY",
+      "role_unavailable": "❌ {role} - ROTTING IN THE DIRT",
+      "frequency_help": "📝 Use `!canvas` → the role → Admin to adjust the frequency (from 1 to 168 hours)!",
+      "music_help": "🎵 **Putre's Drum** - `!mc play <noise>` / `!mc queue` | `!mc help` to read the big scroll of how to use!",
+      "button_previous": "◀ Back",
+      "button_next": "Next ▶",
+      "page_indicator": "**Page {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **Putre - Conversation**",
+        "description": "**Description:**\n -Putre will react to DM and mentions. -Has persistent and interactive memory, you can ask about something that happened, he might pay enough attention to remember it. -Also depending on roles and behaviors, he can react to different words. In taboo behavior you can configure a word for him to react to.",
+        "button": "💬 Conversation"
+      },
+      "greetings": {
+        "title": "👋  **Putre - Greetings**",
+        "description": "**Description:**\n - Greets users when they connect to Discord.\n - Waits 5 min before counting user as disconnected.\n - Recognizes if not replied to when greeting, and stops greeting.",
+        "button": "👋 Greetings"
+      },
+      "welcome": {
+        "title": "🍺  **Putre - Welcome**",
+        "description": "**Description:**\n - Welcomes new users to the server.",
+        "button": "🍺 Welcome"
+      },
+      "taboo": {
+        "title": "🚫  **Putre - Taboo Words**",
+        "description": "**How it works:**\n - Configure Putre to react when reading a word through a channel or DM.\n - Can be activated/deactivated or configure the words.",
+        "title_keywords": "Current taboo words:",
+        "button": "🚫 Taboo"
+      },
+      "memory": {
+        "title": "🧠  **Putre - Memory**",
+        "description": "**Description**\n - Consult Putre's memory: front line memories, recent thoughts and perceptions about users.",
+        "button": "🧠 Memory",
+        "dropdown": {
+          "long": {
+            "label": "Memory",
+            "emoji": "🗿",
+            "description": "The accumulated chronicles of the front"
+          },
+          "recent": {
+            "label": "Recent events",
+            "emoji": "🚩",
+            "description": "The freshest reports from the camp"
+          },
+          "relationship": {
+            "label": "Relationship with the human",
+            "emoji": "🍺",
+            "description": "The profiles of each soldier under my command"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **Putre - Role Control**",
+        "description": "**Description** -Activate and deactivate roles from here.",
+        "button": "🎛️ Role Control"
+      },
+      "settings": {
+        "title": "⚙️  **Putre - Camp Configuration**",
+        "description": "**Description** -Adjust the camp language and activate roles.",
+        "button": "⚙️ Configuration"
+      },
+      "personality": {
+        "title": "🎭  **Putre - Personality Management**",
+        "description": "**Description** -Change the bot personality for this server. -Download current personality as backup. -Migrate databases when changing.",
+        "button": "🎭 Personality",
+        "option_change": "Change Personality",
+        "option_change_desc": "Change to a different personality",
+        "option_download": "Download Current",
+        "option_download_desc": "Export personality as ZIP",
+        "placeholder": "Choose a personality action...",
+        "modal_personality_label": "New Personality",
+        "modal_download_label": "Download previous personality? (yes/no)",
+        "modal_delete_memory_label": "Delete bot memory? (yes/no)",
+        "modal_download_memory_label": "Download memory first? (yes/no)",
+        "download_success": "✅ Personality `{personality}` exported successfully!",
+        "change_success": "✅ Personality changed from `{old}` to `{new}`! The new personality is now active and ready to use.",
+        "progress_change_personality": "⏳ Changing personality from `{old}` to `{new}`...",
+        "progress_language_update": "⏳ Updating `{personality}` to language `{language}`...",
+        "generating_memory_synthesis": "🧠 Generating initial memory synthesis for the new personality...",
+        "select_personality_instruction": "Choose a new personality from the menu:",
+        "choose_personality_placeholder": "Choose a personality (language: {language})...",
+        "confirm_change_message": "**Confirm change to {personality}?** Select your options:",
+        "selected_personality": "**Selected personality: {personality}**",
+        "selected_personality_with_language": "**Selected personality: {personality} (Language: {language})**",
+        "language_change_note": "⚠️ **Note:** Changing language for the same personality."
+      }
+    },
+    "readme": {
+      "label_user_question": "User question:",
+      "task": "Please answer the user question with the provided documentation",
+      "label_documentation": "Documentation:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "do you remember",
+        "do you recall",
+        "use your memory",
+        "remember",
+        "do you remember that",
+        "recall when",
+        "remember",
+        "do you remember",
+        "do you recall",
+        "use memory of",
+        "remember of",
+        "recall something",
+        "does it sound familiar",
+        "do you remember",
+        "remember",
+        "recall",
+        "use memory",
+        "do you remember?",
+        "do you recall?",
+        "remember of",
+        "recall when",
+        "does something sound familiar",
+        "remember that",
+        "recall when",
+        "don't you remember",
+        "who do you remember"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "welcome",
+        "welcomes",
+        "welcomed",
+        "welcoming"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "lounge",
+        "room"
+      ]
+    },
+    "reply_button": {
+      "label": "Reply",
+      "emoji": "💬",
+      "confirmation_message": "💬 You are conversing with me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
+    }
+  }
+}

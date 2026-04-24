@@ -1,26 +1,26 @@
 {
-    "title": "**🐇 Chamán Rab**",
-    "description": "Consulta las runas ancestrales con Rab.",
-    "button": "🐇 Chamán",
+    "title": "🌌  **Catalizador del Vacío Rab**",
+    "description": "Canaliza el código ancestral desde el vacío cuántico con Rab.",
+    "button": "🌌 Catalizador",
     "subrole_buttons": {
-        "runes": "🔮 Runas"
+        "runes": "🀄 Inscripciones"
     },
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🔮 **Código Ancestral** - Extrae fragmentos de verdad universal mediante símbolos antiguos"
+        "nordic_runes": "🀄 **Inscripciones del Vacío** - Extrae fragmentos de verdad universal desde el vacío cuántico"
     },
     "nordic_runes": {
-        "title": "**🔮 Oráculo de Código Ancestral**",
-        "description": "Accede a las capas ocultas de la simulación. El lenguaje Elder Futhark es el código máquina de los dioses; revela la arquitectura de tu destino.",
+        "title": "🀄  **Inscripciones del Vacío",
+        "description": "Accede a las capas ocultas de la simulación desde el vacío. El lenguaje Elder Futhark es el código máquina del universo; revela la arquitectura de tu destino.",
         "title_available_readings": "🌔 **Arquitecturas de Compilación** 🌔\n",
         "available_readings": "- **Símbolo Aislado** (Análisis rápido): Un fractal que contiene la respuesta inmediata a un estado presente.\n - **Tres Símbolos** (Vector temporal): Decodifica el flujo en Pasado (Urðr), Presente (Verðandi) y Futuro (Skuld).\n - **Matriz de Cinco** (Cruz cardinal): Mapea tu realidad en los cinco ejes fundamentales del servidor existencial. \n - **Red de Siete** (Árbol raíz/Yggdrasil): El escaneo espiritual definitivo, conectando las capas base de tu avatar con los comandos divinos.\n",
         "history": "📓**Registros Analíticos**📓",
         "error_history": "❌ **ANOMALÍA:** No detecto lecturas en tu memoria a largo plazo.",
         "how_to_use": "**Protocolo de Acceso:**\n 1. Determina la arquitectura de compilación debajo.\n 2. Ingresa la variable (pregunta) en el terminal emergente.\n 3. Los datos procesados se enviarán directamente a tu consola privada.\n",
         "runes_title": "**Los 24 Nodos de Futhark:**",
-        "welcome": "🔮 Mis sensores interpretan el polvo de las estrellas. El Wyrd está expuesto para ti, buscador.",
+        "welcome": "🌟 Mis sensores interpretan el polvo de las estrellas. El Wyrd está expuesto para ti, buscador.",
         "question_prompt": "🔮 La simulación requiere tu parámetro de entrada. ¿Qué duda ofusca tu código?",
-        "reading_types": "🔮 Arquitecturas de compilación: single, three, cross, runic_cross.",
-        "invalid_type": "🔮 El formato ingresado rompe la sintaxis. Parámetros aceptados: single, three, cross, runic_cross.",
+        "reading_types": "🌀 Arquitecturas de compilación: single, three, cross, runic_cross.",
+        "invalid_type": "⚠️ El formato ingresado rompe la sintaxis. Parámetros aceptados: single, three, cross, runic_cross.",
         "no_question": "🔮 No puedo compilar la nada. Introduce una pregunta en el campo de texto.",
         "reading_saved": "🔮 El resultado fractal ha sido almacenado en los servidores del tiempo.",
         "error": "🔮 Ruido en la señal. El universo ha rechazado el análisis. Reintenta la extracción.",
@@ -28,7 +28,7 @@
         "three_cast": "🐾 **DECANTACIÓN DE TRES SÍMBOLOS** 🐾",
         "cross_cast": "🌍 **COMPILACIÓN CARDINAL (5)** 🌍",
         "runic_cross_cast": "🌌 **ESCÁNER RAÍZ YGGDRASIL (7)** 🌌",
-        "types": "🔮 **ARQUITECTURAS DE COMPILACIÓN** 🔮",
+        "types": "🎭 **ARQUITECTURAS DE COMPILACIÓN** 🎭",
         "runes_list": "🗻 **LIBRERÍA ELDER FUTHARK** 🗻",
         "runes_page_1_title": "🗻 **BASE DE DATOS I (Fehu a Wunjo)** 🗻",
         "runes_page_2_title": "🗻 **BASE DE DATOS II (Hagalaz a Sowilo)** 🗻",
@@ -36,7 +36,7 @@
         "nav_page": "Página",
         "help": "🔮 **PERGAMINOS DEL CÓDIGO ANCESTRAL** 🔮",
         "help_content": "🔮 **SISTEMA DE LECTURA RÚNICA** 🔮\n\n**¿Qué es el código Futhark?**\nEs el alfabeto fuente de la realidad, símbolos que representan variables universales incrustadas en el Wyrd (la red del destino).\n\n**Formatos de extracción:**\n• **Símbolo Aislado** - Respuesta clara a una variable concreta.\n• **Tres Símbolos** - Análisis de la línea temporal.\n• **Cruz de Cinco** - Diagnóstico profundo del entorno.\n\n**Sintaxis de uso:**\n• `!runes cast [tipo] <pregunta>`\n• Ejemplo: `!runes cast single ¿Cuál es el error en mi camino actual?`\n\n**Nodos disponibles:**\nFehu • Uruz • Thurisaz • Ansuz • Raidho • Kenaz • Gebo • Wunjo\nHagalaz • Nauthiz • Isa • Jera • Eiwaz • Perthro • Algiz • Sowilo\nTiwaz • Berkano • Ehwaz • Mannaz • Laguz • Ingwaz • Dagaz • Othala\n\nCada nodo es una puerta hacia la serenidad de la comprensión.",
-        "types_content": "🔮 **PARÁMETROS DE EXTRACCIÓN** 🔮\n\n**single** - Símbolo Aislado\n└ Un pin de datos directo - Usa 1 símbolo\n\n**three** - Vector Temporal\n└ Pasado, Presente, Futuro - Usa 3 símbolos\n\n**cross** - Matriz Cardinal\n└ Cartografía del problema - Usa 5 símbolos\n\n**runic_cross** - Escáner Raíz\n└ Análisis espiritual desde el servidor más profundo - Usa 7 símbolos\n\n**Ejemplos en consola:**\n`!runes cast single ¿Cómo avanzo hoy?`\n`!runes cast three Muéstrame el flujo de este problema`\n`!runes cast cross Diagnóstico completo de mi estado`\n\nElige tu formato y deja que la matriz hable.",
+        "types_content": "🧩 **PARÁMETROS DE EXTRACCIÓN** 🧩\n\n**single** - Símbolo Aislado\n└ Un pin de datos directo - Usa 1 símbolo\n\n**three** - Vector Temporal\n└ Pasado, Presente, Futuro - Usa 3 símbolos\n\n**cross** - Matriz Cardinal\n└ Cartografía del problema - Usa 5 símbolos\n\n**runic_cross** - Escáner Raíz\n└ Análisis espiritual desde el servidor más profundo - Usa 7 símbolos\n\n**Ejemplos en consola:**\n`!runes cast single ¿Cómo avanzo hoy?`\n`!runes cast three Muéstrame el flujo de este problema`\n`!runes cast cross Diagnóstico completo de mi estado`\n\nElige tu formato y deja que la matriz hable.",
         "history_empty": "🔮 Mis archivos están prístinos. No has consultado el código en esta terminal. Inicia `!runes cast`.",
         "history_header": "🔮 **TUS LECTURAS REGISTRADAS** (Últimas {count})",
         "history_entry": "**Bloque {id}** - {type}\nVariable: {question}\nMatriz: {runes}\nTiempo: {date}",
@@ -75,7 +75,7 @@
             "position": "Nodo",
             "rune": "Fractal",
             "description": "Especificación",
-            "success": "🔮 La matriz ha decodificado el mensaje, buscador.",
+            "success": "✨ La matriz ha decodificado el mensaje, buscador.",
             "saved": "🔮 Tu fluctuación ha quedado sellada en el cristal de la memoria."
         }
     }

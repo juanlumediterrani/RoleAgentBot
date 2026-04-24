@@ -431,7 +431,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         await interaction.followup.send(success_message, ephemeral=True)
         return
 
-    if not admin_visible or not is_admin(interaction):
+    if not admin_visible or not is_admin(interaction, guild=guild):
         await interaction.followup.send("❌ This trickster option is admin-only.", ephemeral=True)
         return
 

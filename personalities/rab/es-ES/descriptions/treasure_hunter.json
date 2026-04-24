@@ -1,5 +1,5 @@
 {
-    "title": "**💎 Analista de Reliquias**",
+    "title": "💎  **Analista de Reliquias**",
     "description": "Permite al Profeta escanear las fluctuaciones de valor en múltiples simulaciones y recibir proyecciones cuando el algoritmo detecte anomalías.",
     "button": "💎 Reliquias",
     "button_poe2": "👺 POE2",
@@ -87,9 +87,7 @@
             "poe2_on": "Visión: Expandir",
             "poe2_on_description": "Iniciar módulo de análisis de reliquias",
             "poe2_off": "Visión: Retraer",
-            "poe2_off_description": "Desconectar módulo de análisis",
-            "hunter_frequency": "Escaneo: Frecuencia",
-            "hunter_frequency_description": "Calibrar los ciclos de actualización del radar"
+            "poe2_off_description": "Desconectar módulo de análisis"
         }
     }
 }

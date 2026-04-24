@@ -52,18 +52,7 @@ def register_treasure_hunter_commands(bot, personality, agent_config):
 
     # NOTE: All !hunter commands have been removed. Use !canvas → Treasure Hunter instead.
     # The POE2 manager is still available for Canvas UI integration.
-
-    # --- !hunterfrequency ---
-    if bot.get_command("hunterfrequency") is None:
-        @bot.command(name="hunterfrequency")
-        async def cmd_hunter_frequency(ctx, hours: str = ""):
-            """Configure automatic execution frequency of treasure hunter."""
-            if not POE2_AVAILABLE:
-                await ctx.send(get_message(personality, "treasure_hunter_unavailable", "❌ The treasure hunter is not available on this server."))
-                return
-            await _cmd_role_frequency(ctx, "treasure_hunter", hours, personality, agent_config)
-
-        logger.info("💎 Hunter frequency command registered")
+    # Treasure hunter frequency is controlled ONLY from agent_config.json (global scheduler).
 
     logger.info("🔮 All Treasure Hunter commands registered")
 
@@ -87,13 +76,13 @@ def _build_general_help_text(poe2_available: bool) -> str:
     if poe2_available:
         help_text += "• `!hunter poe2 help` - Show POE2-specific help\n"
     
-    help_text += "• `!hunterfrequency <hours>` - Set execution frequency (1-168h)\n\n"
+    help_text += "\n"
     
     help_text += "💡 **USAGE EXAMPLES:**\n"
     if poe2_available:
         help_text += "```\n# Admin activation\n!hunter poe2 on\n!hunter poe2 league \"Fate of the Vaal\"\n\n# User commands\n!hunter poe2 help\n!hunter poe2 add \"Ancient Rib\"\n!hunter poe2 list\n```"
     else:
-        help_text += "```\n!hunter help\n!hunterfrequency 6\n```"
+        help_text += "```\n!hunter help\n```"
     
     return help_text
 
@@ -130,41 +119,3 @@ def _build_poe2_help_text() -> str:
     return help_text
 
 
-# --- Helper functions ---
-
-async def _cmd_role_frequency(ctx, role_name: str, hours: str, personality, agent_config):
-    """Configure role execution frequency."""
-    if not hours:
-        role_cfg = personality.get("discord", {}).get("role_messages", {})
-        await ctx.send(role_cfg.get("frequency_usage", f"❌ Usage: !{role_name}frequency <hours> (1-168)"))
-        return
-    
-    try:
-        hours_int = int(hours)
-        if hours_int < 1 or hours_int > 168:
-            role_cfg = personality.get("discord", {}).get("role_messages", {})
-            await ctx.send(role_cfg.get("frequency_invalid", "❌ Hours must be between 1 and 168."))
-            return
-    except ValueError:
-        role_cfg = personality.get("discord", {}).get("role_messages", {})
-        await ctx.send(role_cfg.get("frequency_invalid", "❌ You must specify a valid number of hours."))
-        return
-
-    persisted = set_role_interval_hours(
-        ctx.guild,
-        role_name,
-        hours_int,
-        agent_config,
-        getattr(ctx.author, "name", "admin_command"),
-    )
-    if not persisted:
-        if "roles" not in agent_config:
-            agent_config["roles"] = {}
-        if role_name not in agent_config["roles"]:
-            agent_config["roles"][role_name] = {}
-        agent_config["roles"][role_name]["interval_hours"] = hours_int
-
-    role_cfg = personality.get("discord", {}).get("role_messages", {})
-    await ctx.send(role_cfg.get("frequency_updated", "✅ Frequency of '{role}' updated to {hours} hours.").format(role=role_name, hours=hours_int))
-    logger = get_logger('treasure_hunter_discord')
-    logger.info(f"🎭 {ctx.author.name} updated frequency of {role_name} to {hours_int} hours in {ctx.guild.name}")

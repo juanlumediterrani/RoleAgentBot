@@ -57,6 +57,7 @@
       "generic_option_label": "¡SELECCIONAR OPCIÓN, RECLUTA!",
       "personalitystatus": "**Personalidad cargada:**",
       "description": "¡El panel Canvas permite control total sobre todas las operaciones!",
+      "interestingthings": "**Operaciones Activas:**",
       "recentsynthesistitle": "🧐 **Reporte actual**",
       "dailymemorytitle": "🗺️ **Análisis del frente**",
       "personalsynthesistitle": "👞 **Expediente del recluta**",
@@ -89,28 +90,28 @@
     },
     "behavior_messages": {
       "conversation": {
-        "title": "**💬 Her Hans - INTERROGATORIO MILITAR**",
+        "title": "💬  **Her Hans - INTERROGATORIO MILITAR**",
         "description": "**PROTOCOLO DE INTELIGENCIA:** 🦅⚖️ -¡Her Hans ejecuta protocolos de interrogatorio en DM y menciones! -¡Memoria operativa persistente para registrar todas las misiones anteriores! -¡Reacciona según parámetros tácticos y palabras clave prohibidas! ¡Configurar en protocolos de seguridad! ✍️🚫",
         "button": "💬 Interrogatorio"
       },
       "greetings": {
-        "title": "**👋 Her Hans - PROTOCOLO DE SALUDO MILITAR**",
+        "title": "👋  **Her Hans - PROTOCOLO DE SALUDO MILITAR**",
         "description": "**REGLAMENTO DE FORMACIONES:** 🦅⚖️ -¡Ejecuta saludos reglamentarios al detectar reclutas en línea! -¡Tiempo de espera táctico: 5 minutos antes de declarar ausencia! -¡(En desarrollo): Sistema de respuesta obligatoria al saludo militar! ✍️🚫",
         "button": "👋 Formación"
       },
       "welcome": {
-        "title": "**🍺 Her Hans - PROTOCOLO DE INDUCCIÓN**",
+        "title": "🍺  **Her Hans - PROTOCOLO DE INDUCCIÓN**",
         "description": "**PROCEDIMIENTO DE RECLUTAMIENTO:** 🦅⚖️ -¡Ejecuta ceremonia oficial de inducción para nuevos reclutas! -¡Registra presencia en el cuartel y asigna número de identificación! ✍️🚫",
         "button": "🍺 Inducción"
       },
       "taboo": {
-        "title": "**🚫 Her Hans - PROTOCOLO DE SEGURIDAD**",
+        "title": "🚫  **Her Hans - PROTOCOLO DE SEGURIDAD**",
         "description": "**REGLAMENTO DE DISCIPLINA:** 🦅⚖️ -¡Configurar sistema de respuesta automática a palabras prohibidas en canales y DM! -¡Activar/desactivar alertas de seguridad y palabras clave restringidas! ✍️🚫",
         "title_keywords": "**VOCABULARIO RESTRINGIDO ACTUAL:**",
         "button": "🚫 Seguridad"
       },
       "memory": {
-        "title": "**🧠 Her Hans - MEMORIA DE CAMPAÑA**",
+        "title": "🧠  **Her Hans - MEMORIA DE CAMPAÑA**",
         "description": "**ARCHIVOS DE INTELIGENCIA:** 🦅⚖️ -¡Consultar registros de memoria operativa del agente! -¡Análisis del frente, reportes recientes y expedientes de reclutas! 📉💥",
         "button": "🧠 Memoria",
         "dropdown": {
@@ -132,12 +133,12 @@
         }
       },
       "role_control": {
-        "title": "**🎛️ Her Hans - COMANDO DE UNIDADES**",
+        "title": "🎛️  **Her Hans - COMANDO DE UNIDADES**",
         "description": "**CENTRO DE CONTROL TÁCTICO:** 🦅⚖️ -¡Activar y desactivar unidades operativas desde el puesto de mando! -¡Supervisar estado de todas las fuerzas desplegadas en el campo! ✍️🚫",
         "button": "🎛️ Comando"
       },
       "personality": {
-        "title": "**🎭 Her Hans - INFILTRACION**",
+        "title": "🎭  **Her Hans - INFILTRACION**",
         "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️ -¡Cambiar el personaje del agente para este servidor en el menu deplegable de más abajo! -¡Descarga una copia de seguridad de la identidad actual con los cambios de en su personalidad! -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
         "button": "🎭 INFILTRACION",
         "option_change": "Cambiar Identidad",

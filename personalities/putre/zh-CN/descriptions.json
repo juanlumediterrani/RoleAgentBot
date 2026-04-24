@@ -1,0 +1,228 @@
+{
+  "discord": {
+    "general": {
+      "status": "当前状态：",
+      "active": "✅ 在线",
+      "inactive": "❌ 离线",
+      "none": "无",
+      "every": "每",
+      "for": "持续",
+      "base_frequency": "基础频率：",
+      "current_frequency": "当前频率：",
+      "current_settings": "🔧 **当前参数：**",
+      "frequency_format": "每 {hours} 小时",
+      "button_confirm": "确认",
+      "button_confirm_changes": "确认更改",
+      "option_yes": "是",
+      "option_no": "否",
+      "action_descriptions": {
+        "boolean_toggle": "切换开/关",
+        "number_input_target": "数字输入",
+        "text_input_target": "文本输入",
+        "action": "立即执行"
+      },
+      "action_labels": {
+        "on": "激活",
+        "off": "关闭",
+        "now": "现在",
+        "frequency": "频率",
+        "add_keyword": "添加关键词",
+        "remove_keyword": "移除关键词",
+        "server_language": "🌐 服务器语言",
+        "role_management": "🎛️ 角色管理",
+        "current": "当前：",
+        "enabled": "已激活",
+        "disabled": "已关闭",
+        "always_enabled": "始终激活"
+      },
+      "button_personal": "📁 个人",
+      "button_admin": "🔧 管理",
+      "available_subroles": "可用子角色"
+    },
+    "help_menu": {
+      "title": "📚 ** 普特雷 - 帮助菜单**",
+      "description": "**描述** Role Agent Bot 是一个加载了持久记忆的AI代理，能够与用户进行深度互动。",
+      "separator": "---------------------------------------------",
+      "roles_section": "**角色** 角色模块是机器人可提供的一些服务。",
+      "behavior_section": "**行为** 在本节中，你可以配置机器人一些可交互的行为。仅限管理员",
+      "tips_section": "**一些建议** -你可以问机器人某个命令怎么工作，比如：‘骰子命令怎么工作？’ -机器人最有趣的部分在每个角色内部"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 普特雷罗盘",
+      "button_home": "🧭 首页",
+      "button_back": "← 返回",
+      "button_roles": "🎪 角色",
+      "button_behavior": "⚔️ 行为",
+      "button_help": "🥩 帮助",
+      "generic_option_label": "选择一个选项...",
+      "personalitystatus": "已加载个性：",
+      "description": " - 从这里与普特雷所有可用功能互动。 - Canvas面板允许你从这个菜单与机器人所有选项互动。",
+      "interestingthings": "**有趣的东西：**",
+      "recentsynthesistitle": "🚩 **最近事件**",
+      "dailymemorytitle": "🗿 **记忆**",
+      "personalsynthesistitle": "🍻 **与两脚兽的关系**",
+      "dm_default_server_title": "🔔 **使用默认服务器：{server_name}**",
+      "dm_default_server_message": "*你从DM浏览，使用第一个可用的服务器。*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🎭 普特雷的角色 🎭",
+      "description": "🌟 浏览普特雷可用的不同角色",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ 离线",
+      "interval_info": "//⏰ 每 {interval} 小时",
+      "subroles_info": "🎪 **激活的子角色：** {subroles}",
+      "admin_note": "🔧 **管理员配置：**",
+      "user_note": "👤 **用户功能：**",
+      "help_commands": "💡 **帮助命令：**",
+      "canvas_details": "🎨 **画布详情：**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **没有激活的角色** 当前没有专业角色激活。请管理员使用 `!canvas setup` 激活一些角色。**可激活的角色：** • 📡 新闻观察者 - 新闻守望 • 💎 宝藏猎人 - 寻宝者 • 🎭 骗术师 - 杂耍与游戏 • 💰 银行家 - 部落经济 • 🎵 MC - 音乐与娱乐",
+      "role_list_title": "☠️ 任务与工作",
+      "role_available": "✅ {role} - 咆哮带血",
+      "role_unavailable": "❌ {role} - 烂在土里",
+      "frequency_help": "📝 用 `!canvas` → 角色 → 管理 调整频率（1到168小时）！",
+      "music_help": "🎵 **普特雷鼓手** - `!mc play <歌名>` / `!mc queue` | `!mc help` 读那卷厚厚的说明书！",
+      "button_previous": "◀ 返回",
+      "button_next": "下一页 ▶",
+      "page_indicator": "**第 {page} 页 / 共 {total_pages} 页**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 普特雷 - 对话**",
+        "description": "**描述：**\n -普特雷会响应DM和提及。 -拥有持久互动记忆，你可以问他之前发生的事，如果他在乎的话他会记住。 -另外根据角色和行为，他可以对不同的词做出反应。在taboo行为中你可以配置一个触发词。",
+        "button": "💬 对话"
+      },
+      "greetings": {
+        "title": "**👋 普特雷 - 问候**",
+        "description": "**描述：**\n - 用户连接到Discord时问候他们。\n - 等待5分钟后才视为用户离线。\n - 如果没被回应就会停止问候。",
+        "button": "👋 问候"
+      },
+      "welcome": {
+        "title": "**🍺 普特雷 - 欢迎**",
+        "description": "**描述：**\n - 欢迎新用户加入服务器。",
+        "button": "🍺 欢迎"
+      },
+      "taboo": {
+        "title": "**🚫 普特雷 - 禁忌词**",
+        "description": "**工作原理：**\n - 配置普特雷在频道或DM中读到某个词时做出反应。\n - 可以激活/关闭或配置词语。",
+        "title_keywords": "当前禁忌词：",
+        "button": "🚫 禁忌"
+      },
+      "memory": {
+        "title": "**🧠 普特雷 - 记忆**",
+        "description": "**描述**\n - 查询普特雷的记忆：前线记忆、最近的想法以及对用户的看法。",
+        "button": "🧠 记忆",
+        "dropdown": {
+          "long": {
+            "label": "记忆",
+            "emoji": "🗿",
+            "description": "前线积累的大事记"
+          },
+          "recent": {
+            "label": "最近事件",
+            "emoji": "🚩",
+            "description": "营地最新鲜的报告"
+          },
+          "relationship": {
+            "label": "与两脚兽的关系",
+            "emoji": "🍺",
+            "description": "俺手下每个士兵的档案"
+          }
+        }
+      },
+      "role_control": {
+        "title": "**🎛️ 普特雷 - 角色控制**",
+        "description": "**描述** -从这里激活和关闭角色。",
+        "button": "🎛️ 角色控制"
+      },
+      "settings": {
+        "title": "**⚙️ 普特雷 - 营地配置**",
+        "description": "**描述** -调整营地语言和激活角色。",
+        "button": "⚙️ 配置"
+      },
+      "personality": {
+        "title": "**🎭 普特雷 - 个性管理**",
+        "description": "**描述** -更改此服务器的机器人个性。 -下载当前个性作为备份。 -更换时迁移数据库。",
+        "button": "🎭 个性",
+        "option_change": "更换个性",
+        "option_change_desc": "换成另一个个性",
+        "option_download": "下载当前",
+        "option_download_desc": "将个性导出为ZIP",
+        "placeholder": "选择个性操作...",
+        "modal_personality_label": "新个性",
+        "modal_download_label": "下载之前的个性？（是/否）",
+        "modal_delete_memory_label": "清除机器人的记忆？（是/否）",
+        "modal_download_memory_label": "先下载记忆？（是/否）",
+        "download_success": "✅ 个性 `{personality}` 导出成功！",
+        "change_success": "✅ 个性已从 `{old}` 更换为 `{new}`！新个性已激活并准备好使用。",
+        "progress_change_personality": "⏳ 正在将个性从 `{old}` 更换为 `{new}`...",
+        "progress_language_update": "⏳ 正在将 `{personality}` 更新到语言 `{language}`...",
+        "generating_memory_synthesis": "🧠 正在为新的个性生成初始记忆合成...",
+        "select_personality_instruction": "从菜单中选择新个性：",
+        "choose_personality_placeholder": "选择个性（语言：{language}）...",
+        "confirm_change_message": "**确认更换为 {personality}？** 选择你的选项：",
+        "selected_personality": "**已选择个性：{personality}**",
+        "selected_personality_with_language": "**已选择个性：{personality}（语言：{language}）**",
+        "language_change_note": "⚠️ **注意：** 正在更换同一个性的语言。"
+      }
+    },
+    "readme": {
+      "label_user_question": "用户问题：",
+      "task": "请根据提供的文档回答用户的问题",
+      "label_documentation": "文档："
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "你还记得",
+        "你记得",
+        "回忆一下",
+        "想起来",
+        "你记得吗",
+        "你记得那是",
+        "记得当时",
+        "你记不记得",
+        "你还记得吗",
+        "回忆",
+        "回想",
+        "你记得什么",
+        "你想起",
+        "记得吗",
+        "记得",
+        "回想一下",
+        "你记不记得",
+        "你不记得",
+        "谁记得你",
+        "你还记得当时",
+        "你有没有记得",
+        "想起以前",
+        "曾经记得",
+        "记得以前",
+        "记得当时吗",
+        "你不记得当时",
+        "你想起来了吗",
+        "你还记得什么"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "欢迎",
+        "欢迎光临",
+        "欢迎新",
+        "新来的"
+      ],
+      "general": [
+        "综合",
+        "聊天",
+        "大厅",
+        "大厅"
+      ]
+    },
+    "reply_button": {
+      "label": "回复",
+      "emoji": "💬",
+      "confirmation_message": "💬 你现在正以 **{server_name}** 的身份与普特雷对话。你所有的回复都将使用这个个性，直到你选择另一个服务器。"
+    }
+  }
+}

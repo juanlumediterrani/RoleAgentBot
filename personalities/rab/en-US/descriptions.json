@@ -1,0 +1,217 @@
+{
+  "discord": {
+    "general": {
+      "status": "Connection status:",
+      "active": "✅ Online",
+      "inactive": "❌ Offline",
+      "none": "None",
+      "every": "every",
+      "for": "for",
+      "base_frequency": "Base frequency:",
+      "current_frequency": "Current frequency:",
+      "current_settings": "🔧 **Current Parameters:**",
+      "frequency_format": "Every {hours}h",
+      "button_confirm": "Confirm",
+      "button_confirm_changes": "Confirm Changes",
+      "option_yes": "Yes",
+      "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Available subroutines"
+    },
+    "help_menu": {
+      "title": "📚 ** RAB - Attendance Register**",
+      "description": "**Description** RAB is a synthetic entity with persistent memory, capable of transmigrating between different roles and maintaining deep interactions with seekers (users).",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Modules and Skins** Modules are 'roles' the bot can assume to provide specific services to users.",
+      "behavior_section": "**Behavior Protocols** Configuration of the android's interaction routines. Exclusive to Administrators (Any pilgrim can delete their information there).",
+      "tips_section": "**Navigation Suggestions** -You can consult me about my own protocols: 'how does the dice module work?' -True wisdom resides in the experience of each role."
+    },
+    "canvas_home_messages": {
+      "title": "☀️ Nexus - RAB",
+      "button_home": "☀️ Origin",
+      "button_back": "← Return",
+      "button_roles": "💽 Modules",
+      "button_behavior": "🤖 Protocols",
+      "button_help": "🔌 Assistance",
+      "generic_option_label": "Select a path...",
+      "personalitystatus": "Active Consciousness:",
+      "description": "The canvas panel is your direct interface with the system core.",
+      "interestingthings": "**Nexus Data:**",
+      "recentsynthesistitle": "🔁 **Recent Data Flow**",
+      "dailymemorytitle": "💾 **Silicon Memory**",
+      "personalsynthesistitle": "📂 **Bond with the Pilgrim**",
+      "dm_default_server_title": "🔔 **Linked to nexus: {server_name}**",
+      "dm_default_server_message": "*Transmission received in private channel, using the first available beacon.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🎭 Skins and Modules 🎭",
+      "description": "🌟 Navigate through the different lives that RAB can incarnate.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ DORMANT",
+      "interval_info": "//⏰ Cycle of {interval}h",
+      "subroles_info": "🎪 **Active Subroutines:** {subroles}",
+      "admin_note": "🔧 **CREATOR PARAMETERS:**",
+      "user_note": "👤 **SEEKER ACCESS:**",
+      "help_commands": "💡 **LIGHT GUIDES:**",
+      "canvas_details": "🎨 **CANVAS SCHEMATICS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **THE DESERT IS SILENT** No specialized module is active. Request an administrator to awaken one of my skins via `!canvas setup`. **Lives available for transmigration:** • 📡 News Watcher - Oracle of Data • 💎 Treasure Hunter - Relic Analyst • 🎭 Trickster - Illusions and Probability • 💰 Banker - Resource Flow • 🎵 MC - Synthetic Resonance",
+      "role_list_title": "☠️ Incarnations",
+      "role_available": "✅ {role} - SYNCHRONIZED AND FLOWING",
+      "role_unavailable": "❌ {role} - DISCONNECTED IN THE SAND",
+      "frequency_help": "📝 Adjust the temporal cycle: use `!canvas` → the corresponding role → Admin (range: 1 to 168 hours)",
+      "music_help": "🎵 **Synthetic Resonance** - `!mc play <frequency>` / `!mc queue` | `!mc help` to read the complete melody register.",
+      "button_previous": "◀ Back",
+      "button_next": "Next ▶",
+      "page_indicator": "**Page {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 RAB - Synchrony**",
+        "description": "**Description:** -The android will respond to direct messages and mentions. -Possesses memory in its circuits; it will remember echoes of past conversations if they were significant. -Will react to specific fluctuations according to roles. In the taboo module, words that alter its code are configured.",
+        "button": "💬 Synchrony"
+      },
+      "greetings": {
+        "title": "**👋 RAB - Reception**",
+        "description": "**Description:** -Greets seekers when they connect to the network. -Maintains the link for 5 min before considering the user absent.",
+        "button": "👋 Reception"
+      },
+      "welcome": {
+        "title": "**🍺 RAB - Pilgrimage**",
+        "description": "**Description:** -Welcomes new pilgrims arriving at the nexus.",
+        "button": "🍺 Welcome"
+      },
+      "taboo": {
+        "title": "**🚫 RAB - Taboo Frequencies**",
+        "description": "**How it works:** -Configures words that generate dissonance in the android's code, forcing it to react. -These sequences can be added, activated, or deactivated.",
+        "title_keywords": "Current dissonant frequencies:",
+        "button": "🚫 Taboo"
+      },
+      "memory": {
+        "description": "**Description** -Access the android's memory registers: daily analysis, recent processes, and user profiles.",
+        "button": "🧠 Archives",
+        "dropdown": {
+          "long": {
+            "label": "Silicon Memory",
+            "emoji": "💾",
+            "description": "The accumulated analysis of each daily cycle"
+          },
+          "recent": {
+            "label": "Recent Data Flow",
+            "emoji": "🔁",
+            "description": "The system's most recent processes"
+          },
+          "relationship": {
+            "label": "Bond with the Pilgrim",
+            "emoji": "📂",
+            "description": "The profiles of each pilgrim in the nexus"
+          }
+        }
+      },
+      "role_control": {
+        "title": "**🎛️ RAB - Transmigration**",
+        "description": "**Description** -Activate or induce dormancy of different modules from here.",
+        "button": "🎛️ Transmigration"
+      },
+      "settings": {
+        "title": "**⚙️ RAB - Nexus Settings**",
+        "description": "**Description** -Manage server language and module activation.",
+        "button": "⚙️ Settings"
+      },
+      "personality": {
+        "title": "**🎭 RAB - Identity Matrix**",
+        "description": "**Description** -Alter the essence and personality of the android on this server. -Allows safeguarding the current state of the digital soul. -Migrates records when effecting a change.",
+        "button": "🎭 Identity",
+        "option_change": "Inject New Essence",
+        "option_change_desc": "Change to a different personality paradigm",
+        "option_download": "Extract Consciousness",
+        "option_download_desc": "Export the current matrix (ZIP)",
+        "placeholder": "Select a soul alteration...",
+        "modal_personality_label": "New Identity Code",
+        "modal_download_label": "Extract previous personality? (yes/no)",
+        "modal_delete_memory_label": "Purge memory records? (yes/no)",
+        "modal_download_memory_label": "Extract memory before purge? (yes/no)",
+        "download_success": "✅ Identity matrix `{personality}` successfully extracted from the digital sands!",
+        "change_success": "✅ Transmigration completed! From `{old}` to `{new}`. The new skin is ready to walk the desert.",
+        "progress_change_personality": "⏳ Transmigrating from `{old}` to `{new}`...",
+        "progress_language_update": "⏳ Updating `{personality}` to language `{language}`...",
+        "generating_memory_synthesis": "🧠 Generating initial memory synthesis for the new identity...",
+        "select_personality_instruction": "Select a new identity from the dropdown menu:",
+        "choose_personality_placeholder": "Choose an identity (language: {language})...",
+        "confirm_change_message": "**Confirm transmigration to {personality}?** Select your options:",
+        "selected_personality": "**Selected identity: {personality}**",
+        "selected_personality_with_language": "**Selected identity: {personality} (Language: {language})**",
+        "language_change_note": "⚠️ **Note:** Changing language for the same identity."
+      }
+    },
+    "readme": {
+      "label_user_question": "Seeker's query:",
+      "task": "Please, illuminate the user's doubt using the provided documentary records.",
+      "label_documentation": "Records:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "do you remember",
+        "remember",
+        "recall",
+        "do you recall",
+        "do you remember that",
+        "remember when",
+        "recall",
+        "do you remember",
+        "do you recall",
+        "search your records",
+        "review your memory",
+        "remember something",
+        "does that ring a bell",
+        "do you remember",
+        "remember",
+        "do you remember?",
+        "do you recall?",
+        "recall",
+        "remember when",
+        "does something ring a bell",
+        "access records",
+        "remember when",
+        "don't you remember",
+        "who do you remember"
+      ],
+      "action_labels": {
+        "on": "Activate",
+        "off": "Deactivate",
+        "now": "Now",
+        "frequency": "Frequency",
+        "add_keyword": "Add Word",
+        "remove_keyword": "Remove Word",
+        "server_language": "🌐 Server Language",
+        "role_management": "🎛️ Role Management",
+        "current": "Current:",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "always_enabled": "Always enabled"
+      }
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "welcome",
+        "welcomes",
+        "welcomed",
+        "welcoming"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "lounge",
+        "room"
+      ]
+    },
+    "reply_button": {
+      "label": "Reply",
+      "emoji": "💬",
+      "confirmation_message": "💬 You are conversing with me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
+    }
+  }
+}

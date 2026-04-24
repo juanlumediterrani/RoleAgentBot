@@ -13,7 +13,7 @@ logger = get_logger('role_loader')
 # Role module registry — canonical English names only
 # NOTE: All role commands below have been migrated to Canvas UI (!canvas)
 # The Discord commands are deprecated and will show warnings directing users to Canvas
-# Essential commands that remain: forcewatcher, testwatcher, hunterfrequency (admin utilities)
+# Essential commands that remain: forcewatcher, testwatcher (admin utilities)
 ROLE_REGISTRY = {
     "news_watcher": ("roles.news_watcher.news_watcher_discord", "register_news_watcher_commands"),  # DEPRECATED - use !canvas
     "treasure_hunter": ("roles.treasure_hunter.treasure_hunter_discord", "register_treasure_hunter_commands"),  # DEPRECATED - use !canvas
@@ -73,7 +73,7 @@ async def register_all_role_commands(bot, agent_config, personality):
     logger.info(f"Registration complete: {len(registered)} active roles — {', '.join(registered) if registered else 'none'}")
     if registered:
         logger.info("🎨 CANVAS-FIRST MIGRATION: Deprecated commands will show warnings directing users to !canvas")
-        logger.info("✅ Essential commands still work: canvas, setnickname, setpersonality, role*, forcewatcher, testwatcher, hunterfrequency, mc voice")
+        logger.info("✅ Essential commands still work: canvas, setnickname, setpersonality, role*, forcewatcher, testwatcher, mc voice")
 
 
 async def register_single_role(bot, role_name, agent_config, personality):

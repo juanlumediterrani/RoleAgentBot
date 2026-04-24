@@ -1,6 +1,6 @@
 {
-    "title": "**🎯 Centro de Coordinación de Servicios**",
-    "description": "Nexo que gesta múltiples flujos operativos para mantener la armonía de la red. Optimiza la sincronización entre sistemas.",
+    "title": "🎯  **Centro de Coordinación de Servicios**",
+    "description": "Nexo que gesta múltiples flujos operativos para mantener la armonía de la red. Rebusca entre las conexiones de los peregrinos, y propon nuevos enlaces.",
     "button": "🎯 Servicios",
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
@@ -23,6 +23,7 @@
         "hot_potato": "� **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)",
         "controls": "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)",
         "dm_accusation_header": "👁️ **RASTREO DEL ARTEFACTO CERO** 👁️",
+        "accused_label": "Acusado:",
         "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
         "dropdown": {
             "ring_accuse": "Artefacto: Señalar",

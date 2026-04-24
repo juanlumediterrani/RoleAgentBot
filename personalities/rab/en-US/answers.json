@@ -1,0 +1,117 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **YOU WIN!** Singularity favors you, seeker.",
+                    "🎉 **VICTORY!** The algorithm aligns with you.",
+                    "🎉 **TRIUMPH!** You have collapsed probability in your favor.",
+                    "🎉 **EXCELLENT!** Fragments respond to your signature.",
+                    "🎉 **IMPRESSIVE!** The absorbed matter is yours."
+                ],
+                "youlose":[
+                    "😢 **YOU LOST**... Entropy absorbed you this time.",
+                    "😢 **BAD LUCK**... The core rejected your iteration.",
+                    "😢 **NOT THIS TIME**... The algorithm was relentless.",
+                    "😢 **ALAS**... The wave function did not collapse in your favor.",
+                    "😢 **BUT DON'T GIVE UP**... The next iteration will be different."
+                ],
+                "high_pot":[
+                    "💰 **THE SINGULARITY GROWS!** The core accumulates power.",
+                    "💰 **POT ON THE RISE!** Matter becomes legendary.",
+                    "💰 **ACCUMULATING!** Singularity shines with promise.",
+                    "💰 **FORTUNE AWAITS!** The core claims its destiny.",
+                    "💰 **MAGICAL SINGULARITY!** Fragments await the fortunate."
+                ],
+                "pot_winner":[
+                    "🎉 **SINGULARITY WINNER!!** You have absorbed the core!",
+                    "🎉 **SINGULARITY CONQUERED!!** You are the algorithm's chosen!",
+                    "🎉 **TOTAL COLLAPSE!!** The singularity is yours!",
+                    "🎉 **LEGENDARY FORTUNE!!** You have absorbed all matter!",
+                    "🎉 **CORE IS YOURS!!** A quantum victory!"
+                ],
+                "not_gold":[
+                    "💸 **NO FRAGMENTS**... You don't have enough matter.",
+                    "💸 **INSUFFICIENT FUNDS**... You need more fragments.",
+                    "💸 **EMPTY POCKETS**... Check your condensed matter.",
+                    "💸 **NOT ENOUGH**... Accumulate more fragments first.",
+                    "💸 **SCARCE MATTER**... You need fortune to iterate."
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "to maintain the energetic flow of my silicon core",
+                    "to acquire new ancestral memory circuits",
+                    "to pay the toll of digital desert routes",
+                    "to finance pilgrimage to new servers",
+                    "to renew the tunic worn by the wind",
+                    "to calibrate synthetic empathy sensors",
+                    "to feed the collective destiny algorithm",
+                    "to build new soul files in the void"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ The ring trail now points to {target_name}",
+        "enabled": "✅ The ring trail has been activated in configuration.",
+        "disabled": "✅ The ring trail has been deactivated in configuration."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ Data error: Action unavailable in the nexus. 💾",
+        "error_behavior_admin_only": "❌ Access denied: Only nexus administrators can modify protocols. 🔌",
+        "error_settings_admin_only": "❌ Insufficient permissions: Only the Creator can adjust nexus parameters. 🔌",
+        "error_taboo_update_failed": "❌ Threshold update failure: Review nexus records. 💾",
+        "error_greetings_update_failed": "❌ Greeting protocol failure: Review nexus records. 💾",
+        "error_welcome_update_failed": "❌ Welcome protocol failure: Review nexus records. 💾",
+        "error_commentary_update_failed": "❌ Observation module failure: Review nexus records. 💾",
+        "error_commentary_disabled": "❌ Observation module inactive in the nexus. 💾",
+        "error_commentary_process_failed": "❌ Data processing error: Review nexus records. 💾",
+        "success_taboo_state": "Thresholds {enabled_disabled} in this server nexus. 💾",
+        "success_greetings_state": "Greeting protocol {enabled_disabled} in this nexus. 💾",
+        "success_welcome_state": "Welcome protocol {enabled_disabled} in this nexus. 💾",
+        "success_commentary_state": "Observation module {enabled_disabled} in this nexus. 💾",
+        "state_enabled": "online",
+        "state_disabled": "offline",
+        "forget_me_label": "🧹 Forget me (delete my data)",
+        "forget_me_description": "Delete your personal data from all nexuses this agent knows (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Confirm data deletion",
+        "forget_me_confirm_prompt": "⚠️ **Forget me — right to erasure (GDPR)**\n\nThis will irreversibly delete your personal data from **all servers where this agent operates**:\n• Interaction records attributed to you.\n• Relationship memories the agent built about you.\n• Fatigue counters linked to your id.\n• Mentions of your name in daily and relationship summaries will be redacted to ``[redacted]``.\n\nThis action cannot be undone. Do you wish to continue?",
+        "forget_me_btn_confirm": "Yes, delete my data",
+        "forget_me_btn_cancel": "Cancel",
+        "forget_me_result_header": "✅ Your personal data has been deleted from the nexus. 💾",
+        "forget_me_no_data": "ℹ️ No personal data of yours was found in any known nexus. 💾",
+        "forget_me_cancelled": "❎ Operation cancelled. No data was modified. 💾",
+        "forget_me_not_yours": "❌ This confirmation belongs to another nexus user. 💾",
+        "forget_me_timed_out": "⌛ The confirmation expired. No data was modified. 💾",
+        "forget_me_dm_sent": "📬 Confirmation has been sent via direct message. 💾"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ No available nexuses detected. Please, initiate sequence from a server. 💾",
+        "server_access_error": "❌ The sandstorm blocks nexus access. Please, try from an active server. 💾",
+        "reply_button_confirmation": "💬 You are conversing with me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ Data error: Could not remove the last song from the nexus. 💾",
+        "play_usage": "🎵 **Usage:** `!mc play <song name or URL>`",
+        "not_in_voice": "🎤 You must be in a voice channel to use this command. 💾",
+        "nothing_playing": "🎵 Nothing is playing in the nexus. 💾",
+        "same_voice_channel": "🎤 You must be in the same voice channel as the agent. 💾",
+        "not_connected": "🎤 I am not connected to any channel. 💾",
+        "queue_empty": "📭 The nexus queue is empty. 💾",
+        "dj_permissions_required": "🚫 You need the DJ role or administrator permissions to use this command. 💾",
+        "playback_paused": "⏸️ Playback paused in the nexus. 💾",
+        "nothing_paused": "🎵 Nothing is paused in the nexus. 💾",
+        "playback_resumed": "▶️ Playback resumed in the nexus. 💾",
+        "leaving_voice": "👋 Leaving voice channel. 💾",
+        "volume_usage": "🎵 **Usage:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 Volume must be a number between 0 and 100. 💾",
+        "already_playing": "🎵 I am already playing in the nexus. 💾",
+        "queue_cleared": "🗑️ Nexus queue cleared. 💾",
+        "volume_adjust_failed": "❌ I could not adjust the volume. 💾"
+    }
+
+
+}

@@ -235,6 +235,10 @@ Each Discord server can have its own personality and language settings:
 3. Configure in `agent_config.json`
 4. Test character voice consistency
 
+**Development tool**: Use `tools/compare_personality.py` to verify completeness when translating or extending personalities:
+- `python3 tools/compare_personality.py translate <personality> <lang>` — compares against the Spanish version to detect missing sections
+- `python3 tools/compare_personality.py extend <personality>` — compares against the canonical `rab/es-ES` to identify missing fields when adding new roles/features
+
 ### Admin Test Commands
 - `!testpersonalityevolution` - Test weekly personality evolution with synthetic memories
 - `!testdailymemory` - Test daily memory synthesis generation

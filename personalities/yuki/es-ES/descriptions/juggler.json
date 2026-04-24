@@ -23,6 +23,7 @@
         "hot_potato": "🔥 **La sospecha se desplaza:** Ronda {iteration} (velocidad x{multiplier})",
         "controls": "**Controles**\n- Activar o desactivar la vigilancia\n- Frecuencia de rondas",
         "dm_accusation_header": "👁️ **INVESTIGACIÓN ME-TSUKE**",
+        "accused_label": "Acusado:",
         "admin_description": "Configura la sensibilidad y frecuencia de la vigilancia del Me-tsuke",
         "dropdown": {
             "ring_accuse": "Me-tsuke: Señalar",

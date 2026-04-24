@@ -87,9 +87,7 @@
             "poe2_on": "POE2: Activar",
             "poe2_on_description": "Activar subrol POE2",
             "poe2_off": "POE2: Desactivar",
-            "poe2_off_description": "Desactivar subrol POE2",
-            "hunter_frequency": "Buscador: Frecuencia",
-            "hunter_frequency_description": "Establecer frecuencia de robo"
+            "poe2_off_description": "Desactivar subrol POE2"
         }
     }
 }

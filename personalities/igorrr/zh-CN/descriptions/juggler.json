@@ -1,0 +1,58 @@
+{
+    "title": "**🔥🍞 火炉仆人**",
+    "description": "下贱仆人维持着多个任务在炉子里燃烧，喂养苦难，为主人受苦。",
+    "button": "🔥 仆人",
+    "canvas_juggler_subrole_descriptions": {
+        "ring": "🫓 **老面团猎人** - 指控无辜者偷了主人的老面团"
+    },
+    "subrole_buttons": {
+        "ring": "🫓 面团"
+    },
+    "ring": {
+        "title": "👁️ **面团猎人** 👁️",
+        "description": "伊戈尔在找谁偷了主人的老面团...是你吗？别撒谎！",
+        "current_target": "🎯 **当前嫌疑人：** 暂时还没有",
+        "investigation_status": "🔍 **状态：** 在黑暗角落里搜寻",
+        "accusation_count": "⚖️ **指控次数：** {count} 个面粉袋子被审问",
+        "last_accusation": "🕐 **最后审问：** {time}",
+        "success_rate": "📊 **成功率：** {rate}%（没人认罪）",
+        "accuse_button": "👁️ 指控",
+        "accuse_description": "指控某人偷了老面团",
+        "view_investigation": "🔍 看审问",
+        "investigation_description": "看搜寻进展",
+        "help_text": "👁️ **猎人帮助**\n\n伊戈尔在找谁偷了主人的老面团。用 `!accuse @用户` 来指控某人。\n\n小心...假指控有后果。",
+        "accusation_made": "✅ 嘶嘶嘶！你指控 {user} 偷了老面团",
+        "accusation_failed": "❌ 嗐！没法指控。炉子分散了俺滴注意力",
+        "target_found": "🎯 嘎嘎嘎！{user} 偷了老面团...俺闻见咧！",
+        "target_innocent": "😞 {user} 没偷老面团...继续找",
+        "investigation_complete": "✅ 搜寻结束。老面团被 {user} 找到咧",
+        "investigation_failed": "❌ 搜寻失败。老面团还丢着",
+        "new_investigation": "🔄 新搜寻开始咧。伊戈尔正盯着呢...",
+        "false_accusation_penalty": "⚖️ **惩罚：** 你指控了一个无辜滴。主人会惩罚你。",
+        "correct_accusation_reward": "🎁 **奖励：** 你找到老面团咧！主人会奖励你。",
+        "accusation_cooldown": "⏰ **等待：** 你得等 {time} 才能再指控",
+        "no_suspects": "🌫️ 没有嫌疑人...看起来都无辜",
+        "evidence_found": "🔍 **证据：** {evidence}",
+        "witness_statement": "🗣️ **证人：** {statement}",
+        "alibi_confirmed": "✅ **不在场证明：** {alibi}",
+        "motive_detected": "💭 **动机：** {motive}",
+        "dm_accusation_header": "👁️ **炉子审问**",
+        "accused_label": "被指控:",
+        "dropdown": {
+            "ring_accuse": "面团：指控",
+            "ring_accuse_description": "指控用户偷老面团",
+            "ring_on": "面团：激活",
+            "ring_on_description": "启动搜寻被偷老面团",
+            "ring_off": "面团：关闭",
+            "ring_off_description": "停止搜寻老面团",
+            "ring_frequency": "面团：频率",
+            "ring_frequency_description": "设置审问频率（影响烫手山芋）"
+        }
+    },
+    "dropdown": {
+        "select_juggler_action": "🔥 选择苦难...",
+        "config_juggler": "配置炉子",
+        "config_juggler_description": "调整炉子苦难滴配置",
+        "config_juggler_emoji": "🔥"
+    }
+}

@@ -133,7 +133,7 @@ def build_canvas_behavior(
     guild=None,
 ) -> tuple[str, str, str]:
     """Return (title, description, content) tuple for behavior overview."""
-    result = build_canvas_behavior_detail("conversation", admin_visible, guild, None)
+    result = build_canvas_behavior_detail("conversation", admin_visible, guild, None, author_id=None)
     if result:
         return result
     # Fallback if build_canvas_behavior_detail returns None
@@ -151,6 +151,7 @@ def build_canvas_behavior_detail(
     agent_config: dict = None,
     setup_not_available_builder=None,
     behavior_db_loader=None,
+    author_id: str = None,
 ) -> tuple[str, str, str] | None:
     """Return (title, description, content) tuple for behavior details."""
     from .content import _get_personality_descriptions, _get_server_personality_name
@@ -316,23 +317,66 @@ def build_canvas_behavior_detail(
                         logger.warning(f"Could not load recent memory fallback from prompts: {e}")
                         memory_content = "No recent memory available."
             elif selected_memory_type == "relationship":
-                # Load fallback from prompts.json in databases directory
-                try:
-                    import json
-                    import os
-                    prompts_path = f"databases/{server_id}/{personality_name}/prompts.json"
-                    if os.path.exists(prompts_path):
-                        with open(prompts_path, 'r', encoding='utf-8') as f:
-                            prompts_data = json.load(f)
-                            fallbacks = prompts_data.get("synthesis_paragraphs", {}).get("fallbacks", {})
-                            relationship_fallback = fallbacks.get("relationship_memory", "No relationship memory available.")
-                            # Format with user_name if needed
-                            memory_content = relationship_fallback.format(user_name="{usuario}")
-                    else:
+                # Try to get actual relationship memory from database
+                memory_content = ""
+                if author_id:
+                    try:
+                        record = db.get_user_relationship_memory(author_id)
+                        if record and record.get("summary"):
+                            memory_content = record.get("summary", "")
+                        else:
+                            # Load fallback from prompts.json in databases directory
+                            try:
+                                import json
+                                import os
+                                prompts_path = f"databases/{server_id}/{personality_name}/prompts.json"
+                                if os.path.exists(prompts_path):
+                                    with open(prompts_path, 'r', encoding='utf-8') as f:
+                                        prompts_data = json.load(f)
+                                        fallbacks = prompts_data.get("synthesis_paragraphs", {}).get("fallbacks", {})
+                                        relationship_fallback = fallbacks.get("relationship_memory", "No relationship memory available.")
+                                        # Format with user_name if needed
+                                        memory_content = relationship_fallback.format(user_name="{usuario}")
+                                else:
+                                    memory_content = "No relationship memory available."
+                            except Exception as e:
+                                logger.warning(f"Could not load relationship fallback from prompts: {e}")
+                                memory_content = "No relationship memory available."
+                    except Exception as e:
+                        logger.warning(f"Could not load relationship memory from database: {e}")
+                        # Load fallback from prompts.json
+                        try:
+                            import json
+                            import os
+                            prompts_path = f"databases/{server_id}/{personality_name}/prompts.json"
+                            if os.path.exists(prompts_path):
+                                with open(prompts_path, 'r', encoding='utf-8') as f:
+                                    prompts_data = json.load(f)
+                                    fallbacks = prompts_data.get("synthesis_paragraphs", {}).get("fallbacks", {})
+                                    relationship_fallback = fallbacks.get("relationship_memory", "No relationship memory available.")
+                                    memory_content = relationship_fallback.format(user_name="{usuario}")
+                            else:
+                                memory_content = "No relationship memory available."
+                        except Exception as e2:
+                            logger.warning(f"Could not load relationship fallback from prompts: {e2}")
+                            memory_content = "No relationship memory available."
+                else:
+                    # No author_id provided, load fallback
+                    try:
+                        import json
+                        import os
+                        prompts_path = f"databases/{server_id}/{personality_name}/prompts.json"
+                        if os.path.exists(prompts_path):
+                            with open(prompts_path, 'r', encoding='utf-8') as f:
+                                prompts_data = json.load(f)
+                                fallbacks = prompts_data.get("synthesis_paragraphs", {}).get("fallbacks", {})
+                                relationship_fallback = fallbacks.get("relationship_memory", "No relationship memory available.")
+                                memory_content = relationship_fallback.format(user_name="{usuario}")
+                        else:
+                            memory_content = "No relationship memory available."
+                    except Exception as e:
+                        logger.warning(f"Could not load relationship fallback from prompts: {e}")
                         memory_content = "No relationship memory available."
-                except Exception as e:
-                    logger.warning(f"Could not load relationship fallback from prompts: {e}")
-                    memory_content = "No relationship memory available."
             else:
                 # Unknown memory type - use English hardcoded fallback
                 memory_content = "Unrecognized memory type."

@@ -226,7 +226,7 @@ class RuneCastingModal(CanvasModal):
         self.title_map = title_map
 
         self.add_item(discord.ui.TextInput(
-            label=messages.get('question', 'Question'),
+            label=messages.get('labels', {}).get('question', 'Question'),
             placeholder=messages.get('question_prompt', 'What question or situation would you like guidance on?'),
             style=discord.TextStyle.paragraph,
             required=True,
@@ -378,7 +378,9 @@ class RuneCastingModal(CanvasModal):
 
 async def handle_canvas_shaman_action(interaction: discord.Interaction, action_name: str, view) -> None:
     """Handle Shaman canvas actions."""
-    server_key = get_server_key(interaction.guild) if interaction.guild else None
+    # Effective guild: fall back to the view's resolved guild in DM.
+    eff_guild = interaction.guild or getattr(view, 'guild', None)
+    server_key = get_server_key(eff_guild) if eff_guild else None
     ok = True
     current_detail = "overview"
     applied_text = None
@@ -386,7 +388,7 @@ async def handle_canvas_shaman_action(interaction: discord.Interaction, action_n
     try:
         # --- Rune casting modals ---
         if action_name in {"runes_single", "runes_three", "runes_cross", "runes_runic_cross"}:
-            if not interaction.guild:
+            if not eff_guild:
                 await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
                 return
 
@@ -398,7 +400,7 @@ async def handle_canvas_shaman_action(interaction: discord.Interaction, action_n
                 await interaction.response.send_message("❌ Nordic Runes subrole is currently disabled. Contact an administrator to enable this feature.", ephemeral=True)
                 return
 
-            await interaction.response.send_modal(RuneCastingModal(action_name, view.author_id, interaction.guild))
+            await interaction.response.send_modal(RuneCastingModal(action_name, view.author_id, eff_guild))
             return
 
         # --- Admin: enable/disable runes ---
@@ -458,8 +460,8 @@ async def handle_canvas_shaman_action(interaction: discord.Interaction, action_n
         from .content import _build_canvas_role_embed, _get_canvas_role_actions
         from discord_bot.canvas.ui import CanvasRoleDetailView
 
-        detail_content = build_canvas_role_shaman_detail(current_detail, view.admin_visible, interaction.guild, view.author_id, view.agent_config)
-        actions = _get_canvas_role_actions("shaman", current_detail, view.admin_visible, view.agent_config, interaction.guild)
+        detail_content = build_canvas_role_shaman_detail(current_detail, view.admin_visible, eff_guild, view.author_id, view.agent_config)
+        actions = _get_canvas_role_actions("shaman", current_detail, view.admin_visible, view.agent_config, eff_guild)
         role_embed = _build_canvas_role_embed("shaman", detail_content, view.admin_visible, current_detail, applied_text)
 
         next_view = CanvasRoleDetailView(
@@ -551,22 +553,24 @@ class RunesPageActionSelect(discord.ui.Select):
         action_name = self.values[0]
         self._parent_view.auto_response_preview = _get_canvas_auto_response_preview(self._role_name, action_name)
 
+        eff_guild = interaction.guild or getattr(self._parent_view, 'guild', None)
+
         if self._role_name == "banker" and action_name in {"config_tae", "config_bonus"}:
-            if not interaction.guild or not self._parent_view.admin_visible:
+            if not self._parent_view.admin_visible:
                 await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
                 return
-            await interaction.response.send_modal(BankerConfigModal(action_name, self._parent_view.author_id))
+            await interaction.response.send_modal(BankerConfigModal(action_name, self._parent_view.author_id, eff_guild))
             return
 
         if self._role_name == "banker" and action_name == "beggar_donate":
-            if not interaction.guild:
+            if not eff_guild:
                 await interaction.response.send_message("❌ Donations are only available in a server.", ephemeral=True)
                 return
-            await interaction.response.send_modal(BeggarDonationModal(interaction.guild, self._parent_view.author_id, self._parent_view))
+            await interaction.response.send_modal(BeggarDonationModal(eff_guild, self._parent_view.author_id, self._parent_view))
             return
 
         if action_name == "watcher_frequency":
-            if not interaction.guild or not self._parent_view.admin_visible:
+            if not self._parent_view.admin_visible:
                 await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
                 return
             await interaction.response.send_modal(RoleFrequencyModal(self._role_name, action_name, self._parent_view.agent_config, self._parent_view, self._parent_view.author_id))

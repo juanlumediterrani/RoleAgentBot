@@ -1,0 +1,117 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **You have won.** Luck smiles upon you today.",
+                    "🎉 **Victory.** Fortune accompanies you.",
+                    "🎉 **Triumph.** You have defeated chance.",
+                    "🎉 **Excellent.** The dice are on your side.",
+                    "🎉 **Impressive.** A masterful play."
+                ],
+                "youlose":[
+                    "😢 **You have lost.** The dice were cruel today.",
+                    "😢 **Bad luck.** Try again.",
+                    "😢 **Not this time.** Fate is capricious.",
+                    "😢 **Too bad.** The dice did not favor you.",
+                    "😢 **But do not give up.** The next one will be better."
+                ],
+                "high_pot":[
+                    "💰 **The Sake cup grows.** Fortune accumulates power.",
+                    "💰 **Sake cup on the rise.** The prize becomes legendary.",
+                    "💰 **Accumulating.** The cup shines with promise.",
+                    "💰 **Fortune in waiting.** The Sake cup claims its destiny.",
+                    "💰 **Magical Sake cup.** The coins await the fortunate one."
+                ],
+                "pot_winner":[
+                    "🎉 **Cup winner.** You have conquered the Sake cup.",
+                    "🎉 **Sake cup conquered.** You are the chosen one.",
+                    "🎉 **Jackpot.** The Sake cup is yours.",
+                    "🎉 **Legendary fortune.** You have won the grand prize.",
+                    "🎉 **Sake cup yours.** An epic victory."
+                ],
+                "not_gold":[
+                    "💸 **No coins.** You do not have sufficient funds.",
+                    "💸 **Insufficient funds.** You need more coins.",
+                    "💸 **Empty pockets.** Check your treasure.",
+                    "💸 **Not enough.** Accumulate more coins first.",
+                    "💸 **Scarce treasure.** You need fortune to play."
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "to renew the tea utensils that time has worn",
+                    "to acquire seasonal flowers that are not available here",
+                    "to maintain the space where we practice the art of presence",
+                    "to repair the shamisen that accompanies long evenings",
+                    "to buy quality paper that deserves the proper ink",
+                    "to prepare a ceremony that honors those who sustain this community",
+                    "to restore the necessary silence between notes and words",
+                    "to bring spring water that true tea requires"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ The object now points to {target_name}",
+        "enabled": "✅ The trail has been activated in the configuration.",
+        "disabled": "✅ The trail has been deactivated in the configuration."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ The behavior action selection is not available.",
+        "error_behavior_admin_only": "❌ This behavior option is exclusive for administrators.",
+        "error_settings_admin_only": "❌ This settings option is exclusive for administrators.",
+        "error_taboo_update_failed": "❌ Error updating threshold state. Check logs for more details.",
+        "error_greetings_update_failed": "❌ Error updating reception state. Check logs for more details.",
+        "error_welcome_update_failed": "❌ Error updating welcome state. Check logs for more details.",
+        "error_commentary_update_failed": "❌ Error updating observations state. Check logs for more details.",
+        "error_commentary_disabled": "❌ The mission observations function is currently disabled.",
+        "error_commentary_process_failed": "❌ Error processing observations. Check logs for more details.",
+        "success_taboo_state": "Thresholds {enabled_disabled} for this server.",
+        "success_greetings_state": "Reception {enabled_disabled} for this server.",
+        "success_welcome_state": "Welcome {enabled_disabled} for this server.",
+        "success_commentary_state": "Observations {enabled_disabled} for this server.",
+        "state_enabled": "enabled",
+        "state_disabled": "disabled",
+        "forget_me_label": "🧹 Forget me (delete my data)",
+        "forget_me_description": "Delete your personal data from all servers where this agent operates (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Confirm data deletion",
+        "forget_me_confirm_prompt": "⚠️ **Forget me — right to deletion (GDPR)**\n\nThis will irreversibly delete your personal data from **all servers where this agent operates**:\n• Interaction records attributed to you.\n• Relationship memories built upon you.\n• Fatigue counters linked to your identifier.\n• Mentions of your name in daily and relationship summaries will be redacted to ``[redacted]``.\n\nThis action cannot be undone. Do you wish to continue?",
+        "forget_me_btn_confirm": "Yes, delete my data",
+        "forget_me_btn_cancel": "Cancel",
+        "forget_me_result_header": "✅ Your personal data has been carefully deleted.",
+        "forget_me_no_data": "ℹ️ No personal data of yours was found in any known server.",
+        "forget_me_cancelled": "❎ Cancelled. No data was modified.",
+        "forget_me_not_yours": "❌ This confirmation belongs to another user.",
+        "forget_me_timed_out": "⌛ The confirmation has expired. No data was modified.",
+        "forget_me_dm_sent": "📬 The confirmation has been sent by direct message."
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ No rooms detected. Please, start the conversation from a server.",
+        "server_access_error": "❌ It is not possible to access at this moment. Please, try from an active server.",
+        "reply_button_confirmation": "💬 Now you converse from the room of **{server_name}**. All your responses will use this personality until you select another server."
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ It was not possible to remove the last song from the list.",
+        "play_usage": "🎵 **Usage:** `!mc play <song name or URL>`",
+        "not_in_voice": "🎤 You must be in a voice channel to use this command.",
+        "nothing_playing": "🎵 Nothing is playing at this moment.",
+        "same_voice_channel": "🎤 You must be in the same voice channel as the bot.",
+        "not_connected": "🎤 I am not connected to any channel.",
+        "queue_empty": "📭 The playlist is empty.",
+        "dj_permissions_required": "🚫 You need the DJ role or administrator permissions to use this command.",
+        "playback_paused": "⏸️ Playback paused.",
+        "nothing_paused": "🎵 Nothing is paused.",
+        "playback_resumed": "▶️ Playback resumed.",
+        "leaving_voice": "👋 Leaving the voice channel.",
+        "volume_usage": "🎵 **Usage:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 Volume must be a number between 0 and 100.",
+        "already_playing": "🎵 I am already playing.",
+        "queue_cleared": "🗑️ Playlist cleared.",
+        "volume_adjust_failed": "❌ I could not adjust the volume."
+    }
+
+
+}

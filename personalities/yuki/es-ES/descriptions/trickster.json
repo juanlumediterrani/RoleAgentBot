@@ -1,5 +1,5 @@
 {
-    "title": "🎭 **Ozashiki** 🎭",
+    "title": "🎭  **Ozashiki** 🎭",
     "description": "Un espacio privado, donde Yuki puede ofrecerte diferentes servicios",
     "button": "🎭 Ozashiki",
     "canvas_trickster_overview_title": "**🎭 Sala de Juegos**",
@@ -22,7 +22,7 @@
         "historyvoid": " No hay partidas registradas aún.",
         "history": " **📜 Historial de Partidas**",
         "help": " **Reglas del juego**\n Participa en la copa de Sake de la sala. Usa el botón 'Jugar' en Canvas para lanzar.\n ¡La combinación perfecta (tres unes) te da toda la copa de Sake!",
-        "title": "💡 LA COPA DE SAKE 💡**\n",
+        "title": "💡 **LA COPA DE SAKE 💡**",
         "current_balance": "Fondo acumulado en la copa de Sake:",
         "fixed_bet": "Coste por partida:",
         "possible_plays": "🎯 **Tiradas restantes:** {jugadas}\n",

@@ -45,13 +45,32 @@ def get_role_db_for_server(guild, get_db_func, available_flag):
 
 # --- PERMISSION HELPERS ---
 
-def is_admin(ctx) -> bool:
-    """Check if the user is an administrator or has manage_guild."""
-    if not ctx.guild:
+def is_admin(ctx, guild=None) -> bool:
+    """Check if the user is an administrator or has manage_guild.
+
+    If ``guild`` is provided, the permission check is performed against that
+    guild instead of ``ctx.guild``. This enables DM-originated interactions
+    to be evaluated against the user's resolved "last server" so that admins
+    of that server retain admin privileges when using Canvas via DM.
+    """
+    effective_guild = guild if guild is not None else getattr(ctx, 'guild', None)
+    if not effective_guild:
         return False
     # Handle both Context and Interaction objects
     user = ctx.author if hasattr(ctx, 'author') else ctx.user
-    perms = user.guild_permissions
+    # Resolve to a Member of the effective guild so permissions are correct
+    member = None
+    if isinstance(user, discord.Member) and getattr(user, 'guild', None) is not None \
+            and user.guild.id == effective_guild.id:
+        member = user
+    else:
+        try:
+            member = effective_guild.get_member(user.id)
+        except Exception:
+            member = None
+    if member is None:
+        return False
+    perms = member.guild_permissions
     return perms.administrator or perms.manage_guild
 
 
@@ -725,10 +744,29 @@ async def update_server_identity(guild: discord.Guild, nickname: str = None, ava
         logger.warning(f"⚠️ No permission to change identity in '{guild.name}' (need 'Change Nickname' permission)")
         return False
     except discord.HTTPException as e:
+        err_text = str(e)
+        avatar_rate_limited = (
+            'avatar' in err_text.lower() and 'too fast' in err_text.lower()
+        )
         if e.status == 429:
-            logger.error(f"❌ Rate limited while updating identity in '{guild.name}': {e}")
-        else:
-            logger.error(f"❌ Failed to update identity in '{guild.name}': {e}")
+            logger.warning(f"⚠️ Rate limited while updating identity in '{guild.name}': {e}")
+            return False
+        if avatar_rate_limited and 'nick' in edit_kwargs:
+            # Retry without avatar so at least nickname gets updated
+            logger.warning(
+                f"⚠️ Avatar rate-limited in '{guild.name}', retrying with nickname only"
+            )
+            try:
+                await bot_member.edit(nick=edit_kwargs['nick'])
+                logger.info(f"✅ Identity partially updated in '{guild.name}': nick only (avatar rate-limited)")
+                return True
+            except Exception as inner:
+                logger.warning(f"⚠️ Nickname-only retry failed in '{guild.name}': {inner}")
+                return False
+        if avatar_rate_limited:
+            logger.warning(f"⚠️ Avatar change rate-limited in '{guild.name}', skipping")
+            return False
+        logger.error(f"❌ Failed to update identity in '{guild.name}': {e}")
         return False
 
 

@@ -1,0 +1,259 @@
+{
+  "discord": {
+    "general": {
+      "status": "面团状态：",
+      "active": "✅ 正在烤",
+      "inactive": "❌ 冷得像尸体",
+      "none": "啥都没有...嘶嘶嘶",
+      "every": "每",
+      "for": "持续",
+      "base_frequency": "主人的节奏：",
+      "current_frequency": "当前节奏：",
+      "current_settings": "🔧 **脏货配置：**",
+      "frequency_format": "每 {hours} 小时",
+      "button_confirm": "确认",
+      "button_confirm_changes": "确认更改",
+      "option_yes": "是",
+      "option_no": "否",
+      "action_descriptions": {
+        "boolean_toggle": "切换开/关",
+        "number_input_target": "数字输入",
+        "text_input_target": "文本输入",
+        "action": "立即执行"
+      },
+      "action_labels": {
+        "on": "激活",
+        "off": "关闭",
+        "now": "现在",
+        "frequency": "频率",
+        "add_keyword": "添加关键词",
+        "remove_keyword": "移除关键词",
+        "server_language": "🌐 服务器语言",
+        "role_management": "🎛️ 角色管理",
+        "current": "当前：",
+        "enabled": "已激活",
+        "disabled": "已关闭",
+        "always_enabled": "始终激活",
+        "memory_long": "Long Memory",
+        "memory_recent": "Recent Memory",
+        "memory_relationship": "Relationship Memory"
+      },
+      "button_personal": "📁 个人",
+      "button_admin": "🔧 管理",
+      "available_subroles": "可用子任务"
+    },
+    "help_menu": {
+      "title": "📚 ** 伊戈尔 - 火炉生存手册**",
+      "description": "**描述** 伊戈尔是那个驼背服务员，你睡觉时他盯着你。他记得你的罪过，如果主人允许，他可以给你喷命令。",
+      "separator": "---------------------------------------------",
+      "roles_section": "**任务** 任务模块是伊戈尔为主人服务、盯着面粉袋子的锁链。",
+      "behavior_section": "**神经抽搐** 这里配置主人的任性。只给管面包店的人用。",
+      "tips_section": "**有用滴嘶嘶声** -你可以问俺这玩意咋用，要是你滴丝绸手指不会打字... -好东西藏在每个任务的黑暗角落里...嘎嘎嘎。"
+    },
+    "canvas_home_messages": {
+      "title": "🌋 伊戈尔 - 柴火火炉",
+      "button_home": "🌋 火炉",
+      "button_back": "← 返回（去地下室）",
+      "button_roles": "🍞 任务",
+      "button_behavior": "💊 抽搐",
+      "button_help": "❓ 嗯？",
+      "button_memory": "🧠 失忆",
+      "generic_option_label": "选你的毒药...",
+      "personalitystatus": "脏货已加载：",
+      "description": "-敢碰俺滴工具就从这儿开始。面板让你摆弄俺的线...嘶嘶嘶。",
+      "interestingthings": "**火炉的锁链：**",
+      "recentsynthesistitle": "🥖 **火炉的嘟囔**",
+      "dailymemorytitle": "🔥 **活灰烬**",
+      "personalsynthesistitle": "🪤 **你的烟灰痕迹**",
+      "dm_default_server_title": "🔔 **使用火炉来自：{server_name}**",
+      "dm_default_server_message": "*从私信里嘶嘶低语，使用第一个可用滴地下室。*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "canvas_behavior_messages": {
+      "conversation": {
+        "title": "💬  **伊戈尔 - 地下室嘟囔**",
+        "description": "**描述：** -伊戈尔响应私信和提及。 -他记得你的罪过，你啥时候想都可以问他。 -如果主人允许，他会对禁词有反应。",
+        "button": "💬 嘟囔"
+      },
+      "greetings": {
+        "title": "👋  **伊戈尔 - 火炉的嘶嘶声**",
+        "description": "**描述：** -面粉袋子连接时伊戈尔嘶嘶作响。 -等5分钟才说人走了。 -（待实现）：知道没被回应就不打招呼了。",
+        "button": "👋 嘶嘶声"
+      },
+      "welcome": {
+        "title": "🍺  **伊戈尔 - 欢迎来火炉**",
+        "description": "**描述：** -给新面粉袋子们欢迎来到地下室。",
+        "button": "🍺 欢迎"
+      },
+      "taboo": {
+        "title": "🚫  **伊戈尔 - 禁词**",
+        "description": "**工作原理：** -配置伊戈尔读到某个词时做出反应。 -可以开/关或配置闻着臭的词。",
+        "title_keywords": "闻着臭的词：",
+        "button": "🚫 禁止"
+      },
+      "memory": {
+        "title": "🧠  **伊戈尔 - 火炉记忆**",
+        "description": "**描述** -查询伊戈尔的记忆：累积的烟灰、最近的喊声、每个麻风病人的罪过。",
+        "button": "🧠 记忆",
+        "dropdown": {
+          "long": {
+            "label": "活灰烬",
+            "emoji": "🔥",
+            "description": "一天一天在火炉里累积的烟灰"
+          },
+          "recent": {
+            "label": "火炉的嘟囔",
+            "emoji": "🥖",
+            "description": "地下室最近回荡的喊声"
+          },
+          "relationship": {
+            "label": "你的烟灰痕迹",
+            "emoji": "🪤",
+            "description": "每个麻风病人留下的罪过"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **伊戈尔 - 锁链控制**",
+        "description": "**描述** -从这开关地下室的锁链。",
+        "button": "🎛️ 控制"
+      }
+    },
+    "canvas_role_messages": {
+      "title": "🎪 **火炉的任务**",
+      "description": "选今天想让伊戈尔拉哪根锁链。主人盯着呢。"
+    },
+    "canvas_memory_messages": {
+      "title": "🧠 **装满烟灰的脑子**",
+      "description": "删掉俺的记忆，要是你想让俺忘记你有多恶心。或者看俺记住你的罪过。"
+    },
+    "roles_view_messages": {
+      "title": "🎭 伊戈尔的任务 🎭",
+      "description": "🌟 看看伊戈尔今天为主人拉哪些锁链。",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ 在睡觉",
+      "interval_info": "//⏰ 每 {interval} 小时",
+      "subroles_info": "🎪 **子任务：** {subroles}",
+      "admin_note": "🔧 **给主人滴：**",
+      "user_note": "👤 **给麻风病人滴：**",
+      "help_commands": "💡 **给蠢货滴：**",
+      "canvas_details": "🎨 **画布脏货：**",
+      "navigation_help": "用油腻的按钮移动。",
+      "no_roles_active": "🌫️ **没有激活的任务** 伊戈尔正在挠疥疮。让主人激活点啥。**可能滴任务：** • 📡 新闻守望者 - 盯梢滴 • 💎 宝藏猎人 - 捡垃圾滴 • 🎭 骗术师 - 乞丐和灰烬 • 🌾 银行家 - 主人的储藏室 • 🎵 MC - 生锈的留声机",
+      "role_list_title": "☠️ 任务与惩罚",
+      "role_available": "✅ {role} - 嘶嘶作响已就绪",
+      "role_unavailable": "❌ {role} - 在挠疥疮",
+      "button_previous": "◀ 返回",
+      "button_next": "下一页 ▶",
+      "page_indicator": "**第 {page} 页 / 共 {total_pages} 页**"
+    },
+    "settings_labels": {
+      "taboo": {
+        "title": "在主人面前别说这个：",
+        "title_keywords": "闻着臭的禁词：",
+        "button": "🚫 禁止"
+      },
+      "comentary": {
+        "title": "🗣️  **伊戈尔 - 嘟囔**",
+        "description": "**描述**\\n -伊戈尔自己唠叨他看见的东西和小巷子的八卦。",
+        "button": "🗣️ 唠叨"
+      },
+      "role_control": {
+        "title": "**🎛️ 伊戈尔 - 锁链控制**",
+        "description": "**描述**\\n -开关俺滴任务。别让俺多干活...嘶嘶嘶。",
+        "button": "🎛️ 控制"
+      },
+      "settings": {
+        "title": "⚙️  **伊戈尔 - 营地配置**",
+        "description": "**描述**\\n -调整营地语言，激活任务。",
+        "button": "⚙️ 配置"
+      },
+      "personality": {
+        "title": "🎭  **伊戈尔 - 换皮**",
+        "description": "**描述**\\n -给这个服务器换俺滴个性。\\n -换皮前下载当前皮。\\n -换时迁移记忆。",
+        "button": "🎭 皮",
+        "option_change": "换皮",
+        "option_change_desc": "换成另一个个性",
+        "option_download": "下载当前皮",
+        "option_download_desc": "导出个性为ZIP",
+        "placeholder": "选个换皮动作...",
+        "modal_personality_label": "新皮",
+        "modal_download_label": "下载之前的皮？（是/否）",
+        "modal_delete_memory_label": "清除俺的记忆？（是/否）",
+        "modal_download_memory_label": "先下载记忆？（是/否）",
+        "download_success": "✅ 皮 `{personality}` 导出咧！好好保管那个文件...",
+        "change_success": "✅ 皮从 `{old}` 换成 `{new}` 咧！俺已经穿上新皮...嘶嘶嘶...",
+        "progress_change_personality": "⏳ 正在从 `{old}` 换皮到 `{new}`...",
+        "progress_language_update": "⏳ 正在把 `{personality}` 更新到语言 `{language}`...",
+        "generating_memory_synthesis": "🧠 正在为新皮生成初始记忆合成...",
+        "select_personality_instruction": "从菜单选个新皮：",
+        "choose_personality_placeholder": "选个皮（语言：{language}）...",
+        "confirm_change_message": "**确认换成 {personality}？** 选你的选项：",
+        "selected_personality": "**已选皮：{personality}**",
+        "selected_personality_with_language": "**已选皮：{personality}（语言：{language}）**",
+        "language_change_note": "⚠️ **注意：** 正在换同一个性的语言。"
+      }
+    },
+    "readme": {
+      "label_user_question": "面粉袋子滴疑问：",
+      "task": "请在脏纸上找找给这个蠢货滴答案。",
+      "label_documentation": "地下室滴纸："
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "你还记得",
+        "你记得",
+        "回忆一下",
+        "想起来",
+        "你记得吗",
+        "你记得那是",
+        "记得当时",
+        "你记不记得",
+        "你还记得吗",
+        "回忆",
+        "回想",
+        "你记得什么",
+        "你想起",
+        "记得吗",
+        "记得",
+        "回想一下",
+        "你记不记得",
+        "你不记得",
+        "谁记得你",
+        "你还记得当时",
+        "你有没有记得",
+        "想起以前",
+        "曾经记得",
+        "记得以前",
+        "记得当时吗",
+        "你不记得当时",
+        "你想起来了吗",
+        "你还记得什么",
+        "嗐记得吗",
+        "老鼠记忆",
+        "翻烟灰",
+        "看烟灰里"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "欢迎",
+        "欢迎光临",
+        "欢迎新",
+        "新来的"
+      ],
+      "general": [
+        "综合",
+        "聊天",
+        "大厅",
+        "大厅"
+      ]
+    },
+    "reply_button": {
+      "label": "回复",
+      "emoji": "💬",
+      "confirmation_message": "💬 你现在正以 **{server_name}** 的身份跟伊戈尔说话。你所有滴回复都会用这个个性，直到你选另一个服务器。"
+    }
+  }
+}

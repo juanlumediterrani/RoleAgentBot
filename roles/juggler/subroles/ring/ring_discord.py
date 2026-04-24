@@ -85,30 +85,30 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
                 logger.warning(f"Error getting ring config from server_config: {e}")
                 ring_config = {}
                 accused_user_id = ''
-            if not accused_user_id:
+            if not accused_user_id and ring_config:
                 accused_user_id = ring_config.get('accused_user_id', '')
-            if not accused_user_id:
+            if not accused_user_id and ring_config:
                 accused_user_id = ring_config.get('target_user_id', defaults["target_user_id"])
             
             # Set accused_user_name from ring config
-            accused_user_name = ring_config.get('accused_user_name', defaults["target_user_name"])
+            accused_user_name = ring_config.get('accused_user_name', defaults["target_user_name"]) if ring_config else defaults["target_user_name"]
             
             # Log what we loaded for debugging
             logger.info(f"🎭 [RING LOAD] Server {server_id} - Loaded from DB: accused_user_id='{accused_user_id}', accused_user_name='{accused_user_name}'")
             
             state = {
                 "enabled": ring_enabled,
-                "frequency_hours": int(ring_config.get('frequency_hours', defaults["frequency_hours"])),
-                "base_frequency_hours": int(ring_config.get('base_frequency_hours', defaults["base_frequency_hours"])),
-                "current_frequency_hours": int(ring_config.get('current_frequency_hours', defaults["current_frequency_hours"])),
-                "frequency_iteration": int(ring_config.get('frequency_iteration', defaults["frequency_iteration"])),
-                "unanswered_dm_count": int(ring_config.get('unanswered_dm_count', defaults["unanswered_dm_count"])),
-                "last_accusation": ring_config.get('last_accusation', defaults["last_accusation"]),
-                "last_accusation_time": ring_config.get('last_accusation_time', defaults["last_accusation_time"]),
+                "frequency_hours": int(ring_config.get('frequency_hours', defaults["frequency_hours"])) if ring_config else defaults["frequency_hours"],
+                "base_frequency_hours": int(ring_config.get('base_frequency_hours', defaults["base_frequency_hours"])) if ring_config else defaults["base_frequency_hours"],
+                "current_frequency_hours": int(ring_config.get('current_frequency_hours', defaults["current_frequency_hours"])) if ring_config else defaults["current_frequency_hours"],
+                "frequency_iteration": int(ring_config.get('frequency_iteration', defaults["frequency_iteration"])) if ring_config else defaults["frequency_iteration"],
+                "unanswered_dm_count": int(ring_config.get('unanswered_dm_count', defaults["unanswered_dm_count"])) if ring_config else defaults["unanswered_dm_count"],
+                "last_accusation": ring_config.get('last_accusation', defaults["last_accusation"]) if ring_config else defaults["last_accusation"],
+                "last_accusation_time": ring_config.get('last_accusation_time', defaults["last_accusation_time"]) if ring_config else defaults["last_accusation_time"],
                 "target_user_id": accused_user_id,  # Use accused_user_id as target_user_id for compatibility
                 "target_user_name": accused_user_name,  # Use the correctly loaded accused_user_name
-                "title": str(ring_config.get('title', defaults["title"])),
-                "description": str(ring_config.get('description', defaults["description"])),
+                "title": str(ring_config.get('title', defaults["title"])) if ring_config else defaults["title"],
+                "description": str(ring_config.get('description', defaults["description"])) if ring_config else defaults["description"],
                 "current_accusation": "",  # Don't store accusation text in state
             }
         except Exception as e:

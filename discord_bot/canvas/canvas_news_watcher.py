@@ -1046,11 +1046,12 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
         await interaction.response.send_message("❌ Watcher database is not available.", ephemeral=True)
         return
 
-    if not interaction.guild:
+    eff_guild = interaction.guild or getattr(view, 'guild', None)
+    if not eff_guild:
         await interaction.response.send_message("❌ Watcher actions require a server context.", ephemeral=True)
         return
 
-    guild_id = str(interaction.guild.id)
+    guild_id = str(eff_guild.id)
 
     if action_name in {"method_flat", "method_keyword", "method_general"}:
         method_name = action_name.replace("method_", "")
@@ -1452,14 +1453,12 @@ def build_canvas_role_news_watcher_detail(
             logger.warning(f"Could not load watcher premises for Canvas: {e}")
             return "- Error loading premises"
 
-    not_selected_method = _watcher_text("not_selected_method", "Not selected")
     method_labels = {
         "flat": _watcher_text("method_flat", "Flat"),
         "keyword": _watcher_text("method_keyword", "Keyword"),
         "general": _watcher_text("method_general", "General"),
-        None: not_selected_method,
     }
-    method_label = method_labels.get(selected_method, str(selected_method).title() if selected_method else not_selected_method)
+    method_label = method_labels.get(selected_method, str(selected_method).title() if selected_method else "Not selected")
 
     if detail_name in {"personal", "overview"}:
         block1 = _get_watcher_personal_intro_block()

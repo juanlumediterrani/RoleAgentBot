@@ -23,6 +23,7 @@
         "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
         "controls": "**Controles**\n- Activar o desactivar ring\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
         "dm_accusation_header": "👁️ **ACUSACIÓN DEL ANILLO**",
+        "accused_label": "Acusado:",
         "admin_description": "Configura la funcionalidad y frecuencia de la caza del anillo",
         "dropdown": {
             "ring_accuse": "Anillo: Acusar",

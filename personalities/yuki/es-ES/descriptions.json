@@ -57,6 +57,7 @@
       "generic_option_label": "Elige un camino...",
       "personalitystatus": "Presencia Activa:",
       "description": "Accede a cada parte del salon dese aquí para acceder a los servicios.",
+      "interestingthings": "**Cosas del Salón:** ",
       "recentsynthesistitle": "🌊 **Flujo Reciente**",
       "dailymemorytitle": "🗻 **Memoria**",
       "personalsynthesistitle": "👥 **Vinculo con el Visitante**",
@@ -89,22 +90,22 @@
     },
     "behavior_messages": {
       "conversation": {
-        "title": "**💬 Yuki - Presencia en Conversación**",
+        "title": "💬  **Yuki - Presencia en Conversación**",
         "description": "**Descripción:** -Yuki responderá a mensajes directos y menciones. -Mantiene memoria de conversaciones pasadas que hayan sido significativas. -Reaccionará a ciertos términos específicos según los caminos activos. En el módulo tabú se configuran las palabras que activan respuestas particulares.",
         "button": "💬 Conversación"
       },
       "greetings": {
-        "title": "**👋 Yuki - Recepción**",
+        "title": "👋  **Yuki - Recepción**",
         "description": "**Descripción:** -Yuki saluda a los visitantes al conectarse. -Mantiene el reconocimiento durante 5 min antes de considerar al visitante ausente.",
         "button": "👋 Recepción"
       },
       "welcome": {
-        "title": "**🍵 Yuki - Bienvenida**",
+        "title": "🍵  **Yuki - Bienvenida**",
         "description": "**Descripción:** -Yuki da la bienvenida a los nuevos visitantes que llegan a la sala.",
         "button": "🍵 Bienvenida"
       },
       "taboo": {
-        "title": "**🚫 Yuki - Toques de Atención**",
+        "title": "🚫  **Yuki - Toques de Atención**",
         "description": "**Cómo funciona:** -Configura palabras o expresiones que activen una respuesta descortés de Yuki. -Se pueden añadir, o eliminar palabras taboo.",
         "title_keywords": "Umbrales configurados actualmente:",
         "button": "🚫 Umbrales",
@@ -122,7 +123,7 @@
         }
       },
       "memory": {
-        "title": "**🧠 Yuki - Memoria del Salón**",
+        "title": "🧠  **Yuki - Memoria del Salón**",
         "description": "**Descripción** -Consulta la memoria de Yuki: el flujo del agua, las aguas recientes y los vínculos con los visitantes.",
         "button": "🧠 Memoria",
         "dropdown": {
@@ -157,7 +158,7 @@
         }
       },
       "role_control": {
-        "title": "**🎛️ Yuki - Gestión de Artes**",
+        "title": "🎛️  **Yuki - Gestión de Artes**",
         "description": "**Descripción** -Activa o detiene los diferentes caminos disponibles desde aquí.",
         "button": "🎛️ Gestión",
         "modal": {
@@ -171,7 +172,7 @@
         }
       },
       "settings": {
-        "title": "**⚙️ Yuki - Ajustes de Sala**",
+        "title": "⚙️  **Yuki - Ajustes de Sala**",
         "description": "**Descripción** -Gestiona el idioma del servidor y la activación de módulos.",
         "button": "⚙️ Ajustes",
         "language_select": {
@@ -181,7 +182,7 @@
         }
       },
       "personality": {
-        "title": "**🎭 Yuki - Identidad**",
+        "title": "🎭  **Yuki - Identidad**",
         "description": "**Descripción** -Modifica la esencia y personalidad de Yuki en este servidor. -Permite guardar el estado actual de la identidad. -Los registros se actualizan al realizar un cambio.",
         "button": "🎭 Identidad",
         "option_change": "Establecer Nueva Identidad",
@@ -259,4 +260,3 @@
       "confirmation_message": "💬 Estás conversando conmigo como si estuvieras en **{server_name}**. Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor."
     }
   }
-}
