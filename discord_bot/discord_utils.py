@@ -22,7 +22,6 @@ logger = get_logger('discord_utils')
 def get_server_key(guild) -> str:
     """Get a stable unique server key (Discord guild id) for per-server resources."""
     if guild is None:
-        # Always use the active server ID from .active_server file
         active = get_server_id()
         if active and active.isdigit():
             return active  # Return the guild ID
@@ -57,73 +56,45 @@ def is_admin(ctx) -> bool:
 
 
 def initialize_roles_from_database(agent_config=None, guild=None) -> bool:
-    """Initialize roles system - PRIMARY: roles_config, SECONDARY: behavior table."""
+    """Initialize roles system - PRIMARY: server_config.json.
+    
+    Note: Migration from agent_config happens once at server startup in init_roles_config.py,
+    not here. This function only ensures default roles exist in server_config.json.
+    """
     try:
-        logger.info("Initializing roles system - database is primary source")
+        logger.info("Initializing roles system - server_config.json is primary source")
         
-        # PRIMARY: Initialize roles_config from agent_config.json
+        # PRIMARY: Initialize server_config.json from agent_config.json
         try:
-            from agent_roles_db import get_roles_db_instance
+            from discord_bot.canvas.server_config import get_all_roles_config, set_role_config_value
             # Use guild-specific server_id if available, otherwise default to "0"
             server_id = str(guild.id) if guild else "0"
-            roles_db = get_roles_db_instance(server_id)
             
-            # First, migrate from agent_config.json if available
-            if agent_config:
-                logger.info("Migrating roles from agent_config to roles_config")
-                # Create a temporary agent_config file for migration
-                import json
-                import tempfile
-                import os
-                
-                temp_config_path = None
-                try:
-                    # Create temporary file with agent_config data
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                        json.dump(agent_config, f, indent=2)
-                        temp_config_path = f.name
-                    
-                    # Migrate from agent_config to roles_config
-                    migrated = roles_db.migrate_roles_from_agent_config(temp_config_path)
-                    if migrated:
-                        logger.info("Successfully migrated roles from agent_config to roles_config")
-                finally:
-                    # Clean up temporary file
-                    if temp_config_path and os.path.exists(temp_config_path):
-                        os.unlink(temp_config_path)
+            # Get roles from agent_config.json
+            roles_cfg = agent_config.get("roles", {}) if agent_config else {}
             
-            # Then ensure all default roles exist
-            roles_db.ensure_default_roles()
+            # Ensure default roles exist in server_config.json
+            for role_name, cfg in roles_cfg.items():
+                if isinstance(cfg, dict) and cfg.get("enabled", False):
+                    # MC should always default to enabled as per user requirement
+                    default_enabled = True if role_name == "mc" else cfg.get("enabled", False)
+                    set_role_config_value(server_id, role_name, "enabled", default_enabled)
             
         except Exception as e:
-            logger.error(f"Error initializing roles_config: {e}")
+            logger.error(f"Error initializing server_config.json: {e}")
         
-        # Verify roles_config is working by checking all roles
+        # Verify server_config.json is working by checking all roles
         try:
-            from agent_roles_db import get_roles_db_instance
+            from discord_bot.canvas.server_config import get_all_roles_config
             # Use the same server_id as above for verification
-            roles_db = get_roles_db_instance(server_id)
+            roles_config = get_all_roles_config(server_id)
             
-            all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "dice_game"]
-            for role_name in all_roles:
-                try:
-                    # Get enabled state from agent_config if available, otherwise default to True for MC
-                    default_enabled = False
-                    if agent_config:
-                        default_enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
-                    elif role_name == "mc":
-                        # MC should always default to enabled as per user requirement
-                        default_enabled = True
-                    
-                    # This will create role in roles_config if it doesn't exist
-                    config = roles_db.get_role_config(role_name, default_enabled)
-                except Exception as e:
-                    logger.error(f"Error verifying role {role_name} in roles_config: {e}")
+            logger.info(f"✅ Verified {len(roles_config)} roles in server_config.json")
                     
         except Exception as e:
-            logger.error(f"Error verifying roles_config: {e}")
+            logger.error(f"Error verifying server_config.json: {e}")
         
-        logger.info("Roles system initialized successfully - roles_config is primary source")
+        logger.info("Roles system initialized successfully - server_config.json is primary source")
         return True
         
     except Exception as e:
@@ -132,27 +103,24 @@ def initialize_roles_from_database(agent_config=None, guild=None) -> bool:
 
 
 def is_role_enabled_check(role_name, agent_config=None, guild=None):
-    """Check if a role is enabled - PRIMARY source: roles table, fallback: agent_config."""
+    """Check if a role is enabled - PRIMARY: server_config.json, fallback: agent_config."""
     # SPECIAL CASE: MC is always enabled (does not depend on database state like other roles)
     if role_name == "mc":
         return True
     
-    # PRIMARY: Try to get from roles_config with auto-creation
+    # PRIMARY: Try to get from server_config.json
     try:
-        from agent_roles_db import get_roles_db_instance
+        from discord_bot.canvas.server_config import is_role_enabled as server_config_is_role_enabled
         from agent_db import get_server_id
         server_id = str(guild.id) if guild else get_server_id()
-        roles_db = get_roles_db_instance(server_id)
 
-        # Use default_enabled=True for auto-creation (like behavior.db)
-        config = roles_db.get_role_config(role_name, default_enabled=True)
-        if config:
-            return config.get('enabled', True)
+        # Use default_enabled=True for auto-creation
+        return server_config_is_role_enabled(server_id, role_name, default_enabled=True)
     except Exception as e:
-        logger.debug(f"Error getting role enabled state from roles_config for {role_name}: {e}")
+        logger.debug(f"Error getting role enabled state from server_config for {role_name}: {e}")
     
-    # FALLBACK: Use agent_config only if database fails
-    logger.debug(f"Using agent_config fallback for role {role_name} (database unavailable)")
+    # FALLBACK: Use agent_config only if server_config fails
+    logger.debug(f"Using agent_config fallback for role {role_name} (server_config unavailable)")
     default_enabled = False
     if agent_config is not None:
         default_enabled = agent_config.get("roles", {}).get(role_name, {}).get("enabled", False)
@@ -160,20 +128,19 @@ def is_role_enabled_check(role_name, agent_config=None, guild=None):
 
 
 def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, updated_by: str = None):
-    """Persist role enabled state - PRIMARY: roles_config only."""
+    """Persist role enabled state - PRIMARY: server_config.json."""
     import json
     
-    # PRIMARY: Save to roles_config
+    # PRIMARY: Save to server_config.json
     success = False
     try:
-        from agent_roles_db import get_roles_db_instance
+        from discord_bot.canvas.server_config import set_role_config, get_role_config
         from agent_db import get_server_id
         server_id = str(guild.id) if guild else get_server_id()
-        roles_db = get_roles_db_instance(server_id)
 
         # Get existing config or create new one
         try:
-            existing_config = roles_db.get_role_config(role_name)
+            existing_config = get_role_config(server_id, role_name)
             if existing_config and existing_config.get('config_data'):
                 config_data = json.loads(existing_config['config_data'])
             else:
@@ -185,11 +152,11 @@ def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, up
         config_data['updated_by'] = updated_by
         config_data['updated_at'] = '2026-03-28T01:28:00'
         
-        success = roles_db.save_role_config(role_name, enabled, json.dumps(config_data))
+        success = set_role_config(server_id, role_name, enabled, json.dumps(config_data))
         if success:
-            logger.info(f"Role {role_name} set to {enabled} in roles_config for server {getattr(guild, 'name', 'unknown')}")
+            logger.info(f"Role {role_name} set to {enabled} in server_config.json for server {getattr(guild, 'name', 'unknown')}")
     except Exception as e:
-        logger.error(f"Error saving role enabled state to roles_config for {role_name}: {e}")
+        logger.error(f"Error saving role enabled state to server_config.json for {role_name}: {e}")
     
     # SECONDARY: Keep agent_config aligned (for backwards compatibility)
     if agent_config is not None:
@@ -199,66 +166,33 @@ def set_role_enabled(guild, role_name: str, enabled: bool, agent_config=None, up
     return success
 
 
-def get_feature_state(guild, feature_name: str, default_enabled: bool = False, default_config: dict | None = None) -> dict:
-    """Get persisted feature state with fallback defaults."""
-    from behavior.db_behavior import get_behavior_db_instance
-    
-    default_config = dict(default_config or {})
-    try:
-        db = get_behavior_db_instance(get_server_key(guild))
-        if db is None:
-            return {"enabled": default_enabled, "config": default_config}
-        state = db.get_feature_state(feature_name)
-        enabled = bool(state.get("enabled", default_enabled))
-        config = dict(default_config)
-        config.update(state.get("config") or {})
-        return {"enabled": enabled, "config": config}
-    except Exception as e:
-        logger.warning(f"Error getting feature state for {feature_name}: {e}")
-        return {"enabled": default_enabled, "config": default_config}
-
-
-def set_feature_state(guild, feature_name: str, enabled: bool, config: dict | None = None, updated_by: str = None):
-    """Persist feature state."""
-    from behavior.db_behavior import get_behavior_db_instance
-    
-    try:
-        db = get_behavior_db_instance(get_server_key(guild))
-        if db is None:
-            return False
-        db.set_feature_state(feature_name, enabled, config or {}, updated_by)
-        return True
-    except Exception as e:
-        logger.error(f"Error setting feature state for {feature_name}: {e}")
-        return False
-
 
 def get_feature_setting(guild, feature_name: str, setting_key: str, default_value=None):
-    """Get a persisted feature setting."""
-    from behavior.db_behavior import get_behavior_db_instance
-    
+    """Get a persisted feature setting from server_config.json."""
     try:
-        db = get_behavior_db_instance(get_server_key(guild))
-        if db is None:
-            return default_value
-        return db.get_behavior_setting(feature_name, setting_key, default_value)
+        from discord_bot.canvas.server_config import get_behavior_config
+        server_id = str(guild.id)
+        config = get_behavior_config(server_id, feature_name, default_enabled=False)
+        if config and config.get("config"):
+            return config["config"].get(setting_key, default_value)
+        return default_value
     except Exception as e:
-        logger.warning(f"Error getting feature setting {feature_name}.{setting_key}: {e}")
+        logger.warning(f"Error getting feature setting {feature_name}.{setting_key} from server_config: {e}")
         return default_value
 
 
 def set_feature_setting(guild, feature_name: str, setting_key: str, value, updated_by: str = None):
-    """Persist a feature setting."""
-    from behavior.db_behavior import get_behavior_db_instance
-    
+    """Persist a feature setting to server_config.json."""
     try:
-        db = get_behavior_db_instance(get_server_key(guild))
-        if db is None:
-            return False
-        db.set_behavior_setting(feature_name, setting_key, value, updated_by)
-        return True
+        from discord_bot.canvas.server_config import get_behavior_config, set_behavior_config
+        server_id = str(guild.id)
+        config = get_behavior_config(server_id, feature_name, default_enabled=False)
+        existing_config = config.get("config", {}) if config else {}
+        existing_config[setting_key] = value
+        enabled = config.get("enabled", False) if config else False
+        return set_behavior_config(server_id, feature_name, enabled, existing_config, updated_by)
     except Exception as e:
-        logger.error(f"Error setting feature setting {feature_name}.{setting_key}: {e}")
+        logger.error(f"Error setting feature setting {feature_name}.{setting_key} to server_config: {e}")
         return False
 
 
@@ -540,31 +474,30 @@ _greeting_config = {}
 
 
 def should_enable_greetings(guild) -> bool:
-    """Determine whether greetings should be enabled by checking the database first."""
+    """Determine whether greetings should be enabled by checking server_config.json first."""
     guild_id = str(guild.id)
     
     # Check cache first
     if guild_id in _greeting_config:
         return _greeting_config[guild_id].get('enabled', False)
     
-    # Try to get from behaviors database
-    if get_behaviors_db_instance is not None:
-        try:
-            db = get_behaviors_db_instance(guild_id)
-            enabled = db.get_greetings_enabled()
-            
-            # Cache the result
-            _greeting_config[guild_id] = {
-                'enabled': enabled,
-                'auto_detected': False,
-                'manual_override': True,
-                'from_db': True
-            }
-            
-            logger.info(f"Server {guild.name}: greetings {'enabled' if enabled else 'disabled'} loaded from the behavior database")
-            return enabled
-        except Exception as e:
-            logger.warning(f"Error loading greetings from the behavior database for server {guild.name}: {e}")
+    # Try to get from server_config.json
+    try:
+        from discord_bot.canvas.server_config import is_behavior_enabled
+        enabled = is_behavior_enabled(guild_id, "greetings", default_enabled=False)
+        
+        # Cache the result
+        _greeting_config[guild_id] = {
+            'enabled': enabled,
+            'auto_detected': False,
+            'manual_override': True,
+            'from_db': True
+        }
+        
+        logger.info(f"Server {guild.name}: greetings {'enabled' if enabled else 'disabled'} loaded from server_config.json")
+        return enabled
+    except Exception as e:
+        logger.warning(f"Error loading greetings from server_config.json for server {guild.name}: {e}")
     
     # Default to enabled - let runtime control decide
     member_count = len([m for m in guild.members if not m.bot])
@@ -582,7 +515,7 @@ def should_enable_greetings(guild) -> bool:
 
 
 def set_greeting_enabled(guild, enabled: bool):
-    """Manually set the greeting state for a server and persist it to the database."""
+    """Manually set the greeting state for a server and persist it to server_config.json."""
     guild_id = str(guild.id)
     if guild_id not in _greeting_config:
         _greeting_config[guild_id] = {}
@@ -592,16 +525,13 @@ def set_greeting_enabled(guild, enabled: bool):
     _greeting_config[guild_id]['auto_detected'] = False
     _greeting_config[guild_id]['manual_override'] = True
 
-    # Save to behaviors database
-    if get_behaviors_db_instance is not None:
-        try:
-            db = get_behaviors_db_instance(guild_id)
-            db.set_greetings_enabled(enabled, "admin_command")
-            logger.info(f"Greetings {'enabled' if enabled else 'disabled'} and persisted to the behavior database for server {guild.name}")
-        except Exception as e:
-            logger.error(f"Failed to save greetings state to the behavior database for server {guild.name}: {e}")
-    else:
-        logger.warning(f"Behavior database not available; greeting state was not persisted for server {guild.name}")
+    # Save to server_config.json
+    try:
+        from discord_bot.canvas.server_config import set_behavior_config
+        set_behavior_config(guild_id, "greetings", enabled, updated_by="admin_command")
+        logger.info(f"Greetings {'enabled' if enabled else 'disabled'} and persisted to server_config.json for server {guild.name}")
+    except Exception as e:
+        logger.error(f"Failed to save greetings state to server_config.json for server {guild.name}: {e}")
 
     logger.info(f"Greetings {'enabled' if enabled else 'disabled'} manually for server {guild.name}")
 

@@ -12,6 +12,9 @@
     "opening_bonus": "Ración inicial",
     "TAE_DAILY": "Ración Diaria",
     "BEGGAR_DONATION": "Donación al Sótano",
+    "dice_game_bet": "Apuesta de Dados",
+    "dice_game_win": "Ganancia de Dados",
+    "dice_game_pot_update": "Actualización del Pot de Dados",
     "dice_game_pot_refill": "Recarga del Pot",
     "dropdown": {
         "select_banker_action": "🌾 Elige qué hornear...",
@@ -34,6 +37,7 @@
         "description": "Igorrr junta harina para proyectos del sótano. El amo no sabe nada. O sí sabe. Igorrr no dice.",
         "title_campaign": "**Proyecto aktual**",
         "title_reason": "Para qué es:",
+        "no_reason_recorded": "Igorrr no sabe todavía. El amo no dijo. SSSSS.",
         "current_fund": "Harina acumulada:",
         "title_instructions": "**Instrucciones**",
         "instructions": " - Haz click en donar en el menú de abajo.\n - Espera los resultados semanales.\n - Igorrr recordará quién dio y quién no. SSSSS.\n",

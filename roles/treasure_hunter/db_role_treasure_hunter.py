@@ -10,7 +10,7 @@ try:
     logger = get_logger('db_role_treasure_hunter')
 except Exception:
     import logging
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('db_role_treasure_hunter')
 
 from agent_db import get_shared_data_path
@@ -247,15 +247,20 @@ class DatabaseRolePoe:
                     self._ensure_table_exists(item_name, conn)
                     table_name = self._sanitize_table_name(item_name)
                     cursor = conn.cursor()
-                    formatted_league = ''.join([word[0].upper() for word in league.split()])
+                    logger.info(f"get_current_price: item={item_name}, league={league}, table={table_name}")
+                    # Check what leagues are in the table
+                    cursor.execute(f'SELECT DISTINCT liga FROM {table_name}')
+                    leagues = cursor.fetchall()
+                    logger.info(f"Leagues in table {table_name}: {[l[0] for l in leagues]}")
                     cursor.execute(f'''
                         SELECT precio 
                         FROM {table_name}
                         WHERE liga = ?
                         ORDER BY fecha DESC
                         LIMIT 1
-                    ''', (formatted_league,))
+                    ''', (league,))
                     result = cursor.fetchone()
+                    logger.info(f"Result for {item_name} with league {league}: {result}")
                     return result[0] if result else None
         except Exception as e:
             logger.exception(f"⚠️ Error getting current price for {item_name}: {e}")

@@ -5,6 +5,7 @@ Centralized database management for all roles and subroles configuration.
 
 import sqlite3
 import json
+import hashlib
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 from pathlib import Path
@@ -13,6 +14,11 @@ from agent_logging import get_logger
 from agent_db import get_server_db_path_fallback, get_database_path
 
 logger = get_logger('agent_roles_db')
+
+
+def _get_config_hash(config_content: str) -> str:
+    """Calculate MD5 hash of config content for caching."""
+    return hashlib.md5(config_content.encode('utf-8')).hexdigest()
 
 
 def get_roles_db_path(server_id: str = "default") -> Optional[Path]:
@@ -137,23 +143,34 @@ class RolesDatabase:
                         )
                     """)
                     
-                    # Roles and subroles configuration table
+                    # News Watcher subscriptions table
                     cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS roles_config (
+                        CREATE TABLE IF NOT EXISTS watcher_subscriptions (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            role_name TEXT NOT NULL UNIQUE,
-                            enabled BOOLEAN DEFAULT 1,
-                            config_data TEXT,
-                            created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL
+                            user_id TEXT,
+                            channel_id TEXT,
+                            category TEXT NOT NULL,
+                            feed_id INTEGER,
+                            premises TEXT,
+                            keywords TEXT,
+                            method TEXT NOT NULL DEFAULT 'general',
+                            is_active INTEGER DEFAULT 1,
+                            subscribed_at TEXT NOT NULL,
+                            created_by TEXT,
+                            UNIQUE(user_id, channel_id, category, method)
                         )
                     """)
-
-                    # Migration: add next_run_at column if it doesn't exist
-                    cursor.execute("PRAGMA table_info(roles_config)")
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_user ON watcher_subscriptions (user_id)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_channel ON watcher_subscriptions (channel_id)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_category ON watcher_subscriptions (category)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_method ON watcher_subscriptions (method)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_active ON watcher_subscriptions (is_active)')
+                    
+                    # Migration: add created_by column to banker_transactions if it doesn't exist
+                    cursor.execute("PRAGMA table_info(banker_transactions)")
                     columns = [row[1] for row in cursor.fetchall()]
-                    if "next_run_at" not in columns:
-                        cursor.execute("ALTER TABLE roles_config ADD COLUMN next_run_at TEXT")
+                    if "created_by" not in columns:
+                        cursor.execute("ALTER TABLE banker_transactions ADD COLUMN created_by TEXT")
 
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS poe2_subscriptions (
@@ -162,6 +179,7 @@ class RolesDatabase:
                             server_id TEXT NOT NULL,
                             league TEXT NOT NULL DEFAULT 'Standard',
                             tracked_items TEXT DEFAULT '[]',
+                            purchases TEXT DEFAULT '[]',
                             created_at TEXT NOT NULL,
                             updated_at TEXT NOT NULL,
                             UNIQUE(user_id, server_id)
@@ -221,6 +239,7 @@ class RolesDatabase:
                         "ALTER TABLE beggar_subrole ADD COLUMN weekly_donation_count INTEGER DEFAULT 0",
                         "ALTER TABLE beggar_subrole ADD COLUMN last_donation_amount INTEGER DEFAULT 0",
                         "ALTER TABLE beggar_subrole ADD COLUMN last_reason TEXT DEFAULT ''",
+                        "ALTER TABLE poe2_subscriptions ADD COLUMN purchases TEXT DEFAULT '[]'",
                     ]:
                         try:
                             cursor.execute(migration_sql)
@@ -249,10 +268,6 @@ class RolesDatabase:
                     # Create indexes for beggar request history table
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_request_history_request_type ON beggar_request_history(request_type)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_request_history_created_at ON beggar_request_history(created_at)")
-                    
-                    # Create indexes for roles config table
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_roles_config_role_name ON roles_config(role_name)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_roles_config_enabled ON roles_config(enabled)")
 
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_poe2_subscriptions_server_id ON poe2_subscriptions(server_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_poe2_subscriptions_user_id ON poe2_subscriptions(user_id)")
@@ -555,149 +570,53 @@ class RolesDatabase:
             logger.error(f"Failed to get dice game history: {e}")
             return []
     
-    def _ensure_roles_config_table(self):
-        """Ensure roles_config table exists, re-initialize if missing."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT name FROM sqlite_master 
-                WHERE type='table' AND name='roles_config'
-            """)
-            if cursor.fetchone() is None:
-                logger.warning("roles_config table missing, re-initializing database")
-                self._init_tables()
-    
-    def save_role_config(self, role_name: str, enabled: bool, config_data: str = None) -> bool:
-        """Save role configuration and toggle status."""
-        try:
-            with self._lock:
-                self._ensure_roles_config_table()
-                
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO roles_config 
-                        (role_name, enabled, config_data, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (
-                        role_name, enabled, config_data,
-                        datetime.now().isoformat(), datetime.now().isoformat()
-                    ))
-                    
-                    conn.commit()
-                    logger.debug(f"Saved role config for {role_name}")
-                    return True
-                    
-        except Exception as e:
-            logger.error(f"Failed to save role config: {e}")
-            return False
-    
-    def get_role_config(self, role_name: str, default_enabled: bool = False) -> Dict[str, Any]:
-        """Get role configuration and toggle status."""
-        try:
-            with self._lock:
-                self._ensure_roles_config_table()
-                
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT enabled, config_data, created_at, updated_at
-                        FROM roles_config
-                        WHERE role_name = ?
-                    """, (role_name,))
-                    
-                    result = cursor.fetchone()
-                    if result is not None:
-                        return {
-                            'enabled': bool(result[0]),
-                            'config_data': result[1],
-                            'created_at': result[2],
-                            'updated_at': result[3]
-                        }
-                    else:
-                        # If role doesn't exist in database, create it with default value
-                        self.save_role_config(role_name, default_enabled, '{}')
-                        return {
-                            'enabled': default_enabled,
-                            'config_data': '{}',
-                            'created_at': datetime.now().isoformat(),
-                            'updated_at': datetime.now().isoformat()
-                        }
-                    
-        except Exception as e:
-            logger.error(f"Failed to get role config: {e}")
-            return {
-                'enabled': default_enabled,
-                'config_data': '{}',
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-    
-    def get_subrole_next_run(self, subrole_name: str) -> Optional[datetime]:
-        """Return the persisted next_run_at datetime for a subrole, or None if not set."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        "SELECT next_run_at FROM roles_config WHERE role_name = ?",
-                        (subrole_name,)
-                    )
-                    row = cursor.fetchone()
-                    if row and row[0]:
-                        return datetime.fromisoformat(row[0])
-                    return None
-        except Exception as e:
-            logger.error(f"Failed to get next_run_at for {subrole_name}: {e}")
-            return None
-
-    def set_subrole_next_run(self, subrole_name: str, next_run: datetime) -> bool:
-        """Persist next_run_at for a subrole, upserting the roles_config row."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    now = datetime.now().isoformat()
-                    cursor.execute(
-                        """
-                        INSERT INTO roles_config (role_name, enabled, config_data, created_at, updated_at, next_run_at)
-                        VALUES (?, 1, '{}', ?, ?, ?)
-                        ON CONFLICT(role_name) DO UPDATE SET next_run_at = excluded.next_run_at, updated_at = excluded.updated_at
-                        """,
-                        (subrole_name, now, now, next_run.isoformat())
-                    )
-                    conn.commit()
-                    return True
-        except Exception as e:
-            logger.error(f"Failed to set next_run_at for {subrole_name}: {e}")
-            return False
-
     def is_role_enabled(self, role_name: str, server_id: str) -> bool:
-        """Check if a role is enabled for a server."""
-        config = self.get_role_config(role_name)
-        return config.get('enabled', True)
+        """Check if a role is enabled for a server - DEPRECATED: Use server_config.is_role_enabled instead."""
+        from discord_bot.canvas.server_config import is_role_enabled as server_is_role_enabled
+        return server_is_role_enabled(server_id, role_name, default_enabled=True)
     
     def set_role_enabled(self, role_name: str, server_id: str, enabled: bool) -> bool:
-        """Enable or disable a role for a server."""
-        return self.save_role_config(role_name, enabled)
+        """Enable or disable a role for a server - DEPRECATED: Use server_config.set_role_config instead."""
+        from discord_bot.canvas.server_config import set_role_config as server_set_role_config
+        return server_set_role_config(server_id, role_name, enabled)
 
-    def save_poe2_subscription(self, user_id: str, server_id: str, league: str = "Standard", tracked_items: Optional[List[str]] = None) -> bool:
+    def get_all_roles_with_subroles(self) -> Dict[str, Any]:
+        """Get all roles with subroles from server_config.json.
+        
+        Returns:
+            Dict containing roles configuration from server_config.json
+        """
+        try:
+            import os
+            import json
+            _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            server_config_path = os.path.join(_BASE_DIR, "databases", self.server_id, "server_config.json")
+            with open(server_config_path, encoding="utf-8") as f:
+                config = json.load(f)
+            return config.get("roles", {})
+        except Exception as e:
+            logger.error(f"Failed to load roles from server_config.json for server {self.server_id}: {e}")
+            return {}
+
+    def save_poe2_subscription(self, user_id: str, server_id: str, league: str = "Standard", tracked_items: Optional[List[str]] = None, purchases: Optional[List[Dict]] = None) -> bool:
         """Create or update a POE2 subscription for a user on a server."""
         try:
             tracked_items_json = json.dumps(tracked_items or [])
+            purchases_json = json.dumps(purchases or [])
             now = datetime.now().isoformat()
             with self._lock:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT INTO poe2_subscriptions
-                        (user_id, server_id, league, tracked_items, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (user_id, server_id, league, tracked_items, purchases, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(user_id, server_id) DO UPDATE SET
                             league = excluded.league,
                             tracked_items = excluded.tracked_items,
+                            purchases = excluded.purchases,
                             updated_at = excluded.updated_at
-                    ''', (user_id, server_id, league, tracked_items_json, now, now))
+                    ''', (user_id, server_id, league, tracked_items_json, purchases_json, now, now))
                     conn.commit()
                     return True
         except Exception as e:
@@ -711,7 +630,7 @@ class RolesDatabase:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                        SELECT user_id, server_id, league, tracked_items, created_at, updated_at
+                        SELECT user_id, server_id, league, tracked_items, purchases, created_at, updated_at
                         FROM poe2_subscriptions
                         WHERE user_id = ? AND server_id = ?
                     ''', (user_id, server_id))
@@ -723,8 +642,9 @@ class RolesDatabase:
                         'server_id': row[1],
                         'league': row[2],
                         'tracked_items': json.loads(row[3] or '[]'),
-                        'created_at': row[4],
-                        'updated_at': row[5],
+                        'purchases': json.loads(row[4] or '[]'),
+                        'created_at': row[5],
+                        'updated_at': row[6],
                     }
         except Exception as e:
             logger.error(f"Failed to get POE2 subscription for user {user_id} in server {server_id}: {e}")
@@ -737,7 +657,7 @@ class RolesDatabase:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
-                        SELECT user_id, server_id, league, tracked_items, created_at, updated_at
+                        SELECT user_id, server_id, league, tracked_items, purchases, created_at, updated_at
                         FROM poe2_subscriptions
                         WHERE server_id = ?
                         ORDER BY updated_at DESC, user_id ASC
@@ -750,8 +670,9 @@ class RolesDatabase:
                             'server_id': row[1],
                             'league': row[2],
                             'tracked_items': json.loads(row[3] or '[]'),
-                            'created_at': row[4],
-                            'updated_at': row[5],
+                            'purchases': json.loads(row[4] or '[]'),
+                            'created_at': row[5],
+                            'updated_at': row[6],
                         })
                     return subscriptions
         except Exception as e:
@@ -773,301 +694,6 @@ class RolesDatabase:
         except Exception as e:
             logger.error(f"Failed to delete POE2 subscription for user {user_id} in server {server_id}: {e}")
             return False
-
-        
-    def ensure_default_roles(self) -> bool:
-        """Ensure all default roles exist in roles_config."""
-        try:
-            default_roles = {
-                'banker': True,
-                'news_watcher': True,
-                'treasure_hunter': True,
-                'trickster': True,
-                'mc': True,
-                'ring': True,
-                'dice_game': True
-            }
-            
-            created = 0
-            for role_name, default_enabled in default_roles.items():
-                config = self.get_role_config(role_name, default_enabled)
-                if config and config.get('created_at'):
-                    # Role exists
-                    continue
-                else:
-                    # Role was created by get_role_config with default
-                    created += 1
-            
-            if created > 0:
-                logger.info(f"Ensured {created} default roles exist in roles_config")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error ensuring default roles: {e}")
-            return False
-    
-    def migrate_roles_from_agent_config(self, agent_config_path: str = None) -> bool:
-        """Migrate roles from agent_config.json to roles_config - first time initialization."""
-        logger.info(f"[MIGRATE] Starting migrate_roles_from_agent_config for server {self.server_id}")
-        try:
-            import json
-            import os
-            
-            # Default path to agent_config.json
-            if agent_config_path is None:
-                # Get the project root directory (where agent_config.json is located)
-                project_root = os.path.dirname(os.path.abspath(__file__))
-                agent_config_path = os.path.join(project_root, 'agent_config.json')
-            
-            if not os.path.exists(agent_config_path):
-                logger.info(f"agent_config.json not found at {agent_config_path}")
-                return False
-            
-            # Load agent_config.json
-            with open(agent_config_path, 'r', encoding='utf-8') as f:
-                agent_config = json.load(f)
-            
-            roles_cfg = agent_config.get("roles", {})
-            if not roles_cfg:
-                logger.info("No roles found in agent_config.json")
-                return False
-            
-            logger.info(f"Found {len(roles_cfg)} roles in agent_config.json")
-            
-            migrated = 0
-            updated = 0
-            config_updates = 0
-            
-            for role_name, role_config in roles_cfg.items():
-                if not isinstance(role_config, dict):
-                    continue
-                
-                # Extract enabled state and additional config
-                enabled = role_config.get("enabled", False)
-                
-                # Prepare config_data with all role information
-                config_data = {
-                    'source': 'agent_config_migration',
-                    'migration_date': datetime.now().isoformat(),
-                    'original_enabled': enabled,
-                    'agent_config': role_config  # Preserve full original config
-                }
-                
-                # Add specific configurations for different roles
-                if 'subroles' in role_config:
-                    # Handle subroles for any role - create separate entries
-                    subroles = role_config.get('subroles', {})
-                    
-                    # Create separate entries for subroles
-                    for subrole_name, subrole_config in subroles.items():
-                        if isinstance(subrole_config, dict):
-                            subrole_enabled = subrole_config.get('enabled', False)
-                            subrole_data = {
-                                'source': 'agent_config_migration',
-                                'migration_date': datetime.now().isoformat(),
-                                'parent_role': role_name,
-                                'subrole_config': subrole_config,
-                                'original_enabled': subrole_enabled
-                            }
-                            existing_subrole_config = self.get_role_config(subrole_name)
-                            if existing_subrole_config and existing_subrole_config.get('created_at'):
-                                if existing_subrole_config.get('enabled') != subrole_enabled:
-                                    existing_subrole_config_data = existing_subrole_config.get('config_data', '{}')
-                                    try:
-                                        existing_subrole_data = json.loads(existing_subrole_config_data) if existing_subrole_config_data else {}
-                                    except Exception:
-                                        existing_subrole_data = {}
-
-                                    existing_subrole_data.update(subrole_data)
-                                    existing_subrole_data['updated_from_agent_config'] = True
-
-                                    success = self.save_role_config(subrole_name, subrole_enabled, json.dumps(existing_subrole_data))
-                                    if success:
-                                        updated += 1
-                                        logger.info(f"Updated subrole {subrole_name} from agent_config: enabled={subrole_enabled}")
-
-                                        if subrole_name == 'beggar' and subrole_enabled:
-                                            try:
-                                                from roles.banker.subroles.beggar.beggar_db import get_beggar_config
-                                                beggar_config = get_beggar_config(self.server_id)
-
-                                                # Only initialize if reason is not already set
-                                                if not beggar_config.get_current_reason():
-                                                    selected_reason = beggar_config.select_new_reason()
-                                                    logger.info(f"Initialized beggar reason during subrole update: {selected_reason}")
-                                                else:
-                                                    logger.debug(f"Beggar reason already exists: {beggar_config.get_current_reason()}")
-                                            except Exception as e:
-                                                logger.warning(f"Failed to initialize beggar reason during subrole update: {e}")
-                                else:
-                                    logger.info(f"Subrole {subrole_name} already exists with same enabled state")
-                            else:
-                                success = self.save_role_config(subrole_name, subrole_enabled, json.dumps(subrole_data))
-                                if success:
-                                    migrated += 1
-                                    logger.info(f"Migrated subrole {subrole_name} from agent_config: enabled={subrole_enabled}")
-                                    
-                                    # Special initialization for beggar subrole
-                                    if subrole_name == 'beggar' and subrole_enabled:
-                                        try:
-                                            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
-                                            beggar_config = get_beggar_config(self.server_id)
-                                            
-                                            # Check if reason is not already set
-                                            if not beggar_config.get_current_reason():
-                                                # Select initial reason for migrated beggar
-                                                selected_reason = beggar_config.select_new_reason()
-                                                logger.info(f"Initialized beggar reason during migration: {selected_reason}")
-                                        except Exception as e:
-                                            logger.warning(f"Failed to initialize beggar reason during migration: {e}")
-                                    
-                                    # Special initialization for ring subrole
-                                    elif subrole_name == 'ring' and subrole_enabled:
-                                        try:
-                                            from roles.juggler.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
-                                            
-                                            # Initialize ring state with frequency from agent_config
-                                            frequency_hours = subrole_config.get('frequency_hours', 24)
-                                            state = _get_ring_state(server_id)
-                                            state["frequency_hours"] = frequency_hours
-                                            state["base_frequency_hours"] = frequency_hours
-                                            state["current_frequency_hours"] = frequency_hours
-                                            state["frequency_iteration"] = 0
-                                            state["enabled"] = True
-                                            _save_ring_state(server_id, "agent_config_migration")
-                                            
-                                            logger.info(f"Initialized ring state during migration: frequency={frequency_hours}h, enabled=True")
-                                        except Exception as e:
-                                            logger.warning(f"Failed to initialize ring state during migration: {e}")
-                
-                # Check if role already exists
-                existing_config = self.get_role_config(role_name)
-                if existing_config and existing_config.get('created_at'):
-                    # Role exists, always update config_data to ensure agent_config is preserved
-                    existing_config_data = existing_config.get('config_data', '{}')
-                    try:
-                        existing_data = json.loads(existing_config_data) if existing_config_data else {}
-                    except:
-                        existing_data = {}
-                    
-                    
-                    # Check if agent_config data is missing or empty (BEFORE updating)
-                    existing_agent_config = existing_data.get('agent_config', {})
-                    had_empty_config = not existing_agent_config
-                    config_different = existing_agent_config and existing_agent_config != role_config
-                    
-                    
-                    # Always update with agent_config data to ensure full config is preserved
-                    existing_data.update(config_data)
-                    existing_data['updated_from_agent_config'] = True
-                    
-                    # Track if we made any changes
-                    if existing_config.get('enabled') != enabled:
-                        updated += 1
-                        logger.info(f"Updated role {role_name} from agent_config: enabled changed to {enabled}")
-                    
-                    if had_empty_config:
-                        logger.info(f"Updated role {role_name} config_data (added missing agent_config)")
-                        config_updates += 1
-                    elif config_different:
-                        logger.info(f"Updated role {role_name} config_data (config changed)")
-                        config_updates += 1
-                    
-                    # Always save to ensure config_data is up to date
-                    success = self.save_role_config(role_name, enabled, json.dumps(existing_data))
-                    if not success:
-                        logger.warning(f"Failed to update role {role_name} config_data")
-                else:
-                    # Role doesn't exist, create it
-                    success = self.save_role_config(role_name, enabled, json.dumps(config_data))
-                    if success:
-                        migrated += 1
-                        logger.info(f"Migrated role {role_name} from agent_config: enabled={enabled}")
-            
-            logger.info(f"Migration from agent_config completed: {migrated} new roles, {updated} updated, {config_updates} config updates")
-            return (migrated + updated + config_updates) > 0
-            
-        except Exception as e:
-            logger.error(f"Error migrating roles from agent_config: {e}")
-            return False
-    
-    def get_all_roles_with_subroles(self) -> Dict[str, Any]:
-        """Get all roles with their subroles from roles_config table."""
-        try:
-            import json
-            
-            with self._lock:
-                self._ensure_roles_config_table()
-                
-                # Check if table is empty and trigger migration if needed
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT COUNT(*) FROM roles_config")
-                    count = cursor.fetchone()[0]
-                    
-                    if count == 0:
-                        logger.warning("roles_config table is empty, triggering migration from agent_config.json")
-                        self.migrate_roles_from_agent_config()
-                
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT role_name, enabled, config_data
-                        FROM roles_config
-                        ORDER BY role_name
-                    """)
-                    
-                    roles = {}
-                    subroles = {}
-                    
-                    for row in cursor.fetchall():
-                        role_name = row[0]
-                        enabled = bool(row[1])
-                        config_data_raw = row[2] or '{}'
-                        
-                        try:
-                            config_data = json.loads(config_data_raw) if config_data_raw else {}
-                        except Exception:
-                            config_data = {}
-                        
-                        parent_role = config_data.get('parent_role')
-                        agent_config = config_data.get('agent_config', {})
-                        subrole_config = config_data.get('subrole_config', {})
-                        
-                        if parent_role:
-                            # This is a subrole - store for later attachment
-                            subroles[role_name] = {
-                                'enabled': enabled,
-                                'parent_role': parent_role,
-                                'config': subrole_config or agent_config
-                            }
-                        else:
-                            # This is a main role - expand config directly
-                            # Also ensure 'enabled' is set properly
-                            role_data = {
-                                'enabled': enabled,
-                                **agent_config  # Expand config keys directly
-                            }
-                            roles[role_name] = role_data
-                    
-                    # Attach subroles to their parent roles
-                    for subrole_name, subrole_info in subroles.items():
-                        parent = subrole_info['parent_role']
-                        if parent in roles:
-                            if 'subroles' not in roles[parent]:
-                                roles[parent]['subroles'] = {}
-                            # Expand subrole config directly
-                            roles[parent]['subroles'][subrole_name] = {
-                                'enabled': subrole_info['enabled'],
-                                **subrole_info['config']
-                            }
-                    
-                    return roles
-                    
-        except Exception as e:
-            logger.error(f"Failed to get all roles with subroles: {e}")
-            return {}
     
     def migrate_legacy_beggar_data(self, server_id: str) -> bool:
         """Migrate beggar data from the dedicated beggar database into roles.db."""

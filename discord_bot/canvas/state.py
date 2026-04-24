@@ -65,19 +65,23 @@ def _get_canvas_dice_state(guild) -> dict:
         "announcements_active": True,
         "title": _personality_answers.get("dice_game_balance_messages", {}).get("title", "💰 **THE POT - {servidor}** 💰\n"),
     }
-    if guild is None or get_roles_db_instance is None:
+    if guild is None:
         return state
     try:
         server_key = get_server_key(guild)
-        roles_db = get_roles_db_instance(server_key)
         from roles.banker.banker_db import get_banker_roles_db_instance
         db_banker = get_banker_roles_db_instance(server_key)
         server_id = str(guild.id)
-        config = roles_db.get_role_config('dice_game', server_id)
+        
+        # Use server_config instead of roles_db
+        from .server_config import get_role_config_value
+        fixed_bet = get_role_config_value(server_id, "dice_game", "config.fixed_bet", default=1)
+        announcements_active = get_role_config_value(server_id, "dice_game", "config.announcements_active", default=True)
+        
         db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
         state["pot_balance"] = db_banker.get_balance("dice_game_pot")
-        state["bet"] = config.get("fixed_bet", 1)
-        state["announcements_active"] = config.get("announcements_active", True)
+        state["bet"] = fixed_bet
+        state["announcements_active"] = announcements_active
     except Exception as e:
         logger.warning(f"Could not load dice state for Canvas: {e}")
     return state
@@ -172,10 +176,23 @@ def _get_canvas_dice_history(guild, limit: int = 5) -> list[dict]:
 
 
 def _get_canvas_beggar_state(guild) -> dict:
+    # Get default no_reason_recorded from personality descriptions
+    no_reason_default = "No reason recorded yet"
+    if guild:
+        try:
+            server_id = str(guild.id)
+            from discord_bot.db_init import get_server_personality_dir
+            server_db_path = get_server_personality_dir(server_id)
+            if server_db_path:
+                from roles.banker.subroles.beggar.beggar_messages import get_canvas_message
+                no_reason_default = get_canvas_message(server_db_path, "no_reason_recorded") or no_reason_default
+        except Exception:
+            pass
+
     state = {
         "enabled": False,
         "frequency_hours": 6,
-        "last_reason": "No reason recorded yet",
+        "last_reason": no_reason_default,
         "target_gold": 0,
         "fund_balance": 0,
         "title": "Beggar",
@@ -219,7 +236,7 @@ def _get_canvas_beggar_state(guild) -> dict:
 
 
 def _get_canvas_ring_state(guild) -> dict:
-    """Get ring state from roles_config database."""
+    """Get ring state from server_config.json."""
     state = {
         "enabled": False,
         "frequency_hours": 24,
@@ -234,26 +251,18 @@ def _get_canvas_ring_state(guild) -> dict:
     try:
         server_id = str(guild.id)
         
-        # PRIMARY: Check ring subrole directly in roles_config
+        # PRIMARY: Check ring subrole in server_config
         ring_enabled = False
         ring_config = {}
         
         try:
-            if get_roles_db_instance:
-                roles_db = get_roles_db_instance(server_id)
-                ring_config_data = roles_db.get_role_config('ring')
-                if ring_config_data:
-                    ring_enabled = ring_config_data.get('enabled', False)
-                    if ring_config_data.get('config_data'):
-                        import json
-                        try:
-                            ring_config = json.loads(ring_config_data['config_data'])
-                        except json.JSONDecodeError:
-                            ring_config = {}
+            from .server_config import is_role_enabled, get_role_config_value
+            ring_enabled = is_role_enabled(server_id, "ring", default_enabled=False)
+            ring_config = get_role_config_value(server_id, "ring", "config", default={})
         except Exception as e:
-            logger.warning(f"Error checking ring enabled in roles_config: {e}")
+            logger.warning(f"Error checking ring enabled in server_config: {e}")
         
-        # SECONDARY: Use ring_discord state as fallback
+        # SECONDARY: Use ring_discord state as fallback for additional fields
         if not ring_config:
             from roles.juggler.subroles.ring.ring_discord import _get_ring_state
             if _get_ring_state is not None:
@@ -305,6 +314,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
         "activated": False,
         "league": "Standard",
         "objectives": [],
+        "purchases": [],
     }
     if get_poe2_manager is None:
         return state
@@ -322,63 +332,105 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
             state["activated"] = manager.is_activated(server_id)
         
         user_id = str(author_id) if author_id else ""
-        state["league"] = manager.get_user_league(user_id, server_id) if user_id else "Standard"
-        ok, raw = manager.list_objectives(server_id, user_id) if user_id else (True, "")
-        if ok and raw:
-            items = []
-            for line in raw.splitlines():
-                stripped = line.strip()
-                if ". " in stripped and ("**" in stripped or "*No data*" in stripped):
-                    items.append(stripped)
-            state["objectives"] = items
+        league = manager.get_user_league(user_id, server_id) if user_id else "Standard"
+        state["league"] = league
+        
+        # Load tracked_items from subscription with item_id and add latest prices
+        if user_id and get_roles_db_instance is not None:
+            try:
+                roles_db = get_roles_db_instance(server_id)
+                subscription = roles_db.get_poe2_subscription(user_id, server_id)
+                if subscription:
+                    tracked_items = subscription.get("tracked_items", [])
+                    # Enrich tracked_items with latest prices from global DB
+                    enriched_objectives = []
+                    for item in tracked_items:
+                        if isinstance(item, dict):
+                            item_name = item.get('item_name', '')
+                            item_id = item.get('item_id')
+                        else:
+                            item_name = item
+                            item_id = None
+                        
+                        # Get latest price from global price database
+                        latest_price = None
+                        if item_id:
+                            try:
+                                price_data = manager.get_latest_price_for_item(league, item_id)
+                                if price_data:
+                                    latest_price = price_data.get('price')
+                            except Exception:
+                                pass
+                        
+                        enriched_objectives.append({
+                            'item_name': item_name,
+                            'item_id': item_id,
+                            'current_price': latest_price
+                        })
+                    state["objectives"] = enriched_objectives
+            except Exception as e:
+                logger.warning(f"Could not load tracked_items for Canvas: {e}")
+        
+        # Load purchases from subscription with latest prices
+        if user_id and get_roles_db_instance is not None:
+            try:
+                roles_db = get_roles_db_instance(server_id)
+                subscription = roles_db.get_poe2_subscription(user_id, server_id)
+                if subscription:
+                    purchases = subscription.get("purchases", [])
+                    # Enrich purchases with latest prices from global DB
+                    enriched_purchases = []
+                    for purchase in purchases:
+                        item_id = purchase.get('item_id')
+                        item_name = purchase.get('item_name', '')
+                        
+                        # Get latest price from global price database
+                        latest_price = None
+                        if item_id:
+                            try:
+                                price_data = manager.get_latest_price_for_item(league, item_id)
+                                if price_data:
+                                    latest_price = price_data.get('price')
+                            except Exception:
+                                pass
+                        
+                        enriched_purchase = dict(purchase)
+                        enriched_purchase['current_price'] = latest_price
+                        enriched_purchases.append(enriched_purchase)
+                    state["purchases"] = enriched_purchases
+            except Exception as e:
+                logger.warning(f"Could not load purchases for Canvas: {e}")
     except Exception as e:
         logger.warning(f"Could not load POE2 state for Canvas: {e}")
     return state
 
 
 def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
-    """Get enabled roles - PRIMARY: roles table, FALLBACK: agent_config."""
+    """Get enabled roles from server_config.json.
+    
+    Migration to server_config.json is required - this function will fail if server_config.json is not available.
+    """
     enabled = []
     
-    # PRIMARY: Try to get from roles table
-    try:
-        # Get all roles from roles_config and check which are enabled
-        try:
-            from agent_roles_db import get_roles_db_instance
-            from discord_bot.discord_utils import get_server_key
-            from agent_db import get_server_id
+    # Get all roles from server_config.json
+    from .server_config import get_all_roles_config
+    from agent_db import get_server_id
 
-            # Use guild server_id if available, otherwise fallback to active server
-            if guild and hasattr(guild, 'id'):
-                server_id = str(guild.id)
-            else:
-                server_id = get_server_id()
-            roles_db = get_roles_db_instance(server_id)
-            all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
-            for role_name in all_roles:
-                try:
-                    config = roles_db.get_role_config(role_name, server_id)
-                    if config and config.get('enabled', False):
-                        enabled.append(role_name)
-                except Exception as e:
-                    logger.warning(f"Could not check {role_name} enabled status: {e}")
-        except Exception as e:
-            logger.warning(f"Could not access roles_config: {e}")
-            
-        logger.info(f"Loaded {len(enabled)} enabled roles from roles_config: {enabled}")
-        return enabled
-    except Exception as e:
-        logger.warning(f"Could not load roles from database: {e}")
+    # Use guild server_id if available, otherwise fallback to active server
+    if guild and hasattr(guild, 'id'):
+        server_id = str(guild.id)
+    else:
+        server_id = get_server_id()
     
-    # FALLBACK: Use agent_config if database fails (minimal compatibility)
-    logger.warning("Using agent_config fallback for enabled roles - this should not happen in normal operation")
-    roles_cfg = (agent_config or {}).get("roles", {})
-    for role_name, cfg in roles_cfg.items():
-        if not isinstance(cfg, dict):
-            continue
-        if cfg.get("enabled", False):
+    # Get all roles from server_config
+    roles_config = get_all_roles_config(server_id)
+    
+    # Filter enabled roles (exclude subroles like beggar which is under banker)
+    for role_name, role_config in roles_config.items():
+        if role_config.get("enabled", False) and role_name != "beggar":
             enabled.append(role_name)
     
+    logger.info(f"Loaded {len(enabled)} enabled roles from server_config: {enabled}")
     return enabled
 
 

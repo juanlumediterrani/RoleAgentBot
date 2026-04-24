@@ -20,14 +20,6 @@ except ImportError:
 DB_DIR = Path(__file__).parent / 'databases'
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
-_ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
-
-def get_active_server_id() -> str | None:
-    """DEPRECATED: This function is deprecated and will be removed.
-    Always pass server_id explicitly to avoid cross-server data contamination.
-    """
-    logger.warning("🚨 get_active_server_id() is deprecated. Pass server_id explicitly.")
-    return None
 
 def get_server_id() -> str | None:
     """Get the current server ID from databases directory.
@@ -131,14 +123,6 @@ def get_user_last_server_id(user_id: str) -> str | None:
     except Exception as e:
         logger.warning(f"Could not get user's last server: {e}")
         return None
-
-
-def persist_active_server_id(server_id: str) -> None:
-    """Persist the active server ID to file."""
-    try:
-        _ACTIVE_SERVER_FILE.write_text(server_id.strip(), encoding="utf-8")
-    except Exception:
-        pass
 
 
 _DM_SESSIONS_FILE = DB_DIR / "dm_sessions.json"
@@ -2152,7 +2136,6 @@ def set_current_server(server_id: str):
     global _current_server_id
     _current_server_id = server_id
     if server_id:
-        persist_active_server_id(server_id)
         # Reload personality to load server-specific copy if available
         try:
             from agent_engine import reload_personality

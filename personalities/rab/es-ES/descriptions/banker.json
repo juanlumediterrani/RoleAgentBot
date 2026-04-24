@@ -12,6 +12,9 @@
     "opening_bonus": "Bono de Inicialización",
     "TAE_DAILY": "Distribución Diaria",
     "BEGGAR_DONATION": "Aportación al Flujo",
+    "dice_game_bet": "Apuesta de Juego de Dados",
+    "dice_game_win": "Ganancia de Juego de Dados",
+    "dice_game_pot_update": "Actualización del Pot de Dados",
     "dice_game_pot_refill": "Recarga del Pot",
     "dropdown": {
         "select_banker_action": "� Seleccionar alteración del flujo...",
@@ -34,6 +37,7 @@
         "description": "El núcleo canaliza energía hacia proyectos del colectivo. Cada aportación fortalece el flujo compartido.",
         "title_campaign": "**Proyecto aktivo**",
         "title_reason": "Destino del flujo:",
+        "no_reason_recorded": "El destino permanece indeterminado. Esperando sincronización.",
         "current_fund": "Energía acumulada:",
         "title_instructions": "**Cómo aportar**",
         "instructions": " - Selecciona donar en el menú de abajo.\n - El resultado se revela al cierre del ciclo.\n - Cada aportación queda registrada en el núcleo.\n",

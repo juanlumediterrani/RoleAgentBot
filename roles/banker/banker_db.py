@@ -36,22 +36,21 @@ class BankerRolesDB:
             # Check if wallet already exists
             existing = self.roles_db.get_banker_wallet(wallet_id)
             if existing:
-                # If wallet exists but has 0 balance, apply opening bonus for user wallets and dice game pot
-                if (wallet_type == 'user' or wallet_id == "dice_game_pot") and existing.get('balance', 0) == 0:
+                # If wallet exists but has 0 balance, apply opening bonus only for dice game pot
+                if wallet_id == "dice_game_pot" and existing.get('balance', 0) == 0:
                     tae = self.get_tae(self.server_id)
                     initial_balance = tae * 10
                     if initial_balance > 0:
-                        bonus_type = "opening bonus" if wallet_type == 'user' else "pot initialization"
-                        logger.info(f"💰 Applying retroactive {bonus_type} of {initial_balance} coins (10x TAE={tae}) to existing wallet {wallet_id}")
+                        logger.info(f"🎲 Applying retroactive pot initialization of {initial_balance} coins (10x TAE={tae}) to existing dice_game_pot")
                         # Add the opening bonus
                         success = self.add_balance(wallet_id, initial_balance)
                         if success:
                             # Record bonus transaction
                             self.roles_db.save_banker_transaction(
                                 "system", wallet_id, initial_balance, "opening_bonus", 
-                                f"Retroactive {bonus_type} (10x TAE) for existing {wallet_type} wallet", "system"
+                                f"Retroactive pot initialization (10x TAE) for existing dice_game_pot", "system"
                             )
-                        return success
+                            return success
                 else:
                     logger.info(f"Wallet {wallet_id} already exists with balance {existing.get('balance', 0)}")
                     return True
@@ -162,13 +161,9 @@ class BankerRolesDB:
     def get_tae(self, server_id: str) -> int:
         """Get TAE (interest rate) from role config."""
         try:
-            config = self.roles_db.get_role_config("banker")
-            config_data = config.get('config_data', '{}')
-            if config_data:
-                import json
-                data = json.loads(config_data)
-                return data.get('tae', 1)  # Default 1
-            return 1
+            from discord_bot.canvas.server_config import get_role_config_value
+            tae = get_role_config_value(server_id, "banker", "config.tae", default=1)
+            return tae
         except Exception as e:
             logger.error(f"Failed to get TAE: {e}")
             return 1
@@ -176,18 +171,8 @@ class BankerRolesDB:
     def set_tae(self, server_id: str, tae: int) -> bool:
         """Set TAE (interest rate) in role config."""
         try:
-            import json
-            config = self.roles_db.get_role_config("banker")
-            config_data = config.get('config_data', '{}')
-            if config_data:
-                data = json.loads(config_data)
-            else:
-                data = {}
-            
-            data['tae'] = tae
-            return self.roles_db.save_role_config(
-                "banker", True, json.dumps(data)
-            )
+            from discord_bot.canvas.server_config import set_role_config_value
+            return set_role_config_value(server_id, "banker", "config.tae", tae)
         except Exception as e:
             logger.error(f"Failed to set TAE: {e}")
             return False

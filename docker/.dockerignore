@@ -37,9 +37,6 @@ agent_discord_old.py
 # Windsurf workflows
 .windsurf/
 
-# Active server file
-.active_server
-
 # Docker (no incluir en la imagen)
 Dockerfile*
 docker-compose*.yml

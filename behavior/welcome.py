@@ -47,6 +47,24 @@ async def handle_member_join(member, discord_cfg):
     await _wait_for_welcome_rate_limit()
     
     try:
+        server_id = str(member.guild.id)
+        server_name = get_server_key(member.guild)
+        
+        # Check if welcome is enabled from server_config.json
+        try:
+            from discord_bot.canvas.server_config import is_behavior_enabled
+            welcome_enabled = is_behavior_enabled(server_id, "welcome", default_enabled=False)
+            if not welcome_enabled:
+                logger.info(f"Welcome messages disabled for guild {member.guild.name} (from server_config.json)")
+                return
+        except Exception as e:
+            logger.warning(f"Error checking welcome enabled from server_config.json for guild {member.guild.name}: {e}")
+            # Fallback to config check
+            greeting_cfg = discord_cfg.get("member_greeting", {})
+            if not greeting_cfg.get("enabled", True):
+                logger.info(f"Welcome messages disabled for guild {member.guild.name} (from config)")
+                return
+        
         # Get welcome channel
         welcome_info = await get_welcome_channel_info(member.guild, discord_cfg)
         if not welcome_info:
@@ -54,13 +72,11 @@ async def handle_member_join(member, discord_cfg):
             return
         
         welcome_channel = welcome_info["channel"]
-        server_id = str(member.guild.id)
-        server_name = get_server_key(member.guild)
         
-        # Check if welcome is enabled
+        # Check if welcome is enabled from config (secondary check)
         greeting_cfg = discord_cfg.get("member_greeting", {})
         if not greeting_cfg.get("enabled", True):
-            logger.info(f"Welcome messages disabled for guild {member.guild.name}")
+            logger.info(f"Welcome messages disabled for guild {member.guild.name} (from config)")
             return
         
         # Build welcome prompt
@@ -192,10 +208,15 @@ async def get_welcome_channel_info(guild, discord_cfg):
         dict with channel info or None if not found
     """
     server_name = get_server_key(guild)
-    behavior_db = get_behavior_db_instance(server_name)
     
-    # First, check if we have a stored welcome channel in database
-    stored_channel_id = behavior_db.get_welcome_channel()
+    # First, check if we have a stored welcome channel in server_config.json
+    try:
+        from discord_bot.canvas.server_config import get_welcome_channel
+        stored_channel_id = get_welcome_channel(server_name)
+    except Exception as e:
+        logger.warning(f"Error getting welcome channel from server_config: {e}")
+        stored_channel_id = None
+    
     if stored_channel_id:
         # Verify the stored channel still exists
         stored_channel = guild.get_channel(int(stored_channel_id))
@@ -240,7 +261,11 @@ async def get_welcome_channel_info(guild, discord_cfg):
                     test_msg = await channel.send("🔍 Testing channel permissions...")
                     await test_msg.delete()
                     # Store this channel for future use
-                    behavior_db.set_welcome_channel(str(channel.id), updated_by='system')
+                    try:
+                        from discord_bot.canvas.server_config import set_welcome_channel
+                        set_welcome_channel(server_name, str(channel.id), updated_by='system')
+                    except Exception as e:
+                        logger.warning(f"Failed to save welcome channel to server_config: {e}")
                     return {
                         "channel": channel,
                         "name": channel.name,
@@ -263,7 +288,11 @@ async def get_welcome_channel_info(guild, discord_cfg):
             test_msg = await channel.send("🔍 Testing channel permissions...")
             await test_msg.delete()
             # Store this channel for future use
-            behavior_db.set_welcome_channel(str(channel.id), updated_by='system')
+            try:
+                from discord_bot.canvas.server_config import set_welcome_channel
+                set_welcome_channel(server_name, str(channel.id), updated_by='system')
+            except Exception as e:
+                logger.warning(f"Failed to save welcome channel to server_config: {e}")
             return {
                 "channel": channel,
                 "name": channel.name,

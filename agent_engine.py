@@ -723,10 +723,20 @@ def _get_active_roles_section(server_id: str = None) -> str:
     section_label = str(section_cfg.get("label") or "[ACTIVE ROLES IN THE SERVER]").strip()
     empty_message = str(section_cfg.get("empty") or "- No active role duties are configured right now.").strip()
     line_template = str(section_cfg.get("line_template") or "- {scope}: {duty}").strip()
+    subrole_template = "  - {scope}: {duty}"  # Indented template for subroles
 
     lines: list[str] = []
     logger.debug(f"[_get_active_roles_section] Processing {len(roles)} roles")
+    
+    # Define known subroles to exclude from main roles list
+    known_subroles = {"dice_game", "nordic_runes", "beggar", "ring"}
+    
     for role_name, role_cfg in roles.items():
+        # Skip known subroles - they should not appear as independent roles in the list
+        if role_name in known_subroles:
+            logger.debug(f"[_get_active_roles_section] Skipping subrole: {role_name}")
+            continue
+            
         logger.debug(f"[_get_active_roles_section] Checking role: {role_name}, enabled={role_cfg.get('enabled', False) if isinstance(role_cfg, dict) else 'N/A'}")
         if not isinstance(role_cfg, dict) or not role_cfg.get("enabled", False):
             continue
@@ -737,7 +747,7 @@ def _get_active_roles_section(server_id: str = None) -> str:
             role_display = _get_role_display_name(role_name, server_id)
             lines.append(line_template.format(scope=role_display, duty=role_duty))
 
-        subroles = role_cfg.get("subroles", {})
+        subroles = role_cfg.get("config", {}).get("subroles", {})
         role_subroles_cfg = role_prompt_cfg.get("subroles", {}) if isinstance(role_prompt_cfg, dict) else {}
         logger.debug(f"[_get_active_roles_section] Role {role_name} has {len(subroles)} subroles")
         if not isinstance(subroles, dict):
@@ -807,7 +817,7 @@ def _get_active_roles_section(server_id: str = None) -> str:
             
             if subrole_duty:
                 subrole_display = _get_role_display_name(subrole_name, server_id)
-                lines.append(line_template.format(scope=subrole_display, duty=subrole_duty))
+                lines.append(subrole_template.format(scope=subrole_display, duty=subrole_duty))
 
     if not lines:
         return f"{section_label}\n{empty_message}"
@@ -1075,14 +1085,17 @@ def get_active_subroles(server_id: str = None):
         return {}
 
 def should_execute_subrole_task(subrole_name: str, frequency_hours: int, server_id: str = None) -> bool:
-    """Check if subrole task should execute based on next_run_at persisted in roles_config."""
+    """Check if subrole task should execute based on next_run_at persisted in server_config.json."""
     try:
-        from agent_roles_db import RolesDatabase
+        from discord_bot.canvas.server_config import get_role_config_value
         if server_id is None:
             from agent_db import get_server_id
             server_id = get_server_id()
-        db = RolesDatabase(server_id)
-        next_run = db.get_subrole_next_run(subrole_name)
+        next_run_str = get_role_config_value(server_id, subrole_name, "config.next_run_at", default=None)
+        if next_run_str:
+            next_run = datetime.fromisoformat(next_run_str)
+        else:
+            next_run = None
         now = datetime.now()
         if next_run is None or now >= next_run:
             return True
@@ -1093,14 +1106,13 @@ def should_execute_subrole_task(subrole_name: str, frequency_hours: int, server_
 
 
 def mark_subrole_executed(subrole_name: str, next_run: datetime, server_id: str = None) -> None:
-    """Persist next_run_at for a subrole after execution."""
+    """Persist next_run_at for a subrole after execution in server_config.json."""
     try:
-        from agent_roles_db import RolesDatabase
+        from discord_bot.canvas.server_config import set_role_config_value
         if server_id is None:
             from agent_db import get_server_id
             server_id = get_server_id()
-        db = RolesDatabase(server_id)
-        db.set_subrole_next_run(subrole_name, next_run)
+        set_role_config_value(server_id, subrole_name, "config.next_run_at", next_run.isoformat())
         logger.debug(f"🎭 [SUBROLE] {subrole_name} next run scheduled for {next_run:%Y-%m-%d %H:%M:%S}")
     except Exception as e:
         logger.error(f"Failed to persist next_run_at for {subrole_name}: {e}")
@@ -1144,23 +1156,19 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             except Exception as e:
                 logger.error(f"🎭 [BEGGAR] Error in task execution: {e}")
 
-            # Frequency: roles_config DB first, fallback to agent_config.json
+            # Frequency: server_config.json first, fallback to agent_config.json
             frequency = None
             try:
-                from agent_roles_db import RolesDatabase
+                from discord_bot.canvas.server_config import get_role_config_value, set_role_config_value
                 _srv = server_id
-                _rdb = RolesDatabase(_srv)
-                _cfg = _rdb.get_role_config('beggar')
-                _cd = json.loads(_cfg.get('config_data') or '{}')
-                frequency = _cd.get('frequency_hours')
+                frequency = get_role_config_value(_srv, "banker", "config.beggar.frequency_hours", default=None)
                 if frequency is None:
                     # Seed from agent_config.json so it's available next time
                     frequency = _get_subrole_frequency_from_config('beggar')
-                    _cd['frequency_hours'] = frequency
-                    _rdb.save_role_config('beggar', _cfg.get('enabled', True), json.dumps(_cd))
-                    logger.debug(f"🎭 [BEGGAR] Seeded frequency_hours={frequency} into roles_config")
+                    set_role_config_value(_srv, "banker", "config.beggar.frequency_hours", frequency)
+                    logger.debug(f"🎭 [BEGGAR] Seeded frequency_hours={frequency} into banker.config.beggar")
             except Exception as e:
-                logger.warning(f"🎭 [BEGGAR] Could not read frequency from roles_config: {e}")
+                logger.warning(f"🎭 [BEGGAR] Could not read frequency from server_config.json: {e}")
                 frequency = _get_subrole_frequency_from_config('beggar')
             mark_subrole_executed(subrole_name, datetime.now() + timedelta(hours=frequency), server_id=_srv)
             return

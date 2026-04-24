@@ -139,3 +139,25 @@ class DiscordHTTP:
                     logger.warning(f"send_channel_message({channel_id}) error {r.status}: {await r.text()}")
                     return False
                 return True
+
+    def create_button(self, custom_id: str, label: str, style: int = 1, emoji: str = None) -> dict:
+        """Create a button component for Discord messages.
+        
+        Styles: 1=Primary (blue), 2=Secondary (gray), 3=Success (green), 4=Danger (red)
+        """
+        button = {
+            "type": 2,
+            "style": style,
+            "custom_id": custom_id,
+            "label": label
+        }
+        if emoji:
+            button["emoji"] = {"name": emoji}
+        return button
+
+    def create_action_row(self, components: list) -> dict:
+        """Create an action row to hold button components."""
+        return {
+            "type": 1,
+            "components": components
+        }

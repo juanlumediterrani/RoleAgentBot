@@ -20,7 +20,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
 
     button_greetings = behavior_messages.get("greetings", {}).get("button", "Greetings")
     button_welcome = behavior_messages.get("welcome", {}).get("button", "Welcome")
-    button_commentary = behavior_messages.get("comentary", {}).get("button", "Commentary")
+    button_memory = behavior_messages.get("memory", {}).get("button", "Memory")
     button_taboo = behavior_messages.get("taboo", {}).get("button", "Taboo")
     button_settings = behavior_messages.get("settings", {}).get("button", "Settings")
 
@@ -50,9 +50,6 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     )
 
     common_options = [
-        (f"{button_commentary}: {label_on}", "commentary_on", desc_boolean_toggle),
-        (f"{button_commentary}: {label_off}", "commentary_off", desc_boolean_toggle),
-        (f"{button_commentary}: {label_now}", "commentary_now", desc_action),
         (f"{button_taboo}: {label_add_keyword}", "taboo_add", desc_text_input),
         (f"{button_taboo}: {label_remove_keyword}", "taboo_del", desc_text_input),
         (label_forget_me, "forget_me", desc_forget_me),
@@ -63,6 +60,10 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     # Get settings language and role labels
     label_server_language = action_labels.get("server_language", "🌐 Server Language")
     label_role_management = action_labels.get("role_management", "🎛️ Role Management")
+    label_current = action_labels.get("current", "Current:")
+    label_enabled = action_labels.get("enabled", "Enabled")
+    label_disabled = action_labels.get("disabled", "Disabled")
+    label_always_enabled = action_labels.get("always_enabled", "Always enabled")
     settings_lang = behavior_messages.get("settings", {}).get("language_select", {}).get("description", "Change the bot's language for this server")
     settings_role = "Enable or disable bot roles"  # This could also be added to descriptions if needed
 
@@ -71,7 +72,6 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         (f"{button_greetings}: {label_off}", "greetings_off", desc_boolean_toggle),
         (f"{button_welcome}: {label_on}", "welcome_on", desc_boolean_toggle),
         (f"{button_welcome}: {label_off}", "welcome_off", desc_boolean_toggle),
-        (f"{button_commentary}: {label_frequency}", "commentary_frequency", desc_number_input),
         (f"{button_taboo}: {label_on}", "taboo_on", desc_boolean_toggle),
         (f"{button_taboo}: {label_off}", "taboo_off", desc_boolean_toggle),
         (f"{button_settings}", "settings_open", "Manage server settings, roles and language"),
@@ -82,7 +82,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         "conversation": common_options + (admin_options if admin_visible else []),
         "greetings": [(f"{button_greetings}: {label_on}", "greetings_on", desc_boolean_toggle), (f"{button_greetings}: {label_off}", "greetings_off", desc_boolean_toggle)] if admin_visible else [],
         "welcome": [(f"{button_welcome}: {label_on}", "welcome_on", desc_boolean_toggle), (f"{button_welcome}: {label_off}", "welcome_off", desc_boolean_toggle)] if admin_visible else [],
-        "commentary": common_options,
+        "memory": [],
         "taboo": [(f"{button_taboo}: {label_on}", "taboo_on", desc_boolean_toggle), (f"{button_taboo}: {label_off}", "taboo_off", desc_boolean_toggle), (f"{button_taboo}: {label_add_keyword}", "taboo_add", desc_text_input), (f"{button_taboo}: {label_remove_keyword}", "taboo_del", desc_text_input)] if admin_visible else [(f"{button_taboo}: {label_add_keyword}", "taboo_add", desc_text_input), (f"{button_taboo}: {label_remove_keyword}", "taboo_del", desc_text_input)],
         "settings": [
             (f"{label_server_language}", "language_settings", settings_lang),
@@ -100,7 +100,7 @@ def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = 
     conversation_button = behavior_descriptions.get("conversation", {}).get("button", "Conversation")
     greetings_button = behavior_descriptions.get("greetings", {}).get("button", "Greetings")
     welcome_button = behavior_descriptions.get("welcome", {}).get("button", "Welcome")
-    commentary_button = behavior_descriptions.get("comentary", {}).get("button", "Commentary")
+    memory_button = behavior_descriptions.get("memory", {}).get("button", "Memory")
     taboo_button = behavior_descriptions.get("taboo", {}).get("button", "Taboo")
     settings_button = behavior_descriptions.get("settings", {}).get("button", "Settings")
     personality_button = behavior_descriptions.get("personality", {}).get("button", "Personality")
@@ -113,7 +113,7 @@ def get_canvas_behavior_detail_items(admin_visible: bool, current_detail: str = 
         admin_items = [
             (greetings_button, "greetings"),
             (welcome_button, "welcome"),
-            (commentary_button, "commentary"),
+            (memory_button, "memory"),
             (taboo_button, "taboo"),
             (settings_button, "settings"),
             (personality_button, "personality"),
@@ -153,12 +153,18 @@ def build_canvas_behavior_detail(
     behavior_db_loader=None,
 ) -> tuple[str, str, str] | None:
     """Return (title, description, content) tuple for behavior details."""
-    from .content import _get_personality_descriptions
+    from .content import _get_personality_descriptions, _get_server_personality_name
+    from discord_bot.db_init import get_server_personality_dir
+    from pathlib import Path
     server_id = get_server_key(guild) if guild else None
     _desc = _get_personality_descriptions(server_id)
     behavior_descriptions = _desc.get("behavior_messages", {})
     general_descriptions = _desc.get("general", {})
     title_status = general_descriptions.get("status", "**Current status**")
+    
+    # Get personality directory name for prompts.json path
+    personality_dir = get_server_personality_dir(server_id)
+    personality_name = Path(personality_dir).name if personality_dir else _get_server_personality_name(server_id)
 
     if detail_name in {"conversation", "chat"}:
         conversations_messages = behavior_descriptions.get("conversation", {})
@@ -195,12 +201,17 @@ def build_canvas_behavior_detail(
         greetings_title = greetings_descriptions.get("title", "👋 Canvas - General Behavior Greetings")
         greetings_description = greetings_descriptions.get("description", "**Description**\n- Presence greetings are global server behavior\n- Uses behavior/greet.py module\n- Greets users when they come online (offline → online)\n- 5-minute cooldown between greetings per user")
 
+        # Get localized labels
+        action_labels = general_descriptions.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+
         # Reemplazar placeholders con el nombre del bot
         greetings_title = greetings_title
         greetings_description = greetings_description
         content = "\n".join([
             f"{title_status}",
-            f"- {'✅ Enabled' if greeting_enabled else '❌ Disabled'}",
+            f"- {'✅ ' + label_enabled if greeting_enabled else '❌ ' + label_disabled}",
             "",
             "─" * 45,
         ])
@@ -213,13 +224,13 @@ def build_canvas_behavior_detail(
             return "❌ This setup is only available to administrators."
 
         welcome_enabled = False
-        if guild and get_behavior_db_instance is not None:
+        if guild:
             try:
                 guild_id = str(guild.id) if hasattr(guild, "id") else str(guild)
-                db = get_behavior_db_instance(guild_id)
-                welcome_enabled = db.get_welcome_enabled()
+                from discord_bot.canvas.server_config import get_welcome_enabled
+                welcome_enabled = get_welcome_enabled(guild_id)
             except Exception as error:
-                logger.warning(f"Error loading welcome state from behaviors database: {error}")
+                logger.warning(f"Error loading welcome state from server_config: {error}")
                 greeting_cfg = _discord_cfg.get("member_greeting", {})
                 welcome_enabled = greeting_cfg.get("enabled", False)
         else:
@@ -230,70 +241,161 @@ def build_canvas_behavior_detail(
         welcome_title = welcome_messages.get("title", "👋 Canvas - General Behavior Welcome Messages")
         welcome_description = welcome_messages.get("description", "Configure the bot to give a good greeting when someone joins the server for the first time.")
 
+        # Get localized labels
+        action_labels = general_descriptions.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+
         # Reemplazar placeholders con el nombre del bot
         welcome_title = welcome_title
         welcome_description = welcome_description
         content = "\n".join([
             f"{title_status}",
-            f"- {'✅ Enabled' if welcome_enabled else '❌ Disabled'}",
+            f"- {'✅ ' + label_enabled if welcome_enabled else '❌ ' + label_disabled}",
             "",
             "─" * 45,
         ])
         return (welcome_title, welcome_description, content)
 
-    if detail_name in {"commentary", "talk"}:
+    if detail_name in {"memory"}:
         if not admin_visible:
             if callable(setup_not_available_builder):
                 return setup_not_available_builder()
             return "❌ This setup is only available to administrators."
 
-        if guild and hasattr(guild, "id"):
-            guild_id = int(guild.id)
-            guild_id_str = str(guild.id)
-        elif guild:
-            guild_id = int(guild)
-            guild_id_str = str(guild)
-        else:
-            guild_id = 0
-            guild_id_str = "0"
+        # Get selected memory type from agent_config (will be set by dropdown)
+        # Default to "long" if not set
+        selected_memory_type = (agent_config or {}).get("selected_memory_type", "long") if agent_config else "long"
 
-        enabled = False
-        interval_minutes = 180
-        channel_id = None
+        # Ensure personality_name is defined for prompts.json path
+        if 'personality_name' not in locals() or not personality_name:
+            personality_name = _get_server_personality_name(server_id)
 
-        if get_behavior_db_instance is not None:
-            try:
-                db = get_behavior_db_instance(guild_id_str)
-                db_state = db.get_commentary_state()
-                enabled = db_state["enabled"]
-                config = db_state.get("config", {})
-                interval_minutes = config.get("interval_minutes", 180)
-                channel_id = config.get("channel_id")
-            except Exception as error:
-                logger.warning(f"Error loading commentary from behaviors DB: {error}")
+        # Load personality memory content from agent database
+        memory_content = ""
+        try:
+            from agent_db import AgentDatabase
+            
+            db = AgentDatabase(server_id=server_id)
+            
+            # Map memory types to database methods
+            if selected_memory_type == "long":
+                record = db.get_daily_memory_record()
+                if record:
+                    memory_content = record.get("summary", "")
+                else:
+                    # Load fallback from prompts.json in databases directory
+                    try:
+                        import json
+                        import os
+                        prompts_path = f"databases/{server_id}/{personality_name}/prompts.json"
+                        if os.path.exists(prompts_path):
+                            with open(prompts_path, 'r', encoding='utf-8') as f:
+                                prompts_data = json.load(f)
+                                fallbacks = prompts_data.get("synthesis_paragraphs", {}).get("fallbacks", {})
+                                memory_content = fallbacks.get("daily_memory", "No daily memory available.")
+                    except Exception as e:
+                        logger.warning(f"Could not load daily memory fallback from prompts: {e}")
+                        memory_content = "No daily memory available."
+            elif selected_memory_type == "recent":
+                record = db.get_recent_memory_record()
+                if record:
+                    memory_content = record.get("summary", "")
+                else:
+                    # Load fallback from prompts.json in databases directory
+                    try:
+                        import json
+                        import os
+                        prompts_path = f"databases/{server_id}/{personality_name}/prompts.json"
+                        if os.path.exists(prompts_path):
+                            with open(prompts_path, 'r', encoding='utf-8') as f:
+                                prompts_data = json.load(f)
+                                fallbacks = prompts_data.get("synthesis_paragraphs", {}).get("fallbacks", {})
+                                memory_content = fallbacks.get("recent_memory", "No recent memory available.")
+                    except Exception as e:
+                        logger.warning(f"Could not load recent memory fallback from prompts: {e}")
+                        memory_content = "No recent memory available."
+            elif selected_memory_type == "relationship":
+                # Load fallback from prompts.json in databases directory
+                try:
+                    import json
+                    import os
+                    prompts_path = f"databases/{server_id}/{personality_name}/prompts.json"
+                    if os.path.exists(prompts_path):
+                        with open(prompts_path, 'r', encoding='utf-8') as f:
+                            prompts_data = json.load(f)
+                            fallbacks = prompts_data.get("synthesis_paragraphs", {}).get("fallbacks", {})
+                            relationship_fallback = fallbacks.get("relationship_memory", "No relationship memory available.")
+                            # Format with user_name if needed
+                            memory_content = relationship_fallback.format(user_name="{usuario}")
+                    else:
+                        memory_content = "No relationship memory available."
+                except Exception as e:
+                    logger.warning(f"Could not load relationship fallback from prompts: {e}")
+                    memory_content = "No relationship memory available."
+            else:
+                # Unknown memory type - use English hardcoded fallback
+                memory_content = "Unrecognized memory type."
+                
+        except Exception as e:
+            logger.warning(f"Could not load memory content from database: {e}")
+            memory_content = "Error loading memory content."
 
-        if not enabled and not channel_id:
-            state = _talk_state_by_guild_id.get(guild_id) or {}
-            enabled = state.get("enabled", False)
-            interval_minutes = state.get("interval_minutes", 180)
-            channel_id = state.get("channel_id")
+        memory_messages = behavior_descriptions.get("memory", {})
+        memory_title = memory_messages.get("title", "🧠 Canvas - General Behavior Memory")
+        memory_description = memory_messages.get("description", "View the personality's memory in different formats")
 
-        commentary_messages = behavior_descriptions.get("comentary", {})
-        commentary_title = commentary_messages.get("title", "🗣️ Canvas - General Behavior Mission Commentary")
-        commentary_description = commentary_messages.get("description", "Commentary is global behavior driven by active roles")
+        # Get localized labels from memory dropdown configuration
+        memory_config = memory_messages.get("dropdown", {})
+        long_config = memory_config.get("long", {})
+        recent_config = memory_config.get("recent", {})
+        relationship_config = memory_config.get("relationship", {})
+        
+        label_long = long_config.get("label", "Long Memory")
+        label_recent = recent_config.get("label", "Recent Memory")
+        label_relationship = relationship_config.get("label", "Relationship Memory")
+
+        # Get memory titles from canvas_home_messages (at discord level, not inside general)
+        canvas_home = _desc.get("canvas_home_messages", {})
+        dailymemorytitle = canvas_home.get("dailymemorytitle", "🗿 **Memory**")
+        recentsynthesistitle = canvas_home.get("recentsynthesistitle", "🚩 **Recent Events**")
+        personalsynthesistitle = canvas_home.get("personalsynthesistitle", "🍻 **Relationship**")
+
+        # Map memory types to their canvas_home_messages titles
+        type_titles = {
+            "long": dailymemorytitle,
+            "recent": recentsynthesistitle,
+            "relationship": personalsynthesistitle
+        }
+        selected_title = type_titles.get(selected_memory_type, dailymemorytitle)
+
+
+        # Mark selected memory type
+        type_labels = {
+            "long": label_long,
+            "recent": label_recent,
+            "relationship": label_relationship
+        }
+        selected_label = type_labels.get(selected_memory_type, label_long)
 
         # Reemplazar placeholders con el nombre del bot
-        commentary_title = commentary_title
-        commentary_description = commentary_description
-        content = "\n".join([
-            f"{title_status}",
-            f"- {'✅ Enabled' if enabled else '❌ Disabled'}",
-            f"- Interval: {interval_minutes} minutes",
-            f"- Channel: {f'<#{channel_id}>' if channel_id else 'Not set'}" if enabled else "- Channel: N/A (disabled)",
+        memory_title = memory_title
+        memory_description = memory_description
+        
+        # Build content with memory content based on selected type
+        content_lines = [
+            f"{selected_title}",
+            "",
+            memory_content
+        ]
+        
+        content_lines.extend([
             "",
             "─" * 45,
         ])
-        return (commentary_title, commentary_description, content)
+        
+        content = "\n".join(content_lines)
+        return (memory_title, memory_description, content)
 
     if detail_name in {"taboo"}:
         if not admin_visible:
@@ -316,12 +418,17 @@ def build_canvas_behavior_detail(
         taboo_description = taboo_messages.get("description", "- Taboo watches normal server chat and can trigger an in-character reply")
         taboo_title_keywords = taboo_messages.get("title_keywords", "**Current keywords**")
 
+        # Get localized labels
+        action_labels = general_descriptions.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+
         # Reemplazar placeholders con el nombre del bot
         taboo_title = taboo_title
         taboo_description = taboo_description
         content = "\n".join([
             f"{title_status}",
-            f"- {'On' if state.get('enabled', False) else 'Off'}",
+            f"- {'✅ ' + label_enabled if state.get('enabled', False) else '❌ ' + label_disabled}",
             "",
             f"{taboo_title_keywords}",
             f"- {keywords}",
@@ -335,9 +442,8 @@ def build_canvas_behavior_detail(
                 return setup_not_available_builder()
             return "❌ This setup is only available to administrators."
 
-        from discord_bot.discord_utils import initialize_roles_from_database
+        # Note: Roles initialization happens once at server startup in init_roles_config.py
         from .server_config import get_server_language, get_available_languages
-        initialize_roles_from_database(agent_config, guild)
 
         db = behavior_db_loader(guild) if callable(behavior_db_loader) else None
         server_id = str(guild.id) if guild else "0"
@@ -347,41 +453,84 @@ def build_canvas_behavior_detail(
         available_langs = get_available_languages()
         language_display = available_langs.get(current_language, current_language)
 
-        all_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
-        role_labels = {
-            "news_watcher": "News Watcher",
-            "treasure_hunter": "Treasure Hunter",
-            "trickster": "Trickster",
-            "banker": "Banker",
-            "mc": "MC",
-        }
+        # Get labels for status display from action_labels
+        action_labels = general_descriptions.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+        label_always_enabled = action_labels.get("always_enabled", "Always enabled")
+        label_server_language = action_labels.get("server_language", "🌐 Server Language")
+        label_role_management = action_labels.get("role_management", "🎛️ Role Management")
+        label_current = action_labels.get("current", "Current:")
+
+        # Filter roles that are enabled in agent_config globally
+        # Roles disabled in agent_config should not appear at all (like they don't exist)
+        # Also filter out subroles (beggar is a subrole of banker)
+        roles_cfg = (agent_config or {}).get("roles", {})
+        all_roles = [
+            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman"]
+            if roles_cfg.get(role, {}).get("enabled", False)
+        ]
+
+        # Load role titles from individual role description files
+        role_labels_from_desc = {}
+        from .content import _get_server_personality_name
+        from pathlib import Path
+        import json
+
+        # Get personality name from server_config
+        try:
+            from pathlib import Path
+            server_config_path = Path(__file__).parent.parent.parent / "databases" / server_id / "server_config.json"
+            if server_config_path.exists():
+                import json
+                with open(server_config_path, 'r', encoding='utf-8') as f:
+                    server_config = json.load(f)
+                personality_name = server_config.get("active_personality", "bot")
+            else:
+                personality_name = "bot"
+        except Exception:
+            personality_name = "bot"
+
+        base_dir = Path(__file__).parent.parent.parent
+        descriptions_dir = base_dir / "databases" / server_id / personality_name / "descriptions"
+
+        for role_name in all_roles:
+            role_file = descriptions_dir / f"{role_name}.json"
+            try:
+                if role_file.exists():
+                    with open(role_file, 'r', encoding='utf-8') as f:
+                        role_data = json.load(f)
+                    # Use the title from the role description file, remove markdown bolding (**)
+                    title = role_data.get("title", role_name.replace("_", " ").title())
+                    role_labels_from_desc[role_name] = title.replace("**", "").strip()
+                else:
+                    role_labels_from_desc[role_name] = role_name.replace("_", " ").title()
+            except Exception as e:
+                logger.warning(f"Error loading role title for {role_name}: {e}")
+                role_labels_from_desc[role_name] = role_name.replace("_", " ").title()
 
         status_lines = []
         for role_name in all_roles:
-            label = role_labels.get(role_name, role_name.replace("_", " ").title())
+            label = role_labels_from_desc.get(role_name, role_name.replace("_", " ").title())
 
-            # For Canvas, always try to check roles_config regardless of db availability
+            # For Canvas, always try to check server_config regardless of db availability
             if role_name == "mc" and agent_config and agent_config.get("roles", {}).get("mc", {}).get("enabled", False):
-                status_lines.append(f"- {label}: ✅ Always enabled")
+                status_lines.append(f"- {label}: ✅ {label_always_enabled}")
                 continue
 
-            # PRIMARY: Check roles_config
+            # PRIMARY: Check server_config
             enabled = False
             try:
-                from agent_roles_db import get_roles_db_instance
+                from .server_config import is_role_enabled
                 from agent_db import get_server_id
 
-                # Use active server for Canvas (fallback to get_server_id if no guild context)
-                sid = str(guild.id) if guild else get_server_id()
-                roles_db = get_roles_db_instance(sid)
-                config = roles_db.get_role_config(role_name)
-                if config:
-                    enabled = config.get('enabled', False)
+                server_id = str(guild.id) if guild else get_server_id()
+                enabled = is_role_enabled(server_id, role_name, default_enabled=False)
             except Exception as e:
-                logger.warning(f"Error checking {role_name} in roles_config: {e}")
+                logger.warning(f"Error checking {role_name} in server_config: {e}")
                 enabled = False
 
-            status_lines.append(f"- {label}: {'✅ Enabled' if enabled else '❌ Disabled'}")
+            status_lines.append(f"- {label}: {'✅ ' + label_enabled if enabled else '❌ ' + label_disabled}")
 
         settings_messages = behavior_descriptions.get("settings", {})
         settings_title = settings_messages.get("title", "⚙️ Canvas - Server Settings")
@@ -390,18 +539,16 @@ def build_canvas_behavior_detail(
         # Build three sections
         # Section 1: Language (now second as requested)
         language_section = [
-            "🌐 **Server Language**",
-            f"- Current: {language_display} ({current_language})",
+            f"**{label_server_language}**",
+            f"- {label_current} {language_display} ({current_language})",
             "",
         ]
 
         # Section 2: Roles (now third)
         roles_section = [
-            "🎛️ **Role Management**",
+            f"**{label_role_management}**",
             *status_lines,
             "",
-            "💡 **Database is primary source** - Changes are persisted immediately",
-            "🔧 If you see 'System Error', the database is unavailable",
         ]
 
         content = "\n".join([
@@ -453,9 +600,7 @@ def build_canvas_behavior_detail(
 
         if identity_body_text:
             content_lines.append(identity_body_text)
-            content_lines.append("")
             content_lines.append("─" * 45)
-            content_lines.append("")
 
         content = "\n".join(content_lines)
         return (personality_title, personality_description, content)

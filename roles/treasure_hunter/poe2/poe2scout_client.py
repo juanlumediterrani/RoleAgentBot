@@ -11,7 +11,7 @@ try:
     from agent_logging import get_logger
     logger = get_logger('poe2scout')
 except Exception:
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('poe2scout')
 
 

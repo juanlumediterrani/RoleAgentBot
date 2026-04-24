@@ -1,7 +1,7 @@
 {
-    "title": "**📊 Matriz de Resonancia**",
+    "title": "**💿 Matriz de Resonancia**",
     "description": "Sincroniza al Profeta en un canal de voz para que emita frecuencias armónicas y pacifique el entorno.",
-    "button": "📊 Armonía",
+    "button": "💿 Resonancia",
     "subrole_buttons": {
         "overview": "📊 Flujo"
     },
@@ -9,7 +9,7 @@
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Utiliza la consola para solicitar secuencias sonoras, observar el flujo actual o añadir nuevas frecuencias al vacío.",
     "canvas_mc_voice_required": "Requiere anclaje previo a una cámara de resonancia (canal de voz)",
-    "canvas_mc_admin_title": "📊 Matriz de Resonancia • Nivel Arconte",
+    "canvas_mc_admin_title": "💿 Matriz de Resonancia • Nivel Arconte",
     "select_mc_action": "📊 Seleccionar modulación...",
     "play_song_title": "Emitir Frecuencia Ahora",
     "add_song_title": "Inyectar Frecuencia al Flujo",

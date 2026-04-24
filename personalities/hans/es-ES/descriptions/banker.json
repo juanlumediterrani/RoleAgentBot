@@ -12,6 +12,9 @@
     "opening_bonus": "Bono de Reclutamiento",
     "TAE_DAILY": "Asignación Diaria",
     "BEGGAR_DONATION": "Contribución al Fondo",
+    "dice_game_bet": "Apuesta de Dados",
+    "dice_game_win": "Ganancia de Dados",
+    "dice_game_pot_update": "Actualización del Pot de Dados",
     "dice_game_pot_refill": "Reabastecimiento del Pot",
     "dropdown": {
         "select_banker_action": "👤 Seleccionar acción administrativa...",
@@ -34,6 +37,7 @@
         "description": "Herr Hans recauda fondos para proyectos del cuartel con la misma disciplina con que dirige sus tropas. La contribución es un deber, no una opción.",
         "title_campaign": "**Campaña actual**",
         "title_reason": "Misión:",
+        "no_reason_recorded": "Keine Mission zugewiesen. Warten auf Befehle.",
         "current_fund": "Fondos acumulados:",
         "title_instructions": "**Instrucciones**",
         "instructions": " - Haz clic en donar en el menú desplegable de abajo.\n - Espera los resultados al cierre del ciclo.\n - Toda contribución queda registrada en el historial del cuartel.\n",

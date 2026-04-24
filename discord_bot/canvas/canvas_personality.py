@@ -166,11 +166,12 @@ def _rename_server_databases(server_id: str, old_personality: str, new_personali
             return True
         
         # ALL personality-specific database files to rename
-        # Note: taboo lives inside behavior_*.db, shared_poe2 is for cross-server market data
+        # Note: behavior.db is now shared across personalities (no longer per-personality)
+        # Note: shared_poe2 is for cross-server market data
         db_mappings = [
             (f"agent_{old_personality}.db", f"agent_{new_personality}.db"),
             (f"roles_{old_personality}.db", f"roles_{new_personality}.db"),
-            (f"behavior_{old_personality}.db", f"behavior_{new_personality}.db"),
+            # behavior.db is now shared - no longer renamed
             (f"watcher_{old_personality}.db", f"watcher_{new_personality}.db"),
             (f"fatigue_{old_personality}.db", f"fatigue_{new_personality}.db"),
         ]

@@ -1,0 +1,66 @@
+{
+  "active_personality": "putre",
+  "language": "es-ES",
+  "roles": {
+    "news_watcher": {
+      "enabled": true,
+      "config": {},
+      "updated_at": "2026-04-24T11:43:28.162047Z"
+    },
+    "treasure_hunter": {
+      "enabled": true,
+      "config": {},
+      "updated_at": "2026-04-24T11:43:28.162373Z"
+    },
+    "trickster": {
+      "enabled": true,
+      "config": {
+        "subroles": {
+          "dice_game": {
+            "enabled": true,
+            "fixed_bet": 10
+          }
+        }
+      },
+      "updated_at": "2026-04-24T11:43:28.163933Z"
+    },
+    "shaman": {
+      "enabled": true,
+      "updated_at": "2026-04-24T13:23:35.689573Z",
+      "config": {
+        "updated_by": "dextrure",
+        "updated_at": "2026-03-28T01:28:00"
+      }
+    },
+    "mc": {
+      "enabled": true,
+      "config": {},
+      "updated_at": "2026-04-24T11:43:28.164937Z"
+    },
+    "banker": {
+      "enabled": true,
+      "config": {
+        "subroles": {
+          "beggar": {
+            "enabled": true,
+            "frequency_hours": 12
+          }
+        }
+      },
+      "updated_at": "2026-04-24T11:43:28.166005Z"
+    },
+    "juggler": {
+      "enabled": true,
+      "config": {
+        "subroles": {
+          "ring": {
+            "enabled": true,
+            "frequency_hours": 24
+          }
+        }
+      },
+      "updated_at": "2026-04-24T11:43:28.167228Z"
+    }
+  },
+  "behaviors": {}
+}

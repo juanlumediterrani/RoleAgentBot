@@ -34,7 +34,6 @@ BASE_DIR   = Path(__file__).parent.resolve()
 CONFIG_FILE = BASE_DIR / "agent_config.json"
 PYTHON     = sys.executable   # same interpreter from active venv
 
-ACTIVE_SERVER_FILE = BASE_DIR / ".active_server"
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -68,15 +67,6 @@ async def launch_role(name: str, script_rel: str, persistent: bool = False):
     try:
         env = os.environ.copy()
         env["ROLE_AGENT_PROCESS"] = "1"
-
-        # Propagate active server to subprocess if it exists (for compatibility)
-        try:
-            if ACTIVE_SERVER_FILE.exists():
-                active_server = ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip()
-                if active_server:
-                    env["ACTIVE_SERVER_ID"] = active_server
-        except Exception:
-            pass
 
         proc = await asyncio.create_subprocess_exec(
             PYTHON, str(script),

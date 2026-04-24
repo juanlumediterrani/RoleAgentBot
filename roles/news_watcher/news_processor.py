@@ -318,17 +318,32 @@ class NewsProcessor:
             if feed.bozo:
                 logger.warning(f"Feed {feed_id} has parsing issues: {feed.bozo_exception}")
             
+            # Get feed title for comparison (to avoid using feed title as article title)
+            feed_title = feed.get('feed', {}).get('title', '') if hasattr(feed, 'feed') else ''
+            
             # Process latest 5 items
             news_items = []
             for entry in feed.entries[:5]:
                 try:
+                    title = entry.get('title', 'No title')
+                    
+                    # Skip entries without valid title
+                    if not title or title.strip() == '' or title == 'No title':
+                        logger.debug(f"[FEED SKIP] Skipping entry without valid title from feed {feed_id}")
+                        continue
+                    
+                    # Check if entry title is same as feed title (indicates malformed feed)
+                    if title == feed_title and title:
+                        logger.warning(f"[FEED WARNING] Entry title matches feed title for feed {feed_id}: '{title[:50]}...'. Skipping malformed entry.")
+                        continue
+                    
                     # Clean HTML content
                     content = self._clean_html(entry.get('description', ''))
                     if not content:
                         content = self._clean_html(entry.get('content', [{}])[0].get('value', ''))
                     
                     news_item = NewsItem(
-                        title=entry.get('title', 'No title'),
+                        title=title,
                         link=entry.get('link', ''),
                         description=content[:200],  # Truncate description
                         published=entry.get('published', ''),

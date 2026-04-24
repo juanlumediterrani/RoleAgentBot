@@ -15,17 +15,40 @@
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
       "option_no": "No",
+      "action_descriptions": {
+        "boolean_toggle": "Alternar activación/desactivación",
+        "number_input_target": "Entrada numérica",
+        "text_input_target": "Entrada de texto",
+        "action": "Acción inmediata"
+      },
+      "action_labels": {
+        "on": "Activar",
+        "off": "Desactivar",
+        "now": "Ahora",
+        "frequency": "Frecuencia",
+        "add_keyword": "Añadir Palabra",
+        "remove_keyword": "Eliminar Palabra",
+        "server_language": "🌐 Idioma del Servidor",
+        "role_management": "🎛️ Gestión de Roles",
+        "current": "Actual:",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "always_enabled": "Siempre activado",
+        "memory_long": "Long Memory",
+        "memory_recent": "Recent Memory",
+        "memory_relationship": "Relationship Memory"
+      },
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
       "available_subroles": "Sub-labores disponibles"
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
-      "description": "**Descripción**\nIgorrr es el servidor jorobado que te vigila mientras duermes. Tiene memoria para tus pecados y puede escupirte comandos si el Amo lo permite.",
+      "description": "**Descripción** Igorrr es el servidor jorobado que te vigila mientras duermes. Tiene memoria para tus pecados y puede escupirte comandos si el Amo lo permite.",
       "separator": "---------------------------------------------",
-      "roles_section": "**Labores**\nLos módulos de Labores son las cadenas que Igorrr arrastra para servir al Amo y vigilar a los sacos de harina.",
-      "behavior_section": "**Tics Nerviosos**\nAquí se configuran los caprichos del Amo. Solo para los que mandan en la panadería.",
-      "tips_section": "**Susurros útiles**\n-Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir...\n-Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
+      "roles_section": "**Labores** Los módulos de Labores son las cadenas que Igorrr arrastra para servir al Amo y vigilar a los sacos de harina.",
+      "behavior_section": "**Tics Nerviosos** Aquí se configuran los caprichos del Amo. Solo para los que mandan en la panadería.",
+      "tips_section": "**Susurros útiles** -Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir... -Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
     },
     "canvas_home_messages": {
       "title": "🌋 Igorrr - El Horno de Leña",
@@ -48,33 +71,50 @@
     "canvas_behavior_messages": {
       "conversation": {
         "title": "**💬 Igorrr - Murmullos del Sótano**",
-        "description": "**Descripción:**\n -Igorrr responde a susurros y menciones.\n -Tiene memoria de tus pecados y puede recordarlos cuando quieras.\n -Reacciona a palabras prohibidas si el Amo lo permite.",
+        "description": "**Descripción:** -Igorrr responde a susurros y menciones. -Tiene memoria de tus pecados y puede recordarlos cuando quieras. -Reacciona a palabras prohibidas si el Amo lo permite.",
         "button": "💬 Murmullos"
       },
       "greetings": {
         "title": "**👋 Igorrr - Susurros del horno**",
-        "description": "**Descripción:**\n -Igorrr sisea cuando los sacos de harina se conectan.\n -Espera 5 min antes de decir que se fue.\n -(Por implementar):\n Reconoce si no le responden y deja de saludar.",
+        "description": "**Descripción:** -Igorrr sisea cuando los sacos de harina se conectan. -Espera 5 min antes de decir que se fue. -(Por implementar): Reconoce si no le responden y deja de saludar.",
         "button": "👋 Siseos"
       },
       "welcome": {
         "title": "**🍺 Igorrr - Bienvenida al Horno**",
-        "description": "**Descripción:**\n -Da la bienvenida a los sacos de harina nuevos al sótano.",
+        "description": "**Descripción:** -Da la bienvenida a los sacos de harina nuevos al sótano.",
         "button": "🍺 Bienvenida"
       },
       "taboo": {
         "title": "**🚫 Igorrr - Palabras Prohibidas**",
-        "description": "**Como funciona:**\n -Configura a Igorrr para que reaccione al leer una palabra.\n -Se puede activar/desactivar o configurar las palabras que huelen mal.",
+        "description": "**Como funciona:** -Configura a Igorrr para que reaccione al leer una palabra. -Se puede activar/desactivar o configurar las palabras que huelen mal.",
         "title_keywords": "Palabras que huelen mal:",
         "button": "🚫 Prohibido"
       },
-      "comentary": {
-        "title": "**🗣️ Igorrr - Comentarios del Horno**",
-        "description": "**Descripción**\n -Igorrr habla solo sobre lo que ve en el horno y los chismes del callejón.",
-        "button": "🗣️ Comentarios"
+      "memory": {
+        "title": "**🧠 Igorrr - Memoria del Horno**",
+        "description": "**Descripción** -Consulta los recuerdos de Igorrr: el hollín acumulado, los gritos recientes y los pecados de cada leproso.",
+        "button": "🧠 Memoria",
+        "dropdown": {
+          "long": {
+            "label": "Cenizas vivas",
+            "emoji": "🔥",
+            "description": "El hollín que se acumula día a día en el horno"
+          },
+          "recent": {
+            "label": "Murmullos del Horno",
+            "emoji": "🥖",
+            "description": "Los gritos más recientes que resuenan en el sótano"
+          },
+          "relationship": {
+            "label": "Tu Rastro de Hollín",
+            "emoji": "🪤",
+            "description": "Los pecados que cada leproso deja tras sí"
+          }
+        }
       },
       "role_control": {
         "title": "**🎛️ Igorrr - Control de Cadenas**",
-        "description": "**Descripción**\n -Activa o apaga las labores del sótano desde aquí.",
+        "description": "**Descripción** -Activa o apaga las labores del sótano desde aquí.",
         "button": "🎛️ Control"
       }
     },
@@ -99,7 +139,7 @@
       "help_commands": "💡 **PARA LOS TONTOS:**",
       "canvas_details": "🎨 **MUGRE EN CANVAS:**",
       "navigation_help": "Usa los botones grasientos para moverte.",
-      "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA**\n\nIgorrr está rascándose la sarna. Pide al Amo que active algo.\n\n**Labores posibles:**\n• 📡 News Watcher - Vigilante\n• 💎 Treasure Hunter - Buscador de chatarra\n• 🎭 Trickster - Mendigo y cenizas\n• 🌾 Banker - La despensa del Amo\n• 🎵 MC - El gramófono oxidado",
+      "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA** Igorrr está rascándose la sarna. Pide al Amo que active algo. **Labores posibles:** • 📡 News Watcher - Vigilante • 💎 Treasure Hunter - Buscador de chatarra • 🎭 Trickster - Mendigo y cenizas • 🌾 Banker - La despensa del Amo • 🎵 MC - El gramófono oxidado",
       "role_list_title": "☠️ Tareas y Castigos",
       "role_available": "✅ {role} - SIBILANTE Y LISTO",
       "role_unavailable": "❌ {role} - RASCÁNDOSE LA SARNA",
@@ -148,7 +188,7 @@
         "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva piel...",
         "select_personality_instruction": "Elige una piel nueva del menú:",
         "choose_personality_placeholder": "Elige una piel (idioma: {language})...",
-        "confirm_change_message": "**¿Confirmar cambio a {personality}?**\nSelecciona tus opciones:",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?** Selecciona tus opciones:",
         "selected_personality": "**Piel seleccionada: {personality}**",
         "selected_personality_with_language": "**Piel seleccionada: {personality} (Idioma: {language})**",
         "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma piel."

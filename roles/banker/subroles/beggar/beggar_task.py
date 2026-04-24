@@ -58,7 +58,10 @@ class BeggarTask:
     async def execute_task(self) -> bool:
         """Execute the automated begging task."""
         try:
+            logger.info(f"Beggar task: Starting execution for server {self.server_id}")
+            
             if not self.should_execute():
+                logger.warning(f"Beggar task: should_execute returned False for server {self.server_id}")
                 return False
             
             # Get current reason
@@ -67,11 +70,15 @@ class BeggarTask:
                 logger.warning(f"No current reason set for beggar in server {self.server_id}")
                 return False
             
+            logger.info(f"Beggar task: Got current reason '{current_reason}' for server {self.server_id}")
+            
             # Get target channel
             target_channel = await self._get_target_channel()
             if not target_channel:
                 logger.warning(f"No target channel found for server {self.server_id}")
                 return False
+            
+            logger.info(f"Beggar task: Got target channel {target_channel.name} for server {self.server_id}")
             
             # Get recent messages from channel for context
             recent_messages = await self._get_recent_channel_messages(target_channel, limit=10)

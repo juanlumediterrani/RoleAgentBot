@@ -190,6 +190,11 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
         beggar_state = _get_canvas_beggar_state(guild)
         general = personality_descriptions.get("general", {})
         
+        # Get localized labels
+        action_labels = general.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+        
         # Get beggar messages from beggar_messages.py
         description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week. Maybe you won some gold."
         
@@ -198,7 +203,7 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
             "-" * 45,
             general.get("current_settings", "**Current Settings**"),
             "-" * 45,
-            f"{general.get('status_label', '**Status:**')} {general.get('active', '✅ Enabled') if beggar_state['enabled'] else general.get('inactive','❌ Disabled')}",
+            f"{general.get('status_label', '**Status:**')} {'✅ ' + label_enabled if beggar_state['enabled'] else '❌ ' + label_disabled}",
             f"{general.get('frequency_label', '**Frequency:**')} {general.get('every', 'every')} {beggar_state['frequency_hours']}h",
             f"{get_canvas_message(server_db_path, 'current_fund') if get_canvas_message else 'Current found:'} {beggar_state['fund_balance']:,} :coin:",
             f"{get_canvas_message(server_db_path, 'title_reason') if get_canvas_message else 'Reason:'} {beggar_state['last_reason'] or general.get('none','None')}",
@@ -345,20 +350,16 @@ class BeggarFrequencyModal(CanvasModal):
                 return
 
             from roles.banker.subroles.beggar.beggar_db import get_beggar_config
-            from agent_roles_db import get_roles_db_instance as get_roles_config_db
+            from .server_config import set_role_config_value
             from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
             from .ui import CanvasRoleDetailView
 
             server_key = get_server_key(interaction.guild)
             server_id = str(interaction.guild.id)
             beggar_config = get_beggar_config(server_id)
-            roles_config_db = get_roles_config_db(server_key)
 
-            # Update frequency in beggar config
+            # Update frequency in beggar config (saved under banker.config.beggar)
             if beggar_config.set_frequency(frequency_hours):
-                # Update roles_config database
-                if roles_config_db:
-                    roles_config_db.set_subrole_config("banker", "beggar", "frequency_hours", frequency_hours)
                 applied_text = f"Beggar frequency set to {frequency_hours} hours."
             else:
                 applied_text = "Failed to update beggar frequency."
@@ -412,18 +413,14 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
         # Handle beggar subrole actions
         if action_name in {"beggar_on", "beggar_off", "beggar_frequency", "beggar_force_minigame"}:
             from roles.banker.subroles.beggar.beggar_db import get_beggar_config
-            from agent_roles_db import get_roles_db_instance as get_roles_config_db
+            from .server_config import set_role_config_value
 
             beggar_config = get_beggar_config(server_id)
-            roles_config_db = get_roles_config_db(server_key)
 
             if action_name in {"beggar_on", "beggar_off"}:
                 enabled = action_name == "beggar_on"
                 if beggar_config.set_enabled(enabled):
-                    # Update roles_config database - beggar is stored as its own role entry
-                    if roles_config_db:
-                        server_id = str(interaction.guild.id) if interaction.guild else "0"
-                        roles_config_db.set_role_enabled("beggar", server_id, enabled)
+                    # Beggar config is saved under banker.config.beggar, not as independent role
                     # If enabling, execute task immediately and schedule next run
                     if enabled and execute_subrole_internal_task:
                         try:

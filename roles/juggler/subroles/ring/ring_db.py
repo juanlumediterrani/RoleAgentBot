@@ -25,32 +25,32 @@ class RingDB:
                      accused_user: str = None, config_data: str = None) -> bool:
         """Save ring configuration for a server."""
         try:
+            from discord_bot.canvas.server_config import get_role_config_value, set_role_config_value
+            
             # Get existing config
-            existing_config = self.roles_db.get_role_config('ring')
-            existing_data = existing_config.get('config_data', '{}')
-            if existing_data:
-                try:
-                    data = json.loads(existing_data)
-                except json.JSONDecodeError:
-                    data = {}
-            else:
-                data = {}
+            config = get_role_config_value(self.server_id, "ring", "config", default={})
+            if config is None:
+                config = {}
             
             # Update ring configuration
             if current_accusation is not None:
-                data['current_accusation'] = current_accusation
+                config['current_accusation'] = current_accusation
             if accused_user is not None:
                 # accused_user now contains user ID, not username
-                data['accused_user_id'] = accused_user
-                data['accused_at'] = datetime.now().isoformat()
+                config['accused_user_id'] = accused_user
+                config['accused_at'] = datetime.now().isoformat()
             if config_data is not None:
                 try:
                     extra_data = json.loads(config_data)
-                    data.update(extra_data)
+                    config.update(extra_data)
                 except json.JSONDecodeError:
-                    data['extra'] = config_data
+                    config['extra'] = config_data
             
-            return self.roles_db.save_role_config('ring', enabled, json.dumps(data))
+            # Save using server_config
+            set_role_config_value(self.server_id, "ring", "config", config)
+            set_role_config_value(self.server_id, "ring", "enabled", enabled)
+            
+            return True
             
         except Exception as e:
             logger.error(f"Failed to save ring config: {e}")
@@ -59,28 +59,12 @@ class RingDB:
     def get_config(self) -> Dict[str, Any]:
         """Get ring configuration for a server."""
         try:
-            config = self.roles_db.get_role_config('ring')
-            config_data = config.get('config_data', '{}')
-            if config_data:
-                try:
-                    data = json.loads(config_data)
-                except json.JSONDecodeError:
-                    data = {}
-            else:
-                data = {}
-            
-            return {
-                'enabled': config.get('enabled', True),
-                'current_accusation': data.get('current_accusation'),
-                'accused_user_id': data.get('accused_user_id'),  # Return user ID
-                'accused_user_name': data.get('accused_user_name'),  # Also return name
-                'accused_at': data.get('accused_at'),
-                'config_data': config_data
-            }
-            
+            from discord_bot.canvas.server_config import get_role_config_value
+            config = get_role_config_value(self.server_id, "ring", "config", default={})
+            return config
         except Exception as e:
             logger.error(f"Failed to get ring config: {e}")
-            return {'enabled': True, 'current_accusation': None, 'accused_user_id': None, 'accused_user_name': None, 'accused_at': None, 'config_data': '{}'}
+            return {}
     
     def save_accusation(self, accuser_id: str, accused_id: str, 
                        accusation: str, evidence: str = None) -> int:

@@ -45,7 +45,11 @@ def get_default_messages():
             "beggar_force_minigame": "Beggar: Force Minigame",
             "beggar_force_minigame_description": "Force minigame execution",
             "beggar_force_minigame_emoji": "🎲",
-        } 
+        },
+        "dice_game_bet": "Dice Game Bet",
+        "dice_game_win": "Dice Game Winnings",
+        "dice_game_pot_update": "Dice Game Pot Update",
+        "dice_game_pot_refill": "Dice Game Pot Refill"
     }
 
 def _lookup(raw: dict, key: str):

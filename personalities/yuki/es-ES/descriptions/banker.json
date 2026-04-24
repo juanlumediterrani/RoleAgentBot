@@ -12,6 +12,9 @@
     "opening_bonus": "Donación inicial",
     "TAE_DAILY": "Asignación Diaria",
     "BEGGAR_DONATION": "Kifu al Fondo",
+    "dice_game_bet": "Apuesta de Dados",
+    "dice_game_win": "Ganancia de Dados",
+    "dice_game_pot_update": "Actualización del Pot de Dados",
     "dice_game_pot_refill": "Recarga del Pot",
     "dropdown": {
         "select_banker_action": "🤝 Seleccionar acción...",
@@ -34,6 +37,7 @@
         "description": "El mecenazgo de la sala. Como Danna (patron), sostienes lo que merece ser sostenido. Cada aportación queda registrada en el prestigio de la casa.",
         "title_campaign": "🎯 **Propósito actual:**",
         "title_reason": "Inversión en:",
+        "no_reason_recorded": "Aún no se ha decidido el propósito. Esperando dirección.",
         "current_fund": "Fondo acumulado:",
         "title_instructions": "💝 **¿Cómo participar?**",
         "instructions": " - Usa el menú de abajo para realizar tu Kifu.\n - Al cierre del ciclo se revelará el resultado de la inversión.\n - Todo Kifu, grande o pequeño, queda registrado en el prestigio de la sala.\n",

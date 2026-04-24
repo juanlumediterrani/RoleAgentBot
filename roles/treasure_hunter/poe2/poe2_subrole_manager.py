@@ -17,7 +17,7 @@ try:
     logger = get_logger('poe2_subrole_manager')
 except Exception:
     import logging
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('poe2_subrole_manager')
 
 from .poe2scout_client import Poe2ScoutClient

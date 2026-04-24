@@ -14,9 +14,9 @@ logger = get_logger('global_feed_health')
 def get_global_feeds_db_path() -> Path:
     """Generate path for global feeds database (shared across all servers)."""
     base_dir = Path(__file__).parent.parent.parent
-    data_dir = base_dir / "data"
-    data_dir.mkdir(exist_ok=True)
-    return data_dir / "global_feeds.db"
+    news_watcher_db_dir = base_dir / "databases" / "news_watcher"
+    news_watcher_db_dir.mkdir(parents=True, exist_ok=True)
+    return news_watcher_db_dir / "global_feeds.db"
 
 def initialize_global_feeds_db():
     """Initialize the global feeds database with default feeds."""
@@ -32,6 +32,7 @@ def initialize_global_feeds_db():
                 name TEXT NOT NULL UNIQUE,
                 url TEXT NOT NULL UNIQUE,
                 category TEXT NOT NULL,
+                language TEXT DEFAULT 'en',
                 active BOOLEAN DEFAULT 1,
                 last_checked TEXT,
                 status TEXT DEFAULT 'unknown',
@@ -58,23 +59,74 @@ def initialize_global_feeds_db():
         if cursor.fetchone()[0] == 0:
             logger.info("📡 Initializing global feeds database with default feeds...")
             default_feeds = [
-                ("Cointelegraph", "https://cointelegraph.com/rss", "crypto"),
-                ("Decrypt", "https://decrypt.co/feed", "crypto"),
-                ("Bloomberg Markets", "https://feeds.bloomberg.com/markets/news.rss", "economy"),
-                ("Financial Times", "https://www.cnbc.com/id/100003114/device/rss/rss.html", "economy"),
-                ("Reuters Business", "https://feeds.feedburner.com/TechCrunch", "economy"),
-                ("Associated Press News", "https://www.wired.com/feed/rss", "general"),
-                ("Reuters Top News", "https://feeds.macrumors.com/public", "general"),
-                ("The Guardian World", "https://www.theguardian.com/world/rss", "general"),
-                ("Al Jazeera English", "https://www.aljazeera.com/xml/rss/all.xml", "international"),
-                ("BBC World News", "http://rss.cnn.com/rss/edition_world.rss", "international"),
-                ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "technology"),
-                ("BBC Technology", "https://www.zdnet.com/news/rss.xml", "technology"),
-                ("TechCrunch", "https://techcrunch.com/feed/", "technology"),
+                # Crypto - Español
+                ("Economía Digital", "https://www.economia3.com/feed/", "crypto", "es"),
+                ("Investing.com ES", "https://es.investing.com/rss/news.rss", "crypto", "es"),
+                ("BitcoinEspaña", "https://www.bitcoinespana.com/feed/", "crypto", "es"),
+                # Crypto - Inglés
+                ("Cointelegraph", "https://cointelegraph.com/rss", "crypto", "en"),
+                ("Decrypt", "https://decrypt.co/feed", "crypto", "en"),
+                ("The Block", "https://www.theblock.co/rss.xml", "crypto", "en"),
+                # Crypto - Chino
+                ("Odaily Starry", "https://www.odaily.news/rss", "crypto", "zh"),
+                ("The Block CN", "https://www.theblock.co/rss.xml?lang=zh", "crypto", "zh"),
+                ("Decrypt CN", "https://decrypt.co/feed?lang=zh", "crypto", "zh"),
+                
+                # Economy - Español
+                ("El País Economía", "https://elpais.com/rss/feed.html?section=economia", "economy", "es"),
+                ("Investing.com ES Economy", "https://es.investing.com/rss/news_301.rss", "economy", "es"),
+                ("El Mundo Economía", "https://elmundo.es/rss/economia.html", "economy", "es"),
+                # Economy - Inglés
+                ("Bloomberg Markets", "https://feeds.bloomberg.com/markets/news.rss", "economy", "en"),
+                ("CNBC Markets", "https://www.cnbc.com/id/100003114/device/rss/rss.html", "economy", "en"),
+                ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories/", "economy", "en"),
+                # Economy - Chino
+                ("36Kr Economy", "https://36kr.com/feed", "economy", "zh"),
+                ("Sina Finance", "https://finance.sina.com.cn/roll/index.d.html", "economy", "zh"),
+                ("Bloomberg China", "https://www.bloomberg.com/feed", "economy", "zh"),
+                
+                # General - Español
+                ("El País", "https://elpais.com/rss/feed.html", "general", "es"),
+                ("20minutos", "https://www.20minutos.es/rss/", "general", "es"),
+                ("El Mundo", "https://elmundo.es/rss/portada.xml", "general", "es"),
+                # General - Inglés
+                ("BBC News", "http://feeds.bbci.co.uk/news/rss.xml", "general", "en"),
+                ("The Guardian", "https://www.theguardian.com/world/rss", "general", "en"),
+                ("ABC News", "https://feeds.abcnews.com/abcnews/topstories", "general", "en"),
+                # General - Chino
+                ("China Daily", "http://www.chinadaily.com.cn/rss/china_rss.xml", "general", "zh"),
+                ("Sina News", "https://news.sina.com.cn/rss/roll/news.d.html", "general", "zh"),
+                ("Xinhua News", "http://www.xinhuanet.com/english/rss/newsrss.xml", "general", "zh"),
+                
+                # International - Español
+                ("El País Internacional", "https://elpais.com/rss/feed.html?section=internacional", "international", "es"),
+                ("ABC Internacional", "https://www.abc.es/rss/feeds/abc_internacional.xml", "international", "es"),
+                ("El Mundo Internacional", "https://elmundo.es/rss/internacional.html", "international", "es"),
+                # International - Inglés
+                ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml", "international", "en"),
+                ("Al Jazeera English", "https://www.aljazeera.com/xml/rss/all.xml", "international", "en"),
+                ("CNN World", "http://rss.cnn.com/rss/edition_world.rss", "international", "en"),
+                # International - Chino
+                ("China Daily World", "http://www.chinadaily.com.cn/rss/world_rss.xml", "international", "zh"),
+                ("CCTV World", "https://english.cctv.com/rss/news/world.xml", "international", "zh"),
+                ("Xinhua World", "http://www.xinhuanet.com/english/rss/worldrss.xml", "international", "zh"),
+                
+                # Technology - Español
+                ("Hipertextual", "https://hipertextual.com/feed", "technology", "es"),
+                ("ABC Tecnología", "https://www.abc.es/rss/feeds/abc_Tecnologia.xml", "technology", "es"),
+                ("20minutos Tecnología", "https://www.20minutos.es/rss/tecnologia.xml", "technology", "es"),
+                # Technology - Inglés
+                ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "technology", "en"),
+                ("TechCrunch", "https://techcrunch.com/feed/", "technology", "en"),
+                ("The Verge", "https://www.theverge.com/rss/index.xml", "technology", "en"),
+                # Technology - Chino
+                ("TechNode", "https://technode.com/feed/", "technology", "zh"),
+                ("Sina Tech", "https://tech.sina.com.cn/roll/index.d.html", "technology", "zh"),
+                ("PingWest", "https://pingwest.com/feed", "technology", "zh"),
             ]
             
             cursor.executemany('''
-                INSERT INTO feeds (name, url, category) VALUES (?, ?, ?)
+                INSERT INTO feeds (name, url, category, language) VALUES (?, ?, ?, ?)
             ''', default_feeds)
             
             logger.info(f"✅ Added {len(default_feeds)} default feeds to global database")
@@ -152,61 +204,43 @@ def check_global_feed_health():
     except Exception as e:
         logger.exception(f"❌ Error during global feed health check: {e}")
 
-def get_healthy_feeds() -> List[Tuple[int, str, str, str]]:
-    """Get list of healthy feeds for use by all servers."""
+def get_healthy_feeds(language: str = None) -> List[Tuple[int, str, str, str]]:
+    """Get list of healthy feeds for use by all servers.
+    
+    Args:
+        language: Optional language code (e.g., 'en', 'es') to filter feeds by language.
+                  If None, returns all healthy feeds regardless of language.
+    
+    Returns:
+        List of tuples (id, name, url, category) for healthy feeds.
+    """
     try:
         db_path = get_global_feeds_db_path()
         
         with sqlite3.connect(str(db_path), timeout=30) as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                SELECT id, name, url, category 
-                FROM feeds 
-                WHERE active = 1 AND status = 'healthy'
-                ORDER BY category, name
-            ''')
+            
+            if language:
+                cursor.execute('''
+                    SELECT id, name, url, category 
+                    FROM feeds 
+                    WHERE active = 1 AND status = 'healthy' AND language = ?
+                    ORDER BY category, name
+                ''', (language,))
+            else:
+                cursor.execute('''
+                    SELECT id, name, url, category 
+                    FROM feeds 
+                    WHERE active = 1 AND status = 'healthy'
+                    ORDER BY category, name
+                ''')
+            
             return cursor.fetchall()
             
     except Exception as e:
         logger.exception(f"❌ Error getting healthy feeds: {e}")
         return []
 
-def sync_feeds_to_server(server_id: str):
-    """Sync healthy global feeds to a specific server's database."""
-    try:
-        from roles.news_watcher.db_role_news_watcher import DatabaseRoleNewsWatcher
-        
-        healthy_feeds = get_healthy_feeds()
-        if not healthy_feeds:
-            logger.warning(f"📡 No healthy feeds to sync to server {server_id}")
-            return
-        
-        logger.info(f"📡 Syncing {len(healthy_feeds)} healthy feeds to server {server_id}...")
-        
-        server_db = DatabaseRoleNewsWatcher(server_id)
-        
-        with server_db._lock:
-            with sqlite3.connect(str(server_db.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                
-                # Clear existing feeds
-                cursor.execute('DELETE FROM feeds_config')
-                
-                # Insert healthy feeds
-                from datetime import datetime
-                feed_data = [(name, url, category, None, 'es', None, 0, 1, 'especializado', datetime.now().isoformat()) 
-                           for _, name, url, category in healthy_feeds]
-                cursor.executemany('''
-                    INSERT INTO feeds_config (name, url, category, country, language, keywords, priority, active, feed_type, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', feed_data)
-                
-                conn.commit()
-                
-        logger.info(f"✅ Synced {len(healthy_feeds)} feeds to server {server_id}")
-        
-    except Exception as e:
-        logger.exception(f"❌ Error syncing feeds to server {server_id}: {e}")
 
 if __name__ == "__main__":
     # For manual testing

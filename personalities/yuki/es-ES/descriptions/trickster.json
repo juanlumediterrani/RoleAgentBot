@@ -51,6 +51,7 @@
         "dice_pot_value": "Valor de la Copa de Sake",
         "dice_pot_value_description": "Establece el fondo inicial de la copa de Sake",
         "dice_play": "Jugar",
+        "dice_play_button": "🎲 Jugar",
         "dice_play_description": "Lanzar los dados y participar en la copa de Sake",
         "dice_ranking": "Clasificación",
         "dice_ranking_description": "Consulta el rendimiento de otros visitantes",

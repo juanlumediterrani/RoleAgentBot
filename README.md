@@ -336,6 +336,13 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## 🔮 Future Roadmap
 
+### Performance & Scalability
+- [ ] **Concurrency Mitigation System**: Implement global semaphore, async LLM calls, message queue with backpressure, and rate limiting to handle high-volume message floods (10,000+ concurrent messages)
+- [ ] **Async LLM Architecture**: Migrate `call_llm` to fully async with `asyncio.to_thread` or HTTP async client to prevent event loop blocking
+- [ ] **Database Optimization**: Replace global locks with connection pooling and WAL mode for reduced contention
+- [ ] **Load Monitoring**: Add metrics for active LLM calls, latency tracking, and queue depth
+
+### Features
 - [ ] Voice message MC management
 - [ ] MC improviser with LLM
 - [x] ~~Personality evolution~~ ✅ Implemented (weekly)

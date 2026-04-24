@@ -19,7 +19,7 @@ try:
     logger = get_logger('poe2_subrole')
 except Exception:
     import logging
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('poe2_subrole')
 
 from agent_db import get_server_db_path_fallback
@@ -64,15 +64,11 @@ class DatabaseRolePoe2:
         """Set the current league."""
         try:
             with self._lock:
-                config = self._roles_db.get_role_config('poe2_subrole')
-                if not config:
-                    config = {'enabled': True, 'config_data': {}}
+                from discord_bot.canvas.server_config import set_role_config_value
+                from agent_db import get_server_id
+                server_id = get_server_id()
                 
-                config_data = config.get('config_data', {})
-                config_data['league'] = league
-                config['config_data'] = config_data
-                
-                self._roles_db.save_role_config('poe2_subrole', config)
+                set_role_config_value(server_id, "poe2_subrole", "config.league", league)
                 
                 # Clear the item cache from the previous league
                 from .poe2scout_client import Poe2ScoutClient
@@ -89,10 +85,10 @@ class DatabaseRolePoe2:
     def get_league(self) -> str:
         """Get the current league."""
         try:
-            config = self._roles_db.get_role_config('poe2_subrole')
-            if config and config.get('config_data'):
-                return config['config_data'].get('league', 'Standard')
-            return "Standard"
+            from discord_bot.canvas.server_config import get_role_config_value
+            from agent_db import get_server_id
+            server_id = get_server_id()
+            return get_role_config_value(server_id, "poe2_subrole", "config.league", default="Standard")
         except Exception as e:
             logger.exception(f"⚠️ Error getting league: {e}")
             return "Standard"
@@ -101,12 +97,10 @@ class DatabaseRolePoe2:
         """Enable or disable the subrole."""
         try:
             with self._lock:
-                config = self._roles_db.get_role_config('poe2_subrole')
-                if not config:
-                    config = {'enabled': True, 'config_data': {}}
-                
-                config['enabled'] = is_active
-                self._roles_db.save_role_config('poe2_subrole', config)
+                from discord_bot.canvas.server_config import set_role_config_value
+                from agent_db import get_server_id
+                server_id = get_server_id()
+                set_role_config_value(server_id, "poe2_subrole", "enabled", is_active)
                 
                 status = "enabled" if is_active else "disabled"
                 logger.info(f"✅ POE2 subrole {status}")
@@ -118,10 +112,10 @@ class DatabaseRolePoe2:
     def is_active(self) -> bool:
         """Check whether the subrole is active."""
         try:
-            config = self._roles_db.get_role_config('poe2_subrole')
-            if config:
-                return config.get('enabled', False)
-            return False
+            from discord_bot.canvas.server_config import get_role_config_value
+            from agent_db import get_server_id
+            server_id = get_server_id()
+            return get_role_config_value(server_id, "poe2_subrole", "enabled", default=False)
         except Exception as e:
             logger.exception(f"⚠️ Error checking subrole state: {e}")
             return False
@@ -130,18 +124,15 @@ class DatabaseRolePoe2:
         """Add an item to the target list."""
         try:
             with self._lock:
-                config = self._roles_db.get_role_config('poe2_subrole')
-                if not config:
-                    config = {'enabled': True, 'config_data': {}}
+                from discord_bot.canvas.server_config import get_role_config_value, set_role_config_value
+                from agent_db import get_server_id
+                server_id = get_server_id()
                 
-                config_data = config.get('config_data', {})
-                targets = config_data.get('targets', [])
+                targets = get_role_config_value(server_id, "poe2_subrole", "config.targets", default=[])
                 
                 if item_name not in targets:
                     targets.append(item_name)
-                    config_data['targets'] = targets
-                    config['config_data'] = config_data
-                    self._roles_db.save_role_config('poe2_subrole', config)
+                    set_role_config_value(server_id, "poe2_subrole", "config.targets", targets)
                     logger.info(f"✅ Target added: {item_name}")
                     return True
                 else:
@@ -155,19 +146,15 @@ class DatabaseRolePoe2:
         """Remove an item from the target list."""
         try:
             with self._lock:
-                config = self._roles_db.get_role_config('poe2_subrole')
-                if not config:
-                    logger.warning(f"⚠️ No configuration found, cannot remove: {item_name}")
-                    return False
+                from discord_bot.canvas.server_config import get_role_config_value, set_role_config_value
+                from agent_db import get_server_id
+                server_id = get_server_id()
                 
-                config_data = config.get('config_data', {})
-                targets = config_data.get('targets', [])
+                targets = get_role_config_value(server_id, "poe2_subrole", "config.targets", default=[])
                 
                 if item_name in targets:
                     targets.remove(item_name)
-                    config_data['targets'] = targets
-                    config['config_data'] = config_data
-                    self._roles_db.save_role_config('poe2_subrole', config)
+                    set_role_config_value(server_id, "poe2_subrole", "config.targets", targets)
                     logger.info(f"✅ Target removed: {item_name}")
                     return True
                 else:
@@ -181,12 +168,12 @@ class DatabaseRolePoe2:
         """Get the configured targets."""
         try:
             with self._lock:
-                config = self._roles_db.get_role_config('poe2_subrole')
-                if config and config.get('config_data'):
-                    targets = config['config_data'].get('targets', [])
-                    # Return as list of tuples for compatibility: (item_name, None, 1, timestamp)
-                    return [(item, None, 1, datetime.now().isoformat()) for item in targets]
-                return []
+                from discord_bot.canvas.server_config import get_role_config_value
+                from agent_db import get_server_id
+                server_id = get_server_id()
+                targets = get_role_config_value(server_id, "poe2_subrole", "config.targets", default=[])
+                # Return as list of tuples for compatibility: (item_name, None, 1, timestamp)
+                return [(item, None, 1, datetime.now().isoformat()) for item in targets]
         except Exception as e:
             logger.exception(f"⚠️ Error getting targets: {e}")
             return []
@@ -195,12 +182,12 @@ class DatabaseRolePoe2:
         """Get the active targets."""
         try:
             with self._lock:
-                config = self._roles_db.get_role_config('poe2_subrole')
-                if config and config.get('config_data'):
-                    targets = config['config_data'].get('targets', [])
-                    # Return as list of tuples for compatibility: (item_name, None)
-                    return [(item, None) for item in targets]
-                return []
+                from discord_bot.canvas.server_config import get_role_config_value
+                from agent_db import get_server_id
+                server_id = get_server_id()
+                targets = get_role_config_value(server_id, "poe2_subrole", "config.targets", default=[])
+                # Return as list of tuples for compatibility: (item_name, None)
+                return [(item, None) for item in targets]
         except Exception as e:
             logger.exception(f"⚠️ Error getting active targets: {e}")
             return []

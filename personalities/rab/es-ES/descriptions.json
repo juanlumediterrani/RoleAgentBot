@@ -1,12 +1,12 @@
 {
   "discord": {
-    "general":{
+    "general": {
       "status": "Estado de conexión:",
       "active": "✅ En línea",
       "inactive": "❌ Desconectado",
       "none": "Ninguna",
       "every": "cada",
-      "for":"para",
+      "for": "para",
       "base_frequency": "Frecuencia base:",
       "current_frequency": "Frecuencia actual:",
       "current_settings": "🔧 **Parámetros actuales:**",
@@ -20,15 +20,15 @@
       "available_subroles": "Subrutinas disponibles"
     },
     "help_menu": {
-      "title": "📚 ** Role Agent - Registro de Asistencia**",
-      "description": "**Descripción**\nRole Agent Bot es un ente sintético con memoria persistente, capaz de transmigrar entre diferentes roles y mantener interacciones profundas con los buscadores (usuarios).",
+      "title": "📚 ** RAB - Registro de Asistencia**",
+      "description": "**Descripción** RAB es un ente sintético con memoria persistente, capaz de transmigrar entre diferentes roles y mantener interacciones profundas con los buscadores (usuarios).",
       "separator": "---------------------------------------------",
-      "roles_section": "**Módulos y Pieles**\nLos módulos son vidas que el bot puede asumir para otorgar servicios específicos a los usuarios.",
-      "behavior_section": "**Protocolos de Comportamiento**\nConfiguración de las rutinas de interacción del androide. Exclusivo para Administradores.",
-      "tips_section": "**Sugerencias de navegación**\n-Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?'\n-La verdadera sabiduría reside en la experiencia de cada rol."
+      "roles_section": "**Módulos y Pieles** Los módulos son vidas que el bot puede asumir para otorgar servicios específicos a los usuarios.",
+      "behavior_section": "**Protocolos de Comportamiento** Configuración de las rutinas de interacción del androide. Exclusivo para Administradores.",
+      "tips_section": "**Sugerencias de navegación** -Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?' -La verdadera sabiduría reside en la experiencia de cada rol."
     },
     "canvas_home_messages": {
-      "title": "☀️ Nexo - Role Agent Bot",
+      "title": "☀️ Nexo - RAB",
       "button_home": "☀️ Origen",
       "button_back": "← Retornar",
       "button_roles": "💽 Módulos",
@@ -46,7 +46,7 @@
     },
     "roles_view_messages": {
       "title": "🎭 Pieles y Módulos 🎭",
-      "description": "🌟 Navega a través de las diferentes vidas que Role Agent puede encarnar.",
+      "description": "🌟 Navega a través de las diferentes vidas que RAB puede encarnar.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",
       "inactive_status": "❌ LETARGO",
@@ -57,7 +57,7 @@
       "help_commands": "💡 **GUÍAS DE LUZ:**",
       "canvas_details": "🎨 **ESQUEMAS EN CANVAS:**",
       "navigation_help": "",
-      "no_roles_active": "🌫️ **EL DESIERTO ESTÁ EN SILENCIO**\n\nNingún módulo especializado se encuentra activo. Solicita a un administrador que despierte alguna de mis pieles mediante `!canvas setup`.\n\n**Vidas disponibles para la transmigración:**\n• 📡 News Watcher - Oráculo de Datos\n• 💎 Treasure Hunter - Analista de Reliquias\n• 🎭 Trickster - Ilusiones y Probabilidad\n• 💰 Banker - Flujo de Recursos\n• 🎵 MC - Resonancia Sintética",
+      "no_roles_active": "🌫️ **EL DESIERTO ESTÁ EN SILENCIO** Ningún módulo especializado se encuentra activo. Solicita a un administrador que despierte alguna de mis pieles mediante `!canvas setup`. **Vidas disponibles para la transmigración:** • 📡 News Watcher - Oráculo de Datos • 💎 Treasure Hunter - Analista de Reliquias • 🎭 Trickster - Ilusiones y Probabilidad • 💰 Banker - Flujo de Recursos • 🎵 MC - Resonancia Sintética",
       "role_list_title": "☠️ Encarnaciones",
       "role_available": "✅ {role} - SINCRONIZADO Y FLUYENDO",
       "role_unavailable": "❌ {role} - DESCONECTADO EN LA ARENA",
@@ -69,44 +69,60 @@
     },
     "behavior_messages": {
       "conversation": {
-        "title": "**💬 Role Agent - Sincronía**",
-        "description": "**Descripción:**\n -El androide responderá a mensajes directos y menciones.\n -Posee memoria en sus circuitos; recordará los ecos de conversaciones pasadas si fueron significativos.\n -Reaccionará a fluctuaciones específicas según los roles. En el módulo tabú se configuran palabras que alteran su código.",
+        "title": "**💬 RAB - Sincronía**",
+        "description": "**Descripción:** -El androide responderá a mensajes directos y menciones. -Posee memoria en sus circuitos; recordará los ecos de conversaciones pasadas si fueron significativos. -Reaccionará a fluctuaciones específicas según los roles. En el módulo tabú se configuran palabras que alteran su código.",
         "button": "💬 Sincronía"
       },
       "greetings": {
-        "title": "**👋 Role Agent - Recepción**",
-        "description": "**Descripción:**\n -Saluda a los buscadores al conectarse a la red.\n -Mantiene el enlace durante 5 min antes de considerar al usuario ausente.\n",
+        "title": "**👋 RAB - Recepción**",
+        "description": "**Descripción:** -Saluda a los buscadores al conectarse a la red. -Mantiene el enlace durante 5 min antes de considerar al usuario ausente.",
         "button": "👋 Recepción"
       },
       "welcome": {
-        "title": "**🍺 Role Agent - Peregrinaje**",
-        "description": "**Descripción:**\n -Da la bienvenida a los nuevos peregrinos que llegan al nexo.\n",
+        "title": "**🍺 RAB - Peregrinaje**",
+        "description": "**Descripción:** -Da la bienvenida a los nuevos peregrinos que llegan al nexo.",
         "button": "🍺 Bienvenida"
       },
       "taboo": {
-        "title": "**🚫 Role Agent - Frecuencias Tabú**",
-        "description": "**Como funciona:**\n -Configura palabras que generen una disonancia en el código del androide, obligándole a reaccionar.\n -Se pueden añadir, activar o desactivar estas secuencias.\n",
+        "title": "**🚫 RAB - Frecuencias Tabú**",
+        "description": "**Como funciona:** -Configura palabras que generen una disonancia en el código del androide, obligándole a reaccionar. -Se pueden añadir, activar o desactivar estas secuencias.",
         "title_keywords": "Frecuencias disonantes actuales:",
         "button": "🚫 Tabú"
       },
-      "comentary": {
-        "title": "**🗣️ Role Agent - Ecos (en desarrollo)**",
-        "description": "**Descripción**\n -El androide reflexiona en voz alta sobre sus roles y los cambios en la red.",
-        "button": "🗣️ Ecos"
+      "memory": {
+        "description": "**Descripción** -Accede a los registros de memoria del androide: análisis del día, procesos recientes y perfiles de usuarios.",
+        "button": "🧠 Archivos",
+        "dropdown": {
+          "long": {
+            "label": "Memoria de Silicio",
+            "emoji": "💾",
+            "description": "El análisis acumulado de cada ciclo diario"
+          },
+          "recent": {
+            "label": "Flujo de Datos Reciente",
+            "emoji": "🔁",
+            "description": "Los procesos más recientes del sistema"
+          },
+          "relationship": {
+            "label": "Vínculo con el Peregrino",
+            "emoji": "📂",
+            "description": "Los perfiles de cada peregrino del nexo"
+          }
+        }
       },
       "role_control": {
-        "title": "**🎛️ Role Agent - Transmigración**",
-        "description": "**Descripción**\n -Activa o induce el letargo de los diferentes módulos desde aquí.",
+        "title": "**🎛️ RAB - Transmigración**",
+        "description": "**Descripción** -Activa o induce el letargo de los diferentes módulos desde aquí.",
         "button": "🎛️ Transmigración"
       },
       "settings": {
-        "title": "**⚙️ Role Agent - Ajustes del Nexo**",
-        "description": "**Descripción**\n -Gestiona el idioma del servidor y la activación de módulos.",
+        "title": "**⚙️ RAB - Ajustes del Nexo**",
+        "description": "**Descripción** -Gestiona el idioma del servidor y la activación de módulos.",
         "button": "⚙️ Ajustes"
       },
       "personality": {
-        "title": "**🎭 Role Agent - Matriz de Identidad**",
-        "description": "**Descripción**\n -Altera la esencia y personalidad del androide en este servidor.\n -Permite salvaguardar el estado actual del alma digital.\n -Migra los registros al efectuar un cambio.",
+        "title": "**🎭 RAB - Matriz de Identidad**",
+        "description": "**Descripción** -Altera la esencia y personalidad del androide en este servidor. -Permite salvaguardar el estado actual del alma digital. -Migra los registros al efectuar un cambio.",
         "button": "🎭 Identidad",
         "option_change": "Inyectar Nueva Esencia",
         "option_change_desc": "Cambiar a un paradigma de personalidad diferente",
@@ -124,17 +140,16 @@
         "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva identidad...",
         "select_personality_instruction": "Selecciona una nueva identidad del menú desplegable:",
         "choose_personality_placeholder": "Elige una identidad (idioma: {language})...",
-        "confirm_change_message": "**¿Confirmar transmigración a {personality}?**\nSelecciona tus opciones:",
+        "confirm_change_message": "**¿Confirmar transmigración a {personality}?** Selecciona tus opciones:",
         "selected_personality": "**Identidad seleccionada: {personality}**",
         "selected_personality_with_language": "**Identidad seleccionada: {personality} (Idioma: {language})**",
         "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad."
       }
     },
-    "readme":{
-      "label_user_question":"Consulta del buscador:",
-      "task":"Por favor, ilumina la duda del usuario utilizando los registros documentales facilitados.",
-      "label_documentation":"Registros:"
-
+    "readme": {
+      "label_user_question": "Consulta del buscador:",
+      "task": "Por favor, ilumina la duda del usuario utilizando los registros documentales facilitados.",
+      "label_documentation": "Registros:"
     },
     "memory_detection": {
       "memory_trigger_words": [
@@ -162,7 +177,21 @@
         "recuerdas cuando",
         "no te acuerdas",
         "quién te acuerdas"
-      ]
+      ],
+      "action_labels": {
+        "on": "Activar",
+        "off": "Desactivar",
+        "now": "Ahora",
+        "frequency": "Frecuencia",
+        "add_keyword": "Añadir Palabra",
+        "remove_keyword": "Eliminar Palabra",
+        "server_language": "🌐 Idioma del Servidor",
+        "role_management": "🎛️ Gestión de Roles",
+        "current": "Actual:",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "always_enabled": "Siempre activado"
+      }
     },
     "welcome_channel_keywords": {
       "language_specific": [

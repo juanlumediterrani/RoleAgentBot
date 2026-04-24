@@ -619,16 +619,7 @@ Core SQLite store per server. Tracks:
 
 Falls back to relocation-by-id when the active server is ambiguous.
 
-### 13.3 Active server resolution
-
-The active server is published via:
-
-- `.active_server` file in the workspace root.
-- `ACTIVE_SERVER_NAME` environment variable propagated to subprocesses.
-
-This drives DB path selection, log routing and default server context for scheduler tasks.
-
-### 13.4 Server initialization
+### 13.3 Server initialization
 
 `discord_bot/db_init.py::initialize_server_complete(guild, agent_config, is_startup)` is the **single unified entry point** for setting up a guild. It runs:
 
@@ -856,5 +847,23 @@ The following items exist in the codebase but warrant deeper documentation in fu
 - **Per-server Canvas state** persistence rules between views (`canvas/state.py`) — timeout/cleanup semantics.
 - **News watcher cache keys**: premise hash format and cache invalidation rules.
 - **Treasure hunter PoE1 support**: reserved, not implemented.
+
+### 19.1 Performance & Scalability Improvements (Future Implementation)
+
+The current architecture has known concurrency limitations that need mitigation to handle high-volume message floods (10,000+ concurrent messages):
+
+- **LLM Call Architecture**: `agent_mind.py::call_llm()` uses synchronous threading with `thread.join(timeout=30.0)` which blocks the asyncio event loop. Needs migration to fully async using `asyncio.to_thread` or HTTP async client.
+- **Global Concurrency Control**: No global semaphore limits concurrent LLM calls. Current rate limiting is per-user only (`discord_utils.py::check_chat_rate_limit()`). Needs global rate limit and semaphore (e.g., max 10 concurrent messages).
+- **Message Queue System**: No queue with backpressure for handling message spikes. Messages are processed immediately in `on_message()` without queuing. Needs async message queue with priority and backpressure when queue is full.
+- **Database Lock Contention**: `agent_db.py` and `agent_roles_db.py` use global `threading.Lock()` which causes contention under high load. Needs connection pooling with thread-local connections and WAL mode.
+- **Load Monitoring**: No metrics for active LLM calls, latency tracking, or queue depth. Needs instrumentation for observability.
+
+**Planned Mitigation Roadmap**:
+1. Add `asyncio.Semaphore(10)` in `discord_bot/agent_discord.py::_process_chat_message()`
+2. Implement global rate limiting in `discord_utils.py` (e.g., 50 messages/second)
+3. Create `call_llm_async()` using `asyncio.to_thread()` in `agent_mind.py`
+4. Implement message queue with backpressure in new `discord_bot/message_queue.py`
+5. Replace global DB locks with connection pooling and WAL mode
+6. Add metrics for active calls, latency, and queue depth
 
 When any of these is specified more precisely in code, extend the corresponding section above rather than adding historical "refactor note" sections at the bottom.

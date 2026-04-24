@@ -14,11 +14,15 @@ from typing import Optional, Dict, List, Tuple
 from agent_logging import get_logger
 from agent_engine import PERSONALITY
 import http.cookiejar
+from concurrent.futures import ThreadPoolExecutor
 
 # Ensure mc directory path is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 logger = get_logger('mc_commands')
+
+# Thread pool for blocking yt-dlp operations
+_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix='mc_ytdlp')
 
 
 def _build_youtube_options(base_format: str = 'bestaudio/best', noplaylist: bool = True) -> dict:
@@ -169,6 +173,30 @@ def _test_cookies_work(cookie_path: str) -> bool:
 
 def _load_mc_answers() -> dict:
     return {}
+
+
+def _extract_info_sync(query: str, ydl_opts: dict) -> dict:
+    """Synchronous wrapper for yt-dlp extract_info (runs in thread pool)."""
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        if urlparse(query).scheme in ('http', 'https'):
+            return ydl.extract_info(query, download=False)
+        else:
+            return ydl.extract_info(f"ytsearch:{query}", download=False)
+
+
+async def _extract_info_async(query: str, ydl_opts: dict) -> Optional[dict]:
+    """Run yt-dlp extract_info in thread pool to avoid blocking main thread."""
+    try:
+        # Run blocking operation in thread pool
+        info = await asyncio.to_thread(_extract_info_sync, query, ydl_opts)
+        
+        # Yield control to event loop
+        await asyncio.sleep(0)
+        
+        return info
+    except Exception as e:
+        logger.exception(f"Error in _extract_info_async: {e}")
+        raise
 
 
 def _load_mc_descriptions(server_id: str = None) -> dict:
@@ -381,7 +409,7 @@ class MCCommands:
             await self._send_message(message.channel, self.get_mc_message('general_connect_error'))
             return
         
-        # Search for the song
+        # Search for the song (non-blocking, runs in background)
         await self._send_message(message.channel, self.get_mc_message("searching_for_song", "🔍 **Searching for song...**", server_id=server_id))
         
         try:
@@ -389,53 +417,54 @@ class MCCommands:
             ydl_opts = _build_youtube_options('bestaudio/best', noplaylist=True)
             ydl_opts['extract_flat'] = False
             
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Determine if URL or search
-                if urlparse(query).scheme in ('http', 'https'):
-                    info = ydl.extract_info(query, download=False)
+            # Run extraction in thread pool to avoid blocking main thread
+            info = await _extract_info_async(query, ydl_opts)
+            
+            # Handle search results (ytsearch returns entries)
+            if 'entries' in info:
+                info = info['entries'][0]
+            
+            title = info.get('title', 'Unknown Title')
+            url = info.get('webpage_url', query)
+            duration = info.get('duration', 0)
+            artist = info.get('uploader', 'Unknown Artist')
+            
+            # Format duration
+            if duration:
+                minutes, seconds = divmod(duration, 60)
+                hours, minutes = divmod(minutes, 60)
+                if hours:
+                    duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
                 else:
-                    info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
-                
-                title = info.get('title', 'Unknown Title')
-                url = info.get('webpage_url', query)
-                duration = info.get('duration', 0)
-                artist = info.get('uploader', 'Unknown Artist')
-                
-                # Format duration
-                if duration:
-                    minutes, seconds = divmod(duration, 60)
-                    hours, minutes = divmod(minutes, 60)
-                    if hours:
-                        duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
-                    else:
-                        duration_str = f"{minutes}:{seconds:02d}"
-                else:
-                    duration_str = "Unknown"
-                
+                    duration_str = f"{minutes}:{seconds:02d}"
+            else:
+                duration_str = "Unknown"
+            
+            # Yield control before DB operations
+            await asyncio.sleep(0)
 
-                from db_role_mc import get_mc_db_instance
-                db_mc = get_mc_db_instance(server_id)
-                
-
-                db_mc.add_song_to_queue(
-                    server_id, str(message.channel.id), str(message.author.id),
-                    title, url, duration_str, artist, position=0
-                )
-                
-
-                if server_id in self.voice_clients and self.voice_clients[server_id].is_playing():
-                    logger.info(f"MC: Stop song in the server {server_id}")
-                    self.voice_clients[server_id].stop()
-                
-
-                if server_id in self.voice_clients:
-                    vc = self.voice_clients[server_id]
-                    logger.info(f"MC: State before reproduction - Conected: {vc.is_connected()}, Playing: {vc.is_playing()}, Channel: {vc.channel}")
-                
-                
-                logger.info(f"MC: Inialising the reproduction for '{title}' in the server {server_id}")
-                await self._play_next(server_id, message.channel)
-                
+            from db_role_mc import get_mc_db_instance
+            db_mc = get_mc_db_instance(server_id)
+            
+            db_mc.add_song_to_queue(
+                server_id, str(message.channel.id), str(message.author.id),
+                title, url, duration_str, artist, position=0
+            )
+            
+            # Yield control after DB operations
+            await asyncio.sleep(0)
+            
+            if server_id in self.voice_clients and self.voice_clients[server_id].is_playing():
+                logger.info(f"MC: Stop song in the server {server_id}")
+                self.voice_clients[server_id].stop()
+            
+            if server_id in self.voice_clients:
+                vc = self.voice_clients[server_id]
+                logger.info(f"MC: State before reproduction - Conected: {vc.is_connected()}, Playing: {vc.is_playing()}, Channel: {vc.channel}")
+            
+            logger.info(f"MC: Inialising the reproduction for '{title}' in the server {server_id}")
+            await self._play_next(server_id, message.channel)
+            
         except yt_dlp.utils.DownloadError as e:
             error_msg = str(e)
             if "Sign in to confirm you're not a bot" in error_msg:
@@ -519,42 +548,48 @@ class MCCommands:
             ydl_opts['default_search'] = 'ytsearch'
             ydl_opts['source_address'] = '0.0.0.0'
             
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(query, download=False)
-                
-                if 'entries' in info:
-                    info = info['entries'][0]
-                
-                title = info.get('title', 'Desconocido')
-                url = info.get('webpage_url', info.get('url', ''))
-                artist = info.get('uploader', 'Desconocido')
-                duration = info.get('duration')
-                
-                if duration:
-                    minutes, seconds = divmod(duration, 60)
-                    hours, minutes = divmod(minutes, 60)
-                    if hours:
-                        duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
-                    else:
-                        duration_str = f"{minutes}:{seconds:02d}"
+            # Run extraction in thread pool to avoid blocking main thread
+            info = await _extract_info_async(query, ydl_opts)
+            
+            if 'entries' in info:
+                info = info['entries'][0]
+            
+            title = info.get('title', 'Desconocido')
+            url = info.get('webpage_url', info.get('url', ''))
+            artist = info.get('uploader', 'Desconocido')
+            duration = info.get('duration')
+            
+            if duration:
+                minutes, seconds = divmod(duration, 60)
+                hours, minutes = divmod(minutes, 60)
+                if hours:
+                    duration_str = f"{hours}:{minutes:02d}:{seconds:02d}"
                 else:
-                    duration_str = "Unknown"
-                
-                from db_role_mc import get_mc_db_instance
-                db_mc = get_mc_db_instance(server_id)
-                
-                db_mc.add_song_to_queue(
-                    server_id, str(message.channel.id), str(message.author.id),
-                    title, url, duration_str, artist, position=-1
-                )
-                
-                # Song added silently - no automatic message
-                
-                if (server_id not in self.voice_clients or 
-                    not self.voice_clients[server_id].is_connected() or 
-                    not self.voice_clients[server_id].is_playing()):
-                    await self._play_next(server_id, message.channel)
-                
+                    duration_str = f"{minutes}:{seconds:02d}"
+            else:
+                duration_str = "Unknown"
+            
+            # Yield control before DB operations
+            await asyncio.sleep(0)
+            
+            from db_role_mc import get_mc_db_instance
+            db_mc = get_mc_db_instance(server_id)
+            
+            db_mc.add_song_to_queue(
+                server_id, str(message.channel.id), str(message.author.id),
+                title, url, duration_str, artist, position=-1
+            )
+            
+            # Yield control after DB operations
+            await asyncio.sleep(0)
+            
+            # Song added silently - no automatic message
+            
+            if (server_id not in self.voice_clients or 
+                not self.voice_clients[server_id].is_connected() or 
+                not self.voice_clients[server_id].is_playing()):
+                await self._play_next(server_id, message.channel)
+            
         except yt_dlp.utils.DownloadError as e:
             error_msg = str(e)
             if "Sign in to confirm you're not a bot" in error_msg:
@@ -882,6 +917,9 @@ class MCCommands:
             from db_role_mc import get_mc_db_instance
             db_mc = get_mc_db_instance(server_id)
             
+            # Yield control before DB operation
+            await asyncio.sleep(0)
+            
             queue = db_mc.get_queue(server_id, str(channel.id))
             
             if not queue:
@@ -901,11 +939,17 @@ class MCCommands:
             
             pos, title, url, duration, artist, user_id, fecha = queue[0]
             
+            # Yield control before yt-dlp extraction
+            await asyncio.sleep(0)
+            
             ydl_opts = _build_youtube_options('bestaudio/best', noplaylist=True)
             
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                audio_url = info['url']
+            # Run extraction in thread pool to avoid blocking main thread
+            info = await _extract_info_async(url, ydl_opts)
+            audio_url = info['url']
+            
+            # Yield control after yt-dlp extraction
+            await asyncio.sleep(0)
             
             audio_source = discord.FFmpegPCMAudio(
                 audio_url,
@@ -953,8 +997,14 @@ class MCCommands:
                 'user': user_name
             }
             
+            # Yield control before DB operations
+            await asyncio.sleep(0)
+            
             db_mc.remove_song_from_queue(server_id, str(channel.id), pos)
             db_mc.register_history(server_id, str(channel.id), user_id, title, url, duration, artist)
+            
+            # Yield control after DB operations
+            await asyncio.sleep(0)
             
             # Anunciar
             await self._send_message(channel, self.get_mc_message("now_playing", f"🎵 **Now Playing**\n🎶 {title}\n👤 {artist}\n⏱️ {duration}\n🎤 Added by: {user_name}", server_id=server_id, song=title, artist=artist, duration=duration, user_name=user_name))

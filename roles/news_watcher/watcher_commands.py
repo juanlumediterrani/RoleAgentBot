@@ -10,8 +10,18 @@ from agent_logging import get_logger
 from .db_role_news_watcher import get_news_watcher_db_instance
 from discord_bot.discord_utils import send_dm_or_channel
 
-def get_message(key, **kwargs):
+def get_message(key, server_id=None, **kwargs):
     """Fallback message function since watcher_messages.py was removed."""
+    # Try to get from news_watcher descriptions first
+    try:
+        from roles.news_watcher.news_watcher import _get_news_watcher_descriptions
+        descriptions = _get_news_watcher_descriptions(server_id)
+        if descriptions and key in descriptions:
+            return descriptions[key]
+    except Exception:
+        pass
+    
+    # Fallback messages
     fallback_messages = {
         "feeds_available_title": "📡 Available Feeds",
         "categories_available_title": "📂 Available Categories",
@@ -23,7 +33,7 @@ def get_message(key, **kwargs):
         "error_invalid_category": "❌ Invalid category",
         "premise_added": "✅ Premise added successfully",
         "premise_removed": "✅ Premise removed successfully",
-        "premise_list_title": "🎯 Your Premises",
+        "premise_list_title": "🔍 **Premisas:**",
         "no_premises": "❌ You have no premises configured",
     }
     return fallback_messages.get(key, key)
@@ -182,7 +192,7 @@ class WatcherCommands:
                 elif current_type == 'keywords':
                     # Cancel keyword subscriptions
                     subscriptions = db.get_user_keyword_subscriptions(user_id)
-                    for category, _, _ in subscriptions:
+                    for category, _, _, _ in subscriptions:
                         if db.cancel_user_keyword_subscription(user_id, category):
                             cancelled += 1
                             
@@ -524,13 +534,13 @@ class WatcherCommands:
                         if feed_id:
                             embed.add_field(
                                 name=f"#{i} - {category}",
-                                value=f"Feed ID: {feed_id}\nSince: {subscribed_at}",
+                                value=f"Feed ID: {feed_id}\nSubscribed: {subscribed_at[:10]}",
                                 inline=False
                             )
                         else:
                             embed.add_field(
                                 name=f"#{i} - {category}",
-                                value=f"Entire category\nSince: {subscribed_at}",
+                                value=f"Entire category\nSubscribed: {subscribed_at[:10]}",
                                 inline=False
                             )
                     
@@ -558,7 +568,7 @@ class WatcherCommands:
                         color=discord.Color.green()
                     )
                     
-                    for i, (category, feed_id, keywords) in enumerate(subscriptions, 1):
+                    for i, (category, feed_id, keywords, subscribed_at) in enumerate(subscriptions, 1):
                         if feed_id:
                             embed.add_field(
                                 name=f"#{i} - {category} (Feed {feed_id})",
@@ -821,7 +831,7 @@ class WatcherCommands:
             await message.channel.send("Error subscribing keywords")
     
     async def cmd_keywords_add(self, message, args):
-        """Add a keyword to the user's keyword list (max 7)."""
+        """Add a keyword to the user's keyword list (max 3)."""
         if not args:
             await message.channel.send(get_message('usage_keywords_add', server_id=self._get_server_id(message)))
             return
@@ -841,14 +851,14 @@ class WatcherCommands:
             if not current_keywords:
                 # If there are no keywords yet, create new list with this keyword
                 if db.update_user_keywords(user_id, new_keyword):
-                    await message.channel.send(f"Keyword list created: '{new_keyword}' (1/7)")
+                    await message.channel.send(f"Keyword list created: '{new_keyword}' (1/3)")
                 else:
                     await message.channel.send("Error creating keyword list")
             else:
                 # Add to the existing list
                 keywords_list = current_keywords.split(',')
-                if len(keywords_list) >= 7:
-                    await message.channel.send("Maximum 7 keywords allowed. Use `!watcher keywords del <index>` to remove some first.")
+                if len(keywords_list) >= 3:
+                    await message.channel.send("Maximum 3 keywords allowed. Use `!watcher keywords del <index>` to remove some first.")
                     return
                 
                 if new_keyword in keywords_list:
@@ -1082,7 +1092,7 @@ class WatcherCommands:
                 color=discord.Color.blue()
             )
             
-            for i, (category, feed_id, keywords) in enumerate(subscriptions, 1):
+            for i, (category, feed_id, keywords, subscribed_at) in enumerate(subscriptions, 1):
                 if feed_id:
                     embed.add_field(
                         name=f"#{i} - {category} (Feed {feed_id})",
@@ -1270,264 +1280,6 @@ class WatcherCommands:
             logger.exception(f"Error in cmd_channel_keywords_unsubscribe: {e}")
             await message.channel.send(get_message('error_canceling_keywords', server_id=self._get_server_id(message)))
     
-    # ===== CHANNEL PREMISES COMMANDS =====
-    
-    async def cmd_channel_premises(self, message, args):
-        """Channel premises management command."""
-        if not args:
-            # If no subcommand is provided, show the default list
-            await self.cmd_channel_premises_list(message, args)
-            return
-        
-        subcommand = args[0].lower()
-        subargs = args[1:] if len(args) > 1 else []
-        
-        if subcommand == 'list':
-            await self.cmd_channel_premises_list(message, subargs)
-        elif subcommand == 'add':
-            await self.cmd_channel_premises_add(message, subargs)
-        elif subcommand == 'mod':
-            await self.cmd_channel_premises_mod(message, subargs)
-        elif subcommand == 'del':
-            await self.cmd_channel_premises_del(message, subargs)
-        else:
-            await message.channel.send(f"❌ Subcommand '{subcommand}' not recognized. Use: list, add, mod, del")
-    
-    async def cmd_channel_premises_list(self, message, args):
-        """List channel premises (custom or global)."""
-        # Check admin permissions
-        if not message.author.guild_permissions.administrator:
-            await message.channel.send("❌ Only administrators can view channel premises")
-            return
-        
-        try:
-            db = self._get_db()
-            channel = message.channel
-            channel_id = str(channel.id)
-            
-            # Get premises with context
-            premises, context = db.get_channel_premises_with_context(channel_id)
-            
-            if not premises:
-                await message.channel.send(get_message('no_channel_premises', server_id=self._get_server_id(message)))
-                return
-            
-            embed = discord.Embed(
-                title=f"🎯 Channel Premises #{channel.name} ({context.title()})",
-                description="These are the conditions that make news **CRITICAL** for this channel:",
-                color=discord.Color.blue() if context == "custom" else discord.Color.red(),
-                timestamp=datetime.now()
-            )
-            
-            for i, premise in enumerate(premises, 1):
-                embed.add_field(
-                    name=f"Premise #{i}",
-                    value=f"📍 {premise}",
-                    inline=False
-                )
-            
-            if context == "custom":
-                embed.set_footer(text="Use !watcherchannel premises add/mod to manage channel premises")
-            else:
-                embed.set_footer(text="Use !watcherchannel premises add to create custom channel premises")
-            
-            await message.channel.send(embed=embed)
-            
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_list: {e}")
-            await message.channel.send(get_message('error_listing_channel_premises', server_id=self._get_server_id(message)))
-    
-    async def cmd_channel_premises_add(self, message, args):
-        """Add a new premise to the channel (max 7)."""
-        # Check admin permissions
-        if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('error_permissions', server_id=self._get_server_id(message)))
-            return
-        
-        if not args:
-            await message.channel.send(get_message('usage_channel_premises_add', server_id=self._get_server_id(message)))
-            return
-        
-        try:
-            db = self._get_db()
-            channel = message.channel
-            channel_id = str(channel.id)
-            new_premise = " ".join(args).strip('"\'')
-            
-            if not new_premise:
-                await message.channel.send(get_message('must_provide_premise', server_id=self._get_server_id(message)))
-                return
-            
-            success, message_text = db.add_channel_premise(channel_id, new_premise)
-            
-            if success:
-                await message.channel.send(f"✅ {message_text}")
-            else:
-                await message.channel.send(f"❌ {message_text}")
-                
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_add: {e}")
-            await message.channel.send(get_message('error_adding_feed', server_id=self._get_server_id(message)))
-    
-    async def cmd_channel_premises_mod(self, message, args):
-        """Modify a specific channel premise by index."""
-        # Check admin permissions
-        if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('error_permissions', server_id=self._get_server_id(message)))
-            return
-        
-        if len(args) < 2:
-            await message.channel.send(get_message('usage_channel_premises_mod', server_id=self._get_server_id(message)))
-            return
-        
-        try:
-            db = self._get_db()
-            channel = message.channel
-            channel_id = str(channel.id)
-            
-            # Parse number
-            try:
-                index = int(args[0])
-            except ValueError:
-                await message.channel.send("❌ The number must be an integer.")
-                return
-            
-            new_premise = " ".join(args[1:]).strip('"\'')
-            
-            if not new_premise:
-                await message.channel.send("❌ You must provide the new premise text.")
-                return
-            
-            success, message_text = db.modify_channel_premise(channel_id, index, new_premise)
-            
-            if success:
-                await message.channel.send(f"✅ {message_text}")
-            else:
-                await message.channel.send(f"❌ {message_text}")
-                
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_mod: {e}")
-            await message.channel.send(get_message('error_adding_feed', server_id=self._get_server_id(message)))
-
-    async def cmd_channel_premises_del(self, message, args):
-        """Delete a specific channel premise by index."""
-        if not message.author.guild_permissions.administrator:
-            await message.channel.send(get_message('error_permissions', server_id=self._get_server_id(message)))
-            return
-
-        if not args:
-            await message.channel.send("📝 Usage: `!watcherchannel premises del <number>`")
-            return
-
-        try:
-            db = self._get_db()
-            channel_id = str(message.channel.id)
-
-            try:
-                index = int(args[0])
-            except ValueError:
-                await message.channel.send("❌ The number must be an integer.")
-                return
-
-            success, message_text = db.delete_channel_premise(channel_id, index)
-
-            if success:
-                await message.channel.send(f"✅ {message_text}")
-            else:
-                await message.channel.send(f"❌ {message_text}")
-
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_del: {e}")
-            await message.channel.send("❌ Error deleting channel premise")
-
-    async def cmd_channel_premises_list_canvas(self, message, args):
-        """Canvas-compatible version of channel premises list."""
-        try:
-            db = self._get_db()
-            channel_id = str(message.channel.id)
-            premises, context = db.get_channel_premises_with_context(channel_id)
-
-            if not premises:
-                return "📭 No premises are configured for this channel."
-
-            lines = [
-                f"🎯 Channel Premises ({context.title()}):",
-                "These are the conditions that make news **CRITICAL** for this channel:",
-                ""
-            ]
-            for i, premise in enumerate(premises, 1):
-                lines.append(f"{i}. {premise}")
-            return "\n".join(lines)
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_list_canvas: {e}")
-            return "❌ Error listing channel premises"
-
-    async def cmd_channel_premises_add_canvas(self, message, args):
-        """Canvas-compatible version of channel premises add."""
-        if not args:
-            return "❌ No premise text provided"
-
-        try:
-            db = self._get_db()
-            channel_id = str(message.channel.id)
-            new_premise = " ".join(args).strip('"\'')
-
-            if not new_premise:
-                return "❌ You must provide premise text"
-
-            success, message_text = db.add_channel_premise(channel_id, new_premise)
-            return f"✅ {message_text}" if success else f"❌ {message_text}"
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_add_canvas: {e}")
-            return "❌ Error adding channel premise"
-
-    async def cmd_channel_premises_del_canvas(self, message, args):
-        """Canvas-compatible version of channel premises delete."""
-        if not args:
-            return "❌ No premise number provided"
-
-        try:
-            all_text = " ".join(args)
-            index = None
-            for part in all_text.replace(",", " ").split():
-                if part.isdigit():
-                    index = int(part)
-                    break
-
-            if index is None:
-                return "❌ Invalid premise number format. Use a single number like: 1"
-
-            db = self._get_db()
-            channel_id = str(message.channel.id)
-            success, message_text = db.delete_channel_premise(channel_id, index)
-            return f"✅ {message_text}" if success else f"❌ {message_text}"
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_del_canvas: {e}")
-            return "❌ Error deleting channel premise"
-
-    async def cmd_channel_premises_mod_canvas(self, message, args):
-        """Canvas-compatible version of channel premises modify."""
-        if len(args) < 2:
-            return "❌ Usage: <number> <new premise text>"
-
-        try:
-            try:
-                index = int(args[0])
-            except ValueError:
-                return "❌ The number must be an integer."
-
-            new_premise = " ".join(args[1:]).strip('"\'')
-            if not new_premise:
-                return "❌ You must provide the new premise text."
-
-            db = self._get_db()
-            channel_id = str(message.channel.id)
-            success, message_text = db.modify_channel_premise(channel_id, index, new_premise)
-            return f"✅ {message_text}" if success else f"❌ {message_text}"
-        except Exception as e:
-            logger.exception(f"Error in cmd_channel_premises_mod_canvas: {e}")
-            return "❌ Error modifying channel premise"
-    
     async def cmd_channel_general_subscribe(self, message, args):
         """AI subscription for a channel: analyze news using channel premises."""
         if not args:
@@ -1712,74 +1464,23 @@ class WatcherCommands:
             channel = message.channel
             channel_id = str(channel.id)
             
-            # Get all subscription details for this channel
+            # Get all subscription details for this channel using unified table
             all_subscription_details = []
             
-            # 1. Get flat subscriptions from subscriptions_channels table
             try:
-                with sqlite3.connect(str(db.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        SELECT category, feed_id, subscribed_at
-                        FROM subscriptions_channels 
-                        WHERE channel_id = ? AND is_active = 1
-                    ''', (channel_id,))
-                    flat_subs = cursor.fetchall()
-                    for sub in flat_subs:
-                        all_subscription_details.append({
-                            'type': 'flat',
-                            'category': sub[0],
-                            'feed_id': sub[1],
-                            'date': sub[2],
-                            'keywords': None,
-                            'premises': None
-                        })
+                subscriptions = db.get_channel_subscriptions(channel_id)
+                for sub in subscriptions:
+                    sub_id, user_id, ch_id, category, feed_id, premises, keywords, method, subscribed_at, created_by = sub
+                    all_subscription_details.append({
+                        'type': method,
+                        'category': category,
+                        'feed_id': feed_id,
+                        'keywords': keywords,
+                        'premises': premises,
+                        'date': subscribed_at
+                    })
             except Exception as e:
-                logger.exception(f"Error getting flat channel subscriptions: {e}")
-            
-            # 2. Get keyword subscriptions from subscriptions_keywords table
-            try:
-                with sqlite3.connect(str(db.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        SELECT category, feed_id, keywords, subscribed_at
-                        FROM subscriptions_keywords 
-                        WHERE channel_id = ? AND is_active = 1
-                    ''', (channel_id,))
-                    keyword_subs = cursor.fetchall()
-                    for sub in keyword_subs:
-                        all_subscription_details.append({
-                            'type': 'keywords',
-                            'category': sub[0],
-                            'feed_id': sub[1],
-                            'keywords': sub[2],
-                            'date': sub[3],
-                            'premises': None
-                        })
-            except Exception as e:
-                logger.exception(f"Error getting keyword channel subscriptions: {e}")
-            
-            # 3. Get AI subscriptions from subscriptions_categories table
-            try:
-                with sqlite3.connect(str(db.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        SELECT category, feed_id, user_premises, subscribed_at
-                        FROM subscriptions_categories 
-                        WHERE user_id = ? AND is_active = 1
-                    ''', (f"channel_{channel_id}",))
-                    ai_subs = cursor.fetchall()
-                    for sub in ai_subs:
-                        all_subscription_details.append({
-                            'type': 'ai',
-                            'category': sub[0],
-                            'feed_id': sub[1],
-                            'premises': sub[2],
-                            'date': sub[3],
-                            'keywords': None
-                        })
-            except Exception as e:
-                logger.exception(f"Error getting AI channel subscriptions: {e}")
+                logger.exception(f"Error getting channel subscriptions: {e}")
             
             if not all_subscription_details:
                 await message.channel.send(get_message('error_no_channel_subscriptions', server_id=self._get_server_id(message)))
@@ -1896,8 +1597,13 @@ class WatcherCommands:
                 await send_dm_or_channel(ctx, "📭 No premises are configured.")
                 return
             
+            # Get premises title from descriptions
+            from roles.news_watcher.news_watcher import _get_news_watcher_descriptions
+            descriptions = _get_news_watcher_descriptions(self._get_server_id(ctx))
+            premises_title = descriptions.get("premises_title", "🔍 **Premisas:**")
+            
             embed = discord.Embed(
-                title=f"🎯 Your Premises ({context.title()})",
+                title=f"{premises_title} ({context.title()})",
                 description="These are the conditions that make news **CRITICAL** for you:",
                 color=discord.Color.blue() if context == "custom" else discord.Color.red(),
                 timestamp=datetime.now()
@@ -1935,7 +1641,11 @@ class WatcherCommands:
                 default_premises = db._get_default_premises()
                 if default_premises:
                     lines = []
-                    lines.append(f"🎯 Your Premises (Global - Not Customized):")
+                    # Get premises title from descriptions
+                    from roles.news_watcher.news_watcher import _get_news_watcher_descriptions
+                    descriptions = _get_news_watcher_descriptions(self._get_server_id(message))
+                    premises_title = descriptions.get("premises_title", "🔍 **Premisas:**")
+                    lines.append(f"{premises_title} (Global - Not Customized):")
                     lines.append("These are the default premises. Use 'Add Premises' to create your custom versions:")
                     lines.append("")
                     for i, premise in enumerate(default_premises, 1):
@@ -1950,7 +1660,11 @@ class WatcherCommands:
             
             # Create a simple text list instead of embed
             lines = []
-            lines.append(f"🎯 Your Premises ({context.title()}):")
+            # Get premises title from descriptions
+            from roles.news_watcher.news_watcher import _get_news_watcher_descriptions
+            descriptions = _get_news_watcher_descriptions(self._get_server_id(message))
+            premises_title = descriptions.get("premises_title", "🔍 **Premisas:**")
+            lines.append(f"{premises_title} ({context.title()}):")
             lines.append("These are the conditions that make news **CRITICAL** for you:")
             lines.append("")
             
@@ -1970,7 +1684,7 @@ class WatcherCommands:
             return "❌ Error listing premises"
     
     async def cmd_premises_add(self, ctx, args):
-        """Add a new premise (max 7)."""
+        """Add a new premise (max 3)."""
         if not args:
             await send_dm_or_channel(ctx, get_message('usage_premises_add', server_id=self._get_server_id(message)))
             return
@@ -2176,70 +1890,6 @@ class WatcherCommands:
         except Exception as e:
             logger.exception(f"Error in cmd_premises_add_canvas: {e}")
             return "❌ Error adding premise"
-    
-    async def cmd_my_premises(self, message, args):
-        """Show user's custom premises."""
-        try:
-            db = self._get_db()
-            user_id = str(message.author.id)
-            
-            user_premises = db.get_user_premises(user_id)
-            
-            if not user_premises:
-                await message.channel.send(get_message('no_personal_premises', server_id=self._get_server_id(message)))
-                return
-            
-            embed = discord.Embed(
-                title=f"🎯 Your Custom Premises",
-                description="These are your **personal** conditions for critical news:",
-                color=discord.Color.blue(),
-                timestamp=datetime.now()
-            )
-            
-            for i, premise in enumerate(user_premises, 1):
-                embed.add_field(
-                    name=f"Your Premise #{i}",
-                    value=f"📍 {premise}",
-                    inline=False
-                )
-            
-            embed.set_footer(text="Maximum 7 custom premises. Use !watcher premises configure to modify them")
-            await message.channel.send(embed=embed)
-            
-        except Exception as e:
-            logger.exception(f"Error in cmd_my_premises: {e}")
-            await message.channel.send("❌ Error getting your premises")
-    
-    async def cmd_configure_premises(self, message, args):
-        """Configure user's custom premises."""
-        if not args:
-            await message.channel.send(get_message('usage_premises_configure', server_id=self._get_server_id(message)))
-            return
-        
-        try:
-            db = self._get_db()
-            user_id = str(message.author.id)
-            
-            # Extract and clean premises
-            premises_text = " ".join(args).strip('"\'')
-            premises_list = [p.strip() for p in premises_text.split(',') if p.strip()]
-            
-            if len(premises_list) > 7:
-                await message.channel.send(get_message('max_personal_premises', server_id=self._get_server_id(message)))
-                return
-            
-            if not premises_list:
-                await message.channel.send(get_message('must_provide_one_premise', server_id=self._get_server_id(message)))
-                return
-            
-            if db.update_user_premises(user_id, premises_list):
-                await message.channel.send(f"✅ Your custom premises have been configured ({len(premises_list)} premises).\nUse `!watcher premises my_premises` to see them.")
-            else:
-                await message.channel.send(get_message('error_configuring_premises', server_id=self._get_server_id(message)))
-                
-        except Exception as e:
-            logger.exception(f"Error in cmd_configure_premises: {e}")
-            await message.channel.send(get_message('error_configuring_premises', server_id=self._get_server_id(message)))
     
     def _get_country_flag(self, country: str) -> str:
         """Get flag for country."""
@@ -2452,7 +2102,7 @@ class WatcherCommands:
             
             # Get keyword subscriptions
             keyword_subs = db.get_user_keyword_subscriptions(user_id)
-            for category, feed_id, keywords in keyword_subs:
+            for category, feed_id, keywords, _ in keyword_subs:
                 all_subscriptions.append({
                     'category': category,
                     'feed_id': feed_id,
@@ -2489,8 +2139,11 @@ class WatcherCommands:
                 if sub['method'] == 'keyword':
                     details = f"Keywords: {sub.get('keywords', 'N/A')}"
                 elif sub['method'] == 'general':
-                    premise_count = len(sub.get('premises', '').split(',')) if sub.get('premises') else 0
-                    details = f"Premises: {premise_count}"
+                    premises_text = sub.get('premises', 'N/A')
+                    # Truncate if too long for embed field
+                    if premises_text and len(premises_text) > 100:
+                        premises_text = premises_text[:97] + "..."
+                    details = f"Premises: {premises_text}"
                 else:
                     details = "All news with opinions"
                 
@@ -2630,7 +2283,7 @@ class WatcherCommands:
         try:
             db = self._get_db()
             
-            # Get keywords from user_premises (for users) or channel storage (for channels)
+            # Get keywords from unified storage
             if channel_id:
                 keywords = db.get_channel_keywords(channel_id)
             else:
@@ -2709,7 +2362,7 @@ class WatcherCommands:
         try:
             db = self._get_db()
             
-            # Get premises from user_premises (for users) or channel storage (for channels)
+            # Get premises from unified subscription storage
             if channel_id:
                 premises, context = db.get_premises_with_context(channel_id)
             else:

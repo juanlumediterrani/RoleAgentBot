@@ -85,20 +85,22 @@ def build_canvas_role_shaman(agent_config: dict, admin_visible: bool, guild=None
         value = general_messages.get(key)
         return str(value).strip() if value else fallback
 
-    # Load active subroles from DB, fallback to agent_config
+    # Load active subroles from server_config.json, fallback to agent_config
     active_subroles = []
     try:
-        if get_roles_db_instance:
-            server_key = get_server_key(guild)
-            roles_db = get_roles_db_instance(server_key)
-            shaman_config = roles_db.get_role_config('shaman')
-            if shaman_config and shaman_config.get('enabled', False):
+        server_id = str(guild.id) if guild else None
+        if server_id:
+            from .server_config import is_role_enabled
+            
+            # Check shaman role is enabled
+            shaman_enabled = is_role_enabled(server_id, "shaman", default_enabled=False)
+            if shaman_enabled:
                 for subrole in ['nordic_runes']:
-                    subrole_config = roles_db.get_role_config(subrole)
-                    if subrole_config and subrole_config.get('enabled', False):
+                    subrole_enabled = get_role_config_value(server_id, "shaman", f"config.subroles.{subrole}.enabled", False)
+                    if subrole_enabled:
                         active_subroles.append(subrole)
     except Exception as e:
-        logger.warning(f"Error loading shaman subroles from roles_config: {e}")
+        logger.warning(f"Error loading shaman subroles from server_config: {e}")
         subroles = (agent_config or {}).get("roles", {}).get("shaman", {}).get("subroles", {})
         active_subroles = [name for name, cfg in subroles.items() if isinstance(cfg, dict) and cfg.get("enabled", False)]
 
@@ -109,7 +111,6 @@ def build_canvas_role_shaman(agent_config: dict, admin_visible: bool, guild=None
     parts = [description]
 
     if active_subroles:
-        parts.append("")
         parts.append(f"**{_general_text('available_subroles', 'Available subroles')}**")
         for subrole in active_subroles:
             if subrole in subrole_descriptions:
@@ -142,8 +143,14 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
         how_to_use = _runes_text("how_to_use", "**How to Use:**\n 1. Choose a reading type from the dropdown\n 2. Enter your question in the modal\n 3. Receive personalized rune interpretation\n")
         runes_title = _runes_text("runes_title", "**The 24 Elder Futhark Runes:**")
 
+        # Get localized labels
+        general = shaman_messages.get("general", {})
+        action_labels = general.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+
         return "\n".join([
-            title,
+            f"**{title}**",
             description,
             "-" * 45,
             how_to_use,
@@ -156,7 +163,7 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
             "ᛏ Tiwaz • ᛒ Berkano • ᛖ Ehwaz • ᛗ Mannaz • ᛚ Laguz • ᛜ Ingwaz • ᛞ Dagaz • ᛟ Othala",
             "",
             "-" * 45,
-            f"**Status:** {'✅ Enabled' if runes_enabled else '❌ Disabled'}",
+            f"**Status:** {'✅ ' + label_enabled if runes_enabled else '❌ ' + label_disabled}",
         ])
 
     if detail_name == "runes_admin":
@@ -164,9 +171,15 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
         subroles = (agent_config or {}).get("roles", {}).get("shaman", {}).get("subroles", {})
         runes_enabled = subroles.get("nordic_runes", {}).get("enabled", False)
 
+        # Get localized labels
+        general = shaman_messages.get("general", {})
+        action_labels = general.get("action_labels", {})
+        label_enabled = action_labels.get("enabled", "Enabled")
+        label_disabled = action_labels.get("disabled", "Disabled")
+
         return "\n".join([
             "Configure Nordic Runes subrole settings and availability for this server.",
-            f"**Status:** {'✅ Enabled' if runes_enabled else '❌ Disabled'}",
+            f"**Status:** {'✅ ' + label_enabled if runes_enabled else '❌ ' + label_disabled}",
             "",
             "**Controls**",
             "- Enable or disable Nordic Runes subrole",
@@ -403,12 +416,12 @@ async def handle_canvas_shaman_action(interaction: discord.Interaction, action_n
                     AGENT_CFG["roles"]["shaman"]["subroles"]["nordic_runes"] = {}
                 AGENT_CFG["roles"]["shaman"]["subroles"]["nordic_runes"]["enabled"] = enabled
 
-                if get_roles_db_instance is not None:
-                    db_roles = get_roles_db_instance(server_key)
-                    config_data = json.dumps({"enabled": enabled})
-                    ok = db_roles.save_role_config("nordic_runes", enabled, config_data)
-                else:
-                    ok = True
+                try:
+                    from .server_config import set_role_config
+                    ok = set_role_config(server_key, "nordic_runes", enabled, role_config_dict={"enabled": enabled})
+                except Exception as e:
+                    logger.error(f"Failed to update nordic_runes config in server_config: {e}")
+                    ok = False
 
                 current_detail = "runes_admin"
                 applied_text = f"Nordic Runes {'enabled' if enabled else 'disabled'}."
@@ -552,7 +565,7 @@ class RunesPageActionSelect(discord.ui.Select):
             await interaction.response.send_modal(BeggarDonationModal(interaction.guild, self._parent_view.author_id, self._parent_view))
             return
 
-        if action_name in {"watcher_frequency", "hunter_frequency"}:
+        if action_name == "watcher_frequency":
             if not interaction.guild or not self._parent_view.admin_visible:
                 await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
                 return
@@ -837,8 +850,8 @@ async def _handle_canvas_runes_action(interaction: discord.Interaction, action_n
         from .content import _build_canvas_role_embed
         from discord_bot.canvas.ui import CanvasRoleDetailView
 
-        # Page-specific title for runes list pages
-        if action_name in _PAGE_ACTIONS:
+        # Page-specific title for runes list pages and types (content already includes title)
+        if action_name in _PAGE_ACTIONS or action_name == "runes_types":
             runes_title = None
         else:
             runes_title = _runes_desc.get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")

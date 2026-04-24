@@ -10,7 +10,7 @@ try:
     logger = get_logger('db_role_mc')
 except Exception:
     import logging
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('db_role_mc')
 
 from agent_db import get_server_db_path_fallback, get_personality_name

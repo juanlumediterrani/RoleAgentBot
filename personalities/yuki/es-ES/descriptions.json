@@ -1,12 +1,12 @@
 {
   "discord": {
-    "general":{
+    "general": {
       "status": "Estado de presencia:",
       "active": "✅ Presente",
       "inactive": "❌ Ausente",
       "none": "Ninguna",
       "every": "cada",
-      "for":"para",
+      "for": "para",
       "base_frequency": "Cadencia base:",
       "current_frequency": "Cadencia actual:",
       "current_settings": "🔧 **Parámetros actuales:**",
@@ -29,7 +29,11 @@
         "add_keyword": "Añadir Palabra",
         "remove_keyword": "Eliminar Palabra",
         "server_language": "🌐 Idioma del Servidor",
-        "role_management": "🎛️ Gestión de Artes"
+        "role_management": "🎛️ Gestión de Artes",
+        "current": "Actual:",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "always_enabled": "Siempre activado"
       },
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
@@ -37,11 +41,11 @@
     },
     "help_menu": {
       "title": "📚 **Yuki - Registro de Artes**",
-      "description": "**Descripción**\nYuki es una presencia activa con memoria persistente, capaz de moverse entre diferentes funciones y mantener encuentros genuinos con los visitantes.",
+      "description": "**Descripción** Yuki es una presencia activa con memoria persistente, capaz de moverse entre diferentes funciones y mantener encuentros genuinos con los visitantes.",
       "separator": "---------------------------------------------",
-      "roles_section": "**Artes y Caminos**\nLos caminos son las diferentes formas en que Yuki puede estar presente para ofrecer servicios específicos a los visitantes.",
-      "behavior_section": "**Protocolos de Presencia**\nConfiguración de las rutinas de interacción de Yuki. Exclusivo para Administradores.",
-      "tips_section": "**Sugerencias**\n-Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?'\n-Cada camino tiene su propio ritmo y requiere su propia escucha."
+      "roles_section": "**Artes y Caminos** Los caminos son las diferentes formas en que Yuki puede estar presente para ofrecer servicios específicos a los visitantes.",
+      "behavior_section": "**Protocolos de Presencia** Configuración de las rutinas de interacción de Yuki. Exclusivo para Administradores.",
+      "tips_section": "**Sugerencias** -Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?' -Cada camino tiene su propio ritmo y requiere su propia escucha."
     },
     "canvas_home_messages": {
       "title": "⛩️ Salón de Yuki",
@@ -73,11 +77,11 @@
       "help_commands": "💡 **GUÍAS:**",
       "canvas_details": "🎨 **ESQUEMAS EN CANVAS:**",
       "navigation_help": "",
-      "no_roles_active": "🌸 **LA SALA ESTÁ EN SILENCIO**\n\nNingún camino especializado se encuentra activo en este momento. Solicita a un administrador que active alguno de los servicios disponibles mediante `!canvas setup`.\n\n**Caminos disponibles:**\n• 📡 News Watcher - Observación de noticias\n• 💎 Treasure Hunter - Análisis de objetos\n• 🎭 Trickster - Azar y probabilidad\n• 💰 Banker - Gestión de recursos\n• 🎵 MC - Música",
+      "no_roles_active": "🌸 **LA SALA ESTÁ EN SILENCIO** Ningún camino especializado se encuentra activo en este momento. Solicita a un administrador que active alguno de los servicios disponibles mediante `!canvas setup`. **Caminos disponibles:** • 📡 News Watcher - Observación de noticias • 💎 Treasure Hunter - Análisis de objetos • 🎭 Trickster - Azar y probabilidad • 💰 Banker - Gestión de recursos • 🎵 MC - Música",
       "role_list_title": "🌸 Presencias Activas",
       "role_available": "✅ {role} - ACTIVO",
       "role_unavailable": "❌ {role} - EN REPOSO",
-      "frequency_help": "📝 Ajusta la cadencia: Usa `!canvas` → Configuración → Frecuencia (rango: 1 a 168 horas)\nEjemplo: Configura frecuencia a 2 horas para recibir actualizaciones cada 2 horas.",
+      "frequency_help": "📝 Ajusta la cadencia: Usa `!canvas` → Configuración → Frecuencia (rango: 1 a 168 horas) Ejemplo: Configura frecuencia a 2 horas para recibir actualizaciones cada 2 horas.",
       "music_help": "🎵 **Música** - `!mc play <nombre>` / `!mc queue` | `!mc help` para consultar el repertorio completo.",
       "button_previous": "◀ Anterior",
       "button_next": "Siguiente ▶",
@@ -86,22 +90,22 @@
     "behavior_messages": {
       "conversation": {
         "title": "**💬 Yuki - Presencia en Conversación**",
-        "description": "**Descripción:**\n -Yuki responderá a mensajes directos y menciones.\n -Mantiene memoria de conversaciones pasadas que hayan sido significativas.\n -Reaccionará a ciertos términos específicos según los caminos activos. En el módulo tabú se configuran las palabras que activan respuestas particulares.",
+        "description": "**Descripción:** -Yuki responderá a mensajes directos y menciones. -Mantiene memoria de conversaciones pasadas que hayan sido significativas. -Reaccionará a ciertos términos específicos según los caminos activos. En el módulo tabú se configuran las palabras que activan respuestas particulares.",
         "button": "💬 Conversación"
       },
       "greetings": {
         "title": "**👋 Yuki - Recepción**",
-        "description": "**Descripción:**\n -Yuki saluda a los visitantes al conectarse.\n -Mantiene el reconocimiento durante 5 min antes de considerar al visitante ausente.\n",
+        "description": "**Descripción:** -Yuki saluda a los visitantes al conectarse. -Mantiene el reconocimiento durante 5 min antes de considerar al visitante ausente.",
         "button": "👋 Recepción"
       },
       "welcome": {
         "title": "**🍵 Yuki - Bienvenida**",
-        "description": "**Descripción:**\n -Yuki da la bienvenida a los nuevos visitantes que llegan a la sala.\n",
+        "description": "**Descripción:** -Yuki da la bienvenida a los nuevos visitantes que llegan a la sala.",
         "button": "🍵 Bienvenida"
       },
       "taboo": {
         "title": "**🚫 Yuki - Toques de Atención**",
-        "description": "**Cómo funciona:**\n -Configura palabras o expresiones que activen una respuesta descortés de Yuki.\n -Se pueden añadir, o eliminar palabras taboo.\n",
+        "description": "**Cómo funciona:** -Configura palabras o expresiones que activen una respuesta descortés de Yuki. -Se pueden añadir, o eliminar palabras taboo.",
         "title_keywords": "Umbrales configurados actualmente:",
         "button": "🚫 Umbrales",
         "modal": {
@@ -117,11 +121,29 @@
           "info_not_exists": "La palabra `{keyword}` no estaba en la lista."
         }
       },
-      "comentary": {
-        "title": "**🗣️ Yuki - Observaciones (en desarrollo)**",
-        "description": "**Descripción**\n -Yuki comparte observaciones sobre sus funciones activas y los cambios en la sala.",
-        "button": "🗣️ Observaciones",
-        "modal": {
+      "memory": {
+        "title": "**🧠 Yuki - Memoria del Salón**",
+        "description": "**Descripción** -Consulta la memoria de Yuki: el flujo del agua, las aguas recientes y los vínculos con los visitantes.",
+        "button": "🧠 Memoria",
+        "dropdown": {
+          "long": {
+            "label": "Memoria",
+            "emoji": "🗻",
+            "description": "El flujo del agua que se acumula cada día"
+          },
+          "recent": {
+            "label": "Flujo Reciente",
+            "emoji": "🌊",
+            "description": "Las aguas más recientes que atraviesan el salón"
+          },
+          "relationship": {
+            "label": "Vinculo con el Visitante",
+            "emoji": "👥",
+            "description": "Los vínculos que se forman con cada visitante"
+          }
+        }
+      },
+      "modal": {
           "title": "Frecuencia de Observaciones",
           "label_minutes": "Minutos",
           "placeholder_minutes": "ej. 180",
@@ -129,14 +151,14 @@
           "error_admin_only": "❌ Esta opción es exclusiva para administradores.",
           "error_invalid_number": "❌ Introduce un número válido de minutos.",
           "error_positive_number": "❌ Los minutos deben ser mayores que cero.",
-          "success_message": "Intervalo de observaciones establecido en `{minutes}` minutos.\nEstado actual: {enabled_text}",
+          "success_message": "Intervalo de observaciones establecido en `{minutes}` minutos. Estado actual: {enabled_text}",
           "state_on": "Activo",
           "state_off": "Inactivo"
         }
       },
       "role_control": {
         "title": "**🎛️ Yuki - Gestión de Artes**",
-        "description": "**Descripción**\n -Activa o detiene los diferentes caminos disponibles desde aquí.",
+        "description": "**Descripción** -Activa o detiene los diferentes caminos disponibles desde aquí.",
         "button": "🎛️ Gestión",
         "modal": {
           "title": "Gestión de Artes",
@@ -150,7 +172,7 @@
       },
       "settings": {
         "title": "**⚙️ Yuki - Ajustes de Sala**",
-        "description": "**Descripción**\n -Gestiona el idioma del servidor y la activación de módulos.",
+        "description": "**Descripción** -Gestiona el idioma del servidor y la activación de módulos.",
         "button": "⚙️ Ajustes",
         "language_select": {
           "placeholder": "🌐 Seleccionar idioma del servidor...",
@@ -160,7 +182,7 @@
       },
       "personality": {
         "title": "**🎭 Yuki - Identidad**",
-        "description": "**Descripción**\n -Modifica la esencia y personalidad de Yuki en este servidor.\n -Permite guardar el estado actual de la identidad.\n -Los registros se actualizan al realizar un cambio.",
+        "description": "**Descripción** -Modifica la esencia y personalidad de Yuki en este servidor. -Permite guardar el estado actual de la identidad. -Los registros se actualizan al realizar un cambio.",
         "button": "🎭 Identidad",
         "option_change": "Establecer Nueva Identidad",
         "option_change_desc": "Cambiar a una configuración de personalidad diferente",
@@ -178,16 +200,16 @@
         "generating_memory_synthesis": "🧠 Generando síntesis de memoria inicial para la nueva identidad...",
         "select_personality_instruction": "Selecciona una nueva identidad del menú:",
         "choose_personality_placeholder": "Elige una identidad (idioma: {language})...",
-        "confirm_change_message": "**¿Confirmar cambio a {personality}?**\nSelecciona tus opciones:",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?** Selecciona tus opciones:",
         "selected_personality": "**Identidad seleccionada: {personality}**",
         "selected_personality_with_language": "**Identidad seleccionada: {personality} (Idioma: {language})**",
         "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad."
       }
     },
-    "readme":{
-      "label_user_question":"Consulta del visitante:",
-      "task":"Por favor, responde a la duda del usuario utilizando la documentación facilitada.",
-      "label_documentation":"Documentación:"
+    "readme": {
+      "label_user_question": "Consulta del visitante:",
+      "task": "Por favor, responde a la duda del usuario utilizando la documentación facilitada.",
+      "label_documentation": "Documentación:"
     },
     "memory_detection": {
       "memory_trigger_words": [

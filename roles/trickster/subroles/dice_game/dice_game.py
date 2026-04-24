@@ -195,10 +195,16 @@ def process_play(player_id: str, player_name: str, server_display_name: str, cur
             roles_db = get_banker_roles_db_instance(server_id)
         
         if roles_db:
-            config = roles_db.get_role_config('dice_game')
-            fixed_bet = config.get('fixed_bet', 1)
-            announcements_active = config.get('announcements_active', True)
-            logger.info(f"🔧 DB Config - Server: {server_id}, Bet: {fixed_bet}, Announcements: {announcements_active}")
+            try:
+                from discord_bot.canvas.server_config import get_role_config_value
+                config = get_role_config_value(server_id, "dice_game", "config", default={})
+                fixed_bet = config.get('bet_fija', 1)
+                announcements_active = config.get('announcements_active', True)
+                logger.info(f"🔧 DB Config - Server: {server_id}, Bet: {fixed_bet}, Announcements: {announcements_active}")
+            except Exception as e:
+                logger.warning(f"Error getting dice_game config from server_config: {e}")
+                fixed_bet = 1
+                announcements_active = True
         else:
             fixed_bet = 1
             announcements_active = True

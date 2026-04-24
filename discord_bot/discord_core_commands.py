@@ -93,25 +93,28 @@ _taboo_state_by_guild_id: dict[int, dict] = {}
 
 
 def get_taboo_state(guild_id: int) -> dict:
-    """Get taboo state from behavior database, initializing from prompts.json if needed."""
+    """Get taboo state from server_config.json, initializing from prompts.json if needed."""
     state = _taboo_state_by_guild_id.get(guild_id)
     if state is None:
-        # Try to get from behavior database first
+        server_key = str(guild_id)
+        
+        # Try to get from server_config.json first
         try:
-            server_key = str(guild_id)
-            db_behavior = get_behavior_db_instance(server_key)
+            from discord_bot.canvas.server_config import get_behavior_config
+            taboo_config = get_behavior_config(server_key, "taboo", default_enabled=False)
             
             # Get default keywords from prompts.json/behaviors/taboo
             taboo_defaults = PERSONALITY.get("behaviors", {}).get("taboo", {})
             default_keywords = list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else []
             
-            # Initialize database with defaults if empty
-            db_behavior.initialize_taboo_defaults(default_keywords)
+            # Get keywords from config or use defaults
+            config = taboo_config.get("config", {}) if taboo_config else {}
+            keywords = config.get("keywords", default_keywords) if config else default_keywords
             
-            # Get current state from behavior database
+            # Get current state from server_config.json
             state = {
-                "enabled": db_behavior.is_taboo_enabled(),
-                "keywords": db_behavior.get_taboo_keywords(),
+                "enabled": taboo_config.get("enabled", False) if taboo_config else False,
+                "keywords": keywords,
                 "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
             }
             
@@ -119,7 +122,7 @@ def get_taboo_state(guild_id: int) -> dict:
             _taboo_state_by_guild_id[guild_id] = state
             
         except Exception as e:
-            logger.error(f"Error getting taboo state from behavior database: {e}")
+            logger.error(f"Error getting taboo state from server_config.json: {e}")
             # Fallback to empty state
             state = {
                 "enabled": False,
@@ -132,52 +135,50 @@ def get_taboo_state(guild_id: int) -> dict:
 
 
 def update_taboo_state(guild_id: int, enabled: bool = None, keywords: list = None) -> bool:
-    """Update taboo state in behavior database."""
+    """Update taboo state in server_config.json."""
     try:
         server_key = str(guild_id)
-        db_behavior = get_behavior_db_instance(server_key)
+        
+        # Get default keywords from prompts.json/behaviors/taboo
+        taboo_defaults = PERSONALITY.get("behaviors", {}).get("taboo", {})
+        default_keywords = list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else []
+        
+        # Get current config
+        try:
+            from discord_bot.canvas.server_config import get_behavior_config, set_behavior_config
+            taboo_config = get_behavior_config(server_key, "taboo", default_enabled=False)
+            config = taboo_config.get("config", {}) if taboo_config else {}
+            current_enabled = taboo_config.get("enabled", False) if taboo_config else False
+            current_keywords = config.get("keywords", default_keywords) if config else default_keywords
+        except Exception as e:
+            logger.error(f"Error getting current taboo config: {e}")
+            current_enabled = False
+            current_keywords = default_keywords
         
         # Update enabled status if provided
         if enabled is not None:
-            # Get all keywords from database (including disabled ones)
-            # For now, we'll use a different approach: store default keywords and toggle them
-            default_keywords = PERSONALITY.get("behaviors", {}).get("taboo", {}).get("keywords", [])
-            
-            if enabled:
-                # Enable taboo: restore default keywords
-                for keyword in default_keywords:
-                    db_behavior.add_taboo_keyword(keyword, "admin_enable")
-            else:
-                # Disable taboo: remove all keywords
-                current_keywords = db_behavior.get_taboo_keywords()
-                for keyword in current_keywords:
-                    db_behavior.remove_taboo_keyword(keyword)
-            
-            # Update cache
-            if guild_id in _taboo_state_by_guild_id:
-                _taboo_state_by_guild_id[guild_id]["enabled"] = enabled
-                _taboo_state_by_guild_id[guild_id]["keywords"] = db_behavior.get_taboo_keywords()
+            current_enabled = enabled
+            # When enabling, restore default keywords if none exist
+            if enabled and not current_keywords:
+                current_keywords = default_keywords
         
         # Update keywords if provided
         if keywords is not None:
-            # Get current keywords
-            current_keywords = set(db_behavior.get_taboo_keywords())
-            new_keywords = set(kw.lower().strip() for kw in keywords if kw.strip())
-            
-            # Add new keywords
-            for keyword in new_keywords - current_keywords:
-                db_behavior.add_taboo_keyword(keyword, "admin_update")
-            
-            # Remove keywords not in new list
-            for keyword in current_keywords - new_keywords:
-                db_behavior.remove_taboo_keyword(keyword)
+            current_keywords = [kw.lower().strip() for kw in keywords if kw.strip()]
+        
+        # Save to server_config.json
+        try:
+            set_behavior_config(server_key, "taboo", current_enabled, {"keywords": current_keywords}, updated_by="admin_command")
             
             # Update cache
             if guild_id in _taboo_state_by_guild_id:
-                _taboo_state_by_guild_id[guild_id]["keywords"] = list(new_keywords)
-                _taboo_state_by_guild_id[guild_id]["enabled"] = db_behavior.is_taboo_enabled()
-        
-        return True
+                _taboo_state_by_guild_id[guild_id]["enabled"] = current_enabled
+                _taboo_state_by_guild_id[guild_id]["keywords"] = current_keywords
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error saving taboo state to server_config.json: {e}")
+            return False
         
     except Exception as e:
         logger.error(f"Error updating taboo state: {e}")
@@ -230,9 +231,7 @@ from discord_bot.canvas.ui import (
     CanvasSectionSelect,
     CanvasRoleSelect,
     CanvasRoleDetailSelect,
-    CanvasWatcherMethodSelect,
     CanvasWatcherSubscriptionSelect,
-    CanvasWatcherAdminMethodSelect,
     CanvasWatcherAdminActionSelect,
     CanvasRoleActionSelect,
     CanvasMCActionSelect,
@@ -288,7 +287,12 @@ def register_core_commands(bot, agent_config):
             await ctx.send(role_cfg.get("role_no_permission", "❌ Only administrators can enable or disable roles."))
             return
 
-        valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
+        # MC is always enabled, cannot be toggled
+        if role_name == "mc":
+            await ctx.send("❌ MC role is always enabled and cannot be toggled.")
+            return
+
+        valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman"]
         if role_name not in valid_roles:
             await ctx.send(role_cfg.get("role_not_found", "❌ Unknown role `{role}`.").format(role=role_name))
             return

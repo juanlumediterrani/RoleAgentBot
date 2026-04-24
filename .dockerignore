@@ -22,7 +22,6 @@ databases/
 logs/
 fatiga/
 temp/
-.active_server
 
 # Sensitive material — NEVER ship in the image.
 # cookies.txt is a DEV-ONLY YouTube cookie jar (dummy account). In production it is

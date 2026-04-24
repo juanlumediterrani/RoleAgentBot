@@ -1,12 +1,12 @@
 {
   "discord": {
-    "general":{
+    "general": {
       "status": "**ESTADO DE OPERACIONES:**",
       "active": "✅ ¡EN MARCHA! 🦅⚖️",
       "inactive": "❌ ¡FUERA DE SERVICIO! 📉💥",
       "none": "NINGUNO",
       "every": "CADA",
-      "for":"PARA",
+      "for": "PARA",
       "base_frequency": "**FRECUENCIA BASE:**",
       "current_frequency": "**FRECUENCIA ACTUAL:**",
       "current_settings": "🔧 **CONFIGURACIÓN OFICIAL:** 🦅⚖️",
@@ -15,17 +15,37 @@
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
       "option_no": "No",
+      "action_descriptions": {
+        "boolean_toggle": "Alternar activación/desactivación",
+        "number_input_target": "Entrada numérica",
+        "text_input_target": "Entrada de texto",
+        "action": "Acción inmediata"
+      },
+      "action_labels": {
+        "on": "Activar",
+        "off": "Desactivar",
+        "now": "Ahora",
+        "frequency": "Frecuencia",
+        "add_keyword": "Añadir Palabra",
+        "remove_keyword": "Eliminar Palabra",
+        "server_language": "🌐 Idioma del Servidor",
+        "role_management": "🎛️ Gestión de Roles",
+        "current": "Actual:",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "always_enabled": "Siempre activado"
+      },
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
       "available_subroles": "SUBMÓDULOS DISPONIBLES"
     },
     "help_menu": {
       "title": "📚 ** Her Hans - MANUAL DE INSTRUCCIONES**",
-      "description": "**DESCRIPCIÓN OFICIAL** 🦅⚖️\n¡ACHTUNG! Her Hans es un agente disciplinario con memoria persistente y autoridad absoluta. ¡Sigue las reglas o sufrirás las consecuencias, Zivilist! ✍️🚫",
+      "description": "**DESCRIPCIÓN OFICIAL** 🦅⚖️ ¡ACHTUNG! Her Hans es un agente disciplinario con memoria persistente y autoridad absoluta. ¡Sigue las reglas o sufrirás las consecuencias, Zivilist! ✍️🚫",
       "separator": "═══════════════════════════════════════",
-      "roles_section": "**MÓDULOS DE OPERACIÓN**\nLos módulos son capacidades autorizadas para mantener el orden y la disciplina entre los reclutas.",
-      "behavior_section": "**PROTOCOLOS DE COMPORTAMIENTO**\n¡SCHNELL! Configura los protocolos de comportamiento. ¡SOLO PARA OFICIALES SUPERIORES!",
-      "tips_section": "**ÓRDENES ESTRICTAS**\n-¡Preguntar cómo funciona un comando: '¿cómo funciona el comando dice?'!\n-¡Las mejores capacidades están dentro de cada módulo operativo!"
+      "roles_section": "**MÓDULOS DE OPERACIÓN** Los módulos son capacidades autorizadas para mantener el orden y la disciplina entre los reclutas.",
+      "behavior_section": "**PROTOCOLOS DE COMPORTAMIENTO** ¡SCHNELL! Configura los protocolos de comportamiento. ¡SOLO PARA OFICIALES SUPERIORES!",
+      "tips_section": "**ÓRDENES ESTRICTAS** -¡Preguntar cómo funciona un comando: '¿cómo funciona el comando dice?'! -¡Las mejores capacidades están dentro de cada módulo operativo!"
     },
     "canvas_home_messages": {
       "title": "🧭 Her Hans • CUARTEL GENERAL",
@@ -37,7 +57,7 @@
       "generic_option_label": "¡SELECCIONAR OPCIÓN, RECLUTA!",
       "personalitystatus": "**Personalidad cargada:**",
       "description": "¡El panel Canvas permite control total sobre todas las operaciones!",
-      "recentsynthesistitle": "🧐 **Reporte actual*",
+      "recentsynthesistitle": "🧐 **Reporte actual**",
       "dailymemorytitle": "🗺️ **Análisis del frente**",
       "personalsynthesistitle": "👞 **Expediente del recluta**",
       "dm_default_server_title": "🔔 **USANDO SERVIDOR POR DEFECTO: {server_name}**",
@@ -45,7 +65,7 @@
       "dm_default_server_separator": "═══════════════════════════════════════"
     },
     "roles_view_messages": {
-      "title": "🎭  UNIDADES ESPECIALES DE Her Hans 🎭",
+      "title": "🎭 UNIDADES ESPECIALES DE Her Hans 🎭",
       "description": "🌟 ¡Navegar por las diferentes unidades operativas desplegadas para Her Hans!",
       "role_categories": "═════════════════════════════════",
       "enabled_status": "general.active",
@@ -57,7 +77,7 @@
       "help_commands": "💡 **COMANDOS DE AYUDA:**",
       "canvas_details": "🎨 **DETALLES EN CANVAS:**",
       "navigation_help": "",
-      "no_roles_active": "🌫️ **NINGUNA UNIDAD DESPLEGADA** 📉💥\n\n¡No hay unidades especializadas activas! ¡Pedir a un oficial que despliegue unidades usando `!canvas setup`!\n\n**Unidades disponibles para despliegue:**\n• 📡 News Watcher - Vigía de noticias\n• 💎 Treasure Hunter - Cazador de tesoros\n• 🎭 Trickster - División de Operaciones Especiales\n• 💰 Banker - Economía del clan\n• 🎵 MC - Música militar",
+      "no_roles_active": "🌫️ **NINGUNA UNIDAD DESPLEGADA** 📉💥 ¡No hay unidades especializadas activas! ¡Pedir a un oficial que despliegue unidades usando `!canvas setup`! **Unidades disponibles para despliegue:** • 📡 News Watcher - Vigía de noticias • 💎 Treasure Hunter - Cazador de tesoros • 🎭 Trickster - División de Operaciones Especiales • 💰 Banker - Economía del clan • 🎵 MC - Música militar",
       "role_list_title": "☠️ UNIDADES MILITARES Y OPERACIONES",
       "role_available": "✅ {role} - ¡UNIDAD DESPLEGADA Y OPERATIVA! 🦅⚖️",
       "role_unavailable": "❌ {role} - ¡UNIDAD FUERA DE SERVICIO! 📉💥",
@@ -70,38 +90,55 @@
     "behavior_messages": {
       "conversation": {
         "title": "**💬 Her Hans - INTERROGATORIO MILITAR**",
-        "description": "**PROTOCOLO DE INTELIGENCIA:** 🦅⚖️\n -¡Her Hans ejecuta protocolos de interrogatorio en DM y menciones!\n -¡Memoria operativa persistente para registrar todas las misiones anteriores!\n -¡Reacciona según parámetros tácticos y palabras clave prohibidas! ¡Configurar en protocolos de seguridad! ✍️🚫",
+        "description": "**PROTOCOLO DE INTELIGENCIA:** 🦅⚖️ -¡Her Hans ejecuta protocolos de interrogatorio en DM y menciones! -¡Memoria operativa persistente para registrar todas las misiones anteriores! -¡Reacciona según parámetros tácticos y palabras clave prohibidas! ¡Configurar en protocolos de seguridad! ✍️🚫",
         "button": "💬 Interrogatorio"
       },
       "greetings": {
         "title": "**👋 Her Hans - PROTOCOLO DE SALUDO MILITAR**",
-        "description": "**REGLAMENTO DE FORMACIONES:** 🦅⚖️\n -¡Ejecuta saludos reglamentarios al detectar reclutas en línea!\n -¡Tiempo de espera táctico: 5 minutos antes de declarar ausencia!\n -¡(En desarrollo): Sistema de respuesta obligatoria al saludo militar! ✍️🚫",
+        "description": "**REGLAMENTO DE FORMACIONES:** 🦅⚖️ -¡Ejecuta saludos reglamentarios al detectar reclutas en línea! -¡Tiempo de espera táctico: 5 minutos antes de declarar ausencia! -¡(En desarrollo): Sistema de respuesta obligatoria al saludo militar! ✍️🚫",
         "button": "👋 Formación"
       },
       "welcome": {
         "title": "**🍺 Her Hans - PROTOCOLO DE INDUCCIÓN**",
-        "description": "**PROCEDIMIENTO DE RECLUTAMIENTO:** 🦅⚖️\n -¡Ejecuta ceremonia oficial de inducción para nuevos reclutas!\n -¡Registra presencia en el cuartel y asigna número de identificación! ✍️🚫",
+        "description": "**PROCEDIMIENTO DE RECLUTAMIENTO:** 🦅⚖️ -¡Ejecuta ceremonia oficial de inducción para nuevos reclutas! -¡Registra presencia en el cuartel y asigna número de identificación! ✍️🚫",
         "button": "🍺 Inducción"
       },
       "taboo": {
         "title": "**🚫 Her Hans - PROTOCOLO DE SEGURIDAD**",
-        "description": "**REGLAMENTO DE DISCIPLINA:** 🦅⚖️\n -¡Configurar sistema de respuesta automática a palabras prohibidas en canales y DM!\n -¡Activar/desactivar alertas de seguridad y palabras clave restringidas! ✍️🚫",
+        "description": "**REGLAMENTO DE DISCIPLINA:** 🦅⚖️ -¡Configurar sistema de respuesta automática a palabras prohibidas en canales y DM! -¡Activar/desactivar alertas de seguridad y palabras clave restringidas! ✍️🚫",
         "title_keywords": "**VOCABULARIO RESTRINGIDO ACTUAL:**",
         "button": "🚫 Seguridad"
       },
-      "comentary": {
-        "title": "**🗣️ Her Hans - COMUNICADOS TÁCTICOS**",
-        "description": "**SISTEMA DE INTELIGENCIA:** 🦅⚖️\n -¡Emite comunicados oficiales sobre estado de misiones y operaciones activas!\n -¡Analiza rendimiento de unidades y reporta al comando superior! 📉💥",
-        "button": "🗣️ Comunicados"
+      "memory": {
+        "title": "**🧠 Her Hans - MEMORIA DE CAMPAÑA**",
+        "description": "**ARCHIVOS DE INTELIGENCIA:** 🦅⚖️ -¡Consultar registros de memoria operativa del agente! -¡Análisis del frente, reportes recientes y expedientes de reclutas! 📉💥",
+        "button": "🧠 Memoria",
+        "dropdown": {
+          "long": {
+            "label": "Análisis del frente",
+            "emoji": "🗺️",
+            "description": "El registro diario completo de la situación táctica"
+          },
+          "recent": {
+            "label": "Reporte actual",
+            "emoji": "🧐",
+            "description": "Los reportes más recientes de las operaciones"
+          },
+          "relationship": {
+            "label": "Expediente del recluta",
+            "emoji": "👞",
+            "description": "Los expedientes de cada recluta bajo mi supervisión"
+          }
+        }
       },
       "role_control": {
         "title": "**🎛️ Her Hans - COMANDO DE UNIDADES**",
-        "description": "**CENTRO DE CONTROL TÁCTICO:** 🦅⚖️\n -¡Activar y desactivar unidades operativas desde el puesto de mando!\n -¡Supervisar estado de todas las fuerzas desplegadas en el campo! ✍️🚫",
+        "description": "**CENTRO DE CONTROL TÁCTICO:** 🦅⚖️ -¡Activar y desactivar unidades operativas desde el puesto de mando! -¡Supervisar estado de todas las fuerzas desplegadas en el campo! ✍️🚫",
         "button": "🎛️ Comando"
       },
       "personality": {
         "title": "**🎭 Her Hans - INFILTRACION**",
-        "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️\n -¡Cambiar el personaje del agente para este servidor en el menu deplegable de más abajo!\n -¡Descarga una copia de seguridad de la identidad actual con los cambios de en su personalidad!\n -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
+        "description": "**PROTOCOLO DE CAMUFLAJE DIGITAL:** 🦅⚖️ -¡Cambiar el personaje del agente para este servidor en el menu deplegable de más abajo! -¡Descarga una copia de seguridad de la identidad actual con los cambios de en su personalidad! -Puedes descargar la memoria actual del agente para realizar una copia de seguridad. ✍️🚫",
         "button": "🎭 INFILTRACION",
         "option_change": "Cambiar Identidad",
         "option_change_desc": "¡Cambiar a una personalidad operativa diferente!",
@@ -119,16 +156,16 @@
         "generating_memory_synthesis": "🧠 ¡Generando síntesis de memoria inicial para la nueva identidad...",
         "select_personality_instruction": "Selecciona una nueva identidad del menú desplegable:",
         "choose_personality_placeholder": "Elige una identidad (idioma: {language})...",
-        "confirm_change_message": "**¿Confirmar cambio a {personality}?**\nSelecciona tus opciones a continuación:",
+        "confirm_change_message": "**¿Confirmar cambio a {personality}?** Selecciona tus opciones a continuación:",
         "selected_personality": "**Identidad seleccionada: {personality}**",
         "selected_personality_with_language": "**Identidad seleccionada: {personality} (Idioma: {language})**",
         "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad."
       }
     },
-    "readme":{
-      "label_user_question":"**PREGUNTA DEL RECLUTA:**",
-      "task":"¡Responder a la pregunta del recluta usando la documentación oficial!",
-      "label_documentation":"**DOCUMENTACIÓN OFICIAL:**"
+    "readme": {
+      "label_user_question": "**PREGUNTA DEL RECLUTA:**",
+      "task": "¡Responder a la pregunta del recluta usando la documentación oficial!",
+      "label_documentation": "**DOCUMENTACIÓN OFICIAL:**"
     },
     "memory_detection": {
       "memory_trigger_words": [

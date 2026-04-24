@@ -888,9 +888,7 @@ from .canvas_mc import (
 from .canvas_juggler import JugglerActionModal
 from .canvas_news_watcher import (
     build_canvas_role_news_watcher_detail as _build_canvas_role_news_watcher_detail,
-    CanvasWatcherMethodSelect as _CanvasWatcherMethodSelect,
     CanvasWatcherSubscriptionSelect as _CanvasWatcherSubscriptionSelect,
-    CanvasWatcherAdminMethodSelect as _CanvasWatcherAdminMethodSelect,
     CanvasWatcherAdminActionSelect as _CanvasWatcherAdminActionSelect,
     CanvasWatcherSubscribeModal as _CanvasWatcherSubscribeModal,
     CanvasWatcherAddModal as _CanvasWatcherAddModal,
@@ -1066,6 +1064,7 @@ class CanvasRoleSelect(discord.ui.Select):
         """Handle the 'list' option to show all available roles."""
         # Filter roles that are enabled in agent_config globally
         # Roles disabled in agent_config should not appear at all (like they don't exist)
+        # Also filter out subroles (beggar is a subrole of banker)
         roles_cfg = (view.agent_config or {}).get("roles", {})
         all_roles = [
             role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc"]
@@ -1454,6 +1453,91 @@ class CanvasConversationActionSelect(discord.ui.Select):
             return
 
 
+class MemoryTypeSelect(discord.ui.Select):
+    """Dropdown selector for memory type (long, recent, relationship)."""
+    def __init__(self, admin_visible: bool, guild=None, agent_config=None):
+        server_id = get_server_key(guild) if guild else None
+        descriptions = _get_personality_descriptions(server_id)
+        
+        # Get memory dropdown configuration from behavior_messages
+        behavior_messages = descriptions.get("behavior_messages", {})
+        memory_config = behavior_messages.get("memory", {}).get("dropdown", {})
+        
+        # Get current selection from agent_config
+        selected_memory_type = (agent_config or {}).get("selected_memory_type", "long") if agent_config else "long"
+        
+        long_config = memory_config.get("long", {})
+        recent_config = memory_config.get("recent", {})
+        relationship_config = memory_config.get("relationship", {})
+        
+        label_long = long_config.get("label", "Long Memory")
+        emoji_long = long_config.get("emoji", "🗺️")
+        desc_long = long_config.get("description", "Memoria")
+        
+        label_recent = recent_config.get("label", "Recent Memory")
+        emoji_recent = recent_config.get("emoji", "🧐")
+        desc_recent = recent_config.get("description", "Sucesos recientes")
+        
+        label_relationship = relationship_config.get("label", "Relationship Memory")
+        emoji_relationship = relationship_config.get("emoji", "👞")
+        desc_relationship = relationship_config.get("description", "Relación personal")
+        
+        options = [
+            discord.SelectOption(
+                label=label_long,
+                value="memory_long",
+                description=desc_long,
+                emoji=emoji_long
+            ),
+            discord.SelectOption(
+                label=label_recent,
+                value="memory_recent",
+                description=desc_recent,
+                emoji=emoji_recent
+            ),
+            discord.SelectOption(
+                label=label_relationship,
+                value="memory_relationship",
+                description=desc_relationship,
+                emoji=emoji_relationship
+            ),
+        ]
+        
+        generic_option_label = descriptions.get("canvas_home_messages", {}).get("generic_option_label", "Choose a concrete option...")
+        super().__init__(placeholder=generic_option_label, min_values=1, max_values=1, options=options, row=2)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        if not isinstance(view, CanvasBehaviorView):
+            from agent_runtime import get_personality_message
+            server_id = get_server_key(interaction.guild) if interaction.guild else None
+            error_msg = get_personality_message("answers.json", ["general", "error_selection_unavailable"], server_id, "❌ Canvas memory type selection is not available.")
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+        
+        action_name = self.values[0]
+        # Update agent_config with selected memory type
+        if view.agent_config is None:
+            view.agent_config = {}
+        view.agent_config["selected_memory_type"] = action_name.replace("memory_", "")
+        
+        # Rebuild the view with updated memory type
+        title, description, content = _build_canvas_behavior_detail("memory", view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+        behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
+        
+        # Update the view with new MemoryTypeSelect that has the updated agent_config
+        next_view = CanvasBehaviorView(
+            author_id=view.author_id,
+            sections=view.sections,
+            admin_visible=view.admin_visible,
+            agent_config=view.agent_config,
+            current_detail="memory",
+            guild=view.guild,
+            message=interaction.message
+        )
+        await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
+
+
 class CanvasBehaviorActionSelect(discord.ui.Select):
     def __init__(self, detail_name: str, admin_visible: bool, guild=None):
         options = [
@@ -1488,12 +1572,17 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             await send_forget_me_prompt(interaction)
             return
 
-        if action_name == "commentary_frequency":
+        if action_name in {"memory_long", "memory_recent", "memory_relationship"}:
+            # Handle memory type selection via dropdown
             if not interaction.guild or not view.admin_visible:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
                 await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
                 return
-            await interaction.response.send_modal(CommentaryFrequencyModal(view, view.author_id))
+            # Store selected memory type in view for dropdown
+            view.selected_memory_type = action_name.replace("memory_", "")
+            title, description, content = _build_canvas_behavior_detail("memory", view.admin_visible, view.guild, view.agent_config) or (None, None, "")
+            behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
+            await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
             return
         if action_name in {"taboo_add", "taboo_del"}:
             if not interaction.guild or not view.admin_visible:
@@ -1524,7 +1613,9 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                 error_settings_admin_only = general_answers.get("error_settings_admin_only", "❌ This settings option is admin-only.")
                 await interaction.response.send_message(error_settings_admin_only, ephemeral=True)
                 return
-            await interaction.response.send_modal(RoleControlModal(view, interaction.user.id))
+            # Send ephemeral message with dropdown instead of modal
+            role_view = RoleManagementView(view)
+            await interaction.response.send_message("🎛️ **Gestión de Roles** - Selecciona un rol para activar/desactivar:", view=role_view, ephemeral=True)
             return
         if action_name in {"taboo_on", "taboo_off"}:
             if not interaction.guild or not view.admin_visible:
@@ -1587,11 +1678,13 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
                 greeting_cfg = _discord_cfg.get("member_greeting", {})
                 greeting_cfg["enabled"] = enabled
 
-                # Save to behaviors database
-                if get_behavior_db_instance is not None:
+                # Save to server_config.json
+                try:
+                    from discord_bot.canvas.server_config import set_welcome_enabled
                     guild_id = str(interaction.guild.id)
-                    db = get_behavior_db_instance(guild_id)
-                    db.set_welcome_enabled(enabled, f"{interaction.user.name}")
+                    set_welcome_enabled(guild_id, enabled, f"{interaction.user.name}")
+                except Exception as e:
+                    logger.error(f"Failed to save welcome state to server_config: {e}")
                 
                 title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
                 
@@ -1607,60 +1700,6 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             except Exception as e:
                 logger.error(f"Error updating welcome state: {e}")
                 await interaction.response.send_message("❌ Failed to update welcome state. Check logs for details.", ephemeral=True)
-            return
-        
-        # Handle commentary toggle
-        if action_name in {"commentary_on", "commentary_off"}:
-            if not interaction.guild or not view.admin_visible:
-                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
-                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
-                return
-            enabled = action_name == "commentary_on"
-            try:
-                guild_id = int(interaction.guild.id)
-                state = _talk_state_by_guild_id.get(guild_id, {})
-                state["enabled"] = enabled
-                
-                # Save to behaviors database
-                if get_behavior_db_instance is not None:
-                    db = get_behavior_db_instance(str(guild_id))
-                    config = {
-                        "channel_id": state.get("channel_id"),
-                        "interval_minutes": state.get("interval_minutes", 180)
-                    }
-                    db.set_commentary_state(enabled, config, f"{interaction.user.name}")
-                
-                title, description, content = _build_canvas_behavior_detail(view.current_detail, view.admin_visible, view.guild, view.agent_config) or (None, None, "")
-                
-                # Get success message from answers
-                success_commentary_state = general_answers.get("success_commentary_state", "Commentary {enabled_disabled} for this server.")
-                state_enabled = general_answers.get("state_enabled", "enabled")
-                state_disabled = general_answers.get("state_disabled", "disabled")
-                enabled_disabled = state_enabled if enabled else state_disabled
-                
-                view.auto_response_preview = success_commentary_state.format(enabled_disabled=enabled_disabled)
-                behavior_embed = _build_canvas_behavior_embed(content or "", view.admin_visible, view.auto_response_preview, title, description)
-                await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
-            except Exception as e:
-                logger.error(f"Error updating commentary state: {e}")
-                await interaction.response.send_message("❌ Failed to update commentary state. Check logs for details.", ephemeral=True)
-            return
-        # Handle commentary now action
-        if action_name == "commentary_now":
-            if not interaction.guild or not view.admin_visible:
-                error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
-                await interaction.response.send_message(error_behavior_admin_only, ephemeral=True)
-                return
-            try:
-                # Get error messages from answers
-                error_commentary_disabled = general_answers.get("error_commentary_disabled", "❌ Mission commentary feature is currently disabled.")
-                
-                await interaction.response.send_message(error_commentary_disabled, ephemeral=True)
-                return
-            except Exception as e:
-                logger.error(f"Error in commentary action: {e}")
-                error_commentary_process_failed = general_answers.get("error_commentary_process_failed", "❌ Failed to process commentary. Check logs for details.")
-                await interaction.response.send_message(error_commentary_process_failed, ephemeral=True)
             return
         
         # Fallback for other behavior actions
@@ -2193,78 +2232,6 @@ class RoleFrequencyModal(CanvasModal):
         await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
 
 
-class CommentaryFrequencyModal(CanvasModal):
-    def __init__(self, view, author_id: int):
-        # Get modal messages from descriptions
-        server_id = get_server_key(view.guild) if view.guild else None
-        descriptions = _get_personality_descriptions(server_id)
-        modal_messages = descriptions.get("behavior_messages", {}).get("comentary", {}).get("modal", {})
-        general = descriptions.get("general", {})
-        
-        title = modal_messages.get("title", "Commentary Frequency")
-        label_minutes = modal_messages.get("label_minutes", "Minutes")
-        placeholder_minutes = modal_messages.get("placeholder_minutes", "e.g. 180")
-        
-        super().__init__(title=title, author_id=author_id)
-        self.view = view
-        self.value_input = discord.ui.TextInput(label=label_minutes, placeholder=placeholder_minutes, required=True, max_length=10)
-        self.add_item(self.value_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        # Get error messages from descriptions
-        server_id = get_server_key(interaction.guild) if interaction.guild else None
-        descriptions = _get_personality_descriptions(server_id)
-        modal_messages = descriptions.get("behavior_messages", {}).get("comentary", {}).get("modal", {})
-        general = descriptions.get("general", {})
-        
-        error_server_only = modal_messages.get("error_server_only", "❌ Commentary settings are only available in a server.")
-        error_admin_only = modal_messages.get("error_admin_only", "❌ This option is admin-only.")
-        error_invalid_number = modal_messages.get("error_invalid_number", "❌ Enter a valid number of minutes.")
-        error_positive_number = modal_messages.get("error_positive_number", "❌ Minutes must be greater than zero.")
-        success_message = modal_messages.get("success_message", "Mission commentary interval set to `{minutes}` minutes.\nCurrent state: {enabled_text}")
-        state_on = modal_messages.get("state_on", "On")
-        state_off = modal_messages.get("state_off", "Off")
-        
-        if not interaction.guild:
-            await interaction.response.send_message(error_server_only, ephemeral=True)
-            return
-        if not is_admin(interaction):
-            await interaction.response.send_message(error_admin_only, ephemeral=True)
-            return
-        try:
-            minutes = int(str(self.value_input.value).strip())
-        except ValueError:
-            await interaction.response.send_message(error_invalid_number, ephemeral=True)
-            return
-        if minutes < 1:
-            await interaction.response.send_message(error_positive_number, ephemeral=True)
-            return
-        guild_id = int(interaction.guild.id)
-        state = _talk_state_by_guild_id.get(guild_id) or {}
-        state["interval_minutes"] = minutes
-        _talk_state_by_guild_id[guild_id] = state
-        if state.get("enabled", False):
-            task = state.get("task")
-            if task and not task.done():
-                task.cancel()
-            state["task"] = asyncio.create_task(_start_talk_loop_for_guild(guild_id))
-        enabled_text = state_on if state.get("enabled", False) else state_off
-        
-        # Rebuild the Canvas behavior view with updated state
-        title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild) or (None, None, "")
-        next_view = CanvasBehaviorView(
-            author_id=self.view.author_id,
-            sections=self.view.sections,
-            admin_visible=self.view.admin_visible,
-            agent_config=self.view.agent_config,
-            current_detail=self.view.current_detail,
-            guild=self.view.guild,
-        )
-        next_view.auto_response_preview = success_message.format(minutes=minutes, enabled_text=enabled_text)
-        behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, next_view.auto_response_preview, title, description)
-        await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
-
-
 class TabooKeywordModal(CanvasModal):
     def __init__(self, action_name: str, guild_id: int, view, author_id: int):
         # Get modal messages from descriptions
@@ -2350,112 +2317,171 @@ class TabooKeywordModal(CanvasModal):
             await interaction.response.send_message(applied_text, ephemeral=True)
 
 
-class RoleControlModal(CanvasModal):
-    """Modal for role control with role selection and on/off toggle."""
+class RoleManagementView(discord.ui.View):
+    """View for role management dropdown."""
+    
+    def __init__(self, canvas_view: "CanvasBehaviorView"):
+        super().__init__(timeout=300)
+        self.canvas_view = canvas_view
+        self.add_item(RoleManagementDropdown(canvas_view))
 
-    def __init__(self, view: "CanvasBehaviorView", author_id: int):
-        # Get modal messages from descriptions
+
+class RoleManagementDropdown(discord.ui.Select):
+    """Dropdown for role management with toggle functionality."""
+    
+    def __init__(self, view: "CanvasBehaviorView"):
+        self.canvas_view = view
         server_id = get_server_key(view.guild) if view.guild else None
+        
+        # Get descriptions
         descriptions = _get_personality_descriptions(server_id)
-        modal_messages = descriptions.get("behavior_messages", {}).get("role_control", {}).get("modal", {})
+        role_descriptions = descriptions.get("role_descriptions", {})
+        general = descriptions.get("general", {})
         
-        title = modal_messages.get("title", "Role Control")
-        label_role_name = modal_messages.get("label_role_name", "Role Name")
-        placeholder_role_name = modal_messages.get("placeholder_role_name", "Enter role name: news_watcher, treasure_hunter, trickster, banker")
-        label_state = modal_messages.get("label_state", "State (on/off)")
-        placeholder_state = modal_messages.get("placeholder_state", "Enter 'on' to enable or 'off' to disable")
+        # Role configuration with display names and internal names
+        # MC is always enabled (cannot be toggled)
+        roles_config = [
+            {"internal": "news_watcher", "display": role_descriptions.get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "treasure_hunter", "display": role_descriptions.get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "trickster", "display": role_descriptions.get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "banker", "display": role_descriptions.get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "mc", "display": role_descriptions.get("mc", {}).get("title", "🥁 Putre Tamborilero!").replace("**", "").strip(), "always_enabled": True},
+            {"internal": "juggler", "display": role_descriptions.get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "shaman", "display": role_descriptions.get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(), "always_enabled": False},
+        ]
         
-        super().__init__(title=title, timeout=300, author_id=author_id)
-        self.view = view
-
-        # Role selection dropdown
-        self.role_input = discord.ui.TextInput(
-            label=label_role_name,
-            placeholder=placeholder_role_name,
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=50
+        # Get current state for each role
+        agent_config = view.agent_config
+        options = []
+        
+        for role in roles_config:
+            role_name = role["internal"]
+            display_name = role["display"]
+            always_enabled = role["always_enabled"]
+            
+            # Check if role is enabled
+            if always_enabled:
+                status = general.get("always_enabled", "Siempre activado")
+                status_emoji = "✅"
+            else:
+                is_enabled = is_role_enabled_check(role_name, agent_config, view.guild)
+                status = general.get("state_enabled" if is_enabled else "state_disabled", "Activado" if is_enabled else "Desactivado")
+                status_emoji = "✅" if is_enabled else "❌"
+            
+            label = f"{display_name}: {status_emoji} {status}"
+            
+            options.append(discord.SelectOption(
+                label=label[:100],  # Discord limit for select option labels
+                value=role_name,
+                description=f"Click para {general.get('action_labels', {}).get('off', 'Desactivar') if not always_enabled and is_enabled else general.get('action_labels', {}).get('on', 'Activar')}" if not always_enabled else "No se puede modificar"
+            ))
+        
+        placeholder = general.get("action_labels", {}).get("role_management", "🎛️ Gestión de Roles")
+        
+        super().__init__(
+            placeholder=placeholder[:100],
+            options=options,
+            custom_id="role_management_dropdown",
+            min_values=1,
+            max_values=1
         )
-        self.add_item(self.role_input)
-
-        # On/Off toggle
-        self.state_input = discord.ui.TextInput(
-            label=label_state,
-            placeholder=placeholder_state,
-            style=discord.TextStyle.short,
-            required=True,
-            max_length=10
-        )
-        self.add_item(self.state_input)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        # Get modal messages from descriptions
+    
+    async def callback(self, interaction: discord.Interaction):
+        """Handle role selection and toggle."""
+        role_name = self.values[0]
+        
+        # Get descriptions
         server_id = get_server_key(interaction.guild) if interaction.guild else None
         descriptions = _get_personality_descriptions(server_id)
-        modal_messages = descriptions.get("behavior_messages", {}).get("role_control", {}).get("modal", {})
+        general = descriptions.get("general", {})
         
-        # Get general messages from answers
-        from agent_runtime import get_personality_message
-        general = get_personality_message("answers.json", ["general"], server_id, {})
+        # Check if role is always enabled (MC)
+        if role_name == "mc":
+            await interaction.response.send_message(
+                f"❌ {general.get('action_labels', {}).get('role_management', 'Gestión de Roles')}: Este rol siempre está activado.",
+                ephemeral=True
+            )
+            return
         
-        error_admin_only = modal_messages.get("error_admin_only", "❌ This role option is admin-only.")
-        success_message = modal_messages.get("success_message", "✅ Role '{role_name}' {enabled_disabled} for this server.")
-        state_enabled = general.get("state_enabled", "enabled")
-        state_disabled = general.get("state_disabled", "disabled")
+        # Get current state
+        agent_config = self.canvas_view.agent_config
+        is_enabled = is_role_enabled_check(role_name, agent_config, interaction.guild)
+        new_state = not is_enabled
         
-        try:
-            if not interaction.guild or not self.view.admin_visible:
-                await interaction.response.send_message(error_admin_only, ephemeral=True)
-                return
-                
-            role_name = self.role_input.value.strip().lower()
-            state = self.state_input.value.strip().lower()
+        # Import role toggle function
+        from discord_bot.discord_core_commands import _cmd_role_toggle
+        
+        # Create mock context for the role toggle function
+        class MockContext:
+            def __init__(self, interaction, enabled_state):
+                self.guild = interaction.guild
+                self.author = interaction.user
+                self.enabled_state = enabled_state
             
-            # Validate role name
-            valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
-            if role_name not in valid_roles:
-                await interaction.response.send_message("❌ Invalid role. Valid roles: news_watcher, treasure_hunter, trickster, banker", ephemeral=True)
-                return
+            async def send(self, content):
+                pass
+        
+        # Execute role toggle
+        mock_ctx = MockContext(interaction, new_state)
+        await _cmd_role_toggle(mock_ctx, role_name, new_state)
+        
+        # Build success message
+        state_text = general.get("state_enabled", "Activado") if new_state else general.get("state_disabled", "Desactivado")
+        role_display_map = {
+            "news_watcher": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(),
+            "treasure_hunter": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(),
+            "trickster": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(),
+            "banker": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(),
+            "juggler": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(),
+            "shaman": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(),
+        }
+        role_display = role_display_map.get(role_name, role_name)
+        
+        success_msg = f"✅ {role_display}: {state_text}"
+        
+        # Update the dropdown with new states
+        new_options = []
+        roles_config = [
+            {"internal": "news_watcher", "display": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "treasure_hunter", "display": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "trickster", "display": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "banker", "display": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "mc", "display": descriptions.get("role_descriptions", {}).get("mc", {}).get("title", "🥁 Putre Tamborilero!").replace("**", "").strip(), "always_enabled": True},
+            {"internal": "juggler", "display": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "shaman", "display": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(), "always_enabled": False},
+        ]
+        
+        for role in roles_config:
+            r_name = role["internal"]
+            display_name = role["display"]
+            always_enabled = role["always_enabled"]
             
-            # Validate state
-            if state not in ["on", "off", "enable", "disable", "true", "false", "1", "0"]:
-                await interaction.response.send_message("❌ Invalid state. Use: on/off, enable/disable, true/false, 1/0", ephemeral=True)
-                return
+            if always_enabled:
+                status = general.get("always_enabled", "Siempre activado")
+                status_emoji = "✅"
+            else:
+                r_enabled = is_role_enabled_check(r_name, agent_config, interaction.guild)
+                status = general.get("state_enabled" if r_enabled else "state_disabled", "Activado" if r_enabled else "Desactivado")
+                status_emoji = "✅" if r_enabled else "❌"
             
-            # Convert state to boolean
-            enabled = state in ["on", "enable", "true", "1"]
+            label = f"{display_name}: {status_emoji} {status}"
             
-            # Import role toggle function and agent config
-            from discord_bot.discord_core_commands import _cmd_role_toggle, AGENT_CFG
-            
-            # Create mock context for the role toggle function
-            class MockContext:
-                def __init__(self, interaction, enabled_state):
-                    self.guild = interaction.guild
-                    self.author = interaction.user
-                    self.enabled_state = enabled_state
-                
-                async def send(self, content):
-                    # This will be handled by the modal response
-                    pass
-            
-            # Execute role toggle
-            mock_ctx = MockContext(interaction, enabled)
-            await _cmd_role_toggle(mock_ctx, role_name, enabled)
-            
-            # Build success message from descriptions
-            enabled_disabled = state_enabled if enabled else state_disabled
-            result_msg = success_message.format(role_name=role_name, enabled_disabled=enabled_disabled)
-            
-            # Update the view
-            title, description, content = _build_canvas_behavior_detail(self.view.current_detail, self.view.admin_visible, self.view.guild, self.view.agent_config) or (None, None, "")
-            self.view.auto_response_preview = result_msg
-            behavior_embed = _build_canvas_behavior_embed(content or "", self.view.admin_visible, self.view.auto_response_preview, title, description)
-            await interaction.response.edit_message(content=None, embed=behavior_embed, view=self.view)
-            
-        except Exception as e:
-            logger.exception(f"Error in role control modal: {e}")
-            await interaction.response.send_message("❌ Error processing role control. Please try again.", ephemeral=True)
+            new_options.append(discord.SelectOption(
+                label=label[:100],
+                value=r_name,
+                description=f"Click para {general.get('action_labels', {}).get('off', 'Desactivar') if not always_enabled and r_enabled else general.get('action_labels', {}).get('on', 'Activar')}" if not always_enabled else "No se puede modificar"
+            ))
+        
+        self.options = new_options
+        
+        # Update the view
+        title, description, content = _build_canvas_behavior_detail(self.canvas_view.current_detail, self.canvas_view.admin_visible, self.canvas_view.guild, self.canvas_view.agent_config) or (None, None, "")
+        self.canvas_view.auto_response_preview = success_msg
+        behavior_embed = _build_canvas_behavior_embed(content or "", self.canvas_view.admin_visible, self.canvas_view.auto_response_preview, title, description)
+        
+        # Rebuild the view with updated dropdown
+        view = self.canvas_view
+        await interaction.response.edit_message(content=None, embed=behavior_embed, view=view)
 
 
 class LanguageSelect(discord.ui.Select):
@@ -3094,7 +3120,11 @@ class CanvasBehaviorView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixi
             self.add_item(CanvasPersonalitySelect(admin_visible, personality_msgs))
         elif current_detail == "conversation":
             self.add_item(CanvasConversationActionSelect(admin_visible, guild))
-        elif current_detail in ["greetings", "welcome", "commentary", "taboo", "settings", "role_control"]:
+        elif current_detail == "memory":
+            # Add memory type dropdown selector
+            memory_dropdown = MemoryTypeSelect(admin_visible, guild, agent_config)
+            self.add_item(memory_dropdown)
+        elif current_detail in ["greetings", "welcome", "taboo", "settings", "role_control"]:
             self.add_item(CanvasBehaviorActionSelect(current_detail, admin_visible, guild))
         self._add_behavior_buttons()
         
@@ -3166,10 +3196,8 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
         if current_actions:
             # For News Watcher, create dynamic dropdowns
             if role_name == "news_watcher" and current_detail in {"personal", "overview"}:
-                self.add_item(CanvasWatcherMethodSelect(self))
                 self.add_item(CanvasWatcherSubscriptionSelect(self))
             elif role_name == "news_watcher" and current_detail == "admin":
-                self.add_item(CanvasWatcherAdminMethodSelect(self))
                 self.add_item(CanvasWatcherAdminActionSelect(self))
             # For MC, create action dropdown
             elif role_name == "mc" and current_detail == "overview":
@@ -3259,25 +3287,6 @@ class CanvasBehaviorDetailButton(discord.ui.Button):
         await interaction.response.edit_message(content=None, embed=behavior_embed, view=next_view)
 
 
-def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
-    roles_cfg = (agent_config or {}).get("roles", {})
-    ordered_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc"]
-    discovered_roles = [role_name for role_name, cfg in roles_cfg.items() if isinstance(cfg, dict) and role_name not in ordered_roles]
-    enabled: list[str] = []
-
-    for role_name in ordered_roles + discovered_roles:
-        try:
-            if is_role_enabled_check(role_name, agent_config, guild):
-                enabled.append(role_name)
-        except Exception as error:
-            logger.warning(f"Could not resolve Canvas enabled state for role {role_name}: {error}")
-            cfg = roles_cfg.get(role_name, {})
-            if isinstance(cfg, dict) and cfg.get("enabled", False):
-                enabled.append(role_name)
-
-    return enabled
-
-
 def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
     prompts: list[str] = []
     role_prompts_cfg = PERSONALITY.get("roles", {})
@@ -3313,9 +3322,7 @@ def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
     return [p for p in prompts if isinstance(p, str) and p.strip()]
 
 
-CanvasWatcherMethodSelect = _CanvasWatcherMethodSelect
 CanvasWatcherSubscriptionSelect = _CanvasWatcherSubscriptionSelect
-CanvasWatcherAdminMethodSelect = _CanvasWatcherAdminMethodSelect
 CanvasWatcherAdminActionSelect = _CanvasWatcherAdminActionSelect
 CanvasWatcherSubscribeModal = _CanvasWatcherSubscribeModal
 CanvasWatcherAddModal = _CanvasWatcherAddModal

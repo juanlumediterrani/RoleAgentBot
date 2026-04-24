@@ -1,0 +1,390 @@
+2026-04-24 13:43:27,274 INFO discord [srv=1472671221027045648]: 🔥 ENTER initialize_server_complete for 'Dev Server' (language=en-US)
+2026-04-24 13:43:27,274 INFO discord [srv=1472671221027045648]: 🚀 Initializing server on startup: 'Dev Server' (1472671221027045648)
+2026-04-24 13:43:27,276 INFO discord [srv=1472671221027045648]: 📁 Setting up server-specific personality for Dev Server
+2026-04-24 13:43:27,276 INFO db_init [srv=1472671221027045648]: 📋 Using default_language from agent_config.json: es-ES
+2026-04-24 13:43:27,276 INFO db_init [srv=1472671221027045648]: 📋 Using system default personality: putre
+2026-04-24 13:43:27,276 INFO db_init [srv=1472671221027045648]: 📁 Server-specific personality already exists: /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/putre
+2026-04-24 13:43:27,276 INFO db_init [srv=1472671221027045648]: ✅ Updated server_config.json with active_personality: putre, language: es-ES, roles/behaviors sections
+2026-04-24 13:43:27,276 INFO discord [srv=1472671221027045648]: ✅ Server-specific personality ready for Dev Server
+2026-04-24 13:43:27,277 INFO discord_utils [srv=1472671221027045648]: 🔄 Updating bot identity in 'Dev Server': avatar: updated (381996 bytes)
+2026-04-24 13:43:27,921 INFO discord_utils [srv=1472671221027045648]: ✅ Identity updated in 'Dev Server': avatar=updated
+2026-04-24 13:43:27,922 INFO discord [srv=1472671221027045648]: ✅ Bot identity synced for server 'Dev Server': avatar updated
+2026-04-24 13:43:27,922 INFO discord [srv=1472671221027045648]: 🗄️ Initializing databases for Dev Server
+2026-04-24 13:43:27,922 INFO db_init [srv=1472671221027045648]: 🗄️ Initializing all databases for server 1472671221027045648
+2026-04-24 13:43:27,936 INFO db [srv=1472671221027045648]: 🗄️ [DB] Initializing database at: /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/agent_putre.db
+2026-04-24 13:43:27,946 INFO db [srv=1472671221027045648]: ✅ [DB] Database accessible at: /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/agent_putre.db
+2026-04-24 13:43:27,969 INFO db [srv=1472671221027045648]: 🧠 [DB] Initialized 1 notable recollections from personality JSON
+2026-04-24 13:43:27,969 INFO db [srv=1472671221027045648]: ✅ Database ready at /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/agent_putre.db
+2026-04-24 13:43:27,972 INFO db_init [srv=1472671221027045648]: ✅ Agent database initialized for server 1472671221027045648
+2026-04-24 13:43:28,053 INFO agent_roles_db [srv=1472671221027045648]: Roles database initialized at: /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/roles_putre.db
+2026-04-24 13:43:28,056 INFO db_init [srv=1472671221027045648]: ✅ Roles database initialized for server 1472671221027045648
+2026-04-24 13:43:28,072 INFO db_behavior [srv=1472671221027045648]: Behavior database initialized for server: 1472671221027045648
+2026-04-24 13:43:28,073 INFO db_init [srv=1472671221027045648]: ✅ Behavior database initialized for server 1472671221027045648
+2026-04-24 13:43:28,080 INFO db_init [srv=1472671221027045648]: ✅ banker database initialized for server 1472671221027045648
+2026-04-24 13:43:28,091 INFO db_role_news_watcher [srv=1472671221027045648]: ✅ News watcher database ready at /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/roles_putre.db
+2026-04-24 13:43:28,091 INFO db_init [srv=1472671221027045648]: ✅ news_watcher database initialized for server 1472671221027045648
+2026-04-24 13:43:28,092 INFO db_role_treasure_hunter [srv=1472671221027045648]: ✅ Notifications table initialized
+2026-04-24 13:43:28,092 INFO db_role_treasure_hunter [srv=1472671221027045648]: ✅ Treasure Hunter database ready at /home/mtx/Documentos/RoleAgentBot/databases/shared_poe2/PoE2Standard.db
+2026-04-24 13:43:28,092 INFO db_init [srv=1472671221027045648]: ✅ treasure_hunter database initialized for server 1472671221027045648
+2026-04-24 13:43:28,152 INFO db_role_mc [srv=1472671221027045648]: MC database ready at /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/roles_putre.db
+2026-04-24 13:43:28,152 INFO db_init [srv=1472671221027045648]: ✅ mc database initialized for server 1472671221027045648
+2026-04-24 13:43:28,160 INFO db_init [srv=1472671221027045648]: ✅ dice_game database initialized for server 1472671221027045648
+2026-04-24 13:43:28,161 INFO db_init [srv=1472671221027045648]: 📊 Database initialization complete for server 1472671221027045648: 8/8 (100.0%)
+2026-04-24 13:43:28,161 INFO discord [srv=1472671221027045648]: ✅ All databases initialized successfully for Dev Server
+2026-04-24 13:43:28,161 INFO discord [srv=1472671221027045648]: 🧠 First time initialization for 'Dev Server', scheduling daily memory bootstrap...
+2026-04-24 13:43:28,162 INFO server_config [srv=1472671221027045648]: Updated role config news_watcher.enabled for server 1472671221027045648
+2026-04-24 13:43:28,163 INFO server_config [srv=1472671221027045648]: Updated role config treasure_hunter.enabled for server 1472671221027045648
+2026-04-24 13:43:28,163 INFO server_config [srv=1472671221027045648]: Updated role config trickster.enabled for server 1472671221027045648
+2026-04-24 13:43:28,163 INFO server_config [srv=1472671221027045648]: Updated role config trickster.config.subroles.dice_game.enabled for server 1472671221027045648
+2026-04-24 13:43:28,164 INFO server_config [srv=1472671221027045648]: Updated role config trickster.config.subroles.dice_game.fixed_bet for server 1472671221027045648
+2026-04-24 13:43:28,164 INFO server_config [srv=1472671221027045648]: Updated role config shaman.enabled for server 1472671221027045648
+2026-04-24 13:43:28,164 INFO server_config [srv=1472671221027045648]: Updated role config shaman.config.subroles.nordic_runes.enabled for server 1472671221027045648
+2026-04-24 13:43:28,165 INFO server_config [srv=1472671221027045648]: Updated role config mc.enabled for server 1472671221027045648
+2026-04-24 13:43:28,165 INFO server_config [srv=1472671221027045648]: Updated role config banker.enabled for server 1472671221027045648
+2026-04-24 13:43:28,165 INFO server_config [srv=1472671221027045648]: Updated role config banker.config.subroles.beggar.enabled for server 1472671221027045648
+2026-04-24 13:43:28,166 INFO server_config [srv=1472671221027045648]: Updated role config banker.config.subroles.beggar.frequency_hours for server 1472671221027045648
+2026-04-24 13:43:28,166 INFO server_config [srv=1472671221027045648]: Updated role config juggler.enabled for server 1472671221027045648
+2026-04-24 13:43:28,167 INFO server_config [srv=1472671221027045648]: Updated role config juggler.config.subroles.ring.enabled for server 1472671221027045648
+2026-04-24 13:43:28,167 INFO server_config [srv=1472671221027045648]: Updated role config juggler.config.subroles.ring.frequency_hours for server 1472671221027045648
+2026-04-24 13:43:28,167 INFO discord [srv=1472671221027045648]: ✅ Default roles loaded for server 'Dev Server': ['news_watcher', 'treasure_hunter', 'trickster', 'shaman', 'mc', 'banker', 'juggler']
+2026-04-24 13:43:28,167 INFO init_roles_config [srv=1472671221027045648]: Initializing server_config.json for server 1472671221027045648
+2026-04-24 13:43:28,167 INFO init_roles_config [srv=1472671221027045648]: ℹ️ All roles already initialized in server_config.json
+2026-04-24 13:43:28,167 INFO init_roles_config [srv=1472671221027045648]: 📊 Final state: 7 roles in server_config.json
+2026-04-24 13:43:28,168 INFO init_roles_config [srv=1472671221027045648]:    • banker: enabled=True
+2026-04-24 13:43:28,168 INFO init_roles_config [srv=1472671221027045648]:    • juggler: enabled=True
+2026-04-24 13:43:28,168 INFO init_roles_config [srv=1472671221027045648]:    • mc: enabled=True
+2026-04-24 13:43:28,168 INFO init_roles_config [srv=1472671221027045648]:    • news_watcher: enabled=True
+2026-04-24 13:43:28,168 INFO init_roles_config [srv=1472671221027045648]:    • shaman: enabled=True
+2026-04-24 13:43:28,168 INFO init_roles_config [srv=1472671221027045648]:    • treasure_hunter: enabled=True
+2026-04-24 13:43:28,168 INFO init_roles_config [srv=1472671221027045648]:    • trickster: enabled=True
+2026-04-24 13:43:28,168 INFO discord [srv=1472671221027045648]: ⚙️ Roles configuration initialized for server Dev Server
+2026-04-24 13:43:28,168 INFO discord [srv=1472671221027045648]: 📊 Server startup initialization complete for 'Dev Server': 4/4 (100.0%)
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: 🚀 initialize_server_complete returned: True
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: ✅ Server initialization completed successfully for 'Dev Server'
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: 🎯 All 2 servers initialization completed
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: 🤖 Bot connected as Putre-dev#7643
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: 🤖 Prefix: ! | Intents: members=True, presences=True
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: 🤖 Bot Discord ID registered: 1472670741794394162
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: 🧹 DB cleanup task started
+2026-04-24 13:43:28,169 INFO discord [srv=1472671221027045648]: 🎭 Discord task scheduler started
+2026-04-24 13:43:28,170 INFO discord [srv=1472671221027045648]: 💎 Treasure Hunter global scheduler started
+2026-04-24 13:43:28,170 INFO discord [srv=1472671221027045648]: 📰 News Watcher global scheduler started
+2026-04-24 13:43:28,170 INFO discord [srv=1472671221027045648]: 📰 News Watcher subscription processor started
+2026-04-24 13:43:28,170 INFO discord [srv=1472671221027045648]: Display status: Use !canvas to interact
+2026-04-24 13:43:28,170 INFO discord [srv=1472671221027045648]: 💰 Creating banker wallets for all server members...
+2026-04-24 13:43:28,170 INFO discord [srv=1472671221027045648]: 💰 Processing guild: Niu de Ocells (691750774883221567)
+2026-04-24 13:43:28,179 INFO banker_roles_db [srv=1472671221027045648]: 🎲 Initializing dice game pot with 10 coins (10x TAE=1)
+2026-04-24 13:43:28,183 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet dice_game_pot for user Dice Game Pot
+2026-04-24 13:43:28,187 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 1: system -> dice_game_pot, 10 coins
+2026-04-24 13:43:28,192 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet beggar_fund for user Beggar Fund
+2026-04-24 13:43:28,192 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 186772106124460032
+2026-04-24 13:43:28,196 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 186772106124460032 for user Settra9
+2026-04-24 13:43:28,200 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 2: system -> 186772106124460032, 10 coins
+2026-04-24 13:43:28,201 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Settra9 with 10 coins
+2026-04-24 13:43:28,201 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 235796491988369408
+2026-04-24 13:43:28,205 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 235796491988369408 for user Dextrure
+2026-04-24 13:43:28,209 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 3: system -> 235796491988369408, 10 coins
+2026-04-24 13:43:28,209 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Dextrure with 10 coins
+2026-04-24 13:43:28,210 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 274724605321543691
+2026-04-24 13:43:28,214 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 274724605321543691 for user Pepe Silvidos
+2026-04-24 13:43:28,218 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 4: system -> 274724605321543691, 10 coins
+2026-04-24 13:43:28,219 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Pepe Silvidos with 10 coins
+2026-04-24 13:43:28,219 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 407310256587145216
+2026-04-24 13:43:28,223 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 407310256587145216 for user Tom
+2026-04-24 13:43:28,227 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 5: system -> 407310256587145216, 10 coins
+2026-04-24 13:43:28,228 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Tom with 10 coins
+2026-04-24 13:43:28,228 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 458023146524639232
+2026-04-24 13:43:28,232 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 458023146524639232 for user Raxyel8
+2026-04-24 13:43:28,236 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 6: system -> 458023146524639232, 10 coins
+2026-04-24 13:43:28,237 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Raxyel8 with 10 coins
+2026-04-24 13:43:28,248 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 186772106124460032
+2026-04-24 13:43:28,252 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 235796491988369408
+2026-04-24 13:43:28,256 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 274724605321543691
+2026-04-24 13:43:28,260 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 407310256587145216
+2026-04-24 13:43:28,264 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 458023146524639232
+2026-04-24 13:43:28,264 INFO discord [srv=1472671221027045648]: 🎲 Dice game accounts initialized for Niu de Ocells
+2026-04-24 13:43:28,265 INFO discord [srv=1472671221027045648]: 💰 Guild Niu de Ocells: 5 new wallets, 0 existing wallets
+2026-04-24 13:43:28,265 INFO discord [srv=1472671221027045648]: 💰 Processing guild: Dev Server (1472671221027045648)
+2026-04-24 13:43:28,273 INFO banker_roles_db [srv=1472671221027045648]: 🎲 Initializing dice game pot with 10 coins (10x TAE=1)
+2026-04-24 13:43:28,277 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet dice_game_pot for user Dice Game Pot
+2026-04-24 13:43:28,281 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 1: system -> dice_game_pot, 10 coins
+2026-04-24 13:43:28,285 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet beggar_fund for user Beggar Fund
+2026-04-24 13:43:28,286 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 235796491988369408
+2026-04-24 13:43:28,290 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 235796491988369408 for user Dextrure
+2026-04-24 13:43:28,294 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 2: system -> 235796491988369408, 10 coins
+2026-04-24 13:43:28,295 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Dextrure with 10 coins
+2026-04-24 13:43:28,295 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 407310256587145216
+2026-04-24 13:43:28,299 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 407310256587145216 for user Tom
+2026-04-24 13:43:28,303 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 3: system -> 407310256587145216, 10 coins
+2026-04-24 13:43:28,303 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Tom with 10 coins
+2026-04-24 13:43:28,304 INFO banker_roles_db [srv=1472671221027045648]: 💰 Applying opening bonus of 10 coins (10x TAE=1) to new wallet 458023146524639232
+2026-04-24 13:43:28,308 INFO agent_roles_db [srv=1472671221027045648]: Saved banker wallet 458023146524639232 for user Raxyel8
+2026-04-24 13:43:28,312 INFO agent_roles_db [srv=1472671221027045648]: Saved banker transaction 4: system -> 458023146524639232, 10 coins
+2026-04-24 13:43:28,313 INFO discord [srv=1472671221027045648]: 💰 Created wallet for Raxyel8 with 10 coins
+2026-04-24 13:43:28,324 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 235796491988369408
+2026-04-24 13:43:28,328 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 407310256587145216
+2026-04-24 13:43:28,332 INFO agent_roles_db [srv=1472671221027045648]: Saved dice game stats for user 458023146524639232
+2026-04-24 13:43:28,332 INFO discord [srv=1472671221027045648]: 🎲 Dice game accounts initialized for Dev Server
+2026-04-24 13:43:28,332 INFO discord [srv=1472671221027045648]: 💰 Guild Dev Server: 3 new wallets, 0 existing wallets
+2026-04-24 13:43:28,332 INFO discord [srv=1472671221027045648]: ✅ Banker wallet creation completed for all servers
+2026-04-24 13:43:28,333 INFO discord [srv=1472671221027045648]: 🎮 POE2 subrole: treasure_hunter enabled, starting initialization...
+2026-04-24 13:43:28,333 INFO poe2_subrole_manager [srv=1472671221027045648]: 🚀 Startup initialization of default league: Standard
+2026-04-24 13:43:28,333 INFO poe2_subrole_manager [srv=1472671221027045648]: 🚀 Initializing league: Standard
+2026-04-24 13:43:28,333 INFO poe2_subrole_manager [srv=1472671221027045648]: 🔄 Downloading item list for Standard...
+2026-04-24 13:43:28,333 INFO poe2scout [srv=1472671221027045648]: Downloading items database for league: Standard
+2026-04-24 13:43:28,706 INFO poe2scout [srv=1472671221027045648]: Items database loaded for Standard: 1850 items
+2026-04-24 13:43:28,708 INFO poe2_subrole_manager [srv=1472671221027045648]: ✅ Item list saved for Standard: 1850 items
+2026-04-24 13:43:28,731 INFO poe2_subrole_manager [srv=1472671221027045648]: 🔄 Background download started: Ancient Rib in Standard
+2026-04-24 13:43:28,731 INFO poe2_subrole_manager [srv=1472671221027045648]: 🔄 Started background download for default item: Ancient Rib
+2026-04-24 13:43:28,731 INFO poe2_subrole_manager [srv=1472671221027045648]: 🔄 Background download started: Ancient Collarbone in Standard
+2026-04-24 13:43:28,731 INFO poe2_subrole_manager [srv=1472671221027045648]: 🔄 Started background download for default item: Ancient Collarbone
+2026-04-24 13:43:28,732 INFO poe2_subrole_manager [srv=1472671221027045648]: 🔄 Background download started: Ancient Jawbone in Standard
+2026-04-24 13:43:28,732 INFO poe2_subrole_manager [srv=1472671221027045648]: 🔄 Started background download for default item: Ancient Jawbone
+2026-04-24 13:43:28,732 INFO poe2_subrole_manager [srv=1472671221027045648]: ✅ League Standard initialization started (background downloads running)
+2026-04-24 13:43:28,732 INFO discord [srv=1472671221027045648]: 🎮 POE2 subrole: Default league (Standard) initialized successfully with default items
+2026-04-24 13:43:28,732 INFO discord [srv=1472671221027045648]: 💎 Entitlement manager initialized for premium SKU support
+2026-04-24 13:43:28,736 INFO discord [srv=1472671221027045648]: [TH_SCHEDULER] Running treasure_hunter task (interval: 1h)
+2026-04-24 13:43:28,739 INFO db [srv=1472671221027045648]: 🧹 Cleaned interactions before 2026-03-25T13:43:28.736464 and duplicate tables
+2026-04-24 13:43:28,742 INFO treasure_hunter [srv=1472671221027045648]: 🚀 Treasure hunter background task launched (non-blocking)
+2026-04-24 13:43:28,742 INFO discord [srv=1472671221027045648]: [TH_SCHEDULER] treasure_hunter task completed successfully
+2026-04-24 13:43:28,742 INFO discord [srv=1472671221027045648]: [TH_SCHEDULER] Next treasure_hunter run scheduled for: 2026-04-24 14:43:28.736878
+2026-04-24 13:43:28,742 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] Running news download task (interval: 1h)
+2026-04-24 13:43:28,759 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] Started background download for 41 feeds
+2026-04-24 13:43:28,759 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] News download task initiated
+2026-04-24 13:43:28,759 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] Next news download run scheduled for: 2026-04-24 14:43:28.742942
+2026-04-24 13:43:28,760 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Running global subscription processing (interval: 1h)
+2026-04-24 13:43:28,760 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Processing server 691750774883221567 (frequency: 1h)
+2026-04-24 13:43:28,761 ERROR db [srv=1472671221027045648]: [get_personality_name] Error reading server_config for server {'default_personality': 'putre', 'default_language': 'es-ES', 'platform': 'discord', 'llm': {'max_tokens': 2048}, 'dev_options': {'prompt_logging': True, 'prompt_log_retention_days': 15, '_comment': 'prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error.'}, 'gdpr': {'retention_enabled': True, 'interactions_days': 90, 'derived_memory_days': 365, 'run_every_hours': 24, '_comment': 'Automatic GDPR retention sweep. interactions_days purges raw `interacciones` rows (direct PII); derived_memory_days purges date-scoped LLM summaries (daily_memory, user_relationship_daily_memory, notable_recollections). run_every_hours is the cadence of the background task.'}, 'fatigue_limits': {'user': {'daily_max': 50, 'hourly_max': 10, 'burst_max': 5, 'reset_times': {'daily': '00:00 UTC', 'hourly': 'cada hora'}}, 'server': {'daily_max': 500, 'hourly_max': 100, 'burst_max': 20}, 'exemptions': {'admin_users': [], 'critical_tasks': ['daily_memory', 'relationship_memory', 'recent_memory']}, 'behavior': {'strict_mode': False, 'grace_period': 3, 'cooldown_minutes': 15}}, 'roles': {'news_watcher': {'enabled': True, 'interval_hours': 1, 'script': 'roles/news_watcher/news_watcher.py'}, 'treasure_hunter': {'enabled': True, 'interval_hours': 1, 'script': 'roles/treasure_hunter/treasure_hunter.py'}, 'trickster': {'enabled': True, 'script': 'roles/trickster/trickster.py', 'subroles': {'dice_game': {'enabled': True, 'fixed_bet': 10}}}, 'shaman': {'enabled': True, 'script': 'roles/shaman/shaman.py', 'subroles': {'nordic_runes': {'enabled': True}}}, 'mc': {'enabled': True, 'mode': 'integrated', 'features': {'voice_commands': True, 'queue_management': True, 'playlist_support': True, 'auto_disconnect': True, 'mention_responses': True, 'presence_status': True}, 'voice_settings': {'timeout_seconds': 60, 'auto_disconnect_timeout': 300, 'max_queue_size': 50, 'volume': 1.0}, 'audio_quality': {'bitrate': '128k', 'format': 'mp3', 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'}}, 'banker': {'enabled': True, 'interval_hours': 24, 'script': 'roles/banker/banker.py', 'subroles': {'beggar': {'enabled': True, 'frequency_hours': 12}}}, 'juggler': {'enabled': True, 'script': 'roles/juggler/juggler.py', 'subroles': {'ring': {'enabled': True, 'frequency_hours': 24}}}}}: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+Traceback (most recent call last):
+  File "/home/mtx/Documentos/RoleAgentBot/agent_db.py", line 332, in get_personality_name
+    server_config_path = _base_dir / "databases" / server_id / "server_config.json"
+TypeError: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+2026-04-24 13:43:28,761 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Server 691750774883221567 processing completed
+2026-04-24 13:43:28,762 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Processing server 1472671221027045648 (frequency: 1h)
+2026-04-24 13:43:28,762 ERROR db [srv=1472671221027045648]: [get_personality_name] Error reading server_config for server {'default_personality': 'putre', 'default_language': 'es-ES', 'platform': 'discord', 'llm': {'max_tokens': 2048}, 'dev_options': {'prompt_logging': True, 'prompt_log_retention_days': 15, '_comment': 'prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error.'}, 'gdpr': {'retention_enabled': True, 'interactions_days': 90, 'derived_memory_days': 365, 'run_every_hours': 24, '_comment': 'Automatic GDPR retention sweep. interactions_days purges raw `interacciones` rows (direct PII); derived_memory_days purges date-scoped LLM summaries (daily_memory, user_relationship_daily_memory, notable_recollections). run_every_hours is the cadence of the background task.'}, 'fatigue_limits': {'user': {'daily_max': 50, 'hourly_max': 10, 'burst_max': 5, 'reset_times': {'daily': '00:00 UTC', 'hourly': 'cada hora'}}, 'server': {'daily_max': 500, 'hourly_max': 100, 'burst_max': 20}, 'exemptions': {'admin_users': [], 'critical_tasks': ['daily_memory', 'relationship_memory', 'recent_memory']}, 'behavior': {'strict_mode': False, 'grace_period': 3, 'cooldown_minutes': 15}}, 'roles': {'news_watcher': {'enabled': True, 'interval_hours': 1, 'script': 'roles/news_watcher/news_watcher.py'}, 'treasure_hunter': {'enabled': True, 'interval_hours': 1, 'script': 'roles/treasure_hunter/treasure_hunter.py'}, 'trickster': {'enabled': True, 'script': 'roles/trickster/trickster.py', 'subroles': {'dice_game': {'enabled': True, 'fixed_bet': 10}}}, 'shaman': {'enabled': True, 'script': 'roles/shaman/shaman.py', 'subroles': {'nordic_runes': {'enabled': True}}}, 'mc': {'enabled': True, 'mode': 'integrated', 'features': {'voice_commands': True, 'queue_management': True, 'playlist_support': True, 'auto_disconnect': True, 'mention_responses': True, 'presence_status': True}, 'voice_settings': {'timeout_seconds': 60, 'auto_disconnect_timeout': 300, 'max_queue_size': 50, 'volume': 1.0}, 'audio_quality': {'bitrate': '128k', 'format': 'mp3', 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'}}, 'banker': {'enabled': True, 'interval_hours': 24, 'script': 'roles/banker/banker.py', 'subroles': {'beggar': {'enabled': True, 'frequency_hours': 12}}}, 'juggler': {'enabled': True, 'script': 'roles/juggler/juggler.py', 'subroles': {'ring': {'enabled': True, 'frequency_hours': 24}}}}}: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+Traceback (most recent call last):
+  File "/home/mtx/Documentos/RoleAgentBot/agent_db.py", line 332, in get_personality_name
+    server_config_path = _base_dir / "databases" / server_id / "server_config.json"
+TypeError: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+2026-04-24 13:43:28,762 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Server 1472671221027045648 processing completed
+2026-04-24 13:43:28,762 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Next global run scheduled for: 2026-04-24 14:43:28.760096
+2026-04-24 13:43:28,796 WARNING ring_discord [srv=1472671221027045648]: Error loading ring state for server 1472671221027045648: 'NoneType' object has no attribute 'get'
+2026-04-24 13:43:28,804 INFO global_news_db [srv=1472671221027045648]: ✅ Global news database ready at /home/mtx/Documentos/RoleAgentBot/databases/news_watcher/global_news.db
+2026-04-24 13:43:28,804 INFO news_downloader [srv=1472671221027045648]: 📥 Starting background download for 41 feeds...
+2026-04-24 13:43:28,804 INFO discord [srv=1472671221027045648]: 🧹 Cleanup in Niu de Ocells (691750774883221567): -1 records deleted.
+2026-04-24 13:43:28,805 INFO treasure_hunter [srv=1472671221027045648]: 🔄 [BG] Step 1: Updating prices for all registered items
+2026-04-24 13:43:28,805 INFO poe2_subrole_manager [srv=1472671221027045648]: [BG] 🚀 Starting scheduled price update task for POE2
+2026-04-24 13:43:28,805 INFO poe2_subrole_manager [srv=1472671221027045648]: [BG] ✅ Scheduled price update completed: 0 items across 0 leagues
+2026-04-24 13:43:28,805 INFO treasure_hunter [srv=1472671221027045648]: [BG] No price updates available, skipping alert processing
+2026-04-24 13:43:28,902 INFO poe2scout [srv=1472671221027045648]: History obtained for Ancient Rib (ID 4379) in Standard: 720 entries
+2026-04-24 13:43:28,926 INFO poe2_subrole_manager [srv=1472671221027045648]: Stored 720/720 price entries for Ancient Rib (ID: 4379) in Standard
+2026-04-24 13:43:28,926 INFO poe2_subrole_manager [srv=1472671221027045648]: ✅ Background download completed: Ancient Rib in Standard
+2026-04-24 13:43:29,028 INFO poe2scout [srv=1472671221027045648]: History obtained for Ancient Collarbone (ID 4385) in Standard: 720 entries
+2026-04-24 13:43:29,051 INFO poe2_subrole_manager [srv=1472671221027045648]: Stored 720/720 price entries for Ancient Collarbone (ID: 4385) in Standard
+2026-04-24 13:43:29,051 INFO poe2_subrole_manager [srv=1472671221027045648]: ✅ Background download completed: Ancient Collarbone in Standard
+2026-04-24 13:43:29,102 INFO poe2scout [srv=1472671221027045648]: History obtained for Ancient Jawbone (ID 4373) in Standard: 720 entries
+2026-04-24 13:43:29,123 INFO poe2_subrole_manager [srv=1472671221027045648]: Stored 720/720 price entries for Ancient Jawbone (ID: 4373) in Standard
+2026-04-24 13:43:29,123 INFO poe2_subrole_manager [srv=1472671221027045648]: ✅ Background download completed: Ancient Jawbone in Standard
+2026-04-24 13:43:29,591 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from BitcoinEspaña
+2026-04-24 13:43:29,822 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 30 new items from Cointelegraph
+2026-04-24 13:43:29,822 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 2/41: Cointelegraph - 30 new items
+2026-04-24 13:43:30,126 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 50 new items from Decrypt
+2026-04-24 13:43:30,126 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 3/41: Decrypt - 50 new items
+2026-04-24 13:43:30,224 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Decrypt CN
+2026-04-24 13:43:31,471 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 10 new items from Economía Digital
+2026-04-24 13:43:31,472 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 5/41: Economía Digital - 10 new items
+2026-04-24 13:43:31,618 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 10 new items from Investing.com ES
+2026-04-24 13:43:31,619 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 6/41: Investing.com ES - 10 new items
+2026-04-24 13:43:32,319 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Odaily Starry
+2026-04-24 13:43:32,494 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 19 new items from The Block
+2026-04-24 13:43:32,494 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 8/41: The Block - 19 new items
+2026-04-24 13:43:32,581 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from The Block CN
+2026-04-24 13:43:33,544 INFO agent_engine [srv=1472671221027045648]: 🏁 [ASYNC] Vertex AI completed in 4.75s: 248 chars
+2026-04-24 13:43:33,544 INFO agent_engine [srv=1472671221027045648]: 📊 [FATIGUE] Incremented counter for PUTRE
+2026-04-24 13:43:33,554 INFO agent_mind [srv=1472671221027045648]: 🧠 [DAILY_MEMORY] Updated summary for 1472671221027045648 on 2026-04-24 (recollections: 1, dreaming: False)
+2026-04-24 13:43:33,555 INFO discord [srv=1472671221027045648]: ✅ Daily memory bootstrap completed for 'Dev Server': HRMMM. Putre recordar ke oy no ay nada ke ze kedar...
+2026-04-24 13:43:39,196 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 30 new items from 36Kr Economy
+2026-04-24 13:43:39,196 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 10/41: 36Kr Economy - 30 new items
+2026-04-24 13:43:39,770 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 30 new items from Bloomberg Markets
+2026-04-24 13:43:39,771 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 11/41: Bloomberg Markets - 30 new items
+2026-04-24 13:43:40,167 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 30 new items from CNBC Markets
+2026-04-24 13:43:40,167 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 12/41: CNBC Markets - 30 new items
+2026-04-24 13:43:40,803 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 50 new items from El País Economía
+2026-04-24 13:43:40,804 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 13/41: El País Economía - 50 new items
+2026-04-24 13:43:40,959 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 10 new items from Investing.com ES Economy
+2026-04-24 13:43:40,959 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 14/41: Investing.com ES Economy - 10 new items
+2026-04-24 13:43:41,217 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 10 new items from MarketWatch
+2026-04-24 13:43:41,218 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 15/41: MarketWatch - 10 new items
+2026-04-24 13:43:41,607 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Sina Finance
+2026-04-24 13:43:42,232 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 50 new items from 20minutos
+2026-04-24 13:43:42,233 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 17/41: 20minutos - 50 new items
+2026-04-24 13:43:42,931 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 25 new items from ABC News
+2026-04-24 13:43:42,932 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 18/41: ABC News - 25 new items
+2026-04-24 13:43:43,176 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 33 new items from BBC News
+2026-04-24 13:43:43,176 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 19/41: BBC News - 33 new items
+2026-04-24 13:43:43,742 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 20 new items from China Daily
+2026-04-24 13:43:43,743 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 20/41: China Daily - 20 new items
+2026-04-24 13:43:44,234 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 24 new items from El Mundo
+2026-04-24 13:43:44,235 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 21/41: El Mundo - 24 new items
+2026-04-24 13:43:44,633 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from El País
+2026-04-24 13:43:45,555 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Sina News
+2026-04-24 13:43:45,900 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 45 new items from The Guardian
+2026-04-24 13:43:45,901 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 24/41: The Guardian - 45 new items
+2026-04-24 13:43:46,130 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 20 new items from ABC Internacional
+2026-04-24 13:43:46,130 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 25/41: ABC Internacional - 20 new items
+2026-04-24 13:43:46,561 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 25 new items from Al Jazeera English
+2026-04-24 13:43:46,562 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 26/41: Al Jazeera English - 25 new items
+2026-04-24 13:43:46,750 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 27 new items from BBC World
+2026-04-24 13:43:46,750 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 27/41: BBC World - 27 new items
+2026-04-24 13:43:46,846 ERROR news_downloader [srv=1472671221027045648]: Error fetching news from CCTV World: 'utf-8' codec can't decode byte 0xc8 in position 691: invalid continuation byte
+Traceback (most recent call last):
+  File "/home/mtx/Documentos/RoleAgentBot/roles/news_watcher/news_downloader.py", line 33, in fetch_and_store_news
+    raw_data = await response.text()
+  File "/home/mtx/.local/lib/python3.10/site-packages/aiohttp/client_reqrep.py", line 740, in text
+    return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc8 in position 691: invalid continuation byte
+2026-04-24 13:43:47,263 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 29 new items from CNN World
+2026-04-24 13:43:47,264 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 29/41: CNN World - 29 new items
+2026-04-24 13:43:47,846 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 22 new items from China Daily World
+2026-04-24 13:43:47,847 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 30/41: China Daily World - 22 new items
+2026-04-24 13:43:48,259 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from El País Internacional
+2026-04-24 13:43:48,728 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 20 new items from Xinhua World
+2026-04-24 13:43:48,728 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 32/41: Xinhua World - 20 new items
+2026-04-24 13:43:49,006 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 30 new items from 20minutos Tecnología
+2026-04-24 13:43:49,007 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 33/41: 20minutos Tecnología - 30 new items
+2026-04-24 13:43:49,182 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 20 new items from ABC Tecnología
+2026-04-24 13:43:49,182 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 34/41: ABC Tecnología - 20 new items
+2026-04-24 13:43:49,343 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 20 new items from Ars Technica
+2026-04-24 13:43:49,344 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 35/41: Ars Technica - 20 new items
+2026-04-24 13:43:49,532 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 15 new items from Hipertextual
+2026-04-24 13:43:49,532 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 36/41: Hipertextual - 15 new items
+2026-04-24 13:43:50,589 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from PingWest
+2026-04-24 13:43:52,449 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Sina Tech
+2026-04-24 13:43:52,605 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 20 new items from TechCrunch
+2026-04-24 13:43:52,606 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 39/41: TechCrunch - 20 new items
+2026-04-24 13:43:55,852 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 50 new items from TechNode
+2026-04-24 13:43:55,862 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 40/41: TechNode - 50 new items
+2026-04-24 13:43:56,015 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 10 new items from The Verge
+2026-04-24 13:43:56,016 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 41/41: The Verge - 10 new items
+2026-04-24 13:43:56,016 INFO news_downloader [srv=1472671221027045648]: 📥 Background download completed: 784 new items from 30 feeds
+2026-04-24 14:43:28,808 INFO discord [srv=1472671221027045648]: [TH_SCHEDULER] Running treasure_hunter task (interval: 1h)
+2026-04-24 14:43:28,813 INFO treasure_hunter [srv=1472671221027045648]: 🚀 Treasure hunter background task launched (non-blocking)
+2026-04-24 14:43:28,813 INFO discord [srv=1472671221027045648]: [TH_SCHEDULER] treasure_hunter task completed successfully
+2026-04-24 14:43:28,813 INFO discord [srv=1472671221027045648]: [TH_SCHEDULER] Next treasure_hunter run scheduled for: 2026-04-24 15:43:28.808005
+2026-04-24 14:43:28,813 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] Running news download task (interval: 1h)
+2026-04-24 14:43:28,814 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] Started background download for 41 feeds
+2026-04-24 14:43:28,814 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] News download task initiated
+2026-04-24 14:43:28,814 INFO discord [srv=1472671221027045648]: [NW_SCHEDULER] Next news download run scheduled for: 2026-04-24 15:43:28.813680
+2026-04-24 14:43:28,814 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Running global subscription processing (interval: 1h)
+2026-04-24 14:43:28,814 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Processing server 691750774883221567 (frequency: 1h)
+2026-04-24 14:43:28,815 ERROR db [srv=1472671221027045648]: [get_personality_name] Error reading server_config for server {'default_personality': 'putre', 'default_language': 'es-ES', 'platform': 'discord', 'llm': {'max_tokens': 2048}, 'dev_options': {'prompt_logging': True, 'prompt_log_retention_days': 15, '_comment': 'prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error.'}, 'gdpr': {'retention_enabled': True, 'interactions_days': 90, 'derived_memory_days': 365, 'run_every_hours': 24, '_comment': 'Automatic GDPR retention sweep. interactions_days purges raw `interacciones` rows (direct PII); derived_memory_days purges date-scoped LLM summaries (daily_memory, user_relationship_daily_memory, notable_recollections). run_every_hours is the cadence of the background task.'}, 'fatigue_limits': {'user': {'daily_max': 50, 'hourly_max': 10, 'burst_max': 5, 'reset_times': {'daily': '00:00 UTC', 'hourly': 'cada hora'}}, 'server': {'daily_max': 500, 'hourly_max': 100, 'burst_max': 20}, 'exemptions': {'admin_users': [], 'critical_tasks': ['daily_memory', 'relationship_memory', 'recent_memory']}, 'behavior': {'strict_mode': False, 'grace_period': 3, 'cooldown_minutes': 15}}, 'roles': {'news_watcher': {'enabled': True, 'interval_hours': 1, 'script': 'roles/news_watcher/news_watcher.py'}, 'treasure_hunter': {'enabled': True, 'interval_hours': 1, 'script': 'roles/treasure_hunter/treasure_hunter.py'}, 'trickster': {'enabled': True, 'script': 'roles/trickster/trickster.py', 'subroles': {'dice_game': {'enabled': True, 'fixed_bet': 10}}}, 'shaman': {'enabled': True, 'script': 'roles/shaman/shaman.py', 'subroles': {'nordic_runes': {'enabled': True}}}, 'mc': {'enabled': True, 'mode': 'integrated', 'features': {'voice_commands': True, 'queue_management': True, 'playlist_support': True, 'auto_disconnect': True, 'mention_responses': True, 'presence_status': True}, 'voice_settings': {'timeout_seconds': 60, 'auto_disconnect_timeout': 300, 'max_queue_size': 50, 'volume': 1.0}, 'audio_quality': {'bitrate': '128k', 'format': 'mp3', 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'}}, 'banker': {'enabled': True, 'interval_hours': 24, 'script': 'roles/banker/banker.py', 'subroles': {'beggar': {'enabled': True, 'frequency_hours': 12}}}, 'juggler': {'enabled': True, 'script': 'roles/juggler/juggler.py', 'subroles': {'ring': {'enabled': True, 'frequency_hours': 24}}}}}: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+Traceback (most recent call last):
+  File "/home/mtx/Documentos/RoleAgentBot/agent_db.py", line 332, in get_personality_name
+    server_config_path = _base_dir / "databases" / server_id / "server_config.json"
+TypeError: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+2026-04-24 14:43:28,815 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Server 691750774883221567 processing completed
+2026-04-24 14:43:28,815 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Processing server 1472671221027045648 (frequency: 1h)
+2026-04-24 14:43:28,816 ERROR db [srv=1472671221027045648]: [get_personality_name] Error reading server_config for server {'default_personality': 'putre', 'default_language': 'es-ES', 'platform': 'discord', 'llm': {'max_tokens': 2048}, 'dev_options': {'prompt_logging': True, 'prompt_log_retention_days': 15, '_comment': 'prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error.'}, 'gdpr': {'retention_enabled': True, 'interactions_days': 90, 'derived_memory_days': 365, 'run_every_hours': 24, '_comment': 'Automatic GDPR retention sweep. interactions_days purges raw `interacciones` rows (direct PII); derived_memory_days purges date-scoped LLM summaries (daily_memory, user_relationship_daily_memory, notable_recollections). run_every_hours is the cadence of the background task.'}, 'fatigue_limits': {'user': {'daily_max': 50, 'hourly_max': 10, 'burst_max': 5, 'reset_times': {'daily': '00:00 UTC', 'hourly': 'cada hora'}}, 'server': {'daily_max': 500, 'hourly_max': 100, 'burst_max': 20}, 'exemptions': {'admin_users': [], 'critical_tasks': ['daily_memory', 'relationship_memory', 'recent_memory']}, 'behavior': {'strict_mode': False, 'grace_period': 3, 'cooldown_minutes': 15}}, 'roles': {'news_watcher': {'enabled': True, 'interval_hours': 1, 'script': 'roles/news_watcher/news_watcher.py'}, 'treasure_hunter': {'enabled': True, 'interval_hours': 1, 'script': 'roles/treasure_hunter/treasure_hunter.py'}, 'trickster': {'enabled': True, 'script': 'roles/trickster/trickster.py', 'subroles': {'dice_game': {'enabled': True, 'fixed_bet': 10}}}, 'shaman': {'enabled': True, 'script': 'roles/shaman/shaman.py', 'subroles': {'nordic_runes': {'enabled': True}}}, 'mc': {'enabled': True, 'mode': 'integrated', 'features': {'voice_commands': True, 'queue_management': True, 'playlist_support': True, 'auto_disconnect': True, 'mention_responses': True, 'presence_status': True}, 'voice_settings': {'timeout_seconds': 60, 'auto_disconnect_timeout': 300, 'max_queue_size': 50, 'volume': 1.0}, 'audio_quality': {'bitrate': '128k', 'format': 'mp3', 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'}}, 'banker': {'enabled': True, 'interval_hours': 24, 'script': 'roles/banker/banker.py', 'subroles': {'beggar': {'enabled': True, 'frequency_hours': 12}}}, 'juggler': {'enabled': True, 'script': 'roles/juggler/juggler.py', 'subroles': {'ring': {'enabled': True, 'frequency_hours': 24}}}}}: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+Traceback (most recent call last):
+  File "/home/mtx/Documentos/RoleAgentBot/agent_db.py", line 332, in get_personality_name
+    server_config_path = _base_dir / "databases" / server_id / "server_config.json"
+TypeError: unsupported operand type(s) for /: 'PosixPath' and 'dict'
+2026-04-24 14:43:28,816 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Server 1472671221027045648 processing completed
+2026-04-24 14:43:28,816 INFO discord [srv=1472671221027045648]: [NW_SUBSCRIPTION_PROCESSOR] Next global run scheduled for: 2026-04-24 15:43:28.814652
+2026-04-24 14:43:28,816 INFO news_downloader [srv=1472671221027045648]: 📥 Starting background download for 41 feeds...
+2026-04-24 14:43:28,816 INFO treasure_hunter [srv=1472671221027045648]: 🔄 [BG] Step 1: Updating prices for all registered items
+2026-04-24 14:43:28,817 INFO poe2_subrole_manager [srv=1472671221027045648]: [BG] 🚀 Starting scheduled price update task for POE2
+2026-04-24 14:43:28,817 INFO poe2_subrole_manager [srv=1472671221027045648]: [BG] ✅ Scheduled price update completed: 0 items across 0 leagues
+2026-04-24 14:43:28,817 INFO treasure_hunter [srv=1472671221027045648]: [BG] No price updates available, skipping alert processing
+2026-04-24 14:43:29,853 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from BitcoinEspaña
+2026-04-24 14:43:30,018 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 4 new items from Cointelegraph
+2026-04-24 14:43:30,019 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 2/41: Cointelegraph - 4 new items
+2026-04-24 14:43:30,183 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 1 new items from Decrypt
+2026-04-24 14:43:30,183 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 3/41: Decrypt - 1 new items
+2026-04-24 14:43:30,749 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Decrypt CN
+2026-04-24 14:43:31,874 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 1 new items from Economía Digital
+2026-04-24 14:43:31,874 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 5/41: Economía Digital - 1 new items
+2026-04-24 14:43:32,077 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 10 new items from Investing.com ES
+2026-04-24 14:43:32,077 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 6/41: Investing.com ES - 10 new items
+2026-04-24 14:43:33,466 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Odaily Starry
+2026-04-24 14:43:33,574 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 1 new items from The Block
+2026-04-24 14:43:33,575 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 8/41: The Block - 1 new items
+2026-04-24 14:43:36,160 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from The Block CN
+2026-04-24 14:43:39,134 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 19 new items from 36Kr Economy
+2026-04-24 14:43:39,134 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 10/41: 36Kr Economy - 19 new items
+2026-04-24 14:43:39,784 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 12 new items from Bloomberg Markets
+2026-04-24 14:43:39,784 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 11/41: Bloomberg Markets - 12 new items
+2026-04-24 14:43:40,189 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 5 new items from CNBC Markets
+2026-04-24 14:43:40,189 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 12/41: CNBC Markets - 5 new items
+2026-04-24 14:43:40,749 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 12 new items from El País Economía
+2026-04-24 14:43:40,750 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 13/41: El País Economía - 12 new items
+2026-04-24 14:43:40,850 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Investing.com ES Economy
+2026-04-24 14:43:41,207 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 4 new items from MarketWatch
+2026-04-24 14:43:41,207 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 15/41: MarketWatch - 4 new items
+2026-04-24 14:43:41,618 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Sina Finance
+2026-04-24 14:43:42,141 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 11 new items from 20minutos
+2026-04-24 14:43:42,142 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 17/41: 20minutos - 11 new items
+2026-04-24 14:43:42,672 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 5 new items from ABC News
+2026-04-24 14:43:42,673 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 18/41: ABC News - 5 new items
+2026-04-24 14:43:42,871 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 9 new items from BBC News
+2026-04-24 14:43:42,871 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 19/41: BBC News - 9 new items
+2026-04-24 14:43:43,624 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from China Daily
+2026-04-24 14:43:44,045 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 6 new items from El Mundo
+2026-04-24 14:43:44,046 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 21/41: El Mundo - 6 new items
+2026-04-24 14:43:44,472 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from El País
+2026-04-24 14:43:45,244 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Sina News
+2026-04-24 14:43:45,465 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 7 new items from The Guardian
+2026-04-24 14:43:45,466 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 24/41: The Guardian - 7 new items
+2026-04-24 14:43:45,626 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 2 new items from ABC Internacional
+2026-04-24 14:43:45,627 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 25/41: ABC Internacional - 2 new items
+2026-04-24 14:43:45,807 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 9 new items from Al Jazeera English
+2026-04-24 14:43:45,808 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 26/41: Al Jazeera English - 9 new items
+2026-04-24 14:43:45,887 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 1 new items from BBC World
+2026-04-24 14:43:45,888 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 27/41: BBC World - 1 new items
+2026-04-24 14:43:47,368 ERROR news_downloader [srv=1472671221027045648]: Error fetching news from CCTV World: 'utf-8' codec can't decode byte 0xc8 in position 691: invalid continuation byte
+Traceback (most recent call last):
+  File "/home/mtx/Documentos/RoleAgentBot/roles/news_watcher/news_downloader.py", line 33, in fetch_and_store_news
+    raw_data = await response.text()
+  File "/home/mtx/.local/lib/python3.10/site-packages/aiohttp/client_reqrep.py", line 740, in text
+    return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc8 in position 691: invalid continuation byte
+2026-04-24 14:43:47,714 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from CNN World
+2026-04-24 14:43:48,208 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from China Daily World
+2026-04-24 14:43:48,632 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from El País Internacional
+2026-04-24 14:43:50,503 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Xinhua World
+2026-04-24 14:43:50,660 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from 20minutos Tecnología
+2026-04-24 14:43:50,741 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 1 new items from ABC Tecnología
+2026-04-24 14:43:50,741 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 34/41: ABC Tecnología - 1 new items
+2026-04-24 14:43:50,863 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Ars Technica
+2026-04-24 14:43:51,046 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 2 new items from Hipertextual
+2026-04-24 14:43:51,047 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 36/41: Hipertextual - 2 new items
+2026-04-24 14:43:52,843 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from PingWest
+2026-04-24 14:43:54,745 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from Sina Tech
+2026-04-24 14:43:54,856 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 1 new items from TechCrunch
+2026-04-24 14:43:54,856 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 39/41: TechCrunch - 1 new items
+2026-04-24 14:43:57,928 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 0 new items from TechNode
+2026-04-24 14:43:58,064 INFO news_downloader [srv=1472671221027045648]: 📥 Downloaded 1 new items from The Verge
+2026-04-24 14:43:58,064 INFO news_downloader [srv=1472671221027045648]: 📥 Feed 41/41: The Verge - 1 new items
+2026-04-24 14:43:58,065 INFO news_downloader [srv=1472671221027045648]: 📥 Background download completed: 124 new items from 22 feeds
+2026-04-24 15:22:14,528 INFO discord [srv=1472671221027045648]: 🔍 Command detected: !cavas
+2026-04-24 15:22:14,528 INFO discord [srv=1472671221027045648]: 🔍 Available commands: ['identity', 'testrecentmemory', 'canvas', 'help', 'forcewatcher', 'mc', 'agenthelp', 'testdailymemory', 'setnickname', 'forget_me', 'hunterfrequency', 'setpersonality', 'testrelationshipmemory', 'readme', 'rolePUTRE', 'testpersonalityevolution']
+2026-04-24 15:22:14,529 ERROR discord [srv=1472671221027045648]: Command error: Command "cavas" is not found
+2026-04-24 15:22:14,529 WARNING discord [srv=1472671221027045648]: Command not found: !cavas
+2026-04-24 15:22:14,529 INFO discord [srv=1472671221027045648]: Available commands: ['identity', 'testrecentmemory', 'canvas', 'help', 'forcewatcher', 'mc', 'agenthelp', 'testdailymemory', 'setnickname', 'forget_me', 'hunterfrequency', 'setpersonality', 'testrelationshipmemory', 'readme', 'rolePUTRE', 'testpersonalityevolution']
+2026-04-24 15:22:18,285 INFO discord [srv=1472671221027045648]: 🔍 Command detected: !canvas
+2026-04-24 15:22:18,286 INFO discord [srv=1472671221027045648]: 🔍 Available commands: ['identity', 'testrecentmemory', 'canvas', 'help', 'forcewatcher', 'mc', 'agenthelp', 'testdailymemory', 'setnickname', 'forget_me', 'hunterfrequency', 'setpersonality', 'testrelationshipmemory', 'readme', 'rolePUTRE', 'testpersonalityevolution']
+2026-04-24 15:22:18,286 INFO discord_core [srv=1472671221027045648]: Canvas command entered by dextrure: raw_section='home', raw_target='', raw_detail='', in_guild=True
+2026-04-24 15:22:18,315 INFO db_role_news_watcher [srv=1472671221027045648]: ✅ News watcher database ready at /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/roles_putre.db
+2026-04-24 15:22:18,316 ERROR db_role_news_watcher [srv=1472671221027045648]: Error getting premises with context: no such table: watcher_premises
+Traceback (most recent call last):
+  File "/home/mtx/Documentos/RoleAgentBot/roles/news_watcher/db_role_news_watcher.py", line 462, in get_premises_with_context
+    cursor.execute('''
+sqlite3.OperationalError: no such table: watcher_premises
+2026-04-24 15:22:18,316 WARNING discord_core [srv=1472671221027045648]: Could not auto-initialize premises for user 235796491988369408: 'DatabaseRoleNewsWatcher' object has no attribute 'initialize_user_premises'
+2026-04-24 15:22:18,317 INFO discord_core [srv=1472671221027045648]: Canvas command parameters after processing: section='home', target='', detail=''
+2026-04-24 15:22:18,318 INFO discord_core [srv=1472671221027045648]: Loaded 7 enabled roles from server_config: ['news_watcher', 'treasure_hunter', 'trickster', 'shaman', 'mc', 'banker', 'juggler']
+2026-04-24 15:22:18,328 INFO db [srv=1472671221027045648]: 🗄️ [DB] Initializing database at: /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/agent_putre.db
+2026-04-24 15:22:18,340 INFO db [srv=1472671221027045648]: ✅ [DB] Database accessible at: /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/agent_putre.db
+2026-04-24 15:22:18,341 INFO db [srv=1472671221027045648]: ✅ Database ready at /home/mtx/Documentos/RoleAgentBot/databases/1472671221027045648/agent_putre.db
+2026-04-24 15:22:18,348 INFO discord_core [srv=1472671221027045648]: Canvas top-level view prepared for dextrure: section=home, admin_visible=True, buttons=3, in_guild=True
+2026-04-24 15:22:18,669 INFO discord_core [srv=1472671221027045648]: Canvas top-level view sent: message_id=1497226180275994807, components=1

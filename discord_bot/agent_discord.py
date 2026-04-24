@@ -10,6 +10,8 @@ import discord
 import asyncio
 import random
 import time
+from datetime import datetime, timedelta
+from typing import Optional, Dict
 from discord.ext import commands, tasks
 
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
@@ -191,6 +193,221 @@ async def discord_task_scheduler():
 async def _before_task_scheduler():
     await bot.wait_until_ready()
 
+
+# --- GLOBAL TREASURE HUNTER SCHEDULER ---
+# This runs independently of servers, based only on agent_config settings
+_treasure_hunter_next_run: Optional[datetime] = None
+
+@tasks.loop(minutes=1)
+async def treasure_hunter_global_scheduler():
+    """Global treasure hunter scheduler - runs based on agent_config, not per-server.
+    
+    This scheduler is INDEPENDENT of servers. It runs if:
+    1. treasure_hunter is enabled in agent_config.json
+    2. The interval_hours have passed since last run
+    
+    This is NOT a subrole task - it's a global role task that manages POE2
+    price tracking across all active servers.
+    """
+    global _treasure_hunter_next_run
+    
+    if not bot.is_ready():
+        return
+    
+    try:
+        # Check if treasure_hunter is enabled in agent_config
+        th_config = agent_config.get("roles", {}).get("treasure_hunter", {})
+        if not th_config.get("enabled", False):
+            logger.debug("[TH_SCHEDULER] treasure_hunter disabled in agent_config, skipping")
+            return
+        
+        # Get interval from agent_config (default 1 hour)
+        interval_hours = th_config.get("interval_hours", 1)
+        
+        # Check if it's time to run
+        now = datetime.now()
+        if _treasure_hunter_next_run is None or now >= _treasure_hunter_next_run:
+            logger.info(f"[TH_SCHEDULER] Running treasure_hunter task (interval: {interval_hours}h)")
+            
+            try:
+                from roles.treasure_hunter.treasure_hunter import ejecutar_mision_treasure_hunter
+                
+                # Execute the treasure hunter mission (non-blocking)
+                await ejecutar_mision_treasure_hunter(agent_config, server_name=None)
+                
+                logger.info("[TH_SCHEDULER] treasure_hunter task completed successfully")
+                
+            except Exception as e:
+                logger.error(f"[TH_SCHEDULER] Error executing treasure_hunter task: {e}")
+            
+            # Schedule next run
+            _treasure_hunter_next_run = now + timedelta(hours=interval_hours)
+            logger.info(f"[TH_SCHEDULER] Next treasure_hunter run scheduled for: {_treasure_hunter_next_run}")
+        else:
+            time_until = _treasure_hunter_next_run - now
+            logger.debug(f"[TH_SCHEDULER] Next run in {time_until.total_seconds() // 60:.0f} minutes")
+            
+    except Exception as e:
+        logger.error(f"[TH_SCHEDULER] Error in treasure_hunter scheduler: {e}")
+
+
+# --- GLOBAL NEWS WATCHER SCHEDULER ---
+# This runs independently of servers, downloads news in background
+_news_watcher_next_run: Optional[datetime] = None
+
+@tasks.loop(minutes=1)
+async def news_watcher_global_scheduler():
+    """Global news watcher scheduler - downloads news in background based on agent_config.
+    
+    This scheduler is INDEPENDENT of servers. It runs if:
+    1. news_watcher is enabled in agent_config.json
+    2. The interval_hours have passed since last run
+    
+    This downloads news from all feeds and stores them in the global database.
+    The subscription processing task then uses this cached news.
+    """
+    global _news_watcher_next_run
+    
+    if not bot.is_ready():
+        return
+    
+    try:
+        # Check if news_watcher is enabled in agent_config
+        nw_config = agent_config.get("roles", {}).get("news_watcher", {})
+        if not nw_config.get("enabled", False):
+            logger.debug("[NW_SCHEDULER] news_watcher disabled in agent_config, skipping")
+            return
+        
+        # Get interval from agent_config (default 1 hour)
+        interval_hours = nw_config.get("interval_hours", 1)
+        
+        # Check if it's time to run
+        now = datetime.now()
+        if _news_watcher_next_run is None or now >= _news_watcher_next_run:
+            logger.info(f"[NW_SCHEDULER] Running news download task (interval: {interval_hours}h)")
+            
+            try:
+                from roles.news_watcher.news_downloader import download_all_feeds_global
+                from roles.news_watcher.global_feed_health import get_healthy_feeds
+                
+                # Get all healthy feeds
+                healthy_feeds = get_healthy_feeds()
+                if healthy_feeds:
+                    # Download news in background (non-blocking)
+                    download_task = asyncio.create_task(download_all_feeds_global(healthy_feeds))
+                    logger.info(f"[NW_SCHEDULER] Started background download for {len(healthy_feeds)} feeds")
+                else:
+                    logger.warning("[NW_SCHEDULER] No healthy feeds found to download")
+                
+                logger.info("[NW_SCHEDULER] News download task initiated")
+                
+            except Exception as e:
+                logger.error(f"[NW_SCHEDULER] Error executing news download task: {e}")
+            
+            # Schedule next run
+            _news_watcher_next_run = now + timedelta(hours=interval_hours)
+            logger.info(f"[NW_SCHEDULER] Next news download run scheduled for: {_news_watcher_next_run}")
+        else:
+            time_until = _news_watcher_next_run - now
+            logger.debug(f"[NW_SCHEDULER] Next run in {time_until.total_seconds() // 60:.0f} minutes")
+            
+    except Exception as e:
+        logger.error(f"[NW_SCHEDULER] Error in news_watcher scheduler: {e}")
+
+@treasure_hunter_global_scheduler.before_loop
+async def _before_treasure_hunter_scheduler():
+    await bot.wait_until_ready()
+
+@news_watcher_global_scheduler.before_loop
+async def _before_news_watcher_scheduler():
+    await bot.wait_until_ready()
+
+
+# --- GLOBAL NEWS WATCHER SUBSCRIPTION PROCESSOR SCHEDULER ---
+# This runs independently of servers, processes subscriptions based on server-specific frequency
+_subscription_processor_next_runs: Dict[str, datetime] = {}
+_subscription_processor_global_next_run: Optional[datetime] = None
+
+@tasks.loop(minutes=1)
+async def news_watcher_subscription_processor():
+    """Global news watcher subscription processor - processes subscriptions based on server-specific frequency.
+    
+    This scheduler is INDEPENDENT of servers. It runs if:
+    1. news_watcher is enabled in agent_config.json
+    2. The global interval_hours from agent_config have passed since last run
+    3. The server-specific interval_hours have passed since last run for that server
+    
+    This processes subscriptions for each server individually, checking server_config.json
+    for the configured frequency. It downloads fresh news if needed based on feed update frequency.
+    """
+    global _subscription_processor_next_runs, _subscription_processor_global_next_run
+    
+    if not bot.is_ready():
+        return
+    
+    try:
+        # Check if news_watcher is enabled in agent_config
+        nw_config = agent_config.get("roles", {}).get("news_watcher", {})
+        if not nw_config.get("enabled", False):
+            logger.debug("[NW_SUBSCRIPTION_PROCESSOR] news_watcher disabled in agent_config, skipping")
+            return
+        
+        # Get global interval from agent_config (default 1 hour)
+        global_interval_hours = nw_config.get("interval_hours", 1)
+        
+        # Check if it's time to run globally
+        now = datetime.now()
+        if _subscription_processor_global_next_run is None or now >= _subscription_processor_global_next_run:
+            logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Running global subscription processing (interval: {global_interval_hours}h)")
+            
+            # Get all servers
+            servers = bot.guilds
+            
+            for guild in servers:
+                server_id = str(guild.id)
+                
+                # Get server-specific frequency from server_config.json
+                from discord_bot.canvas.server_config import get_news_watcher_frequency, is_role_enabled
+                if not is_role_enabled(server_id, "news_watcher"):
+                    logger.debug(f"[NW_SUBSCRIPTION_PROCESSOR] news_watcher disabled for server {server_id}, skipping")
+                    continue
+                
+                interval_hours = get_news_watcher_frequency(server_id, default_hours=1)
+                
+                # Check if it's time to run for this server
+                last_run = _subscription_processor_next_runs.get(server_id)
+                if last_run is None or now >= last_run:
+                    logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Processing server {server_id} (frequency: {interval_hours}h)")
+                    
+                    try:
+                        from roles.news_watcher.subscription_processor import process_server_subscriptions
+                        
+                        # Process this server's subscriptions (non-blocking)
+                        await process_server_subscriptions(bot, agent_config, server_id)
+                        
+                        logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Server {server_id} processing completed")
+                        
+                    except Exception as e:
+                        logger.error(f"[NW_SUBSCRIPTION_PROCESSOR] Error processing server {server_id}: {e}")
+                    
+                    # Schedule next run for this server
+                    _subscription_processor_next_runs[server_id] = now + timedelta(hours=interval_hours)
+                    logger.debug(f"[NW_SUBSCRIPTION_PROCESSOR] Server {server_id} next run scheduled for: {_subscription_processor_next_runs[server_id]}")
+            
+            # Schedule next global run
+            _subscription_processor_global_next_run = now + timedelta(hours=global_interval_hours)
+            logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Next global run scheduled for: {_subscription_processor_global_next_run}")
+        else:
+            time_until = _subscription_processor_global_next_run - now
+            logger.debug(f"[NW_SUBSCRIPTION_PROCESSOR] Next global run in {time_until.total_seconds() // 60:.0f} minutes")
+            
+    except Exception as e:
+        logger.error(f"[NW_SUBSCRIPTION_PROCESSOR] Error in subscription processor: {e}")
+
+@news_watcher_subscription_processor.before_loop
+async def _before_subscription_processor():
+    await bot.wait_until_ready()
+
 @tasks.loop(hours=24)
 async def database_cleanup():
     active_server_key = (get_server_id() or "").strip()
@@ -281,6 +498,35 @@ async def _register_bot_commands():
     logger.info("📦 Importing role commands...")
     await register_all_role_commands(bot, agent_config, PERSONALITY)
     logger.info(f"✅ Role commands registered: {len(bot.commands)}")
+
+
+async def _initialize_poe2_subrole_on_startup():
+    """Initialize POE2 subrole on startup if treasure_hunter is enabled in agent_config."""
+    try:
+        # Check if treasure_hunter is enabled in agent_config
+        treasure_hunter_config = agent_config.get("roles", {}).get("treasure_hunter", {})
+        if not treasure_hunter_config.get("enabled", False):
+            logger.info("🎮 POE2 subrole: treasure_hunter not enabled in agent_config, skipping startup initialization")
+            return
+        
+        logger.info("🎮 POE2 subrole: treasure_hunter enabled, starting initialization...")
+        
+        try:
+            from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
+            poe2_manager = get_poe2_manager()
+            
+            # Initialize default league (Standard) with default items
+            success = await poe2_manager.initialize_default_league_on_startup()
+            if success:
+                logger.info("🎮 POE2 subrole: Default league (Standard) initialized successfully with default items")
+            else:
+                logger.warning("⚠️ POE2 subrole: Failed to initialize default league on startup")
+                
+        except Exception as e:
+            logger.error(f"❌ POE2 subrole: Error during startup initialization: {e}")
+            
+    except Exception as e:
+        logger.error(f"❌ POE2 subrole: Error checking agent_config: {e}")
 
 
 async def _create_banker_wallets_on_startup():
@@ -445,10 +691,28 @@ async def on_ready():
         discord_task_scheduler.start()
         logger.info("🎭 Discord task scheduler started")
     
+    # Start Treasure Hunter global scheduler (runs based on agent_config, not per-server)
+    if not treasure_hunter_global_scheduler.is_running():
+        treasure_hunter_global_scheduler.start()
+        logger.info("💎 Treasure Hunter global scheduler started")
+    
+    # Start News Watcher global scheduler (downloads news in background based on agent_config)
+    if not news_watcher_global_scheduler.is_running():
+        news_watcher_global_scheduler.start()
+        logger.info("📰 News Watcher global scheduler started")
+    
+    # Start News Watcher subscription processor scheduler (processes subscriptions based on last_processed_at)
+    if not news_watcher_subscription_processor.is_running():
+        news_watcher_subscription_processor.start()
+        logger.info("📰 News Watcher subscription processor started")
+    
     await set_mc_presence_if_enabled()
     
     # Create banker wallets for all server members
     await _create_banker_wallets_on_startup()
+    
+    # Initialize POE2 subrole if treasure_hunter is enabled in agent_config
+    await _initialize_poe2_subrole_on_startup()
     
     # Initialize entitlement manager for premium SKU support
     entitlement_mgr = EntitlementManager(bot)
@@ -795,6 +1059,12 @@ async def _process_accuse_flag(message, llm_response: str, server_id: str, is_pu
         if message.guild:
             # We're already in a server
             guild = message.guild
+        elif server_id:
+            # Use the pinned server_id from ReplyButton if available
+            for server in bot.guilds:
+                if str(server.id) == server_id:
+                    guild = server
+                    break
         else:
             # We're in a DM, find a mutual server
             for server in bot.guilds:

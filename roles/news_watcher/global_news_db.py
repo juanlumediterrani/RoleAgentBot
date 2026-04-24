@@ -3,7 +3,7 @@ import sqlite3
 import threading
 import os
 import stat
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from agent_logging import get_logger
@@ -12,7 +12,7 @@ try:
     logger = get_logger('global_news_db')
 except Exception:
     import logging
-    logging.basicConfig(level=logging.INFO)
+    # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('global_news_db')
 
 class GlobalNewsDatabase:
@@ -22,10 +22,11 @@ class GlobalNewsDatabase:
     
     def __init__(self, db_path: Path = None):
         if db_path is None:
-            # Use a global database in the data directory
-            from agent_db import get_data_dir
-            data_dir = get_data_dir()
-            self.db_path = data_dir / "global_news.db"
+            # Use a global database in the databases/news_watcher directory
+            base_dir = Path(__file__).parent.parent.parent
+            news_watcher_db_dir = base_dir / "databases" / "news_watcher"
+            news_watcher_db_dir.mkdir(parents=True, exist_ok=True)
+            self.db_path = news_watcher_db_dir / "global_news.db"
         else:
             self.db_path = db_path
         self._lock = threading.Lock()
@@ -105,6 +106,9 @@ class GlobalNewsDatabase:
                         first_seen TEXT NOT NULL,
                         source_url TEXT DEFAULT NULL,
                         feed_category TEXT DEFAULT NULL,
+                        feed_url TEXT DEFAULT NULL,
+                        summary TEXT DEFAULT NULL,
+                        published_date TEXT DEFAULT NULL,
                         server_count INTEGER DEFAULT 1,
                         last_processed TEXT NOT NULL
                     )
@@ -112,6 +116,18 @@ class GlobalNewsDatabase:
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_global_news_hash ON global_news (title_hash)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_global_news_seen ON global_news (first_seen)')
                 cursor.execute('CREATE INDEX IF NOT EXISTS idx_global_news_category ON global_news (feed_category)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_global_news_feed ON global_news (feed_url)')
+                
+                # Initialize feed last updated tracking table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS feed_last_updated (
+                        feed_url TEXT PRIMARY KEY,
+                        last_updated TEXT NOT NULL,
+                        feed_name TEXT,
+                        feed_category TEXT
+                    )
+                ''')
+                
                 conn.commit()
         except Exception as e:
             logger.exception(f"❌ Error creating global_news table: {e}")
@@ -134,8 +150,8 @@ class GlobalNewsDatabase:
             logger.exception(f"Error checking if news is globally processed: {e}")
             return False
     
-    def mark_news_globally_processed(self, title: str, source_url: str = None, feed_category: str = None, server_id: str = None):
-        """Mark news as processed globally."""
+    def mark_news_globally_processed(self, title: str, source_url: str = None, feed_category: str = None, server_id: str = None, feed_url: str = None, summary: str = None, published_date: str = None):
+        """Mark news as processed globally with full content."""
         try:
             title_hash = self._generate_title_hash(title)
             current_date = datetime.now().isoformat()
@@ -145,14 +161,85 @@ class GlobalNewsDatabase:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT OR REPLACE INTO global_news 
-                        (title_hash, title, first_seen, source_url, feed_category, server_count, last_processed)
-                        VALUES (?, ?, ?, ?, ?, 
+                        (title_hash, title, first_seen, source_url, feed_category, feed_url, summary, published_date, server_count, last_processed)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 
                                 COALESCE((SELECT server_count FROM global_news WHERE title_hash = ?), 0) + 1, ?)
-                    ''', (title_hash, title, current_date, source_url, feed_category, title_hash, current_date))
+                    ''', (title_hash, title, current_date, source_url, feed_category, feed_url, summary, published_date, title_hash, current_date))
                     conn.commit()
                     logger.debug(f"Marked news as globally processed: {title[:50]}...")
         except Exception as e:
             logger.exception(f"Error marking news as globally processed: {e}")
+    
+    def store_news_content(self, title: str, source_url: str, feed_category: str, feed_url: str, summary: str = None, published_date: str = None):
+        """Store news content in global database."""
+        try:
+            title_hash = self._generate_title_hash(title)
+            current_date = datetime.now().isoformat()
+            
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO global_news 
+                        (title_hash, title, first_seen, source_url, feed_category, feed_url, summary, published_date, server_count, last_processed)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    ''', (title_hash, title, current_date, source_url, feed_category, feed_url, summary, published_date, current_date))
+                    conn.commit()
+                    logger.debug(f"Stored news content: {title[:50]}...")
+        except Exception as e:
+            logger.exception(f"Error storing news content: {e}")
+    
+    def get_news_by_feed(self, feed_url: str, since_date: str = None, limit: int = 100) -> list:
+        """Get news from a specific feed, optionally filtered by date."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                if since_date:
+                    cursor.execute('''
+                        SELECT title, source_url, summary, published_date, first_seen
+                        FROM global_news 
+                        WHERE feed_url = ? AND first_seen >= ?
+                        ORDER BY first_seen DESC
+                        LIMIT ?
+                    ''', (feed_url, since_date, limit))
+                else:
+                    cursor.execute('''
+                        SELECT title, source_url, summary, published_date, first_seen
+                        FROM global_news 
+                        WHERE feed_url = ?
+                        ORDER BY first_seen DESC
+                        LIMIT ?
+                    ''', (feed_url, limit))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting news by feed: {e}")
+            return []
+    
+    def get_news_by_category(self, category: str, since_date: str = None, limit: int = 100) -> list:
+        """Get news from a specific category, optionally filtered by date."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                if since_date:
+                    cursor.execute('''
+                        SELECT title, source_url, summary, published_date, first_seen, feed_url
+                        FROM global_news 
+                        WHERE feed_category = ? AND first_seen >= ?
+                        ORDER BY first_seen DESC
+                        LIMIT ?
+                    ''', (category, since_date, limit))
+                else:
+                    cursor.execute('''
+                        SELECT title, source_url, summary, published_date, first_seen, feed_url
+                        FROM global_news 
+                        WHERE feed_category = ?
+                        ORDER BY first_seen DESC
+                        LIMIT ?
+                    ''', (category, limit))
+                return cursor.fetchall()
+        except Exception as e:
+            logger.exception(f"Error getting news by category: {e}")
+            return []
     
     def get_global_news_stats(self) -> dict:
         """Get statistics about globally processed news."""
@@ -196,6 +283,51 @@ class GlobalNewsDatabase:
                 'last_processed': None,
                 'total_processing_events': 0
             }
+    
+    def update_feed_last_updated(self, feed_url: str, feed_name: str = None, feed_category: str = None):
+        """Update the last updated timestamp for a feed."""
+        try:
+            current_date = datetime.now().isoformat()
+            
+            with self._lock:
+                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO feed_last_updated 
+                        (feed_url, last_updated, feed_name, feed_category)
+                        VALUES (?, ?, ?, ?)
+                    ''', (feed_url, current_date, feed_name, feed_category))
+                    conn.commit()
+                    logger.debug(f"Updated feed_last_updated for {feed_name or feed_url}")
+        except Exception as e:
+            logger.exception(f"Error updating feed_last_updated: {e}")
+    
+    def get_feed_last_updated(self, feed_url: str) -> Optional[str]:
+        """Get the last updated timestamp for a feed."""
+        try:
+            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT last_updated FROM feed_last_updated WHERE feed_url = ?', (feed_url,))
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            logger.exception(f"Error getting feed_last_updated: {e}")
+            return None
+    
+    def should_update_feed(self, feed_url: str, interval_hours: int = 1) -> bool:
+        """Check if a feed should be updated based on its last update time and the configured interval."""
+        try:
+            last_updated = self.get_feed_last_updated(feed_url)
+            if not last_updated:
+                return True  # Never updated, should update
+            
+            last_updated_dt = datetime.fromisoformat(last_updated)
+            time_since_update = datetime.now() - last_updated_dt
+            
+            return time_since_update.total_seconds() >= (interval_hours * 3600)
+        except Exception as e:
+            logger.exception(f"Error checking if feed should update: {e}")
+            return True  # On error, allow update
     
     def cleanup_old_news(self, days_to_keep: int = 30):
         """Clean up old news entries to prevent database bloat."""

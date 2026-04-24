@@ -140,15 +140,13 @@ async def distribute_daily_tae(server_id: str | None = None):
         today = date.today().isoformat()
         
         # Check last distribution timestamp (store in role config)
-        config = db_banker.roles_db.get_role_config("banker", server_key)
-        config_data = config.get('config_data', '{}')
-        if config_data:
-            import json
-            data = json.loads(config_data)
-        else:
-            data = {}
+        try:
+            from discord_bot.canvas.server_config import get_role_config_value
+            last_distribution = get_role_config_value(server_key, "banker", "config.last_tae_distribution", default='')
+        except Exception as e:
+            logger.warning(f"Error getting last_tae_distribution from server_config: {e}")
+            last_distribution = ''
         
-        last_distribution = data.get('last_tae_distribution', '')
         if last_distribution == today:
             logger.info(f"💰 TAE already distributed today ({today}), skipping")
             return
@@ -193,10 +191,11 @@ async def distribute_daily_tae(server_id: str | None = None):
                 logger.error(f"💰 Error distributing TAE to user {user_name}: {e}")
         
         # Update last distribution timestamp
-        data['last_tae_distribution'] = today
-        db_banker.roles_db.save_role_config(
-            "banker", True, json.dumps(data)
-        )
+        try:
+            from discord_bot.canvas.server_config import set_role_config_value
+            set_role_config_value(server_key, "banker", "config.last_tae_distribution", today)
+        except Exception as e:
+            logger.error(f"Failed to save last_tae_distribution to server_config: {e}")
         
         logger.info(f"💰 TAE distribution completed: {distributed_count} users, {total_distributed:,} total coins")
         

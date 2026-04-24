@@ -76,25 +76,23 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
         ring_state = _get_canvas_ring_state(guild)
         ring_messages = juggler_messages.get("ring", {})
 
-        title = ring_messages.get("title", "👁️ **RASTREO DEL ARTEFACTO CERO** 👁️")
+        title = ring_messages.get("title", "👁️ **Ring Tracker** 👁️")
         clean_title = title.replace("**", "")
-        description = ring_messages.get("description", "🔍 Un objeto anómalo altera la red. Señala a otros avatares para ayudar al algoritmo a depurar la amenaza.")
+        description = ring_messages.get("description", "Track and identify the target. Point to other users to help the algorithm resolve the anomaly.")
 
-        current_target_label = ring_messages.get("current_target", "🎯 **PUNTO DE INTERÉS:**")
-        target_unknown = ring_messages.get("target_unknown", "👤 Las coordenadas están limpias de sospechas")
-        investigation_title = ring_messages.get("investigation_title", "🔍 **INFORMAR DE ANOMALÍA:**")
-        investigation_instructions = ring_messages.get("investigation_instructions", "• Inicia **Artefacto: Acusar** desde la consola de abajo\n• Escribe la mención (@) o ID del avatar sospechoso\n• Mi algoritmo procesará un interrogatorio directo\n• El análisis se hará público para transparentar el código")
-        investigation_warning = ring_messages.get("investigation_warning", "⚠️ **RESTRICCIONES FÍSICAS:**\n• Un avatar no puede auto-denunciarse\n• Las entidades artificiales (bots) no pueden portar el artefacto\n• El barrido debe estar inicializado por un Arconte")
-        inactive_title = ring_messages.get("inactive_title", "⚠️ **RADARES APAGADOS**")
-        inactive_instructions = ring_messages.get("inactive_instructions", "Para restablecer el rastreo:\n• Un Arconte debe acceder a la terminal **Admin Artefacto**\n• Ejecutar **Rastreo: Iniciado**\n• Calibrar el ciclo temporal del barrido\n\nHecho esto, podrás señalar firmas de carbono sospechosas.")
+        current_target_label = ring_messages.get("current_target", "🎯 **Current Target:**")
+        target_unknown = ring_messages.get("target_unknown", "👤 No target detected")
+        investigation_title = ring_messages.get("investigation_title", "🔍 **Report Anomaly:**")
+        investigation_instructions = ring_messages.get("investigation_instructions", "• Start **Artifact: Accuse** from the console below\n• Enter the mention (@) or ID of the suspected user\n• The algorithm will process a direct interrogation\n• The analysis will be made public for transparency")
+        investigation_warning = ring_messages.get("investigation_warning", "⚠️ **Restrictions:**\n• A user cannot accuse themselves\n• Artificial entities (bots) cannot carry the artifact\n• The sweep must be initiated by an admin")
+        inactive_title = ring_messages.get("inactive_title", "⚠️ **Radars Offline**")
+        inactive_instructions = ring_messages.get("inactive_instructions", "To restore tracking:\n• An admin must access the **Admin Artifact** terminal\n• Execute **Tracking: Started**\n• Calibrate the temporal cycle of the sweep\n\nOnce done, you can point to suspicious carbon signatures.")
 
         parts = [
-            clean_title,
             description,
             "-" * 45,
         ]
         
-        parts.append("")
         if ring_state["enabled"]:
             parts.extend([
                 investigation_title,
@@ -132,8 +130,8 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
         base_freq_label = general.get("base_frequency", "Base Frequency:")
         current_freq_label = general.get("current", "Current Frequency:")
         freq_format = general.get("frequency_format", "Every {hours}h")
-        hot_potato_format = ring_descriptions.get("hot_potato", "🔥 **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)")
-        description = ring_messages.get("description", "🔍 Un objeto anómalo altera la red. Señala a otros avatares para ayudar al algoritmo a depurar la amenaza.")
+        hot_potato_format = ring_descriptions.get("hot_potato", "🔥 **Load Transfer:** Iteration {iteration} (Latency reduced {multiplier}x)")
+        description = ring_messages.get("description", "Track and identify the target. Point to other users to help the algorithm resolve the anomaly.")
 
         base_freq = ring_state.get('base_frequency_hours', ring_state['frequency_hours'])
         current_freq = ring_state.get('current_frequency_hours', ring_state['frequency_hours'])
@@ -151,22 +149,30 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
             multiplier = 2 ** iteration
             parts.append(hot_potato_format.format(iteration=iteration, multiplier=multiplier))
         
-        controls = ring_descriptions.get("controls", "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)")
+        controls = ring_descriptions.get("controls", "**System Controls**\n- Toggle sweep state\n- Temporal cycle parameter (affects load transfer)")
         
-        parts.extend(["", controls])
+        parts.extend([controls])
         
         return "\n".join(parts)
 
     # Default fallback
-    return f"**Detalle: {detail_name}**\nVista de detalle para {detail_name}."
+    return f"**Detail: {detail_name}**\nDetail view for {detail_name}."
 
 
 class JugglerActionModal(discord.ui.Modal, title="Juggler Action"):
     def __init__(self, action_name: str, author_id: int, guild, admin_visible: bool, view=None):
         from .ui import CanvasModal
+        from .content import _get_personality_descriptions
+
+        server_id = str(guild.id) if guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        juggler_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {})
+        ring_messages = juggler_messages.get("ring", {})
+        ring_dropdown_messages = ring_messages.get("dropdown", {})
+
         titles = {
             "ring_frequency": "Ring Frequency",
-            "ring_accuse": "Accuse User",
+            "ring_accuse": ring_messages.get("dm_accusation_header", "Accuse User").replace("**", ""),
         }
         super().__init__(title=titles.get(action_name, "Juggler Action"))
         self.action_name = action_name
@@ -174,9 +180,10 @@ class JugglerActionModal(discord.ui.Modal, title="Juggler Action"):
         self.admin_visible = admin_visible
         self.view = view
         self.author_id = author_id
+
         label_map = {
             "ring_frequency": "Hours",
-            "ring_accuse": "User mention, id, or name",
+            "ring_accuse": ring_dropdown_messages.get("ring_accuse_description", "User mention, id, or name"),
         }
         placeholder_map = {
             "ring_frequency": "24",
@@ -301,9 +308,6 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
                 server_name,
             )
 
-            target_changed_msg = _get_ring_message("target_changed", "✅ Ring target changed to {target_name}", server_id)
-            await interaction.followup.send(target_changed_msg.format(target_name=target_name), ephemeral=True)
-
             # Refresh the view
             if view and hasattr(view, 'refresh'):
                 await view.refresh()
@@ -325,26 +329,20 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             
         roles_db = get_roles_db_instance(server_key)
         
-        # Save to roles_config
-        config_data = roles_db.get_role_config('ring')
-        if not config_data:
-            config_data = {}
-        config_data['enabled'] = enabled
-        ok = roles_db.save_role_config('ring', True, json.dumps(config_data))
+        # Save to server_config
+        try:
+            from .server_config import set_role_config_value
+            set_role_config_value(server_id, "ring", "enabled", enabled)
+            ok = True
+        except Exception as e:
+            logger.error(f"Failed to update ring config in server_config: {e}")
+            ok = False
         
         if ok:
             # Also update ring state for immediate effect
             state = _get_ring_state(server_id)
             state["enabled"] = enabled
             _save_ring_state(server_id, "canvas_admin")
-            
-            enabled_msg = _get_ring_message("enabled", "✅ Ring enabled in roles_config.", server_id)
-            disabled_msg = _get_ring_message("disabled", "✅ Ring disabled in roles_config.", server_id)
-            message = enabled_msg if enabled else disabled_msg
-        else:
-            message = "❌ Failed to update ring configuration."
-        
-        await interaction.followup.send(message, ephemeral=True)
         
         # Refresh the view
         if view and hasattr(view, 'refresh'):
@@ -370,17 +368,17 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             await interaction.response.send_message("❌ Ring configuration system is not available.", ephemeral=True)
             return
             
-        roles_db = get_roles_db_instance(server_key)
-        
-        # Update frequency in roles_config
-        config_data = roles_db.get_role_config('ring')
-        if not config_data:
-            config_data = {}
-        config_data['frequency_hours'] = hours
-        config_data['base_frequency_hours'] = hours
-        config_data['current_frequency_hours'] = hours
-        config_data['frequency_iteration'] = 0
-        ok = roles_db.save_role_config('ring', True, json.dumps(config_data))
+        # Update frequency in server_config
+        try:
+            from .server_config import set_role_config_value
+            set_role_config_value(server_id, "ring", "config.frequency_hours", hours)
+            set_role_config_value(server_id, "ring", "config.base_frequency_hours", hours)
+            set_role_config_value(server_id, "ring", "config.current_frequency_hours", hours)
+            set_role_config_value(server_id, "ring", "config.frequency_iteration", 0)
+            ok = True
+        except Exception as e:
+            logger.error(f"Failed to update ring frequency in server_config: {e}")
+            ok = False
         
         if ok:
             # Also update ring state for immediate effect
@@ -393,7 +391,7 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             _save_ring_state(server_id, "canvas_admin")
             
             message = (
-                f"✅ Ring frequency updated to `{hours}` hours in roles_config.\n"
+                f"✅ Ring frequency updated to `{hours}` hours.\n"
                 f"🔥 Hot potato counter reset.\n"
             )
         else:

@@ -188,8 +188,13 @@ async def cmd_dice_balance(ctx, _personality):
         except Exception:
             pass
         pot_balance = db_banker.get_balance("dice_game_pot")
-        config = roles_db.get_role_config('dice_game', str(ctx.guild.id))
-        fixed_bet = config.get("bet_fija", 1)
+        try:
+            from discord_bot.canvas.server_config import get_role_config_value
+            config = get_role_config_value(str(ctx.guild.id), "dice_game", "config", default={})
+            fixed_bet = config.get("bet_fija", 1)
+        except Exception as e:
+            logger.warning(f"Error getting dice_game config from server_config: {e}")
+            fixed_bet = 1
 
         # Use dice_game_balance_messages from personality
         balance_msg = get_message("title", server=ctx.guild.name.upper())
@@ -383,10 +388,13 @@ async def cmd_dice_config(ctx, _personality):
                 if amount < 1 or amount > 1000:
                     await ctx.send(get_message("error_bet_range"))
                     return
-                if roles_db.save_role_config('dice_game', True, json.dumps({"bet_fija": amount})):
+                try:
+                    from discord_bot.canvas.server_config import set_role_config_value
+                    set_role_config_value(str(ctx.guild.id), "dice_game", "config.bet_fija", amount)
                     await ctx.send(get_message("fixed_bet_configured", amount=amount))
                     logger.info(f"🎲 {ctx.author.name} configured the fixed bet to {amount} in {ctx.guild.name}")
-                else:
+                except Exception as e:
+                    logger.error(f"Error configuring fixed bet: {e}")
                     await ctx.send(get_message("error_configuring_bet"))
             except ValueError:
                 await ctx.send("❌ Invalid amount. Use a whole number.")
@@ -400,9 +408,14 @@ async def cmd_dice_config(ctx, _personality):
                 await ctx.send(get_message("error_announcement_value"))
                 return
             announcements_enabled = state == "on"
-            if roles_db.save_role_config('dice_game', True, json.dumps({"announcements_active": announcements_enabled})):
+            try:
+                from discord_bot.canvas.server_config import set_role_config_value
+                set_role_config_value(str(ctx.guild.id), "dice_game", "config.announcements_active", announcements_enabled)
                 await ctx.send(get_message("announcements_configured", enabled=announcements_enabled))
                 logger.info(f"🎲 {ctx.author.name} {'enabled' if announcements_enabled else 'disabled'} dice game announcements in {ctx.guild.name}")
+            except Exception as e:
+                logger.error(f"Error configuring announcements: {e}")
+                await ctx.send(get_message("error_configuring_announcements"))
             else:
                 await ctx.send(get_message("error_configuring_announcements"))
         else:

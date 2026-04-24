@@ -12,7 +12,7 @@ def _get_personality_descriptions(server_id: str = None) -> dict:
         server_id: Discord server ID for server-specific descriptions
         
     Returns:
-        dict: Personality descriptions loaded from descriptions.json
+        dict: Personality descriptions loaded from descriptions.json and subdirectory
     """
     if not server_id:
         return {}
@@ -23,24 +23,32 @@ def _get_personality_descriptions(server_id: str = None) -> dict:
         server_dir = get_server_personality_dir(server_id)
         if server_dir:
             server_path = Path(server_dir)
+            data = {}
+            # Load descriptions.json if it exists
             descriptions_path = server_path / "descriptions.json"
             if descriptions_path.exists():
                 with open(descriptions_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f).get("discord", {})
-                # Merge sub-role description files from descriptions/ subdirectory
-                sub_dir = server_path / "descriptions"
-                if sub_dir.exists():
-                    if "role_descriptions" not in data:
-                        data["role_descriptions"] = {}
-                    for sub_file in sub_dir.glob("*.json"):
-                        role_key = sub_file.stem
-                        try:
-                            with open(sub_file, 'r', encoding='utf-8') as f:
-                                sub_data = json.load(f)
-                            data["role_descriptions"][role_key] = sub_data
-                        except Exception as e:
-                            logger.error(f"Failed to load {sub_file}: {e}")
-                return data
+                    loaded_data = json.load(f)
+                    # Load from "discord" key, but also check for direct structure
+                    if "discord" in loaded_data:
+                        data = loaded_data["discord"]
+                    else:
+                        # If no "discord" key, use the whole data
+                        data = loaded_data
+            # Always merge sub-role description files from descriptions/ subdirectory
+            sub_dir = server_path / "descriptions"
+            if sub_dir.exists():
+                if "role_descriptions" not in data:
+                    data["role_descriptions"] = {}
+                for sub_file in sub_dir.glob("*.json"):
+                    role_key = sub_file.stem
+                    try:
+                        with open(sub_file, 'r', encoding='utf-8') as f:
+                            sub_data = json.load(f)
+                        data["role_descriptions"][role_key] = sub_data
+                    except Exception as e:
+                        logger.error(f"Failed to load {sub_file}: {e}")
+            return data
     except Exception as e:
         if logger:
             logger.debug(f"Could not load descriptions for server {server_id}: {e}")
@@ -240,27 +248,19 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
         if first_line and not first_line.startswith("**"):
             titles["roles"] = first_line
 
+    home_description_text = ""
+    roles_description_text = ""
     if section_name == "home":
-        personality_line = next((line for line in lines if line.startswith("**Personality:**")), "")
-        roles_line = next((line for line in lines if line.startswith("**Active roles:**")), "")
-        description_parts = [part for part in [personality_line, roles_line] if part]
-        description = "".join(description_parts)
+        home_description_text = lines[0] if lines else ""
+        description = home_description_text
     elif section_name == "home_status":
         personality_line = next((line for line in lines if line.startswith("**Personality:**")), "")
         roles_line = next((line for line in lines if line.startswith("**Active roles:**")), "")
         description_parts = [part for part in [personality_line, roles_line] if part]
         description = "\n".join(description_parts)
     elif section_name == "roles":
-        # Extract description from first block content to avoid extra space between title and fields
-        blocks = _split_canvas_blocks(content)
-        if blocks and blocks[0][1]:
-            # Find the first line that's not the title and not a separator
-            for line in blocks[0][1]:
-                if line != titles.get("roles") and not line.startswith("─"):
-                    description = line
-                    break
-            else:
-                description = ""
+        roles_description_text = lines[1] if len(lines) > 1 else ""
+        description = roles_description_text
 
     elif section_name == "personal":
         description = "Focus on private or user-specific workflows that continue naturally in DM."
@@ -284,12 +284,15 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     blocks = _split_canvas_blocks(content)
     visible_blocks = blocks[:4]
     last_block_index = len(visible_blocks) - 1
+    
     for index, (block_title, block_lines) in enumerate(visible_blocks):
         filtered_lines = [
             line for line in block_lines
             if not (section_name in {"home", "home_status"} and (line.startswith("**Personality:**") or line.startswith("**Active roles:**")))
             and not (section_name == "roles" and index == 0 and block_lines and line == titles.get("roles"))
-            and not (section_name == "roles" and index == 0 and line == description)  # Filter out description that's now in embed.description
+            and not (section_name == "roles" and index == 0 and line == roles_description_text)  # Filter out description that's now in embed.description
+            and not line.startswith("─")  # Filter out separator lines to prevent extra line breaks
+            and not (section_name == "home" and index == 0 and line == home_description_text)  # Filter out home description to prevent duplication
         ]
         value = "\n".join(filtered_lines)[:1024]
         # Use block_title as field name, not as part of the value
@@ -348,8 +351,23 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
     # Use surface_name as detail_key for subrole titles
     # For admin views like "beggar_admin", use the base subrole key "beggar"
     # Map canvas surface names to JSON keys where they differ
-    _surface_to_json_key = {"runes": "nordic_runes", "runes_admin": "nordic_runes"}
-    if surface_name and surface_name not in {"overview", "admin"}:
+    _surface_to_json_key = {
+        "dice": "dice_game",
+        "dice_admin": "dice_game",
+        "runes": "nordic_runes",
+        "runes_admin": "nordic_runes",
+        "league": "poe2",
+        "poe2": "poe2",
+        "items": "poe2",
+        "personal": "poe2",
+    }
+    # For treasure_hunter, admin view should use main title, not a subrole title
+    # For shaman runes detail, use None to prevent title duplication with content
+    if surface_name == "admin" and role_name == "treasure_hunter":
+        detail_key = None
+    elif role_name == "shaman" and surface_name == "runes":
+        detail_key = None
+    elif surface_name and surface_name not in {"overview", "admin"}:
         base = surface_name.replace("_admin", "")
         detail_key = _surface_to_json_key.get(surface_name, _surface_to_json_key.get(base, base))
     else:
@@ -365,6 +383,9 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "juggler": _get_embed_role_title("juggler", detail_key),
     }
     title = role_titles.get(role_name, "Canvas")
+    # Override title for shaman runes detail to prevent parent title from appearing
+    if role_name == "shaman" and surface_name == "runes":
+        title = ""
     blocks = _split_canvas_blocks(content)
     role_colors = {
         "news_watcher": discord.Color.blue(),
@@ -379,13 +400,15 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
     # Extract first block's content as description to avoid extra space between title and fields
     description = ""
     blocks_to_process = blocks[:4]
-    if blocks_to_process and blocks_to_process[0][1]:
-        # Use the first line of the first block's content as description
-        first_block_lines = blocks_to_process[0][1]
-        if first_block_lines:
-            description = first_block_lines[0]
-            # Remove it from the block to avoid duplication
-            blocks_to_process[0] = (blocks_to_process[0][0], first_block_lines[1:])
+    # Skip description extraction for shaman runes to prevent title duplication
+    if not (role_name == "shaman" and surface_name == "runes"):
+        if blocks_to_process and blocks_to_process[0][1]:
+            # Use the first line of the first block's content as description
+            first_block_lines = blocks_to_process[0][1]
+            if first_block_lines:
+                description = first_block_lines[0]
+                # Remove it from the block to avoid duplication
+                blocks_to_process[0] = (blocks_to_process[0][0], first_block_lines[1:])
 
     embed = discord.Embed(
         title=title,
@@ -395,7 +418,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
 
     last_block_index = len(blocks_to_process) - 1
     for index, (block_title, block_lines) in enumerate(blocks_to_process):
-        value = _merge_canvas_block_with_auto_response(block_lines, auto_response) if index == last_block_index else _truncate_canvas_field_value("\n".join(block_lines))
+        value = _merge_canvas_block_with_auto_response(block_lines, auto_response, role_name, surface_name) if index == last_block_index else _truncate_canvas_field_value("\n".join(block_lines))
         if value:
             embed.add_field(name=block_title, value=value, inline=False)
 
@@ -416,17 +439,26 @@ def _truncate_canvas_field_value(value: str, limit: int = 1024) -> str:
     return value[: max(0, limit - 1)].rstrip() + "…"
 
 
-def _merge_canvas_block_with_auto_response(block_lines: list[str], auto_response: str | None) -> str:
+def _merge_canvas_block_with_auto_response(block_lines: list[str], auto_response: str | None, role_name: str | None = None, surface_name: str | None = None) -> str:
     base_value = "\n".join(block_lines).strip()
     response_value = (auto_response or "").strip()
     if not response_value:
         return _truncate_canvas_field_value(base_value)
-    merged = "\n".join([
-        base_value,
-        "",
-        "**Automatic Response**",
-        response_value,
-    ]).strip()
+    
+    # Skip Automatic Response header for shaman runes pages
+    if role_name == "shaman" and surface_name and surface_name.startswith("runes_page"):
+        merged = "\n".join([
+            base_value,
+            "",
+            response_value,
+        ]).strip()
+    else:
+        merged = "\n".join([
+            base_value,
+            "",
+            "**Automatic Response**",
+            response_value,
+        ]).strip()
     return _truncate_canvas_field_value(merged)
 
 #Default english fallback for modals
@@ -463,7 +495,6 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "league_hardcore": "League updated to `Hardcore`.",
             "poe2_on": "POE2 subrole enabled for this server.",
             "poe2_off": "POE2 subrole disabled for this server.",
-            "hunter_frequency": "The bot will ask for the hunter execution frequency in hours and update the scheduler.",
         },
         "trickster": {
             "dice_play": "The bot will roll the dice for you and post the result.",
@@ -513,10 +544,9 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
         "greetings_off": "Presence greetings disabled for this server.",
         "welcome_on": "Welcome messages enabled for this server.",
         "welcome_off": "Welcome messages disabled for this server.",
-        "commentary_on": "Mission commentary enabled for this server.",
-        "commentary_off": "Mission commentary disabled for this server.",
-        "commentary_now": "The bot will generate and post commentary immediately.",
-        "commentary_frequency": "The bot will ask for the commentary interval in minutes and update the schedule.",
+        "memory_long": "Showing long-term memory (daily analysis).",
+        "memory_recent": "Showing recent short-term memory.",
+        "memory_relationship": "Showing relationship memory with users.",
         "taboo_on": "Taboo enabled for this server.",
         "taboo_off": "Taboo disabled for this server.",
         "taboo_add": "The bot will ask for a keyword and add it to the taboo list.",
@@ -549,13 +579,13 @@ def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_respons
     visible_blocks = blocks[:4]
     last_block_index = len(visible_blocks) - 1
     for index, (block_title, block_lines) in enumerate(visible_blocks):
-        value = _merge_canvas_block_with_auto_response(block_lines, auto_response) if index == last_block_index else _truncate_canvas_field_value("\n".join(block_lines))
+        value = _merge_canvas_block_with_auto_response(block_lines, auto_response, None, None) if index == last_block_index else _truncate_canvas_field_value("\n".join(block_lines))
         if value:
             embed.add_field(name=block_title, value=value, inline=False)
     embed.set_footer(text=f"General Behavior • {'admin' if admin_visible else 'user'} view")
     return embed
 
-def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, admin_visible: bool, label: str, server_id: str = None) -> list[tuple[str, str]]:
+def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, admin_visible: bool, label: str, server_id: str = None, agent_config: dict = None) -> list[tuple[str, str]]:
     trickster_personal_map = {
         "dice": "dice",
         "dice_admin": "dice",
@@ -579,11 +609,14 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     button_personal = general.get("button_personal", "👤 Personal")
     button_admin = general.get("button_admin", "🔧 Admin")
     
+    # Check if treasure_hunter is enabled globally in agent_config
+    th_global_enabled = (agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
+    
     items_map: dict[str, list[tuple[str, str]]] = {
         "news_watcher": [
             (button_personal, "overview"),
         ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
-        "treasure_hunter": [],  # POE2 button added separately with emoticon
+        "treasure_hunter": [],  # POE2 button added separately with emoticon only if th_global_enabled
         "trickster": (
             # Regular subrole views
             [(button_personal, trickster_personal_map.get(current_detail or "dice", "dice"))]
@@ -620,7 +653,10 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     }
     
     # Special handling for treasure_hunter POE2 views
+    # Only show POE2 buttons if treasure_hunter is enabled globally in agent_config
     if role_name == "treasure_hunter" and current_detail in {"poe2", "league", "admin"}:
+        if not th_global_enabled:
+            return []  # POE2 not available if treasure_hunter disabled globally
         poe2_buttons = [
             (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("items", "Items"), "poe2"),
             (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("league", "League"), "league"),
@@ -633,6 +669,7 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         return poe2_buttons
     
     # Special handling for treasure_hunter overview - return empty list (POE2 button added separately with emoticon in ui.py)
+    # Only if treasure_hunter is enabled globally
     if role_name == "treasure_hunter":
         return []
     
@@ -722,12 +759,14 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             return [
                 (_hunter_text("poe2_item_add", "Items: Add"), "poe2_item_add", _hunter_text("poe2_item_add_description", "Add a new POE2 item"), "➕"),
                 (_hunter_text("poe2_item_remove", "Items: Remove"), "poe2_item_remove", _hunter_text("poe2_item_remove_description", "Remove a tracked POE2 item"), "➖"),
+                (_hunter_text("poe2_purchase_add", "Purchases: Record"), "poe2_purchase_add", _hunter_text("poe2_purchase_add_description", "Record a purchase for a tracked item"), "📝"),
+                (_hunter_text("poe2_purchase_remove", "Purchases: Liquidate"), "poe2_purchase_remove", _hunter_text("poe2_purchase_remove_description", "Liquidate a recorded purchase"), "💰"),
             ]
         if detail_name == "admin" and admin_visible:
+            # Admin only sees POE2 toggle (frequency is controlled from agent_config.json only)
             return [
                 (_hunter_text("poe2_on", "POE2: On"), "poe2_on", _hunter_text("poe2_on_description", "Activate POE2 subrole"), "✅"),
                 (_hunter_text("poe2_off", "POE2: Off"), "poe2_off", _hunter_text("poe2_off_description", "Deactivate POE2 subrole"), "❌"),
-                (_hunter_text("hunter_frequency", "Hunter: Frequency"), "hunter_frequency", _hunter_text("hunter_frequency_description", "Number input target"), "⏰"),
             ]
         # If no specific detail matched, return empty list for treasure_hunter
         return []
@@ -937,13 +976,13 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             if not ring_enabled:
                 return []
             return [
-                (_ring_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _ring_text("ring_accuse_description", "Text input target"), "👁️"),
+                (_ring_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _ring_text("ring_accuse_description", "Accuse a user of carrying the One Ring"), "👁️"),
             ]
         if detail_name == "ring_admin" and admin_visible:
             return [
-                (_ring_text("ring_on", "Ring: On"), "ring_on", _ring_text("ring_on_description", "Boolean toggle"), "✅"),
-                (_ring_text("ring_off", "Ring: Off"), "ring_off", _ring_text("ring_off_description", "Boolean toggle"), "❌"),
-                (_ring_text("ring_frequency", "Ring: Frequency"), "ring_frequency", _ring_text("ring_frequency_description", "Number input target"), "⏰"),
+                (_ring_text("ring_on", "Hunt: On"), "ring_on", _ring_text("ring_on_description", "Start the One Ring hunt"), "✅"),
+                (_ring_text("ring_off", "Hunt: Off"), "ring_off", _ring_text("ring_off_description", "Stop the One Ring hunt"), "❌"),
+                (_ring_text("ring_frequency", "Hunt: Frequency"), "ring_frequency", _ring_text("ring_frequency_description", "Configure the round frequency"), "⏰"),
             ]
         return []
 
@@ -1060,7 +1099,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
 
 def _get_canvas_role_action_items(role_name: str, admin_visible: bool, agent_config: dict | None = None, server_id: str = None) -> list[tuple[str, str, str]]:
     actions: list[tuple[str, str, str]] = []
-    for _label, detail_name in _get_canvas_role_detail_items(role_name, admin_visible, None, server_id):
+    for _label, detail_name in _get_canvas_role_detail_items(role_name, None, admin_visible, role_name, server_id, agent_config):
         actions.extend(_get_canvas_role_action_items_for_detail(role_name, detail_name, admin_visible, agent_config, server_id))
     return actions
 
@@ -1073,10 +1112,9 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
         "greetings_off": ("Presence greetings", "Off", f"`!nogreet{_personality_name}`", "Boolean toggle"),
         "welcome_on": ("Welcome messages", "On", f"`!welcome{_personality_name}`", "Boolean toggle"),
         "welcome_off": ("Welcome messages", "Off", f"`!nowelcome{_personality_name}`", "Boolean toggle"),
-        "commentary_on": ("Mission commentary", "On", f"`!talk{_personality_name} on`", "Boolean toggle"),
-        "commentary_off": ("Mission commentary", "Off", f"`!talk{_personality_name} off`", "Boolean toggle"),
-        "commentary_now": ("Mission commentary", "Run now", f"`!talk{_personality_name} now`", "Action button"),
-        "commentary_frequency": ("Mission commentary", "Frequency", f"`!talk{_personality_name} frequency <minutes>`", "Number input"),
+        "memory_long": ("Memory", "Long memory", "View long-term daily memory analysis", "Dropdown selection"),
+        "memory_recent": ("Memory", "Recent memory", "View recent short-term memory", "Dropdown selection"),
+        "memory_relationship": ("Memory", "Relationship memory", "View relationship memory with users", "Dropdown selection"),
         "taboo_on": ("Taboo", "On", "`!taboo on`", "Boolean toggle"),
         "taboo_off": ("Taboo", "Off", "`!taboo off`", "Boolean toggle"),
         "taboo_add": ("Taboo", "Add keyword", "`!taboo add <keyword>`", "Text input"),
@@ -1272,42 +1310,32 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     status_lines.extend([
         f"{homedescription}",
         "─" * 45,
-        "",
-        
     ])
     
     if daily_summary:
         dailymemorytitle = home_messages.get("dailymemorytitle", "**Daily Memory**")
         status_lines.extend([
-            "",
-            "",
             f"{dailymemorytitle}",
             f"- {daily_summary[:500]}",
             "",
             "─" * 45,
-            "",
         ])
 
     if recent_summary:
         status_lines.extend([
-            "",
-            "",
             f"{recentsynthesistitle}",
             f"- {recent_summary[:1000]}",
         ])
 
     if relationship_summary:
         status_lines.extend([
-            "",
             "─" * 45,
-            "",
             f"{personalsynthesistitle}",
             f"- {relationship_summary[:1000]}",
         ])
     
     # Add final separator
     status_lines.extend([
-        "",
         "─" * 45,
         f"{personalitystatus} `{_get_server_personality_name(server_id)}`"
     ])
@@ -1317,9 +1345,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
 
 def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, page: int = 1, roles_per_page: int = 5) -> str:
     """Build the role navigation Canvas view - now uses database as primary source with pagination."""
-    # Initialize roles system to ensure database is primary source
-    from discord_bot.discord_utils import initialize_roles_from_database
-    initialize_roles_from_database(agent_config, guild)
+    # Note: Roles initialization happens once at server startup in init_roles_config.py
     
     # Get roles view messages from personality with fallback
     server_id = core.get_server_key(guild) if guild else None
@@ -1327,8 +1353,9 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
     roles_messages = _personality_descriptions.get("roles_view_messages", {})
     
     # Title and description from descriptions.json with fallback
-    title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_id} 🎭")
+    title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_id} 🎭").strip()
     description = roles_messages.get("description", "🌟 The role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.").strip()
+    separator = roles_messages.get("role_categories", "──────────────────────────────").strip()
     
     # Helper messages
     enabled_status = roles_messages.get("enabled_status", "ACTIVE")
@@ -1341,9 +1368,9 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
     inactive_status = roles_messages.get("inactive_status", "❌ INACTIVE")
     
     parts = [
-        title,  # Add title as first line
+        title,
         description,
-        "──────────────────────────────",
+        separator,
     ]
     
     # Track active and inactive roles
@@ -1397,31 +1424,20 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
     for role_name, interval in page_roles:
         role_info = get_role_info(role_name)
         if interval is not None:
-            parts.append(
-                f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}\n"
-                f"• {role_info['description']}\n"
-                ""
-            )
+            parts.append(f" **{role_info['title']}** {enabled_status} {interval_info.format(interval=interval)}")
+            parts.append(f"• {role_info['description']}")
         else:
-            parts.append(
-                f" **{role_info['title']}** {enabled_status}\n"
-                f"• {role_info['description']}\n"
-                ""
-            )
+            parts.append(f" **{role_info['title']}** {enabled_status}")
+            parts.append(f"• {role_info['description']}")
     
     # Add page indicator if there are multiple pages
     if total_pages > 1:
         page_indicator = roles_messages.get("page_indicator", "**Page {page}/{total_pages}**")
         parts.append(page_indicator.format(page=page, total_pages=total_pages))
-        parts.append("")
     
     # Add inactive roles section if any exist
     if inactive_roles:
-        parts.extend([
-            "",
-            "**DEACTIVATE ROLES:**",
-            ""
-        ])
+        parts.append("**DEACTIVATE ROLES:**")
         
         for role in inactive_roles:
             role_info = get_role_info(role)

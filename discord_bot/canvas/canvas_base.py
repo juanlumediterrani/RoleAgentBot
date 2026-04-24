@@ -12,7 +12,12 @@ class CanvasModal(discord.ui.Modal):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """Restrict the modal to the original Canvas author."""
+        from agent_logging import get_logger
+        logger = get_logger()
+        logger.info(f"CanvasModal interaction_check: interaction.user.id={interaction.user.id}, self.author_id={self.author_id}")
         if interaction.user.id != self.author_id:
+            logger.warning(f"CanvasModal interaction rejected: user {interaction.user.id} != author {self.author_id}")
             await interaction.response.send_message("❌ This Canvas menu belongs to another user.", ephemeral=True)
             return False
+        logger.info("CanvasModal interaction check passed")
         return True

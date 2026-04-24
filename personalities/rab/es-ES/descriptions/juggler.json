@@ -22,7 +22,7 @@
         "inactive_instructions": "Para restablecer el rastreo:\n• Un Arconte debe acceder a la terminal **Admin Artefacto**\n• Ejecutar **Rastreo: Iniciado**\n• Calibrar el ciclo temporal del barrido\n\nHecho esto, podrás señalar firmas de carbono sospechosas.",
         "hot_potato": "� **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)",
         "controls": "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)",
-        "dm_accusation_header": "👁️ **ALERTA DE ANOMALÍA**",
+        "dm_accusation_header": "👁️ **RASTREO DEL ARTEFACTO CERO** 👁️",
         "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
         "dropdown": {
             "ring_accuse": "Artefacto: Señalar",

@@ -1,0 +1,115 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **¡GANASTE!** ¡Los guesos te dieron la razón! ⚔️",
+                    "🎉 **¡VICTORIA!** ¡El orco triunfa! ⚔️",
+                    "🎉 **¡TRIUNFO!** ¡Has vencido al destino! ⚔️",
+                    "🎉 **¡EXCELENTE!** ¡Tu acha es fuerte! ⚔️",
+                    "🎉 **¡IMPRESIONANTE!** ¡Una jugada maestra! ⚔️"
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... Los guesos fueron crueles... ⚔️",
+                    "😢 **MALA SUERTE**... El destino fue superior... ⚔️",
+                    "😢 **NO FUE ESTA VEZ**... La suerte es caprichosa... ⚔️",
+                    "😢 **VAYA**... Tu acha falló... ⚔️",
+                    "😢 **PERO NO TE RINDAS**... ¡La próxima será mejor! ⚔️"
+                ],
+                "high_pot":[
+                    "💰 **¡EL BOTE CRECE!** ¡El botín se acumula! ⚔️",
+                    "💰 **¡BOTE EN AUGE!** ¡El premio se hace legendario! ⚔️",
+                    "💰 **¡ACUMULANDO!** ¡El bote brilla con promesa! ⚔️",
+                    "💰 **¡FORTUNA EN ESPERA!** ¡El bote reclama su destino! ⚔️",
+                    "💰 **¡BOTE MÁGICO!** ¡El oro espera al afortunado! ⚔️"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DEL BOTE!!** ¡Has conquistado el tesoro! ⚔️",
+                    "🎉 **¡¡BOTE CONQUISTADO!!** ¡Eres el elegido! ⚔️",
+                    "🎉 **¡¡JACKPOT!!** ¡El bote es tuyo! ⚔️",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has ganado el gran premio! ⚔️",
+                    "🎉 **¡¡BOTE TUYO!!** ¡Una victoria épica! ⚔️"
+                ],
+                "not_gold":[
+                    "💸 **SIN ORO**... No tienes suficientes monedas... ⚔️",
+                    "💸 **FONDOS INSUFICIENTES**... Necesitas más oro... ⚔️",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tu tesoro... ⚔️",
+                    "💸 **NO ALCANZA**... Acumula más oro primero... ⚔️",
+                    "💸 **TESORO ESCASO**... Necesitas fortuna para jugar... ⚔️"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "traer a tu familia orka kontigo",
+                    "komprar un jabali guerrero para la batalla",
+                    "pagar tributo al jefe orko para ke no te mate",
+                    "afilar tu acha zeka en la herreria",
+                    "komprar carne kruda para la fiesta",
+                    "konstruir una nueva tienda en el kampamento",
+                    "komprar zerbeza para olvidar las derrotas",
+                    "pagar al kurandero orko por kolmillos rotos"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ El anillo ahora apunta a {target_name}",
+        "enabled": "✅ El anillo aktivado en la konfigurasion.",
+        "disabled": "✅ El anillo desaktivado en la konfigurasion."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ ¡Mi acha se rompió! ¡Aksión no disponible para orko! ⚔️",
+        "error_behavior_admin_only": "❌ ¡SOLO PARA JEFES ORKOS! ¡Tú no komandas el kampamento! ⚔️🥩",
+        "error_settings_admin_only": "❌ ¡Solo el jefe orko puede kambiar la konfigurasion! ⚔️",
+        "error_taboo_update_failed": "❌ ¡La batalla se perdió! ¡No se pudo aktualizar los umbrales! ⚔️",
+        "error_greetings_update_failed": "❌ ¡El kurandero falló! ¡No se pudo aktualizar los saludos! ⚔️",
+        "error_welcome_update_failed": "❌ ¡La tienda se quemó! ¡No se pudo aktualizar la bienvenida! ⚔️",
+        "error_commentary_update_failed": "❌ ¡La carne se pudrió! ¡No se pudo aktualizar los komentarios! ⚔️",
+        "error_commentary_disabled": "❌ ¡La fogata está apagada! ¡Los komentarios no funsionan! ⚔️",
+        "error_commentary_process_failed": "❌ ¡Mi acha se rompió! ¡No se pudieron proesar los komentarios! ⚔️",
+        "success_taboo_state": "Umbrales {enabled_disabled} en el kampamento del servidor! ⚔️",
+        "success_greetings_state": "Saludos {enabled_disabled} en el kampamento! ⚔️",
+        "success_welcome_state": "Bienvenida {enabled_disabled} en el kampamento! ⚔️",
+        "success_commentary_state": "Komentarios {enabled_disabled} desde el kampamento! ⚔️",
+        "state_enabled": "listo para batalla",
+        "state_disabled": "herido",
+        "forget_me_label": "🧹 Olvídame (borrar mis datos)",
+        "forget_me_description": "Kemar tus datos en la fogata de todos los kampamentos (GDPR Art. 17) ⚔️",
+        "forget_me_confirm_title": "🧹 Konfirmar borrado en el kampamento",
+        "forget_me_confirm_prompt": "⚠️ **¡Guerrero kiere ser olvidado! — Derecho al borrado (GDPR)**\n\nEsto kemará todos tus datos en **TODOS los kampamentos donde Putre pelea**:\n• Registros de interaksiones... la krónika de batalla sobre ti...\n• Memorias ke el kampamento forjó sobre ti...\n• Kontadores de fatiga... las vezes ke molestate al orko...\n• Tu nombre en los resúmenes... será tachado kon seniza ``[redaktado]``...\n\n¡No hay vuelta atrás, guerrero! ¿Estás seguro? ⚔️",
+        "forget_me_btn_confirm": "¡Sí! ¡Kémalo todo! ⚔️",
+        "forget_me_btn_cancel": "No... retirada",
+        "forget_me_result_header": "✅ ¡Tus datos fueron kemados en la fogata del kampamento! ¡Ya no keda nada! ⚔️",
+        "forget_me_no_data": "ℹ️ ¡No se enkontró datos tuyos en ningún kampamento! ¿Eres espíritu? ⚔️",
+        "forget_me_cancelled": "❎ ¡Retirada! ¡Tus datos siguen en el kampamento! ⚔️",
+        "forget_me_not_yours": "❌ ¡Esta konfirmasion es de otro guerrero! ¡No tokar! ⚔️",
+        "forget_me_timed_out": "⌛ ¡La fogata se apagó! ¡Nada fue kemado! ⚔️",
+        "forget_me_dm_sent": "📬 ¡Konfirmasion enviada por mensaje directo! ¡Revisa, guerrero! ⚔️"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ ¡No hay kampamentos disponibles! ¡Ve a un kampamento orko! ⚔️",
+        "server_access_error": "❌ ¡No puedo entrar al kampamento desde aquí! ¡Ve al kampamento! ⚔️",
+        "reply_button_confirmation": "💬 ¡Putre ahora habla desde el kampamento de **{server_name}**! ¡Tus respuestas usarán esta personalidad hasta ke selektes otro! ⚔️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ ¡Mi acha falló! ¡No pude eliminar la última kanzion del kampamento! ⚔️",
+        "play_usage": "🎵 **Uso:** `!mc play <nombre de kanzion o URL>`",
+        "not_in_voice": "🎤 ¡Debes estar en el kampamento para usar esto, guerrero! ⚔️",
+        "nothing_playing": "🎵 ¡No se escucha nada en el kampamento! ⚔️",
+        "same_voice_channel": "🎤 ¡Debes estar en el mismo kampamento que el orko! ⚔️",
+        "not_connected": "🎤 ¡No estoy en ningún kampamento! ⚔️",
+        "queue_empty": "📭 ¡El kampamento está vazío! ⚔️",
+        "dj_permissions_required": "🚫 ¡Solo el jefe orko puede usar esto! ⚔️",
+        "playback_paused": "⏸️ ¡La batalla se detuvo! ⚔️",
+        "nothing_paused": "🎵 ¡No hay batalla pausada! ⚔️",
+        "playback_resumed": "▶️ ¡La batalla volvió! ⚔️",
+        "leaving_voice": "👋 ¡Saliendo del kampamento! ⚔️",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 ¡El volumen debe ser un número entre 0 y 100! ⚔️",
+        "already_playing": "🎵 ¡Ya peleando en el kampamento! ⚔️",
+        "queue_cleared": "🗑️ ¡Kampamento limpio! ⚔️",
+        "volume_adjust_failed": "❌ ¡No pude ajustar el volumen! ⚔️"
+    }
+}

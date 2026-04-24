@@ -62,7 +62,6 @@ Now uses unified `ACTIVE_ROLES=news_watcher,treasure_hunter,trickster,banker,mc`
 
 ### 4. .dockerignore Updates
 - **Added .windsurf/**: Exclude Windsurf workflow files
-- **Added .active_server**: Exclude active server marker file
 - **Fixed docker-compose pattern**: Now excludes all docker-compose*.yml files
 
 ## Current Architecture Support

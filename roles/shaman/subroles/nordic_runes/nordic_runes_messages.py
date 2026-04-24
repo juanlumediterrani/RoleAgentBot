@@ -383,7 +383,8 @@ def get_runes_list_content(page: int = 1, server_id: str = None) -> str:
         fallback_key = f'runes_page_{page}_title'
         page_title = ENGLISH_MESSAGES.get(fallback_key, f'🔮 THE ELDER FUTHARK - RUNES {page} 🔮')
 
-    content = page_title + "\n\n"
+    content = page_title + "\n"
+    content += "─" * 45 + "\n\n"
 
     for rune_key, symbol, name in page_runes:
         rune_info = runes_data.get(rune_key, {})

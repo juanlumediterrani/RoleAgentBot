@@ -29,7 +29,6 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 RUNTIME_LOG_FILE = LOG_DIR / 'runtime.log'
 
-_ACTIVE_SERVER_FILE = Path(__file__).parent / ".active_server"
 
 # ---------------------------------------------------------------------------
 # Server-scoped context
@@ -69,22 +68,6 @@ def server_log_context(server_id: Optional[str], personality_name: Optional[str]
     finally:
         _ctx_server_id.reset(sid_token)
         _ctx_personality.reset(pers_token)
-
-
-def _server_id() -> Optional[str]:
-    """Read the bootstrap server id (env var or ``.active_server`` file)."""
-    import os
-    env_active = os.getenv("ACTIVE_SERVER_ID")
-    if env_active:
-        value = env_active.strip()
-        return value or None
-    try:
-        if _ACTIVE_SERVER_FILE.exists():
-            value = _ACTIVE_SERVER_FILE.read_text(encoding="utf-8").strip()
-            return value or None
-    except Exception:
-        return None
-    return None
 
 
 def get_personality_name():

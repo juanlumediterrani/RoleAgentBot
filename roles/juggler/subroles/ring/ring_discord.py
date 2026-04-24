@@ -10,6 +10,8 @@ import json
 import sqlite3
 import datetime
 
+import discord
+
 from agent_engine import PERSONALITY, _build_system_prompt
 from agent_mind import call_llm
 from agent_logging import get_logger
@@ -48,61 +50,48 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
             "current_accusation": "",
         }
         try:
-            # PRIMARY: Check ring subrole directly in roles_config
+            # PRIMARY: Check ring subrole directly in server_config
             ring_enabled = False
             
             try:
-                from agent_roles_db import get_roles_db_instance
-                roles_db = get_roles_db_instance(server_id)
-                ring_config = roles_db.get_role_config('ring')
-                if ring_config:
-                    ring_enabled = ring_config.get('enabled', False)
+                from discord_bot.canvas.server_config import is_role_enabled
+                ring_enabled = is_role_enabled(server_id, "ring", default_enabled=False)
             except Exception as e:
-                logger.warning(f"Error checking ring enabled in roles_config: {e}")
+                logger.warning(f"Error checking ring enabled in server_config: {e}")
             
             # SECONDARY: Check if trickster role is enabled (fallback)
             trickster_enabled = False
             if not ring_enabled:
                 try:
-                    trickster_config = roles_db.get_role_config('trickster')
-                    if trickster_config:
-                        trickster_enabled = trickster_config.get('enabled', False)
+                    trickster_enabled = is_role_enabled(server_id, "trickster", default_enabled=False)
                 except Exception as e:
-                    logger.warning(f"Error checking trickster enabled in roles_config: {e}")
+                    logger.warning(f"Error checking trickster enabled in server_config: {e}")
                 
-                # TERTIARY: Check behavior roles table (final fallback)
+                # TERTIARY: Check behavior config in server_config.json (final fallback)
                 if not trickster_enabled:
                     try:
-                        db = get_behavior_db_instance(server_id)
-                        trickster_state = db.get_behavior_state('trickster')
-                        trickster_enabled = trickster_state.get('enabled', False)
+                        from discord_bot.canvas.server_config import get_behavior_config
+                        trickster_config = get_behavior_config(server_id, "trickster", default_enabled=False)
+                        trickster_enabled = trickster_config.get('enabled', False) if trickster_config else False
                     except Exception as e:
-                        logger.warning(f"Error checking trickster enabled in behavior: {e}")
+                        logger.warning(f"Error checking trickster enabled in server_config behavior: {e}")
             
-            # Get ring config from roles_config
-            ring_config_data = roles_db.get_role_config('ring')
-            
-            # Parse ring configuration
-            ring_config = {}
-            current_accusation = ""
-            
-            if ring_config_data and ring_config_data.get('config_data'):
-                try:
-                    ring_config = json.loads(ring_config_data['config_data'])
-                except json.JSONDecodeError:
-                    ring_config = {}
-            
-            # Set accused_user_id from ring config (check both locations for compatibility)
-            accused_user_id = ring_config_data.get('accused_user_id', '') if ring_config_data else ''
+            # Get ring config from server_config
+            try:
+                from discord_bot.canvas.server_config import get_role_config_value
+                ring_config = get_role_config_value(server_id, "ring", "config", default={})
+                accused_user_id = ring_config.get('accused_user_id', '') if ring_config else ''
+            except Exception as e:
+                logger.warning(f"Error getting ring config from server_config: {e}")
+                ring_config = {}
+                accused_user_id = ''
             if not accused_user_id:
                 accused_user_id = ring_config.get('accused_user_id', '')
             if not accused_user_id:
                 accused_user_id = ring_config.get('target_user_id', defaults["target_user_id"])
             
-            # Set accused_user_name from ring config (check both locations for compatibility)
-            accused_user_name = ring_config_data.get('accused_user_name', '') if ring_config_data else ''
-            if not accused_user_name:
-                accused_user_name = ring_config.get('accused_user_name', defaults["target_user_name"])
+            # Set accused_user_name from ring config
+            accused_user_name = ring_config.get('accused_user_name', defaults["target_user_name"])
             
             # Log what we loaded for debugging
             logger.info(f"🎭 [RING LOAD] Server {server_id} - Loaded from DB: accused_user_id='{accused_user_id}', accused_user_name='{accused_user_name}'")
@@ -512,11 +501,6 @@ async def _cmd_ring_toggle(ctx, action: str):
         logger.info(f"🎭 [RING TOGGLE] Server {server_id} - Current accused: ID={state.get('target_user_id', 'None')}, Name={state.get('target_user_name', 'None')}")
         
         _save_ring_state(server_id, getattr(ctx.author, "name", "admin_command"))
-        
-        if enabled:
-            await ctx.send('👁️ **Ring enabled for the server** - Users can accuse and the ring surface is active.')
-        else:
-            await ctx.send('🚫 **Ring disabled for the server** - Suspicion tools are now inactive.')
     else:
         await ctx.send('❌ Failed to update ring status in database.')
 

@@ -178,14 +178,27 @@ def copy_personality_to_server(server_id: str, personality_name: str = None, lan
         should_update = update_config or not os.path.exists(server_config_path)
         
         if should_update:
+            # Load existing config if updating (to preserve roles/behaviors)
+            existing_config = {}
+            if os.path.exists(server_config_path):
+                try:
+                    with open(server_config_path, 'r', encoding='utf-8') as f:
+                        existing_config = json.load(f)
+                except Exception as e:
+                    logger.warning(f"Could not load existing server_config.json: {e}")
+            
+            # Build new config with required fields
             server_config = {
                 "active_personality": personality_name,
-                "language": language
+                "language": language,
+                "roles": existing_config.get("roles", {}),
+                "behaviors": existing_config.get("behaviors", {})
             }
+            
             with open(server_config_path, 'w', encoding='utf-8') as f:
                 json.dump(server_config, f, indent=2, ensure_ascii=False)
             action = "Updated" if update_config and os.path.exists(server_config_path) else "Created"
-            logger.info(f"✅ {action} server_config.json with active_personality: {personality_name}, language: {language}")
+            logger.info(f"✅ {action} server_config.json with active_personality: {personality_name}, language: {language}, roles/behaviors sections")
         else:
             logger.info(f"✅ Preserved existing server_config.json")
         
@@ -419,8 +432,7 @@ def initialize_all_databases_for_server(server_id: str, agent_config: dict = Non
     total_count += 1
     try:
         roles_db = get_roles_db_instance(server_id)
-        # Ensure default roles exist
-        roles_db.ensure_default_roles()
+        # Note: Role initialization is now handled by init_roles_config.py using server_config.json
         logger.info(f"✅ Roles database initialized for server {server_id}")
         success_count += 1
     except Exception as e:
@@ -574,32 +586,40 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
     else:
         logger.warning(f"⚠️ Some databases failed to initialize for {guild_name}")
     
-    # 2. Load default roles configuration
+    # 2. Load default roles configuration from agent_config.json
     total_count += 1
     try:
-        from agent_roles_db import RolesDatabase
-        roles_db = RolesDatabase(server_key)
-        default_roles = ["news_watcher", "treasure_hunter", "trickster", "banker"]
+        from .canvas.server_config import set_role_config_value
+        from agent_engine import AGENT_CFG
+        
+        # Get roles from agent_config.json
+        agent_roles_cfg = AGENT_CFG.get("roles", {})
+        default_roles = [
+            role_name for role_name, cfg in agent_roles_cfg.items()
+            if isinstance(cfg, dict) and cfg.get("enabled", False)
+        ]
+        
         for role_name in default_roles:
             # Enable each default role if not already configured
-            roles_db.save_role_config(role_name, True, '{}')
-        logger.info(f"� Default roles loaded for server '{guild_name}'")
+            set_role_config_value(server_key, role_name, "enabled", True)
+            
+            # Also migrate subroles from agent_config.json (store under parent role config)
+            role_cfg = agent_roles_cfg.get(role_name, {})
+            if isinstance(role_cfg, dict) and "subroles" in role_cfg:
+                subroles_cfg = role_cfg["subroles"]
+                for subrole_name, subrole_cfg in subroles_cfg.items():
+                    if isinstance(subrole_cfg, dict) and subrole_cfg.get("enabled", False):
+                        # Store subrole under parent role config, not as independent role
+                        set_role_config_value(server_key, role_name, f"config.subroles.{subrole_name}.enabled", True)
+                        # Copy subrole config values
+                        for key, value in subrole_cfg.items():
+                            if key != "enabled":
+                                set_role_config_value(server_key, role_name, f"config.subroles.{subrole_name}.{key}", value)
+        
+        logger.info(f"✅ Default roles loaded for server '{guild_name}': {default_roles}")
         success_count += 1
     except Exception as e:
         logger.warning(f"Failed to load default roles for server '{guild_name}': {e}")
-    
-    # 3. Sync healthy global feeds if news watcher is enabled
-    if agent_config:
-        from discord_bot.discord_utils import is_role_enabled_check
-        if is_role_enabled_check("news_watcher", agent_config):
-            total_count += 1
-            try:
-                from roles.news_watcher.global_feed_health import sync_feeds_to_server
-                sync_feeds_to_server(server_key)
-                logger.info(f"📡 Healthy global feeds synced to server {guild_name}")
-                success_count += 1
-            except Exception as e:
-                logger.error(f"❌ Error syncing feeds to server {guild_name}: {e}")
     
     # 4. Initialize roles configuration (migration and defaults)
     total_count += 1

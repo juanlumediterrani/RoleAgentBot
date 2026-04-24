@@ -36,28 +36,27 @@ class DiceGameRolesDB:
                    announcements_active: bool = True, config_data: str = None) -> bool:
         """Save dice game configuration for a server."""
         try:
-            # Get existing config
-            existing_config = self.roles_db.get_role_config('dice_game')
-            existing_data = existing_config.get('config_data', '{}')
-            if existing_data:
-                try:
-                    data = json.loads(existing_data)
-                except json.JSONDecodeError:
-                    data = {}
-            else:
-                data = {}
+            from discord_bot.canvas.server_config import set_role_config_value
             
-            # Update dice game configuration
-            data['bet_fija'] = bet_fija
-            data['announcements_active'] = announcements_active
+            # Build config dict
+            config = {
+                'bet_fija': bet_fija,
+                'announcements_active': announcements_active
+            }
+            
+            # Merge extra config if provided
             if config_data:
                 try:
                     extra_data = json.loads(config_data)
-                    data.update(extra_data)
+                    config.update(extra_data)
                 except json.JSONDecodeError:
-                    data['extra'] = config_data
+                    config['extra'] = config_data
             
-            return self.roles_db.save_role_config('dice_game', enabled, json.dumps(data))
+            # Save using server_config
+            set_role_config_value(self.server_id, "dice_game", "config", config)
+            set_role_config_value(self.server_id, "dice_game", "enabled", enabled)
+            
+            return True
             
         except Exception as e:
             logger.error(f"Failed to save dice game config: {e}")
@@ -66,26 +65,12 @@ class DiceGameRolesDB:
     def get_config(self) -> Dict[str, Any]:
         """Get dice game configuration for a server."""
         try:
-            config = self.roles_db.get_role_config('dice_game')
-            config_data = config.get('config_data', '{}')
-            if config_data:
-                try:
-                    data = json.loads(config_data)
-                except json.JSONDecodeError:
-                    data = {}
-            else:
-                data = {}
-            
-            return {
-                'enabled': config.get('enabled', True),
-                'bet_fija': data.get('bet_fija', 1),
-                'announcements_active': data.get('announcements_active', True),
-                'config_data': config_data
-            }
-            
+            from discord_bot.canvas.server_config import get_role_config_value
+            config = get_role_config_value(self.server_id, "dice_game", "config", default={})
+            return config
         except Exception as e:
             logger.error(f"Failed to get dice game config: {e}")
-            return {'enabled': True, 'bet_fija': 1, 'announcements_active': True}
+            return {'bet_fija': 1, 'announcements_active': True}
     
     def save_stats(self, user_id: str, total_plays: int = 0, total_bet: int = 0, 
                   total_won: int = 0, pots_won: int = 0, biggest_prize: int = 0, 

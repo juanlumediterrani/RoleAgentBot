@@ -24,7 +24,7 @@ class BeggarConfig:
     def __init__(self, server_id: str):
         self.server_id = server_id
         self.roles_db = get_roles_db_instance(server_id)
-        self.roles_db.migrate_legacy_beggar_data(server_id)
+        # Note: Legacy data migration happens once at server startup in init_roles_config.py
         self._reasons_cache = None
 
     def get_default_reasons(self) -> List[str]:
@@ -68,27 +68,18 @@ class BeggarConfig:
         return self._reasons_cache
 
     def get_config(self) -> Dict[str, Any]:
-        """Get beggar configuration from roles_config."""
+        """Get beggar configuration from banker's subrole config."""
         try:
-            config = self.roles_db.get_role_config('beggar')
-
-            if config and config.get('config_data'):
-                config_data = json.loads(config['config_data'])
-            else:
-                config_data = {}
-
-            return {
-                'enabled': config.get('enabled', False),
-                'frequency_hours': config_data.get('frequency_hours', 24),
-                'current_reason': config_data.get('current_reason', ''),
-                'reason_started': config_data.get('reason_started', None),
-                'last_reason_change': config_data.get('last_reason_change', None),
-                'target_channel_id': config_data.get('target_channel_id', None),
-                'target_gold': config_data.get('target_gold', 0),
-                'auto_channel_selection': config_data.get('auto_channel_selection', True),
-                'minigame_enabled': config_data.get('minigame_enabled', True),
-                'relationship_improvements': config_data.get('relationship_improvements', True)
-            }
+            from discord_bot.canvas.server_config import get_role_config_value
+            config = get_role_config_value(self.server_id, "banker", "config.beggar", default={})
+            
+            # Handle None case
+            if config is None:
+                config = {}
+            
+            # Merge with defaults
+            default = self._get_default_config()
+            return {**default, **config}
 
         except Exception as e:
             logger.error(f"Error getting beggar config: {e}")
@@ -110,24 +101,19 @@ class BeggarConfig:
         }
 
     def save_config(self, config: Dict[str, Any]) -> bool:
-        """Save beggar configuration to roles_config."""
+        """Save beggar configuration to banker's subrole config (not as independent role)."""
         try:
-            logger.info(f"Saving beggar config for server {self.server_id}")
-            config_data = {k: v for k, v in config.items() if k != 'enabled'}
-
-            success = self.roles_db.save_role_config(
-                'beggar',
-                config.get('enabled', False),
-                json.dumps(config_data)
-            )
-
-            if success:
-                logger.info(f"Saved beggar config for server {self.server_id}")
-                self._reasons_cache = None
-            else:
-                logger.error(f"Failed to save beggar config for server {self.server_id}")
-
-            return success
+            from discord_bot.canvas.server_config import set_role_config_value
+            
+            # Build config dict
+            config_data = {k: v for k, v in config.items()}
+            
+            # Save as banker's subrole config, not as independent role
+            set_role_config_value(self.server_id, "banker", "config.beggar", config_data)
+            
+            logger.info(f"Saved beggar config for server {self.server_id} under banker.config.beggar")
+            self._reasons_cache = None
+            return True
 
         except Exception as e:
             logger.error(f"Error saving beggar config: {e}", exc_info=True)

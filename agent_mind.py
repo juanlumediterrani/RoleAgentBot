@@ -548,6 +548,9 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
     # Use server-specific personality for system prompt
     from agent_engine import _get_personality
     server_personality = _get_personality(server_id)
+    if not server_personality:
+        logger.warning(f"🧠 [RECENT_MEMORY] No personality found for server={server_id}, skipping memory generation")
+        return ""
     system_instruction = engine._build_system_prompt(server_personality, server_id)
     summary_prompt = _build_recent_memory_summary_prompt(previous_summary, interactions, resolved_date, server_id)
     summary_response = call_llm(
@@ -763,6 +766,9 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
     # Use server-specific personality for system prompt
     from agent_engine import _get_personality
     server_personality = _get_personality(server_id)
+    if not server_personality:
+        logger.warning(f"🧠 [DAILY_MEMORY] No personality found for server={server_id}, skipping memory generation")
+        return ""
     system_instruction = engine._build_system_prompt(server_personality, server_id)
     summary_prompt = _build_daily_summary_prompt(previous_summary, recent_summary, resolved_date, None, dreaming_recollection, server_id)
     summary_response = call_llm(
@@ -942,6 +948,9 @@ def generate_user_relationship_memory_summary(
     # Use server-specific personality for system prompt
     from agent_engine import _get_personality
     server_personality = _get_personality(server_id)
+    if not server_personality:
+        logger.warning(f"🧠 [RELATIONSHIP_MEMORY] No personality found for server={server_id}, skipping memory generation")
+        return ""
     system_instruction = engine._build_system_prompt(server_personality, server_id)
     summary_prompt = _build_relationship_summary_prompt(previous_summary, new_interactions, user_name, resolved_date, server_id)
     summary_response = call_llm(
@@ -2455,9 +2464,12 @@ def generate_weekly_personality_evolution(
     logger.debug(f"🧬 [PERSONALITY_EVOLUTION] Processing week: {week_start} to {week_end} ({len(daily_memories)} days)")
     
     # Build system prompt and evolution prompt
-    # Use server-specific personality to avoid mixing with global/active_server personality
+    # Use server-specific personality to avoid mixing with global personality
     from agent_engine import _get_personality
     server_personality = _get_personality(server_id)
+    if not server_personality:
+        logger.warning(f"🧬 [PERSONALITY_EVOLUTION] No personality found for server={server_id}, skipping evolution")
+        return ""
     system_instruction = engine._build_system_prompt(server_personality, server_id)
     evolution_prompt = _build_weekly_personality_evolution_prompt(
         daily_memories=daily_memories,
@@ -2646,9 +2658,12 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     test_logger.debug(f"🧬 [TEST_EVOLUTION] Processing test week: {week_start} to {week_end}")
     
     # Build system prompt and evolution prompt
-    # Use server-specific personality to avoid mixing with global/active_server personality
+    # Use server-specific personality to avoid mixing with global personality
     from agent_engine import _get_personality
     server_personality = _get_personality(server_id)
+    if not server_personality:
+        test_logger.warning(f"🧬 [TEST_EVOLUTION] No personality found for server={server_id}, skipping evolution")
+        return {"success": False, "error": "No personality found"}
     system_instruction = engine._build_system_prompt(server_personality, server_id)
     evolution_prompt = _build_weekly_personality_evolution_prompt(
         daily_memories=test_daily_memories,

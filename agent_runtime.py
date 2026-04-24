@@ -61,13 +61,25 @@ def get_runtime_base_dir() -> str:
 
 def get_personality_directory(server_id: str = None) -> str:
     """
-    Get the personality directory, checking for server-specific copy first.
-
+    Get the personality directory for a specific server.
+    
+    Priority order:
+    1. Server-specific directory from server_config.json: databases/<server_id>/<active_personality>/
+    2. Server-specific directory from db_init: databases/<server_id>/<personality>/
+    
+    ⚠️ IMPORTANT: NO FALLBACKS to personalities/ directory or _PERSONALITY_DIR
+    This is intentional - all personality files MUST be in databases/<server_id>/<personality>/
+    If a server lacks personality files, the system will use English fallback messages.
+    
+    When adding new messages, if a personality-specific version is missing,
+    create a neutral English fallback in the corresponding <role>_messages.py file
+    (e.g., dice_game_messages.py, mc_messages.py, etc.) to ensure graceful degradation.
+    
     Args:
-        server_id: Optional server ID to use explicitly.
-
-    Returns the server-specific personality directory if it exists,
-    otherwise falls back to the global personality directory.
+        server_id: Optional server ID for server-specific files
+        
+    Returns:
+        str: Path to the personality directory, or empty string if not found
     """
     # If server_id is explicitly provided, check for server-specific config first
     if server_id:
@@ -94,23 +106,9 @@ def get_personality_directory(server_id: str = None) -> str:
         except Exception as e:
             logger.debug(f"Could not get server personality directory for {server_id}: {e}")
     
-    # Re-read global config to get current personality (not cached)
-    try:
-        with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
-            agent_cfg = json.load(f)
-        # Use new fields: default_personality and default_language
-        default_personality = agent_cfg.get("default_personality", "rab")
-        default_language = agent_cfg.get("default_language", "en-US")
-        # Construct path with language subdirectory
-        personality_rel = f"personalities/{default_personality}/{default_language}/personality.json"
-        current_personality_path = os.path.join(_BASE_DIR, personality_rel)
-        if os.path.exists(current_personality_path):
-            return os.path.dirname(current_personality_path)
-    except Exception as e:
-        logger.debug(f"Could not read current personality from config: {e}")
-    
-    # Fall back to cached personality directory
-    return _PERSONALITY_DIR
+    # No server-specific directory found - return empty string
+    # Caller should use English fallback messages
+    return ""
 
 
 def get_personality_file_path(filename: str, server_id: str = None) -> str:
@@ -125,9 +123,11 @@ def get_personality_file_path(filename: str, server_id: str = None) -> str:
         server_id: Optional server ID for server-specific files
         
     Returns:
-        str: Full path to the personality file
+        str: Full path to the personality file, or empty string if not found
     """
     personality_dir = get_personality_directory(server_id)
+    if not personality_dir:
+        return ""
     return os.path.join(personality_dir, filename)
 
 

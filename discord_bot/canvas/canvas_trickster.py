@@ -64,26 +64,25 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
         value = general_messages.get(key)
         return str(value).strip() if value else fallback
 
-    # Load all subroles from roles_config database (single source of truth)
+    # Load all subroles from server_config.json (single source of truth)
     active_subroles = []
     try:
-        if get_roles_db_instance:
-            server_key = get_server_key(guild)
-            roles_db = get_roles_db_instance(server_key)
+        server_id = str(guild.id) if guild else None
+        if server_id:
+            from .server_config import is_role_enabled, get_role_config_value
             
             # Check trickster role is enabled
-            trickster_config = roles_db.get_role_config('trickster')
-            if trickster_config and trickster_config.get('enabled', False):
-                # Get all enabled trickster subroles from database
+            trickster_enabled = is_role_enabled(server_id, "trickster", default_enabled=False)
+            if trickster_enabled:
+                # Get all enabled trickster subroles from server_config (stored under parent role)
                 trickster_subroles = ['dice_game']
                 for subrole in trickster_subroles:
-                    subrole_config = roles_db.get_role_config(subrole)
-                    if subrole_config and subrole_config.get('enabled', False):
+                    subrole_enabled = get_role_config_value(server_id, "trickster", f"config.subroles.{subrole}.enabled", False)
+                    if subrole_enabled:
                         active_subroles.append(subrole)
-                
     except Exception as e:
-        logger.warning(f"Error loading subroles from roles_config: {e}")
-        # Fallback to agent_config if database fails
+        logger.warning(f"Error loading subroles from server_config: {e}")
+        # Fallback to agent_config if server_config fails
         subroles = (agent_config or {}).get("roles", {}).get("trickster", {}).get("subroles", {})
         active_subroles = [name for name, cfg in subroles.items() if isinstance(cfg, dict) and cfg.get("enabled", False)]
     
@@ -148,7 +147,6 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
         game_description = _trickster_text("dice_game.description", "Test your luck against the Dice POT! Roll the dice and win big prizes!")
         dice_rules = _trickster_text("dice_game.rules", "-Triple Ones you won the POT!\n -n Hight Straight (4,5,6) you won x5 the bet.\n -Any Triple, you won x3 the bet.\n -The pairs will return you the bet.")
         parts = [
-            title,
             game_description,
             "**Rules**",
             dice_rules,
@@ -481,15 +479,8 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 if amount < 1 or amount > 1000:
                     await interaction.followup.send("❌ Fixed bet must be between 1 and 1000 gold.", ephemeral=True)
                     return
-                roles_db = get_roles_db_instance(server_key)
-                ok = roles_db.save_role_config("dice_game", True, json.dumps({"fixed_bet": amount}))
-                if not ok:
-                    raise RuntimeError("Could not update fixed bet")
-                state = _get_canvas_dice_state(guild)
-                message = (
-                    f"✅ Dice fixed bet updated to `{amount}` gold.\n"
-                    f"Current pot: {state['pot_balance']:,} gold"
-                )
+                from .server_config import set_role_config_value
+                ok = set_role_config_value(server_id, "dice_game", "config.fixed_bet", amount)
             else:
                 from roles.banker.banker_db import get_banker_roles_db_instance
                 db_banker = get_banker_roles_db_instance(server_key)
@@ -523,8 +514,13 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
                 await interaction.response.send_message("❌ Dice game database is not available.", ephemeral=True)
                 return
             enabled = action_name == "announcements_on"
-            roles_db = get_roles_db_instance(server_key)
-            ok = roles_db.save_role_config("dice_game", True, json.dumps({"announcements_active": enabled}))
+            try:
+                from .server_config import set_role_config_value
+                set_role_config_value(server_key, "dice_game", "config.announcements_active", enabled)
+                ok = True
+            except Exception as e:
+                logger.error(f"Failed to update dice announcements in server_config: {e}")
+                ok = False
             current_detail = "dice_admin"
             applied_text = f"Dice announcements {'enabled' if enabled else 'disabled'}."
         elif action_name in {"beggar_on", "beggar_off"}:
