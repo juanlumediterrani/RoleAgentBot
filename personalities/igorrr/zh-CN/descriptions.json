@@ -69,7 +69,7 @@
       "dm_default_server_message": "*从私信里嘶嘶低语，使用第一个可用滴地下室。*",
       "dm_default_server_separator": "─────────────────────────────────────────────"
     },
-    "canvas_behavior_messages": {
+    "behavior_messages": {
       "conversation": {
         "title": "💬  **伊戈尔 - 地下室嘟囔**",
         "description": "**描述：** -伊戈尔响应私信和提及。 -他记得你的罪过，你啥时候想都可以问他。 -如果主人允许，他会对禁词有反应。",

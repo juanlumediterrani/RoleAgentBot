@@ -69,7 +69,7 @@
       "dm_default_server_message": "*Whispering from private, using the first available basement.*",
       "dm_default_server_separator": "─────────────────────────────────────────────"
     },
-    "canvas_behavior_messages": {
+    "behavior_messages": {
       "conversation": {
         "title": "💬  **Igorrr - Basement Whispers**",
         "description": "**Description:** -Igorrr responds to whispers and mentions. -He has memory of your sins and can recall them when you want. -He reacts to forbidden words if the Master allows.",

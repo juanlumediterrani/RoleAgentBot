@@ -69,7 +69,7 @@
       "dm_default_server_message": "*Susurrando desde el privado, usando el primer sótano disponible.*",
       "dm_default_server_separator": "─────────────────────────────────────────────"
     },
-    "canvas_behavior_messages": {
+    "behavior_messages": {
       "conversation": {
         "title": "💬  **Igorrr - Murmullos del Sótano**",
         "description": "**Descripción:** -Igorrr responde a susurros y menciones. -Tiene memoria de tus pecados y puede recordarlos cuando quieras. -Reacciona a palabras prohibidas si el Amo lo permite.",
