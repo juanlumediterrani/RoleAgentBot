@@ -2,6 +2,7 @@
 
 from discord_bot import discord_core_commands as core
 from roles import news_watcher
+from .canvas_news_watcher import _get_nw_descriptions
 
 # Dynamic descriptions loading function
 def _get_personality_descriptions(server_id: str = None) -> dict:
@@ -266,7 +267,8 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
         color=colors.get(section_name, discord.Color.blurple()),
     )
     blocks = _split_canvas_blocks(content)
-    visible_blocks = blocks[:4]
+    # Discord allows up to 25 fields per embed; keep a safe margin
+    visible_blocks = blocks[:20]
     last_block_index = len(visible_blocks) - 1
     
     for index, (block_title, block_lines) in enumerate(visible_blocks):
@@ -566,7 +568,8 @@ def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_respons
         color=discord.Color.orange() if admin_visible else discord.Color.dark_orange(),
     )
     blocks = _split_canvas_blocks(content)
-    visible_blocks = blocks[:4]
+    # Discord allows up to 25 fields per embed; keep a safe margin
+    visible_blocks = blocks[:20]
     last_block_index = len(visible_blocks) - 1
     for index, (block_title, block_lines) in enumerate(visible_blocks):
         value = _merge_canvas_block_with_auto_response(block_lines, auto_response, None, None) if index == last_block_index else _truncate_canvas_field_value("\n".join(block_lines))
@@ -1223,7 +1226,9 @@ def _get_news_watcher_subscriptions_info(server_id: str, author_id: int, guild=N
             # For simplicity, we'll just show a count
             channel_subs_count = len(db.get_all_active_subscriptions())
             if channel_subs_count > 0:
-                subscriptions_info.append(f"{channel_subs_count} channel subscriptions")
+                news_watcher = _get_nw_descriptions(guild)
+                channel_subs_label = news_watcher.get('channel_subscriptions_label', 'channel subscriptions')
+                subscriptions_info.append(f"{channel_subs_count} {channel_subs_label}")
         
         if subscriptions_info:
             return f"{news_title}: " + " | ".join(subscriptions_info[:5])  # Limit total

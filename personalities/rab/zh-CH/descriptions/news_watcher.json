@@ -24,6 +24,7 @@
     "configured_premises_title": "**记忆的逻辑指令**",
     "available_categories_title": "**可访问的域**",
     "channel_subscriptions_title": "**锚定到此频道的频率**",
+    "channel_subscriptions_label": "频道订阅",
     "channel_unsubscribe_title": "**切断频道链接**",
     "dropdown":{
         "select_action":"📋 执行指令...",

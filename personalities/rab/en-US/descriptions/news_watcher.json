@@ -24,6 +24,7 @@
     "configured_premises_title": "**Memorized logical directives**",
     "available_categories_title": "**Accessible domains**",
     "channel_subscriptions_title": "**Frequencies Anchored to this Channel**",
+    "channel_subscriptions_label": "channel subscriptions",
     "channel_unsubscribe_title": "**Sever Channel Link**",
     "dropdown":{
         "select_action":"📋 Execute instruction...",

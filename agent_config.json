@@ -8,7 +8,8 @@
   "dev_options": {
     "prompt_logging": true,
     "prompt_log_retention_days": 15,
-    "_comment": "prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error."
+    "dev_commands_enabled": true,
+    "_comment": "prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error. dev_commands_enabled enables test/development commands (test memories, force watcher, etc). Set to false in production."
   },
   "gdpr": {
     "retention_enabled": true,

@@ -24,6 +24,7 @@
     "configured_premises_title": "**Configured premises**",
     "available_categories_title": "**Available categories**",
     "channel_subscriptions_title": "**Current Channel Subscriptions**",
+    "channel_subscriptions_label": "channel subscriptions",
     "channel_unsubscribe_title": "**Unsubscribe Channel**",
     "dropdown":{
         "select_action":"📋 Select action...",

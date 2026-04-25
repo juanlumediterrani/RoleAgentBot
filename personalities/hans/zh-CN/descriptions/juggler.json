@@ -1,0 +1,45 @@
+{
+    "title": "🎯  **赫尔汉斯特种服务部**",
+    "description": "团部的后勤和娱乐单位，协调多项行动以维持部队士气。",
+    "button": "🎯 服务",
+    "canvas_juggler_subrole_descriptions": {
+        "ring": "👁️ **盖世太保调查员** - 审讯莱希叛徒嫌疑人"
+    },
+    "subrole_buttons": {
+        "ring": "🔍 调查"
+    },
+    "ring": {
+        "title": "👁️ **赫尔汉斯盖世太保官员** 👁️",
+        "description": " 盖世太保官员将追捕你直到世界末日，告发其他士兵以避免这种苦难。",
+        "status_active": "✅ **追捕活跃** - 赫尔汉斯正在寻找叛徒",
+        "status_inactive": "❌ **追捕关闭** - 赫尔汉斯正在休息",
+        "current_target": "🎯 **当前目标：**",
+        "target_unknown": "👤 没有选择嫌疑人",
+        "investigation_title": "🔍** 提出指控：**",
+        "investigation_instructions": "• 阿赫通！从操作菜单使用**指控**，士兵\n• 输入嫌疑人识别码：@用户名 或 ID\n• 赫尔汉斯将生成审讯以提取供词\n• 指控将在总营房发布给所有士兵",
+        "investigation_warning": "⚠️ **莱希命令：**\n• 不能指控自己，叛徒\n• 不能指控自动化单位（机器人）\n• 追捕必须由高级军官授权",
+        "inactive_title": "⚠️ **追捕已关闭**",
+        "inactive_instructions": "阿赫通！授权追捕行动：\n• 高级军官必须访问**管理**\n• 并授权追捕\n• 设定审讯频率\n\n一旦授权，你可以指控士兵为莱希叛徒！",
+        "hot_potato": "🔥 **烫手山芋：** 第 {iteration} 次迭代（频率降低 {multiplier}x）",
+        "controls": "**控制**\n- 激活或关闭追捕\n- 可编辑频率框（设定基础频率并重置烫手山芋）",
+        "dm_accusation_header": "👁️ **盖世太保指控**",
+        "accused_label": "被告：",
+        "admin_description": "配置纳粹追捕功能和频率",
+        "dropdown": {
+            "ring_accuse": "追捕：指控",
+            "ring_accuse_description": "指控士兵为莱希叛徒",
+            "ring_on": "追捕：激活",
+            "ring_on_description": "开始追捕莱希叛徒",
+            "ring_off": "追捕：关闭",
+            "ring_off_description": "停止追捕系统",
+            "ring_frequency": "追捕：频率",
+            "ring_frequency_description": "配置审讯频率（影响烫手山芋）"
+        }
+    },
+    "dropdown": {
+        "select_juggler_action": "🎯 选择服务行动...",
+        "config_juggler": "配置服务",
+        "config_juggler_description": "调整服务部门配置",
+        "config_juggler_emoji": "🎯"
+    }
+}

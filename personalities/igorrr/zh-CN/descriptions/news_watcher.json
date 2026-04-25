@@ -22,6 +22,7 @@
     "remove_description": "不再闻这坨烂货",
     "list_subscriptions": "看俺盯啥",
     "list_description": "展示俺盯滴所有垃圾",
+    "channel_subscriptions_label": "频道订阅",
     "frequency_label": "频率",
     "frequency_description": "设置俺多久探头看一次窗（每服务器）",
     "subscription_added": "✅ 现在开始嘶嘶盯这坨烂货",

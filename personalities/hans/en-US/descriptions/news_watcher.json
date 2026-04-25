@@ -24,6 +24,7 @@
     "configured_premises_title": "**Configured directives**",
     "available_categories_title": "**Available Theaters**",
     "channel_subscriptions_title": "**Current Channel Subscriptions**",
+    "channel_subscriptions_label": "channel subscriptions",
     "channel_unsubscribe_title": "**Cancel Channel Subscription**",
     "watcher_frequency_title": "**Service Frequency**",
     "force_watcher_run_title": "**Force service execution**",

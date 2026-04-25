@@ -54,6 +54,8 @@ def register_news_watcher_commands(bot, personality, agent_config):
         logger.warning("News Watcher not available, skipping command registration")
         return
 
+    dev_commands_enabled = agent_config.get("dev_options", {}).get("dev_commands_enabled", True)
+
     watcher_commands = WatcherCommands(bot)
 
     # NOTE: All News Watcher user commands have been removed. Use !canvas instead.
@@ -61,7 +63,7 @@ def register_news_watcher_commands(bot, personality, agent_config):
 
     # --- !forcewatcher (unified command) ---
     logger.info(f"[register_news_watcher_commands] Checking forcewatcher registration. bot.get_command('forcewatcher'): {bot.get_command('forcewatcher')}")
-    if bot.get_command("forcewatcher") is None and FORCEWATCHER_AVAILABLE:
+    if dev_commands_enabled and bot.get_command("forcewatcher") is None and FORCEWATCHER_AVAILABLE:
         @bot.command(name="forcewatcher")
         @commands.has_permissions(administrator=True)
         async def cmd_force_watcher(ctx):

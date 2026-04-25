@@ -22,6 +22,7 @@
     "remove_description": "Dejar de oler esta mugre",
     "list_subscriptions": "Ver lo que Espío",
     "list_description": "Muestra toda la basura que vigilo",
+    "channel_subscriptions_label": "suscripciones de canal",
     "frequency_label": "Frecuencia",
     "frequency_description": "Establecer con qué frecuencia asomo a la ventana (por servidor)",
     "subscription_added": "✅ Ahora siseo sobre esta basura",

@@ -1,0 +1,115 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **胜利！** 战场上的胜利，齐维利斯特！",
+                    "🎉 **凯旋！** 优秀军事策略，士兵！",
+                    "🎉 **你赢了！** 火炮击中目标！",
+                    "🎉 **优秀！** 任务成功完成！",
+                    "🎉 **精彩！** 你是一流军官！"
+                ],
+                "youlose":[
+                    "😢 **失败**... 敌人这次更强大！",
+                    "😢 **战术失误**... 检查你的策略，齐维利斯特！",
+                    "😢 **你输了**... 任务失败！",
+                    "😢 **运气不好**... 回去训练！",
+                    "😢 **不是这次**... 再试一次！"
+                ],
+                "high_pot":[
+                    "💰 **战利品增长！** 战争财宝积累！",
+                    "💰 **战利品增加！** 储备增长！",
+                    "💰 **积累资源！** 战利品成为传奇！",
+                    "💰 **军事财富！** 战利品等待征服者！",
+                    "💰 **魔法储备！** 马克等待征服者！"
+                ],
+                "pot_winner":[
+                    "🎉 **战利品赢家！** 你征服了帝国财宝！",
+                    "🎉 **完全胜利！** 战利品是你的，士兵！",
+                    "🎉 **军事大奖！** 你赢得了大奖！",
+                    "🎉 **传奇征服！** 你是战利品主人！",
+                    "🎉 **战利品被征服！** 一场史诗胜利！"
+                ],
+                "not_gold":[
+                    "💸 **没有马克**... 你没有足够资源！",
+                    "💸 **储备不足**... 你需要更多马克！",
+                    "💸 **口袋空了**... 检查你的军事财宝！",
+                    "💸 **不够**... 先积累更多马克！",
+                    "💸 **财宝稀少**... 你需要财富来战斗！"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "finanzia 新营房建设",
+                    "支付27-K表格维护费",
+                    "购买优质墨水盖章文件",
+                    "为纪律部队购买德国香肠",
+                    "惩罚不纪律齐维利斯特的罚款",
+                    "补充三份表格库存",
+                    "finanzia 服务器军事检查",
+                    "为办公室人员购买热啤酒"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ 戒指目标更新为 {target_name}",
+        "enabled": "✅ 戒指在配置中激活。",
+        "disabled": "✅ 戒指在配置中关闭。"
+    },
+    "general": {
+        "error_selection_unavailable": "❌ 阿赫通！行动选择不可用，齐维利斯特！✍️🚫",
+        "error_behavior_admin_only": "❌ 仅限高级军官！施内尔！🦅⚖️",
+        "error_settings_admin_only": "❌ 行动限制！只有军官可以修改参数！✍️🚫",
+        "error_taboo_update_failed": "❌ 阈值更新失败！检查协议！📉💥",
+        "error_greetings_update_failed": "❌ 问候协议失败！检查记录！🦅⚖️",
+        "error_welcome_update_failed": "❌ 入伍协议失败！检查记录！📉💥",
+        "error_commentary_update_failed": "❌ 观察记录失败！检查报告！✍️🚫",
+        "error_commentary_disabled": "❌ 观察模块关闭！📉💥",
+        "error_commentary_process_failed": "❌ 观察处理错误！检查记录！✍️🚫",
+        "success_taboo_state": "阈值 {enabled_disabled} 在这个营房，齐维利斯特！🦅⚖️",
+        "success_greetings_state": "问候协议 {enabled_disabled} 在这个营房！✍️",
+        "success_welcome_state": "入伍仪式 {enabled_disabled} 在这个营房！🦅⚖️",
+        "success_commentary_state": "战术观察 {enabled_disabled} 在这个营房！✍️",
+        "state_enabled": "激活",
+        "state_disabled": "关闭",
+        "forget_me_label": "🧹 忘记我（删除我的数据）",
+        "forget_me_description": "删除你的个人数据从所有这个agent控制的营房（GDPR 第17条）",
+        "forget_me_confirm_title": "🧹 确认数据删除",
+        "forget_me_confirm_prompt": "⚠️ **阿赫通 — 删除权（GDPR）**\n\n这将不可逆删除你的个人数据从**所有这个agent操作的营房**，齐维利斯特：\n• 记录归属于你的互动。\n• 营房建立的关于你的关系记忆。\n• 绑定到你ID的疲劳计数器。\n• 日常报告中你的名字将被编辑为``[已编辑]``。\n\n这个行动不能撤销！你要继续吗，施韦因洪德？",
+        "forget_me_btn_confirm": "是！删除我的数据",
+        "forget_me_btn_cancel": "取消",
+        "forget_me_result_header": "✅ 你的个人数据已从营房删除！施内尔！🦅⚖️",
+        "forget_me_no_data": "ℹ️ 在任何营房没有找到你的个人数据。好记录，齐维利斯特！✍️",
+        "forget_me_cancelled": "❎ 操作取消。没有数据被修改！✍️",
+        "forget_me_not_yours": "❌ 停下！这个确认属于另一个齐维利斯特！✍️🚫",
+        "forget_me_timed_out": "⌛ 时间过期！没有数据被修改，齐维利斯特！✍️",
+        "forget_me_dm_sent": "📬 确认已通过私信发送！检查你的邮件，齐维利斯特！✍️"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ 没有可用营房！📉💥 从服务器执行行动，施韦因洪德！✍️🚫",
+        "server_access_error": "❌ 无法访问营房！📉💥 从服务器执行行动！✍️🚫",
+        "reply_button_confirmation": "💬 注意，齐维利斯特！你现在从营房 **{server_name}** 对话。你的回复将使用这个性格直到你选择另一个！✍️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ 阿赫通！无法删除最后一首歌！检查协议！📉💥",
+        "play_usage": "🎵 **用法：** `!mc play <歌名或URL>`",
+        "not_in_voice": "🎤 你必须在语音频道使用这个命令，齐维利斯特！",
+        "nothing_playing": "🎵 营房没有播放任何东西。",
+        "same_voice_channel": "🎤 你必须和bot在同一个语音频道，齐维利斯特！",
+        "not_connected": "🎤 我没有连接任何频道，齐维利斯特。",
+        "queue_empty": "📭 营房队列空的。",
+        "dj_permissions_required": "🚫 你需要DJ角色或管理员权限使用这个命令！✍️🚫",
+        "playback_paused": "⏸️ 营房播放暂停。",
+        "nothing_paused": "🎵 营房没有暂停的东西。",
+        "playback_resumed": "▶️ 营房播放恢复。",
+        "leaving_voice": "👋 离开营房语音频道。施内尔！",
+        "volume_usage": "🎵 **用法：** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 音量必须是0到100之间的数字。",
+        "already_playing": "🎵 我已在营房播放。",
+        "queue_cleared": "🗑️ 营房队列清空。施内尔！",
+        "volume_adjust_failed": "❌ 我无法调整音量。检查协议！📉💥"
+    }
+}

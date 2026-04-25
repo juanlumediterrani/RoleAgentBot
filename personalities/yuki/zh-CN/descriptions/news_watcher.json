@@ -24,6 +24,7 @@
     "configured_premises_title": "**已激活的指导方针**",
     "available_categories_title": "**可用分类**",
     "channel_subscriptions_title": "**此频道中的活跃订阅**",
+    "channel_subscriptions_label": "频道订阅",
     "channel_unsubscribe_title": "**取消频道订阅**",
     "dropdown":{
         "select_action":"📋 选择动作...",

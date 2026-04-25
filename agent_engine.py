@@ -388,6 +388,13 @@ def reload_personality(server_id: str = None):
         _personality_cache = {}
         _personality_descriptions_cache = {}
         logger.debug("🎭 [PERSONALITY] All cache cleared")
+    # Also clear the lru_cache for personality files (answers.json, etc.)
+    # otherwise stale data from the previous personality will keep being returned.
+    try:
+        from agent_runtime import clear_personality_cache
+        clear_personality_cache()
+    except Exception as e:
+        logger.debug(f"🎭 [PERSONALITY] Could not clear personality file cache: {e}")
     # Force reload on next access
     _get_personality(server_id)
 

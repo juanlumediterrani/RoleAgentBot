@@ -1,7 +1,9 @@
 """News downloader - fetches and stores news in global database."""
 
 import asyncio
-import aiohttp
+import os
+from http.cookiejar import MozillaCookieJar
+from curl_cffi import requests
 import feedparser
 from datetime import datetime, timedelta
 from agent_logging import get_logger
@@ -14,8 +16,43 @@ class NewsDownloader:
     
     def __init__(self, global_db):
         self.global_db = global_db
+        self.session = None
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,es;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Referer": "https://www.google.com/",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1"
+        }
+        self._load_cookies()
     
-    async def fetch_and_store_news(self, feed_url: str, feed_category: str, feed_name: str, max_items: int = 50) -> list:
+    def _load_cookies(self):
+        """Load cookies from cookies.txt file if it exists."""
+        self.cookies = None
+        cookies_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "cookies.txt")
+        if os.path.exists(cookies_path):
+            try:
+                cookie_jar = MozillaCookieJar(cookies_path)
+                cookie_jar.load(ignore_discard=True, ignore_expires=True)
+                self.cookies = cookie_jar
+                logger.info(f"Loaded {len(cookie_jar)} cookies from {cookies_path}")
+            except Exception as e:
+                logger.warning(f"Failed to load cookies from {cookies_path}: {e}")
+    
+    def _get_session(self):
+        """Get or create curl_cffi session with Chrome impersonation."""
+        if self.session is None:
+            self.session = requests.AsyncSession(
+                impersonate="chrome",
+                headers=self.headers,
+                cookies=self.cookies
+            )
+        return self.session
+    
+    async def fetch_and_store_news(self, feed_url: str, feed_category: str, feed_name: str, max_items: int = 50, retry_count: int = 0) -> list:
         """
         Fetch news from a feed and store new items in global database.
         Also updates the feed's last_updated timestamp.
@@ -23,21 +60,33 @@ class NewsDownloader:
         Returns list of new news items (title, link, summary, published_date).
         """
         try:
-            headers = {"User-Agent": "RoleAgentBot/1.0"}
-            async with aiohttp.ClientSession(headers=headers) as session:
-                async with session.get(feed_url, timeout=30) as response:
-                    if response.status != 200:
-                        logger.warning(f"Failed to fetch feed {feed_name}: HTTP {response.status}")
-                        return []
+            session = self._get_session()
+            response = await session.get(feed_url, timeout=30)
+            
+            if response.status_code != 200:
+                logger.warning(f"Failed to fetch feed {feed_name}: HTTP {response.status_code}")
+                
+                # Retry on 429, 403, 500 with backoff
+                if response.status_code in [429, 403, 500, 502, 503, 504] and retry_count < 2:
+                    backoff = 2 ** retry_count
+                    logger.info(f"Retrying {feed_name} in {backoff}s (attempt {retry_count + 1}/2)")
+                    await asyncio.sleep(backoff)
+                    return await self.fetch_and_store_news(feed_url, feed_category, feed_name, max_items, retry_count + 1)
+                
+                return []
+            
+            raw_data = response.text
+            feed = feedparser.parse(raw_data)
                     
-                    raw_data = await response.text()
-                    feed = feedparser.parse(raw_data)
-                    
-                    # Get feed title for comparison (to avoid using feed title as article title)
-                    feed_title = feed.get('feed', {}).get('title', '') if hasattr(feed, 'feed') else ''
-                    
-                    new_items = []
-                    for entry in feed.entries[:max_items]:
+            # Get feed title for comparison (to avoid using feed title as article title)
+            feed_title = feed.get('feed', {}).get('title', '') if hasattr(feed, 'feed') else ''
+            
+            # Log suspicious empty feeds (HTTP 200 but 0 entries - possible blocking)
+            if len(feed.entries) == 0:
+                logger.warning(f"[SUSPICIOUS] Feed {feed_name} returned HTTP 200 but 0 entries - possible bot protection blocking")
+            
+            new_items = []
+            for entry in feed.entries[:max_items]:
                         title = entry.get('title', 'No title')
                         link = entry.get('link', '')
                         summary = entry.get('summary', entry.get('description', ''))
@@ -86,11 +135,21 @@ class NewsDownloader:
                     logger.info(f"📥 Downloaded {len(new_items)} new items from {feed_name}")
                     return new_items
                     
-        except asyncio.TimeoutError:
+        except requests.TimeoutError:
             logger.warning(f"Timeout fetching news from {feed_name} (30s)")
+            if retry_count < 2:
+                backoff = 2 ** retry_count
+                logger.info(f"Retrying {feed_name} in {backoff}s (attempt {retry_count + 1}/2)")
+                await asyncio.sleep(backoff)
+                return await self.fetch_and_store_news(feed_url, feed_category, feed_name, max_items, retry_count + 1)
             return []
         except Exception as e:
             logger.exception(f"Error fetching news from {feed_name}: {e}")
+            if retry_count < 2 and "blocked" in str(e).lower() or "forbidden" in str(e).lower():
+                backoff = 2 ** retry_count
+                logger.info(f"Retrying {feed_name} in {backoff}s (attempt {retry_count + 1}/2)")
+                await asyncio.sleep(backoff)
+                return await self.fetch_and_store_news(feed_url, feed_category, feed_name, max_items, retry_count + 1)
             return []
     
     async def get_news_for_subscription(self, feed_url: str, feed_category: str, since_hours: int = 24) -> list:

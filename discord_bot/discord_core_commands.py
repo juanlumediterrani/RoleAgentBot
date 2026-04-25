@@ -395,7 +395,8 @@ def register_core_commands(bot, agent_config):
 
         # Admin utilities (kept as commands)
         help_msg += "🔧 **ADMIN UTILITIES**\n"
-        if is_role_enabled_check("news_watcher", agent_config, ctx.guild):
+        dev_commands_enabled = agent_config.get("dev_options", {}).get("dev_commands_enabled", True)
+        if is_role_enabled_check("news_watcher", agent_config, ctx.guild) and dev_commands_enabled:
             help_msg += "• `!forcewatcher` - Force news check immediately (admin only)\n"
             help_msg += "• `!testwatcher` - Test news watcher without admin (debug)\n"
         help_msg += f"• `!{greet_name}` / `!{nogreet_name}` - Toggle presence greetings\n"
@@ -576,7 +577,8 @@ def register_core_commands(bot, agent_config):
 
     # --- TEST PERSONALITY EVOLUTION ---
 
-    if bot.get_command("testpersonalityevolution") is None:
+    dev_commands_enabled = agent_config.get("dev_options", {}).get("dev_commands_enabled", True)
+    if dev_commands_enabled and bot.get_command("testpersonalityevolution") is None:
         @bot.command(name="testpersonalityevolution")
         async def cmd_test_personality_evolution(ctx):
             """Test weekly personality evolution with synthetic daily memories."""
@@ -625,7 +627,7 @@ def register_core_commands(bot, agent_config):
 
     # --- TEST MEMORY SYNTHESIS COMMANDS ---
 
-    if bot.get_command("testdailymemory") is None:
+    if dev_commands_enabled and bot.get_command("testdailymemory") is None:
         @bot.command(name="testdailymemory")
         async def cmd_test_daily_memory(ctx):
             """Test daily memory synthesis generation."""
@@ -667,7 +669,7 @@ def register_core_commands(bot, agent_config):
     else:
         logger.info("Command testdailymemory already registered, skipping...")
 
-    if bot.get_command("testrecentmemory") is None:
+    if dev_commands_enabled and bot.get_command("testrecentmemory") is None:
         @bot.command(name="testrecentmemory")
         async def cmd_test_recent_memory(ctx):
             """Test recent memory synthesis generation."""
@@ -709,7 +711,7 @@ def register_core_commands(bot, agent_config):
     else:
         logger.info("Command testrecentmemory already registered, skipping...")
 
-    if bot.get_command("testrelationshipmemory") is None:
+    if dev_commands_enabled and bot.get_command("testrelationshipmemory") is None:
         @bot.command(name="testrelationshipmemory")
         async def cmd_test_relationship_memory(ctx, member: discord.Member = None):
             """Test relationship memory synthesis generation for a user."""

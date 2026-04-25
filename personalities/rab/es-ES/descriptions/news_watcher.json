@@ -24,6 +24,7 @@
     "configured_premises_title": "**Directrices lógicas memorizadas**",
     "available_categories_title": "**Dominios accesibles**",
     "channel_subscriptions_title": "**Frecuencias Ancladas a este Canal**",
+    "channel_subscriptions_label": "suscripciones de canal",
     "channel_unsubscribe_title": "**Cortar Enlace del Canal**",
     "dropdown":{
         "select_action":"📋 Ejecutar instrucción...",

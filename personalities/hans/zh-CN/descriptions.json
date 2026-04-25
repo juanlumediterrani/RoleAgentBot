@@ -1,0 +1,221 @@
+{
+  "discord": {
+    "general": {
+      "status": "**行动状态：**",
+      "active": "✅ 运行中！🦅⚖️",
+      "inactive": "❌ 停止服务！📉💥",
+      "none": "无",
+      "every": "每",
+      "for": "为了",
+      "base_frequency": "**基础频率：**",
+      "current_frequency": "**当前频率：**",
+      "current_settings": "🔧 **官方配置：** 🦅⚖️",
+      "frequency_format": "每 {hours} 小时",
+      "button_confirm": "确认",
+      "button_confirm_changes": "确认修改",
+      "option_yes": "是",
+      "option_no": "否",
+      "button_personal": "📁 个人",
+      "button_admin": "🔧 管理",
+      "available_subroles": "可用子模块"
+    },
+    "help_menu": {
+      "title": "📚 **赫尔汉斯 - 指令手册**",
+      "description": "**官方描述** 🦅⚖️ 阿赫通！赫尔汉斯是一个有持续记忆和绝对权威的纪律agent。遵守规则不然承受后果，齐维利斯特！✍️🚫",
+      "separator": "═══════════════════════════════════════",
+      "roles_section": "**行动模块** 模块是维持新兵秩序和纪律的授权能力。",
+      "behavior_section": "**行为协议** 施内尔！配置行为协议。仅限高级军官！",
+      "tips_section": "**严格命令** -问命令如何工作：'骰子命令怎么工作？'！ -最好的能力在每个行动模块内！"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 赫尔汉斯 • 总营房",
+      "button_home": "🧭 营房",
+      "button_back": "← 后退",
+      "button_roles": "🎪 模块",
+      "button_behavior": "🤖 协议",
+      "button_help": "📝 手册",
+      "generic_option_label": "选择选项，新兵！",
+      "personalitystatus": "**性格加载：**",
+      "description": "Canvas面板允许对所有行动的完全控制！",
+      "interestingthings": "**活跃行动：**",
+      "recentsynthesistitle": "🧐 **当前报告**",
+      "dailymemorytitle": "🗺️ **前线分析**",
+      "personalsynthesistitle": "👞 **新兵档案**",
+      "dm_default_server_title": "🔔 **使用默认服务器：{server_name}**",
+      "dm_default_server_message": "*从私信导航，使用第一个可用服务器！*",
+      "dm_default_server_separator": "═══════════════════════════════════════"
+    },
+    "roles_view_messages": {
+      "title": "🎭 赫尔汉斯特种单位 🎭",
+      "description": "🌟 浏览为赫尔汉斯部署的不同行动单位！",
+      "role_categories": "═════════════════════════════════",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ 停止服务 📉💥",
+      "interval_info": "//⏰ 每 {interval} 小时",
+      "subroles_info": "🎪 **活跃子模块：** {subroles}",
+      "admin_note": "🔧 **官方配置：** 🦅⚖️",
+      "user_note": "👤 **新兵功能：**",
+      "help_commands": "💡 **帮助命令：**",
+      "canvas_details": "🎨 **Canvas 详情：**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **没有部署单位** 📉💥 没有特种单位活跃！请求军官使用 `!canvas setup` 部署单位！**可部署单位：** • 📡 新闻观察员 - 情报监视 • 💎 寻宝猎人 - 寻宝者 • 🎭 捣蛋鬼 - 特种行动部 • 💰 银行家 - 氏族经济 • 🎵 MC - 军事音乐",
+      "role_list_title": "☠️ 军事单位和行动",
+      "role_available": "✅ {role} - 单位已部署并运行！🦅⚖️",
+      "role_unavailable": "❌ {role} - 单位停止服务！📉💥",
+      "frequency_help": "📝 使用 `!canvas` → 对应角色 → 管理 调整频率（1到168小时），施内尔！",
+      "music_help": "🎵 **赫尔汉斯的音乐** - `!mc play <进行曲>` / `!mc queue` | `!mc help` 阅读完整手册！",
+      "button_previous": "◀ 后退",
+      "button_next": "前进 ▶",
+      "page_indicator": "**页 {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **赫尔汉斯 - 军事审讯**",
+        "description": "**情报协议：** 🦅⚖️ -赫尔汉斯在私信和提及中执行审讯协议！ -持久操作记忆记录所有先前任务！ -根据战术参数和禁止词反应！在**安全协议**中配置！✍️🚫",
+        "button": "💬 审讯"
+      },
+      "greetings": {
+        "title": "👋  **赫尔汉斯 - 军事问候协议**",
+        "description": "**编队规定：** 🦅⚖️ -当检测到新兵在线时执行规定问候！ -战术等待时间：宣布缺席前5分钟！ -（开发中）：军事问候强制回应系统！✍️🚫",
+        "button": "👋 编队"
+      },
+      "welcome": {
+        "title": "🍺  **赫尔汉斯 - 入伍协议**",
+        "description": "**招募程序：** 🦅⚖️ -为新兵执行官方入伍仪式！ -在营房记录 presence 和分配识别号码！✍️🚫",
+        "button": "🍺 入伍"
+      },
+      "taboo": {
+        "title": "🚫  **赫尔汉斯 - 安全协议**",
+        "description": "**纪律规定：** 🦅⚖️ -在频道和私信中配置自动回应禁止词的**安全系统**！ -激活/关闭安全警报和限制关键词！✍️🚫",
+        "title_keywords": "**当前限制词汇：**",
+        "button": "🚫 安全"
+      },
+      "memory": {
+        "title": "🧠  **赫尔汉斯 - 战役记忆**",
+        "description": "**情报档案：** 🦅⚖️ -查询agent的操作记忆档案！ -前线分析、近期报告和新兵档案！📉💥",
+        "button": "🧠 记忆",
+        "dropdown": {
+          "long": {
+            "label": "前线分析",
+            "emoji": "🗺️",
+            "description": "完整战术情况的日常记录"
+          },
+          "recent": {
+            "label": "当前报告",
+            "emoji": "🧐",
+            "description": "最新行动报告"
+          },
+          "relationship": {
+            "label": "新兵档案",
+            "emoji": "👞",
+            "description": "我监督下每个新兵的档案"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **赫尔汉斯 - 单位指挥**",
+        "description": "**战术指挥中心：** 🦅⚖️ -从指挥所激活和关闭操作单位！ -监督所有部署部队在战场的状态！✍️🚫",
+        "button": "🎛️ 指挥"
+      },
+      "settings": {
+        "title": "⚙️  **赫尔汉斯 - 营房配置**",
+        "description": "**调整协议：** 🦅⚖️ -管理服务器语言和操作模块激活！仅限高级军官！✍️🚫",
+        "button": "⚙️ 配置"
+      },
+      "personality": {
+        "title": "🎭  **赫尔汉斯 - 渗透**",
+        "description": "**数字伪装协议：** 🦅⚖️ -从下面下拉菜单改变这个服务器的agent性格！ -下载当前身份的备份和身份变化！ -你可以下载agent当前记忆做备份。✍️🚫",
+        "button": "🎭 渗透",
+        "option_change": "改变身份",
+        "option_change_desc": "改变到不同的操作身份！",
+        "option_download": "下载当前身份",
+        "option_download_desc": "导出身份为加密ZIP文件！",
+        "placeholder": "选择身份操作...",
+        "modal_personality_label": "新操作身份",
+        "modal_download_label": "下载先前身份？（是/否）",
+        "modal_delete_memory_label": "删除情报档案？（是/否）",
+        "modal_download_memory_label": "先下载情报？（是/否）",
+        "download_success": "✅ 身份 `{personality}` 导出成功，指挥官！！",
+        "change_success": "✅ 身份从 `{old}` 改变为 `{new}`！！新身份已激活并运行，指挥官！！",
+        "progress_change_personality": "⏳ 正在从 `{old}` 改变身份到 `{new}`...",
+        "progress_language_update": "⏳ 正在更新 `{personality}` 到语言 `{language}`...",
+        "generating_memory_synthesis": "🧠 正在为新身份生成初始记忆综合...",
+        "select_personality_instruction": "从下拉菜单选择一个新身份：",
+        "choose_personality_placeholder": "选择身份（语言：{language}）...",
+        "confirm_change_message": "**确认改变为 {personality}？** 在下面选择你的选项：",
+        "selected_personality": "**选择身份：{personality}**",
+        "selected_personality_with_language": "**选择身份：{personality}（语言：{language}）**",
+        "language_change_note": "⚠️ **注意：** 为同一身份改变语言。"
+      }
+    },
+    "readme": {
+      "label_user_question": "**新兵问题：**",
+      "task": "使用官方文档回答新兵的问题！",
+      "label_documentation": "**官方文档：**"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "你记得",
+        "记得",
+        "做记忆",
+        "记住",
+        "你记得吗",
+        "记得什么时候",
+        "记得",
+        "你记得",
+        "记得",
+        "做记忆关于",
+        "记住",
+        "你记得吗",
+        "记得某事",
+        "听起来",
+        "你记得",
+        "记住",
+        "记得",
+        "做记忆",
+        "你记得？",
+        "记得？",
+        "记住",
+        "记得什么时候",
+        "听起来某事",
+        "记住那",
+        "记得什么时候",
+        "不记得你",
+        "谁记得你"
+      ],
+      "action_labels": {
+        "on": "激活",
+        "off": "关闭",
+        "now": "现在",
+        "frequency": "频率",
+        "add_keyword": "添加关键词",
+        "remove_keyword": "删除关键词",
+        "server_language": "🌐 服务器语言",
+        "role_management": "🎛️ 角色管理",
+        "current": "当前：",
+        "enabled": "已激活",
+        "disabled": "已关闭",
+        "always_enabled": "始终激活"
+      }
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "欢迎",
+        "欢迎你",
+        "欢迎光临",
+        "欢迎加入"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "大厅",
+        "房间"
+      ]
+    },
+    "reply_button": {
+      "label": "回复",
+      "emoji": "💬",
+      "confirmation_message": "💬 你正在和我在 **{server_name}** 对话。你的所有回复将使用这个性格直到你选择另一个服务器。"
+    }
+  }
+}

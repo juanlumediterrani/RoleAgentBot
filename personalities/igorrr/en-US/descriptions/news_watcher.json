@@ -22,6 +22,7 @@
     "remove_description": "Stop smelling this filth",
     "list_subscriptions": "View What I Spy",
     "list_description": "Shows all the trash I watch",
+    "channel_subscriptions_label": "channel subscriptions",
     "frequency_label": "Frequency",
     "frequency_description": "Set how often I peek out the window (per server)",
     "subscription_added": "✅ Now I hiss over this trash",

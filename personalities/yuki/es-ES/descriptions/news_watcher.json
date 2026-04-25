@@ -24,6 +24,7 @@
     "configured_premises_title": "**Directrices activas**",
     "available_categories_title": "**Categorías disponibles**",
     "channel_subscriptions_title": "**Suscripciones activas en este canal**",
+    "channel_subscriptions_label": "suscripciones de canal",
     "channel_unsubscribe_title": "**Cancelar suscripción del canal**",
     "dropdown":{
         "select_action":"📋 Seleccionar acción...",
