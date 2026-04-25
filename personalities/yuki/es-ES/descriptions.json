@@ -174,12 +174,7 @@
       "settings": {
         "title": "⚙️  **Yuki - Ajustes de Sala**",
         "description": "**Descripción** -Gestiona el idioma del servidor y la activación de módulos.",
-        "button": "⚙️ Ajustes",
-        "language_select": {
-          "placeholder": "🌐 Seleccionar idioma del servidor...",
-          "description": "Establecer idioma del servidor a {lang_name}",
-          "modal_title": "🌐 Seleccionar Idioma del Servidor"
-        }
+        "button": "⚙️ Ajustes"
       },
       "personality": {
         "title": "🎭  **Yuki - Identidad**",

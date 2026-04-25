@@ -174,12 +174,7 @@
       "settings": {
         "title": "⚙️  **雪 —— 茶室设置**",
         "description": "**描述** -管理服务器语言与模块激活。",
-        "button": "⚙️ 设置",
-        "language_select": {
-          "placeholder": "🌐 选择服务器语言……",
-          "description": "将服务器语言设定为 {lang_name}",
-          "modal_title": "🌐 选择服务器语言"
-        }
+        "button": "⚙️ 设置"
       },
       "personality": {
         "title": "🎭  **雪 —— 身份**",

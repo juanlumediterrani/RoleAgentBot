@@ -174,12 +174,7 @@
       "settings": {
         "title": "⚙️  **Yuki - Room Settings**",
         "description": "**Description** -Manage server language and module activation.",
-        "button": "⚙️ Settings",
-        "language_select": {
-          "placeholder": "🌐 Select server language...",
-          "description": "Set server language to {lang_name}",
-          "modal_title": "🌐 Select Server Language"
-        }
+        "button": "⚙️ Settings"
       },
       "personality": {
         "title": "🎭  **Yuki - Identity**",
