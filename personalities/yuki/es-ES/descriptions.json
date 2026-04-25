@@ -144,19 +144,6 @@
           }
         }
       },
-      "modal": {
-          "title": "Frecuencia de Observaciones",
-          "label_minutes": "Minutos",
-          "placeholder_minutes": "ej. 180",
-          "error_server_only": "❌ La configuración de observaciones solo está disponible en un servidor.",
-          "error_admin_only": "❌ Esta opción es exclusiva para administradores.",
-          "error_invalid_number": "❌ Introduce un número válido de minutos.",
-          "error_positive_number": "❌ Los minutos deben ser mayores que cero.",
-          "success_message": "Intervalo de observaciones establecido en `{minutes}` minutos. Estado actual: {enabled_text}",
-          "state_on": "Activo",
-          "state_off": "Inactivo"
-        }
-      },
       "role_control": {
         "title": "🎛️  **Yuki - Gestión de Artes**",
         "description": "**Descripción** -Activa o detiene los diferentes caminos disponibles desde aquí.",
@@ -174,7 +161,12 @@
       "settings": {
         "title": "⚙️  **Yuki - Ajustes de Sala**",
         "description": "**Descripción** -Gestiona el idioma del servidor y la activación de módulos.",
-        "button": "⚙️ Ajustes"
+        "button": "⚙️ Ajustes",
+        "language_select": {
+          "placeholder": "🌐 Seleccionar idioma del servidor...",
+          "description": "Establecer idioma del servidor a {lang_name}",
+          "modal_title": "🌐 Seleccionar Idioma del Servidor"
+        }
       },
       "personality": {
         "title": "🎭  **Yuki - Identidad**",
@@ -255,3 +247,4 @@
       "confirmation_message": "💬 Estás conversando conmigo como si estuvieras en **{server_name}**. Todas tus respuestas usarán esta personalidad hasta que selecciones otro servidor."
     }
   }
+}

@@ -144,19 +144,6 @@
           }
         }
       },
-      "modal": {
-          "title": "观察频率",
-          "label_minutes": "分钟",
-          "placeholder_minutes": "例如 180",
-          "error_server_only": "❌ 观察配置仅在服务器中可用。",
-          "error_admin_only": "❌ 此选项仅限管理员。",
-          "error_invalid_number": "❌ 请输入有效的分钟数。",
-          "error_positive_number": "❌ 分钟数必须大于零。",
-          "success_message": "观察间隔已设定为 `{minutes}` 分钟。当前状态：{enabled_text}",
-          "state_on": "激活",
-          "state_off": "关闭"
-        }
-      },
       "role_control": {
         "title": "🎛️  **雪 —— 技艺管理**",
         "description": "**描述** -从此处激活或停止不同可用路径。",
@@ -174,7 +161,12 @@
       "settings": {
         "title": "⚙️  **雪 —— 茶室设置**",
         "description": "**描述** -管理服务器语言与模块激活。",
-        "button": "⚙️ 设置"
+        "button": "⚙️ 设置",
+        "language_select": {
+          "placeholder": "🌐 选择服务器语言……",
+          "description": "将服务器语言设定为 {lang_name}",
+          "modal_title": "🌐 选择服务器语言"
+        }
       },
       "personality": {
         "title": "🎭  **雪 —— 身份**",
@@ -255,3 +247,4 @@
       "confirmation_message": "💬 你正在以 **{server_name}** 的茶室身份与我交谈。在你选择另一服务器之前，你的所有回复都将使用此身份。"
     }
   }
+}

@@ -144,19 +144,6 @@
           }
         }
       },
-      "modal": {
-          "title": "Observations Frequency",
-          "label_minutes": "Minutes",
-          "placeholder_minutes": "e.g. 180",
-          "error_server_only": "❌ Observations configuration is only available in a server.",
-          "error_admin_only": "❌ This option is exclusive for administrators.",
-          "error_invalid_number": "❌ Enter a valid number of minutes.",
-          "error_positive_number": "❌ Minutes must be greater than zero.",
-          "success_message": "Observations interval set to `{minutes}` minutes. Current state: {enabled_text}",
-          "state_on": "Active",
-          "state_off": "Inactive"
-        }
-      },
       "role_control": {
         "title": "🎛️  **Yuki - Arts Management**",
         "description": "**Description** -Activate or stop different available paths from here.",
@@ -174,7 +161,12 @@
       "settings": {
         "title": "⚙️  **Yuki - Room Settings**",
         "description": "**Description** -Manage server language and module activation.",
-        "button": "⚙️ Settings"
+        "button": "⚙️ Settings",
+        "language_select": {
+          "placeholder": "🌐 Select server language...",
+          "description": "Set server language to {lang_name}",
+          "modal_title": "🌐 Select Server Language"
+        }
       },
       "personality": {
         "title": "🎭  **Yuki - Identity**",
@@ -253,3 +245,4 @@
       "confirmation_message": "💬 You are conversing with me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
     }
   }
+}
