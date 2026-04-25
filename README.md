@@ -230,30 +230,6 @@ Each Discord server can have its own personality and language settings:
 - No need to restart bot when changing configuration
 - Changes persist across bot restarts
 
-## 📖 Usage
-
-### Basic Commands
-- `!agenthelp` - Show available commands
-- `!test` - Verify bot connectivity
-- `!canvas` - Open interactive UI
-- `!readme` - Receive user guide via DM
-- `!forget_me` - Request erasure of your personal data (GDPR Art. 17)
-
-### Role Commands
-- `!watcher` - News watcher commands
-- `!trickster` - Dice game minigame
-- `!banker` - Virtual wallet operations
-- `!mc` - Music playback control
-- `!hunter` - Treasure hunter for Path of Exile 2
-- `!juggler` - Ring subrole management
-- `!shaman` - Nordic runes readings
-
-### Behavior Control
-- `!greet[personality]` - Enable presence greetings
-- `!nogreet[personality]` - Disable presence greetings
-- `!welcome[personality]` - Enable welcome messages
-- `!nowelcome[personality]` - Disable welcome messages
-
 ## 🧪 Development
 
 ### Adding a New Role
