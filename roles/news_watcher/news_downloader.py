@@ -87,53 +87,53 @@ class NewsDownloader:
             
             new_items = []
             for entry in feed.entries[:max_items]:
-                        title = entry.get('title', 'No title')
-                        link = entry.get('link', '')
-                        summary = entry.get('summary', entry.get('description', ''))
-                        published_date = entry.get('published')
-                        
-                        # Skip entries without valid title
-                        if not title or title.strip() == '' or title == 'No title':
-                            logger.debug(f"[FEED SKIP] Skipping entry without valid title from {feed_name}")
-                            continue
-                        
-                        # Check if entry title is same as feed title (indicates malformed feed)
-                        if title == feed_title and title:
-                            logger.warning(f"[FEED WARNING] Entry title matches feed title for {feed_name}: '{title[:50]}...'. Skipping malformed entry.")
-                            continue
-                        
-                        # Debug logging to check title extraction
-                        logger.debug(f"[FEED DEBUG] Feed: {feed_name}, Entry title: '{title[:50]}...', Link: '{link[:50]}...'")
-                        
-                        # Check if already in global database
-                        if self.global_db.is_news_globally_processed(title):
-                            logger.debug(f"News already in global DB: {title[:50]}...")
-                            continue
-                        
-                        # Store in global database
-                        self.global_db.store_news_content(
-                            title=title,
-                            source_url=link,
-                            feed_category=feed_category,
-                            feed_url=feed_url,
-                            summary=summary,
-                            published_date=published_date
-                        )
-                        
-                        new_items.append({
-                            'title': title,
-                            'link': link,
-                            'summary': summary,
-                            'published_date': published_date,
-                            'feed_name': feed_name
-                        })
-                    
-                    # Update feed last_updated timestamp if we got any items
-                    if new_items or feed.entries:
-                        self.global_db.update_feed_last_updated(feed_url, feed_name, feed_category)
-                    
-                    logger.info(f"📥 Downloaded {len(new_items)} new items from {feed_name}")
-                    return new_items
+                title = entry.get('title', 'No title')
+                link = entry.get('link', '')
+                summary = entry.get('summary', entry.get('description', ''))
+                published_date = entry.get('published')
+
+                # Skip entries without valid title
+                if not title or title.strip() == '' or title == 'No title':
+                    logger.debug(f"[FEED SKIP] Skipping entry without valid title from {feed_name}")
+                    continue
+
+                # Check if entry title is same as feed title (indicates malformed feed)
+                if title == feed_title and title:
+                    logger.warning(f"[FEED WARNING] Entry title matches feed title for {feed_name}: '{title[:50]}...'. Skipping malformed entry.")
+                    continue
+
+                # Debug logging to check title extraction
+                logger.debug(f"[FEED DEBUG] Feed: {feed_name}, Entry title: '{title[:50]}...', Link: '{link[:50]}...'")
+
+                # Check if already in global database
+                if self.global_db.is_news_globally_processed(title):
+                    logger.debug(f"News already in global DB: {title[:50]}...")
+                    continue
+
+                # Store in global database
+                self.global_db.store_news_content(
+                    title=title,
+                    source_url=link,
+                    feed_category=feed_category,
+                    feed_url=feed_url,
+                    summary=summary,
+                    published_date=published_date
+                )
+
+                new_items.append({
+                    'title': title,
+                    'link': link,
+                    'summary': summary,
+                    'published_date': published_date,
+                    'feed_name': feed_name
+                })
+
+            # Update feed last_updated timestamp if we got any items
+            if new_items or feed.entries:
+                self.global_db.update_feed_last_updated(feed_url, feed_name, feed_category)
+
+            logger.info(f"📥 Downloaded {len(new_items)} new items from {feed_name}")
+            return new_items
                     
         except requests.TimeoutError:
             logger.warning(f"Timeout fetching news from {feed_name} (30s)")
