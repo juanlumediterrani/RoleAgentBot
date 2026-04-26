@@ -78,22 +78,25 @@ class RunSupervisor:
 
         These replace the _execute_optional_non_role_tasks in run.py.
         """
-        # Daily memory summary (24 hours)
+        # Daily memory summary — job ticks every hour; per-server staggering
+        # inside execute_daily_memory_summary_all_servers ensures each server
+        # is processed on its own 24h schedule (hash-offset by server_id).
         from run import execute_daily_memory_summary_all_servers
         self.job_scheduler.register(
             "daily_memory_summary",
             execute_daily_memory_summary_all_servers,
-            Schedule.every(hours=24),
-            timeout_seconds=600,
+            Schedule.every(hours=1),
+            timeout_seconds=1800,  # 30min (≈ up to ~600 servers/hour with 3s/server)
         )
 
-        # Weekly personality evolution (7 days)
+        # Weekly personality evolution — job ticks every 6h; per-server
+        # staggering spreads load evenly across the 7-day window.
         from run import execute_weekly_personality_evolution_all_servers
         self.job_scheduler.register(
             "weekly_personality_evolution",
             execute_weekly_personality_evolution_all_servers,
-            Schedule.every(days=7),
-            timeout_seconds=600,
+            Schedule.every(hours=6),
+            timeout_seconds=1800,
         )
 
         # GDPR retention (configurable, default 24 hours)

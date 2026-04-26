@@ -297,7 +297,8 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             ring_subrole = juggler_role.get("subroles", {}).get("ring", {})
             target_change_msg = ring_subrole.get("target_change", "Changed ring target to")
             
-            db_instance = AgentDatabase(server_id=server_id)
+            from agent_db import get_db_instance
+            db_instance = get_db_instance(server_id)
             await asyncio.to_thread(
                 db_instance.register_interaction,
                 interaction.user.id,

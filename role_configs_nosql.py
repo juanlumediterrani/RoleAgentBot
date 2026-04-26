@@ -14,7 +14,7 @@ NOTE: Banker role remains on SQLite (critical data).
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -60,6 +60,12 @@ class RoleConfigsNoSQL:
             keep_backup=False,
         )
 
+        self._watcher_premises = JsonStore(
+            db_dir / "watcher_premises.json",
+            default_factory=lambda: {},
+            keep_backup=False,
+        )
+
         self._dice_game_stats = JsonStore(
             db_dir / "dice_game_stats.json",
             default_factory=lambda: {},
@@ -95,6 +101,29 @@ class RoleConfigsNoSQL:
 
         self._beggar_request_history = JsonlRingBuffer(
             db_dir / "beggar_request_history.jsonl",
+            max_lines=500,
+            max_bytes=500 * 1024,
+            keep_lines=400,
+        )
+
+        # --- MC (Master of Ceremonies) stores ---
+        self._mc_playlists = JsonStore(
+            db_dir / "mc_playlists.json",
+            default_factory=lambda: {},
+            keep_backup=False,
+        )
+        self._mc_queue = JsonStore(
+            db_dir / "mc_queue.json",
+            default_factory=lambda: {},
+            keep_backup=False,
+        )
+        self._mc_preferences = JsonStore(
+            db_dir / "mc_preferences.json",
+            default_factory=lambda: {},
+            keep_backup=False,
+        )
+        self._mc_history = JsonlRingBuffer(
+            db_dir / "mc_history.jsonl",
             max_lines=500,
             max_bytes=500 * 1024,
             keep_lines=400,
@@ -302,6 +331,85 @@ class RoleConfigsNoSQL:
         except Exception as e:
             logger.exception(f"Failed to get users with active subscriptions: {e}")
             return []
+
+    # --- Watcher Premises ---
+
+    def get_watcher_premises(self, user_id: str) -> tuple:
+        """Get premises and context for a user/channel.
+
+        Returns:
+            Tuple of (premises_list, context_string)
+        """
+        try:
+            state = self._watcher_premises.load()
+            entry = state.get(str(user_id), {})
+            premises = entry.get("premises", [])
+            context = entry.get("context")
+            return premises, context
+        except Exception as e:
+            logger.exception(f"Failed to get watcher premises: {e}")
+            return [], None
+
+    def save_watcher_premise(self, user_id: str, premises: list, context: str = None) -> bool:
+        """Save full premises list and context for a user/channel."""
+        try:
+            def updater(state: Dict) -> Dict:
+                state[str(user_id)] = {
+                    "premises": premises,
+                    "context": context,
+                }
+                return state
+
+            self._watcher_premises.update(updater)
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to save watcher premises: {e}")
+            return False
+
+    def add_watcher_premise(self, user_id: str, premise: str, max_premises: int = 3) -> tuple:
+        """Add a premise for a user. Returns (success, message)."""
+        try:
+            state = self._watcher_premises.load()
+            entry = state.get(str(user_id), {"premises": [], "context": None})
+            current = entry.get("premises", [])
+            if len(current) >= max_premises:
+                return False, f"Maximum premises limit ({max_premises}) reached."
+            current.append(premise)
+            self.save_watcher_premise(user_id, current, entry.get("context"))
+            return True, f"Premise #{len(current)} added."
+        except Exception as e:
+            logger.exception(f"Failed to add watcher premise: {e}")
+            return False, str(e)
+
+    def modify_watcher_premise(self, user_id: str, index: int, new_premise: str) -> tuple:
+        """Modify a premise by 1-based index. Returns (success, message)."""
+        try:
+            state = self._watcher_premises.load()
+            entry = state.get(str(user_id), {"premises": [], "context": None})
+            current = entry.get("premises", [])
+            if index < 1 or index > len(current):
+                return False, f"Invalid index {index}. You have {len(current)} premises."
+            current[index - 1] = new_premise
+            self.save_watcher_premise(user_id, current, entry.get("context"))
+            return True, f"Premise #{index} updated."
+        except Exception as e:
+            logger.exception(f"Failed to modify watcher premise: {e}")
+            return False, str(e)
+
+    def delete_watcher_premise(self, user_id: str, index: int) -> tuple:
+        """Delete a premise by 1-based index. Returns (success, message)."""
+        try:
+            state = self._watcher_premises.load()
+            entry = state.get(str(user_id), {"premises": [], "context": None})
+            current = entry.get("premises", [])
+            if index < 1 or index > len(current):
+                return False, f"Invalid index {index}. You have {len(current)} premises."
+            removed = current.pop(index - 1)
+            self.save_watcher_premise(user_id, current, entry.get("context"))
+            return True, f"Premise #{index} deleted: {removed}"
+        except Exception as e:
+            logger.exception(f"Failed to delete watcher premise: {e}")
+            return False, str(e)
 
     # --- Dice Game Stats ---
 
@@ -605,6 +713,298 @@ class RoleConfigsNoSQL:
             return True
         except Exception as e:
             logger.exception(f"Failed to reset beggar weekly cycle: {e}")
+            return False
+
+    # --- MC Playlists ---
+
+    def mc_create_playlist(self, name: str, user_id: str, user_name: str,
+                           server_id: str, server_name: str) -> bool:
+        """Create a new playlist. Returns False if already exists."""
+        try:
+            state = self._mc_playlists.load()
+            key = f"{user_id}:{name}"
+            if key in state:
+                return False
+            state[key] = {
+                "name": name,
+                "user_id": user_id,
+                "user_name": user_name,
+                "server_id": server_id,
+                "server_name": server_name,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": None,
+                "active": True,
+            }
+            self._mc_playlists.update(lambda _: state)
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to create MC playlist: {e}")
+            return False
+
+    def mc_get_user_playlists(self, user_id: str) -> list:
+        """Get all active playlists for a user. Returns list of tuples (name, created_at, updated_at)."""
+        try:
+            state = self._mc_playlists.load()
+            results = []
+            for entry in state.values():
+                if entry.get("user_id") == user_id and entry.get("active", True):
+                    results.append((0, entry["name"], entry.get("created_at"), entry.get("updated_at")))
+            results.sort(key=lambda x: x[2] or "", reverse=True)
+            return results
+        except Exception as e:
+            logger.exception(f"Failed to get MC user playlists: {e}")
+            return []
+
+    # --- MC Queue ---
+
+    def _queue_key(self, server_id: str, channel_id: str) -> str:
+        return f"{server_id}:{channel_id}"
+
+    def mc_add_song_to_queue(self, server_id: str, channel_id: str, user_id: str,
+                             title: str, url: str, duration: str = None,
+                             artist: str = None, position: int = None) -> bool:
+        """Add a song to the playback queue."""
+        try:
+            state = self._mc_queue.load()
+            qk = self._queue_key(server_id, channel_id)
+            queue = [e for e in state.get(qk, []) if e.get("active", True)]
+
+            entry = {
+                "server_id": server_id,
+                "channel_id": channel_id,
+                "user_id": user_id,
+                "title": title,
+                "url": url,
+                "duration": duration,
+                "artist": artist,
+                "added_at": datetime.now().isoformat(),
+                "active": True,
+            }
+
+            if position is None or position == -1:
+                queue.append(entry)
+            elif position == 0:
+                queue.insert(0, entry)
+            else:
+                # position is 1-indexed
+                queue.insert(max(0, position - 1), entry)
+
+            # Re-assign sequential positions
+            for i, e in enumerate(queue, 1):
+                e["position"] = i
+
+            state[qk] = queue
+            self._mc_queue.update(lambda _: state)
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to add song to MC queue: {e}")
+            return False
+
+    def mc_get_queue(self, server_id: str, channel_id: str) -> list:
+        """Get current playback queue as list of tuples matching legacy format."""
+        try:
+            state = self._mc_queue.load()
+            qk = self._queue_key(server_id, channel_id)
+            queue = [e for e in state.get(qk, []) if e.get("active", True)]
+            queue.sort(key=lambda e: e.get("position", 0))
+            return [
+                (e.get("position", i), e["title"], e["url"], e.get("duration"),
+                 e.get("artist"), e.get("user_id"), e.get("added_at"))
+                for i, e in enumerate(queue, 1)
+            ]
+        except Exception as e:
+            logger.exception(f"Failed to get MC queue: {e}")
+            return []
+
+    def mc_get_queue_all_channels(self, server_id: str) -> list:
+        """Get all queue entries for a server across all channels."""
+        try:
+            state = self._mc_queue.load()
+            results = []
+            for qk, queue in state.items():
+                if not qk.startswith(f"{server_id}:"):
+                    continue
+                for e in queue:
+                    if not e.get("active", True):
+                        continue
+                    results.append((
+                        e.get("position", 0), e["title"], e["url"], e.get("duration"),
+                        e.get("artist"), e.get("user_id"), e.get("added_at"), e.get("channel_id"),
+                    ))
+            results.sort(key=lambda x: x[6] or "", reverse=True)
+            return results
+        except Exception as e:
+            logger.exception(f"Failed to get MC queue all channels: {e}")
+            return []
+
+    def mc_remove_song_from_queue(self, server_id: str, channel_id: str, position: int) -> bool:
+        """Remove a specific song from queue by position (1-indexed)."""
+        try:
+            state = self._mc_queue.load()
+            qk = self._queue_key(server_id, channel_id)
+            queue = state.get(qk, [])
+            active = [e for e in queue if e.get("active", True)]
+            removed = False
+            for e in active:
+                if e.get("position") == position:
+                    e["active"] = False
+                    removed = True
+                    break
+            if removed:
+                # Re-assign positions for remaining active entries
+                remaining = [e for e in queue if e.get("active", True)]
+                for i, e in enumerate(remaining, 1):
+                    e["position"] = i
+                state[qk] = queue
+                self._mc_queue.update(lambda _: state)
+            return removed
+        except Exception as e:
+            logger.exception(f"Failed to remove song from MC queue: {e}")
+            return False
+
+    def mc_clear_queue(self, server_id: str, channel_id: str) -> bool:
+        """Clear entire playback queue for a channel."""
+        try:
+            state = self._mc_queue.load()
+            qk = self._queue_key(server_id, channel_id)
+            for e in state.get(qk, []):
+                e["active"] = False
+            self._mc_queue.update(lambda _: state)
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to clear MC queue: {e}")
+            return False
+
+    def mc_clean_old_queue(self, days: int = 7) -> int:
+        """Clean old queue entries (older than X days)."""
+        try:
+            cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+            state = self._mc_queue.load()
+            cleaned = 0
+            for qk, queue in state.items():
+                for e in queue:
+                    if e.get("active", True) and e.get("added_at", "") < cutoff:
+                        e["active"] = False
+                        cleaned += 1
+            self._mc_queue.update(lambda _: state)
+            if cleaned:
+                logger.info(f"Cleaned {cleaned} old MC queue entries older than {days} days")
+            return cleaned
+        except Exception as e:
+            logger.exception(f"Failed to clean old MC queue: {e}")
+            return 0
+
+    # --- MC History ---
+
+    def mc_register_history(self, server_id: str, channel_id: str, user_id: str,
+                            title: str, url: str, duration: str = None,
+                            artist: str = None) -> bool:
+        """Register a song in playback history."""
+        try:
+            self._mc_history.append({
+                "server_id": server_id,
+                "channel_id": channel_id,
+                "user_id": user_id,
+                "title": title,
+                "url": url,
+                "duration": duration,
+                "artist": artist,
+                "played_at": datetime.now().isoformat(),
+            })
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to register MC history: {e}")
+            return False
+
+    def mc_get_history(self, server_id: str, channel_id: str, limit: int = 10) -> list:
+        """Get recent playback history as legacy-format tuples."""
+        try:
+            all_entries = list(self._mc_history.iter_records())
+            filtered = [
+                e for e in all_entries
+                if e.get("server_id") == server_id and e.get("channel_id") == channel_id
+            ]
+            filtered.sort(key=lambda e: e.get("played_at", ""), reverse=True)
+            return [
+                (e["title"], e["url"], e.get("duration"), e.get("artist"),
+                 e.get("user_id"), e.get("played_at"))
+                for e in filtered[:limit]
+            ]
+        except Exception as e:
+            logger.exception(f"Failed to get MC history: {e}")
+            return []
+
+    def mc_get_statistics(self, server_id: str = None) -> dict:
+        """Get basic MC statistics."""
+        try:
+            pl_state = self._mc_playlists.load()
+            playlists_total = sum(1 for e in pl_state.values() if e.get("active", True))
+
+            q_state = self._mc_queue.load()
+            queue_total = sum(
+                sum(1 for e in q if e.get("active", True))
+                for q in q_state.values()
+            )
+
+            all_history = list(self._mc_history.iter_records())
+            historial_total = len(all_history)
+
+            queue_server = 0
+            history_server = 0
+            if server_id:
+                for qk, q in q_state.items():
+                    if qk.startswith(f"{server_id}:"):
+                        queue_server += sum(1 for e in q if e.get("active", True))
+                history_server = sum(1 for e in all_history if e.get("server_id") == server_id)
+
+            return {
+                "playlists_total": playlists_total,
+                "queue_total": queue_total,
+                "historial_total": historial_total,
+                "queue_servidor": queue_server,
+                "historial_servidor": history_server,
+            }
+        except Exception as e:
+            logger.exception(f"Failed to get MC statistics: {e}")
+            return {}
+
+    def mc_clean_old_history(self, days: int = 30) -> int:
+        """Clean old history entries. With ring buffer, this is handled automatically.
+        Returns 0 since JSONL ring buffer self-manages retention."""
+        return 0
+
+    # --- MC Preferences ---
+
+    def mc_get_preferences(self, user_id: str) -> dict:
+        """Get user MC preferences."""
+        try:
+            state = self._mc_preferences.load()
+            return state.get(str(user_id), {
+                "default_volume": 100,
+                "default_quality": "medium",
+                "autoplay": False,
+            })
+        except Exception as e:
+            logger.exception(f"Failed to get MC preferences: {e}")
+            return {}
+
+    def mc_set_preferences(self, user_id: str, **kwargs) -> bool:
+        """Set user MC preferences."""
+        try:
+            def updater(state: Dict) -> Dict:
+                current = state.get(str(user_id), {
+                    "default_volume": 100,
+                    "default_quality": "medium",
+                    "autoplay": False,
+                })
+                current.update(kwargs)
+                current["updated_at"] = datetime.now().isoformat()
+                state[str(user_id)] = current
+                return state
+            self._mc_preferences.update(updater)
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to set MC preferences: {e}")
             return False
 
 

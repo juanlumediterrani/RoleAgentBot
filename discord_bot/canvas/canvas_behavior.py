@@ -273,9 +273,9 @@ def build_canvas_behavior_detail(
         # Load personality memory content from agent database
         memory_content = ""
         try:
-            from agent_db import AgentDatabase
+            from agent_db import get_db_instance
             
-            db = AgentDatabase(server_id=server_id)
+            db = get_db_instance(server_id)
             
             # Map memory types to database methods
             if selected_memory_type == "long":

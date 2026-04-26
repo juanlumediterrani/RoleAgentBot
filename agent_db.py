@@ -2027,8 +2027,11 @@ _db_instances = {}
 # Lock for thread-safe access to _db_instances
 _db_instances_lock = threading.Lock()
 
-def get_db_instance(server_id: str = "default") -> AgentDatabase:
-    """Get or create a database instance for a specific server."""
+def get_db_instance(server_id: str = "default"):
+    """Get or create a database instance for a specific server.
+    
+    Returns an AgentState (NoSQL-backed) instance by default.
+    """
     global db
     # Only use active server if no specific server_id provided
     if server_id == "default":
@@ -2039,22 +2042,8 @@ def get_db_instance(server_id: str = "default") -> AgentDatabase:
     # Thread-safe access to _db_instances
     with _db_instances_lock:
         if server_id not in _db_instances:
-            _db_instances[server_id] = AgentDatabase(server_id)
-        else:
-            # Validate the cached instance still points to the correct personality DB.
-            # The personality can change via canvas_personality (discord subprocess) and
-            # that process cannot invalidate caches in other processes (e.g. the scheduler).
-            expected_name = f"agent_{get_personality_name(server_id).lower()}.db"
-            if _db_instances[server_id].db_path.name != expected_name:
-                old_db_path = _db_instances[server_id].db_path
-                logger.info(
-                    f"🗄️ [DB] Personality changed for server {server_id}: "
-                    f"{old_db_path.name} → {expected_name}. Re-initializing."
-                )
-                # Delete old personality database to prevent orphaned files and
-                # confusion from old pending tasks
-                _delete_old_personality_database(old_db_path, server_id)
-                _db_instances[server_id] = AgentDatabase(server_id)
+            from persistence.agent_state import AgentState
+            _db_instances[server_id] = AgentState(server_id)
         return _db_instances[server_id]
 
 def invalidate_db_instance(server_id: str = None):
@@ -2113,8 +2102,8 @@ def get_all_server_keys() -> list[str]:
 db = None
 _current_server_id = None
 
-def get_global_db(server_id: str = None, use_default_for_roles: bool = False) -> AgentDatabase:
-    """Get the global DB instance for the current server."""
+def get_global_db(server_id: str = None, use_default_for_roles: bool = False):
+    """Get the global DB instance for the current server (NoSQL-backed)."""
     global db, _current_server_id
     
     if server_id is None:
@@ -2156,7 +2145,8 @@ def get_database_path(server_id: str, db_type: str) -> str:
         str: Full path to the database file
     """
     # Roles that have been migrated to centralized roles.db system
-    centralized_roles = {'beggar', 'trickster', 'mc', 'dice_game', 'nordic_runes', 'banker', 'treasure_hunter'}
+    # NOTE: 'banker' moved to dedicated roles/banker.db (see roles/banker/db_banker_core.py)
+    centralized_roles = {'beggar', 'trickster', 'mc', 'dice_game', 'nordic_runes', 'treasure_hunter'}
     
     if db_type in centralized_roles:
         # Return path to the centralized roles.db with personality-specific naming

@@ -120,67 +120,65 @@ async def execute_recent_memory_summary_all_servers():
 
 
 async def execute_daily_memory_summary_all_servers():
-    """Execute daily memory generation for ALL servers, not just active one."""
-    from agent_db import get_all_server_ids
+    """Execute daily memory generation for servers whose stagger window is due.
+
+    Uses per-server `is_scheduled_task_due()` to distribute LLM load across
+    the 24h period (hash-offset by server_id), avoiding thundering-herd
+    saturation of Vertex/Groq/Mistral quotas.
+    """
+    from agent_db import get_all_server_ids, get_global_db
     from agent_mind import generate_daily_memory_summary
-    
+
     server_ids = get_all_server_ids()
     if not server_ids:
-        logger.info("[run] 🧠 No servers found for daily memory generation")
+        logger.debug("[run] 🧠 No servers found for daily memory generation")
         return
-    
-    logger.info(f"[run] 🧠 Running daily memory generation for {len(server_ids)} servers")
-    
-    for idx, server_id in enumerate(server_ids):
+
+    DAILY_INTERVAL_HOURS = 24.0
+    # 24h stagger window → each server fires on its own minute-of-the-day.
+    STAGGER_WINDOW_HOURS = 24.0
+
+    processed = 0
+    skipped = 0
+    for server_id in server_ids:
         try:
-            # Small delay between servers to avoid Vertex AI rate limiting
-            if idx > 0:
-                await asyncio.sleep(3)
-            # Check if server needs daily memory generation
-            from agent_db import get_global_db
-            import sqlite3
-            
             db_instance = get_global_db(server_id=server_id)
-            with db_instance._lock:
-                conn = sqlite3.connect(db_instance.db_path)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT summary, updated_at FROM daily_memory 
-                    WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
-                    ORDER BY updated_at DESC LIMIT 1
-                """)
-                result = cursor.fetchone()
-                conn.close()
-                
-                should_generate = False
-                if not result or not result[0] or not result[0].strip():
-                    # No daily memory - generate immediately
-                    should_generate = True
-                    reason = "no existing memory"
-                else:
-                    # Check if it's been more than 24 hours
-                    from datetime import datetime, timedelta
-                    last_update = datetime.fromisoformat(result[1].replace('Z', '+00:00'))
-                    if datetime.now().replace(tzinfo=last_update.tzinfo) - last_update > timedelta(hours=24):
-                        should_generate = True
-                        reason = "24+ hours since last update"
-                
-                if should_generate:
-                    logger.info(f"[run] 🧠 Generating daily memory for server '{server_id}' ({reason})")
-                    summary = await asyncio.to_thread(generate_daily_memory_summary, server_id)
-                    if summary:
-                        logger.info(f"[run] ✅ Daily memory generated for '{server_id}': {summary[:50]}...")
-                    else:
-                        logger.warning(f"[run] ⚠️ Failed to generate daily memory for '{server_id}'")
-                else:
-                    logger.debug(f"[run] 🧠 Daily memory up to date for '{server_id}'")
-                    
+            if not db_instance.is_scheduled_task_due(
+                "daily_memory_summary",
+                interval_hours=DAILY_INTERVAL_HOURS,
+                stagger_window_hours=STAGGER_WINDOW_HOURS,
+            ):
+                skipped += 1
+                continue
+
+            # Yield briefly between LLM calls (in-window, not global burst)
+            if processed > 0:
+                await asyncio.sleep(3)
+
+            logger.info(f"[run] 🧠 Generating daily memory for server '{server_id}' (due)")
+            summary = await asyncio.to_thread(generate_daily_memory_summary, server_id)
+            if summary:
+                logger.info(f"[run] ✅ Daily memory generated for '{server_id}': {summary[:50]}...")
+            else:
+                logger.warning(f"[run] ⚠️ Failed to generate daily memory for '{server_id}'")
+
+            # Mark done regardless of success so we don't retry in tight loop
+            db_instance.mark_scheduled_task_done(
+                "daily_memory_summary",
+                interval_hours=DAILY_INTERVAL_HOURS,
+                stagger_window_hours=STAGGER_WINDOW_HOURS,
+            )
+            processed += 1
         except Exception as e:
             logger.error(f"[run] ❌ Error processing daily memory for server '{server_id}': {e}")
-            # Continue with next server even if one fails
             continue
-    
-    logger.info(f"[run] 🧠 Daily memory generation completed for all servers")
+
+    if processed:
+        logger.info(
+            f"[run] 🧠 Daily memory pass: {processed} processed, {skipped} not due"
+        )
+    else:
+        logger.debug(f"[run] 🧠 Daily memory pass: 0 due (of {len(server_ids)} servers)")
 
 
 async def execute_recent_memory_summary_all_servers():
@@ -204,33 +202,60 @@ async def execute_relationship_memory_refresh_all_servers():
 
 
 async def execute_weekly_personality_evolution_all_servers():
-    """Execute weekly personality evolution for all servers."""
-    from agent_db import get_all_server_ids
-    
+    """Execute weekly personality evolution for servers whose stagger window is due.
+
+    Uses per-server `is_scheduled_task_due()` with a 7-day stagger window to
+    distribute LLM load evenly (hash-offset by server_id) across the week.
+    """
+    from agent_db import get_all_server_ids, get_global_db
+
     server_ids = get_all_server_ids()
     if not server_ids:
-        logger.info("[run] 🧬 No servers found for weekly personality evolution")
+        logger.debug("[run] 🧬 No servers found for weekly personality evolution")
         return
-    
-    logger.info(f"[run] 🧬 Running weekly personality evolution for {len(server_ids)} servers")
-    
-    total_evolved = 0
-    for idx, server_id in enumerate(server_ids):
+
+    WEEKLY_INTERVAL_HOURS = 24.0 * 7
+    STAGGER_WINDOW_HOURS = 24.0 * 7  # spread across the whole week
+
+    processed = 0
+    skipped = 0
+    for server_id in server_ids:
         try:
-            # Small delay between servers to avoid Vertex AI rate limiting
-            if idx > 0:
+            db_instance = get_global_db(server_id=server_id)
+            if not db_instance.is_scheduled_task_due(
+                "weekly_personality_evolution",
+                interval_hours=WEEKLY_INTERVAL_HOURS,
+                stagger_window_hours=STAGGER_WINDOW_HOURS,
+            ):
+                skipped += 1
+                continue
+
+            if processed > 0:
                 await asyncio.sleep(3)
+
             result = await asyncio.to_thread(generate_weekly_personality_evolution, server_id)
             if result.get("success"):
-                total_evolved += 1
                 logger.info(f"[run] 🧬 Weekly personality evolution completed for '{server_id}'")
             else:
-                logger.warning(f"[run] ⚠️ Personality evolution skipped for '{server_id}': {result.get('error', 'Unknown')}")
+                logger.warning(
+                    f"[run] ⚠️ Personality evolution skipped for '{server_id}': "
+                    f"{result.get('error', 'Unknown')}"
+                )
+
+            db_instance.mark_scheduled_task_done(
+                "weekly_personality_evolution",
+                interval_hours=WEEKLY_INTERVAL_HOURS,
+                stagger_window_hours=STAGGER_WINDOW_HOURS,
+            )
+            processed += 1
         except Exception as e:
             logger.error(f"[run] ❌ Error in personality evolution for '{server_id}': {e}")
-    
-    if total_evolved:
-        logger.info(f"[run] 🧬 Weekly personality evolution completed: {total_evolved}/{len(server_ids)} servers evolved")
+            continue
+
+    if processed:
+        logger.info(
+            f"[run] 🧬 Weekly personality evolution pass: {processed} processed, {skipped} not due"
+        )
 
 
 def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
@@ -373,7 +398,14 @@ async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dic
 
 # ── Role scheduler ────────────────────────────────────────────────────────────
 
-async def scheduler(config: dict):
+async def scheduler(config: dict, supervisor_active: bool = False):
+    """Role scheduler loop.
+
+    When *supervisor_active* is True the RunSupervisor already handles
+    non-role maintenance tasks (daily memory, GDPR, etc.), so this loop
+    only dispatches periodic role scripts.  When False (fallback) it also
+    runs the legacy non-role task scheduling.
+    """
     roles_cfg = config.get("roles", {})
     logger.info(f"[run] 📋 Starting scheduler with {len(roles_cfg)} configured roles")
     next_run = _build_optional_role_schedule(config)
@@ -381,39 +413,33 @@ async def scheduler(config: dict):
     if not next_run:
         logger.info("[run] ℹ️  No active roles. Only the main bot is running.")
 
-    # No longer waiting for active server - process all servers immediately
+    next_non_role_run = None
+    if not supervisor_active:
+        # Legacy fallback: schedule non-role tasks ourselves
+        next_daily_memory_run = datetime.now() + timedelta(hours=24)
+        next_weekly_evolution_run = datetime.now() + timedelta(weeks=1)
+        try:
+            _gdpr_cfg = config.get("gdpr", {}) or {}
+            _gdpr_every_hours = int(_gdpr_cfg.get("run_every_hours", 24))
+        except Exception:
+            _gdpr_every_hours = 24
+        next_gdpr_retention_run = datetime.now() + timedelta(hours=_gdpr_every_hours)
 
-    # Schedule daily memory 24h from now - the bootstrap in db_init.py handles the first
-    # generation at startup so we avoid a race condition between the two.
-    next_daily_memory_run = datetime.now() + timedelta(hours=24)
-    logger.info(f"[run] 🧠 Next global daily memory sweep scheduled for {next_daily_memory_run:%Y-%m-%d %H:%M:%S}")
-
-    # Schedule weekly personality evolution 7 days from now
-    next_weekly_evolution_run = datetime.now() + timedelta(weeks=1)
-    logger.info(f"[run] 🧬 Next weekly personality evolution scheduled for {next_weekly_evolution_run:%Y-%m-%d %H:%M:%S}")
-
-    # GDPR retention sweep runs with the cadence configured in agent_config.json
-    # (default every 24h). Read the cadence once; the loop below adjusts after
-    # each run based on the same knob.
-    try:
-        _gdpr_cfg = config.get("gdpr", {}) or {}
-        _gdpr_every_hours = int(_gdpr_cfg.get("run_every_hours", 24))
-    except Exception:
-        _gdpr_every_hours = 24
-    next_gdpr_retention_run = datetime.now() + timedelta(hours=_gdpr_every_hours)
-    logger.info(f"[run] 🧹 Next GDPR retention sweep scheduled for {next_gdpr_retention_run:%Y-%m-%d %H:%M:%S}")
-
-    next_non_role_run = {
-        "daily_memory": next_daily_memory_run,
-        "weekly_personality_evolution": next_weekly_evolution_run,
-        "gdpr_retention": next_gdpr_retention_run,
-    }
+        next_non_role_run = {
+            "daily_memory": next_daily_memory_run,
+            "weekly_personality_evolution": next_weekly_evolution_run,
+            "gdpr_retention": next_gdpr_retention_run,
+        }
+        logger.info("[run] ⚠️  RunSupervisor not active — legacy non-role scheduling enabled")
+    else:
+        logger.info("[run] ✅ RunSupervisor handles non-role tasks; scheduler only dispatches roles")
 
     while True:
         now = datetime.now()
         await _execute_optional_role_tasks(roles_cfg, next_run, now)
         await _execute_optional_subrole_tasks()
-        await _execute_optional_non_role_tasks(now, next_non_role_run)
+        if next_non_role_run is not None:
+            await _execute_optional_non_role_tasks(now, next_non_role_run)
         await asyncio.sleep(30)
 
 # ── Main Discord bot ─────────────────────────────────────────────────────────
@@ -476,8 +502,7 @@ async def main():
         run_sup = None
 
     if platform == "discord":
-        # Use legacy scheduler if RunSupervisor failed, otherwise both coexist
-        always_on_tasks = [discord_bot(), scheduler(config)]
+        always_on_tasks = [discord_bot(), scheduler(config, supervisor_active=run_sup is not None)]
     elif platform == "telegram":
         logger.info("[run] ℹ️  Telegram selected — main bot pending implementation")
         always_on_tasks = []

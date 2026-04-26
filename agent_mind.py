@@ -520,21 +520,10 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
             return previous_summary
         # No interactions and no previous summary for today - try to find the most recent existing summary
         try:
-            with db_instance._lock:
-                import sqlite3
-                conn = sqlite3.connect(db_instance.db_path)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT summary FROM recent_memory 
-                    WHERE summary IS NOT NULL AND summary != '' 
-                    ORDER BY updated_at DESC LIMIT 1
-                """)
-                result = cursor.fetchone()
-                conn.close()
-                
-                if result and result[0] and result[0].strip():
-                    # Found existing summary, use it without saving
-                    existing_summary = result[0].strip()
+            most_recent = db_instance.get_most_recent_memory_record()
+            if most_recent:
+                existing_summary = (most_recent.get("summary") or "").strip()
+                if existing_summary:
                     logger.debug(f"🧠 [RECENT_MEMORY] No interactions, using existing summary from history")
                     return existing_summary
         except Exception as e:
@@ -813,26 +802,18 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
         else:
             # No today's summary and LLM failed - try to find the most recent existing summary
             try:
-                with db_instance._lock:
-                    import sqlite3
-                    conn = sqlite3.connect(db_instance.db_path)
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT summary FROM daily_memory 
-                        WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
-                        ORDER BY updated_at DESC LIMIT 1
-                    """)
-                    result = cursor.fetchone()
-                    conn.close()
-                    
-                    if result and result[0] and result[0].strip():
-                        # Found existing summary, use it
-                        summary_text = result[0].strip()
+                most_recent = db_instance.get_most_recent_daily_memory_record()
+                if most_recent:
+                    existing_summary = (most_recent.get("summary") or "").strip()
+                    if existing_summary and existing_summary != "[Error in internal task]":
+                        summary_text = existing_summary
                         logger.debug(f"🧠 [DAILY_MEMORY] LLM failed, using existing daily summary from history")
                     else:
-                        # No existing summary found, use fallback
                         summary_text = _get_daily_memory_fallback(server_id)
                         logger.debug(f"🧠 [DAILY_MEMORY] LLM failed and no existing summary, using fallback")
+                else:
+                    summary_text = _get_daily_memory_fallback(server_id)
+                    logger.debug(f"🧠 [DAILY_MEMORY] LLM failed and no existing summary, using fallback")
             except Exception as e:
                 logger.debug(f"Could not retrieve existing daily memory: {e}")
                 summary_text = _get_daily_memory_fallback(server_id)

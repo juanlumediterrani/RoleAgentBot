@@ -44,11 +44,11 @@ class AgentMemoryNoSQLTests(unittest.TestCase):
     def test_daily_memory_retention(self):
         for i in range(20):
             self.memory.add_daily_memory(f"Day {i} summary")
-        daily = self.memory.get_daily_memory(days=30)
+        daily = self.memory.get_daily_memory_entries(days=30)
         self.assertLessEqual(len(daily), 14)
 
     def test_recent_memory(self):
-        self.memory.set_recent_memory("Recent summary", {"key": "value"})
+        self.memory.set_recent_memory("Recent summary", metadata={"key": "value"})
         recent = self.memory.get_recent_memory()
         self.assertIsNotNone(recent)
         self.assertEqual(recent["summary"], "Recent summary")
@@ -113,6 +113,60 @@ class AgentMemoryNoSQLTests(unittest.TestCase):
         self.memory.clear_recent_memory_update(scheduled_key)
         pending = self.memory.get_pending_recent_memory_updates()
         self.assertEqual(len(pending), 0)
+
+
+class AgentStateStaggerTests(unittest.TestCase):
+    """Tests for per-server stagger scheduling via AgentState facade."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmpdir.cleanup()
+
+    def _make_state(self, server_id):
+        import os
+        from persistence.agent_state import AgentState
+        sub = os.path.join(self.tmpdir.name, server_id)
+        return AgentState(server_id, db_dir=sub)
+
+    def test_stagger_offset_deterministic_and_distributed(self):
+        from persistence.agent_state import stagger_offset_seconds
+        # Same input → same output
+        self.assertEqual(
+            stagger_offset_seconds("server_A", 3600),
+            stagger_offset_seconds("server_A", 3600),
+        )
+        # Different servers → different offsets (with overwhelming probability)
+        offsets = {stagger_offset_seconds(f"srv_{i}", 3600) for i in range(100)}
+        # Expect high diversity (>80 unique out of 100) across a 3600 window
+        self.assertGreater(len(offsets), 80)
+        # Offsets bounded by window
+        for i in range(100):
+            self.assertLess(stagger_offset_seconds(f"srv_{i}", 3600), 3600)
+
+    def test_scheduled_task_first_call_not_due(self):
+        st = self._make_state("server1")
+        # First call schedules next_run in the future (within the window)
+        self.assertFalse(
+            st.is_scheduled_task_due("daily_memory_summary", 24, stagger_window_hours=24)
+        )
+        # And a second call immediately also returns False (still not due)
+        self.assertFalse(
+            st.is_scheduled_task_due("daily_memory_summary", 24, stagger_window_hours=24)
+        )
+
+    def test_mark_done_advances_next_run(self):
+        st = self._make_state("server2")
+        st.is_scheduled_task_due("task_x", 24, stagger_window_hours=24)  # init
+        before = st._memory.get_next_scheduled_at("task_x")
+        st.mark_scheduled_task_done("task_x", interval_hours=24, stagger_window_hours=24)
+        after = st._memory.get_next_scheduled_at("task_x")
+        self.assertNotEqual(before, after)
+        # After marking done, next_run is ~24h+ away
+        from datetime import datetime, timedelta
+        next_dt = datetime.fromisoformat(after)
+        self.assertGreater(next_dt - datetime.now(), timedelta(hours=23))
 
 
 if __name__ == "__main__":

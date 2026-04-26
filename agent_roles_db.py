@@ -90,51 +90,13 @@ class RolesDatabase:
                     # NOTE: nordic_runes, ring_accusations, dice_game_stats migrated to NoSQL
                     # See role_configs_nosql.py (tables removed in Phase E)
 
-                    # Banker wallets and transactions table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS banker_wallets (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            wallet_id TEXT NOT NULL UNIQUE,
-                            user_name TEXT NOT NULL,
-                            balance INTEGER DEFAULT 0,
-                            wallet_type TEXT DEFAULT 'user',
-                            created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL
-                        )
-                    """)
-                    
-                    # Banker transactions table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS banker_transactions (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            from_wallet TEXT NOT NULL,
-                            to_wallet TEXT NOT NULL,
-                            amount INTEGER NOT NULL,
-                            transaction_type TEXT NOT NULL,
-                            description TEXT,
-                            created_by TEXT,
-                            created_at TEXT NOT NULL
-                        )
-                    """)
-                    
-                    # NOTE: watcher_subscriptions migrated to NoSQL (role_configs_nosql.py)
+                    # NOTE: banker_wallets, banker_transactions migrated to dedicated
+                    # databases/{server_id}/roles/banker.db (see roles/banker/db_banker_core.py)
 
-                    # Migration: add created_by column to banker_transactions if it doesn't exist
-                    cursor.execute("PRAGMA table_info(banker_transactions)")
-                    columns = [row[1] for row in cursor.fetchall()]
-                    if "created_by" not in columns:
-                        cursor.execute("ALTER TABLE banker_transactions ADD COLUMN created_by TEXT")
+                    # NOTE: watcher_subscriptions, poe2_subscriptions, dice_game_history,
+                    # beggar_subrole, beggar_request_history migrated to NoSQL
+                    # (role_configs_nosql.py). Indexes also removed.
 
-                    # NOTE: poe2_subscriptions, dice_game_history, beggar_subrole,
-                    # beggar_request_history migrated to NoSQL (role_configs_nosql.py).
-                    # Indexes for these tables also removed.
-
-                    # Create indexes for banker tables
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_wallets_wallet_id ON banker_wallets(wallet_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_from_wallet ON banker_transactions(from_wallet)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_to_wallet ON banker_transactions(to_wallet)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_created_at ON banker_transactions(created_at)")
-                    
                     conn.commit()
                     logger.info(f"Roles database initialized at: {self.db_path}")
                     
@@ -372,182 +334,11 @@ class RolesDatabase:
             logger.error(f"Failed to migrate legacy beggar data: {e}")
             return False
     
-    def save_banker_wallet(self, wallet_id: str, user_name: str, 
-                           balance: int = 0, wallet_type: str = 'user') -> bool:
-        """Save or update a banker wallet."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO banker_wallets 
-                        (wallet_id, user_name, balance, wallet_type, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (
-                        wallet_id, user_name, balance, wallet_type, 
-                        datetime.now().isoformat(), datetime.now().isoformat()
-                    ))
-                    
-                    conn.commit()
-                    logger.info(f"Saved banker wallet {wallet_id} for user {user_name}")
-                    return True
-                    
-        except Exception as e:
-            logger.error(f"Failed to save banker wallet: {e}")
-            return False
-    
-    def get_banker_wallet(self, wallet_id: str) -> Dict[str, Any]:
-        """Get a banker wallet by ID."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    
-                    cursor.execute("""
-                        SELECT wallet_id, user_name, balance, wallet_type, created_at, updated_at
-                        FROM banker_wallets
-                        WHERE wallet_id = ?
-                    """, (wallet_id,))
-                    
-                    result = cursor.fetchone()
-                    if result:
-                        return {
-                            'wallet_id': result[0],
-                            'user_name': result[1],
-                            'balance': result[2],
-                            'wallet_type': result[3],
-                            'created_at': result[4],
-                            'updated_at': result[5]
-                        }
-                    else:
-                        return None
-                    
-        except Exception as e:
-            logger.error(f"Failed to get banker wallet: {e}")
-            return None
-    
-    def update_banker_balance(self, wallet_id: str, new_balance: int) -> bool:
-        """Update banker wallet balance."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    
-                    cursor.execute("""
-                        UPDATE banker_wallets 
-                        SET balance = ?, updated_at = ?
-                        WHERE wallet_id = ?
-                    """, (new_balance, datetime.now().isoformat(), wallet_id))
-                    
-                    conn.commit()
-                    logger.info(f"Updated balance for wallet {wallet_id} to {new_balance}")
-                    return True
-                    
-        except Exception as e:
-            logger.error(f"Failed to update banker balance: {e}")
-            return False
-    
-    def save_banker_transaction(self, from_wallet: str, to_wallet: str, amount: int, 
-                                transaction_type: str, description: str = None, created_by: str = None) -> int:
-        """Save a banker transaction."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    
-                    cursor.execute("""
-                        INSERT INTO banker_transactions 
-                        (from_wallet, to_wallet, amount, transaction_type, description, created_by, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        from_wallet, to_wallet, amount, transaction_type, description, created_by, datetime.now().isoformat()
-                    ))
-                    
-                    transaction_id = cursor.lastrowid
-                    conn.commit()
-                    
-                    logger.info(f"Saved banker transaction {transaction_id}: {from_wallet} -> {to_wallet}, {amount} coins")
-                    return transaction_id
-                    
-        except Exception as e:
-            logger.error(f"Failed to save banker transaction: {e}")
-            raise
-    
-    def get_banker_transactions(self, wallet_id: str = None, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get banker transactions (optionally filtered by wallet)."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    
-                    if wallet_id:
-                        cursor.execute("""
-                            SELECT id, from_wallet, to_wallet, amount, transaction_type, 
-                                   description, created_by, created_at
-                            FROM banker_transactions
-                            WHERE from_wallet = ? OR to_wallet = ?
-                            ORDER BY created_at DESC
-                            LIMIT ?
-                        """, (wallet_id, wallet_id, limit))
-                    else:
-                        cursor.execute("""
-                            SELECT id, from_wallet, to_wallet, amount, transaction_type, 
-                                   description, created_by, created_at
-                            FROM banker_transactions
-                            ORDER BY created_at DESC
-                            LIMIT ?
-                        """, (limit,))
-                    
-                    transactions = []
-                    for row in cursor.fetchall():
-                        transactions.append({
-                            'id': row[0],
-                            'from_wallet': row[1],
-                            'to_wallet': row[2],
-                            'amount': row[3],
-                            'transaction_type': row[4],
-                            'description': row[5],
-                            'created_by': row[6],
-                            'created_at': row[7]
-                        })
-                    
-                    return transactions
-                    
-        except Exception as e:
-            logger.error(f"Failed to get banker transactions: {e}")
-            return []
-    
-    def get_all_banker_wallets(self) -> List[Dict[str, Any]]:
-        """Get all banker wallets."""
-        try:
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    
-                    cursor.execute("""
-                        SELECT wallet_id, user_name, balance, wallet_type, created_at, updated_at
-                        FROM banker_wallets
-                        ORDER BY created_at DESC
-                    """)
-                    
-                    wallets = []
-                    for row in cursor.fetchall():
-                        wallets.append({
-                            'wallet_id': row[0],
-                            'user_name': row[1],
-                            'balance': row[2],
-                            'wallet_type': row[3],
-                            'created_at': row[4],
-                            'updated_at': row[5]
-                        })
-                    
-                    return wallets
-                    
-        except Exception as e:
-            logger.error(f"Failed to get all banker wallets: {e}")
-            return []
-    
+    # NOTE: Banker methods (save_banker_wallet, get_banker_wallet, update_banker_balance,
+    # save_banker_transaction, get_banker_transactions, get_all_banker_wallets) have been
+    # moved to roles/banker/db_banker_core.py (dedicated databases/{server_id}/roles/banker.db).
+    # Use roles.banker.banker_db.get_banker_roles_db_instance(server_id) instead.
+
     # ─── Beggar subrole methods (NoSQL-backed) ───
 
     def update_beggar_donation(self, user_id: str, user_name: str, amount: int, reason: str = "") -> bool:

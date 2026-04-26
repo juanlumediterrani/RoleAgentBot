@@ -8,15 +8,8 @@ from .state import _get_canvas_beggar_state
 from .canvas_base import CanvasModal
 
 logger = core.logger
-get_banker_db_instance = None  # Now using roles_db directly
 get_server_key = core.get_server_key
 is_admin = core.is_admin
-
-# Import roles database for banker functionality
-try:
-    from agent_roles_db import get_roles_db_instance
-except ImportError:
-    get_roles_db_instance = None
 
 # Import agent engine for subrole task execution
 try:
@@ -60,7 +53,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
     server_id = "Unknown Server"
     history = []
 
-    if guild is not None and get_roles_db_instance is not None:
+    if guild is not None:
         try:
             server_key = get_server_key(guild)
             server_id = str(guild.id)
@@ -83,7 +76,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
 
                 balance = db_banker_roles.get_balance(user_id)
                 # Get transaction history from the banker database
-                history = db_banker_roles.roles_db.get_banker_transactions(user_id, limit=5)
+                history = db_banker_roles.get_transaction_history(user_id, limit=5)
 
                 tae = db_banker_roles.get_tae(server_id)
         except Exception as error:

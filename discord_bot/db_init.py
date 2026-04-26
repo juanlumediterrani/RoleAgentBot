@@ -7,7 +7,6 @@ from agent_logging import get_logger
 from agent_db import get_db_instance
 from agent_roles_db import get_roles_db_instance
 import asyncio
-import sqlite3
 import os
 import shutil
 import json
@@ -364,20 +363,12 @@ async def _bootstrap_daily_memory_if_missing(server_key: str, guild_name: str, l
 
     try:
         db_instance = get_db_instance(server_key)
-        with db_instance._lock:
-            conn = sqlite3.connect(db_instance.db_path)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT summary FROM daily_memory
-                WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
-                ORDER BY updated_at DESC LIMIT 1
-            """)
-            result = cursor.fetchone()
-            conn.close()
-
-        if result and result[0] and result[0].strip():
-            log.info(f"🧠 Daily memory already exists for '{guild_name}': {result[0][:50]}...")
-            return
+        most_recent = db_instance.get_most_recent_daily_memory_record()
+        if most_recent:
+            existing_summary = (most_recent.get("summary") or "").strip()
+            if existing_summary and existing_summary != "[Error in internal task]":
+                log.info(f"🧠 Daily memory already exists for '{guild_name}': {existing_summary[:50]}...")
+                return
 
         log.info(f"🧠 {context_label} for '{guild_name}', scheduling daily memory bootstrap...")
 

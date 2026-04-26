@@ -112,7 +112,7 @@ class NewsWatcherWizard:
         ]
         
         method_select = discord.ui.Select(
-            placeholder=dropdown_descriptions.get("wizard_method_placeholder", "🔧 Seleccionar método de suscripción..."),
+            placeholder=dropdown_descriptions.get("wizard_method_placeholder", "🔧 Select subscription method..."),
             options=method_options,
             min_values=1,
             max_values=1,
@@ -142,7 +142,7 @@ class NewsWatcherWizard:
         ]
         
         category_select = discord.ui.Select(
-            placeholder=dropdown_descriptions.get("wizard_category_placeholder", "📂 Seleccionar categoría de noticias..."),
+            placeholder=dropdown_descriptions.get("wizard_category_placeholder", "📂 Select news category..."),
             options=category_options,
             min_values=1,
             max_values=1,

@@ -462,33 +462,44 @@ class DatabaseRoleNewsWatcher:
 
 
     def get_premises_with_context(self, user_id: str) -> tuple:
-        """Get user premises with context.
-        
+        """Get user premises with context (NoSQL-backed).
+
         Args:
             user_id: User ID
-            
+
         Returns:
             Tuple of (premises_list, context_string)
         """
         try:
-            with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT premises, context
-                    FROM watcher_premises
-                    WHERE user_id = ?
-                    ORDER BY id
-                ''', (user_id,))
-                rows = cursor.fetchall()
-                
-                premises = [row[0] for row in rows if row[0]]
-                contexts = [row[1] for row in rows if row[1]]
-                context = contexts[0] if contexts else None
-                
-                return premises, context
+            return self._nosql.get_watcher_premises(user_id)
         except Exception as e:
             logger.exception(f"Error getting premises with context: {e}")
             return [], None
+
+    def add_user_premise(self, user_id: str, premise: str) -> tuple:
+        """Add a premise for a user (NoSQL-backed). Returns (success, message)."""
+        try:
+            max_premises = self._get_premises_limit()
+            return self._nosql.add_watcher_premise(user_id, premise, max_premises)
+        except Exception as e:
+            logger.exception(f"Error adding user premise: {e}")
+            return False, str(e)
+
+    def modify_user_premise(self, user_id: str, index: int, new_premise: str) -> tuple:
+        """Modify a premise by 1-based index (NoSQL-backed). Returns (success, message)."""
+        try:
+            return self._nosql.modify_watcher_premise(user_id, index, new_premise)
+        except Exception as e:
+            logger.exception(f"Error modifying user premise: {e}")
+            return False, str(e)
+
+    def delete_user_premise(self, user_id: str, index: int) -> tuple:
+        """Delete a premise by 1-based index (NoSQL-backed). Returns (success, message)."""
+        try:
+            return self._nosql.delete_watcher_premise(user_id, index)
+        except Exception as e:
+            logger.exception(f"Error deleting user premise: {e}")
+            return False, str(e)
 
 
     def get_available_categories(self) -> list:

@@ -1500,7 +1500,8 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     # Try to get database and records
     database = None
     try:
-        database = AgentDatabase(server_id=server_id)
+        from agent_db import get_db_instance
+        database = get_db_instance(server_id)
         recent_record = database.get_most_recent_memory_record()
         relationship_record = database.get_user_relationship_memory(author_id)
         daily_record = database.get_most_recent_daily_memory_record()
