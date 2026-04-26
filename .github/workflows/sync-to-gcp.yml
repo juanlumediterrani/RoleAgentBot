@@ -1,7 +1,7 @@
 name: Sync to Google Cloud Storage
 on:
   push:
-    branches: [ main, develop, feature/* ] # Añade las ramas que uses
+    branches: [ main, develop, feature/*, 0.6.* ] # Añade los patrones de ramas que uses
 
 jobs:
   deploy:
