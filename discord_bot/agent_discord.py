@@ -704,8 +704,8 @@ async def on_ready():
             news_watcher_global_scheduler.start()
             logger.info("📰 News Watcher global scheduler started (legacy)")
         if not news_watcher_subscription_processor.is_running():
-        news_watcher_subscription_processor.start()
-        logger.info("📰 News Watcher subscription processor started")
+            news_watcher_subscription_processor.start()
+            logger.info("📰 News Watcher subscription processor started")
     
     await set_mc_presence_if_enabled()
     
@@ -1557,6 +1557,32 @@ async def _process_chat_message(message):
 
 
 # --- BOT STARTUP ---
+
+async def run_bot_async():
+    """Async entry point for in-process supervised execution.
+
+    Used by run.py via the Supervisor. Replaces subprocess-based launching.
+    Raises on fatal errors so the Supervisor can apply restart policy.
+    """
+    import sys
+    logger.info("🚀 Starting Discord bot (in-process)...")
+    logger.info(f"📋 Python version: {sys.version}")
+    logger.info(f"🔑 Discord token configured: {bool(get_discord_token())}")
+    logger.info(f"🎭 Personality: {PERSONALITY.get('name', 'unknown')}")
+    logger.info(f"🤖 Bot display name: {_personality_name}")
+    logger.info(f"🔧 Command prefix: {_cmd_prefix}")
+    try:
+        async with bot:
+            await bot.start(get_discord_token())
+    except asyncio.CancelledError:
+        logger.info("👋 Bot cancelled, shutting down...")
+        try:
+            await bot.close()
+        except Exception:
+            pass
+        raise
+
+
 if __name__ == "__main__":
     try:
         import sys

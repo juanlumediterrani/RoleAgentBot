@@ -12,7 +12,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
         async def dummy():
             pass
 
-        sched = JobScheduler(tick_seconds=0.05)
+        sched = JobScheduler(tick_seconds=0.05, enable_persistence=False)
         job = sched.register(
             "test",
             dummy,
@@ -32,7 +32,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
         async def periodic():
             runs.append(1)
 
-        sched = JobScheduler(tick_seconds=0.02)
+        sched = JobScheduler(tick_seconds=0.02, enable_persistence=False)
         sched.register(
             "p",
             periodic,
@@ -50,7 +50,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
         async def once():
             runs.append(1)
 
-        sched = JobScheduler(tick_seconds=0.05)
+        sched = JobScheduler(tick_seconds=0.05, enable_persistence=False)
         sched.register("once", once, Schedule.every(seconds=3600))
         asyncio.create_task(sched.run_forever())
         await asyncio.sleep(0.02)
@@ -67,7 +67,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
         async def counter():
             runs.append(1)
 
-        sched = JobScheduler(tick_seconds=0.02)
+        sched = JobScheduler(tick_seconds=0.02, enable_persistence=False)
         sched.register("c", counter, Schedule.every(seconds=0.1))
         asyncio.create_task(sched.run_forever())
         await asyncio.sleep(0.15)
@@ -90,7 +90,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
         async def slow():
             await asyncio.sleep(10)
 
-        sched = JobScheduler(tick_seconds=0.05)
+        sched = JobScheduler(tick_seconds=0.05, enable_persistence=False)
         job = sched.register("slow", slow, Schedule.every(seconds=3600), timeout_seconds=0.1)
         self.assertEqual(job.timeout_seconds, 0.1)
 
@@ -112,7 +112,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
             if len(attempts) < 3:
                 raise RuntimeError("boom")
 
-        sched = JobScheduler(tick_seconds=0.02)
+        sched = JobScheduler(tick_seconds=0.02, enable_persistence=False)
         sched.register(
             "flaky",
             flaky,
@@ -132,7 +132,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
         async def fail():
             raise RuntimeError("fail")
 
-        sched = JobScheduler(tick_seconds=0.05)
+        sched = JobScheduler(tick_seconds=0.05, enable_persistence=False)
         breaker = CircuitBreaker(failure_threshold=2, recovery_seconds=0.1)
         job = sched.register("f", fail, Schedule.every(seconds=3600), breaker=breaker)
         self.assertEqual(job.breaker, breaker)
@@ -158,7 +158,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.1)
             active -= 1
 
-        sched = JobScheduler(tick_seconds=0.02)
+        sched = JobScheduler(tick_seconds=0.02, enable_persistence=False)
         sched.register_semaphore("lim", max_concurrent=2)
         sched.register("h1", holder, Schedule.every(seconds=3600))
         sched.register("h2", holder, Schedule.every(seconds=3600))
@@ -183,7 +183,7 @@ class JobSchedulerTests(unittest.IsolatedAsyncioTestCase):
         async def dummy():
             pass
 
-        sched = JobScheduler(tick_seconds=0.02)
+        sched = JobScheduler(tick_seconds=0.02, enable_persistence=False)
         sched.register("x", dummy, Schedule.every(seconds=3600))
         self.assertIn("x", sched.status())
         sched.unregister("x")

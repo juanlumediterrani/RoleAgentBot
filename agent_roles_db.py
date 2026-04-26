@@ -78,46 +78,9 @@ class RolesDatabase:
                     cursor = conn.cursor()
                     cursor.execute("PRAGMA journal_mode=WAL;")
                     
-                    # Nordic Runes table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS nordic_runes (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            user_id TEXT NOT NULL,
-                            question TEXT,
-                            runes_drawn TEXT NOT NULL,
-                            interpretation TEXT NOT NULL,
-                            reading_type TEXT NOT NULL,
-                            created_at TEXT NOT NULL
-                        )
-                    """)
-                    
-                    # Ring accusations history table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS ring_accusations (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            accuser_id TEXT,
-                            accused_id TEXT,
-                            accusation TEXT,
-                            evidence TEXT,
-                            created_at TEXT NOT NULL
-                        )
-                    """)
-                    
-                    # Dice Game statistics table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS dice_game_stats (
-                            user_id TEXT NOT NULL PRIMARY KEY,
-                            total_plays INTEGER DEFAULT 0,
-                            total_bet INTEGER DEFAULT 0,
-                            total_won INTEGER DEFAULT 0,
-                            pots_won INTEGER DEFAULT 0,
-                            biggest_prize INTEGER DEFAULT 0,
-                            last_play TEXT,
-                            created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL
-                        )
-                    """)
-                    
+                    # NOTE: nordic_runes, ring_accusations, dice_game_stats migrated to NoSQL
+                    # See role_configs_nosql.py (tables removed in Phase E)
+
                     # Banker wallets and transactions table
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS banker_wallets (
@@ -145,136 +108,18 @@ class RolesDatabase:
                         )
                     """)
                     
-                    # News Watcher subscriptions table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS watcher_subscriptions (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            user_id TEXT,
-                            channel_id TEXT,
-                            category TEXT NOT NULL,
-                            feed_id INTEGER,
-                            premises TEXT,
-                            keywords TEXT,
-                            method TEXT NOT NULL DEFAULT 'general',
-                            is_active INTEGER DEFAULT 1,
-                            subscribed_at TEXT NOT NULL,
-                            created_by TEXT,
-                            UNIQUE(user_id, channel_id, category, method)
-                        )
-                    """)
-                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_user ON watcher_subscriptions (user_id)')
-                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_channel ON watcher_subscriptions (channel_id)')
-                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_category ON watcher_subscriptions (category)')
-                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_method ON watcher_subscriptions (method)')
-                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_watcher_subscriptions_active ON watcher_subscriptions (is_active)')
-                    
+                    # NOTE: watcher_subscriptions migrated to NoSQL (role_configs_nosql.py)
+
                     # Migration: add created_by column to banker_transactions if it doesn't exist
                     cursor.execute("PRAGMA table_info(banker_transactions)")
                     columns = [row[1] for row in cursor.fetchall()]
                     if "created_by" not in columns:
                         cursor.execute("ALTER TABLE banker_transactions ADD COLUMN created_by TEXT")
 
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS poe2_subscriptions (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            user_id TEXT NOT NULL,
-                            server_id TEXT NOT NULL,
-                            league TEXT NOT NULL DEFAULT 'Standard',
-                            tracked_items TEXT DEFAULT '[]',
-                            purchases TEXT DEFAULT '[]',
-                            created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL,
-                            UNIQUE(user_id, server_id)
-                        )
-                    """)
-                    
-                    # Dice Game games history table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS dice_game_history (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            user_id TEXT NOT NULL,
-                            user_name TEXT NOT NULL,
-                            bet INTEGER NOT NULL,
-                            dice TEXT NOT NULL,
-                            combination TEXT NOT NULL,
-                            prize INTEGER NOT NULL,
-                            pot_before INTEGER NOT NULL,
-                            pot_after INTEGER NOT NULL,
-                            created_at TEXT NOT NULL
-                        )
-                    """)
-                    
-                    # Beggar subrole table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS beggar_subrole (
-                            user_id TEXT NOT NULL PRIMARY KEY,
-                            user_name TEXT NOT NULL,
-                            total_donated INTEGER DEFAULT 0,
-                            weekly_donated INTEGER DEFAULT 0,
-                            donation_count INTEGER DEFAULT 0,
-                            weekly_donation_count INTEGER DEFAULT 0,
-                            first_donation TEXT,
-                            last_donation TEXT,
-                            last_donation_amount INTEGER DEFAULT 0,
-                            last_reason TEXT DEFAULT '',
-                            created_at TEXT NOT NULL,
-                            updated_at TEXT NOT NULL
-                        )
-                    """)
-                    
-                    # Beggar request history table
-                    cursor.execute("""
-                        CREATE TABLE IF NOT EXISTS beggar_request_history (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            user_id TEXT NOT NULL,
-                            user_name TEXT NOT NULL,
-                            request_type TEXT NOT NULL,
-                            message TEXT NOT NULL,
-                            channel_id TEXT,
-                            metadata TEXT,
-                            created_at TEXT NOT NULL
-                        )
-                    """)
-                    
-                    for migration_sql in [
-                        "ALTER TABLE beggar_subrole ADD COLUMN weekly_donated INTEGER DEFAULT 0",
-                        "ALTER TABLE beggar_subrole ADD COLUMN weekly_donation_count INTEGER DEFAULT 0",
-                        "ALTER TABLE beggar_subrole ADD COLUMN last_donation_amount INTEGER DEFAULT 0",
-                        "ALTER TABLE beggar_subrole ADD COLUMN last_reason TEXT DEFAULT ''",
-                        "ALTER TABLE poe2_subscriptions ADD COLUMN purchases TEXT DEFAULT '[]'",
-                    ]:
-                        try:
-                            cursor.execute(migration_sql)
-                        except sqlite3.OperationalError as migration_error:
-                            if "duplicate column name" not in str(migration_error).lower():
-                                raise
-                    
-                    # Create indexes for nordic_runes
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nordic_runes_user_id ON nordic_runes(user_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_nordic_runes_created_at ON nordic_runes(created_at)")
-                    
-                    # Create indexes for ring tables
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_ring_accusations_created_at ON ring_accusations(created_at)")
-                    
-                    # Create indexes for dice game tables
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_history_user_id ON dice_game_history(user_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_history_created_at ON dice_game_history(created_at)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_dice_game_stats_user_id ON dice_game_stats(user_id)")
-                    
-                    # Create indexes for beggar subrole table
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_user_id ON beggar_subrole(user_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_total_donated ON beggar_subrole(total_donated)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_weekly_donated ON beggar_subrole(weekly_donated)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_subrole_created_at ON beggar_subrole(created_at)")
-                    
-                    # Create indexes for beggar request history table
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_request_history_request_type ON beggar_request_history(request_type)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_beggar_request_history_created_at ON beggar_request_history(created_at)")
+                    # NOTE: poe2_subscriptions, dice_game_history, beggar_subrole,
+                    # beggar_request_history migrated to NoSQL (role_configs_nosql.py).
+                    # Indexes for these tables also removed.
 
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_poe2_subscriptions_server_id ON poe2_subscriptions(server_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_poe2_subscriptions_user_id ON poe2_subscriptions(user_id)")
-                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_poe2_subscriptions_league ON poe2_subscriptions(league)")
-                    
                     # Create indexes for banker tables
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_wallets_wallet_id ON banker_wallets(wallet_id)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_banker_transactions_from_wallet ON banker_transactions(from_wallet)")

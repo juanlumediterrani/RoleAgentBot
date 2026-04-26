@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from roles.news_watcher.global_news_nosql import GlobalFeedsNoSQL, get_global_news_nosql
+from roles.news_watcher.global_feeds_nosql import GlobalFeedsNoSQL
 
 
 class NewsWatcherNoSQLE2ETest(unittest.TestCase):

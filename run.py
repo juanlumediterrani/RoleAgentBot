@@ -48,53 +48,51 @@ def load_config() -> dict:
 
 # ── Subprocess launcher ───────────────────────────────────────────────────────
 
-_persistent_processes: dict = {}
+_persistent_tasks: dict = {}
+
+# Mapping from script path to module path (for in-process imports)
+def _script_to_module(script_rel: str) -> str:
+    """Convert 'roles/news_watcher/news_watcher.py' -> 'roles.news_watcher.news_watcher'."""
+    return script_rel.replace("/", ".").removesuffix(".py")
+
 
 async def launch_role(name: str, script_rel: str, persistent: bool = False):
-    """Run the role script as a subprocess. Persistent roles are launched once and don't block."""
+    """Run the role's async main() in-process (replaces subprocess approach).
+
+    For non-persistent roles: awaits the coroutine and logs its result.
+    For persistent roles: schedules the coroutine as a background task and
+    keeps a handle in _persistent_tasks to avoid duplicate launches.
+    """
     script = BASE_DIR / script_rel
     if not script.exists():
         logger.warning(f"[run] ⚠️  Script not found for '{name}': {script}")
         return
 
     if persistent:
-        current_proc = _persistent_processes.get(name)
-        if current_proc and current_proc.returncode is None:
-            logger.info(f"[run] 🔄 Persistent role '{name}' already active (PID {current_proc.pid}), skipping relaunch")
+        current_task = _persistent_tasks.get(name)
+        if current_task and not current_task.done():
+            logger.info(f"[run] 🔄 Persistent role '{name}' already active, skipping relaunch")
             return
 
-    logger.info(f"[run] 🚀 Running role '{name}' → {script.name}")
+    module_name = _script_to_module(script_rel)
+    logger.info(f"[run] 🚀 Running role '{name}' → {module_name}.main()")
     try:
-        env = os.environ.copy()
-        env["ROLE_AGENT_PROCESS"] = "1"
-
-        proc = await asyncio.create_subprocess_exec(
-            PYTHON, str(script),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            cwd=str(BASE_DIR),
-            env=env,
-        )
+        import importlib
+        module = importlib.import_module(module_name)
+        if not hasattr(module, "main"):
+            logger.error(f"[run] ❌ Module '{module_name}' has no async main()")
+            return
 
         if persistent:
-            _persistent_processes[name] = proc
-            logger.info(f"[run] 🔄 Persistent role '{name}' launched in background (PID {proc.pid})")
+            task = asyncio.create_task(module.main(), name=f"role:{name}")
+            _persistent_tasks[name] = task
+            logger.info(f"[run] 🔄 Persistent role '{name}' launched as task")
             return
 
-        stdout, _ = await proc.communicate()
-        output = stdout.decode(errors="replace").strip()
-        if output:
-            for line in output.splitlines():
-                match = re.match(r'^\s*\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}\s+(.+)$', line.strip())
-                if match:
-                    logger.info(f"  [{name}] {match.group(1)}")
-                else:
-                    logger.info(f"  [{name}] {line.strip()}")
-        exit_code = proc.returncode
-        status = "✅" if exit_code == 0 else f"⚠️  (code {exit_code})"
-        logger.info(f"[run] {status} Role '{name}' finished")
+        await module.main()
+        logger.info(f"[run] ✅ Role '{name}' finished")
     except Exception as e:
-        logger.error(f"[run] ❌ Error launching '{name}': {e}")
+        logger.error(f"[run] ❌ Error launching '{name}': {e}", exc_info=True)
 
 async def execute_recent_memory_summary_all_servers():
     from agent_db import get_all_server_ids
@@ -422,22 +420,29 @@ async def scheduler(config: dict):
 
 async def discord_bot():
     """
-    Keeps the main bot (agent_discord.py) alive as a subprocess.
-    If it dies, relaunches automatically after 10s.
-    Only used when platform == "discord".
+    Run the main Discord bot in-process with auto-restart on failure.
+
+    Replaces the previous subprocess approach. The bot now runs as a
+    coroutine in the same event loop as the scheduler and supervisor,
+    eliminating IPC overhead and enabling shared state.
+
+    On unhandled exceptions, waits 10s and restarts (legacy compatibility).
+    For richer restart policies, use the Supervisor (run_supervisor.py).
     """
+    from discord_bot.agent_discord import run_bot_async
+
     while True:
-        logger.info("[run] 🤖 Starting main Discord bot...")
-        proc = await asyncio.create_subprocess_exec(
-            PYTHON, "-m", "discord_bot.agent_discord",
-            cwd=str(BASE_DIR),
-        )
-        exit_code = await proc.wait()
-        if exit_code == 0:
+        logger.info("[run] 🤖 Starting main Discord bot (in-process)...")
+        try:
+            await run_bot_async()
             logger.info("[run] 👋 Main bot terminated cleanly.")
             break
-        logger.warning(f"[run] ⚠️  Main bot terminated with code {exit_code}. Relaunching in 10s...")
-        await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            logger.info("[run] 👋 Main bot cancelled.")
+            raise
+        except Exception as e:
+            logger.warning(f"[run] ⚠️  Main bot crashed: {e}. Relaunching in 10s...")
+            await asyncio.sleep(10)
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
@@ -463,7 +468,7 @@ async def main():
         run_sup = get_run_supervisor()
         await run_sup.start()
         run_sup.register_memory_jobs(config)
-        run_sup.register_mc_actor(config)
+        await run_sup.register_mc_actor(config)
         logger.info("[run] 🔄 RunSupervisor started with memory jobs and MC actor (new infrastructure)")
     except Exception as e:
         logger.error(f"[run] ❌ Failed to start RunSupervisor: {e}")

@@ -127,27 +127,32 @@ class RunSupervisor:
 
         logger.info("[RunSupervisor] Registered 5 memory maintenance jobs")
 
-    def register_persistent_actor(
+    async def register_persistent_actor(
         self,
         name: str,
         factory: Callable,
         restart_policy: Optional[RestartPolicy] = None,
     ):
-        """Register a persistent actor with Supervisor.
+        """Register a persistent actor with Supervisor (async).
 
-        This replaces the existing _persistent_processes tracking for roles like MC.
+        Uses Supervisor.add_actor() which auto-starts the coroutine.
         """
         if restart_policy is None:
-            restart_policy = RestartPolicy(max_retries=3, backoff_seconds=30)
+            restart_policy = RestartPolicy(
+                type=RestartType.PERMANENT,
+                max_restarts=3,
+                base_seconds=30.0,
+            )
 
-        self.supervisor.register_actor(
+        await self.supervisor.add_actor(
             name,
             factory,
-            restart_policy=restart_policy,
+            policy=restart_policy,
+            autostart=True,
         )
         logger.info(f"[RunSupervisor] Registered persistent actor '{name}'")
 
-    def register_mc_actor(self, config: dict):
+    async def register_mc_actor(self, config: dict):
         """Register MC role as a persistent actor.
 
         MC (Music Controller) is a persistent role that needs to run continuously.
@@ -158,22 +163,19 @@ class RunSupervisor:
             logger.info("[RunSupervisor] MC role disabled in config, skipping actor registration")
             return
 
-        # Create factory for MC actor
+        # Create factory for MC actor (called by Supervisor on each restart)
         async def mc_actor_factory():
             """Factory for MC actor."""
-            try:
-                # Import MC role
-                from roles.mc.mc import run_mc_loop
-
-                # Run MC loop (this should be a long-running coroutine)
-                await run_mc_loop()
-            except Exception as e:
-                logger.error(f"[RunSupervisor] MC actor error: {e}")
-                raise
+            from roles.mc.mc import run_mc_loop
+            await run_mc_loop()
 
         # Register MC as persistent actor with aggressive restart policy
-        restart_policy = RestartPolicy(max_retries=5, backoff_seconds=10)
-        self.register_persistent_actor("mc", mc_actor_factory, restart_policy)
+        restart_policy = RestartPolicy(
+            type=RestartType.PERMANENT,
+            max_restarts=5,
+            base_seconds=10.0,
+        )
+        await self.register_persistent_actor("mc", mc_actor_factory, restart_policy)
         logger.info("[RunSupervisor] Registered MC actor (persistent)")
 
     async def trigger_job(self, name: str) -> bool:
