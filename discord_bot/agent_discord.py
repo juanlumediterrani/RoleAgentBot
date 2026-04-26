@@ -25,6 +25,8 @@ from discord_bot.discord_utils import (
     set_is_connected, is_role_enabled_check,
     send_personality_embed_dm,
 )
+# Import the new JobScheduler-based scheduler
+from discord_bot.discord_scheduler import get_discord_scheduler
 try:
     from discord_bot.canvas.server_config import get_server_language as _get_server_language
 except Exception:
@@ -680,28 +682,28 @@ async def on_ready():
     set_bot_discord_id(bot.user.id)
     logger.info(f"🤖 Bot Discord ID registered: {bot.user.id}")
 
-    # Automatic tasks
-    if not database_cleanup.is_running():
-        database_cleanup.start()
-        logger.info("🧹 DB cleanup task started")
-    
-    # Start Discord task scheduler for Discord-dependent tasks (beggar, news_watcher, etc)
-    if not discord_task_scheduler.is_running():
-        discord_task_scheduler.start()
-        logger.info("🎭 Discord task scheduler started")
-    
-    # Start Treasure Hunter global scheduler (runs based on agent_config, not per-server)
-    if not treasure_hunter_global_scheduler.is_running():
-        treasure_hunter_global_scheduler.start()
-        logger.info("💎 Treasure Hunter global scheduler started")
-    
-    # Start News Watcher global scheduler (downloads news in background based on agent_config)
-    if not news_watcher_global_scheduler.is_running():
-        news_watcher_global_scheduler.start()
-        logger.info("📰 News Watcher global scheduler started")
-    
-    # Start News Watcher subscription processor scheduler (processes subscriptions based on last_processed_at)
-    if not news_watcher_subscription_processor.is_running():
+    # Automatic tasks - using new JobScheduler-based scheduler
+    try:
+        discord_scheduler = get_discord_scheduler(bot, agent_config)
+        await discord_scheduler.start()
+        logger.info("🔄 Discord JobScheduler started (replaces @tasks.loop schedulers)")
+    except Exception as e:
+        logger.error(f"❌ Failed to start Discord JobScheduler: {e}")
+        logger.warning("⚠️ Falling back to legacy @tasks.loop schedulers")
+        # Fallback to legacy schedulers if new scheduler fails
+        if not database_cleanup.is_running():
+            database_cleanup.start()
+            logger.info("🧹 DB cleanup task started (legacy)")
+        if not discord_task_scheduler.is_running():
+            discord_task_scheduler.start()
+            logger.info("🎭 Discord task scheduler started (legacy)")
+        if not treasure_hunter_global_scheduler.is_running():
+            treasure_hunter_global_scheduler.start()
+            logger.info("💎 Treasure Hunter global scheduler started (legacy)")
+        if not news_watcher_global_scheduler.is_running():
+            news_watcher_global_scheduler.start()
+            logger.info("📰 News Watcher global scheduler started (legacy)")
+        if not news_watcher_subscription_processor.is_running():
         news_watcher_subscription_processor.start()
         logger.info("📰 News Watcher subscription processor started")
     

@@ -457,7 +457,21 @@ async def main():
     logger.info(f"[run] 📋 Configuration loaded from: {CONFIG_FILE}")
     logger.info(f"[run] 🤖 Base directory: {BASE_DIR}")
 
+    # Initialize RunSupervisor for new infrastructure
+    try:
+        from run_supervisor import get_run_supervisor
+        run_sup = get_run_supervisor()
+        await run_sup.start()
+        run_sup.register_memory_jobs(config)
+        run_sup.register_mc_actor(config)
+        logger.info("[run] 🔄 RunSupervisor started with memory jobs and MC actor (new infrastructure)")
+    except Exception as e:
+        logger.error(f"[run] ❌ Failed to start RunSupervisor: {e}")
+        logger.warning("[run] ⚠️ Continuing with legacy scheduler")
+        run_sup = None
+
     if platform == "discord":
+        # Use legacy scheduler if RunSupervisor failed, otherwise both coexist
         always_on_tasks = [discord_bot(), scheduler(config)]
     elif platform == "telegram":
         logger.info("[run] ℹ️  Telegram selected — main bot pending implementation")
@@ -466,7 +480,12 @@ async def main():
         logger.error(f"[run] ❌ Unknown platform: {platform}")
         sys.exit(1)
 
-    await asyncio.gather(*always_on_tasks)
+    try:
+        await asyncio.gather(*always_on_tasks)
+    finally:
+        # Cleanup on shutdown
+        if run_sup:
+            await run_sup.stop()
 
 if __name__ == "__main__":
     try:

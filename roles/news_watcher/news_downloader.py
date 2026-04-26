@@ -242,9 +242,9 @@ async def download_all_feeds_global(feeds: list) -> dict:
         Dict with feed_url as key and list of new items as value
     """
     try:
-        from roles.news_watcher.global_news_db import get_global_news_db
-        
-        global_db = get_global_news_db()
+        from global_news_nosql import get_global_news_nosql
+
+        global_db = get_global_news_nosql()
         downloader = NewsDownloader(global_db)
         
         results = {}

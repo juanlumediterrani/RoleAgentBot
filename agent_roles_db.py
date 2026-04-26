@@ -3,13 +3,15 @@ Roles Database Module
 Centralized database management for all roles and subroles configuration.
 """
 
-import sqlite3
 import json
-import hashlib
-from datetime import datetime
-from typing import List, Dict, Optional, Any
-from pathlib import Path
+import sqlite3
 import threading
+import os
+import stat
+import warnings
+from datetime import datetime
+from pathlib import Path
+from typing import Optional, List, Dict, Any
 from agent_logging import get_logger
 from agent_db import get_server_db_path_fallback, get_database_path
 

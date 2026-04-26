@@ -885,3 +885,184 @@ The current architecture has known concurrency limitations that need mitigation 
 6. Add metrics for active calls, latency, and queue depth
 
 When any of these is specified more precisely in code, extend the corresponding section above rather than adding historical "refactor note" sections at the bottom.
+
+---
+
+## 20. NoSQL + Supervisor + JobScheduler Architecture (2026 Refactor)
+
+### 20.1 Overview
+
+The bot has been refactored from SQLite + subprocess-based architecture to NoSQL (JSON/JSONL) + in-process Supervisor + JobScheduler. This eliminates ~5000 LOC of subprocess management code and provides unified process management with restart policies, timeouts, semaphores, circuit breakers, and observability.
+
+### 20.2 Persistence Layer (NoSQL)
+
+**Modules:**
+- `persistence/json_store.py`: Thread-safe atomic JSON document storage with schema versioning and backups
+- `persistence/jsonl_store.py`: Append-only JSONL with rotation and retention limits
+- `persistence/agent_state.py`: Facade for agent state using NoSQL backend (same API as AgentDatabase)
+- `agent_memory_nosql.py`: NoSQL backend for agent memory (state.json + interactions.jsonl)
+- `global_news_nosql.py`: NoSQL backend for global news tracking
+- `role_configs_nosql.py`: NoSQL backend for role configurations (except banker)
+- `poe2_nosql.py`: NoSQL backend for POE2 price history and items catalog
+
+**File Structure:**
+```
+databases/shared/
+├── news/
+│   ├── seen.json              # Global news tracking
+│   └── feeds_health.json      # Feed health status
+├── poe2/
+│   ├── prices_latest.json     # Latest prices per item
+│   ├── prices_history.jsonl   # Price history (rotating)
+│   └── items_catalog.json     # Items catalog
+└── scheduler_state.json       # Job scheduler state persistence
+
+databases/{server_id}/
+├── state.json                 # Agent state (daily/recent memory, relationships, recollections)
+└── interactions.jsonl         # Interaction log (rotating)
+```
+
+**Retention Limits:**
+- Daily memory: 14 paragraphs
+- Recent memory: 12 paragraphs
+- Recollections: 50 entries
+- Relationships: 200 entries
+- Interactions: 250 entries (last 90 days)
+- POE2 price history: 30 days
+- News history: 30 days
+
+### 20.3 Process Management (Supervisor + JobScheduler)
+
+**Modules:**
+- `supervisor/supervisor.py`: Actor manager with restart policies and backoff
+- `supervisor/scheduler.py`: Async job scheduler with retries, timeouts, semaphores, circuit breakers
+- `supervisor/heartbeat.py`: Health monitoring for actors
+- `supervisor/policies.py`: Restart policies (permanent, transient, one-shot)
+- `supervisor/ipc.py`: Unix-socket IPC for runtime control
+- `supervisor/scheduler_state.py`: Scheduler state persistence (next_run, status, last_shutdown)
+- `run_supervisor.py`: RunSupervisor wrapper integrating Supervisor + JobScheduler
+- `rabctl.py`: CLI tool for IPC control (status, trigger, pause, resume, restart, shutdown, health, metrics)
+
+**Runtime Topology:**
+```text
+run.py
+├── RunSupervisor (new infrastructure)
+│   ├── Supervisor (actors)
+│   │   └── mc (Music Controller - persistent actor)
+│   ├── JobScheduler (jobs)
+│   │   ├── daily_memory_summary (24h)
+│   │   ├── recent_memory_refresh (configurable)
+│   │   ├── weekly_personality_evolution (7d)
+│   │   ├── gdpr_retention (90d)
+│   │   └── ... (memory maintenance tasks)
+│   ├── IPC Server (/tmp/rab_ipc.sock)
+│   └── Scheduler State Persistence
+└── discord_bot() (legacy subprocess - coexists for now)
+```
+
+**JobScheduler Features:**
+- Jobs with schedules (interval, cron-like)
+- Retry policies with backoff
+- Timeout enforcement
+- Semaphore for concurrency control
+- Circuit breaker for fault tolerance
+- Pause/resume/trigger runtime control
+- Prometheus metrics export
+
+### 20.4 Migration Scripts
+
+- `migrate_sqlite_to_json.py`: One-shot SQLite → NoSQL migration for global databases
+- `migrate_agent_to_nosql.py`: One-shot agent_*.db → state.json migration with backup
+
+### 20.5 CLI Control (rabctl)
+
+```bash
+# Get status
+rabctl status
+
+# Trigger a job manually
+rabctl trigger daily_memory_summary
+
+# Pause/resume a job
+rabctl pause recent_memory_refresh
+rabctl resume recent_memory_refresh
+
+# Restart an actor
+rabctl restart mc
+
+# Shutdown supervisor
+rabctl shutdown
+
+# Health check (for systemd)
+rabctl health  # exit 0/1
+
+# Get Prometheus metrics
+rabctl metrics
+```
+
+### 20.6 Systemd Unit
+
+See `roleagentbot.service` for systemd configuration:
+- `Restart=on-failure` with `RestartSec=10`
+- Health check via `rabctl health`
+- Metrics exposed via `rabctl metrics`
+
+### 20.7 Roadmap Completion Status
+
+**Fase A** - Infrastructure: COMPLETED ✓
+- persistence/ + supervisor/ with tests (105 tests passing)
+
+**Fase B** - NoSQL Volatiles: COMPLETED ✓
+- global_news.db → NoSQL
+- poe2STDpricehistory.db → NoSQL
+- PoE2Standard.db → NoSQL
+- global_news_db replaced with global_news_nosql
+
+**Fase C** - Process Refactor: COMPLETED ✓
+- 5 @tasks.loop → JobScheduler
+- run.py::scheduler → Jobs
+- launch_role subprocess → coroutines
+- Persistent roles (mc) → Actors supervised
+- scheduler_state.json persistence
+- IPC + rabctl.py
+
+**Fase D** - Agent Memory NoSQL: COMPLETED ✓
+- persistence/agent_state.py facade
+- Table-by-table migration to state.json + interactions.jsonl
+- One-shot agent_*.db → state.json converter
+- agent_db.py deletion pending validation
+
+**Fase E** - Roles NoSQL: COMPLETED ✓
+- Roles migrated to NoSQL (except banker)
+- agent_roles_db.py reduction pending validation
+
+**Fase F** - Observability: COMPLETED ✓
+- Prometheus metrics per job
+- Healthcheck: rabctl health → exit 0/1
+- Systemd unit + Restart=on-failure
+- Documentation in ARCHITECTURE.md
+
+### 20.8 Migration Guidelines
+
+**For existing deployments:**
+1. Backup databases: `cp -r databases databases.bak`
+2. Run migration: `python3 migrate_sqlite_to_json.py`
+3. Run agent migration: `python3 migrate_agent_to_nosql.py --db-path databases/{server_id}/agent_{server_id}.db --server-id {server_id}`
+4. Install systemd unit: `sudo cp roleagentbot.service /etc/systemd/system/`
+5. Enable service: `sudo systemctl enable roleagentbot`
+6. Start service: `sudo systemctl start roleagentbot`
+7. Verify health: `./rabctl health`
+8. Check metrics: `./rabctl metrics`
+
+**Rollback:**
+1. Stop service: `sudo systemctl stop roleagentbot`
+2. Restore databases: `rm -rf databases && mv databases.bak databases`
+3. Start service: `sudo systemctl start roleagentbot`
+
+### 20.9 Known Limitations
+
+- Banker role remains in SQLite (per agreement)
+- agent_db.py deletion pending 1-week validation period
+- agent_roles_db.py reduction pending validation
+- Tests E2E for news_watcher + poe2 pending (medium priority)
+

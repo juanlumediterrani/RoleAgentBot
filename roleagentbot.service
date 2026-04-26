@@ -1,0 +1,18 @@
+[Unit]
+Description=RoleAgentBot - Discord AI Roleplay Bot
+After=network.target
+
+[Service]
+Type=simple
+User=roleagentbot
+Group=roleagentbot
+WorkingDirectory=/opt/roleagentbot
+Environment="PATH=/opt/roleagentbot/venv/bin"
+ExecStart=/opt/roleagentbot/venv/bin/python3 run.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

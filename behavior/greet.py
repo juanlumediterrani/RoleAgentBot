@@ -539,11 +539,19 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
         
         for guild in eligible_guilds:
             try:
+                # Get user's display name for this specific server
+                member = guild.get_member(after.id)
+                if member:
+                    user_display_name = member.display_name
+                else:
+                    # Fallback to global name if member not found in guild
+                    user_display_name = after.global_name or after.name
+                
                 greeting_data = {
                     'discord_cfg': discord_cfg,
                     'presence_cfg': presence_cfg
                 }
-                await _send_greeting_to_user(after.id, after.display_name, guild, greeting_data, bot)
+                await _send_greeting_to_user(after.id, user_display_name, guild, greeting_data, bot)
             except Exception as e:
                 logger.error(f"Error sending greeting to {after.name} from server {guild.name}: {e}")
                 # Continue with other servers even if one fails

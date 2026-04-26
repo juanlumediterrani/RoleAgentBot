@@ -38,35 +38,59 @@ MC_ROLE_DEFAULT = MC_ROLE_ENGLISH
 async def mc_task():
     """Execute MC role tasks."""
     logger.info("🎵 Starting MC role tasks...")
-    
+
     # Get active server from environment or fallback
     server_name = get_server_id()
     if not server_name:
         logger.warning("🎵 No active server found, MC tasks limited")
         return
-    
+
     try:
         db_mc = get_mc_db_instance(server_name)
-        
+
         # Clean up old queue entries (maintenance task)
         cleaned_count = db_mc.clean_old_queue()
         if cleaned_count > 0:
             logger.info(f"🎵 Cleaned {cleaned_count} old queue entries")
-        
+
         # Clean up old history entries (maintenance task)
         cleaned_history = db_mc.clean_old_history()
         if cleaned_history > 0:
             logger.info(f"🎵 Cleaned {cleaned_history} old history entries")
-        
+
         # Get current statistics
         stats = db_mc.get_statistics()
         logger.info(f"📊 MC Stats - Playlists: {stats.get('playlists_total', 0)}, "
                    f"Queue: {stats.get('queue_total', 0)}, History: {stats.get('historial_total', 0)}")
-        
+
     except Exception as e:
         logger.exception(f"🎵 Error in MC maintenance tasks: {e}")
-    
+
     logger.info("✅ MC role tasks completed")
+
+
+async def run_mc_loop():
+    """Run MC as a persistent loop for Supervisor actor.
+
+    This function runs MC maintenance tasks periodically as a long-running coroutine.
+    """
+    logger.info("🎵 Starting MC persistent loop...")
+
+    while True:
+        try:
+            # Run MC maintenance task
+            await mc_task()
+
+            # Sleep for 1 hour between maintenance cycles
+            await asyncio.sleep(3600)
+
+        except asyncio.CancelledError:
+            logger.info("🎵 MC loop cancelled, shutting down...")
+            break
+        except Exception as e:
+            logger.error(f"🎵 Error in MC loop: {e}")
+            # Sleep for 1 minute before retrying on error
+            await asyncio.sleep(60)
 
 
 async def main():
