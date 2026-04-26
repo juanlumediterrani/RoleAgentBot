@@ -93,6 +93,13 @@ class RoleConfigsNoSQL:
             keep_lines=150,
         )
 
+        self._beggar_request_history = JsonlRingBuffer(
+            db_dir / "beggar_request_history.jsonl",
+            max_lines=500,
+            max_bytes=500 * 1024,
+            keep_lines=400,
+        )
+
         logger.info(f"🗄️ [NoSQL Role Configs] Initialized for server {server_id} at {db_dir}")
 
     # --- POE2 Subscriptions ---
@@ -501,3 +508,82 @@ class RoleConfigsNoSQL:
         except Exception as e:
             logger.exception(f"Failed to get all beggar subroles: {e}")
             return []
+
+    # --- Beggar Request History ---
+
+    def save_beggar_request(
+        self,
+        user_id: str,
+        user_name: str,
+        request_type: str,
+        message: str,
+        channel_id: Optional[str] = None,
+        metadata: Optional[str] = None,
+    ) -> bool:
+        """Append a beggar request event to the history JSONL."""
+        try:
+            entry = {
+                "user_id": str(user_id),
+                "user_name": user_name,
+                "request_type": request_type,
+                "message": message,
+                "channel_id": channel_id,
+                "metadata": metadata,
+                "created_at": datetime.now().isoformat(),
+            }
+            self._beggar_request_history.append(entry)
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to save beggar request: {e}")
+            return False
+
+    def count_beggar_requests_type_last_day(self, request_type: str) -> int:
+        """Count beggar requests of a given type in the last 24h."""
+        try:
+            from datetime import timedelta
+            cutoff = datetime.now() - timedelta(days=1)
+            count = 0
+            for entry in self._beggar_request_history.tail(500):
+                if entry.get("request_type") != request_type:
+                    continue
+                ts = entry.get("created_at")
+                if not ts:
+                    continue
+                try:
+                    if datetime.fromisoformat(ts) >= cutoff:
+                        count += 1
+                except Exception:
+                    continue
+            return count
+        except Exception as e:
+            logger.exception(f"Failed to count beggar requests: {e}")
+            return 0
+
+    def reset_beggar_weekly_cycle(self) -> bool:
+        """Reset weekly_donated/weekly_donation_count for all users."""
+        try:
+            def updater(state: Dict) -> Dict:
+                for uid, data in state.items():
+                    data["weekly_donated"] = 0
+                    data["weekly_donation_count"] = 0
+                return state
+            self._beggar_subrole.update(updater)
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to reset beggar weekly cycle: {e}")
+            return False
+
+
+# ---------------------------------------------------------------------------
+# Module-level factory (one instance per server_id)
+# ---------------------------------------------------------------------------
+
+_instances: Dict[str, "RoleConfigsNoSQL"] = {}
+
+
+def get_role_configs_nosql(server_id: str) -> "RoleConfigsNoSQL":
+    """Return (creating if necessary) the RoleConfigsNoSQL for a server."""
+    key = str(server_id)
+    if key not in _instances:
+        _instances[key] = RoleConfigsNoSQL(server_id=key)
+    return _instances[key]
