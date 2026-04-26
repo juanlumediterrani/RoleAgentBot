@@ -269,6 +269,40 @@ class RoleConfigsNoSQL:
             logger.exception(f"Failed to delete watcher subscription: {e}")
             return False
 
+    def soft_delete_watcher_subscription(self, user_id: str, channel_id: str, category: str) -> bool:
+        """Soft delete a watcher subscription (set is_active=False)."""
+        try:
+            def updater(state: Dict) -> Dict:
+                if str(user_id) in state and str(channel_id) in state[str(user_id)]:
+                    if category in state[str(user_id)][str(channel_id)]:
+                        state[str(user_id)][str(channel_id)][category]["is_active"] = False
+                return state
+
+            self._watcher_subscriptions.update(updater)
+            logger.debug(f"Soft deleted watcher subscription for user {user_id} channel {channel_id} category {category}")
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to soft delete watcher subscription: {e}")
+            return False
+
+    def get_watcher_users_with_active_subscriptions(self) -> List[str]:
+        """Get all user_ids who have active personal subscriptions (user_id only, no channel_id)."""
+        try:
+            state = self._watcher_subscriptions.load()
+            users = set()
+            for uid, channels in state.items():
+                for ch_id, cats in channels.items():
+                    # Personal subscriptions have channel_id = None (stored as empty string or None)
+                    if ch_id is None or ch_id == "" or ch_id == "None":
+                        for cat, data in cats.items():
+                            if data.get("is_active", True):
+                                users.add(uid)
+                                break
+            return list(users)
+        except Exception as e:
+            logger.exception(f"Failed to get users with active subscriptions: {e}")
+            return []
+
     # --- Dice Game Stats ---
 
     def save_dice_game_stats(
