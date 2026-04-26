@@ -6,7 +6,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: Actions
     steps:
       - uses: actions/checkout@v4
       
