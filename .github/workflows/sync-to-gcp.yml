@@ -21,3 +21,4 @@ jobs:
         run: |
           gsutil -m rsync -r -d . gs://roleagentbot/${{ github.ref_name }}/
 # Test push for GCP sync workflow
+# Test after moving secret to repository secrets
