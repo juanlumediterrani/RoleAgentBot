@@ -342,6 +342,11 @@ class NewsProcessor:
                     if not content:
                         content = self._clean_html(entry.get('content', [{}])[0].get('value', ''))
                     
+                    # Skip entries without valid description (false positives)
+                    if not content or content.strip() == '' or content.strip() == 'No description':
+                        logger.debug(f"[FEED SKIP] Skipping entry without valid description from feed {feed_id}: '{title[:50]}...'")
+                        continue
+                    
                     news_item = NewsItem(
                         title=title,
                         link=entry.get('link', ''),

@@ -65,6 +65,12 @@ Puedes navegar feeds y categorías disponibles, suscribirte a lo que te interesa
 
 ---
 
+### Scholar
+
+Un archivero erudito que extrae conocimiento del entrenamiento previo del bot y de Wikipedia para responder a tus preguntas. Pregunta lo que quieras — el Scholar responderá con sabiduría extraída de su vasta biblioteca, usando la personalidad del bot y el recuerdo de tu relación para que la respuesta se sienta personal. Cuando el Scholar detecta un tema que se beneficia de una referencia externa, puede obtener extractos de Wikipedia para proporcionar un contexto más rico. La experiencia es como consultar a un compañero conocedor que recuerda tus interacciones pasadas y adapta sus respuestas al idioma de tu servidor.
+
+---
+
 ### Treasure Hunter
 
 Un vigilante de mercado para **Path of Exile 2**. Rastreas items; el bot monitorea precios en segundo plano y te notifica cuando las condiciones coinciden con tu objetivo.

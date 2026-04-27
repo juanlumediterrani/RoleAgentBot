@@ -1197,6 +1197,7 @@ async def _process_chat_message(message):
                 # Continue with original README response if README file fails
 
         # Check if this is a WIKIPEDIA response
+        wiki_url = None
         from roles.scholar.sentinel_handler import process_wikipedia_sentinel
         wiki_response = await process_wikipedia_sentinel(
             response=response,
@@ -1221,7 +1222,7 @@ async def _process_chat_message(message):
             },
         )
         if wiki_response is not None:
-            response = wiki_response
+            response, wiki_url = wiki_response
 
         # Check if this is a NADA_QUE_DECIR response (nothing to say)
         nothing_to_say_keyword = server_personality.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")
@@ -1310,7 +1311,29 @@ async def _process_chat_message(message):
             await message.channel.send(accusation_response)
         elif response and response.strip():
             # Send the original LLM response
-            await message.channel.send(response)
+            # Add Wikipedia link button if Wikipedia was used
+            if wiki_url:
+                # Get Wikipedia button label from personality descriptions
+                from agent_engine import _get_personality_descriptions
+                personality_descriptions = _get_personality_descriptions(server_id)
+                scholar_messages = personality_descriptions.get("role_descriptions", {}).get("scholar", {})
+                wikipedia_button_label = scholar_messages.get("wikipedia_button_label", "📖 Read on Wikipedia")
+                
+                # Create button component for Wikipedia link
+                button = {
+                    "type": 2,  # Button component type
+                    "style": 5,  # Link button style
+                    "label": wikipedia_button_label,
+                    "url": wiki_url
+                }
+                components = [{
+                    "type": 1,  # Action row type
+                    "components": [button]
+                }]
+                await message.channel.send(response, components=components)
+                logger.info(f"📚 Sent Wikipedia response with link button: {wiki_url}")
+            else:
+                await message.channel.send(response)
 
     except Exception as e:
         logger.exception(f"Error processing chat message: {e}")

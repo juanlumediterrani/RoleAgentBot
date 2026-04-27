@@ -170,6 +170,12 @@ class GlobalNewsNoSQL:
                             continue
                     except ValueError:
                         continue
+                
+                # Skip entries without valid description (false positives)
+                summary = entry.get("summary", "")
+                if not summary or summary.strip() == '' or summary.strip() == 'No description':
+                    continue
+                
                 results.append({
                     "title": entry.get("title"),
                     "source_url": entry.get("source_url"),
@@ -211,6 +217,12 @@ class GlobalNewsNoSQL:
                             continue
                     except ValueError:
                         continue
+                
+                # Skip entries without valid description (false positives)
+                summary = entry.get("summary", "")
+                if not summary or summary.strip() == '' or summary.strip() == 'No description':
+                    continue
+                
                 results.append({
                     "title": entry.get("title"),
                     "source_url": entry.get("source_url"),

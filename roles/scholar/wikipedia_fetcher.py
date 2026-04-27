@@ -79,7 +79,7 @@ def cache_extract(topic: str, lang: str, extract: str):
     except Exception as e:
         logger.warning(f"Error caching extract: {e}")
 
-async def fetch_wikipedia_extract(topic: str, lang: str = 'en') -> Optional[str]:
+async def fetch_wikipedia_extract(topic: str, lang: str = 'en') -> Optional[tuple]:
     """Fetch Wikipedia extract using MediaWiki API.
     
     Args:
@@ -87,15 +87,18 @@ async def fetch_wikipedia_extract(topic: str, lang: str = 'en') -> Optional[str]
         lang: Language code (en, es, zh, etc.)
         
     Returns:
-        The extract text or None if not found/error
+        Tuple of (extract_text, wikipedia_url) or None if not found/error
     """
     # Convert spaces to underscores for Wikipedia URL format
     topic_formatted = topic.replace(' ', '_')
     
+    # Build Wikipedia URL
+    wikipedia_url = f"https://{lang}.wikipedia.org/wiki/{topic_formatted}"
+    
     # Check cache first
     cached = get_cached_extract(topic_formatted, lang)
     if cached:
-        return cached
+        return (cached, wikipedia_url)
     
     # Wikipedia API endpoint
     api_url = f"https://{lang}.wikipedia.org/w/api.php"
@@ -148,7 +151,7 @@ async def fetch_wikipedia_extract(topic: str, lang: str = 'en') -> Optional[str]
                 # Cache the successful fetch
                 cache_extract(topic_formatted, lang, truncated)
                 logger.info(f"Fetched Wikipedia extract for {topic} ({lang})")
-                return truncated
+                return (truncated, wikipedia_url)
         
         logger.debug(f"No extract found for {topic} ({lang})")
         return None

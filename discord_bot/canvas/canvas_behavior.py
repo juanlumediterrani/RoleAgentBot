@@ -541,9 +541,9 @@ def build_canvas_behavior_detail(
                 if role_file.exists():
                     with open(role_file, 'r', encoding='utf-8') as f:
                         role_data = json.load(f)
-                    # Use the title from the role description file, remove markdown bolding (**)
+                    # Use the title from the role description file
                     title = role_data.get("title", role_name.replace("_", " ").title())
-                    role_labels_from_desc[role_name] = title.replace("**", "").strip()
+                    role_labels_from_desc[role_name] = title.strip()
                 else:
                     role_labels_from_desc[role_name] = role_name.replace("_", " ").title()
             except Exception as e:

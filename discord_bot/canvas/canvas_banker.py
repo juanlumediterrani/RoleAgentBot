@@ -19,10 +19,11 @@ except ImportError:
 
 # Import banker public API (stable interface for Canvas)
 try:
-    from roles.banker.api import get_messages, get_canvas_message
+    from roles.banker.api import get_messages, get_canvas_message, get_banker_roles_db_instance
 except ImportError:
     get_messages = None
     get_canvas_message = None
+    get_banker_roles_db_instance = None
 
 
 def _get_server_db_path(guild) -> str:
@@ -59,7 +60,6 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
                 member = guild.get_member(author_id)
                 user_name = member.display_name if member else "Unknown User"
 
-                from roles.banker.api import get_banker_roles_db_instance
                 db_banker_roles = get_banker_roles_db_instance(server_key)
                 db_banker_roles.create_wallet(user_id, user_name, 'user')
 

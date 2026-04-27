@@ -65,6 +65,12 @@ You can browse available feeds and categories, subscribe to what interests you, 
 
 ---
 
+### Scholar
+
+An erudite archivist who draws from the bot's pre-trained knowledge and Wikipedia to answer your questions. Ask anything — the Scholar will respond with wisdom drawn from its vast library, using the bot's personality and memory of your relationship to make the answer feel personal. When the Scholar detects a topic that benefits from external reference, it can fetch Wikipedia extracts to provide richer context. The experience is like consulting a knowledgeable companion who remembers your past interactions and adapts its responses to your server's language.
+
+---
+
 ### Treasure Hunter
 
 A market lookout for **Path of Exile 2**. You track items; the bot monitors prices in the background and notifies you when conditions match your goal.
@@ -77,7 +83,7 @@ You tell the bot which items you care about, set the active league, and configur
 
 Playful and game-oriented. The Trickster role is built for fun and surprise, and it connects to the virtual economy through the Banker role.
 
-**Dice Game Subrole**
+#### Dice Game Subrole
 
 A simple dice game where you roll three dice against a fixed bet. The game has clear payout rules: `1-1-1` wins the entire pot, while other combinations like triples, straights, and pairs pay out according to the built-in system. The pot is shared across players, so wins feel more significant. You can check your personal stats, view the history of recent rolls, and see the server ranking. Admins can adjust the default bet and toggle whether results are announced publicly.
 
@@ -87,7 +93,7 @@ A simple dice game where you roll three dice against a fixed bet. The game has c
 
 Interpretive and mystical. The Shaman role brings a different kind of interaction — symbolic, reflective, and personal.
 
-**Nordic Runes Subrole**
+#### Nordic Runes Subrole
 
 Ask a question. The bot casts runes and provides a personalized AI-generated reading. You can choose from several spreads: `single` for a quick answer, `three` for past-present-future context, `cross` for a balanced perspective, or `runic_cross` for a deeper interpretation. Each reading is stored in your personal history, so you can revisit past sessions and see how the runes have guided you over time. The experience feels like a private ritual — the bot uses its personality and your relationship memory to make the reading feel tailored to you.
 
@@ -97,7 +103,7 @@ Ask a question. The bot casts runes and provides a personalized AI-generated rea
 
 The virtual economy layer of the bot. It tracks gold balances, processes transactions, and distributes daily bonuses. Other roles connect to it — the Trickster dice game uses a shared pot managed by the Banker.
 
-**Beggar Subrole**
+#### Beggar Subrole
 
 The bot periodically approaches a user on its own and asks for a donation — entirely in character. It uses its memory of recent interactions and its relationship with the target to personalize the request. The tone can range from playful to dramatic depending on the personality. Admins control how often this happens and where the requests are posted (DM or a specific channel). The funds collected feed into the virtual economy, supporting other activities like the dice game.
 
@@ -107,7 +113,7 @@ The bot periodically approaches a user on its own and asks for a donation — en
 
 A playful role driven by a mystery mechanic. The bot is hunting for something (the "One Ring") and may question or accuse users over time.
 
-**Ring Subrole**
+#### Ring Subrole
 
 The bot periodically engages with the server, building suspicion and eventually accusing a user. It does this through AI-generated dialogue — the bot can emit an accusation mid-conversation, and if the target does not match a real member, it reacts with a follow-up that keeps the narrative going. The experience unfolds like a slow-burn story: the bot asks questions, drops hints, and narrows down the list of suspects. Admins can control the frequency of these events and manually set a target if they want to steer the story in a particular direction.
 

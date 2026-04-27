@@ -413,6 +413,7 @@ def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
         "mc",
         "juggler",
         "shaman",
+        "scholar",
     ]
     
     # Get all roles from server_config.json

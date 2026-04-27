@@ -614,13 +614,11 @@ async def handle_canvas_treasure_hunter_action(interaction: discord.Interaction,
             existing_subscription = roles_db.get_poe2_subscription(user_id, server_id)
             
             if existing_subscription:
-                # User has subscription - just update league and add default objectives
+                # User has subscription - just update league
                 ok = manager.set_user_league(user_id, league, server_id)
                 if ok:
                     # Initialize league if needed (downloads item list and starts background downloads)
                     await manager.initialize_league_if_needed(league)
-                    # Add default objectives for the new league
-                    manager._add_default_objectives(user_id, league)
             else:
                 # New user - create subscription with default items copied
                 ok, message = await manager.create_user_subscription(user_id, server_id, league)

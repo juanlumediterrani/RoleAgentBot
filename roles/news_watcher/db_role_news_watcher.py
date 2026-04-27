@@ -160,7 +160,7 @@ class DatabaseRoleNewsWatcher:
                 except Exception as e:
                     logger.warning(f"Error incrementing global subscription count: {e}")
 
-            return 0  # legacy placeholder ID
+            return True  # Success indicator
         except Exception as e:
             logger.exception(f"Error creating subscription: {e}")
             return None

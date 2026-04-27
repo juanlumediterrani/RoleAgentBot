@@ -212,40 +212,20 @@ def is_blocked_response(text):
     return any(phrase in s for phrase in blocked_phrases)
 
 def is_readme_response(text):
-    """Detects if the LLM responded with 'README' following the golden rule - more relaxed detection."""
+    """Detects if the LLM responded with 'README' following the golden rule - detects README anywhere in response."""
     if not text:
         return False
     
-    s = _sanitize_text(text).upper()
+    s = _sanitize_text(text)
     
-    # Check if README appears as a standalone word
+    # Check if README appears anywhere in the response (as a standalone word)
     import re
-    if not re.search(r'\bREADME\b', s):
+    if not re.search(r'\bREADME\b', s, re.IGNORECASE):
         return False
     
-    # Relaxed detection: accept any response containing README
-    # Remove strict length and character requirements to catch subtle mentions
-    # The old logic was too restrictive and missed cases like "README!" in character responses
-    
-    # Only exclude obvious false positives: very long, formal responses that don't look like character responses
-    if len(s) > 200:  # Increased from 60 to 200
-        return False
-    
-    # Check if it looks like a formal/helpful response (likely false positive)
-    formal_patterns = [
-        "here is the readme",
-        "this is the readme", 
-        "the readme contains",
-        "please read the readme",
-        "you can find the readme",
-        "below is the readme"
-    ]
-    
-    s_lower = s.lower()
-    is_formal = any(pattern in s_lower for pattern in formal_patterns)
-    
-    # Accept if it's not a formal response
-    return not is_formal
+    # If README appears anywhere, accept it
+    # The LLM may have added explanation before or after, but we'll truncate it
+    return True
 
 def is_nothing_to_say_response(text, keyword="NADA_QUE_DECIR"):
     """Detects if the LLM responded with the nothing-to-say keyword following the golden rule."""

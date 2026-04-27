@@ -184,7 +184,7 @@ def build_canvas_role_shaman(agent_config: dict, admin_visible: bool, guild=None
     
     # Combine title and message
     if moon_message:
-        parts.append(f"{moon_title} - {moon_message}")
+        parts.append(f"**{moon_title}** - {moon_message}")
     else:
         parts.append(moon_title)
 

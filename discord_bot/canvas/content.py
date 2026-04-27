@@ -181,17 +181,14 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     personality_descriptions = _get_personality_descriptions(server_id)
 
     help_title = personality_descriptions.get("help_menu", {}).get("title", "📚 Canvas - Help & Troubleshooting")
-    help_title = help_title.replace("**", "")
 
     if section_name == "behavior":
         # Use provided title/description or fall back to personality descriptions
         if title is None:
             behavior_descriptions = personality_descriptions.get("behavior_messages", {})
             behavior_title = behavior_descriptions.get("canvas_conversation_title", "💬 General Behavior")
-            # Remove ** for embed title
-            behavior_title = behavior_title.replace("**", "")
         else:
-            behavior_title = title.replace("**", "")
+            behavior_title = title
 
         # Get home title from descriptions.json
         canvas_home_messages = personality_descriptions.get("canvas_home_messages", {})
@@ -339,10 +336,10 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
             if detail_key:
                 subrole_title = role_descriptions.get(role_key, {}).get(detail_key, {}).get("title", "")
                 if subrole_title:
-                    return subrole_title.replace("**", "").strip()
+                    return subrole_title.strip()
             # Fall back to main role title
             title = role_descriptions.get(role_key, {}).get("title", "")
-            return title.replace("**", "").strip() if title else role_key
+            return title.strip() if title else role_key
         except Exception:
             return role_key
     
@@ -570,9 +567,9 @@ def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_respons
     if title is None:
         lines = [line.strip() for line in content.splitlines() if line.strip()]
         title_line = lines[0] if lines else "Canvas - General Behavior"
-        title = title_line.replace("**", "")
+        title = title_line
     else:
-        title = title.replace("**", "")
+        title = title
 
     embed = discord.Embed(
         title=title,
@@ -1261,31 +1258,54 @@ def _get_news_watcher_subscriptions_info(server_id: str, author_id: int, guild=N
         if not db:
             return ""
         
-        # Remove bold from title
-        news_title = news_title.replace("**", "")
+        # Import to get feed names
+        from roles.news_watcher.global_feed_health import get_healthy_feeds
         
-        subscriptions_info = []
+        # Get healthy feeds to map feed_id to feed name
+        healthy_feeds = get_healthy_feeds()
+        feed_map = {fid: name for fid, name, url, cat in healthy_feeds}
+        
+        subscriptions_lines = []
+        
+        # Get channel subscriptions (if in guild)
+        if guild:
+            unified_subs = db.get_all_active_subscriptions()
+            for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
+                # Only include channel subscriptions
+                if not channel_id:
+                    continue
+                
+                # Get feed name
+                if feed_id:
+                    feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
+                else:
+                    feed_name = "all feeds"
+                
+                subscriptions_lines.append(f"🔍 {category} ({feed_name}) - {method}")
         
         # Get user subscriptions (DM)
         user_subs = db.get_user_subscriptions(str(author_id))
         if user_subs:
             for sub in user_subs[:3]:  # Limit to 3
+                subscription_id = sub[0] if len(sub) > 0 else 0
+                user_id = sub[1] if len(sub) > 1 else ""
+                channel_id = sub[2] if len(sub) > 2 else None
                 category = sub[3] if len(sub) > 3 else "general"
+                feed_id = sub[4] if len(sub) > 4 else None
+                premises = sub[5] if len(sub) > 5 else ""
+                keywords = sub[6] if len(sub) > 6 else ""
                 method = sub[7] if len(sub) > 7 else "general"
-                subscriptions_info.append(f"{category} ({method})")
+                
+                # Get feed name
+                if feed_id:
+                    feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
+                else:
+                    feed_name = "all feeds"
+                
+                subscriptions_lines.append(f"🔍 {category} ({feed_name}) - {method}")
         
-        # Get channel subscriptions (if in guild)
-        if guild:
-            # Check subscriptions for channels the user has access to
-            # For simplicity, we'll just show a count
-            channel_subs_count = len(db.get_all_active_subscriptions())
-            if channel_subs_count > 0:
-                news_watcher = _get_nw_descriptions(guild)
-                channel_subs_label = news_watcher.get('channel_subscriptions_label', 'channel subscriptions')
-                subscriptions_info.append(f"{channel_subs_count} {channel_subs_label}")
-        
-        if subscriptions_info:
-            return f"{news_title}: " + " | ".join(subscriptions_info[:5])  # Limit total
+        if subscriptions_lines:
+            return "\n".join(subscriptions_lines[:5])  # Limit to 5
         return ""
     except Exception as e:
         logger.warning(f"Error getting news watcher subscriptions: {e}")
@@ -1294,24 +1314,60 @@ def _get_news_watcher_subscriptions_info(server_id: str, author_id: int, guild=N
 def _get_poe2_purchases_info(server_id: str, author_id: int, poe2_title: str = "💎 POE2") -> str:
     """Get items registered as purchase in POE2."""
     try:
-        if not get_roles_db_instance:
+        if not get_roles_db_instance or not get_poe2_manager:
             return ""
         
-        # Remove bold from title
-        poe2_title = poe2_title.replace("**", "")
+        # Use fixed title format: 👺 PoE2:
+        poe2_title = "👺 PoE2:"
         
         roles_db = get_roles_db_instance(server_id)
         subscription = roles_db.get_poe2_subscription(str(author_id), server_id)
         
         if subscription and subscription.get('purchases'):
             purchases = subscription['purchases']
-            item_names = [p.get('item_name', p) for p in purchases if isinstance(p, dict) and p.get('item_name')]
-            if not item_names:
-                # If purchases are strings, use them directly
-                item_names = [str(p) for p in purchases if p]
+            league = subscription.get('league', 'Standard')
             
-            if item_names:
-                return f"{poe2_title}: " + ", ".join(item_names[:5])  # Limit to 5 items
+            # Get POE2 manager to fetch current prices
+            manager = get_poe2_manager()
+            
+            items_with_prices = []
+            for purchase in purchases[:3]:  # Limit to 3 items
+                if isinstance(purchase, dict):
+                    item_name = purchase.get('item_name')
+                    buy_price = purchase.get('buy_price')
+                    item_id = purchase.get('item_id')
+                    
+                    if not item_name:
+                        continue
+                    
+                    # Get current price from global database
+                    current_price = None
+                    if item_id:
+                        try:
+                            price_data = manager.get_latest_price_for_item(league, item_id)
+                            if price_data:
+                                current_price = price_data.get('price')
+                        except Exception:
+                            pass
+                    
+                    if current_price is not None:
+                        # Emoji based on buy price vs current price
+                        # Lower buy price = price went up (📈), Higher buy price = price went down (📉)
+                        if buy_price < current_price:
+                            emoji = "📈"  # Bought at lower price (price went up - good investment)
+                        elif buy_price > current_price:
+                            emoji = "📉"  # Bought at higher price (price went down - bad investment)
+                        else:
+                            emoji = "➡️"  # Same price
+                        items_with_prices.append(f"{item_name} {current_price:.2f} divs {emoji}")
+                    else:
+                        items_with_prices.append(f"{item_name}")
+                else:
+                    # Handle old string format
+                    items_with_prices.append(str(purchase))
+            
+            if items_with_prices:
+                return f"{poe2_title}\n" + "\n".join(f"-{item}" for item in items_with_prices)
         return ""
     except Exception as e:
         logger.warning(f"Error getting POE2 purchases: {e}")
@@ -1322,9 +1378,6 @@ def _get_dice_game_pot_info(server_id: str, coin_emoji: str = "🪙", dice_title
     try:
         from roles.banker.banker_db import get_banker_roles_db_instance
         logger.debug(f"Attempting to get dice game pot for server {server_id}")
-        
-        # Remove bold from title
-        dice_title = dice_title.replace("**", "")
         
         banker_db = get_banker_roles_db_instance(server_id)
         # Create wallet if it doesn't exist
@@ -1341,9 +1394,6 @@ def _get_mc_last_song_info(server_id: str, mc_title: str = "🎵 MC") -> str:
     try:
         from roles.mc.db_role_mc import get_mc_db_instance
         mc_db = get_mc_db_instance(server_id)
-        
-        # Remove bold from title
-        mc_title = mc_title.replace("**", "")
         
         # Get history from any channel in the server using NoSQL
         from roles.role_configs_nosql import get_role_configs_nosql
@@ -1374,9 +1424,6 @@ def _get_banker_wallet_info(server_id: str, author_id: int, coin_emoji: str = "�
     try:
         from roles.banker.banker_db import get_banker_roles_db_instance
         
-        # Remove bold from title
-        banker_title = banker_title.replace("**", "")
-        
         banker_db = get_banker_roles_db_instance(server_id)
         balance = banker_db.get_balance(str(author_id))
         return f"{banker_title}: {balance} {coin_emoji}"
@@ -1390,9 +1437,6 @@ def _get_ring_accused_info(server_id: str, guild=None, ring_title: str = "⚖️
         from roles.juggler.subroles.ring.ring_db import get_ring_db_instance
         ring_db = get_ring_db_instance(server_id)
         config = ring_db.get_config()
-        
-        # Remove bold from title
-        ring_title = ring_title.replace("**", "")
         
         # Get accused_label from personality descriptions
         from .content import _get_personality_descriptions
@@ -1420,17 +1464,11 @@ def _get_moon_phase_info(server_id: str = "default", shaman_title: str = "🐺 S
         # Get moon phase name and emoji
         moon_phase_name, moon_emoji = get_moon_phase()
         
-        # Remove bold from title
-        shaman_title = shaman_title.replace("**", "")
-        
         # Get moon phase title from personality descriptions (for display in home)
         personality_descriptions = _get_personality_descriptions(server_id)
         shaman_messages = personality_descriptions.get("role_descriptions", {}).get("shaman", {})
         moon_messages = shaman_messages.get("moon_phases", {})
         moon_title = moon_messages.get(moon_phase_name, f"{moon_emoji} Current moon phase")
-        
-        # Remove any ** from moon_title to prevent markdown nesting issues
-        moon_title = moon_title.replace("**", "")
         
         return f"{shaman_title}: {moon_title}"
     except Exception as e:
@@ -1454,12 +1492,12 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             value = str(value)
         return str(value).strip() if value else fallback
     
-    personalitystatus = _home_text("personalitystatus", "**Personality:**" )
+    personalitystatus = _home_text("personalitystatus", "Personality:" )
     homedescription = _home_text("description", "Interact with all of the bot feautures from this panel." )
-    recentsynthesistitle = _home_text("recentsynthesistitle", "**Recent synthesis**" )
-    personalsynthesistitle = _home_text("personalsynthesistitle", "**Personal synthesis with you**" )
-    interestingthings = _home_text("interestingthings", "**Interesting things** - " )
-    pilgrimdatatitle = _home_text("pilgrimdatatitle", "**Pilgrim Data:**" )
+    recentsynthesistitle = _home_text("recentsynthesistitle", "Recent synthesis" )
+    personalsynthesistitle = _home_text("personalsynthesistitle", "Personal synthesis with you" )
+    interestingthings = _home_text("interestingthings", "Interesting things - " )
+    pilgrimdatatitle = _home_text("pilgrimdatatitle", "Pilgrim Data:" )
     
     # Get coin emoji and role titles from descriptions
     coin_emoji = "🪙"  # Default fallback
@@ -1550,23 +1588,15 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     if roles_config.get('news_watcher', {}).get('enabled'):
         news_info = _get_news_watcher_subscriptions_info(server_id, author_id, guild, news_title)
         if news_info:
-            # Extract title and value, apply bold only to value
-            if ": " in news_info:
-                title, value = news_info.split(": ", 1)
-                status_lines.append(f"{title}: **{value}**")
-            else:
-                status_lines.append(news_info)
+            # Append subscription lines directly
+            for line in news_info.split('\n'):
+                status_lines.append(line)
     
     # 2. POE2 - Items registered as purchase
     if roles_config.get('treasure_hunter', {}).get('enabled'):
         poe2_info = _get_poe2_purchases_info(server_id, author_id, poe2_title)
         if poe2_info:
-            # Extract title and value, apply bold only to value
-            if ": " in poe2_info:
-                title, value = poe2_info.split(": ", 1)
-                status_lines.append(f"{title}: **{value}**")
-            else:
-                status_lines.append(poe2_info)
+            status_lines.append(poe2_info)
     
     # 3. Dice Game - Current pot
     dice_game_enabled = roles_config.get('trickster', {}).get('subroles', {}).get('dice_game', {}).get('enabled')
@@ -1575,23 +1605,13 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         dice_info = _get_dice_game_pot_info(server_id, coin_emoji, dice_title)
         logger.debug(f"Dice info returned: {dice_info}")
         if dice_info:
-            # Extract title and value, apply bold only to value
-            if ": " in dice_info:
-                title, value = dice_info.split(": ", 1)
-                status_lines.append(f"{title}: **{value}**")
-            else:
-                status_lines.append(dice_info)
+            status_lines.append(dice_info)
     
     # 4. MC - Last song played
     if roles_config.get('mc', {}).get('enabled'):
         mc_info = _get_mc_last_song_info(server_id, mc_title)
         if mc_info:
-            # Extract title and value, apply bold only to value
-            if ": " in mc_info:
-                title, value = mc_info.split(": ", 1)
-                status_lines.append(f"{title}: **{value}**")
-            else:
-                status_lines.append(mc_info)
+            status_lines.append(mc_info)
     
     # 5. Banker - User's wallet balance (moved to Pilgrim Data section)
     
@@ -1599,23 +1619,13 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     if roles_config.get('juggler', {}).get('subroles', {}).get('ring', {}).get('enabled'):
         ring_info = _get_ring_accused_info(server_id, guild, ring_title)
         if ring_info:
-            # Extract title and value, apply bold only to value
-            if ": " in ring_info:
-                title, value = ring_info.split(": ", 1)
-                status_lines.append(f"{title}: **{value}**")
-            else:
-                status_lines.append(ring_info)
+            status_lines.append(ring_info)
     
     # 7. Shaman - Current moon phase
     if roles_config.get('shaman', {}).get('enabled'):
         moon_info = _get_moon_phase_info(server_id, shaman_title)
         if moon_info:
-            # Extract title and value, apply bold only to value
-            if ": " in moon_info:
-                title, value = moon_info.split(": ", 1)
-                status_lines.append(f"{title}: **{value}**")
-            else:
-                status_lines.append(moon_info)
+            status_lines.append(moon_info)
     
     status_lines.extend([
         "",
@@ -1702,15 +1712,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     if roles_config.get('banker', {}).get('enabled'):
         banker_info = _get_banker_wallet_info(server_id, author_id, coin_emoji, banker_title)
         if banker_info:
-            status_lines.extend([
-                f"**{pilgrimdatatitle}**",
-            ])
-            # Extract title and value, apply bold only to value
-            if ": " in banker_info:
-                title, value = banker_info.split(": ", 1)
-                status_lines.append(f"{title}: **{value}**")
-            else:
-                status_lines.append(banker_info)
+            status_lines.append(banker_info)
     
     # Add final separator
     status_lines.extend([

@@ -70,7 +70,8 @@ class RoleConfigsNoSQL:
     def __init__(self, server_id: str, db_dir: Optional[Path] = None):
         self.server_id = str(server_id)
         if db_dir is None:
-            db_dir = Path(__file__).parent / "databases" / self.server_id / "roles"
+            # Use project root databases directory
+            db_dir = Path(__file__).parent.parent / "databases" / self.server_id / "roles"
             db_dir.mkdir(parents=True, exist_ok=True)
         else:
             db_dir = Path(db_dir)
@@ -275,6 +276,7 @@ class RoleConfigsNoSQL:
         """Save a news watcher subscription."""
         try:
             now = datetime.now().isoformat()
+            logger.info(f"[save_watcher_subscription] Called with user_id={user_id}, channel_id={channel_id}, category={category}, method={method}, VALIDATION_AVAILABLE={VALIDATION_AVAILABLE}")
 
             # Validate subscription data
             if VALIDATION_AVAILABLE and WatcherSubscription:
@@ -290,7 +292,7 @@ class RoleConfigsNoSQL:
                 try:
                     WatcherSubscription(**sub_to_validate)
                 except Exception as e:
-                    logger.warning(f"⚠️ [NoSQL Role] Watcher subscription validation failed: {e}. Skipping save.")
+                    logger.warning(f"⚠️ [NoSQL Role] Watcher subscription validation failed: {e}. Data: {sub_to_validate}. Skipping save.")
                     return False
 
             def updater(state: Dict) -> Dict:
@@ -311,10 +313,10 @@ class RoleConfigsNoSQL:
                 return state
 
             self._watcher_subscriptions.update(updater)
-            logger.debug(f"Saved watcher subscription for user {user_id} channel {channel_id} category {category}")
+            logger.info(f"[save_watcher_subscription] Successfully saved for user {user_id} channel {channel_id} category {category}")
             return True
         except Exception as e:
-            logger.exception(f"Failed to save watcher subscription: {e}")
+            logger.exception(f"[save_watcher_subscription] Failed to save watcher subscription: {e}")
             return False
 
     def get_watcher_subscriptions(
@@ -680,7 +682,7 @@ class RoleConfigsNoSQL:
             record = {
                 "accuser_id": str(accuser_id),
                 "accused_id": str(accused_id),
-                "accusation": accusation,
+                "accusation_text": accusation,
                 "evidence": evidence,
                 "created_at": datetime.now().isoformat(),
             }

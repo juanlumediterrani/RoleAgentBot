@@ -292,7 +292,17 @@ async def process_server_subscriptions(bot, server_id: str, agent_config: dict):
                 articles = []
                 for news_item in news_items:
                     try:
-                        title, source_url, summary, published_date, first_seen = news_item[:5]
+                        title = news_item.get("title")
+                        source_url = news_item.get("source_url")
+                        summary = news_item.get("summary")
+                        published_date = news_item.get("published_date")
+                        first_seen = news_item.get("first_seen")
+                        
+                        # Skip articles without valid description (false positives)
+                        if not summary or summary.strip() == '' or summary.strip() == 'No description':
+                            logger.debug(f"[SUBSCRIPTION_PROCESSOR] Skipping article without valid description: '{title[:50]}...'")
+                            continue
+                        
                         articles.append({
                             'title': title,
                             'link': source_url,

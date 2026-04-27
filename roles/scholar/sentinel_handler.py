@@ -27,7 +27,7 @@ async def process_wikipedia_sentinel(
     call_llm_async,
     llm_semaphore,
     metadata_base: Dict[str, Any],
-) -> Optional[str]:
+) -> Optional[tuple]:
     """Process WIKIPEDIA sentinel response from LLM.
 
     When the LLM emits "WIKIPEDIA <topic>", this function:
@@ -51,7 +51,7 @@ async def process_wikipedia_sentinel(
         metadata_base: Base metadata dict to extend
 
     Returns:
-        The enhanced response from the second LLM call, or None if processing fails.
+        Tuple of (enhanced_response, wikipedia_url) from the second LLM call, or None if processing fails.
     """
     if not response or not response.strip().startswith("WIKIPEDIA "):
         return None
@@ -69,9 +69,10 @@ async def process_wikipedia_sentinel(
 
         # Fetch Wikipedia extract
         from roles.scholar.wikipedia_fetcher import fetch_wikipedia_extract
-        wiki_extract = await fetch_wikipedia_extract(topic, lang=lang)
+        wiki_result = await fetch_wikipedia_extract(topic, lang=lang)
 
-        if wiki_extract:
+        if wiki_result:
+            wiki_extract, wiki_url = wiki_result
             logger.info(f"✅ Wikipedia extract fetched successfully for {topic} (lang: {lang})")
 
             # Remove wiki/wikipedia trigger words from original question
@@ -169,7 +170,7 @@ async def process_wikipedia_sentinel(
                 )
 
             logger.info(f"✅ Wikipedia enhanced response generated")
-            return response
+            return (response, wiki_url)
         else:
             logger.warning(f"⚠️ Could not fetch Wikipedia extract for {topic} (lang: {lang})")
             return None

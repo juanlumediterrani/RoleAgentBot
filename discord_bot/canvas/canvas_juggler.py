@@ -76,8 +76,7 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
         ring_state = _get_canvas_ring_state(guild)
         ring_messages = juggler_messages.get("ring", {})
 
-        title = ring_messages.get("title", "👁️ **Ring Tracker** 👁️")
-        clean_title = title.replace("**", "")
+        title = ring_messages.get("title", "👁️ **Ring Tracker**")
         description = ring_messages.get("description", "Track and identify the target. Point to other users to help the algorithm resolve the anomaly.")
 
         current_target_label = ring_messages.get("current_target", "🎯 **Current Target:**")
@@ -172,7 +171,7 @@ class JugglerActionModal(discord.ui.Modal, title="Juggler Action"):
 
         titles = {
             "ring_frequency": "Ring Frequency",
-            "ring_accuse": ring_messages.get("dm_accusation_header", "Accuse User").replace("**", ""),
+            "ring_accuse": ring_messages.get("dm_accusation_header", "Accuse User"),
         }
         super().__init__(title=titles.get(action_name, "Juggler Action"))
         self.action_name = action_name

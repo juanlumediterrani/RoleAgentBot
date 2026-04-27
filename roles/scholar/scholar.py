@@ -103,7 +103,7 @@ def get_personality_language(server_id: str = None) -> str:
     except Exception:
         return "en"
 
-async def answer_question(question: str, user_id: str = None, user_name: str = None, server_id: str = None) -> str:
+async def answer_question(question: str, user_id: str = None, user_name: str = None, server_id: str = None) -> tuple | str:
     """Answer a question using the LLM's pre-trained knowledge.
     
     Args:
@@ -113,7 +113,7 @@ async def answer_question(question: str, user_id: str = None, user_name: str = N
         server_id: Server ID for server-specific personality
         
     Returns:
-        The scholar's response
+        The scholar's response, or (response, wikipedia_url) tuple if Wikipedia was used
     """
     from agent_mind import call_llm
     
@@ -207,9 +207,10 @@ async def answer_question(question: str, user_id: str = None, user_name: str = N
                 lang = get_personality_language(server_id)
                 # Fetch Wikipedia extract
                 logger.info(f"Fetching Wikipedia for topic: {topic} (lang: {lang})")
-                wiki_extract = await fetch_wikipedia_extract(topic, lang)
+                wiki_result = await fetch_wikipedia_extract(topic, lang)
                 
-                if wiki_extract:
+                if wiki_result:
+                    wiki_extract, wiki_url = wiki_result
                     logger.info(f"Successfully fetched Wikipedia extract for {topic}")
                     
                     # Remove wiki/wikipedia trigger words from original question
@@ -257,10 +258,10 @@ async def answer_question(question: str, user_id: str = None, user_name: str = N
                     
                     if response_2 and len(response_2.strip()) > 0:
                         logger.info(f"📚 Scholar answered with Wikipedia context: {clean_question[:50]}...")
-                        return response_2.strip()
+                        return (response_2.strip(), wiki_url)
                     else:
                         logger.warning("⚠️ Scholar could not generate response with Wikipedia context")
-                        return f"WIKIPEDIA:\n{wiki_extract}"
+                        return (f"WIKIPEDIA:\n{wiki_extract}", wiki_url)
                 else:
                     logger.debug(f"No Wikipedia extract found for {topic}")
                     return f"Could not find Wikipedia article for: {topic}"

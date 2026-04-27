@@ -102,6 +102,11 @@ class NewsDownloader:
                     logger.warning(f"[FEED WARNING] Entry title matches feed title for {feed_name}: '{title[:50]}...'. Skipping malformed entry.")
                     continue
 
+                # Skip entries without valid description (false positives)
+                if not summary or summary.strip() == '' or summary.strip() == 'No description':
+                    logger.debug(f"[FEED SKIP] Skipping entry without valid description from {feed_name}: '{title[:50]}...'")
+                    continue
+
                 # Debug logging to check title extraction
                 logger.debug(f"[FEED DEBUG] Feed: {feed_name}, Entry title: '{title[:50]}...', Link: '{link[:50]}...'")
 

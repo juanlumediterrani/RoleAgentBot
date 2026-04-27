@@ -1933,6 +1933,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
         button_shaman = _roles_desc.get("shaman", {}).get("button", "Shaman")
         button_mc = _roles_desc.get("mc", {}).get("button", "MC")
         button_juggler = _roles_desc.get("juggler", {}).get("button", "Juggler")
+        button_scholar = _roles_desc.get("scholar", {}).get("button", "Scholar")
 
         role_labels = {
             "news_watcher": button_watcher,
@@ -1942,6 +1943,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
             "shaman": button_shaman,
             "mc": button_mc,
             "juggler": button_juggler,
+            "scholar": button_scholar,
         }
         
         # Get all enabled roles
@@ -2357,13 +2359,13 @@ class RoleManagementDropdown(discord.ui.Select):
         # Role configuration with display names and internal names
         # MC is always enabled (cannot be toggled)
         roles_config = [
-            {"internal": "news_watcher", "display": role_descriptions.get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "treasure_hunter", "display": role_descriptions.get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "trickster", "display": role_descriptions.get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "banker", "display": role_descriptions.get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "mc", "display": role_descriptions.get("mc", {}).get("title", "🥁 Putre Tamborilero!").replace("**", "").strip(), "always_enabled": True},
-            {"internal": "juggler", "display": role_descriptions.get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "shaman", "display": role_descriptions.get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "news_watcher", "display": role_descriptions.get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").strip(), "always_enabled": False},
+            {"internal": "treasure_hunter", "display": role_descriptions.get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").strip(), "always_enabled": False},
+            {"internal": "trickster", "display": role_descriptions.get("trickster", {}).get("title", "🎭Trilero Putre").strip(), "always_enabled": False},
+            {"internal": "banker", "display": role_descriptions.get("banker", {}).get("title", "💰 El Gran Kofre de Putre").strip(), "always_enabled": False},
+            {"internal": "mc", "display": role_descriptions.get("mc", {}).get("title", "🥁 Putre Tamborilero!").strip(), "always_enabled": True},
+            {"internal": "juggler", "display": role_descriptions.get("juggler", {}).get("title", "🤹 El Juglah Putre").strip(), "always_enabled": False},
+            {"internal": "shaman", "display": role_descriptions.get("shaman", {}).get("title", "🐺 Chamán Putre").strip(), "always_enabled": False},
         ]
         
         # Get current state for each role
@@ -2444,12 +2446,12 @@ class RoleManagementDropdown(discord.ui.Select):
         # Build success message
         state_text = general.get("state_enabled", "Activado") if new_state else general.get("state_disabled", "Desactivado")
         role_display_map = {
-            "news_watcher": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(),
-            "treasure_hunter": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(),
-            "trickster": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(),
-            "banker": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(),
-            "juggler": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(),
-            "shaman": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(),
+            "news_watcher": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").strip(),
+            "treasure_hunter": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").strip(),
+            "trickster": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").strip(),
+            "banker": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").strip(),
+            "juggler": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").strip(),
+            "shaman": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").strip(),
         }
         role_display = role_display_map.get(role_name, role_name)
         
@@ -2458,13 +2460,13 @@ class RoleManagementDropdown(discord.ui.Select):
         # Update the dropdown with new states
         new_options = []
         roles_config = [
-            {"internal": "news_watcher", "display": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "treasure_hunter", "display": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "trickster", "display": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "banker", "display": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "mc", "display": descriptions.get("role_descriptions", {}).get("mc", {}).get("title", "🥁 Putre Tamborilero!").replace("**", "").strip(), "always_enabled": True},
-            {"internal": "juggler", "display": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "shaman", "display": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "news_watcher", "display": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").strip(), "always_enabled": False},
+            {"internal": "treasure_hunter", "display": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").strip(), "always_enabled": False},
+            {"internal": "trickster", "display": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").strip(), "always_enabled": False},
+            {"internal": "banker", "display": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").strip(), "always_enabled": False},
+            {"internal": "mc", "display": descriptions.get("role_descriptions", {}).get("mc", {}).get("title", "🥁 Putre Tamborilero!").strip(), "always_enabled": True},
+            {"internal": "juggler", "display": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").strip(), "always_enabled": False},
+            {"internal": "shaman", "display": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").strip(), "always_enabled": False},
         ]
         
         for role in roles_config:
