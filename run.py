@@ -14,6 +14,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from agent_logging import get_logger
 
+# Import validation schema for agent_config
+try:
+    from validation.schemas import AgentConfig, ValidationError
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    ValidationError = Exception
+
 from agent_engine import (
     _get_subrole_frequency_from_config,
     get_active_subroles,
@@ -43,8 +51,23 @@ def load_config() -> dict:
         sys.exit(1)
     with CONFIG_FILE.open(encoding="utf-8") as f:
         config = json.load(f)
-        logger.info(f"[run] 📋 Configuration loaded successfully")
-        return config
+    
+    # Validate configuration if validation module is available
+    if VALIDATION_AVAILABLE:
+        try:
+            AgentConfig(**config)
+            logger.info(f"[run] 📋 Configuration loaded and validated successfully")
+        except Exception as e:
+            logger.warning(
+                f"[run] ⚠️  Configuration validation failed: {e}. "
+                "Using configuration as-is (may have issues)."
+            )
+            # In fail-hard mode, we would sys.exit(1) here
+            # For fail-soft mode, we continue with the potentially invalid config
+    else:
+        logger.info(f"[run] 📋 Configuration loaded (validation not available)")
+    
+    return config
 
 # ── Subprocess launcher ───────────────────────────────────────────────────────
 
@@ -149,6 +172,7 @@ async def execute_daily_memory_summary_all_servers():
                 stagger_window_hours=STAGGER_WINDOW_HOURS,
             ):
                 skipped += 1
+                await asyncio.sleep(0)
                 continue
 
             # Yield briefly between LLM calls (in-window, not global burst)
@@ -228,6 +252,7 @@ async def execute_weekly_personality_evolution_all_servers():
                 stagger_window_hours=STAGGER_WINDOW_HOURS,
             ):
                 skipped += 1
+                await asyncio.sleep(0)
                 continue
 
             if processed > 0:

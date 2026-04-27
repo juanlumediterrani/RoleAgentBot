@@ -225,7 +225,7 @@ class BankerConfigModal(CanvasModal):
         if not is_admin(interaction, guild=eff_guild):
             await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
             return
-        if get_roles_db_instance is None:
+        if get_banker_roles_db_instance is None:
             await interaction.response.send_message("❌ Banker database is not available.", ephemeral=True)
             return
         try:
@@ -244,7 +244,7 @@ class BankerConfigModal(CanvasModal):
                 return
 
         try:
-            db_banker = get_roles_db_instance(str(eff_guild.id))
+            db_banker = get_banker_roles_db_instance(str(eff_guild.id))
             if self.action_name == "config_tae":
                 ok = db_banker.set_tae(str(eff_guild.id), amount)
                 label = "TAE"
@@ -400,7 +400,7 @@ class BeggarFrequencyModal(CanvasModal):
 
 async def handle_canvas_banker_action(interaction: discord.Interaction, action_name: str, view) -> None:
     """Handle banker role actions like balance, TAE, bonus display, and beggar subrole."""
-    if get_roles_db_instance is None:
+    if get_banker_roles_db_instance is None:
         await interaction.response.send_message("❌ Banker systems are not available.", ephemeral=True)
         return
 
@@ -410,7 +410,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
             await interaction.response.send_message("❌ Banker actions require a server context.", ephemeral=True)
             return
         server_key = get_server_key(eff_guild)
-        db_banker = get_roles_db_instance(server_key)
+        db_banker = get_banker_roles_db_instance(server_key)
         server_id = str(eff_guild.id)
         server_name = eff_guild.name
         user_id = str(view.author_id)

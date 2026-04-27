@@ -1421,7 +1421,7 @@ async def _build_prompt_channel_messages_block(
 
                 # Skip simple bot mentions from channel history (e.g., "Toma @Putre 🍺")
                 # Check if message mentions the bot and has minimal content
-                if bot_id and bot.user.mentioned_in(message):
+                if bot_id and any(str(mention.id) == bot_id for mention in message.mentions):
                     bot_mention = f'<@{bot_id}>'
                     bot_mention_bang = f'<@!{bot_id}>'
                     content_without_mention = message.content.replace(bot_mention, '').replace(bot_mention_bang, '').strip()

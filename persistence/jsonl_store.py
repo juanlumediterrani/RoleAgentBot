@@ -11,12 +11,20 @@ defaults to max_lines // 2).
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 import threading
 from collections import deque
 from pathlib import Path
-from typing import Any, Callable, Deque, Iterable, Iterator, List, Optional
+from typing import Any, Callable, Deque, Iterable, Iterator, List, Optional, Type
+
+try:
+    from pydantic import BaseModel, ValidationError as PydanticValidationError
+    PYDANTIC_AVAILABLE = True
+except ImportError:
+    PYDANTIC_AVAILABLE = False
+    BaseModel = None  # type: ignore
 
 
 _PATH_LOCKS: dict[str, threading.RLock] = {}
@@ -43,6 +51,8 @@ class JsonlRingBuffer:
         max_lines: int = 500,
         max_bytes: Optional[int] = 200 * 1024,
         keep_lines: Optional[int] = None,
+        schema: Optional[Type[BaseModel]] = None,
+        validate_on_append: bool = True,
     ) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -50,10 +60,15 @@ class JsonlRingBuffer:
         self.max_bytes = max_bytes
         self.keep_lines = keep_lines if keep_lines is not None else max(1, max_lines // 2)
         self._lock = _lock_for(self.path)
+        self._schema = schema
+        self._validate_on_append = validate_on_append and PYDANTIC_AVAILABLE and schema is not None
+        self._logger = logging.getLogger(__name__)
 
     # ---- writes ----------------------------------------------------------
 
     def append(self, record: dict) -> None:
+        if self._validate_on_append:
+            self._validate_record(record)
         line = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
         with self._lock:
             with self.path.open("a", encoding="utf-8") as f:
@@ -66,6 +81,9 @@ class JsonlRingBuffer:
         records = list(records)
         if not records:
             return
+        if self._validate_on_append:
+            for record in records:
+                self._validate_record(record)
         with self._lock:
             with self.path.open("a", encoding="utf-8") as f:
                 for r in records:
@@ -199,3 +217,34 @@ class JsonlRingBuffer:
             return obj if isinstance(obj, dict) else None
         except json.JSONDecodeError:
             return None
+
+    # ---- validation helpers -----------------------------------------------
+
+    def _validate_record(self, record: dict) -> None:
+        """Validate a single record against the Pydantic schema if available."""
+        if not PYDANTIC_AVAILABLE or self._schema is None:
+            return
+        
+        try:
+            self._schema(**record)
+        except PydanticValidationError as e:
+            # Log validation error and move to corrupted file
+            self._logger.warning(
+                f"Validation error for record in {self.path}: {e}. "
+                "Record will be moved to corrupted file."
+            )
+            self._move_to_corrupted(record)
+            # In fail-hard mode, we would re-raise here
+            # For now, we just log and move to corrupted file (fail-soft)
+
+    def _move_to_corrupted(self, record: dict) -> None:
+        """Move a corrupted record to a .corrupted.jsonl file for analysis."""
+        try:
+            corrupted_path = self.path.with_suffix(self.path.suffix + ".corrupted")
+            line = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
+            with corrupted_path.open("a", encoding="utf-8") as f:
+                f.write(line)
+                f.write("\n")
+        except Exception as e:
+            self._logger.error(f"Failed to write corrupted record to {corrupted_path}: {e}")
+

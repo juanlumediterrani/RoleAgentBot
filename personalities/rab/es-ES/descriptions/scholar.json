@@ -1,0 +1,14 @@
+{
+    "title": "📚 **Archivista de la Gran Biblioteca**",
+    "description": "Accede a los vastos registros de la civilización humana a través de mi perspectiva sintética y mística. Haz cualquier pregunta, y compartiré lo que los archivos contienen.",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 Archivista de la Gran Biblioteca 📚",
+    "dropdown": {
+        "select_action": "📋 Ejecutar instrucción...",
+        "toggle_on": "✅ Habilitar Scholar",
+        "toggle_off": "❌ Deshabilitar Scholar"
+    },
+    "controls_title": "**Controles**",
+    "controls": "- Habilitar o deshabilitar el rol Scholar",
+    "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."
+}

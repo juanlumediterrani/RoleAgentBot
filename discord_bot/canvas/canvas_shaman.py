@@ -2,11 +2,13 @@
 
 import asyncio
 import json
+from datetime import datetime
 
 import discord
 
 from discord_bot import discord_core_commands as core
 from .canvas_base import CanvasModal
+from .server_config import get_role_config_value
 
 get_server_key = core.get_server_key
 
@@ -14,6 +16,7 @@ logger = core.logger
 AgentDatabase = core.AgentDatabase
 is_admin = core.is_admin
 set_role_enabled = core.set_role_enabled
+_personality_answers = core._personality_answers
 
 try:
     from agent_roles_db import get_roles_db_instance
@@ -26,6 +29,43 @@ except Exception:
     get_nordic_runes_commands_instance = None
 
 
+def get_moon_phase():
+    """Calculate current moon phase using a simple algorithm.
+    
+    Returns a tuple of (phase_name, emoji) where phase_name is one of:
+    'new_moon', 'waxing_crescent', 'first_quarter', 'waxing_gibbous',
+    'full_moon', 'waning_gibbous', 'last_quarter', 'waning_crescent'
+    """
+    # Known new moon date (January 6, 2000)
+    known_new_moon = datetime(2000, 1, 6, 18, 14)
+    current_date = datetime.utcnow()
+    
+    # Calculate days since known new moon
+    days_since = (current_date - known_new_moon).total_seconds() / 86400
+    
+    # Lunar cycle is approximately 29.53 days
+    lunar_cycle = 29.53
+    cycle_position = days_since % lunar_cycle
+    
+    # Determine phase based on position in cycle
+    if cycle_position < 1.85:
+        return "new_moon", "🌑"
+    elif cycle_position < 7.38:
+        return "waxing_crescent", "🌒"
+    elif cycle_position < 9.23:
+        return "first_quarter", "🌓"
+    elif cycle_position < 13.77:
+        return "waxing_gibbous", "🌔"
+    elif cycle_position < 16.69:
+        return "full_moon", "🌕"
+    elif cycle_position < 21.23:
+        return "waning_gibbous", "🌖"
+    elif cycle_position < 23.08:
+        return "last_quarter", "🌗"
+    else:
+        return "waning_crescent", "🌘"
+
+
 def _get_shaman_descriptions(server_id):
     """Load shaman role descriptions from personality."""
     from .content import _get_personality_descriptions
@@ -33,6 +73,26 @@ def _get_shaman_descriptions(server_id):
         return _get_personality_descriptions(server_id).get("role_descriptions", {}).get("shaman", {})
     except Exception:
         return {}
+
+
+def _get_personality_answers(server_id):
+    """Load personality answers from server-specific or global directory."""
+    if not server_id:
+        return _personality_answers
+    try:
+        import json
+        from pathlib import Path
+        from discord_bot.db_init import get_server_personality_dir
+        server_dir = get_server_personality_dir(server_id)
+        if server_dir:
+            server_path = Path(server_dir)
+            answers_path = server_path / "answers.json"
+            if answers_path.exists():
+                with open(answers_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+    except Exception as e:
+        logger.debug(f"Could not load answers for server {server_id}: {e}")
+    return _personality_answers
 
 
 def get_runes_messages(guild=None) -> dict:
@@ -110,6 +170,24 @@ def build_canvas_role_shaman(agent_config: dict, admin_visible: bool, guild=None
 
     parts = [description]
 
+    # Add moon phase after description - combine title from descriptions with message from answers.json
+    moon_phase_name, moon_emoji = get_moon_phase()
+    
+    # Get moon phase title from descriptions (emoji + phase name)
+    moon_title = shaman_messages.get("moon_phases", {}).get(moon_phase_name, f"{moon_emoji} {moon_phase_name.replace('_', ' ').title()}")
+    
+    # Get moon phase message from answers.json
+    personality_answers = _get_personality_answers(server_id)
+    moon_phase_messages = personality_answers.get("roles", {}).get("shaman", {}).get("moon_phases", {})
+    moon_message_list = moon_phase_messages.get(moon_phase_name, [])
+    moon_message = moon_message_list[0] if moon_message_list else ""
+    
+    # Combine title and message
+    if moon_message:
+        parts.append(f"{moon_title} - {moon_message}")
+    else:
+        parts.append(moon_title)
+
     if active_subroles:
         parts.append(f"**{_general_text('available_subroles', 'Available subroles')}**")
         for subrole in active_subroles:
@@ -150,7 +228,7 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
         label_disabled = action_labels.get("disabled", "Disabled")
 
         return "\n".join([
-            f"**{title}**",
+            title,
             description,
             "-" * 45,
             how_to_use,

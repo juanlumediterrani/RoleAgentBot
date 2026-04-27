@@ -66,7 +66,6 @@ def get_default_messages():
         "roll_title": " **YOUR ROLL:**",
         "combination_title": "📊 **COMBINATION:**",
         "prize_title": "💰 **PRIZE:**",
-        "current_pot_title": "💎 **CURRENT POT:**",
         # Dice combination fallback messages in English
         "triple_ones": "🎰 (JACKPOT!)",
         "three_of_a_kind": "(Three of a Kind)",

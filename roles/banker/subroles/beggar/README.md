@@ -84,6 +84,7 @@ The beggar subrole has been completely restructured to use centralized configura
 ## Database Schema
 
 ### beggar_subrole table
+
 ```sql
 CREATE TABLE beggar_subrole (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,6 +102,7 @@ CREATE TABLE beggar_subrole (
 ```
 
 ### roles_config table
+
 ```sql
 CREATE TABLE roles_config (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,19 +121,23 @@ CREATE TABLE roles_config (
 All interactions are done through the Canvas UI. Access via: `!canvas banker`
 
 ### Enable/Disable Beggar
+
 - Navigate to **Banker → Admin → Beggar**
 - Use dropdown: "Beggar: On" or "Beggar: Off"
 
 ### Set Frequency
+
 - Navigate to **Banker → Admin → Beggar**
 - Use dropdown: "Beggar: Frequency"
 - Enter hours in modal (1-168 hours)
 
 ### View Status
+
 - Navigate to **Banker → Beggar**
 - Shows: Current reason, fund balance, recent donations
 
 ### Donate Gold
+
 - Navigate to **Banker → Beggar**
 - Use dropdown: "Beggar: Donate"
 - Enter amount in modal
@@ -139,16 +145,19 @@ All interactions are done through the Canvas UI. Access via: `!canvas banker`
 ## Integration Points
 
 ### Agent Engine Integration
+
 - Uses `execute_subrole_internal_task()` in `agent_engine.py`
 - Calls `execute_beggar_task()` for automated messages
 - Passes bot instance for channel access
 
 ### Canvas UI
+
 - All interactions through Canvas interface
 - No text commands needed
 - Visual buttons and modals for all actions
 
 ### Canvas UI Integration
+
 - Uses `get_canvas_beggar_state()` for UI display
 - Shows current reason, fund balance, statistics
 - Supports donations through modal interface
@@ -156,11 +165,13 @@ All interactions are done through the Canvas UI. Access via: `!canvas banker`
 ## Migration Notes
 
 ### From Old System
+
 1. Configuration moved from `beggar_config` table to `roles_config`
 2. Donation tracking moved to `beggar_subrole` table in `roles.db`
 3. All user interactions now through Canvas UI only
 
 ### Data Migration
+
 - Existing subscriptions automatically converted
 - Donation history preserved in both systems
 - No data loss during migration
@@ -208,6 +219,7 @@ All interactions are done through the Canvas UI. Access via: `!canvas banker`
    - Ensure minigame is enabled
 
 ### Debug Actions
+
 - Navigate to **Banker → Admin → Beggar** for configuration
 - Use "Beggar: Force Minigame" to test minigame manually
 - Check logs for detailed error information
@@ -215,18 +227,21 @@ All interactions are done through the Canvas UI. Access via: `!canvas banker`
 ## Development Notes
 
 ### Code Style
+
 - All hardcoded strings in English
 - User-facing content loaded from JSON files
 - Consistent error handling and logging
 - Type hints for better maintainability
 
 ### Testing
+
 - Unit tests for configuration management
 - Integration tests for task execution
 - Mock Discord for testing
 - Database transaction testing
 
 ### Performance
+
 - Efficient database queries with indexes
 - Cached configuration to reduce DB calls
 - Async operations for Discord interactions

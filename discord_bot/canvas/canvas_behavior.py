@@ -484,7 +484,7 @@ def build_canvas_behavior_detail(
                 return setup_not_available_builder()
             return "❌ This setup is only available to administrators."
 
-        # Note: Roles initialization happens once at server startup in init_roles_config.py
+        # Note: Roles initialization happens once at server startup via server_config.json
         from .server_config import get_server_language, get_available_languages
 
         server_id = str(guild.id) if guild else "0"
@@ -508,7 +508,7 @@ def build_canvas_behavior_detail(
         # Also filter out subroles (beggar is a subrole of banker)
         roles_cfg = (agent_config or {}).get("roles", {})
         all_roles = [
-            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman"]
+            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman", "scholar"]
             if roles_cfg.get(role, {}).get("enabled", False)
         ]
 

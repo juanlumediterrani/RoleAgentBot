@@ -15,11 +15,11 @@
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
       "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subrutinas disponibles",
       "action_descriptions": {
-        "boolean_toggle": "Alternar activación/desactivación",
-        "number_input_target": "Entrada numérica",
-        "text_input_target": "Entrada de texto",
-        "action": "Acción inmediata"
+        "boolean_toggle": "Alternar activación/desactivación"
       },
       "action_labels": {
         "on": "Activar",
@@ -37,10 +37,7 @@
         "memory_long": "Long Memory",
         "memory_recent": "Recent Memory",
         "memory_relationship": "Relationship Memory"
-      },
-      "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin",
-      "available_subroles": "Sub-labores disponibles"
+      }
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
@@ -63,6 +60,7 @@
       "description": "-Toca mis herramientas si te atreves. El panel te deja manejar mis hilos... SSSSS.",
       "interestingthings": "**Cadenas del Horno:**",
       "recentsynthesistitle": "🥖 **Murmullos del Horno**",
+      "pilgrimdatatitle": "Datos de la Víctima:",
       "dailymemorytitle": "🔥 **Cenizas vivas**",
       "personalsynthesistitle": "🪤 **Tu Rastro de Hollín**",
       "dm_default_server_title": "🔔 **Usando el horno de: {server_name}**",

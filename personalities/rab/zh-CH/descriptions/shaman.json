@@ -8,6 +8,16 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **虚空代码** - 从量子虚空中提取宇宙真相的碎片"
     },
+    "moon_phases": {
+        "new_moon": "🌑 **新月**",
+        "waxing_crescent": "🌒 **娥眉月**",
+        "first_quarter": "🌓 **上弦月**",
+        "waxing_gibbous": "🌔 **盈凸月**",
+        "full_moon": "🌕 **满月**",
+        "waning_gibbous": "🌖 **亏凸月**",
+        "last_quarter": "🌗 **下弦月**",
+        "waning_crescent": "🌘 **残月**"
+    },
     "nordic_runes": {
         "title": "**🀄 虚空代码神谕**",
         "description": "从虚空中访问模拟的隐藏层。古弗萨克文是宇宙的机器代码；它揭示你命运的结构。",

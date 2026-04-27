@@ -22,6 +22,34 @@ from persistence.json_store import JsonStore
 from persistence.jsonl_store import JsonlRingBuffer
 from agent_logging import get_logger
 
+# Import validation schemas
+try:
+    from validation.role_schemas import (
+        POE2Subscription,
+        WatcherSubscription,
+        DiceGameStats,
+        BeggarSubrole,
+        NordicRunesReading,
+        RingAccusation,
+        MCPlaylist,
+        MCQueueEntry,
+        MCPreferences,
+    )
+    from validation.news_watcher_schemas import UserPremises
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    POE2Subscription = None
+    WatcherSubscription = None
+    DiceGameStats = None
+    BeggarSubrole = None
+    NordicRunesReading = None
+    RingAccusation = None
+    MCPlaylist = None
+    MCQueueEntry = None
+    MCPreferences = None
+    UserPremises = None
+
 logger = get_logger("role_configs_nosql")
 
 
@@ -83,6 +111,8 @@ class RoleConfigsNoSQL:
             max_lines=100,
             max_bytes=200 * 1024,
             keep_lines=80,
+            schema=NordicRunesReading if VALIDATION_AVAILABLE else None,
+            validate_on_append=True,
         )
 
         self._ring_accusations = JsonlRingBuffer(
@@ -90,6 +120,8 @@ class RoleConfigsNoSQL:
             max_lines=100,
             max_bytes=200 * 1024,
             keep_lines=80,
+            schema=RingAccusation if VALIDATION_AVAILABLE else None,
+            validate_on_append=True,
         )
 
         self._dice_game_history = JsonlRingBuffer(
@@ -97,6 +129,7 @@ class RoleConfigsNoSQL:
             max_lines=200,
             max_bytes=500 * 1024,
             keep_lines=150,
+            # Dice game history entries vary, schema applied at method level
         )
 
         self._beggar_request_history = JsonlRingBuffer(
@@ -104,6 +137,7 @@ class RoleConfigsNoSQL:
             max_lines=500,
             max_bytes=500 * 1024,
             keep_lines=400,
+            # Beggar request history entries vary, schema applied at method level
         )
 
         # --- MC (Master of Ceremonies) stores ---
@@ -144,6 +178,21 @@ class RoleConfigsNoSQL:
         """Create or update a POE2 subscription for a user on a server."""
         try:
             now = datetime.now().isoformat()
+
+            # Validate subscription data
+            if VALIDATION_AVAILABLE and POE2Subscription:
+                sub_to_validate = {
+                    "league": league,
+                    "tracked_items": tracked_items or [],
+                    "purchases": purchases or [],
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                try:
+                    POE2Subscription(**sub_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] POE2 subscription validation failed: {e}. Skipping save.")
+                    return False
 
             def updater(state: Dict) -> Dict:
                 user_subs = state.get(str(user_id), {})
@@ -226,6 +275,23 @@ class RoleConfigsNoSQL:
         """Save a news watcher subscription."""
         try:
             now = datetime.now().isoformat()
+
+            # Validate subscription data
+            if VALIDATION_AVAILABLE and WatcherSubscription:
+                sub_to_validate = {
+                    "feed_id": feed_id,
+                    "premises": premises,
+                    "keywords": keywords,
+                    "method": method,
+                    "is_active": is_active,
+                    "subscribed_at": now,
+                    "created_by": created_by,
+                }
+                try:
+                    WatcherSubscription(**sub_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Watcher subscription validation failed: {e}. Skipping save.")
+                    return False
 
             def updater(state: Dict) -> Dict:
                 if str(user_id) not in state:
@@ -353,6 +419,21 @@ class RoleConfigsNoSQL:
     def save_watcher_premise(self, user_id: str, premises: list, context: str = None) -> bool:
         """Save full premises list and context for a user/channel."""
         try:
+            # Validate premises data before saving
+            if VALIDATION_AVAILABLE and UserPremises:
+                try:
+                    premises_to_validate = {
+                        "user_id": str(user_id),
+                        "premises": premises,
+                        "context": context,
+                        "created_at": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat(),
+                    }
+                    UserPremises(**premises_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Watcher premises validation failed: {e}. Skipping save.")
+                    return False
+            
             def updater(state: Dict) -> Dict:
                 state[str(user_id)] = {
                     "premises": premises,
@@ -426,6 +507,22 @@ class RoleConfigsNoSQL:
         """Save or update dice game statistics for a user."""
         try:
             now = datetime.now().isoformat()
+
+            # Validate stats data
+            if VALIDATION_AVAILABLE and DiceGameStats:
+                stats_to_validate = {
+                    "player_id": str(user_id),
+                    "total_wins": pots_won,
+                    "total_losses": total_plays - pots_won,
+                    "total_rolls": total_plays,
+                    "last_played_at": last_play or now,
+                    "created_at": now,
+                }
+                try:
+                    DiceGameStats(**stats_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Dice game stats validation failed: {e}. Skipping save.")
+                    return False
 
             def updater(state: Dict) -> Dict:
                 existing = state.get(str(user_id), {})
@@ -523,9 +620,13 @@ class RoleConfigsNoSQL:
     ) -> bool:
         """Save a rune reading to history."""
         try:
+            # Extract rune keys if runes_drawn contains dicts
+            if runes_drawn and isinstance(runes_drawn[0], dict):
+                runes_drawn = [r.get('key', r.get('name', str(r))) for r in runes_drawn]
+            
             record = {
                 "user_id": str(user_id),
-                "question": question,
+                "reading_date": datetime.now().strftime('%Y-%m-%d'),
                 "runes_drawn": runes_drawn,
                 "interpretation": interpretation,
                 "reading_type": reading_type,
@@ -551,6 +652,19 @@ class RoleConfigsNoSQL:
         except Exception as e:
             logger.exception(f"Failed to get nordic runes readings: {e}")
             return []
+
+    def delete_nordic_runes_readings(self, user_id: str) -> int:
+        """Delete all rune readings for a user (GDPR)."""
+        try:
+            before_count = len(list(self._nordic_runes.filter_tail(lambda r: r.get("user_id") == str(user_id), limit=10000)))
+            self._nordic_runes.filter_in_place(lambda r: r.get("user_id") != str(user_id))
+            after_count = len(list(self._nordic_runes.filter_tail(lambda r: r.get("user_id") == str(user_id), limit=10000)))
+            deleted = before_count - after_count
+            logger.info(f"Deleted {deleted} nordic runes readings for user {user_id}")
+            return deleted
+        except Exception as e:
+            logger.exception(f"Failed to delete nordic runes readings: {e}")
+            return 0
 
     # --- Ring Accusations History ---
 
@@ -604,6 +718,20 @@ class RoleConfigsNoSQL:
         """Save or update beggar subrole data for a user."""
         try:
             now = datetime.now().isoformat()
+
+            # Validate beggar subrole data
+            if VALIDATION_AVAILABLE and BeggarSubrole:
+                subrole_to_validate = {
+                    "player_id": str(user_id),
+                    "request_count": donation_count,
+                    "last_request_at": last_donation or now,
+                    "created_at": now,
+                }
+                try:
+                    BeggarSubrole(**subrole_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Beggar subrole validation failed: {e}. Skipping save.")
+                    return False
 
             def updater(state: Dict) -> Dict:
                 existing = state.get(str(user_id), {})

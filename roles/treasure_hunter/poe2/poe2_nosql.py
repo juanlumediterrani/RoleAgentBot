@@ -16,6 +16,16 @@ from persistence.json_store import JsonStore
 from persistence.jsonl_store import JsonlRingBuffer
 from agent_logging import get_logger
 
+# Import validation schemas
+try:
+    from validation.poe2_schemas import ItemCatalogEntry, PriceData, PriceHistoryEntry
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    ItemCatalogEntry = None
+    PriceData = None
+    PriceHistoryEntry = None
+
 logger = get_logger("poe2_nosql")
 
 
@@ -59,6 +69,24 @@ class Poe2NoSQL:
     # Items Catalog
     def save_item(self, item_name: str, item_data: dict):
         """Save item to catalog."""
+        # Validate item data before saving
+        if VALIDATION_AVAILABLE and ItemCatalogEntry:
+            try:
+                # Ensure required fields are present
+                entry_to_validate = {
+                    "item_id": int(item_data.get("item_id", 0)),
+                    "item_name": item_name or item_data.get("name", ""),
+                    "base_type": item_data.get("base_type", ""),
+                    "item_class": item_data.get("item_class", ""),
+                    "rarity": item_data.get("rarity", "Normal"),
+                    "icon": item_data.get("icon"),
+                    "metadata": json.dumps(item_data.get("metadata")) if item_data.get("metadata") else None,
+                    "updated_at": item_data.get("updated_at", datetime.now().isoformat()),
+                }
+                ItemCatalogEntry(**entry_to_validate)
+            except Exception as e:
+                logger.warning(f"⚠️ [NoSQL POE2] Item validation failed: {e}. Skipping save.")
+                return
         self._items_catalog.set(item_name, item_data)
 
     def get_item(self, item_name: str) -> Optional[dict]:
@@ -76,6 +104,23 @@ class Poe2NoSQL:
     # Latest Prices
     def save_latest_price(self, league: str, item_id: int, price_data: dict):
         """Save latest price for item in league."""
+        # Validate price data before saving
+        if VALIDATION_AVAILABLE and PriceData:
+            try:
+                entry_to_validate = {
+                    "item_id": int(item_id),
+                    "item_name": price_data.get("item_name", ""),
+                    "league": league,
+                    "price": float(price_data.get("price", 0.0)),
+                    "currency": price_data.get("currency", "chaos"),
+                    "price_date": price_data.get("updated_at", datetime.now().isoformat()),
+                    "source": price_data.get("source", "api"),
+                    "metadata": json.dumps(price_data.get("metadata")) if price_data.get("metadata") else None,
+                }
+                PriceData(**entry_to_validate)
+            except Exception as e:
+                logger.warning(f"⚠️ [NoSQL POE2] Price data validation failed: {e}. Skipping save.")
+                return
         self._prices_latest.update(lambda data: self._set_nested(data, [league, str(item_id)], price_data))
 
     def get_latest_price(self, league: str, item_id: int) -> Optional[dict]:
@@ -96,11 +141,14 @@ class Poe2NoSQL:
                 max_lines=10000,
                 max_bytes=50 * 1024 * 1024,
                 keep_lines=720,
+                schema=PriceHistoryEntry if VALIDATION_AVAILABLE else None,
+                validate_on_append=True,
             )
         return self._price_history_buffers[league]
 
     def append_price_history(self, entry: dict, league: str):
         """Append price history entry to league-specific buffer."""
+        # Validation is handled automatically by JsonlRingBuffer schema
         buffer = self._get_price_history_buffer(league)
         buffer.append(entry)
 

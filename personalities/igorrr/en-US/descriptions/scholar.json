@@ -1,0 +1,14 @@
+{
+    "title": "📚 **Basement Archivist**",
+    "description": "Access the Master's forbidden knowledge from Igorrr's damp basement perspective. Ask any question, and I shall share from the rotting tomes... SSSSS...",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 Basement Archivist 📚",
+    "dropdown": {
+        "select_action": "📋 Execute instruction...",
+        "toggle_on": "✅ Enable Scholar",
+        "toggle_off": "❌ Disable Scholar"
+    },
+    "controls_title": "**Controls**",
+    "controls": "- Enable or disable the Scholar role",
+    "admin_flows": "Toggle the Scholar role to enable or disable it."
+}

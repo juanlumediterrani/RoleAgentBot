@@ -17,7 +17,9 @@
       "option_no": "否",
       "button_personal": "📁 个人",
       "button_admin": "🔧 管理",
-      "available_subroles": "可用子模块"
+      "available_subroles": "可用子模块",
+      "toggle_on_description": "启用角色",
+      "toggle_off_description": "禁用角色"
     },
     "help_menu": {
       "title": "📚 **赫尔汉斯 - 指令手册**",
@@ -39,6 +41,7 @@
       "description": "Canvas面板允许对所有行动的完全控制！",
       "interestingthings": "**活跃行动：**",
       "recentsynthesistitle": "🧐 **当前报告**",
+      "pilgrimdatatitle": "新兵数据：",
       "dailymemorytitle": "🗺️ **前线分析**",
       "personalsynthesistitle": "👞 **新兵档案**",
       "dm_default_server_title": "🔔 **使用默认服务器：{server_name}**",

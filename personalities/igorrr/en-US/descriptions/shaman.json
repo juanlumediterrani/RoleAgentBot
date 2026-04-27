@@ -8,6 +8,16 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **Bread Runes** - Write runes on bread, bake them and read destiny in burnt crumbs"
     },
+    "moon_phases": {
+        "new_moon": "🌑 **New Moon**",
+        "waxing_crescent": "🌒 **Waxing Crescent**",
+        "first_quarter": "🌓 **First Quarter**",
+        "waxing_gibbous": "🌔 **Waxing Gibbous**",
+        "full_moon": "🌕 **Full Moon**",
+        "waning_gibbous": "🌖 **Waning Gibbous**",
+        "last_quarter": "🌗 **Last Quarter**",
+        "waning_crescent": "🌘 **Waning Crescent**"
+    },
     "nordic_runes": {
         "title": "🥖 **Bread Runes** 🥖",
         "description": "Igorrr writes runes on bread and bakes them to see your future in burnt crumbs... SSSSS",

@@ -3,11 +3,21 @@
 Replaces global_feeds.db with JSON storage for RSS feed configuration and health checks.
 """
 
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 
 from persistence.json_store import JsonStore
 from agent_logging import get_logger
+
+# Import validation schemas
+try:
+    from validation.news_watcher_schemas import FeedConfig, FeedHealthEntry
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    FeedConfig = None
+    FeedHealthEntry = None
 
 logger = get_logger("global_feeds_nosql")
 
@@ -37,6 +47,25 @@ class GlobalFeedsNoSQL:
     # Feeds management
     def add_feed(self, feed_id: int, name: str, url: str, category: str, language: str = "en"):
         """Add or update a feed."""
+        # Validate feed data before saving
+        if VALIDATION_AVAILABLE and FeedConfig:
+            try:
+                feed_to_validate = {
+                    "feed_id": int(feed_id),
+                    "feed_name": name,
+                    "feed_url": url,
+                    "category": category,
+                    "language": language,
+                    "update_interval_hours": 1,
+                    "is_active": True,
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat(),
+                }
+                FeedConfig(**feed_to_validate)
+            except Exception as e:
+                logger.warning(f"⚠️ [NoSQL Global Feeds] Feed validation failed: {e}. Skipping save.")
+                return
+        
         self._store.update(lambda data: data["feeds"].update({
             str(feed_id): {
                 "id": feed_id,
@@ -78,9 +107,26 @@ class GlobalFeedsNoSQL:
     # Health log
     def log_health_check(self, feed_id: int, status: str, error_message: str = None):
         """Log a health check result."""
+        # Validate health entry before logging
+        if VALIDATION_AVAILABLE and FeedHealthEntry:
+            try:
+                health_to_validate = {
+                    "feed_id": int(feed_id),
+                    "feed_name": self.get_feed(feed_id).get("name", "Unknown") if self.get_feed(feed_id) else "Unknown",
+                    "status": status,
+                    "error_message": error_message,
+                    "last_check": datetime.now().isoformat(),
+                    "last_success": None,
+                    "consecutive_failures": 0,
+                }
+                FeedHealthEntry(**health_to_validate)
+            except Exception as e:
+                logger.warning(f"⚠️ [NoSQL Global Feeds] Health entry validation failed: {e}. Skipping log.")
+                return
+        
         entry = {
             "feed_id": feed_id,
-            "check_time": None,  # Could add timestamp
+            "check_time": datetime.now().isoformat(),
             "status": status,
             "error_message": error_message,
         }

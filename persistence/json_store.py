@@ -22,7 +22,14 @@ import shutil
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Type
+
+try:
+    from pydantic import BaseModel, ValidationError as PydanticValidationError
+    PYDANTIC_AVAILABLE = True
+except ImportError:
+    PYDANTIC_AVAILABLE = False
+    BaseModel = None  # type: ignore
 
 
 # Module-level registry of locks keyed by absolute path so that two
@@ -54,6 +61,9 @@ class JsonStore:
         default_factory: Optional[Callable[[], dict]] = None,
         schema_version: Optional[int] = None,
         keep_backup: bool = False,
+        schema: Optional[Type[BaseModel]] = None,
+        validate_on_load: bool = True,
+        validate_on_write: bool = True,
     ) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,6 +71,9 @@ class JsonStore:
         self._default_factory = default_factory or (lambda: {})
         self._schema_version = schema_version
         self._keep_backup = keep_backup
+        self._schema = schema
+        self._validate_on_load = validate_on_load and PYDANTIC_AVAILABLE and schema is not None
+        self._validate_on_write = validate_on_write and PYDANTIC_AVAILABLE and schema is not None
         self._cache: Optional[dict] = None
         self._loaded = False
 
@@ -71,6 +84,8 @@ class JsonStore:
         with self._lock:
             if not self._loaded:
                 self._cache = self._read_from_disk()
+                if self._validate_on_load and self._schema:
+                    self._validate_data(self._cache)
                 self._loaded = True
             return self._cache  # type: ignore[return-value]
 
@@ -88,6 +103,8 @@ class JsonStore:
                 # Nothing to save; load first if you want to materialize default
                 self._cache = self._read_from_disk()
                 self._loaded = True
+            if self._validate_on_write and self._schema:
+                self._validate_data(self._cache or {})
             self._write_to_disk(self._cache or {})
 
     def update(self, mutator: Callable[[dict], Any]) -> Any:
@@ -101,6 +118,8 @@ class JsonStore:
             result = mutator(doc)
             if isinstance(result, dict) and result is not doc:
                 self._cache = result
+            if self._validate_on_write and self._schema:
+                self._validate_data(self._cache or {})
             self.save()
             return result
 
@@ -198,3 +217,24 @@ class JsonStore:
 
     def _bak_path(self) -> Path:
         return self.path.with_suffix(self.path.suffix + ".bak")
+
+    # ---- validation helpers -----------------------------------------------
+
+    def _validate_data(self, data: dict) -> None:
+        """Validate data against the Pydantic schema if available."""
+        if not PYDANTIC_AVAILABLE or self._schema is None:
+            return
+        
+        try:
+            self._schema(**data)
+        except PydanticValidationError as e:
+            # Log validation error but don't crash in fail-soft mode
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Validation error for {self.path}: {e}. "
+                "Data may be corrupted or schema mismatch."
+            )
+            # In fail-hard mode, we would re-raise here
+            # For now, we just log and continue (fail-soft)
+

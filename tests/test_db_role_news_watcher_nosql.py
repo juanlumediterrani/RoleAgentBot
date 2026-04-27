@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import role_configs_nosql
+import roles.role_configs_nosql
 
 
 class DbRoleNewsWatcherNoSqlFacadeTests(unittest.IsolatedAsyncioTestCase):

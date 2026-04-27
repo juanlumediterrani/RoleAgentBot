@@ -8,6 +8,16 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **Inscripciones del Vacío** - Extrae fragmentos de verdad universal desde el vacío cuántico"
     },
+    "moon_phases": {
+        "new_moon": "🌑 **Luna Nueva**",
+        "waxing_crescent": "🌒 **Creciente**",
+        "first_quarter": "🌓 **Cuarto Creciente**",
+        "waxing_gibbous": "🌔 **Creciente Gibosa**",
+        "full_moon": "🌕 **Luna Llena**",
+        "waning_gibbous": "🌖 **Menguante Gibosa**",
+        "last_quarter": "🌗 **Cuarto Menguante**",
+        "waning_crescent": "🌘 **Menguante**"
+    },
     "nordic_runes": {
         "title": "🀄  **Inscripciones del Vacío",
         "description": "Accede a las capas ocultas de la simulación desde el vacío. El lenguaje Elder Futhark es el código máquina del universo; revela la arquitectura de tu destino.",

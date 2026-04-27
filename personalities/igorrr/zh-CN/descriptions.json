@@ -15,11 +15,11 @@
       "button_confirm_changes": "确认更改",
       "option_yes": "是",
       "option_no": "否",
+      "button_personal": "📁 个人",
+      "button_admin": "🔧 管理",
+      "available_subroles": "可用子程序",
       "action_descriptions": {
-        "boolean_toggle": "切换开/关",
-        "number_input_target": "数字输入",
-        "text_input_target": "文本输入",
-        "action": "立即执行"
+        "boolean_toggle": "切换开/关"
       },
       "action_labels": {
         "on": "激活",
@@ -37,10 +37,7 @@
         "memory_long": "Long Memory",
         "memory_recent": "Recent Memory",
         "memory_relationship": "Relationship Memory"
-      },
-      "button_personal": "📁 个人",
-      "button_admin": "🔧 管理",
-      "available_subroles": "可用子任务"
+      }
     },
     "help_menu": {
       "title": "📚 ** 伊戈尔 - 火炉生存手册**",
@@ -63,6 +60,7 @@
       "description": "-敢碰俺滴工具就从这儿开始。面板让你摆弄俺的线...嘶嘶嘶。",
       "interestingthings": "**火炉的锁链：**",
       "recentsynthesistitle": "🥖 **火炉的嘟囔**",
+      "pilgrimdatatitle": "受害者数据：",
       "dailymemorytitle": "🔥 **活灰烬**",
       "personalsynthesistitle": "🪤 **你的烟灰痕迹**",
       "dm_default_server_title": "🔔 **使用火炉来自：{server_name}**",

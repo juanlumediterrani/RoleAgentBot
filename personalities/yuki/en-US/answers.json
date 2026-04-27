@@ -52,6 +52,34 @@
                     "to bring spring water that true tea requires"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "The primordial darkness awaits your intention. Seeds planted in silence will bloom in their season."
+                ],
+                "waxing_crescent": [
+                    "Light grows gently like cherry blossoms. Time to plant intentions with grace."
+                ],
+                "first_quarter": [
+                    "Action becomes necessary. Face obstacles with the elegance of a tea ceremony."
+                ],
+                "waxing_gibbous": [
+                    "Energy accumulates like incense smoke. Refine your plans like arranging ikebana."
+                ],
+                "full_moon": [
+                    "Maximum power manifests. The moon shines like a mirror, revealing truth and beauty."
+                ],
+                "waning_gibbous": [
+                    "The harvest is gathered. Express gratitude like after a formal tea ceremony."
+                ],
+                "last_quarter": [
+                    "Time for reflection. Release what no longer serves, like autumn leaves falling."
+                ],
+                "waning_crescent": [
+                    "Sacred rest. Meditate in silence, like a moonlit garden at night."
+                ]
+            }
         }
     },
     "ring_messages": {

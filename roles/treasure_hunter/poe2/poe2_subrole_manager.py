@@ -413,7 +413,8 @@ class POE2SubroleManager:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 price REAL NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                quantity INTEGER
+                quantity INTEGER,
+                UNIQUE(timestamp)
             )
         ''')
         
@@ -655,9 +656,11 @@ class POE2SubroleManager:
                 return False, f"Item '{item_name}' is already in objectives."
             
             # Add to objectives
-            cursor.execute('''
+            conn.execute('''
                 INSERT INTO objectives (item_name, item_id, league, active, user_id)
                 VALUES (?, ?, ?, 1, ?)
+                ON CONFLICT(item_name, item_id, league, user_id) DO UPDATE SET
+                    active = 1
             ''', (item_name, item_id, league, user_id))
 
             roles_db = self._get_roles_db(server_id)
@@ -1098,10 +1101,12 @@ class POE2SubroleManager:
                 # Add placeholder immediately
                 self.add_placeholder_item(user_id, item_name, league)
 
-                # Add to objectives database
+                # Add to objectives database (idempotent)
                 cursor.execute('''
                     INSERT INTO objectives (item_name, item_id, league, active, user_id)
                     VALUES (?, ?, ?, 1, ?)
+                    ON CONFLICT(item_name, item_id, league, user_id) DO UPDATE SET
+                        active = 1
                 ''', (item_name, item_id, league, user_id))
                 conn.commit()
 

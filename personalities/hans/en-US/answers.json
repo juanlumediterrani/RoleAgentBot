@@ -52,6 +52,34 @@
                     "to buy var beer for ze Office personnel"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "Ze primordial darkness awaits your command soldier! Seeds planted in darkness vill grow into ze Fatherland's victory!"
+                ],
+                "waxing_crescent": [
+                    "Light grows like ze Reich! Time to plant your intentions for ze Fatherland's glory!"
+                ],
+                "first_quarter": [
+                    "Action is required soldier! Face obstacles viz Germanic strength and determination!"
+                ],
+                "waxing_gibbous": [
+                    "Energy builds like ze Wehrmacht! Refine your plans for total victory!"
+                ],
+                "full_moon": [
+                    "Maximum power manifests! Ze Aryan spirit shines bright soldier! Revelations and complete victory!"
+                ],
+                "waning_gibbous": [
+                    "Ze harvest is gathered! Gratitude for your achievements as ve prepare for ze next battle!"
+                ],
+                "last_quarter": [
+                    "Time for reflection soldier! Release vat does not serve ze Fatherland and prepare for ze ne campaign!"
+                ],
+                "waning_crescent": [
+                    "Sacred rest! Meditate on your duty soldier! Rest vell for ze next mission!"
+                ]
+            }
         }
     },
     "ring_messages": {

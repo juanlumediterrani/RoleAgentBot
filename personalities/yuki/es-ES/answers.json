@@ -46,11 +46,39 @@
                     "para adquirir flores de estación que no están disponibles aquí",
                     "para mantener el espacio donde practicamos el arte de la presencia",
                     "para reparar el shamisen que acompaña las largas veladas",
-                    "para comprar papel de calidad que merezca la tinta adecuada",
+                    "para comprar papel de calidad que merece la tinta adecuada",
                     "para preparar una ceremonia que honre a quienes sostienen esta comunidad",
                     "para restaurar el silencio necesario entre las notas y las palabras",
                     "para traer agua de manantial que el té verdadero requiere"
                 ]
+            },
+            "shaman":{
+                "moon_phases":{
+                    "new_moon": [
+                        "La oscuridad primordial espera tu intención. Las semillas plantadas en silencio florecerán en su temporada."
+                    ],
+                    "waxing_crescent": [
+                        "La luz crece suavemente como las flores de cerezo. Hora de plantar intenciones con gracia."
+                    ],
+                    "first_quarter": [
+                        "La acción se hace necesaria. Enfrenta obstáculos con la elegancia de una ceremonia de té."
+                    ],
+                    "waxing_gibbous": [
+                        "La energía se acumula como el humo del incienso. Refina tus planes como arreglando ikebana."
+                    ],
+                    "full_moon": [
+                        "El poder máximo se manifiesta. La luna brilla como un espejo, revelando verdad y belleza."
+                    ],
+                    "waning_gibbous": [
+                        "La cosecha se recoge. Expresa gratitud como después de una ceremonia de té formal."
+                    ],
+                    "last_quarter": [
+                        "Tiempo de reflexión. Libera lo que ya no sirve, como hojas de otoño cayendo."
+                    ],
+                    "waning_crescent": [
+                        "Descanso sagrado. Medita en silencio, como un jardín iluminado por la luna en la noche."
+                    ]
+                }
             }
         }
     },

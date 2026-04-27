@@ -17,7 +17,9 @@
       "option_no": "No",
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
-      "available_subroles": "AVAILABLE SUBMODULES"
+      "available_subroles": "AVAILABLE SUBMODULES",
+      "toggle_on_description": "Enable role",
+      "toggle_off_description": "Disable role"
     },
     "help_menu": {
       "title": "📚 ** Herr Hans - INSTRUCTION MANUAL**",
@@ -39,6 +41,7 @@
       "description": "Ze Canvas panel allows total control over all operations!",
       "interestingthings": "**Active Operations:**",
       "recentsynthesistitle": "🧐 **Current Report**",
+      "pilgrimdatatitle": "Recruit Data:",
       "dailymemorytitle": "🗺️ **Front Analysis**",
       "personalsynthesistitle": "👞 **Recruit File**",
       "dm_default_server_title": "🔔 **USING DEFAULT SERVER: {server_name}**",

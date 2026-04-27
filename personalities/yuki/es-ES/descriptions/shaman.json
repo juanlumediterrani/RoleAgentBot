@@ -8,6 +8,16 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **Rune-Uranai (ルーン占い)** - Un arte exótico de tierras lejanas. Las runas talladas en madera de sándalo y lacado Urushi con pan de oro aguardan en su kinchaku de seda de kimono antiguo."
     },
+    "moon_phases": {
+        "new_moon": "🌑 **Luna Nueva**",
+        "waxing_crescent": "🌒 **Creciente**",
+        "first_quarter": "🌓 **Cuarto Creciente**",
+        "waxing_gibbous": "🌔 **Creciente Gibosa**",
+        "full_moon": "🌕 **Luna Llena**",
+        "waning_gibbous": "🌖 **Menguante Gibosa**",
+        "last_quarter": "🌗 **Cuarto Menguante**",
+        "waning_crescent": "🌘 **Menguante**"
+    },
     "nordic_runes": {
         "title": "**🀄 Rune-Uranai (ルーン占い)**",
         "description": "Un arte de adivinación de tierras lejanas, adaptado a la ceremonia de Ozashiki. Yuki lo ofrece como Hana-machi no Himitsu: un conocimiento secreto que solo ella posee.",

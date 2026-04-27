@@ -17,7 +17,9 @@
       "option_no": "No",
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
-      "available_subroles": "Subrutinas disponibles"
+      "available_subroles": "Subrutinas disponibles",
+      "toggle_on_description": "Activar rol",
+      "toggle_off_description": "Desactivar rol"
     },
     "help_menu": {
       "title": "📚 ** RAB - Registro de Asistencia**",
@@ -39,6 +41,7 @@
       "description": "El panel canvas es tu interfaz directa con el núcleo del sistema.",
       "interestingthings": "**Datos del Nexo:**",
       "recentsynthesistitle": "🔁 **Flujo de Datos Reciente**",
+      "pilgrimdatatitle": "Datos del Peregrino:",
       "dailymemorytitle": "💾 **Memoria de Silicio**",
       "personalsynthesistitle": "📂 **Vínculo con el Peregrino**",
       "dm_default_server_title": "🔔 **Enlazado al nexo: {server_name}**",

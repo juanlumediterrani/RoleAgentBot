@@ -116,6 +116,11 @@
           "frequency_hours": 24
         }
       }
+    },
+    "scholar": {
+      "enabled": true,
+      "mode": "interactive",
+      "script": "roles/scholar/scholar.py"
     }
   }
 }

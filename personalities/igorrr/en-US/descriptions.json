@@ -15,11 +15,11 @@
       "button_confirm_changes": "Confirm Changes",
       "option_yes": "Yes",
       "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Available subroutines",
       "action_descriptions": {
-        "boolean_toggle": "Toggle activation/deactivation",
-        "number_input_target": "Number input",
-        "text_input_target": "Text input",
-        "action": "Immediate action"
+        "boolean_toggle": "Toggle activation/deactivation"
       },
       "action_labels": {
         "on": "Activate",
@@ -37,10 +37,7 @@
         "memory_long": "Long Memory",
         "memory_recent": "Recent Memory",
         "memory_relationship": "Relationship Memory"
-      },
-      "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin",
-      "available_subroles": "Available sub-tasks"
+      }
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Oven Survival Manual**",
@@ -57,15 +54,15 @@
       "button_roles": "🍞 Tasks",
       "button_behavior": "💊 Tics",
       "button_help": "❓ Huh?",
-      "button_memory": "🧠 Amnesia",
       "generic_option_label": "Choose your poison...",
       "personalitystatus": "Filth Loaded:",
       "description": "-Touch my tools if you dare. The panel lets you handle my threads... SSSSS.",
       "interestingthings": "**Oven Chains:**",
-      "recentsynthesistitle": "🥖 **Oven Whispers**",
-      "dailymemorytitle": "🔥 **Living Ashes**",
-      "personalsynthesistitle": "🪤 **Your Soot Trail**",
-      "dm_default_server_title": "🔔 **Using the oven of: {server_name}**",
+      "recentsynthesistitle": "**Oven Whispers**",
+      "pilgrimdatatitle": "Victim Data:",
+      "dailymemorytitle": "**Living Ashes**",
+      "personalsynthesistitle": "**Your Soot Trail**",
+      "dm_default_server_title": "**Using the oven of: {server_name}**",
       "dm_default_server_message": "*Whispering from private, using the first available basement.*",
       "dm_default_server_separator": "─────────────────────────────────────────────"
     },

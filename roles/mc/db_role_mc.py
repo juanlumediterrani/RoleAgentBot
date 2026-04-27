@@ -21,7 +21,7 @@ class DatabaseRoleMC:
     def _nosql(self):
         """Lazy accessor for the NoSQL role-configs facade (per server)."""
         if self._nosql_cache is None:
-            from role_configs_nosql import get_role_configs_nosql
+            from roles.role_configs_nosql import get_role_configs_nosql
             self._nosql_cache = get_role_configs_nosql(self.server_id)
         return self._nosql_cache
 

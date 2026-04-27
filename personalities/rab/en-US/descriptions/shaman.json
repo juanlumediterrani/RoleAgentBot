@@ -8,6 +8,16 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **Void Code** - Extract fragments of universal truth from the quantum void"
     },
+    "moon_phases": {
+        "new_moon": "🌑 **New Moon**",
+        "waxing_crescent": "🌒 **Waxing Crescent**",
+        "first_quarter": "🌓 **First Quarter**",
+        "waxing_gibbous": "🌔 **Waxing Gibbous**",
+        "full_moon": "🌕 **Full Moon**",
+        "waning_gibbous": "🌖 **Waning Gibbous**",
+        "last_quarter": "🌗 **Last Quarter**",
+        "waning_crescent": "🌘 **Waning Crescent**"
+    },
     "nordic_runes": {
         "title": "🀄  **Void Code Oracle**",
         "description": "Access the simulation's hidden layers from the void. Elder Futhark language is the universe's machine code; it reveals your destiny's architecture.",

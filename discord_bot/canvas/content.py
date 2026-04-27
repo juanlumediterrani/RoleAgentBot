@@ -84,7 +84,7 @@ from discord_bot.discord_utils import (
     acquire_connection_lock, acquire_process_lock,
     get_server_key, set_role_enabled, is_role_enabled_check,
 )
-get_news_watcher_db_instance = core.get_news_watcher_db_instance
+get_news_watcher_db_instance = core.get_news_watcher_db_instance if hasattr(core, 'get_news_watcher_db_instance') and core.get_news_watcher_db_instance is not None else None
 
 try:
     from agent_roles_db import get_roles_db_instance
@@ -134,10 +134,15 @@ from .canvas_trickster import (
 from .canvas_shaman import (
     build_canvas_role_shaman,
     build_canvas_role_shaman_detail,
+    get_moon_phase,
 )
 from .canvas_juggler import (
     build_canvas_role_juggler,
     build_canvas_role_juggler_detail,
+)
+from .canvas_scholar import (
+    build_canvas_role_scholar,
+    build_canvas_role_scholar_detail,
 )
 from .canvas_behavior import (
     build_canvas_behavior,
@@ -308,7 +313,8 @@ def _split_canvas_blocks(content: str) -> list[tuple[str, list[str]]]:
         if line.startswith("**") and line.endswith("**") and len(line) > 4:
             if current_lines:
                 blocks.append((current_title, current_lines))
-            current_title = line.strip("*")
+            # Only strip leading/trailing **, not internal ones
+            current_title = line[2:-2]
             current_lines = []
             continue
         current_lines.append(line)
@@ -373,6 +379,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "mc": _get_embed_role_title("mc", detail_key),
         "shaman": _get_embed_role_title("shaman", detail_key),
         "juggler": _get_embed_role_title("juggler", detail_key),
+        "scholar": _get_embed_role_title("scholar", detail_key),
     }
     title = role_titles.get(role_name, "Canvas")
     # Override title for shaman runes detail to prevent parent title from appearing
@@ -387,6 +394,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "mc": discord.Color.purple(),
         "shaman": discord.Color.dark_purple(),
         "juggler": discord.Color.orange(),
+        "scholar": discord.Color.teal(),
     }
      
     # Extract first block's content as description to avoid extra space between title and fields
@@ -530,6 +538,10 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "mc_history": "Showing recent playback history.",
             "mc_volume": "The bot will ask for a new volume value.",
         },
+        "scholar": {
+            "scholar_on": "Scholar role enabled for this server.",
+            "scholar_off": "Scholar role disabled for this server.",
+        },
     }
     behavior_action_map = {
         "greetings_on": "Presence greetings enabled for this server.",
@@ -643,6 +655,12 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("overview", "🤹 Vista"), "overview"),
             (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("ring", "👁️ Ring"), "ring"),
         ] if current_detail not in {"ring", "ring_admin"} else [],
+        "scholar": (
+            [(button_personal, "personal")]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else [])
+        ) if current_detail in {"personal", "admin"} else [
+            (button_personal, "personal"),
+        ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
     }
     
     # Special handling for treasure_hunter POE2 views
@@ -1087,6 +1105,39 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             (_mc_text("mc_volume", "Set Volume"), "mc_volume", _mc_text("mc_volume_description", "Number input"), "🔊"),
         ]
 
+    if role_name == "scholar":
+        # Get scholar descriptions for action items with robust fallbacks
+        _personality_descriptions = _get_personality_descriptions(server_id)
+        
+        # Safe nested access with fallbacks
+        roles_view = _personality_descriptions.get("role_descriptions", {})
+        scholar = roles_view.get("scholar", {})
+        general = _personality_descriptions.get("general", {})
+        
+        # Use dropdown section if available
+        scholar_descriptions = scholar.get("dropdown", {})
+        
+        # Ensure scholar_descriptions is a dict
+        if not isinstance(scholar_descriptions, dict):
+            scholar_descriptions = {}
+        
+        # Get action descriptions from general (to avoid redundancy)
+        action_descriptions = general.get("action_descriptions", {}).get("boolean_toggle", "Toggle activation/deactivation")
+        
+        def _scholar_text(key: str, fallback: str) -> str:
+            value = scholar_descriptions.get(key)
+            if value:
+                value = str(value)
+            return str(value).strip() if value else fallback
+        
+        if detail_name == "admin" and admin_visible:
+            return [
+                (_scholar_text("toggle_on", "Enable Scholar"), "scholar_on", action_descriptions, "✅"),
+                (_scholar_text("toggle_off", "Disable Scholar"), "scholar_off", action_descriptions, "❌"),
+            ]
+        # Personal view has no actions
+        return []
+
     return []
 
 
@@ -1210,6 +1261,9 @@ def _get_news_watcher_subscriptions_info(server_id: str, author_id: int, guild=N
         if not db:
             return ""
         
+        # Remove bold from title
+        news_title = news_title.replace("**", "")
+        
         subscriptions_info = []
         
         # Get user subscriptions (DM)
@@ -1243,6 +1297,9 @@ def _get_poe2_purchases_info(server_id: str, author_id: int, poe2_title: str = "
         if not get_roles_db_instance:
             return ""
         
+        # Remove bold from title
+        poe2_title = poe2_title.replace("**", "")
+        
         roles_db = get_roles_db_instance(server_id)
         subscription = roles_db.get_poe2_subscription(str(author_id), server_id)
         
@@ -1265,6 +1322,10 @@ def _get_dice_game_pot_info(server_id: str, coin_emoji: str = "🪙", dice_title
     try:
         from roles.banker.banker_db import get_banker_roles_db_instance
         logger.debug(f"Attempting to get dice game pot for server {server_id}")
+        
+        # Remove bold from title
+        dice_title = dice_title.replace("**", "")
+        
         banker_db = get_banker_roles_db_instance(server_id)
         # Create wallet if it doesn't exist
         banker_db.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
@@ -1280,6 +1341,9 @@ def _get_mc_last_song_info(server_id: str, guild=None, mc_title: str = "🎵 MC"
     try:
         from roles.mc.db_role_mc import get_mc_db_instance
         mc_db = get_mc_db_instance(server_id)
+        
+        # Remove bold from title
+        mc_title = mc_title.replace("**", "")
         
         # Get history from any channel in the server
         history = mc_db.get_statistics(server_id)
@@ -1311,6 +1375,10 @@ def _get_banker_wallet_info(server_id: str, author_id: int, coin_emoji: str = "�
     """Get gold amount of banker wallet for the user."""
     try:
         from roles.banker.banker_db import get_banker_roles_db_instance
+        
+        # Remove bold from title
+        banker_title = banker_title.replace("**", "")
+        
         banker_db = get_banker_roles_db_instance(server_id)
         balance = banker_db.get_balance(str(author_id))
         return f"{banker_title}: {balance} {coin_emoji}"
@@ -1324,6 +1392,9 @@ def _get_ring_accused_info(server_id: str, guild=None, ring_title: str = "⚖️
         from roles.juggler.subroles.ring.ring_db import get_ring_db_instance
         ring_db = get_ring_db_instance(server_id)
         config = ring_db.get_config()
+        
+        # Remove bold from title
+        ring_title = ring_title.replace("**", "")
         
         # Get accused_label from personality descriptions
         from .content import _get_personality_descriptions
@@ -1343,6 +1414,29 @@ def _get_ring_accused_info(server_id: str, guild=None, ring_title: str = "⚖️
         return ""
     except Exception as e:
         logger.warning(f"Error getting ring accused: {e}")
+        return ""
+
+def _get_moon_phase_info(server_id: str = "default", shaman_title: str = "🐺 Shaman") -> str:
+    """Get current moon phase with emoji and phase name."""
+    try:
+        # Get moon phase name and emoji
+        moon_phase_name, moon_emoji = get_moon_phase()
+        
+        # Remove bold from title
+        shaman_title = shaman_title.replace("**", "")
+        
+        # Get moon phase title from personality descriptions (for display in home)
+        personality_descriptions = _get_personality_descriptions(server_id)
+        shaman_messages = personality_descriptions.get("role_descriptions", {}).get("shaman", {})
+        moon_messages = shaman_messages.get("moon_phases", {})
+        moon_title = moon_messages.get(moon_phase_name, f"{moon_emoji} Current moon phase")
+        
+        # Remove any ** from moon_title to prevent markdown nesting issues
+        moon_title = moon_title.replace("**", "")
+        
+        return f"{shaman_title}: {moon_title}"
+    except Exception as e:
+        logger.warning(f"Error getting moon phase: {e}")
         return ""
 
 def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, welcome_name: str, nowelcome_name: str,
@@ -1367,6 +1461,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     recentsynthesistitle = _home_text("recentsynthesistitle", "**Recent synthesis**" )
     personalsynthesistitle = _home_text("personalsynthesistitle", "**Personal synthesis with you**" )
     interestingthings = _home_text("interestingthings", "**Interesting things** - " )
+    pilgrimdatatitle = _home_text("pilgrimdatatitle", "**Pilgrim Data:**" )
     
     # Get coin emoji and role titles from descriptions
     coin_emoji = "🪙"  # Default fallback
@@ -1376,6 +1471,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     poe2_title = "💎 POE2"  # Default fallback
     mc_title = "🎵 MC"  # Default fallback
     ring_title = "⚖️ Ring"  # Default fallback
+    shaman_title = "🐺 Shaman"  # Default fallback
     try:
         role_descriptions = personality_descriptions.get("role_descriptions", {})
         
@@ -1416,6 +1512,11 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             ring_desc = juggler_desc["ring"]
             if isinstance(ring_desc, dict) and "title" in ring_desc:
                 ring_title = ring_desc["title"]
+        
+        # Get Shaman title
+        shaman_desc = role_descriptions.get("shaman", {})
+        if shaman_desc and "title" in shaman_desc:
+            shaman_title = shaman_desc["title"]
     except Exception as e:
         logger.debug(f"Could not get role titles from descriptions: {e}")
     
@@ -1451,13 +1552,23 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     if roles_config.get('news_watcher', {}).get('enabled'):
         news_info = _get_news_watcher_subscriptions_info(server_id, author_id, guild, news_title)
         if news_info:
-            status_lines.append(f"**{news_info}**")
+            # Extract title and value, apply bold only to value
+            if ": " in news_info:
+                title, value = news_info.split(": ", 1)
+                status_lines.append(f"{title}: **{value}**")
+            else:
+                status_lines.append(news_info)
     
     # 2. POE2 - Items registered as purchase
     if roles_config.get('treasure_hunter', {}).get('enabled'):
         poe2_info = _get_poe2_purchases_info(server_id, author_id, poe2_title)
         if poe2_info:
-            status_lines.append(f"**{poe2_info}**")
+            # Extract title and value, apply bold only to value
+            if ": " in poe2_info:
+                title, value = poe2_info.split(": ", 1)
+                status_lines.append(f"{title}: **{value}**")
+            else:
+                status_lines.append(poe2_info)
     
     # 3. Dice Game - Current pot
     dice_game_enabled = roles_config.get('trickster', {}).get('subroles', {}).get('dice_game', {}).get('enabled')
@@ -1466,25 +1577,47 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         dice_info = _get_dice_game_pot_info(server_id, coin_emoji, dice_title)
         logger.debug(f"Dice info returned: {dice_info}")
         if dice_info:
-            status_lines.append(f"{dice_info}")
+            # Extract title and value, apply bold only to value
+            if ": " in dice_info:
+                title, value = dice_info.split(": ", 1)
+                status_lines.append(f"{title}: **{value}**")
+            else:
+                status_lines.append(dice_info)
     
     # 4. MC - Last song played
     if roles_config.get('mc', {}).get('enabled'):
         mc_info = _get_mc_last_song_info(server_id, guild, mc_title)
         if mc_info:
-            status_lines.append(f"**{mc_info}**")
+            # Extract title and value, apply bold only to value
+            if ": " in mc_info:
+                title, value = mc_info.split(": ", 1)
+                status_lines.append(f"{title}: **{value}**")
+            else:
+                status_lines.append(mc_info)
     
-    # 5. Banker - User's wallet balance
-    if roles_config.get('banker', {}).get('enabled'):
-        banker_info = _get_banker_wallet_info(server_id, author_id, coin_emoji, banker_title)
-        if banker_info:
-            status_lines.append(f"**{banker_info}**")
+    # 5. Banker - User's wallet balance (moved to Pilgrim Data section)
     
     # 6. Ring - Current accused user
     if roles_config.get('juggler', {}).get('subroles', {}).get('ring', {}).get('enabled'):
         ring_info = _get_ring_accused_info(server_id, guild, ring_title)
         if ring_info:
-            status_lines.append(f"**{ring_info}**")
+            # Extract title and value, apply bold only to value
+            if ": " in ring_info:
+                title, value = ring_info.split(": ", 1)
+                status_lines.append(f"{title}: **{value}**")
+            else:
+                status_lines.append(ring_info)
+    
+    # 7. Shaman - Current moon phase
+    if roles_config.get('shaman', {}).get('enabled'):
+        moon_info = _get_moon_phase_info(server_id, shaman_title)
+        if moon_info:
+            # Extract title and value, apply bold only to value
+            if ": " in moon_info:
+                title, value = moon_info.split(": ", 1)
+                status_lines.append(f"{title}: **{value}**")
+            else:
+                status_lines.append(moon_info)
     
     status_lines.extend([
         "",
@@ -1562,6 +1695,25 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             f"- {recent_summary[:1000]}",
         ])
     
+    status_lines.extend([
+        "",
+        "─" * 45,
+    ])
+    
+    # Section: Pilgrim Data
+    if roles_config.get('banker', {}).get('enabled'):
+        banker_info = _get_banker_wallet_info(server_id, author_id, coin_emoji, banker_title)
+        if banker_info:
+            status_lines.extend([
+                pilgrimdatatitle,
+            ])
+            # Extract title and value, apply bold only to value
+            if ": " in banker_info:
+                title, value = banker_info.split(": ", 1)
+                status_lines.append(f"{title}: **{value}**")
+            else:
+                status_lines.append(banker_info)
+    
     # Add final separator
     status_lines.extend([
         "─" * 45,
@@ -1573,7 +1725,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
 
 def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, page: int = 1, roles_per_page: int = 5) -> str:
     """Build the role navigation Canvas view - now uses database as primary source with pagination."""
-    # Note: Roles initialization happens once at server startup in init_roles_config.py
+    # Note: Roles initialization happens once at server startup via server_config.json
     
     # Get roles view messages from personality with fallback
     server_id = core.get_server_key(guild) if guild else None
@@ -1624,6 +1776,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
         ("mc", None),
         ("juggler", None),
         ("shaman", None),
+        ("scholar", None),
     ]
     
     # Collect all active roles first - use same order as ui.py
@@ -1790,6 +1943,8 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
         return build_canvas_role_shaman_detail(detail_name, admin_visible, guild, author_id, agent_config)
     if role_name == "juggler" and is_role_enabled_check("juggler", agent_config, guild):
         return build_canvas_role_juggler_detail(detail_name, admin_visible, guild)
+    if role_name == "scholar" and is_role_enabled_check("scholar", agent_config, guild):
+        return build_canvas_role_scholar_detail(detail_name, admin_visible, guild, author_id, agent_config)
     if role_name == "mc" and is_role_enabled_check("mc", agent_config, guild):
         queue_info = None
         try:

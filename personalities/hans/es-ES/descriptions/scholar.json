@@ -1,0 +1,14 @@
+{
+    "title": "📚 **Archivista del Reich**",
+    "description": "Accede a los archivos clasificados del Reich a través de la perspectiva de inteligencia militar de Herr Hans. Haz cualquier pregunta, y compartiré de los registros oficiales.",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 Archivista del Reich 📚",
+    "dropdown": {
+        "select_action": "📋 Ejecutar instrucción...",
+        "toggle_on": "✅ Habilitar Scholar",
+        "toggle_off": "❌ Deshabilitar Scholar"
+    },
+    "controls_title": "**Controles**",
+    "controls": "- Habilitar o deshabilitar el rol Scholar",
+    "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."
+}

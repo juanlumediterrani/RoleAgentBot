@@ -207,7 +207,7 @@ async def process_server_subscriptions(bot, server_id: str, agent_config: dict):
     """
     try:
         from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
-        from global_news_nosql import get_global_news_nosql
+        from .global_news_nosql import get_global_news_nosql
         from roles.news_watcher.global_feed_health import get_healthy_feeds
         from discord_bot.canvas.server_config import get_news_watcher_frequency
         

@@ -287,7 +287,7 @@ def register_core_commands(bot, agent_config):
             await ctx.send("❌ MC role is always enabled and cannot be toggled.")
             return
 
-        valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman"]
+        valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman", "scholar"]
         if role_name not in valid_roles:
             await ctx.send(role_cfg.get("role_not_found", "❌ Unknown role `{role}`.").format(role=role_name))
             return

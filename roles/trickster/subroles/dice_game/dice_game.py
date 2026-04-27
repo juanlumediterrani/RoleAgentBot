@@ -157,7 +157,7 @@ class DiceGame:
         else:
             message += get_message("prize_multiplier", combination=combination, prize=prize, server_id=server_id)
         
-        message += f"\n{get_message('current_pot_title', server_id=server_id)} {new_pot:,} coins"
+        message += f"\n{get_message('title', server_id=server_id)} {new_pot:,} coins"
         
         # Add winner/loser summary message
         if prize > 0:

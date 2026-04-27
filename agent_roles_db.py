@@ -1,108 +1,50 @@
 """
 Roles Database Module
 Centralized database management for all roles and subroles configuration.
+All data has been migrated to NoSQL (role_configs_nosql.py).
 """
 
 import json
-import sqlite3
 import threading
-import os
-import stat
-import warnings
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, List, Dict, Any
 from agent_logging import get_logger
-from agent_db import get_server_db_path_fallback, get_database_path
 
 logger = get_logger('agent_roles_db')
 
 
-def _get_config_hash(config_content: str) -> str:
-    """Calculate MD5 hash of config content for caching."""
-    return hashlib.md5(config_content.encode('utf-8')).hexdigest()
-
-
-def get_roles_db_path(server_id: str = "default") -> Optional[Path]:
-    """Generate database path for roles configuration.
-    
-    Returns None if personality cannot be determined to avoid creating
-    placeholder databases in server directories.
-    """
-    from agent_db import get_personality_name
-    personality_name = get_personality_name(server_id)
-    logger.debug(f"[get_roles_db_path] server_id={server_id}, personality_name={personality_name}")
-    
-    # Don't create database if personality cannot be determined
-    if not personality_name:
-        logger.debug(f"[get_roles_db_path] Cannot determine personality for server {server_id}, skipping database creation")
-        return None
-    
-    db_name = f"roles_{personality_name}"
-    return get_server_db_path_fallback(server_id, db_name)
-
-
 class RolesDatabase:
-    """Centralized database handler for all roles configuration."""
+    """Centralized database handler for all roles configuration.
+    
+    All data has been migrated to NoSQL (role_configs_nosql.py).
+    This class is kept for backward compatibility and delegates to NoSQL.
+    """
     
     def __init__(self, server_id: str = None):
-        """Initialize database connection using roles.db.
+        """Initialize NoSQL-backed roles database.
         
         Args:
             server_id: Server ID. Must be a valid server ID, not None or 'default'.
         
         Raises:
-            ValueError: If server_id is None, 'default', or personality cannot be determined.
+            ValueError: If server_id is None, 'default'.
         """
         if not server_id or server_id == "default":
             raise ValueError(f"RolesDatabase requires a valid server_id, got: {server_id}")
         
         self.server_id = server_id
-        db_path = get_roles_db_path(server_id)
-        
-        if not db_path:
-            raise ValueError(f"Cannot determine database path for server {server_id} - personality not found")
-        
-        self.db_path = db_path
+        self.db_path = None  # No longer uses SQLite
         self._lock = threading.RLock()
         self._nosql_cache = None
-        self._init_tables()
+        logger.info(f"RolesDatabase initialized (NoSQL-backed) for server {server_id}")
 
     @property
     def _nosql(self):
         """Lazy accessor for the NoSQL role-configs facade (per server)."""
         if self._nosql_cache is None:
-            from role_configs_nosql import get_role_configs_nosql
+            from roles.role_configs_nosql import get_role_configs_nosql
             self._nosql_cache = get_role_configs_nosql(self.server_id)
         return self._nosql_cache
-    
-    def _init_tables(self):
-        """Initialize roles configuration tables."""
-        try:
-            # Ensure database directory exists
-            self.db_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            with self._lock:
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("PRAGMA journal_mode=WAL;")
-                    
-                    # NOTE: nordic_runes, ring_accusations, dice_game_stats migrated to NoSQL
-                    # See role_configs_nosql.py (tables removed in Phase E)
-
-                    # NOTE: banker_wallets, banker_transactions migrated to dedicated
-                    # databases/{server_id}/roles/banker.db (see roles/banker/db_banker_core.py)
-
-                    # NOTE: watcher_subscriptions, poe2_subscriptions, dice_game_history,
-                    # beggar_subrole, beggar_request_history migrated to NoSQL
-                    # (role_configs_nosql.py). Indexes also removed.
-
-                    conn.commit()
-                    logger.info(f"Roles database initialized at: {self.db_path}")
-                    
-        except Exception as e:
-            logger.error(f"Failed to initialize roles database: {e}")
-            raise
     
     # ─────────────────────────────────────────────────────────────────────
     # The following methods have been migrated to NoSQL (role_configs_nosql).
@@ -141,6 +83,10 @@ class RolesDatabase:
         except Exception as e:
             logger.error(f"Failed to get reading stats: {e}")
             return {'total_readings': 0, 'favorite_type': None}
+
+    def delete_nordic_runes_readings(self, user_id: str) -> int:
+        """Delete all rune readings for a user (GDPR)."""
+        return self._nosql.delete_nordic_runes_readings(user_id)
 
     def save_ring_accusation(self, accuser_id: str, accused_id: str,
                              accusation: str, evidence: str = None) -> int:
@@ -527,39 +473,28 @@ def get_roles_db_instance(server_id: str = None) -> Optional[RolesDatabase]:
         logger.debug("get_roles_db_instance called without valid server_id - skipping database creation")
         return None
     
-    # Generate the current database path for this server
-    current_db_path = get_roles_db_path(server_id)
-    cache_key = f"{server_id}:{current_db_path}"
+    # Use server_id as cache key (NoSQL-backed, no personality-specific paths)
+    cache_key = server_id
     
-    # Check if we have a cached instance with the same database path
+    # Check if we have a cached instance for this server
     if cache_key not in _roles_db_instances:
         _roles_db_instances[cache_key] = RolesDatabase(server_id)
-    else:
-        # Verify that the cached instance still points to the correct database path
-        # This handles personality changes where the cache might have stale paths
-        cached_instance = _roles_db_instances[cache_key]
-        if str(cached_instance.db_path) != str(current_db_path):
-            logger.warning(f"🔄 Database path changed for server {server_id}: {cached_instance.db_path} -> {current_db_path}")
-            del _roles_db_instances[cache_key]
-            _roles_db_instances[cache_key] = RolesDatabase(server_id)
     
     return _roles_db_instances[cache_key]
 
 def invalidate_roles_db_instance(server_id: str = None):
     """Invalidate cached roles database instance for a server or all servers.
     
-    Call this after personality change so the next get_roles_db_instance()
-    creates a new RolesDatabase pointing to the correct personality db file.
+    Call this after personality change to force NoSQL re-initialization.
     
     Args:
         server_id: Server ID to invalidate, or None to clear all.
     """
     global _roles_db_instances
     if server_id:
-        # Invalidate all instances for this server (any personality)
-        keys_to_remove = [k for k in _roles_db_instances.keys() if k.startswith(f"{server_id}:")]
-        for key in keys_to_remove:
-            del _roles_db_instances[key]
+        # Invalidate instance for this server
+        if server_id in _roles_db_instances:
+            del _roles_db_instances[server_id]
             logger.info(f"🗄️ [ROLES] Invalidated cached db instance for server: {server_id}")
     else:
         _roles_db_instances.clear()

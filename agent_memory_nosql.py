@@ -15,6 +15,17 @@ from persistence.json_store import JsonStore
 from persistence.jsonl_store import JsonlRingBuffer
 from agent_logging import get_logger
 
+# Import validation schemas
+try:
+    from validation.schemas import InteractionRecord, DailyMemoryEntry, RelationshipEntry, NotableRecollection
+    VALIDATION_AVAILABLE = True
+except ImportError:
+    VALIDATION_AVAILABLE = False
+    InteractionRecord = None
+    DailyMemoryEntry = None
+    RelationshipEntry = None
+    NotableRecollection = None
+
 logger = get_logger("agent_memory_nosql")
 
 
@@ -41,12 +52,13 @@ class AgentMemoryNoSQL:
         self.db_dir = Path(db_dir) if db_dir else Path(__file__).parent / "databases" / self.server_id
         self.db_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize stores
+        # Initialize stores with validation schemas
         self._state = JsonStore(
             self.db_dir / "state.json",
             default_factory=self._default_state,
             schema_version=1,
             keep_backup=True,
+            # Note: state.json has complex nested structure, validated at field level
         )
 
         self._interactions = JsonlRingBuffer(
@@ -54,6 +66,8 @@ class AgentMemoryNoSQL:
             max_lines=250,
             max_bytes=500 * 1024,  # 500KB
             keep_lines=200,
+            schema=InteractionRecord if VALIDATION_AVAILABLE else None,
+            validate_on_append=True,
         )
 
         logger.info(f"🗄️ [NoSQL Memory] Initialized for server {server_id} at {self.db_dir}")
@@ -362,6 +376,21 @@ class AgentMemoryNoSQL:
         """Add a daily memory entry (retention: max 14)."""
         try:
             target_date = memory_date or datetime.now().date().isoformat()
+            
+            # Validate entry before storing
+            if VALIDATION_AVAILABLE and DailyMemoryEntry:
+                entry_to_validate = {
+                    "memory_date": target_date,
+                    "summary": summary,
+                    "metadata": json.dumps(metadata) if metadata else None,
+                    "updated_at": datetime.now().isoformat(),
+                }
+                try:
+                    DailyMemoryEntry(**entry_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL] Daily memory validation failed: {e}. Skipping entry.")
+                    return False
+            
             def updater(state: Dict[str, Any]) -> Dict[str, Any]:
                 daily = state.get("daily_memory", [])
                 daily.append({
@@ -549,6 +578,20 @@ class AgentMemoryNoSQL:
     ) -> bool:
         """Set relationship for a user (retention: max 200 users)."""
         try:
+            # Validate entry before storing
+            if VALIDATION_AVAILABLE and RelationshipEntry:
+                entry_to_validate = {
+                    "summary": summary,
+                    "metadata": json.dumps(metadata) if metadata else None,
+                    "updated_at": datetime.now().isoformat(),
+                    "last_interaction_at": last_interaction_at or datetime.now().isoformat(),
+                }
+                try:
+                    RelationshipEntry(**entry_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL] Relationship validation failed: {e}. Skipping entry.")
+                    return False
+            
             def updater(state: Dict[str, Any]) -> Dict[str, Any]:
                 relationships = state.get("relationships", {})
                 relationships[str(user_id)] = {
@@ -736,6 +779,23 @@ class AgentMemoryNoSQL:
         try:
             from datetime import date as _date
             target_date = memory_date or _date.today().isoformat()
+            
+            # Validate entry before storing
+            if VALIDATION_AVAILABLE and NotableRecollection:
+                entry_to_validate = {
+                    "memory_date": target_date,
+                    "recollection_text": recollection_text,
+                    "source_paragraph": source_paragraph,
+                    "extracted_at": datetime.now().isoformat(),
+                    "used_count": 0,
+                    "last_used_at": None,
+                }
+                try:
+                    NotableRecollection(**entry_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL] Recollection validation failed: {e}. Skipping entry.")
+                    return 0
+            
             rec_id = 0
             def updater(state: Dict[str, Any]) -> Dict[str, Any]:
                 nonlocal rec_id

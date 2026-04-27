@@ -52,6 +52,34 @@
                     "para construir archivos de almas nuevos en el vacio"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "El vacío primordial espera tu intención. Las semillas plantadas en oscuridad germinan en silencio."
+                ],
+                "waxing_crescent": [
+                    "La luz crece lentamente. Tiempo de plantar intenciones y nutrir nuevos comienzos."
+                ],
+                "first_quarter": [
+                    "La acción se hace necesaria. Enfrenta obstáculos con decisión y fuerza."
+                ],
+                "waxing_gibbous": [
+                    "La energía se acumula. Refina tus planes y prepara el terreno para la culminación."
+                ],
+                "full_moon": [
+                    "El poder máximo se manifiesta. Revelaciones, completaciones y energía en su punto más alto."
+                ],
+                "waning_gibbous": [
+                    "La cosecha se recoge. Gratitud por logros mientras la energía comienza a declinar."
+                ],
+                "last_quarter": [
+                    "Tiempo de reflexión. Libera lo que ya no sirve y prepara el terreno para el nuevo ciclo."
+                ],
+                "waning_crescent": [
+                    "Descanso sagrado. Medita, descansa y permite que el ciclo complete su transformación."
+                ]
+            }
         }
     },
     "ring_messages": {

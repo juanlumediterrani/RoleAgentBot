@@ -601,6 +601,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
             "mc": "mc.json",
             "juggler": "juggler.json",
             "shaman": "shaman.json",
+            "scholar": "scholar.json",
         }
         
         # For main roles, load from individual description files

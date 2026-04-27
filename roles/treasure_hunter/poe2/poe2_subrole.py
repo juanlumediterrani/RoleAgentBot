@@ -22,7 +22,6 @@ except Exception:
     # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('poe2_subrole')
 
-from agent_db import get_server_db_path_fallback
 from agent_engine import get_discord_token
 from agent_mind import call_llm
 from agent_db import get_server_id

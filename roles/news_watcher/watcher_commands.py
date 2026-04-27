@@ -18,8 +18,8 @@ def get_message(key, server_id=None, **kwargs):
         descriptions = _get_news_watcher_descriptions(server_id)
         if descriptions and key in descriptions:
             return descriptions[key]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Could not load news_watcher descriptions for key '{key}': {e}")
     
     # Fallback messages
     fallback_messages = {
@@ -69,7 +69,8 @@ def _get_watcher_description_text(key: str, fallback: str) -> str:
             pass  # Continue to fallback
         
         return fallback
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Could not load watcher description for key '{key}': {e}")
         return fallback
 
 class WatcherCommands:

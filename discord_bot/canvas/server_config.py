@@ -15,11 +15,16 @@ from pathlib import Path
 from typing import Dict, Optional, Any
 
 from agent_logging import get_logger
+from datetime import datetime
 
 logger = get_logger('server_config')
 
 # Thread-safe lock for file operations
 _lock = threading.Lock()
+
+def _get_timestamp() -> str:
+    """Get current timestamp in ISO format."""
+    return datetime.utcnow().isoformat()
 
 # Available languages
 AVAILABLE_LANGUAGES = {
@@ -670,62 +675,7 @@ def set_welcome_channel(server_id: str, channel_id: str, updated_by: str = None)
 
 
 # ==================== Migration Helpers ====================
-
-def _get_timestamp() -> str:
-    """Get current timestamp in ISO format."""
-    from datetime import datetime
-    return datetime.utcnow().isoformat() + "Z"
-
-
-def migrate_roles_from_sqlite(server_id: str, roles_db) -> bool:
-    """Migrate roles configuration from SQLite to server_config.json.
-    
-    Reads from roles_config table and migrates to server_config.json["roles"]
-    
-    Args:
-        server_id: Discord server/guild ID
-        roles_db: RolesDatabase instance to read from
-        
-    Returns:
-        True if migration successful
-    """
-    try:
-        import sqlite3
-        
-        # Read all roles from SQLite
-        with sqlite3.connect(roles_db.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT role_name, enabled, config_data FROM roles_config")
-            rows = cursor.fetchall()
-        
-        # Load existing server config
-        config = _load_server_config(server_id)
-        
-        # Ensure roles section exists
-        if "roles" not in config:
-            config["roles"] = {}
-        
-        # Migrate each role
-        migrated_count = 0
-        for role_name, enabled, config_data in rows:
-            config["roles"][role_name] = {
-                "enabled": bool(enabled),
-                "config_data": config_data,
-                "migrated_from_sqlite": True,
-                "migrated_at": _get_timestamp()
-            }
-            migrated_count += 1
-        
-        # Save migrated config
-        success = _save_server_config(server_id, config)
-        if success:
-            logger.info(f"Migrated {migrated_count} roles from SQLite to server_config.json for server {server_id}")
-        return success
-        
-    except Exception as e:
-        logger.error(f"Error migrating roles from SQLite for server {server_id}: {e}")
-        return False
-
+# Note: SQLite migration helpers removed - all data migrated to NoSQL (role_configs_nosql.py)
 
 def migrate_behaviors_from_sqlite(server_id: str, behavior_db) -> bool:
     """Migrate behaviors configuration from SQLite to server_config.json.

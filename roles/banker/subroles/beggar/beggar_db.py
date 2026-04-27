@@ -24,7 +24,7 @@ class BeggarConfig:
     def __init__(self, server_id: str):
         self.server_id = server_id
         self.roles_db = get_roles_db_instance(server_id)
-        # Note: Legacy data migration happens once at server startup in init_roles_config.py
+        # Note: Legacy data migration happens via role_configs_nosql.py
         self._reasons_cache = None
 
     def get_default_reasons(self) -> List[str]:

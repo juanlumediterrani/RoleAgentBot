@@ -908,6 +908,9 @@ from .canvas_shaman import (
     RuneCastingModal as _RuneCastingModal,
     handle_canvas_shaman_action as _HandleCanvasShamanAction,
 )
+from .canvas_scholar import (
+    handle_canvas_scholar_action as _HandleCanvasScholarAction,
+)
 from .canvas_treasure_hunter import (
     Poe2ItemModal as _Poe2ItemModal,
     Poe2PurchaseLiquidateView as _Poe2PurchaseLiquidateView,
@@ -1011,6 +1014,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "banker": ("Banker", "Wallet and economy"),
             "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
+            "scholar": ("Scholar", "Knowledge and archives"),
         }
         options = []
         for role_name in _get_enabled_roles(agent_config):
@@ -1066,7 +1070,7 @@ class CanvasRoleSelect(discord.ui.Select):
         # Also filter out subroles (beggar is a subrole of banker)
         roles_cfg = (view.agent_config or {}).get("roles", {})
         all_roles = [
-            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc"]
+            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc", "scholar"]
             if roles_cfg.get(role, {}).get("enabled", False)
         ]
         enabled_roles = _get_enabled_roles(view.agent_config, interaction.guild)
@@ -1078,6 +1082,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "banker": ("Banker", "Wallet and economy"),
             "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
+            "scholar": ("Scholar", "Knowledge and archives"),
         }
         
         embed = discord.Embed(
@@ -1353,6 +1358,9 @@ class CanvasRoleActionSelect(discord.ui.Select):
             return
         if self.role_name == "shaman":
             await _HandleCanvasShamanAction(interaction, action_name, view)
+            return
+        if self.role_name == "scholar":
+            await _HandleCanvasScholarAction(interaction, action_name, view)
             return
         if self.role_name == "juggler":
             from .canvas_juggler import handle_canvas_juggler_modal_submit

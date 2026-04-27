@@ -77,7 +77,7 @@ def is_admin(ctx, guild=None) -> bool:
 def initialize_roles_from_database(agent_config=None, guild=None) -> bool:
     """Initialize roles system - PRIMARY: server_config.json.
     
-    Note: Migration from agent_config happens once at server startup in init_roles_config.py,
+    Note: Migration from agent_config happens once at server startup via server_config.json,
     not here. This function only ensures default roles exist in server_config.json.
     """
     try:

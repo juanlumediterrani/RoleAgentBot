@@ -347,6 +347,7 @@ class DatabaseRolePoe:
                     cursor.execute('''
                         INSERT INTO notificaciones (item_name, liga, tipo_señal, precio, fecha_envio)
                         VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(item_name, liga, tipo_señal, fecha_envio) DO NOTHING
                     ''', (item_name, formatted_league, signal_type, price, send_date))
                     conn.commit()
                     logger.info(f"✅ Notification registered: {item_name} - {signal_type} at {price}")

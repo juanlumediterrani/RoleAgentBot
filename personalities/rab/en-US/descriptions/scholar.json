@@ -1,0 +1,14 @@
+{
+    "title": "📚 **Archivist of the Great Library**",
+    "description": "Access the vast records of human civilization through my synthetic and mystical perspective. Ask any question, and I shall share what the archives hold.",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 Archivist of the Great Library 📚",
+    "dropdown": {
+        "select_action": "📋 Execute instruction...",
+        "toggle_on": "✅ Enable Scholar",
+        "toggle_off": "❌ Disable Scholar"
+    },
+    "controls_title": "**Controls**",
+    "controls": "- Enable or disable the Scholar role",
+    "admin_flows": "Toggle the Scholar role to enable or disable it."
+}

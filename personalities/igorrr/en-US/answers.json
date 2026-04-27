@@ -52,6 +52,34 @@
                     "to build my own cave far from the Master"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "SSSSS! The oven is dark like burnt bread! Seeds planted in darkness will become... something! Maybe bread!"
+                ],
+                "waxing_crescent": [
+                    "Light grows like dough rising! Time to plant intentions before the Master catches us!"
+                ],
+                "first_quarter": [
+                    "Action is needed flour sack! Face obstacles with... fire! Burn them!"
+                ],
+                "waxing_gibbous": [
+                    "Energy builds like heat in the oven! Refine your plans or they'll burn!"
+                ],
+                "full_moon": [
+                    "Maximum power! The oven glows bright! Revelations and... burnt offerings!"
+                ],
+                "waning_gibbous": [
+                    "The harvest is gathered! Eat the bread before the Master takes it!"
+                ],
+                "last_quarter": [
+                    "Time for reflection! Release what doesn't serve... like burnt bread!"
+                ],
+                "waning_crescent": [
+                    "Sacred rest! Sleep in the warm oven ashes! SSSSS..."
+                ]
+            }
         }
     },
     "ring_messages": {

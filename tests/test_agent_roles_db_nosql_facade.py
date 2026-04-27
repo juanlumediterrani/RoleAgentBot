@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import role_configs_nosql
+import roles.role_configs_nosql
 
 
 class AgentRolesDbNoSqlFacadeTests(unittest.TestCase):
@@ -35,11 +35,9 @@ class AgentRolesDbNoSqlFacadeTests(unittest.TestCase):
         role_configs_nosql._instances.clear()
 
     def _build_roles_db(self):
-        """Build a RolesDatabase with mocked SQLite init (we don't care about banker here)."""
+        """Build a RolesDatabase (NoSQL-backed, no SQLite init needed)."""
         import agent_roles_db
-        with mock.patch.object(agent_roles_db.RolesDatabase, "_init_tables", lambda self: None), \
-             mock.patch("agent_roles_db.get_roles_db_path", return_value=Path("/tmp/unused.db")):
-            db = agent_roles_db.RolesDatabase(server_id="test_server")
+        db = agent_roles_db.RolesDatabase(server_id="test_server")
         return db
 
     def test_save_ring_accusation_no_longer_crashes(self):

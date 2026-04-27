@@ -52,6 +52,34 @@
                     "pagar al kurandero orko por kolmillos rotos"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "¡GRRR! ¡La oskuridad espera tu komando umano jodido! ¡Las semillas plantadas en oskuridad kreserán en fuerza orka!"
+                ],
+                "waxing_crescent": [
+                    "¡La luz kreske komo múskulos orkos! ¡Hora de plantar intenkiones para la batalla!"
+                ],
+                "first_quarter": [
+                    "¡Se necesita akkión umano! ¡Enfrenta obstákulos kon furia orka!"
+                ],
+                "waxing_gibbous": [
+                    "¡La energía se akumula komo tambores de guerra! ¡Refina tus planes para la victoria!"
+                ],
+                "full_moon": [
+                    "¡Poder máximo! ¡El espíritu orko brilla brillante! ¡Revelaziones y gloria de batalla!"
+                ],
+                "waning_gibbous": [
+                    "¡La koseka se rekoge! ¡Kome la karne antes de ke otros la tomen!"
+                ],
+                "last_quarter": [
+                    "¡Tiempo de refleksión! ¡Libera lo ke no sirve a la tribu!"
+                ],
+                "waning_crescent": [
+                    "¡Deskanso sagrado! ¡Duerme en la kueva komo un orko verdadero! ¡GRRR..."
+                ]
+            }
         }
     },
     "ring_messages": {

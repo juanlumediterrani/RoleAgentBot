@@ -52,6 +52,34 @@
                     "pay the orc healer for broken tusks"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "GRRR! The darkness awaits your command stupid human! Seeds planted in darkness will grow into orc strength!"
+                ],
+                "waxing_crescent": [
+                    "Light grows like orc muscles! Time to plant intentions for battle!"
+                ],
+                "first_quarter": [
+                    "Action is needed human! Face obstacles with orc fury!"
+                ],
+                "waxing_gibbous": [
+                    "Energy builds like war drums! Refine your plans for victory!"
+                ],
+                "full_moon": [
+                    "Maximum power! The orc spirit shines bright! Revelations and battle glory!"
+                ],
+                "waning_gibbous": [
+                    "The harvest is gathered! Eat the meat before others take it!"
+                ],
+                "last_quarter": [
+                    "Time for reflection! Release what doesn't serve the tribe!"
+                ],
+                "waning_crescent": [
+                    "Sacred rest! Sleep in the cave like a true orc! GRRR..."
+                ]
+            }
         }
     },
     "ring_messages": {

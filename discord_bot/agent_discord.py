@@ -1454,6 +1454,89 @@ async def _process_chat_message(message):
                 logger.error(f"❌ Error building README prompt: {e}")
                 # Continue with original README response if README file fails
 
+        # Check if this is a WIKIPEDIA response
+        if response and response.strip().startswith("WIKIPEDIA "):
+            logger.info(f"🔍 WIKIPEDIA response detected from {message.author.name}")
+            
+            try:
+                # Extract topic from response
+                topic = response.strip()[10:].strip()
+                logger.info(f"📚 Wikipedia topic extracted: {topic}")
+                
+                # Get language from personality
+                from roles.scholar.scholar import get_personality_language
+                lang = get_personality_language(server_id)
+                
+                # Fetch Wikipedia extract
+                from roles.scholar.wikipedia_fetcher import fetch_wikipedia_extract
+                wiki_extract = await fetch_wikipedia_extract(topic, lang=lang)
+                
+                if wiki_extract:
+                    logger.info(f"✅ Wikipedia extract fetched successfully for {topic} (lang: {lang})")
+                    
+                    # Remove wiki/wikipedia trigger words from original question
+                    import re
+                    clean_question = re.sub(r'\bwiki\b|\bwikipedia\b', '', clean_content, flags=re.IGNORECASE).strip()
+                    clean_question = re.sub(r'\s+', ' ', clean_question)
+                    
+                    # Build enhanced prompt with Wikipedia context
+                    from agent_mind import _build_conversation_channel_prompt, _build_conversation_user_prompt
+                    
+                    if is_public:
+                        enhanced_prompt = await _build_conversation_channel_prompt(
+                            user_content=clean_question,
+                            server=server_id,
+                            user_id=message.author.id,
+                            user_name=message.author.display_name,
+                            channel_id=message.channel.id,
+                            bot_id=str(bot.user.id),
+                            discord_channel=message.channel
+                        )
+                    else:
+                        enhanced_prompt = await _build_conversation_user_prompt(
+                            user_id=message.author.id,
+                            user_content=clean_question,
+                            server=server_id,
+                            user_name=message.author.display_name,
+                        )
+                    
+                    # Add Wikipedia context after the prompt
+                    enhanced_prompt = f"{enhanced_prompt}\n\nWIKIPEDIA CONTEXT:\n{wiki_extract}"
+                    
+                    logger.info(f"📚 Making second LLM call with Wikipedia context")
+                    
+                    # Make second LLM call with Wikipedia context
+                    response = call_llm(
+                        system_instruction=system_instruction,
+                        prompt=enhanced_prompt,
+                        async_mode=False,
+                        call_type="wikipedia_enhanced",
+                        critical=True,
+                        metadata={
+                            "interaction_type": "channel" if is_public else "dm",
+                            "is_public": is_public,
+                            "user_id": message.author.id,
+                            "role": "bot",
+                            "server": server_id,
+                            "channel_id": message.channel.id if is_public else None,
+                            "is_mention": is_mention,
+                            "wikipedia_enhanced": True
+                        },
+                        logger=logger,
+                        user_id=str(message.author.id),
+                        user_name=message.author.display_name,
+                        server_id=server_id
+                    )
+                    
+                    logger.info(f"✅ Wikipedia enhanced response generated")
+                else:
+                    logger.warning(f"⚠️ Could not fetch Wikipedia extract for {topic} (lang: {lang})")
+                    # Continue with original WIKIPEDIA response if fetch fails
+                    
+            except Exception as e:
+                logger.exception(f"❌ Error processing Wikipedia response: {e}")
+                # Continue with original WIKIPEDIA response if processing fails
+
         # Check if this is a NADA_QUE_DECIR response (nothing to say)
         nothing_to_say_keyword = server_personality.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")
         nothing_to_say_description = server_personality.get("behaviors", {}).get("nothing_to_say_description", "(You didn't respond to their last message)")

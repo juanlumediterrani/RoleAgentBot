@@ -1,8 +1,5 @@
 import json
-import sqlite3
 import threading
-import os
-import stat
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List, Tuple
@@ -15,24 +12,7 @@ except Exception:
     # logging.basicConfig removed - using centralized logging
     logger = logging.getLogger('db_role_news_watcher')
 
-from agent_db import get_server_db_path_fallback, get_personality_name
-
-def get_db_path(server_id: str = "default") -> Optional[Path]:
-    """Generate database path for news watcher using roles_<personality>.db.
-    
-    Returns None if personality cannot be determined to avoid creating
-    placeholder databases in server directories.
-    """
-    personality_name = get_personality_name(server_id)
-    
-    # Don't create database if personality cannot be determined
-    if not personality_name:
-        logger.debug(f"[get_db_path] Cannot determine personality for server {server_id}, skipping database creation")
-        return None
-    
-    # Use roles_<personality>.db instead of watcher_<personality>.db
-    db_name = f"roles_{personality_name}"
-    return get_server_db_path_fallback(server_id, db_name)
+from agent_db import get_personality_name
 
 
 class DatabaseRoleNewsWatcher:
@@ -42,87 +22,18 @@ class DatabaseRoleNewsWatcher:
     
     def __init__(self, server_id: str = "default", db_path: Path = None):
         self.server_id = server_id
-        if db_path is None:
-            self.db_path = get_db_path(server_id)
-            # Don't initialize if db_path is None (personality not found)
-            if not self.db_path:
-                logger.debug(f"[DatabaseRoleNewsWatcher] Cannot determine database path for server {server_id}, skipping initialization")
-                return
-        else:
-            self.db_path = db_path
+        self.db_path = None  # No longer uses SQLite
         self._lock = threading.Lock()
         self._nosql_cache = None
-        self._ensure_writable_db()
-        self._init_db()
+        # No longer initializes SQLite - fully NoSQL-backed
 
     @property
     def _nosql(self):
         """Lazy accessor for the NoSQL role-configs facade (per server)."""
         if self._nosql_cache is None:
-            from role_configs_nosql import get_role_configs_nosql
+            from roles.role_configs_nosql import get_role_configs_nosql
             self._nosql_cache = get_role_configs_nosql(self.server_id)
         return self._nosql_cache
-    
-    def _ensure_writable_db(self):
-        """Check that DB is accessible and force correct permissions."""
-        try:
-            # Ensure directory exists with correct permissions
-            self.db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._fix_permissions(self.db_path.parent)
-            
-            # Connect and force file permissions
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA journal_mode=DELETE;')
-            conn.close()
-            
-            # Force DB file permissions
-            self._fix_permissions(self.db_path)
-            
-        except Exception as e:
-            logger.error(f"Cannot access database at {self.db_path}: {e}")
-            raise
-    
-    def _fix_permissions(self, path: Path):
-        """Force current user/group permissions on file/directory."""
-        try:
-            if path.exists():
-                # Get current uid/gid
-                uid = os.getuid()
-                gid = os.getgid()
-                
-                # Change owner
-                os.chown(path, uid, gid)
-                
-                # Permissions: 664 for files, 775 for directories
-                if path.is_file():
-                    current_mode = path.stat().st_mode
-                    new_mode = (current_mode & 0o777) | stat.S_IWUSR | stat.S_IWGRP
-                    os.chmod(path, new_mode)
-                elif path.is_dir():
-                    current_mode = path.stat().st_mode  
-                    new_mode = (current_mode & 0o777) | stat.S_IWUSR | stat.S_IWGRP | stat.S_IXUSR | stat.S_IXGRP
-                    os.chmod(path, new_mode)
-                    
-                logger.debug(f"Fixed permissions for {path}: uid={uid}, gid={gid}")
-        except Exception as e:
-            logger.warning(f"Could not fix permissions for {path}: {e}")
-    
-    def _init_db(self):
-        """Initialize database with DELETE configuration."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=DELETE;")
-                conn.commit()
-                
-                # Initialize only the subscriptions table (legacy tables removed)
-                # The watcher_subscriptions table is now in roles_<personality>.db
-                # No need to initialize it here - it's initialized in agent_roles_db.py
-                
-                logger.info(f"✅ News watcher database ready at {self.db_path}")
-        except Exception as e:
-            logger.exception(f"❌ Error initializing news watcher database: {e}")
     
     
     def subscribe_user_category_ai(self, user_id: str, category: str, feed_id: int = None, premises: str = None) -> bool:
@@ -531,17 +442,17 @@ _db_news_watcher_instances = {}
 def get_news_watcher_db_instance(server_id: str = "default") -> Optional[DatabaseRoleNewsWatcher]:
     """Get or create a news watcher database instance for a specific server.
     
-    Returns None if personality cannot be determined.
+    Returns None if server_id is not valid.
     """
-    # Generate the current database path for this server
-    current_db_path = get_db_path(server_id)
-    if not current_db_path:
-        logger.debug(f"[get_news_watcher_db_instance] Cannot determine database path for server {server_id}")
+    # Don't create database without valid server_id
+    if not server_id or server_id == "default":
+        logger.debug("[get_news_watcher_db_instance] Called without valid server_id - skipping database creation")
         return None
     
-    cache_key = f"{server_id}:{current_db_path}"
+    # Use server_id as cache key (NoSQL-backed, no personality-specific paths)
+    cache_key = server_id
     
-    # Check if we have a cached instance with the same database path
+    # Check if we have a cached instance for this server
     if cache_key not in _db_news_watcher_instances:
         _db_news_watcher_instances[cache_key] = DatabaseRoleNewsWatcher(server_id)
     

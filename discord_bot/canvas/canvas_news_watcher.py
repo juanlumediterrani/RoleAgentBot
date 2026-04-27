@@ -6,7 +6,7 @@ from discord_bot import discord_core_commands as core
 from .state import _get_canvas_watcher_method_label, _get_canvas_watcher_frequency_hours
 
 logger = core.logger
-get_news_watcher_db_instance = core.get_news_watcher_db_instance
+get_news_watcher_db_instance = core.get_news_watcher_db_instance if hasattr(core, 'get_news_watcher_db_instance') and core.get_news_watcher_db_instance is not None else None
 
 
 def _get_nw_descriptions(guild=None) -> dict:

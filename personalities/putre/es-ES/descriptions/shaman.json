@@ -5,6 +5,16 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir saburía y guia"
     },
+    "moon_phases": {
+        "new_moon": "🌑 **Luna Nueva**",
+        "waxing_crescent": "🌒 **Creciente**",
+        "first_quarter": "🌓 **Cuarto Kreciente**",
+        "waxing_gibbous": "🌔 **Kreciente Gibosa**",
+        "full_moon": "🌕 **Luna Llena**",
+        "waning_gibbous": "🌖 **Menguante Gibosa**",
+        "last_quarter": "🌗 **Kuarto Menguante**",
+        "waning_crescent": "🌘 **Menguante**"
+    },
     "subrole_buttons": {
         "runes": "🔮 Runas"
     },

@@ -1,0 +1,14 @@
+{
+    "title": "📚 **Sabio de la Torre**",
+    "description": "Aksesa el conocimiento antiguo de la Torre desde la perspectiva de Kronk. Haz cualquier pregunta, y compartiré de los libros viejos.",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 Sabio de la Torre 📚",
+    "dropdown": {
+        "select_action": "📋 Ejecutar instruccion...",
+        "toggle_on": "✅ Habilitar Scholar",
+        "toggle_off": "❌ Deshabilitar Scholar"
+    },
+    "controls_title": "**Kontroles**",
+    "controls": "- Habilitar o deshabilitar el rol Scholar",
+    "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."
+}

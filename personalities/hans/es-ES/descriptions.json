@@ -17,7 +17,9 @@
       "option_no": "No",
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
-      "available_subroles": "SUBMÓDULOS DISPONIBLES"
+      "available_subroles": "SUBMÓDULOS DISPONIBLES",
+      "toggle_on_description": "Activar rol",
+      "toggle_off_description": "Desactivar rol"
     },
     "help_menu": {
       "title": "📚 ** Her Hans - MANUAL DE INSTRUCCIONES**",
@@ -39,6 +41,7 @@
       "description": "¡El panel Canvas permite control total sobre todas las operaciones!",
       "interestingthings": "**Operaciones Activas:**",
       "recentsynthesistitle": "🧐 **Reporte actual**",
+      "pilgrimdatatitle": "Datos del Recluta:",
       "dailymemorytitle": "🗺️ **Análisis del frente**",
       "personalsynthesistitle": "👞 **Expediente del recluta**",
       "dm_default_server_title": "🔔 **USANDO SERVIDOR POR DEFECTO: {server_name}**",

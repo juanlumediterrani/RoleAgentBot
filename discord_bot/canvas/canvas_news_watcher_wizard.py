@@ -5,7 +5,7 @@ from discord_bot import discord_core_commands as core
 from discord_bot.discord_utils import get_server_key
 
 logger = core.logger
-get_news_watcher_db_instance = core.get_news_watcher_db_instance
+get_news_watcher_db_instance = core.get_news_watcher_db_instance if hasattr(core, 'get_news_watcher_db_instance') and core.get_news_watcher_db_instance is not None else None
 
 
 def _get_nw_descriptions(guild=None) -> dict:
@@ -317,13 +317,14 @@ class NewsWatcherWizard:
         await interaction.response.send_modal(modal)
     
     async def _show_premises_modal(self, interaction: discord.Interaction):
-        """Show modal for entering 5 premises with personality defaults."""
+        """Show modal for entering up to 3 premises with personality defaults."""
         # Get default premises from personality
         default_premises = self._get_default_premises()
         
-        modal = discord.ui.Modal(title="🤖 Configure AI Premises", timeout=300)
+        modal = discord.ui.Modal(title="🤖 Configure AI Premises (Max 3)", timeout=300)
         
-        for i in range(5):
+        # Limit to 3 premises maximum
+        for i in range(3):
             default_val = default_premises[i] if i < len(default_premises) else ""
             text_input = discord.ui.TextInput(
                 label=f"Premise {i+1}",
@@ -340,6 +341,14 @@ class NewsWatcherWizard:
             for item in modal.children:
                 if item.value and item.value.strip():
                     premises.append(item.value.strip())
+            
+            # Validate maximum 3 premises
+            if len(premises) > 3:
+                await modal_interaction.response.send_message(
+                    "❌ Maximum 3 premises allowed. Please remove some and try again.",
+                    ephemeral=True
+                )
+                return
             
             self.data['premises'] = premises
             await modal_interaction.response.send_message(
