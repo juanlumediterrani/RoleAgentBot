@@ -10,11 +10,6 @@
         "dice_game": "🍞 **Oven Crumbs** - Bake bread and bet flour sacks, who gets burned?",
         "ring": "🫓 **Sourdough Hunter** - Accuse innocents of stealing the Master's sourdough"
     },
-    "subrole_buttons": {
-        "dice": "🍞 Crumbs",
-        "beggar": "🔥 Feed oven",
-        "runes": "🥖 Runes"
-    },
     "dice_game": {
         "button": "🍞 Crumbs",
         "waitmessage": "Baking crumbs... Wait, flour sack... SSSSS",

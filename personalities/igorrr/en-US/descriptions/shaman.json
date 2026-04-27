@@ -2,9 +2,6 @@
     "title": "**♨️ Mystic Vapors**",
     "description": "Bake the destiny runes with Igorrr and discover what the burnt crumbs have to tell you.",
     "button": "♨️ Vapors",
-    "subrole_buttons": {
-        "runes": "🥖 Bread Runes"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **Bread Runes** - Write runes on bread, bake them and read destiny in burnt crumbs"
     },

@@ -3,11 +3,6 @@
     "description": "Yuki observes value fluctuations in the market and notifies when analysis detects an opportunity. Sustained attention reveals patterns others do not see.",
     "button": "💎 Jōhō-tsū",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 Items",
-        "league": "🏆 League",
-        "admin": "🔧 Admin"
-    },
     "user_flows_title": "Usage Guide",
     "user_flows_1": "Select the league in which you want Yuki to focus her analysis.",
     "user_flows_2": "Manage the items you want to track and receive alerts when the moment is opportune.",
@@ -18,6 +13,7 @@
     "admin_flows_title": "Administrator Panel",
     "admin_flows_1": "Access the modules to activate them and configure their parameters.",
     "poe2": {
+        "button": "👺 POE2",
         "title": "💎 **Path of Exile 2 Analysis** 👺",
         "description": "Yuki observes the item market and anticipates the right moment to buy or sell",
         "current_league": "🏆 **Active league**: {league}",

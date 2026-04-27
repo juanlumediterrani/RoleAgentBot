@@ -10,11 +10,6 @@
         "dice_game": "🍞 **Migajas del Horno** - Hornear pan y apostar sacos de harina, ¿quién se quema?",
         "ring": "🫓 **Cazador de la Masa Madre** - Acusa a inocentes de robar la masa madre del Amo"
     },
-    "subrole_buttons": {
-        "dice": "🍞 Migajas",
-        "beggar": "🔥 Alimentar horno",
-        "runes": "🥖 Runas"
-    },
     "dice_game": {
         "button": "🍞 Migajas",
         "waitmessage": "Horneando migajas... Espera, saco de harina... SSSSS",

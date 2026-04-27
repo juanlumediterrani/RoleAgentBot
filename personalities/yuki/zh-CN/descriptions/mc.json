@@ -2,9 +2,6 @@
     "title": " 🎎  **地方（じかた）** 🪕",
     "description": "将雪连接至语音频道，让她以音乐陪伴空间。声音，若选得恰当，也是一种在场的形式。",
     "button": "🪕 地方",
-    "subrole_buttons": {
-        "overview": "🪕 列表"
-    },
     "canvas_mc_subtitle": "音乐状态",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "使用控制台来播放曲目、查询当前 repertoire，或添加新的 piece 至曲目单。",
@@ -40,7 +37,7 @@
     "queue_cleared": "🗑️ 列表已清空",
     "last_song_removed": "🔙 最后一首 piece 已从 repertoire 移除",
     "history_displayed": "📜 历史已查看",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "调整音量",
         "mc_play": "立即播放",
         "mc_play_description": "立刻开始播放一首 piece",

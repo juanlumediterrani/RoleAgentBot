@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **お座敷遊び（おざしきあそび）** —— 挑战 chance，夺取积累的酒盏"
     },
-    "subrole_buttons": {
-        "dice": "🎲 お座敷遊び"
-    },
     "dice_game": {
         "button": "🎲 お座敷遊び",
         "waitmessage": "正在计算结果……请稍候。",

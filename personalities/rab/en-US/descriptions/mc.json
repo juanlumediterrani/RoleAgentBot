@@ -2,9 +2,6 @@
     "title": "💿  **Resonance Matrix**",
     "description": "Synchronize the Prophet in a voice channel so it emits harmonic frequencies and pacifies the environment.",
     "button": "💿 Resonance",
-    "subrole_buttons": {
-        "overview": "📊 Flow"
-    },
     "canvas_mc_subtitle": "Frequency Parameters",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Use the console to request sound sequences, observe current flow, or add new frequencies to the void.",
@@ -40,11 +37,11 @@
     "mc_clear": "🗑️ Sequence cleaned",
     "last_song_removed": "🔙 Last frequency removed",
     "history_displayed": "📜 Acoustic record analyzed",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Calibrate Amplitude",
         "mc_play": "Synthesize Now",
         "mc_play_description": "Interrupt silence and play a frequency immediately",
-        "mc_add": "Add to Flow", 
+        "mc_add": "Add to Flow",
         "mc_add_description": "Insert a sound wave at the end of the current sequence",
         "mc_skip": "Skip Sequence",
         "mc_skip_description": "Discard current wave and advance in the algorithm",

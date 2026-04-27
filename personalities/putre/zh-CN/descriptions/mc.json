@@ -2,9 +2,6 @@
     "title": "**🥁 普特雷鼓手！**",
     "description": "普特雷鼓手，拉他进语音频道给你放音乐。",
     "button": "🥁 鼓手",
-    "subrole_buttons": {
-        "overview": "🤘 队列"
-    },
     "canvas_mc_subtitle": "控制键",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "用下拉菜单点歌、看队列、或加歌，两脚兽。",

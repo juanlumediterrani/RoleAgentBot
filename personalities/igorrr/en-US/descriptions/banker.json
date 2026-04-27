@@ -25,10 +25,6 @@
         "config_bonus_description": "Change flour sacks for newcomers",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "🌾 Pantry",
-        "beggar": "🔒 Basement"
-    },
     "donation_label": "Donate:",
     "donation_custom_label": "Custom amount",
     "donation_custom_message": "Use the 'Custom Amount' option from Canvas to donate. Igorrr will note it in the filthy book.",

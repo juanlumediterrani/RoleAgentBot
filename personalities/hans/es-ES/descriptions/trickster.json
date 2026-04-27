@@ -9,11 +9,6 @@
         "beggar": "🏢 **Partida reservada** - Recauda fondos para el regimiento, haz tu donativo ya.",
         "dice_game": "🎲 **CAMPO DE BATALLA** - Lance artillería pesada contra el enemigo y capture el botín de guerra!"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Artillería",
-        "beggar": "🏢 Partida reservada",
-        "runes": "🎚️ Runenberatung"
-    },
     "dice_game": {
         "button": "🎲 Artillería",
         "waitmessage": "Desplegando artillería...¡Espere, soldado!",

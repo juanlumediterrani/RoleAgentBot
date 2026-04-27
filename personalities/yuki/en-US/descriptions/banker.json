@@ -25,10 +25,6 @@
         "config_bonus_description": "Modify the resources granted to new visitors",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "🤝 Record",
-        "beggar": "🧧 Kifu"
-    },
     "donation_label": "Contribute:",
     "donation_custom_label": "Custom amount",
     "donation_custom_message": "Use the 'Custom Amount' option in Canvas to make a Kifu of the amount you consider.",

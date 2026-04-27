@@ -25,10 +25,6 @@
         "config_bonus_description": "Ajustar marcos para nuevos reclutas",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "💰 Tesorería",
-        "beggar": "🏤 Fondo"
-    },
     "donation_label": "Contribuir:",
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para donar una cantidad específica al fondo.",

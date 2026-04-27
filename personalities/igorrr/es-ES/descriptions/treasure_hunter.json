@@ -3,11 +3,6 @@
     "description": "Igorrr vigila los proveedores de harinas y avisa cuando comprar, y cuando vender producto.",
     "button": "💎 Buscagranos",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 Granos",
-        "league": "🏆 Liga",
-        "admin": "🔧 Admin"
-    },
     "user_flows_title": "Flujo para el Amo",
     "user_flows_1": "Selecciona el juego que quieres que Igorrr robe",
     "user_flows_2": "Navega para configurarlo y seleccionar los granos deseados.",
@@ -18,6 +13,7 @@
     "admin_flows_title": "Flujo para el Amo",
     "admin_flows_1": "Navega dentro de los subroles para activarlos y configurarlos, desde la vista del Amo.",
     "poe2": {
+        "button": "👺 POE2",
         "title": "💎 **Tesoros en Path of Exile 2** 👺",
         "description": "Haz que Igorrr vigile precios y te envíe alertas",
         "current_league": "🏆 **Liga donde robo**: {league}",

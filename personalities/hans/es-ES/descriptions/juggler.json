@@ -5,9 +5,6 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Investigador de la Gestapo** - Interroga sospechosos de traición al Reich"
     },
-    "subrole_buttons": {
-        "ring": "🔍 Investigación"
-    },
     "ring": {
         "button": "🔍 Investigación",
         "title": "👁️ **Herr Hans Oficial de la Gestapo**",

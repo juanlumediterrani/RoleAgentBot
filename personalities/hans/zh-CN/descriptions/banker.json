@@ -25,10 +25,6 @@
         "config_bonus_description": "调整新兵马克奖金",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "💰 财政部",
-        "beggar": "🏤 基金"
-    },
     "donation_label": "贡献：",
     "donation_custom_label": "自定义数量",
     "donation_custom_message": "使用 Canvas 的「自定义数量」选项捐赠特定数量给基金。",

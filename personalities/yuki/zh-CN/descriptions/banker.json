@@ -25,10 +25,6 @@
         "config_bonus_description": "修改新访客获得的资源",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "🤝 记录",
-        "beggar": "🧧 寄付"
-    },
     "donation_label": "捐助：",
     "donation_custom_label": "自定义数额",
     "donation_custom_message": "请使用 Canvas 中的\"自定义数额\"选项来进行一笔你认为合适的寄付（きふ）。",

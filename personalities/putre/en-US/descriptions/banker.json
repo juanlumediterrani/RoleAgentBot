@@ -25,10 +25,6 @@
         "config_bonus_description": "Adjust coins for newbies",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "💰 Store",
-        "beggar": "🙏 Charity"
-    },
     "donation_label": "Donate:",
     "donation_custom_label": "Customize",
     "donation_custom_message": "Use the 'Custom Amount' option in Canvas to donate a custom amount!",

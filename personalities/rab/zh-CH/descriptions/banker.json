@@ -25,10 +25,6 @@
         "config_bonus_description": "调整授予新化身的基础粒子",
         "config_bonus_emoji": "⚡"
     },
-    "subrole_buttons": {
-        "overview": "⌛ 核心",
-        "beggar": "🌌 流"
-    },
     "donation_label": "流：",
     "donation_custom_label": "自定义金额",
     "donation_custom_message": "使用画布中的‘自定义金额’选项向集体流贡献碎片。",

@@ -2,9 +2,6 @@
     "title": "♨️ **神秘蒸汽**",
     "description": "跟伊戈尔一起烤命运符文，发现烧焦碎屑要跟你说啥。",
     "button": "♨️ 蒸汽",
-    "subrole_buttons": {
-        "runes": "🥖 面包符文"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **面包符文** - 在面包上写符文，烤出来，从烧焦碎屑里读命运"
     },

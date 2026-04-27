@@ -3,11 +3,6 @@
     "description": "Have Her Hans monitor strategic object prices in different games and send you alerts ven ze price is in maximum/minimum zone.",
     "button": "💎 Resources",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 Items",
-        "league": "🏆 League",
-        "admin": "🔧 Admin"
-    },
     "user_flows_title": "Personnel Procedure",
     "user_flows_1": "Select ze operation field you vant to monitor",
     "user_flows_2": "Navigate to configure it and select ze desired targets.",
@@ -18,6 +13,7 @@
     "admin_flows_title": "Officer Procedure",
     "admin_flows_1": "Navigate vizin subroles to activate and configure zem, from ze officer view.",
     "poe2": {
+        "button": "👺 POE2",
         "title": "💎  **{_bot} Resources in Path of Exile 2**",
         "description": "Have Her Hans monitor prices and send you strategic alerts",
         "game_description": "Test your strategy viz Her Hans's pot! 🎲 Roll three dice against ze bank and take all ze gold ven you roll a trio of ones!\n -Pairs:x1\n -Trios:x3\n -High Straight:x5\n",

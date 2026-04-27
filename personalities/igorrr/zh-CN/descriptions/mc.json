@@ -2,9 +2,6 @@
     "title": " 🎷  **生锈留声机** 🎷",
     "description": "伊戈尔拖着脚走到噪音角落，好让所有人都受罪。",
     "button": "🎷 生锈留声机",
-    "subrole_buttons": {
-        "overview": "🎵 麻袋"
-    },
     "canvas_mc_subtitle": "🎷 破烂控制器",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "用下拉菜单选噪音、看麻袋里滴货、或者加更多人肉噪音。",
@@ -40,7 +37,7 @@
     "queue_cleared": "🗑️ 麻袋清空",
     "last_song_removed": "🔙 最后一个噪音从麻袋移除",
     "history_displayed": "📜 历史展示",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "调轰鸣",
         "mc_play": "现在播放",
         "mc_play_description": "点一个噪音俺马上放",

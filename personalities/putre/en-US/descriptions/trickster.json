@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **THE POT** - Play against the bank, roll the dice and take the pot!"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Pot"
-    },
     "dice_game": {
         "button": "🎲 Pot",
         "waitmessage": "Rolling dice...Wait!",

@@ -2,9 +2,6 @@
     "title": "📯  **Her Hans Official Military Music**",
     "description": "ACHTUNG! Her Hans is in command of military music. Report to voice channel to receive disciplined marches, recruit!",
     "button": "📯 Marches",
-    "subrole_buttons": {
-        "overview": "📯 Marches"
-    },
     "canvas_mc_subtitle": "**Strict Command**",
     "canvas_mc_separator": "═════════════════════════════════",
     "canvas_mc_description": "SCHNELL! Use ze menu to request authorized marches, inspect playback queue, or add disciplined music! No excuses, Zivilist!",
@@ -40,11 +37,11 @@
     "mc_clear": "🗑️ Formation cleaned!",
     "last_song_removed": "🔙 Last march removed from formation!",
     "history_displayed": "📜 History reviewed!",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Adjust march volume!",
         "mc_play": "Play now!",
         "mc_play_description": "Request authorized march and play immediately! No delays!",
-        "mc_add": "Add to formation!", 
+        "mc_add": "Add to formation!",
         "mc_add_description": "Add march to ze end of playback formation! Maintain order!",
         "mc_skip": "Skip march!",
         "mc_skip_description": "Skip current march and go to next! March in unison!",

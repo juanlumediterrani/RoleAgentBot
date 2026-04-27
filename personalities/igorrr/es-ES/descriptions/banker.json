@@ -25,10 +25,6 @@
         "config_bonus_description": "Cambiar sacos de harina para recién llegados",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "🌾 Despensa",
-        "beggar": "🔒 Sótano"
-    },
     "donation_label": "Donar:",
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para donar. Igorrr lo anotará en el libro mugrienta.",

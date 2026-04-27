@@ -2,9 +2,6 @@
     "title": "🎪  **Kronk el Malabarista**",
     "description": "Kronk mantiene múltiples tareas en el aire, entreteniendo al grupo con sus habilidades.",
     "button": "🎪 Malabarista",
-    "subrole_buttons": {
-        "overview": "🎪 Vista"
-    },
     "dropdown": {
         "select_juggler_action": "🎪 Seleccionar acción de malabarista...",
         "config_juggler": "Configurar Malabarista",

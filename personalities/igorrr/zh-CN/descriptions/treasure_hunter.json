@@ -3,11 +3,6 @@
     "description": "伊戈尔盯着面粉供应商，告诉你啥时候买，啥时候卖破烂。",
     "button": "💎 谷粒猎人",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 谷粒",
-        "league": "🏆 联赛",
-        "admin": "🔧 管理"
-    },
     "user_flows_title": "主人滴流程",
     "user_flows_1": "选你想让伊戈尔偷滴游戏",
     "user_flows_2": "导航配置它并选想要滴谷粒。",
@@ -18,6 +13,7 @@
     "admin_flows_title": "主人滴流程",
     "admin_flows_1": "在子任务内导航激活并配置它们，从主人视图。",
     "poe2": {
+        "button": "👺 POE2",
         "title": "💎 **Path of Exile 2 宝藏** 👺",
         "description": "让伊戈尔盯着价格并给你发警报",
         "current_league": "🏆 **俺偷滴联赛**：{league}",

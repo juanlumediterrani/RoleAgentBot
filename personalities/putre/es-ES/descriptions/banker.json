@@ -25,10 +25,6 @@
         "config_bonus_description": "Ajustar monedas para novatos",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "💰 Zaka",
-        "beggar": "🙏 Volunta"
-    },
     "donation_label": "Donar:",
     "donation_custom_label": "Personaliza",
     "donation_custom_message": "Usa la opcion 'Cantidad Personalizada' del Canvas para donar una cantidad personalizada!",

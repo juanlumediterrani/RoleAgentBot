@@ -2,9 +2,6 @@
     "title": " 🎷  **Rusty Gramophone** 🎷",
     "description": "Igorrr drags his feet to the noise corner to make everyone suffer.",
     "button": "️🎷 Rusty Gramophone",
-    "subrole_buttons": {
-        "overview": "️🎼 Sack"
-    },
     "canvas_mc_subtitle": "🎼 Kontrol Keys",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Use the dropdown menu to ask me for noises, to see the sack, or to put more human noises in.",
@@ -40,11 +37,11 @@
     "queue_cleared": "🗑️ Sack emptied",
     "last_song_removed": "🔙 Last noise removed from sack",
     "history_displayed": "📜 History shown",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Adjust Racket",
         "mc_play": "Play Now",
         "mc_play_description": "Ask me for a noise and I'll play it immediately",
-        "mc_add": "Put in the Sack", 
+        "mc_add": "Put in the Sack",
         "mc_add_description": "Put a noise at the end of the playback sack",
         "mc_skip": "Skip Noise",
         "mc_skip_description": "Skip the current noise and go to the next",

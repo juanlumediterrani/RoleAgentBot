@@ -3,11 +3,6 @@
     "description": "让赫尔汉斯监控不同游戏中战略物品的价格，并在价格处于最大/最小区域时向你发送警报。",
     "button": "💎 资源",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 物品",
-        "league": "🏆 战区",
-        "admin": "🔧 管理"
-    },
     "user_flows_title": "人员程序",
     "user_flows_1": "选择你想监控的行动战区",
     "user_flows_2": "导航配置并选择想要的目标。",
@@ -18,6 +13,7 @@
     "admin_flows_title": "军官程序",
     "admin_flows_1": "在子角色内导航以激活和配置它们，从军官视图。",
     "poe2": {
+        "button": "👺 POE2",
         "title": "💎  **{_bot} 流放之路2资源**",
         "description": "让赫尔汉斯监控价格并向你发送战略警报",
         "game_description": "测试你的策略对抗赫尔汉斯的奖池！🎲 掷三个骰子对抗庄家，掷出三个一赢取所有金币！\n -对子:x1\n -三条:x3\n -高顺:x5\n",

@@ -9,11 +9,6 @@
         "beggar": "🏢 **Reserved Fund** - Collects funds for ze regiment, make your donation now.",
         "dice_game": "🎲 **BATTLEFIELD** - Roll heavy artillery against ze enemy and capture ze var bounty!"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Artillery",
-        "beggar": "🏢 Reserved Fund",
-        "runes": "🎚️ Runenberatung"
-    },
     "dice_game": {
         "button": "🎲 Artillery",
         "waitmessage": "Deploying artillery...Vait, soldier!",

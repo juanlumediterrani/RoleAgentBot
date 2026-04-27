@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **SINGULARITY** - Challenge the machine, alter chance, and absorb the core"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Core"
-    },
     "dice_game": {
         "button": "🎲 Core",
         "waitmessage": "Calculating wave function collapse... Wait.",

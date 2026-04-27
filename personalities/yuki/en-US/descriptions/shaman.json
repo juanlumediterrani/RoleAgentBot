@@ -2,9 +2,6 @@
     "title": "**🌕 Aruki-miko**",
     "description": "A divination art from distant lands, adapted to the Ozashiki Asobi session. Yuki offers it as Hana-machi no Himitsu: secret knowledge that only she possesses.",
     "button": "🌕 Aruki-miko",
-    "subrole_buttons": {
-        "runes": "🀄 Rune-Uranai"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **Rune-Uranai (ルーン占い)** - An exotic art from distant lands. The runes carved in sandalwood and Urushi lacquer with gold leaf await in their ancient kimono silk kinchaku."
     },

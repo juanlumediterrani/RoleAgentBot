@@ -5,9 +5,6 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Zero Search** - Identifies anomalies and points to those hiding the primordial artifact"
     },
-    "subrole_buttons": {
-        "ring": "👁️ Artifact"
-    },
     "ring": {
         "button": "👁️ Artifact",
         "title": "👁️ **ZERO ARTIFACT TRACKING**",

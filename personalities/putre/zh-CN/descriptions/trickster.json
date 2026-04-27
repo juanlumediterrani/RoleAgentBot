@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **奖池** - 跟庄家玩，投骰子，拿走奖池!"
     },
-    "subrole_buttons": {
-        "dice": "🎲 奖池"
-    },
     "dice_game": {
         "button": "🎲 奖池",
         "waitmessage": "投骰子...等等!",

@@ -5,9 +5,6 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
     },
-    "subrole_buttons": {
-        "ring": "👁️ Artefacto"
-    },
     "ring": {
         "button": "👁️ Artefacto",
         "title": "👁️ **RASTREO DEL ARTEFACTO CERO**",

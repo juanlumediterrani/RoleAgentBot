@@ -2505,12 +2505,9 @@ class ShortcutRoleSelect(discord.ui.Select):
                     if not subrole_label:
                         subrole_label = subrole_section.get("title")
                     
-                    # Fallback to subrole_buttons (e.g., "subrole_buttons": {"dice": "🎲 Artillería"})
+                    # Fallback to generated label if neither exists
                     if not subrole_label:
-                        subrole_buttons = role_desc.get("subrole_buttons", {})
-                        # Map JSON key to surface name for button lookup
-                        surface_name = self.SUBROLE_TO_SURFACE.get(subrole_name, subrole_name)
-                        subrole_label = subrole_buttons.get(surface_name, subrole_name.replace("_", " ").title())
+                        subrole_label = subrole_name.replace("_", " ").title()
                     
                     # Use surface name for value (e.g., "runes" instead of "nordic_runes")
                     surface_name = self.SUBROLE_TO_SURFACE.get(subrole_name, subrole_name)

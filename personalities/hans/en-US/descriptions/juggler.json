@@ -5,9 +5,6 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Gestapo Investigator** - Interrogate suspects of treason to ze Reich"
     },
-    "subrole_buttons": {
-        "ring": "🔍 Investigation"
-    },
     "ring": {
         "button": "🔍 Investigation",
         "title": "👁️ **Herr Hans Gestapo Persecutor**",

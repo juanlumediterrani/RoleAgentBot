@@ -25,10 +25,6 @@
         "config_bonus_description": "改新来者滴面粉袋子",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "🌾 储藏室",
-        "beggar": "🔒 地下室"
-    },
     "donation_label": "捐赠：",
     "donation_custom_label": "自定义数量",
     "donation_custom_message": "用画布滴'自定义数量'选项来捐赠。伊戈尔会在油腻滴本子上记下来。",

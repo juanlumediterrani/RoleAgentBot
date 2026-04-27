@@ -9,11 +9,6 @@
         "beggar": "🏢 **特别基金** - 为团部筹集资金，立即捐赠。",
         "dice_game": "🎲 **战场** - 向敌人发射重炮并夺取战争财宝！"
     },
-    "subrole_buttons": {
-        "dice": "🎲 火炮",
-        "beggar": "🏢 特别基金",
-        "runes": "🎚️ Runenberatung"
-    },
     "dice_game": {
         "button": "🎲 火炮",
         "waitmessage": "部署火炮...等待，士兵！",

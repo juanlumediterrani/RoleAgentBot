@@ -3,11 +3,6 @@
     "description": "雪观察市场的价值波动，并在分析检测到机会时发出通知。持续的专注揭示了他人看不见的 pattern。",
     "button": "💎 情報通",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 物件",
-        "league": "🏆 联赛",
-        "admin": "🔧 管理"
-    },
     "user_flows_title": "使用指南",
     "user_flows_1": "选择你希望雪专注于分析的联赛。",
     "user_flows_2": "管理你想要追踪的物件，并在时机合适时接收 alerts。",
@@ -18,6 +13,7 @@
     "admin_flows_title": "管理员面板",
     "admin_flows_1": "进入模块以激活并配置它们的参数。",
     "poe2": {
+        "button": "👺 POE2",
         "title": "💎 **Path of Exile 2 分析** 👺",
         "description": "雪观察物件市场，并预判买入或卖出的合适时机",
         "current_league": "🏆 **活跃联赛**：{league}",

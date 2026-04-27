@@ -25,10 +25,6 @@
         "config_bonus_description": "Adjust marks for new recruits",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "💰 Treasury",
-        "beggar": "🏤 Fund"
-    },
     "donation_label": "Contribute:",
     "donation_custom_label": "Custom Amount",
     "donation_custom_message": "Use ze 'Custom Amount' option in Canvas to donate a specific amount to ze fund.",

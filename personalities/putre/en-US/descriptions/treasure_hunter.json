@@ -3,11 +3,6 @@
     "description": "Make Putre monitor item prices in different games and send you alerts when price is in a max/min zone",
     "button": "💎 Treasures",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 Items",
-        "league": "🏆 League",
-        "admin": "🔧 Admin"
-    },
     "user_flows_title": "Flow for the user",
     "user_flows_1": "Select the game you want to subscribe to",
     "user_flows_2": "Navigate within it to configure and select the desired items.",
@@ -18,7 +13,8 @@
     "admin_flows_title": "Flow for admin",
     "admin_flows_1": "Navigate within subroles to activate and configure them, from their admin view.",
     "poe2": {
-        "title": "💎 **Treasures in Path of Exile 2** 👺" ,
+        "button": "👺 POE2",
+        "title": "💎 **Treasures in Path of Exile 2** 👺",
         "description": "Make Putre monitor prices and send you alerts",
         "current_league": "🏆 **Current League**: {league}",
         "league_description": "Here are shown the different leagues you can select and the hot hits in that league.",

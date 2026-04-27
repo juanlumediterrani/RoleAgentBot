@@ -629,28 +629,28 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
         ) if current_detail in {"dice_admin"} else [
             # Main trickster overview - show all subroles
-            (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("subrole_buttons", {}).get("dice", "Dice"), "dice"),
+            (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("dice_game", {}).get("button", "Dice"), "dice"),
         ] if current_detail not in {"dice", "dice_admin"} else [],
         "banker": [
             # Main banker overview - always show subrole buttons
-            (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("subrole_buttons", {}).get("overview", "Overview"), "overview"),
-            (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("subrole_buttons", {}).get("beggar", "Beggar"), "beggar"),
+            (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("overview", {}).get("button", "Overview"), "overview"),
+            (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("beggar", {}).get("button", "Beggar"), "beggar"),
         ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
         "mc": [
-            (personality_descriptions.get("role_descriptions", {}).get("mc", {}).get("subrole_buttons", {}).get("overview", button_personal), "overview"),
+            (personality_descriptions.get("role_descriptions", {}).get("mc", {}).get("overview", {}).get("button", button_personal), "overview"),
         ],
         "shaman": (
             [(button_personal, "runes")]
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), "runes_admin")] if admin_visible else [])
         ) if current_detail in {"runes", "runes_admin"} else [
-            (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("subrole_buttons", {}).get("runes", "🔮 Runes"), "runes"),
+            (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("nordic_runes", {}).get("button", "🔮 Runes"), "runes"),
         ] if current_detail not in {"runes", "runes_admin"} else [],
         "juggler": (
             [(button_personal, "ring")]
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), "ring_admin")] if admin_visible else [])
         ) if current_detail in {"ring", "ring_admin"} else [
-            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("overview", "🤹 Vista"), "overview"),
-            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("subrole_buttons", {}).get("ring", "👁️ Ring"), "ring"),
+            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("overview", {}).get("button", "🤹 Vista"), "overview"),
+            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("ring", {}).get("button", "👁️ Ring"), "ring"),
         ] if current_detail not in {"ring", "ring_admin"} else [],
         "scholar": (
             [(button_personal, "personal")]
@@ -666,11 +666,11 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         if not th_global_enabled:
             return []  # POE2 not available if treasure_hunter disabled globally
         poe2_buttons = [
-            (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("items", "Items"), "poe2"),
-            (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("league", "League"), "league"),
+            (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("poe2", {}).get("button", "Items"), "poe2"),
+            (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("league", {}).get("button", "League"), "league"),
         ]
         if admin_visible:
-            admin_button = personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("subrole_buttons", {}).get("admin", "Admin")
+            admin_button = personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("admin", {}).get("button", "Admin")
             poe2_buttons.append(
                 (_resolve_button_label(admin_button), "admin")
             )

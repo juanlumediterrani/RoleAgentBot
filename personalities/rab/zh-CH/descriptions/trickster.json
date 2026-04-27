@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **奇点** - 挑战机器，改变几率，并吸收核心"
     },
-    "subrole_buttons": {
-        "dice": "🎲 核心"
-    },
     "dice_game": {
         "button": "🎲 核心",
         "waitmessage": "计算波函数坍缩... 等待。",

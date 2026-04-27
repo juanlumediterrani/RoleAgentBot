@@ -25,10 +25,6 @@
         "config_bonus_description": "Ajustar las partículas otorgadas a nuevos avatares",
         "config_bonus_emoji": "⚡"
     },
-    "subrole_buttons": {
-        "overview": "⌛ Núcleo",
-        "beggar": "🌌 Flujo"
-    },
     "donation_label": "Flujo:",
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para aportar fragmentos al flujo colectivo.",

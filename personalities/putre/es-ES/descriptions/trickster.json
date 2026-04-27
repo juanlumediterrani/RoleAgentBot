@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Bote"
-    },
     "dice_game": {
         "button": "🎲 Bote",
         "waitmessage": "Tirando daos...Ezpera!",

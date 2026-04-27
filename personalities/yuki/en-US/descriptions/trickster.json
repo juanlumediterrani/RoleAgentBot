@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **Ozashiki-asobi (お座敷遊び) ** - Challenge chance and claim the accumulated fund"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Ozashiki-asobi"
-    },
     "dice_game": {
         "button": "🎲 Ozashiki-asobi",
         "waitmessage": "Calculating result... A moment.",

@@ -8,9 +8,6 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **Ozashiki-asobi (お座敷遊び) ** - Desafía al azar y reclama el fondo acumulado"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Ozashiki-asobi"
-    },
     "dice_game": {
         "button": "🎲 Ozashiki-asobi",
         "waitmessage": "Calculando resultado... Un momento.",

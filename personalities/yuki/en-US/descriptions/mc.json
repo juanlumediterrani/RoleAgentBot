@@ -2,9 +2,6 @@
     "title": " 🎎 **Jikata** 🪕",
     "description": "Connects Yuki to a voice channel to accompany the space with music. Sound, well chosen, is also a form of presence.",
     "button": "🪕 Jikata",
-    "subrole_buttons": {
-        "overview": "🪕 List"
-    },
     "canvas_mc_subtitle": "Music State",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Use the console to play songs, check the current list or add new pieces to the repertoire.",
@@ -40,7 +37,7 @@
     "queue_cleared": "🗑️ List emptied",
     "last_song_removed": "🔙 Last piece removed from repertoire",
     "history_displayed": "📜 History consulted",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Adjust Volume",
         "mc_play": "Play Now",
         "mc_play_description": "Start playing a piece immediately",

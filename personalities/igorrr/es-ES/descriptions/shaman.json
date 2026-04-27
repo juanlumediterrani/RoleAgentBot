@@ -2,9 +2,6 @@
     "title": "♨️ **Vapores Místicos**",
     "description": "Hornea las runas del destino con Igorrr y descubre lo que las migajas quemadas tienen para decirte.",
     "button": "♨️ Vapores",
-    "subrole_buttons": {
-        "runes": "🥖 Runas de Pan"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **Runas de Pan** - Escribe runas en pan, hornéalas y lee el destino en las migajas quemadas"
     },
