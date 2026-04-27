@@ -1336,7 +1336,7 @@ def _get_dice_game_pot_info(server_id: str, coin_emoji: str = "🪙", dice_title
         logger.warning(f"Error getting dice game pot: {e}")
         return ""
 
-def _get_mc_last_song_info(server_id: str, guild=None, mc_title: str = "🎵 MC") -> str:
+def _get_mc_last_song_info(server_id: str, mc_title: str = "🎵 MC") -> str:
     """Get last song played in the server."""
     try:
         from roles.mc.db_role_mc import get_mc_db_instance
@@ -1345,27 +1345,25 @@ def _get_mc_last_song_info(server_id: str, guild=None, mc_title: str = "🎵 MC"
         # Remove bold from title
         mc_title = mc_title.replace("**", "")
         
-        # Get history from any channel in the server
-        history = mc_db.get_statistics(server_id)
-        if history and history.get('historial_servidor', 0) > 0:
-            # Get the most recent song
-            # We need to query the history table directly
-            import sqlite3
-            with sqlite3.connect(str(mc_db.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT title, artist, played_at
-                    FROM mc_history
-                    WHERE server_id = ?
-                    ORDER BY played_at DESC
-                    LIMIT 1
-                ''', (server_id,))
-                row = cursor.fetchone()
-                if row:
-                    title, artist, played_at = row
-                    if artist:
-                        return f"{mc_title}: {title} by {artist}"
-                    return f"{mc_title}: {title}"
+        # Get history from any channel in the server using NoSQL
+        from roles.role_configs_nosql import get_role_configs_nosql
+        nosql = get_role_configs_nosql(server_id)
+        
+        # Access history store directly to get most recent entry across all channels
+        all_entries = list(nosql._mc_history.iter_records())
+        filtered = [
+            e for e in all_entries
+            if e.get("server_id") == server_id
+        ]
+        if filtered:
+            # Sort by played_at descending and get the most recent
+            filtered.sort(key=lambda e: e.get("played_at", ""), reverse=True)
+            most_recent = filtered[0]
+            title = most_recent.get("title")
+            artist = most_recent.get("artist")
+            if artist:
+                return f"{mc_title}: {title} by {artist}"
+            return f"{mc_title}: {title}"
         return ""
     except Exception as e:
         logger.warning(f"Error getting MC last song: {e}")
@@ -1586,7 +1584,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     
     # 4. MC - Last song played
     if roles_config.get('mc', {}).get('enabled'):
-        mc_info = _get_mc_last_song_info(server_id, guild, mc_title)
+        mc_info = _get_mc_last_song_info(server_id, mc_title)
         if mc_info:
             # Extract title and value, apply bold only to value
             if ": " in mc_info:
@@ -1705,7 +1703,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         banker_info = _get_banker_wallet_info(server_id, author_id, coin_emoji, banker_title)
         if banker_info:
             status_lines.extend([
-                pilgrimdatatitle,
+                f"**{pilgrimdatatitle}**",
             ])
             # Extract title and value, apply bold only to value
             if ": " in banker_info:
@@ -1911,6 +1909,8 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
         except Exception as e:
             logger.warning(f"Failed to load MC queue for overview: {e}")
         return build_canvas_role_mc(queue_info=queue_info, guild=guild)
+    if role_name == "scholar" and is_role_enabled_check("scholar", agent_config, guild):
+        return build_canvas_role_scholar(agent_config, admin_visible, guild)
     return None
 
 
