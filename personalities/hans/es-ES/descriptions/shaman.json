@@ -9,14 +9,14 @@
         "nordic_runes": "🎚️ **Ciencia Aria Ancestral** - Consulta runas ancestrales para obtener inteligencia militar y guía estratégica"
     },
     "moon_phases": {
-        "new_moon": "🌑 **Luna Nueva**",
-        "waxing_crescent": "🌒 **Creciente**",
-        "first_quarter": "🌓 **Cuarto Creciente**",
-        "waxing_gibbous": "🌔 **Creciente Gibosa**",
-        "full_moon": "🌕 **Luna Llena**",
-        "waning_gibbous": "🌖 **Menguante Gibosa**",
-        "last_quarter": "🌗 **Cuarto Menguante**",
-        "waning_crescent": "🌘 **Menguante**"
+        "new_moon": "🌑 Luna Nueva",
+        "waxing_crescent": "🌒 Creciente",
+        "first_quarter": "🌓 Cuarto Creciente",
+        "waxing_gibbous": "🌔 Creciente Gibosa",
+        "full_moon": "🌕 Luna Llena",
+        "waning_gibbous": "🌖 Menguante Gibosa",
+        "last_quarter": "🌗 Cuarto Menguante",
+        "waning_crescent": "🌘 Menguante"
     },
     "nordic_runes": {
         "title": "🎚️  **Ciencia Aria Ancestral - Runas Germánicas Antiguas**",

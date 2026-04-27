@@ -9,14 +9,14 @@
         "nordic_runes": "🀄 **Rune-Uranai (ルーン占い)** - An exotic art from distant lands. The runes carved in sandalwood and Urushi lacquer with gold leaf await in their ancient kimono silk kinchaku."
     },
     "moon_phases": {
-        "new_moon": "🌑 **New Moon**",
-        "waxing_crescent": "🌒 **Waxing Crescent**",
-        "first_quarter": "🌓 **First Quarter**",
-        "waxing_gibbous": "🌔 **Waxing Gibbous**",
-        "full_moon": "🌕 **Full Moon**",
-        "waning_gibbous": "🌖 **Waning Gibbous**",
-        "last_quarter": "🌗 **Last Quarter**",
-        "waning_crescent": "🌘 **Waning Crescent**"
+        "new_moon": "🌑 New Moon",
+        "waxing_crescent": "🌒 Waxing Crescent",
+        "first_quarter": "🌓 First Quarter",
+        "waxing_gibbous": "🌔 Waxing Gibbous",
+        "full_moon": "🌕 Full Moon",
+        "waning_gibbous": "🌖 Waning Gibbous",
+        "last_quarter": "🌗 Last Quarter",
+        "waning_crescent": "🌘 Waning Crescent"
     },
     "nordic_runes": {
         "title": "**🀄 Rune-Uranai (ルーン占い)**",

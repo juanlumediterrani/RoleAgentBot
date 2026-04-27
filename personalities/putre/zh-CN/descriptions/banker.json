@@ -33,7 +33,7 @@
     "donation_custom_label": "自定义",
     "donation_custom_message": "用Canvas的'自定义数量'选项来捐自定义数量！",
     "beggar": {
-        "title": "🪙 **普特雷募捐** 🪙",
+        "title": "🪙 **普特雷募捐**",
         "description": "普特雷为部落项目筹金子，定期捐赠，普特雷每周感谢你。\n运气好可能还你点。",
         "title_campaign": "**当前活动**",
         "title_reason": "理由：",

@@ -8,6 +8,7 @@
         "toggle_on": "✅ 启用学者",
         "toggle_off": "❌ 禁用学者"
     },
+    "wikipedia_button_label": "📖 在维基百科阅读",
     "controls_title": "**控制**",
     "controls": "- 启用或禁用学者角色",
     "admin_flows": "切换学者角色以启用或禁用它。"

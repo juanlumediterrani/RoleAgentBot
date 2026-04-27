@@ -9,7 +9,7 @@
         "ring": "👁️ Artifact"
     },
     "ring": {
-        "title": "👁️ **零之 artifact 追踪** 👁️",
+        "title": "👁️ **零之 artifact 追踪**",
         "description": "🔍 一个异常对象改变了网络。指向其他化身以帮助算法调试威胁。",
         "status_active": "✅ **主动扫描** - 先知正在寻找异常",
         "status_inactive": "❌ **系统休眠** - 光学传感器休息",
@@ -22,7 +22,7 @@
         "inactive_instructions": "要恢复追踪：\n• 执政官必须访问 **Admin Artifact** 终端\n• 执行 **Tracking: Started**\n• 校准扫描时间周期\n\n完成后，你可以指向可疑的碳基签名。",
         "hot_potato": "🔥 **负载转移：** 迭代 {iteration}（延迟降低 {multiplier}x）",
         "controls": "**系统控制**\n- 切换扫描状态\n- 时间周期参数（影响负载转移）",
-        "dm_accusation_header": "👁️ **零之 artifact 追踪** 👁️",
+        "dm_accusation_header": "👁️ **零之 artifact 追踪**",
         "accused_label": "被指控:",
         "admin_description": "配置 artifact 追踪器的灵敏度和频率",
         "dropdown": {

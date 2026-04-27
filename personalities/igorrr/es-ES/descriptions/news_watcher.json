@@ -57,6 +57,12 @@
     "wizard_feed_placeholder": "📡 Selecciona una fuente de noticias...",
     "wizard_step2_title": "📋 **Paso 2/3: Seleccionar Fuente de Noticias**",
     "wizard_step2_desc": "Elige un feed específico o todos los feeds:",
+    "wizard_success_title": "✅ **¡Suscripción Creada!**",
+    "wizard_source_label": "Fuente",
+    "wizard_delivery_label": "Entrega",
+    "wizard_delivery_channel": "canal",
+    "wizard_delivery_dm": "tu DM",
+    "wizard_footer_text": "Recibirás noticias que coincidan con tu configuración.",
     "category_descriptions": {
         "economy": "Cosas de dinero que se queman... cuando hay dinero",
         "international": "Lo que pasa en otros callejones donde no puedo llegar",

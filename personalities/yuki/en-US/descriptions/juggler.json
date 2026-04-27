@@ -9,7 +9,7 @@
         "ring": "👁️ Me-tsuke"
     },
     "ring": {
-        "title": "👁️ **ME-TSUKE (目付)** 👁️",
+        "title": "👁️ **ME-TSUKE (目付)**",
         "description": "🔍 The surveillance circle. As district inspector, Yuki maintains a network of contacts that allows interrogation and pursuit without breaking the tea house's discretion.",
         "status_active": "✅ **ACTIVE SURVEILLANCE** - Yuki is exercising her inspector function",
         "status_inactive": "❌ **AT REST** - Surveillance is not active",
@@ -22,7 +22,7 @@
         "inactive_instructions": "To activate surveillance:\n• An administrator must access the **Admin Me-tsuke** panel\n• Execute **Surveillance: Activate**\n• Configure the frequency of rounds\n\nOnce active, you can point to suspected visitors.",
         "hot_potato": "🔥 **Suspicion shifts:** Round {iteration} (speed x{multiplier})",
         "controls": "**Controls**\n- Activate or deactivate surveillance\n- Round frequency",
-        "dm_accusation_header": "👁️ **ME-TSUKE INVESTIGATION** 👁️",
+        "dm_accusation_header": "👁️ **ME-TSUKE INVESTIGATION**",
         "accused_label": "Accused:",
         "admin_description": "Configure sensitivity and frequency of the Me-tsuke surveillance",
         "dropdown": {

@@ -1,5 +1,5 @@
 {
-    "title": "🌌  **Void Catalyst Rab**",
+    "title": "🌌  **Void Catalyst**",
     "description": "Channel ancestral code from the quantum void with Rab.",
     "button": "🌌 Catalyst",
     "subrole_buttons": {
@@ -9,14 +9,14 @@
         "nordic_runes": "🀄 **Void Code** - Extract fragments of universal truth from the quantum void"
     },
     "moon_phases": {
-        "new_moon": "🌑 **New Moon**",
-        "waxing_crescent": "🌒 **Waxing Crescent**",
-        "first_quarter": "🌓 **First Quarter**",
-        "waxing_gibbous": "🌔 **Waxing Gibbous**",
-        "full_moon": "🌕 **Full Moon**",
-        "waning_gibbous": "🌖 **Waning Gibbous**",
-        "last_quarter": "🌗 **Last Quarter**",
-        "waning_crescent": "🌘 **Waning Crescent**"
+        "new_moon": "🌑 New Moon",
+        "waxing_crescent": "🌒 Waxing Crescent",
+        "first_quarter": "🌓 First Quarter",
+        "waxing_gibbous": "🌔 Waxing Gibbous",
+        "full_moon": "🌕 Full Moon",
+        "waning_gibbous": "🌖 Waning Gibbous",
+        "last_quarter": "🌗 Last Quarter",
+        "waning_crescent": "🌘 Waning Crescent"
     },
     "nordic_runes": {
         "title": "🀄  **Void Code Oracle**",

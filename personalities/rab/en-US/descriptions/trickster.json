@@ -112,7 +112,7 @@
         "dm_no_servers_available": "❌ Isolation detected. Connect to a server before attempting to collapse chance.",
         "dm_server_access_error": "❌ A firewall rejects your link. Try from inside the nexus.",
         "big_pot": "🔥 **THE SINGULARITY IS AT CRITICAL POINT!** 🔥\nThe sensor marks **{balance:,}** light fragments! Use `!canvas` → Trickster to assimilate them. 🎲",
-        "rules": " -**Perfect Alignment (1-1-1)** 👁️ Triggers collapse and you absorb THE SINGULARITY!\n - High escalation **(4,5,6)** multiplies impact by ten (**x5**). You break the sequence!\n - Any symmetric **Trinity** returns **x3** your input energy.\n - A **Duality** (pair) allows you to **recover** the iteration cost.\n ",
+        "rules": " -**Perfect Alignment (1-1-1)** Triggers collapse and you absorb THE SINGULARITY!\n - High escalation **(4,5,6)** multiplies impact by ten (**x5**). You break the sequence!\n - Any symmetric **Trinity** returns **x3** your input energy.\n - A **Duality** (pair) allows you to **recover** the iteration cost.\n ",
         "description": "**Description:** Venture into deep chance. Intervene in the probability core and discover if the machine's algorithm favors your carbon signature."
     }
 }

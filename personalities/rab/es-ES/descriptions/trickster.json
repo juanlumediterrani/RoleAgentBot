@@ -112,7 +112,7 @@
         "dm_no_servers_available": "❌ Aislamiento detectado. Conecta con un servidor antes de intentar colapsar el azar.",
         "dm_server_access_error": "❌ Un firewall rechaza tu enlace. Intenta desde el interior del nexo.",
         "big_pot": "🔥 **¡LA SINGULARIDAD ESTÁ EN PUNTO CRÍTICO!** 🔥\n¡El sensor marca **{balance:,}** fragmentos de luz! Usa `!canvas` → Trickster para asimilarlos. 🎲",
-        "rules": " -**Alineación Perfecta (1-1-1)** 👁️ ¡Provoca el colapso y absorbes LA SINGULARIDAD!\n - Escalada alta **(4,5,6)** decuplica el impacto (**x5**). ¡Rompes la secuencia!\n - Cualquier **Trinidad** simétrica devuelve **x3** tu energía introducida.\n - Una **Dualidad** (pareja) te permite **recuperar** el coste de la iteración.\n ",
+        "rules": " -**Alineación Perfecta (1-1-1)** ¡Provoca el colapso y absorbes LA SINGULARIDAD!\n - Escalada alta **(4,5,6)** decuplica el impacto (**x5**). ¡Rompes la secuencia!\n - Cualquier **Trinidad** simétrica devuelve **x3** tu energía introducida.\n - Una **Dualidad** (pareja) te permite **recuperar** el coste de la iteración.\n ",
         "description": "**Descripción:** Adéntrate en el azar profundo. Intervén en el núcleo de probabilidad y descubre si el algoritmo de la máquina favorece tu firma de carbono."
     }
 }

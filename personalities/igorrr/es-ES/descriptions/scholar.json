@@ -8,6 +8,7 @@
         "toggle_on": "✅ Habilitar Scholar",
         "toggle_off": "❌ Deshabilitar Scholar"
     },
+    "wikipedia_button_label": "📖 Leer en Wikipedia",
     "controls_title": "**Controles**",
     "controls": "- Habilitar o deshabilitar el rol Scholar",
     "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."

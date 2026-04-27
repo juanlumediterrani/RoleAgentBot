@@ -8,6 +8,7 @@
         "toggle_on": "✅ Enable Scholar",
         "toggle_off": "❌ Disable Scholar"
     },
+    "wikipedia_button_label": "📖 Read on Wikipedia",
     "controls_title": "**Controls**",
     "controls": "- Enable or disable ze Scholar role",
     "admin_flows": "Toggle ze Scholar role to enable or disable it."

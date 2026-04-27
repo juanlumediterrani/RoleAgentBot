@@ -9,14 +9,14 @@
         "nordic_runes": "🥖 **Runas de Pan** - Escribe runas en pan, hornéalas y lee el destino en las migajas quemadas"
     },
     "moon_phases": {
-        "new_moon": "🌑 **Luna Nueva**",
-        "waxing_crescent": "🌒 **Creciente**",
-        "first_quarter": "🌓 **Cuarto Creciente**",
-        "waxing_gibbous": "🌔 **Creciente Gibosa**",
-        "full_moon": "🌕 **Luna Llena**",
-        "waning_gibbous": "🌖 **Menguante Gibosa**",
-        "last_quarter": "🌗 **Cuarto Menguante**",
-        "waning_crescent": "🌘 **Menguante**"
+        "new_moon": "🌑 Luna Nueva",
+        "waxing_crescent": "🌒 Creciente",
+        "first_quarter": "🌓 Cuarto Creciente",
+        "waxing_gibbous": "🌔 Creciente Gibosa",
+        "full_moon": "🌕 Luna Llena",
+        "waning_gibbous": "🌖 Menguante Gibosa",
+        "last_quarter": "🌗 Cuarto Menguante",
+        "waning_crescent": "🌘 Menguante"
     },
     "nordic_runes": {
         "title": "🥖 **Runas de Pan** 🥖",
