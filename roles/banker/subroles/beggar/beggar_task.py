@@ -12,7 +12,7 @@ from discord.ui import View
 from discord import Interaction
 
 from agent_logging import get_logger
-from agent_mind import call_llm
+from agent_mind import call_llm, call_llm_async
 from agent_engine import _build_system_prompt, _get_personality
 
 from .beggar_db import get_beggar_config
@@ -90,11 +90,10 @@ class BeggarTask:
             server_personality = _get_personality(self.server_id) if self.server_id else _get_personality()
             system_instruction = _build_system_prompt(server_personality, self.server_id)
 
-            response = await asyncio.to_thread(
-                call_llm,
+            response = await call_llm_async(
                 system_instruction=system_instruction,
                 prompt=prompt,
-                async_mode=False,
+                background=False,
                 call_type="beggar_task",
                 critical=False,
                 temperature=0.95,
@@ -585,7 +584,7 @@ class BeggarMinigame:
             response = call_llm(
                 system_instruction=system_instruction,
                 prompt=prompt,
-                async_mode=False,
+                background=False,
                 call_type="beggar_minigame",
                 critical=False,
                 temperature=0.95,

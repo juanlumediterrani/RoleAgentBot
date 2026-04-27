@@ -14,7 +14,7 @@ from collections import defaultdict
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from agent_engine import get_discord_token, _get_personality
-from agent_mind import call_llm
+from agent_mind import call_llm_async
 from agent_db import get_global_db, get_server_id
 from dotenv import load_dotenv
 from agent_logging import get_logger
@@ -791,7 +791,7 @@ async def construir_mensaje_alerta(item_name, signal, price, server_id=None):
             f"{active_duty}\n\n{task_prompt}\n\nGOLDEN RULES:\n"
             f"{golden_rules_text}\n\nRespond only with the alert message, no additional explanations."
         )
-        return await asyncio.to_thread(call_llm, system_instruction, complete_prompt, False, "treasure_hunter_notification")
+        return await call_llm_async(system_instruction, complete_prompt, background=False, call_type="treasure_hunter_notification")
     except Exception as e:
         logger.error(f"Error building POE2 alert message for {item_name}: {e}")
         action = "BUY" if signal == "COMPRA" else "SELL"

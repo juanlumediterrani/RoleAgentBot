@@ -544,7 +544,7 @@ class NordicRunes:
             ai_response = call_llm(
                 system_instruction=system_instruction,
                 prompt=formatted_prompt,
-                async_mode=False,
+                background=False,
                 call_type="nordic_runes",
                 critical=True,
                 server_id=server_id,

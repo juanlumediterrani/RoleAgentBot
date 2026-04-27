@@ -13,7 +13,7 @@ import datetime
 import discord
 
 from agent_engine import PERSONALITY, _build_system_prompt
-from agent_mind import call_llm
+from agent_mind import call_llm_async
 from agent_logging import get_logger
 from agent_db import AgentDatabase
 from behavior.greet import ReplyButton, ReplyButtonView
@@ -449,11 +449,10 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         system_instruction = _build_system_prompt(server_personality, server_id)
 
-        accusation = await asyncio.to_thread(
-            call_llm,
+        accusation = await call_llm_async(
             system_instruction=system_instruction,
             prompt=accusation_prompt,
-            async_mode=False,
+            background=False,
             call_type="ring_accusation",
             critical=False,
             server_id=server_id
@@ -544,7 +543,7 @@ async def _cmd_ring_target(ctx):
 
 async def _cmd_ring_help(ctx):
     help_text = (
-        '👁️ **RING SUBROLE - HELP** 👁️\n\n'
+        '👁️ **RING SUBROLE - HELP**\n\n'
         '**Admin commands**\n'
         '- `!juggler ring enable`\n'
         '- `!juggler ring disable`\n'

@@ -1360,7 +1360,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         response = call_llm(
             system_instruction=_build_system_prompt(server_personality_for_call, server_id),
             prompt=complete_prompt,
-            async_mode=True,
+            background=True,
             call_type="subrole_async",
             temperature=0.95,
             max_tokens=1024,

@@ -15,18 +15,19 @@ from typing import Optional, Dict
 from discord.ext import commands, tasks
 
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
-from agent_mind import call_llm, _build_conversation_user_prompt
+from agent_mind import call_llm, call_llm_async, _build_conversation_user_prompt
 from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
 from agent_db import set_current_server, get_server_id, get_db_instance
 from agent_logging import get_logger, update_log_file_path, server_log_context
 from discord_bot.discord_utils import (
     get_server_key, send_dm_or_channel,
-    get_db_for_server, check_chat_rate_limit,
+    get_db_for_server, check_chat_rate_limit, check_global_chat_rate_limit,
     set_is_connected, is_role_enabled_check,
     send_personality_embed_dm,
 )
 # Import the new JobScheduler-based scheduler
 from discord_bot.discord_scheduler import get_discord_scheduler
+from discord_bot.message_queue import get_chat_queue
 try:
     from discord_bot.canvas.server_config import get_server_language as _get_server_language
 except Exception:
@@ -144,6 +145,10 @@ intents.voice_states = True
 # Premium entitlement events will not work until library is updated
 
 bot = commands.Bot(command_prefix=_cmd_prefix, intents=intents)
+
+# Global semaphore limiting concurrent LLM calls to prevent event loop pressure
+# and Vertex AI burst overload. See ARCHITECTURE.md §Concurrency Mitigation.
+_LLM_SEMAPHORE = asyncio.Semaphore(10)
 
 
 def get_bot_instance():
@@ -720,6 +725,9 @@ async def on_ready():
     set_entitlement_manager(entitlement_mgr)
     logger.info("💎 Entitlement manager initialized for premium SKU support")
 
+    # Start the bounded chat message queue with backpressure
+    await get_chat_queue().start(_process_chat_message)
+
 
 @bot.event
 async def on_guild_join(guild):
@@ -984,7 +992,9 @@ async def on_message(message):
 
         # Only process if DM or direct mention
         if message.guild is None or bot.user.mentioned_in(message):
-            await _process_chat_message(message)
+            # Hand off to the bounded queue (workers run _process_chat_message).
+            # Returns False if the queue is full -> the message is dropped here.
+            get_chat_queue().enqueue(message)
 
 
 def _clean_message_content(message):
@@ -1121,7 +1131,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
         
         # Build denial prompt for LLM
         from agent_engine import PERSONALITY, _get_personality
-        from agent_mind import call_llm
+        from agent_mind import call_llm_async
         
         # Get server-specific personality
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
@@ -1194,10 +1204,10 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         system_instruction = _build_system_prompt(server_personality, server_id)
         
-        response = call_llm(
+        response = await call_llm_async(
             system_instruction=system_instruction,
             prompt=denial_prompt,
-            async_mode=False,
+            background=False,
             call_type="ring_denial",
             critical=True,
             logger=logger,
@@ -1221,7 +1231,7 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
     try:
         # Build false accusation prompt for LLM
         from agent_engine import PERSONALITY, _get_personality
-        from agent_mind import call_llm
+        from agent_mind import call_llm_async
         
         # Get server-specific personality
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
@@ -1299,10 +1309,10 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         system_instruction = _build_system_prompt(server_personality, server_id)
         
-        response = call_llm(
+        response = await call_llm_async(
             system_instruction=system_instruction,
             prompt=false_accusation_prompt,
-            async_mode=False,
+            background=False,
             call_type="ring_false_accusation",
             critical=True,
             logger=logger,
@@ -1323,6 +1333,13 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
 
 async def _process_chat_message(message):
     """Process normal chat messages (DMs and mentions) with rate limiting."""
+    # Global rate limit (token bucket): protects against floods across all users.
+    if check_global_chat_rate_limit():
+        logger.warning(
+            f"⚠️ Global chat rate limit hit; dropping message from {message.author} "
+            f"in {getattr(message.guild, 'name', 'DM')}"
+        )
+        return
     # Rate limiting per user (security fix)
     if check_chat_rate_limit(message.author.id):
         return
@@ -1394,26 +1411,27 @@ async def _process_chat_message(message):
                 user_name=message.author.display_name,
             )
 
-        response = call_llm(
-            system_instruction=system_instruction,
-            prompt=contextual_prompt,
-            async_mode=False,
-            call_type="think",
-            critical=True,
-            metadata={
-                "interaction_type": "channel" if is_public else "dm",
-                "is_public": is_public,
-                "user_id": message.author.id,
-                "role": "bot",
-                "server": server_id,
-                "channel_id": message.channel.id if is_public else None,
-                "is_mention": is_mention
-            },
-            logger=logger,
-            user_id=str(message.author.id),
-            user_name=message.author.display_name,
-            server_id=server_id
-        )
+        async with _LLM_SEMAPHORE:
+            response = await call_llm_async(
+                system_instruction=system_instruction,
+                prompt=contextual_prompt,
+                background=False,
+                call_type="think",
+                critical=True,
+                metadata={
+                    "interaction_type": "channel" if is_public else "dm",
+                    "is_public": is_public,
+                    "user_id": message.author.id,
+                    "role": "bot",
+                    "server": server_id,
+                    "channel_id": message.channel.id if is_public else None,
+                    "is_mention": is_mention
+                },
+                logger=logger,
+                user_id=str(message.author.id),
+                user_name=message.author.display_name,
+                server_id=server_id
+            )
 
         # Check if this is a README response
         if is_readme_response(response):
@@ -1426,27 +1444,28 @@ async def _process_chat_message(message):
                 logger.info(f"📖 Making second LLM call with README documentation")
                 
                 # Make second LLM call with README content
-                response = call_llm(
-                    system_instruction=system_instruction,
-                    prompt=enhanced_prompt,
-                    async_mode=False,
-                    call_type="readme_enhanced",
-                    critical=True,
-                    metadata={
-                        "interaction_type": "channel" if is_public else "dm",
-                        "is_public": is_public,
-                        "user_id": message.author.id,
-                        "role": "bot",
-                        "server": server_id,
-                        "channel_id": message.channel.id if is_public else None,
-                        "is_mention": is_mention,
-                        "readme_enhanced": True
-                    },
-                    logger=logger,
-                    user_id=str(message.author.id),
-                    user_name=message.author.display_name,
-                    server_id=server_id
-                )
+                async with _LLM_SEMAPHORE:
+                    response = await call_llm_async(
+                        system_instruction=system_instruction,
+                        prompt=enhanced_prompt,
+                        background=False,
+                        call_type="readme_enhanced",
+                        critical=True,
+                        metadata={
+                            "interaction_type": "channel" if is_public else "dm",
+                            "is_public": is_public,
+                            "user_id": message.author.id,
+                            "role": "bot",
+                            "server": server_id,
+                            "channel_id": message.channel.id if is_public else None,
+                            "is_mention": is_mention,
+                            "readme_enhanced": True
+                        },
+                        logger=logger,
+                        user_id=str(message.author.id),
+                        user_name=message.author.display_name,
+                        server_id=server_id
+                    )
                 
                 logger.info(f"✅ README enhanced response generated")
                 
@@ -1479,54 +1498,100 @@ async def _process_chat_message(message):
                     clean_question = re.sub(r'\bwiki\b|\bwikipedia\b', '', clean_content, flags=re.IGNORECASE).strip()
                     clean_question = re.sub(r'\s+', ' ', clean_question)
                     
-                    # Build enhanced prompt with Wikipedia context
-                    from agent_mind import _build_conversation_channel_prompt, _build_conversation_user_prompt
+                    # Build enhanced prompt with Wikipedia context using scholar task and rules
+                    from roles.scholar.scholar import get_scholar_prompt, get_scholar_golden_rules
+                    from agent_mind import (
+                        generate_daily_memory_summary,
+                        generate_recent_memory_summary,
+                        generate_user_relationship_memory_summary,
+                        _get_daily_memory_fallback,
+                        _get_recent_memory_fallback,
+                        _get_relationship_memory_fallback
+                    )
                     
-                    if is_public:
-                        enhanced_prompt = await _build_conversation_channel_prompt(
-                            user_content=clean_question,
-                            server=server_id,
-                            user_id=message.author.id,
-                            user_name=message.author.display_name,
-                            channel_id=message.channel.id,
-                            bot_id=str(bot.user.id),
-                            discord_channel=message.channel
-                        )
-                    else:
-                        enhanced_prompt = await _build_conversation_user_prompt(
-                            user_id=message.author.id,
-                            user_content=clean_question,
-                            server=server_id,
-                            user_name=message.author.display_name,
-                        )
+                    # Get memory sections
+                    daily_memory = ""
+                    recent_memory = ""
+                    relationship_memory = ""
                     
-                    # Add Wikipedia context after the prompt
-                    enhanced_prompt = f"{enhanced_prompt}\n\nWIKIPEDIA CONTEXT:\n{wiki_extract}"
+                    try:
+                        daily_memory = await asyncio.to_thread(generate_daily_memory_summary, server_id)
+                    except Exception as e:
+                        logger.warning(f"Could not get daily memory: {e}")
+                        daily_memory = _get_daily_memory_fallback(server_id)
+                    
+                    try:
+                        recent_memory = await asyncio.to_thread(generate_recent_memory_summary, server_id)
+                    except Exception as e:
+                        logger.warning(f"Could not get recent memory: {e}")
+                        recent_memory = _get_recent_memory_fallback(server_id)
+                    
+                    try:
+                        relationship_memory = await asyncio.to_thread(
+                            generate_user_relationship_memory_summary,
+                            message.author.id,
+                            message.author.display_name,
+                            server_id
+                        )
+                    except Exception as e:
+                        logger.warning(f"Could not get relationship memory: {e}")
+                        relationship_memory = _get_relationship_memory_fallback(message.author.display_name, server_id)
+                    
+                    # Get scholar-specific prompt and golden rules
+                    scholar_prompt = get_scholar_prompt(server_id)
+                    golden_rules = get_scholar_golden_rules(server_id)
+                    
+                    # Build prompt sections like scholar.py does
+                    prompt_sections = []
+                    
+                    # Memory sections
+                    if daily_memory:
+                        prompt_sections.append(f"DAILY MEMORY:\n{daily_memory}")
+                    if recent_memory:
+                        prompt_sections.append(f"RECENT MEMORY:\n{recent_memory}")
+                    if relationship_memory:
+                        prompt_sections.append(f"RELATIONSHIP MEMORY:\n{relationship_memory}")
+                    
+                    # Scholar task
+                    prompt_sections.append(f"SCHOLAR TASK:\n{scholar_prompt}")
+                    
+                    # User question
+                    prompt_sections.append(f"QUESTION:\n{clean_question}")
+                    
+                    # Golden rules
+                    if golden_rules:
+                        prompt_sections.append(f"GOLDEN RULES:\n" + "\n".join(golden_rules))
+                    
+                    # Wikipedia context
+                    prompt_sections.append(f"WIKIPEDIA CONTEXT:\n{wiki_extract}")
+                    
+                    enhanced_prompt = "\n\n".join(prompt_sections)
                     
                     logger.info(f"📚 Making second LLM call with Wikipedia context")
                     
                     # Make second LLM call with Wikipedia context
-                    response = call_llm(
-                        system_instruction=system_instruction,
-                        prompt=enhanced_prompt,
-                        async_mode=False,
-                        call_type="wikipedia_enhanced",
-                        critical=True,
-                        metadata={
-                            "interaction_type": "channel" if is_public else "dm",
-                            "is_public": is_public,
-                            "user_id": message.author.id,
-                            "role": "bot",
-                            "server": server_id,
-                            "channel_id": message.channel.id if is_public else None,
-                            "is_mention": is_mention,
-                            "wikipedia_enhanced": True
-                        },
-                        logger=logger,
-                        user_id=str(message.author.id),
-                        user_name=message.author.display_name,
-                        server_id=server_id
-                    )
+                    async with _LLM_SEMAPHORE:
+                        response = await call_llm_async(
+                            system_instruction=system_instruction,
+                            prompt=enhanced_prompt,
+                            background=False,
+                            call_type="wikipedia_enhanced",
+                            critical=True,
+                            metadata={
+                                "interaction_type": "channel" if is_public else "dm",
+                                "is_public": is_public,
+                                "user_id": message.author.id,
+                                "role": "bot",
+                                "server": server_id,
+                                "channel_id": message.channel.id if is_public else None,
+                                "is_mention": is_mention,
+                                "wikipedia_enhanced": True
+                            },
+                            logger=logger,
+                            user_id=str(message.author.id),
+                            user_name=message.author.display_name,
+                            server_id=server_id
+                        )
                     
                     logger.info(f"✅ Wikipedia enhanced response generated")
                 else:
@@ -1659,6 +1724,10 @@ async def run_bot_async():
             await bot.start(get_discord_token())
     except asyncio.CancelledError:
         logger.info("👋 Bot cancelled, shutting down...")
+        try:
+            await get_chat_queue().stop()
+        except Exception:
+            pass
         try:
             await bot.close()
         except Exception:

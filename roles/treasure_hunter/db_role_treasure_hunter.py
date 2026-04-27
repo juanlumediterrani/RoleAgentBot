@@ -50,7 +50,8 @@ class DatabaseRolePoe:
 
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
-            cursor.execute('PRAGMA journal_mode=DELETE;')
+            cursor.execute('PRAGMA journal_mode=WAL;')
+            cursor.execute('PRAGMA busy_timeout=5000;')
             conn.close()
 
             self._fix_permissions(self.db_path)
@@ -81,11 +82,12 @@ class DatabaseRolePoe:
             logger.warning(f"Could not fix permissions for {path}: {e}")
     
     def _init_db(self):
-        """Initialize the database with DELETE journal mode."""
+        """Initialize the database with WAL journal mode for concurrent access."""
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=DELETE;")
+                cursor.execute("PRAGMA journal_mode=WAL;")
+                cursor.execute("PRAGMA busy_timeout=5000;")
                 conn.commit()
 
                 self._init_notifications_table()

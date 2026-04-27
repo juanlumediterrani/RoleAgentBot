@@ -1,7 +1,7 @@
 import os
 import time
-import queue
-import threading
+import asyncio
+import concurrent.futures
 import logging
 from datetime import date, datetime
 import httpx
@@ -20,6 +20,7 @@ from agent_db import get_global_db, get_personality_name
 from agent_runtime import is_simulation_mode, increment_usage as runtime_increment_usage
 from postprocessor import postprocess_response, is_blocked_response
 from prompts_logger import log_agent_response, log_final_llm_prompt
+from agent_metrics import incr as _metrics_incr, record_latency as _metrics_record_latency
 
 logger = get_logger('agent_mind')
 
@@ -37,6 +38,16 @@ def set_bot_discord_id(bot_id: str | int) -> None:
 # Vertex AI configuration
 _VERTEXAI_INITIALIZED = False
 _VERTEXAI_CLIENT = None
+
+# Shared executor for Vertex AI blocking SDK calls. Bounded to limit concurrency
+# and avoid thread explosion under load.
+_VERTEXAI_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+    max_workers=10, thread_name_prefix="vertexai-sdk"
+)
+
+# Default timeouts for foreground (chat) vs background (memory/evolution) calls.
+VERTEXAI_TIMEOUT_FOREGROUND = 30.0
+VERTEXAI_TIMEOUT_BACKGROUND = 120.0
 
 def _get_config() -> dict:
     """Load and cache configuration from agent_config.json"""
@@ -545,7 +556,7 @@ def generate_recent_memory_summary(server_id: str | None = None, target_date: st
     summary_response = call_llm(
         system_instruction=system_instruction,
         prompt=summary_prompt,
-        async_mode=True,
+        background=True,
         call_type="recent_memory",
         critical=False,
         server_id=server_id
@@ -763,7 +774,7 @@ def generate_daily_memory_summary(server_id: str | None = None, target_date: str
     summary_response = call_llm(
         system_instruction=system_instruction,
         prompt=summary_prompt,
-        async_mode=True,
+        background=True,
         call_type="daily_memory",
         critical=False,
         server_id=server_id
@@ -937,7 +948,7 @@ def generate_user_relationship_memory_summary(
     summary_response = call_llm(
         system_instruction=system_instruction,
         prompt=summary_prompt,
-        async_mode=True,
+        background=True,
         call_type="relationship_memory",
         critical=False,
         server_id=server_id
@@ -1778,7 +1789,7 @@ def _matches_subrole_keywords(subrole_name: str, content: str) -> bool:
 def call_llm(
     system_instruction: str,
     prompt: str,
-    async_mode: bool = False,
+    background: bool = False,
     call_type: str = "default",
     temperature: float | None = None,
     max_tokens: int | None = None,
@@ -1787,274 +1798,209 @@ def call_llm(
     logger: logging.Logger | None = None,
     user_id: str = None,
     user_name: str = None,
-    server_id: str = None
+    server_id: str = None,
 ) -> str:
     """
-    Unified LLM call function that can operate in sync or async mode.
-    
+    Unified blocking LLM call. Tries Vertex AI -> Groq -> Mistral.
+
+    For async (event-loop) callers, prefer ``call_llm_async`` instead.
+
     Args:
-        system_instruction: System prompt for the LLM
-        prompt: User prompt for the LLM
-        async_mode: If True, use threading (for background tasks)
-        call_type: Type of call for logging ("think", "subrole_async", "daily_memory", etc.)
-        temperature: Temperature override (auto-detected if None)
-        max_tokens: Maximum tokens (from config if None)
-        critical: Whether errors should break execution
-        metadata: Additional context for logging
-        logger: Logger instance (auto-detected if None)
-        user_id: User ID for fatigue tracking (optional)
-        user_name: User name for fatigue tracking (optional)
-        server_id: Server ID for server-specific logging (optional, uses active server if not provided)
-    
-    Returns:
-        LLM response text
+        background: If True, use the longer 120 s Vertex timeout (memory/evolution
+            tasks). If False, use the 30 s foreground (chat) timeout.
+        critical: If True, always returns a non-empty fallback response.
+        Other args: see ``call_llm_async``.
     """
     if logger is None:
         logger = get_logger('agent_engine')
-    
+
     start_time = time.time()
     metadata = metadata or {}
-    
-    # Auto-detect temperature if not specified
+
     if temperature is None:
         if call_type == "think" and metadata.get("is_mission"):
             temperature = 0.9
         else:
             temperature = 0.95
-    
-    # Get max_tokens from config if not specified
+
     if max_tokens is None:
         max_tokens = _get_max_tokens()
-    
-    # Log based on criticality
-    log_prefix = "🤖 [CRITICAL]" if critical else "🤖 [BACKGROUND]"
-    
-    # Log the prompt once at the beginning
-    # Use provided server_id or get active server ID
-    effective_server_id = server_id
+
+    log_prefix = "🤖 [BG]" if background else "🤖 [FG]"
+    timeout = VERTEXAI_TIMEOUT_BACKGROUND if background else VERTEXAI_TIMEOUT_FOREGROUND
+
     log_final_llm_prompt(
         provider="vertexai" if not is_simulation_mode() and VERTEXAI_AVAILABLE else "groq",
         call_type=call_type,
         system_instruction=system_instruction,
         user_prompt=prompt,
         metadata=metadata,
-        server_id=effective_server_id
+        server_id=server_id,
     )
-    
-    try:
-        if not is_simulation_mode():
-            logger.debug(f"{log_prefix} Starting call to gemini-2.5-flash")
-            logger.debug(f"   └─ Temp: {temperature} | Max tokens: {max_tokens}")
-            logger.debug("   └─ Top-p: 0.95")
 
-            if not VERTEXAI_AVAILABLE:
-                logger.debug(f"{log_prefix} Vertex AI not available, skipping to fallback")
-                if critical:
-                    logger.warning(f"Vertex AI unavailable for critical call, using fallback")
-            else:
-                if not _init_vertexai():
-                    logger.debug(f"{log_prefix} Vertex AI initialization failed, skipping to fallback")
-                    if critical:
-                        logger.warning(f"Vertex AI initialization failed for critical call, using fallback")
-                else:
-                    if async_mode:
-                        try:
-                            result = _call_vertexai_async(
-                                system_instruction, prompt, temperature,
-                                max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
-                            )
-                            if result is not None:
-                                return result
-                        except Exception as e:
-                            logger.debug(f"{log_prefix} Vertex AI async call failed, fallback to Groq: {e}")
-                            # Fall through to Groq fallback for all calls (critical and non-critical)
-                    else:
-                        try:
-                            result = _call_vertexai_sync(
-                                system_instruction, prompt, temperature,
-                                max_tokens, start_time, call_type, critical, logger, user_id, user_name, server_id
-                            )
-                            if result is not None:
-                                return result
-                        except Exception as e:
-                            logger.debug(f"{log_prefix} Vertex AI sync call failed, fallback to Groq: {e}")
-                            # Fall through to Groq fallback for all calls (critical and non-critical)
+    if not is_simulation_mode() and VERTEXAI_AVAILABLE and _init_vertexai():
+        logger.debug(f"{log_prefix} Vertex AI -> gemini-2.5-flash (timeout={timeout}s, temp={temperature}, max_tokens={max_tokens})")
+        result = _invoke_vertexai(
+            system_instruction=system_instruction,
+            prompt=prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            start_time=start_time,
+            call_type=call_type,
+            logger=logger,
+            user_id=user_id,
+            user_name=user_name,
+            server_id=server_id,
+            timeout=timeout,
+            log_prefix=log_prefix,
+        )
+        if result is not None:
+            return result
+        logger.debug(f"{log_prefix} Vertex AI returned no result, falling back to Groq")
+    else:
+        if is_simulation_mode():
+            logger.debug(f"{log_prefix} Simulation mode, using Groq directly")
+        elif not VERTEXAI_AVAILABLE:
+            logger.debug(f"{log_prefix} Vertex AI SDK not available, using Groq")
         else:
-            logger.debug(f"{log_prefix} Simulation mode, using Groq")
-    except ImportError as e:
-        logger.debug(f"{log_prefix} Vertex AI import failed, fallback to Groq: {e}")
-    except Exception as e:
-        logger.debug(f"{log_prefix} Vertex AI failed, fallback to Groq: {e}")
-    
-    # Fallback to Groq
+            logger.debug(f"{log_prefix} Vertex AI initialization failed, using Groq")
+
     return _call_groq_fallback(
         system_instruction, prompt, temperature, max_tokens, start_time,
-        call_type, critical, logger, user_id, user_name, server_id
+        call_type, critical, logger, user_id, user_name, server_id,
     )
 
 
-def _call_vertexai_sync(
-    system_instruction: str, prompt: str, temperature: float,
-    max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
-    user_id: str = None, user_name: str = None, server_id: str = None
+async def call_llm_async(
+    system_instruction: str,
+    prompt: str,
+    background: bool = False,
+    call_type: str = "default",
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    critical: bool = True,
+    metadata: dict | None = None,
+    logger: logging.Logger | None = None,
+    user_id: str = None,
+    user_name: str = None,
+    server_id: str = None,
 ) -> str:
-    """Synchronous Vertex AI call (for critical operations)"""
-    result_queue = queue.Queue()
-    exception_queue = queue.Queue()
+    """
+    Async wrapper around ``call_llm`` for asyncio callers (Discord event loop).
 
-    def call_vertexai():
-        try:
-            config = genai_types.GenerateContentConfig(
+    Offloads the blocking pipeline to a worker thread via ``asyncio.to_thread``,
+    so the event loop and Discord heartbeat are never blocked. The internal
+    Vertex AI / Groq / Mistral calls have their own per-provider timeouts; this
+    wrapper additionally caps the total wall-clock time as a safety net.
+    """
+    # Outer safety timeout: Vertex foreground (30s) + Groq (~10s) + Mistral (~10s)
+    outer_timeout = (VERTEXAI_TIMEOUT_BACKGROUND if background else VERTEXAI_TIMEOUT_FOREGROUND) + 30.0
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(
+                call_llm,
                 system_instruction=system_instruction,
+                prompt=prompt,
+                background=background,
+                call_type=call_type,
                 temperature=temperature,
-                max_output_tokens=max_tokens,
-                top_p=0.95,
-            )
+                max_tokens=max_tokens,
+                critical=critical,
+                metadata=metadata,
+                logger=logger,
+                user_id=user_id,
+                user_name=user_name,
+                server_id=server_id,
+            ),
+            timeout=outer_timeout,
+        )
+    except asyncio.TimeoutError:
+        eff_logger = logger or get_logger('agent_engine')
+        eff_logger.error(f"🤖 call_llm_async outer timeout ({outer_timeout}s) for call_type={call_type}")
+        _metrics_incr("llm.async.outer_timeout")
+        return _get_fallback_response(critical)
 
-            res = _VERTEXAI_CLIENT.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=config,
-            )
-            result_queue.put(res)
-        except Exception as e:
-            exception_queue.put(e)
 
-    vertexai_thread = threading.Thread(target=call_vertexai)
-    vertexai_thread.start()
-    vertexai_thread.join(timeout=30.0)
+def _invoke_vertexai(
+    system_instruction: str,
+    prompt: str,
+    temperature: float,
+    max_tokens: int,
+    start_time: float,
+    call_type: str,
+    logger,
+    user_id: str | None,
+    user_name: str | None,
+    server_id: str | None,
+    timeout: float,
+    log_prefix: str,
+) -> str | None:
+    """Run a single Vertex AI generate_content call with a hard timeout.
 
-    if vertexai_thread.is_alive():
-        logger.error("🤖 [SYNC] Vertex AI call timed out after 30 seconds")
-        if critical:
-            raise TimeoutError("Vertex AI API call timed out")
-        else:
-            return None
+    Returns the postprocessed response text on success, or ``None`` if the
+    call timed out, raised, or returned an empty/too-short response. Logging
+    and fatigue accounting are performed on success.
+    """
+    config = genai_types.GenerateContentConfig(
+        system_instruction=system_instruction,
+        temperature=temperature,
+        max_output_tokens=max_tokens,
+        top_p=0.95,
+    )
+    future = _VERTEXAI_EXECUTOR.submit(
+        _VERTEXAI_CLIENT.models.generate_content,
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=config,
+    )
+    try:
+        res = future.result(timeout=timeout)
+    except concurrent.futures.TimeoutError:
+        logger.error(f"{log_prefix} Vertex AI timed out after {timeout}s (call_type={call_type})")
+        _metrics_incr("llm.vertexai.timeout")
+        # Best-effort cancellation; underlying SDK call may still complete in background.
+        future.cancel()
+        return None
+    except Exception as e:
+        logger.error(f"{log_prefix} Vertex AI call failed: {e}")
+        _metrics_incr("llm.vertexai.error")
+        return None
 
-    if not exception_queue.empty():
-        e = exception_queue.get()
-        logger.error(f"🤖 [SYNC] Vertex AI call failed: {e}")
-        if critical:
-            raise
-        else:
-            return None
+    text = getattr(res, "text", None)
+    if not text or len(text.strip()) <= 5:
+        logger.warning(f"{log_prefix} Vertex AI returned empty or too short response")
+        _metrics_incr("llm.vertexai.empty")
+        return None
+
+    postprocessed = postprocess_response(text)
+    elapsed = time.time() - start_time
+    logger.info(f"🏁 {log_prefix} Vertex AI completed in {elapsed:.2f}s: {len(postprocessed)} chars")
+    _metrics_incr("llm.vertexai.ok")
+    _metrics_record_latency(f"vertexai:{call_type}", elapsed)
 
     try:
-        res = result_queue.get()
-        text = res.text
-        if text and len(text.strip()) > 5:
-            postprocessed = postprocess_response(text)
-            total_time = time.time()
-            logger.info(f"🏁 [SYNC] Vertex AI completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
-            
-            # Log the response
-            try:
-                effective_server_id = server_id
-                # Use "ring_denial" or "ring_false_accusation" as role for ring-specific responses
-                role_to_log = call_type if call_type in {"ring_denial", "ring_false_accusation"} else call_type
-                log_agent_response(postprocessed, role=role_to_log, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
-            except Exception as log_error:
-                logger.warning(f"Failed to log response: {log_error}")
-            
-            # Increment fatigue counter
-            try:
-                from agent_engine import _get_personality
-                personality_name = _get_personality(server_id).get("name", "unknown") if server_id else "unknown"
-                runtime_increment_usage(personality_name, user_id, user_name)
-                logger.info(f"📊 [FATIGUE] Incremented counter for {personality_name}" + (f" (user: {user_name})" if user_name else ""))
-            except Exception as fatigue_error:
-                logger.warning(f"Failed to increment fatigue counter: {fatigue_error}")
-            
-            return postprocessed
-        else:
-            logger.warning("🤖 [SYNC] Vertex AI returned empty or too short response")
-            if critical:
-                return _get_fallback_response(critical)
-            else:
-                return None
-            
-    except Exception as e:
-        logger.error(f"🤖 [SYNC] Failed to process Vertex AI response: {e}")
-        if critical:
-            raise
-        else:
-            return None
-
-def _call_vertexai_async(
-    system_instruction: str, prompt: str, temperature: float,
-    max_tokens: int, start_time: float, call_type: str, critical: bool, logger,
-    user_id: str = None, user_name: str = None, server_id: str = None
-) -> str:
-    """Asynchronous Vertex AI call with threading (for _call_llm_async behavior)"""
-    result_queue = queue.Queue()
-    exception_queue = queue.Queue()
-
-    def call_vertexai():
-        try:
-            config = genai_types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                top_p=0.95,
-            )
-            res = _VERTEXAI_CLIENT.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=config,
-            )
-            result_queue.put(res)
-        except Exception as e:
-            exception_queue.put(e)
-
-    vertexai_thread = threading.Thread(target=call_vertexai)
-    vertexai_thread.start()
-    vertexai_thread.join(timeout=120.0)
-
-    if not vertexai_thread.is_alive() and exception_queue.empty():
-        res = result_queue.get()
-        text = res.text
-        if text and len(text.strip()) > 5:
-            postprocessed = postprocess_response(text)
-            total_time = time.time()
-            logger.info(f"🏁 [ASYNC] Vertex AI completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
-            
-            # Log the response
-            try:
-                effective_server_id = server_id
-                # Use "ring_denial" or "ring_false_accusation" as role for ring-specific responses
-                role_to_log = call_type if call_type in {"ring_denial", "ring_false_accusation"} else "subrole"
-                log_agent_response(postprocessed, role=role_to_log, server=effective_server_id, response_length=len(postprocessed), server_id=effective_server_id)
-            except Exception as log_error:
-                logger.warning(f"Failed to log subrole response: {log_error}")
-            
-            # Increment fatigue counter
-            try:
-                from agent_engine import _get_personality
-                personality_name = _get_personality(server_id).get("name", "unknown") if server_id else "unknown"
-                runtime_increment_usage(personality_name, user_id, user_name)
-                logger.info(f"📊 [FATIGUE] Incremented counter for {personality_name}" + (f" (user: {user_name})" if user_name else ""))
-            except Exception as fatigue_error:
-                logger.warning(f"Failed to increment fatigue counter: {fatigue_error}")
-            
-            return postprocessed
-        else:
-            logger.warning("🤖 [ASYNC] Vertex AI returned empty or too short response")
-            if critical:
-                return _get_fallback_response(critical)
-            else:
-                return None
-    else:
-        # Check if there's an exception
-        if not exception_queue.empty():
-            exception = exception_queue.get()
-            logger.error(f"🤖 [ASYNC] Vertex AI exception: {exception}")
-            logger.debug("🤖 [ASYNC] Vertex AI timeout/error, fallback to Groq")
-        else:
-            logger.debug("🤖 [ASYNC] Vertex AI timeout (thread still alive), fallback to Groq")
-        return _call_groq_fallback(
-            system_instruction, prompt, temperature, max_tokens, start_time,
-            call_type, critical, logger, user_id, user_name
+        log_agent_response(
+            postprocessed,
+            role=call_type,
+            server=server_id,
+            response_length=len(postprocessed),
+            server_id=server_id,
         )
+    except Exception as log_error:
+        logger.warning(f"Failed to log response: {log_error}")
+
+    try:
+        from agent_engine import _get_personality
+        personality_name = _get_personality(server_id).get("name", "unknown") if server_id else "unknown"
+        runtime_increment_usage(personality_name, user_id, user_name)
+        logger.info(
+            f"📊 [FATIGUE] Incremented counter for {personality_name}"
+            + (f" (user: {user_name})" if user_name else "")
+        )
+    except Exception as fatigue_error:
+        logger.warning(f"Failed to increment fatigue counter: {fatigue_error}")
+
+    return postprocessed
 
 def _call_groq_fallback(
     system_instruction: str, prompt: str, temperature: float,
@@ -2082,7 +2028,10 @@ def _call_groq_fallback(
         response = completion.choices[0].message.content
         postprocessed = postprocess_response(response)
         total_time = time.time()
-        logger.info(f"🏁 [FALLBACK] Groq completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+        elapsed = total_time - start_time
+        logger.info(f"🏁 [FALLBACK] Groq completed in {elapsed:.2f}s: {len(postprocessed)} chars")
+        _metrics_incr("llm.groq.ok")
+        _metrics_record_latency(f"groq:{call_type}", elapsed)
         
         # Log the response
         try:
@@ -2105,6 +2054,7 @@ def _call_groq_fallback(
         return postprocessed
     except Exception as e:
         logger.error(f"🤖 [FALLBACK] Groq failed: {e}")
+        _metrics_incr("llm.groq.error")
         logger.debug(f"🤖 [FALLBACK] Trying Mistral as second fallback")
         return _call_mistral_fallback(
             system_instruction, prompt, temperature, max_tokens, start_time,
@@ -2142,7 +2092,10 @@ def _call_mistral_fallback(
         response_text = response.choices[0].message.content
         postprocessed = postprocess_response(response_text)
         total_time = time.time()
-        logger.info(f"🏁 [FALLBACK2] Mistral completed in {(total_time - start_time):.2f}s: {len(postprocessed)} chars")
+        elapsed = total_time - start_time
+        logger.info(f"🏁 [FALLBACK2] Mistral completed in {elapsed:.2f}s: {len(postprocessed)} chars")
+        _metrics_incr("llm.mistral.ok")
+        _metrics_record_latency(f"mistral:{call_type}", elapsed)
         
         # Log the response
         try:
@@ -2464,7 +2417,7 @@ def generate_weekly_personality_evolution(
     llm_response = call_llm(
         system_instruction=system_instruction,
         prompt=evolution_prompt,
-        async_mode=True,
+        background=True,
         call_type="weekly_personality_evolution",
         critical=False,
         server_id=server_id,
@@ -2668,7 +2621,7 @@ def generate_test_personality_evolution(server_id: str | None = None) -> dict:
     llm_response = call_llm(
         system_instruction=system_instruction,
         prompt=evolution_prompt,
-        async_mode=True,
+        background=True,
         call_type="test_weekly_personality_evolution",
         critical=False,
         server_id=server_id,

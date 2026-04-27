@@ -188,7 +188,7 @@ async def answer_question(question: str, user_id: str = None, user_name: str = N
         response = call_llm(
             system_instruction=system_prompt,
             prompt=prompt,
-            async_mode=True,
+            background=True,
             call_type="scholar",
             critical=False,
             server_id=server_id,
@@ -247,7 +247,7 @@ async def answer_question(question: str, user_id: str = None, user_name: str = N
                     response_2 = call_llm(
                         system_instruction=system_prompt,
                         prompt=prompt_2,
-                        async_mode=True,
+                        background=True,
                         call_type="scholar",
                         critical=False,
                         server_id=server_id,

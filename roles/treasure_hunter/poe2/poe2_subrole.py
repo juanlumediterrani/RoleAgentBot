@@ -23,7 +23,7 @@ except Exception:
     logger = logging.getLogger('poe2_subrole')
 
 from agent_engine import get_discord_token
-from agent_mind import call_llm
+from agent_mind import call_llm_async
 from agent_db import get_server_id
 from .poe2scout_client import Poe2ScoutClient, ResponseFormatError, APIError
 
@@ -375,7 +375,7 @@ class Poe2SubroleBot(discord.Client):
             complete_prompt = f"{active_duty}\n\n{task_prompt}\n\nGOLDEN RULES:\n{golden_rules_text}\n\nRespond only with the alert message, no additional explanations."
             
             # Call LLM with complete configuration
-            res = await asyncio.to_thread(call_llm, system_instruction, complete_prompt, False, "treasure_hunter_notification")
+            res = await call_llm_async(system_instruction, complete_prompt, background=False, call_type="treasure_hunter_notification")
             
             await user.send(f"🔮 **POE2 TREASURE**: {res}")
             logger.info(f"✅ POE2 notification sent for {item_name} - {signal}")
