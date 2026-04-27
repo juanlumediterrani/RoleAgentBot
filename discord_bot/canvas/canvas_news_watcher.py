@@ -265,7 +265,7 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -408,7 +408,7 @@ class CanvasWatcherAddModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -476,7 +476,7 @@ class CanvasWatcherDeleteModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -543,7 +543,7 @@ class CanvasWatcherListModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -872,7 +872,7 @@ class CanvasWatcherPersonalUnsubscribeModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -1129,7 +1129,7 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
 
     if action_name == "watcher_run_now":
         try:
-            from roles.news_watcher.news_watcher import process_subscriptions
+            from roles.news_watcher.api import process_subscriptions
             from discord_bot.discord_http import DiscordHTTP
             from agent_engine import get_discord_token
 
@@ -1146,7 +1146,7 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
         return
     elif action_name == "watcher_run_personal":
         try:
-            from roles.news_watcher.news_watcher import process_subscriptions
+            from roles.news_watcher.api import process_subscriptions
             from discord_bot.discord_http import DiscordHTTP
             from agent_engine import get_discord_token
 

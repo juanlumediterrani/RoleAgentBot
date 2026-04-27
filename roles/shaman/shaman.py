@@ -24,12 +24,3 @@ def get_shaman_system_prompt():
 async def shaman_task():
     """Execute shaman role tasks."""
     logger.info("🔮 Shaman task started...")
-
-
-async def main():
-    logger.info("🔮 Shaman started...")
-    await shaman_task()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

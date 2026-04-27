@@ -280,10 +280,3 @@ async def scholar_task():
     logger.info("📚 Scholar role tasks...")
     # Scholar is primarily interactive, no background tasks currently
     logger.info("✅ Scholar role tasks completed")
-
-async def main():
-    logger.info("📚 Scholar started...")
-    await scholar_task()
-
-if __name__ == "__main__":
-    asyncio.run(main())

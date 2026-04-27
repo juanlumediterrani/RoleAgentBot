@@ -17,16 +17,11 @@ try:
 except ImportError:
     execute_subrole_internal_task = None
 
-# Import banker messages
+# Import banker public API (stable interface for Canvas)
 try:
-    from roles.banker.banker_messages import get_messages
+    from roles.banker.api import get_messages, get_canvas_message
 except ImportError:
     get_messages = None
-
-# Import beggar canvas messages
-try:
-    from roles.banker.subroles.beggar.beggar_messages import get_canvas_message
-except ImportError:
     get_canvas_message = None
 
 
@@ -64,12 +59,12 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
                 member = guild.get_member(author_id)
                 user_name = member.display_name if member else "Unknown User"
 
-                from roles.banker.banker_db import get_banker_roles_db_instance
+                from roles.banker.api import get_banker_roles_db_instance
                 db_banker_roles = get_banker_roles_db_instance(server_key)
                 db_banker_roles.create_wallet(user_id, user_name, 'user')
 
                 try:
-                    from roles.banker.banker_discord import _initialize_dice_game_account
+                    from roles.banker.api import _initialize_dice_game_account
                     _initialize_dice_game_account(user_id, user_name, server_id, server_key)
                 except Exception:
                     pass
@@ -299,8 +294,7 @@ class BeggarDonationModal(CanvasModal):
                 return
 
             # Import the BeggarDonationView from beggar_discord
-            from roles.banker.subroles.beggar.beggar_discord import BeggarDonationView
-            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+            from roles.banker.api import BeggarDonationView, get_beggar_config
 
             eff_guild = interaction.guild or getattr(self, 'guild', None)
             if not eff_guild:
@@ -348,7 +342,7 @@ class BeggarFrequencyModal(CanvasModal):
                 )
                 return
 
-            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+            from roles.banker.api import get_beggar_config
             from .server_config import set_role_config_value
             from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
             from .ui import CanvasRoleDetailView
@@ -419,7 +413,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
 
         # Handle beggar subrole actions
         if action_name in {"beggar_on", "beggar_off", "beggar_frequency", "beggar_force_minigame"}:
-            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+            from roles.banker.api import get_beggar_config
             from .server_config import set_role_config_value
 
             beggar_config = get_beggar_config(server_id)
@@ -452,7 +446,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
                 return
             elif action_name == "beggar_force_minigame":
                 # Force minigame execution
-                from roles.banker.subroles.beggar.beggar_task import BeggarMinigame
+                from roles.banker.api import BeggarMinigame
 
                 if not interaction.response.is_done():
                     await interaction.response.defer(ephemeral=True)

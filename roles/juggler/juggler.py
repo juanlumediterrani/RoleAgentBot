@@ -93,12 +93,3 @@ async def juggler_task():
             logger.exception(f"❌ Error in {subrole_name} task: {e}")
     
     logger.info("✅ Juggler role tasks completed")
-
-
-async def main():
-    logger.info("🤹 Juggler started...")
-    await juggler_task()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

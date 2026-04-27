@@ -24,7 +24,7 @@ except ImportError:
     get_roles_db_instance = None
 
 try:
-    from roles.shaman.subroles.nordic_runes.nordic_runes_discord import get_nordic_runes_commands_instance
+    from roles.shaman.api import get_nordic_runes_commands_instance
 except Exception:
     get_nordic_runes_commands_instance = None
 
@@ -714,7 +714,7 @@ class RunesPageNavButton(discord.ui.Button):
 
         # Get runes page data for the target page
         try:
-            from roles.shaman.subroles.nordic_runes.nordic_runes_messages import get_runes_page_data, get_message
+            from roles.shaman.api import get_runes_page_data, get_message
             server_id = get_server_key(parent_view.guild) if parent_view.guild else None
 
             runes_page_data = get_runes_page_data(self.target_page, server_id)
@@ -815,7 +815,7 @@ class RunesPageView(discord.ui.View):
 
         # Load navigation labels from server-specific shaman.json with fallback
         try:
-            from roles.shaman.subroles.nordic_runes.nordic_runes_messages import get_message, ENGLISH_MESSAGES
+            from roles.shaman.api import get_message, ENGLISH_MESSAGES
             server_id = get_server_key(parent_view.guild) if parent_view.guild else None
 
             nav_page = get_message('nav_page', server_id=server_id) or ENGLISH_MESSAGES.get('nav_page', "Page")
@@ -864,7 +864,7 @@ async def _handle_canvas_runes_action(interaction: discord.Interaction, action_n
     """Handle Nordic runes info/history actions with dynamic content."""
     try:
         try:
-            from roles.shaman.subroles.nordic_runes.nordic_runes_messages import get_message
+            from roles.shaman.api import get_message
         except ImportError as e:
             logger.error(f"Failed to import runes modules: {e}")
             await interaction.response.send_message("❌ Runes system is not available.", ephemeral=True)
@@ -910,7 +910,7 @@ async def _handle_canvas_runes_action(interaction: discord.Interaction, action_n
         elif action_name in _PAGE_ACTIONS:
             page = _PAGE_ACTIONS[action_name]
             try:
-                from roles.shaman.subroles.nordic_runes.nordic_runes_messages import get_runes_page_data
+                from roles.shaman.api import get_runes_page_data
                 content_parts.append(get_message("runes_list_content", page, server_id))
                 runes_page_data = get_runes_page_data(page, server_id)
             except Exception as e:

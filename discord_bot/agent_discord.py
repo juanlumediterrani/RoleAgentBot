@@ -1197,133 +1197,31 @@ async def _process_chat_message(message):
                 # Continue with original README response if README file fails
 
         # Check if this is a WIKIPEDIA response
-        if response and response.strip().startswith("WIKIPEDIA "):
-            logger.info(f"🔍 WIKIPEDIA response detected from {message.author.name}")
-            
-            try:
-                # Extract topic from response
-                topic = response.strip()[10:].strip()
-                logger.info(f"📚 Wikipedia topic extracted: {topic}")
-                
-                # Get language from personality
-                from roles.scholar.scholar import get_personality_language
-                lang = get_personality_language(server_id)
-                
-                # Fetch Wikipedia extract
-                from roles.scholar.wikipedia_fetcher import fetch_wikipedia_extract
-                wiki_extract = await fetch_wikipedia_extract(topic, lang=lang)
-                
-                if wiki_extract:
-                    logger.info(f"✅ Wikipedia extract fetched successfully for {topic} (lang: {lang})")
-                    
-                    # Remove wiki/wikipedia trigger words from original question
-                    import re
-                    clean_question = re.sub(r'\bwiki\b|\bwikipedia\b', '', clean_content, flags=re.IGNORECASE).strip()
-                    clean_question = re.sub(r'\s+', ' ', clean_question)
-                    
-                    # Build enhanced prompt with Wikipedia context using scholar task and rules
-                    from roles.scholar.scholar import get_scholar_prompt, get_scholar_golden_rules
-                    from agent_mind import (
-                        generate_daily_memory_summary,
-                        generate_recent_memory_summary,
-                        generate_user_relationship_memory_summary,
-                        _get_daily_memory_fallback,
-                        _get_recent_memory_fallback,
-                        _get_relationship_memory_fallback
-                    )
-                    
-                    # Get memory sections
-                    daily_memory = ""
-                    recent_memory = ""
-                    relationship_memory = ""
-                    
-                    try:
-                        daily_memory = await asyncio.to_thread(generate_daily_memory_summary, server_id)
-                    except Exception as e:
-                        logger.warning(f"Could not get daily memory: {e}")
-                        daily_memory = _get_daily_memory_fallback(server_id)
-                    
-                    try:
-                        recent_memory = await asyncio.to_thread(generate_recent_memory_summary, server_id)
-                    except Exception as e:
-                        logger.warning(f"Could not get recent memory: {e}")
-                        recent_memory = _get_recent_memory_fallback(server_id)
-                    
-                    try:
-                        relationship_memory = await asyncio.to_thread(
-                            generate_user_relationship_memory_summary,
-                            message.author.id,
-                            message.author.display_name,
-                            server_id
-                        )
-                    except Exception as e:
-                        logger.warning(f"Could not get relationship memory: {e}")
-                        relationship_memory = _get_relationship_memory_fallback(message.author.display_name, server_id)
-                    
-                    # Get scholar-specific prompt and golden rules
-                    scholar_prompt = get_scholar_prompt(server_id)
-                    golden_rules = get_scholar_golden_rules(server_id)
-                    
-                    # Build prompt sections like scholar.py does
-                    prompt_sections = []
-                    
-                    # Memory sections
-                    if daily_memory:
-                        prompt_sections.append(f"DAILY MEMORY:\n{daily_memory}")
-                    if recent_memory:
-                        prompt_sections.append(f"RECENT MEMORY:\n{recent_memory}")
-                    if relationship_memory:
-                        prompt_sections.append(f"RELATIONSHIP MEMORY:\n{relationship_memory}")
-                    
-                    # Scholar task
-                    prompt_sections.append(f"SCHOLAR TASK:\n{scholar_prompt}")
-                    
-                    # User question
-                    prompt_sections.append(f"QUESTION:\n{clean_question}")
-                    
-                    # Golden rules
-                    if golden_rules:
-                        prompt_sections.append(f"GOLDEN RULES:\n" + "\n".join(golden_rules))
-                    
-                    # Wikipedia context
-                    prompt_sections.append(f"WIKIPEDIA CONTEXT:\n{wiki_extract}")
-                    
-                    enhanced_prompt = "\n\n".join(prompt_sections)
-                    
-                    logger.info(f"📚 Making second LLM call with Wikipedia context")
-                    
-                    # Make second LLM call with Wikipedia context
-                    async with _LLM_SEMAPHORE:
-                        response = await call_llm_async(
-                            system_instruction=system_instruction,
-                            prompt=enhanced_prompt,
-                            background=False,
-                            call_type="wikipedia_enhanced",
-                            critical=True,
-                            metadata={
-                                "interaction_type": "channel" if is_public else "dm",
-                                "is_public": is_public,
-                                "user_id": message.author.id,
-                                "role": "bot",
-                                "server": server_id,
-                                "channel_id": message.channel.id if is_public else None,
-                                "is_mention": is_mention,
-                                "wikipedia_enhanced": True
-                            },
-                            logger=logger,
-                            user_id=str(message.author.id),
-                            user_name=message.author.display_name,
-                            server_id=server_id
-                        )
-                    
-                    logger.info(f"✅ Wikipedia enhanced response generated")
-                else:
-                    logger.warning(f"⚠️ Could not fetch Wikipedia extract for {topic} (lang: {lang})")
-                    # Continue with original WIKIPEDIA response if fetch fails
-                    
-            except Exception as e:
-                logger.exception(f"❌ Error processing Wikipedia response: {e}")
-                # Continue with original WIKIPEDIA response if processing fails
+        from roles.scholar.sentinel_handler import process_wikipedia_sentinel
+        wiki_response = await process_wikipedia_sentinel(
+            response=response,
+            clean_content=clean_content,
+            system_instruction=system_instruction,
+            server_id=server_id,
+            message_author_id=message.author.id,
+            message_author_name=message.author.display_name,
+            is_public=is_public,
+            is_mention=is_mention,
+            channel_id=message.channel.id if is_public else None,
+            call_llm_async=call_llm_async,
+            llm_semaphore=_LLM_SEMAPHORE,
+            metadata_base={
+                "interaction_type": "channel" if is_public else "dm",
+                "is_public": is_public,
+                "user_id": message.author.id,
+                "role": "bot",
+                "server": server_id,
+                "channel_id": message.channel.id if is_public else None,
+                "is_mention": is_mention,
+            },
+        )
+        if wiki_response is not None:
+            response = wiki_response
 
         # Check if this is a NADA_QUE_DECIR response (nothing to say)
         nothing_to_say_keyword = server_personality.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")

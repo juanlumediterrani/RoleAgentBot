@@ -79,14 +79,5 @@ async def trickster_task():
             logger.exception(f"❌ Error in dice game task: {e}")
     else:
         logger.warning("⚠️ Dice game task not available, skipping")
-
+    
     logger.info("✅ Trickster role tasks completed")
-
-
-async def main():
-    logger.info("🎭 Trickster started...")
-    await trickster_task()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
