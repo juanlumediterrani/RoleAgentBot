@@ -2487,9 +2487,9 @@ class ShortcutRoleSelect(discord.ui.Select):
             if not role_cfg.get("enabled", False):
                 continue
             
-            # Add main role option - use role title from descriptions
+            # Add main role option - use role button from descriptions
             role_desc = role_descriptions.get(role_name, {})
-            role_label = role_desc.get("title", role_name.replace("_", " ").title())
+            role_label = role_desc.get("button", role_name.replace("_", " ").title())
             options.append(discord.SelectOption(label=role_label, value=f"{role_name}"))
             
             # Add subroles if available - use subrole button labels from descriptions
@@ -2497,9 +2497,13 @@ class ShortcutRoleSelect(discord.ui.Select):
             for subrole_name, subrole_cfg in subroles.items():
                 if subrole_cfg.get("enabled", False):
                     # Get the button label from personality descriptions
-                    # Try subrole-specific section first (e.g., "dice_game": {"title": ...})
+                    # Try subrole-specific section first (e.g., "dice_game": {"button": ...})
                     subrole_section = role_desc.get(subrole_name, {})
-                    subrole_label = subrole_section.get("title")
+                    subrole_label = subrole_section.get("button")
+                    
+                    # Fallback to title if button doesn't exist
+                    if not subrole_label:
+                        subrole_label = subrole_section.get("title")
                     
                     # Fallback to subrole_buttons (e.g., "subrole_buttons": {"dice": "🎲 Artillería"})
                     if not subrole_label:
