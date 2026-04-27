@@ -12,6 +12,7 @@
         "dice": "🎲 Núcleo"
     },
     "dice_game": {
+        "button": "🎲 Núcleo",
         "waitmessage": "Calculando colapso de función de onda... Aguarda.",
         "roll_title": "EL ALGORITMO DICTA:\n",
         "combination_title": "SÍNTESIS:",

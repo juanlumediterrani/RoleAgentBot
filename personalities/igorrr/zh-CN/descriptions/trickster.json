@@ -16,6 +16,7 @@
         "runes": "🥖 符文"
     },
     "dice_game": {
+        "button": "🍞 碎屑",
         "waitmessage": "烤碎屑中...等着，面粉袋子...嘶嘶嘶",
         "roll_title": "你滴碎屑说：\n",
         "combination_title": "结果：",

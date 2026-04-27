@@ -16,6 +16,7 @@
         "runes": "🥖 Runas"
     },
     "dice_game": {
+        "button": "🍞 Migajas",
         "waitmessage": "Horneando migajas... Espera, saco de harina... SSSSS",
         "roll_title": "TUS MIGAJAS DICEN:\n",
         "combination_title": "RESULTADO:",

@@ -33,6 +33,7 @@
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para aportar fragmentos al flujo colectivo.",
     "beggar": {
+        "button": "🌌 Flujo",
         "title": "🌌 **FLUJO COLECTIVO**",
         "description": "El núcleo canaliza energía hacia proyectos del colectivo. Cada aportación fortalece el flujo compartido.",
         "title_campaign": "**Proyecto aktivo**",

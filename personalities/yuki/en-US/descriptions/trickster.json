@@ -12,6 +12,7 @@
         "dice": "🎲 Ozashiki-asobi"
     },
     "dice_game": {
+        "button": "🎲 Ozashiki-asobi",
         "waitmessage": "Calculating result... A moment.",
         "roll_title": "THE RESULT IS:\n",
         "combination_title": "COMBINATION:",

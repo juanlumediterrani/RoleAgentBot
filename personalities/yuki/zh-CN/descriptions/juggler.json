@@ -9,6 +9,7 @@
         "ring": "👁️ 目付"
     },
     "ring": {
+        "button": "👁️ 目付",
         "title": "👁️ **目付（めつけ）**",
         "description": "🔍 surveillance circle。作为花街的 inspector，雪维持着一张 contacts 网络，得以在不打破茶室 discretion 的前提下进行质询与追查。",
         "status_active": "✅ **监视激活** —— 雪正在履行 inspector 之职",

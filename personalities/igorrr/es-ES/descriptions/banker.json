@@ -33,6 +33,7 @@
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para donar. Igorrr lo anotará en el libro mugrienta.",
     "beggar": {
+        "button": "🔒 Sótano",
         "title": "🔒 **Proyectos del sótano** ",
         "description": "Igorrr junta harina para proyectos del sótano. El amo no sabe nada. O sí sabe. Igorrr no dice.",
         "title_campaign": "**Proyecto aktual**",

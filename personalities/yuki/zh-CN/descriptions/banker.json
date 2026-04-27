@@ -33,6 +33,7 @@
     "donation_custom_label": "自定义数额",
     "donation_custom_message": "请使用 Canvas 中的\"自定义数额\"选项来进行一笔你认为合适的寄付（きふ）。",
     "beggar": {
+        "button": "🧧 寄付",
         "title": "🧧 **寄付（きふ）** ",
         "description": "茶室的 mecenazgo。如同旦那（だんな），你 sustain 着那些值得被 sustain 之物。每一笔捐助都被记录在茶室的声望之中。",
         "title_campaign": "🎯 **当前目的：**",

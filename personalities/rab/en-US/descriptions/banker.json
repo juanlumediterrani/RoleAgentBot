@@ -33,6 +33,7 @@
     "donation_custom_label": "Custom amount",
     "donation_custom_message": "Use the 'Custom Amount' option in Canvas to contribute fragments to the collective flow.",
     "beggar": {
+        "button": "🌌 Flow",
         "title": "🌌 **COLLECTIVE FLOW**",
         "description": "The core channels energy toward collective projects. Each contribution strengthens the shared flow.",
         "title_campaign": "**Active project**",

@@ -33,6 +33,7 @@
     "donation_custom_label": "自定义数量",
     "donation_custom_message": "使用 Canvas 的「自定义数量」选项捐赠特定数量给基金。",
     "beggar": {
+        "button": "🏤 基金",
         "title": "🏤 **赫尔汉斯军事基金**",
         "description": "赫尔汉斯以他指挥部队的同样纪律为营房项目筹集资金。贡献是义务，不是选项。",
         "title_campaign": "**当前战役**",

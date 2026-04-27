@@ -33,6 +33,7 @@
     "donation_custom_label": "自定义数量",
     "donation_custom_message": "用画布滴'自定义数量'选项来捐赠。伊戈尔会在油腻滴本子上记下来。",
     "beggar": {
+        "button": "🔒 地下室",
         "title": "🔒 **地下室项目**",
         "description": "伊戈尔给地下室项目收面粉。主人不知道。或者知道。伊戈尔不说。",
         "title_campaign": "**当前项目**",

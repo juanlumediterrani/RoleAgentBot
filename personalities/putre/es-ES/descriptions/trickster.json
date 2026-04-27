@@ -12,6 +12,7 @@
         "dice": "🎲 Bote"
     },
     "dice_game": {
+        "button": "🎲 Bote",
         "waitmessage": "Tirando daos...Ezpera!",
         "roll_title": "TUS GUESOS DIZEN:\n",
         "combination_title": "RESULTAO:",

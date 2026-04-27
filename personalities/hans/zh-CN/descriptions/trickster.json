@@ -15,6 +15,7 @@
         "runes": "🎚️ Runenberatung"
     },
     "dice_game": {
+        "button": "🎲 火炮",
         "waitmessage": "部署火炮...等待，士兵！",
         "roll_title": "你的炮弹爆炸了：\n",
         "combination_title": "行动结果：",

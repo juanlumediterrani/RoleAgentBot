@@ -12,6 +12,7 @@
         "dice": "🎲 Pot"
     },
     "dice_game": {
+        "button": "🎲 Pot",
         "waitmessage": "Rolling dice...Wait!",
         "roll_title": "YOUR BONES SAY:\n",
         "combination_title": "RESULT:",

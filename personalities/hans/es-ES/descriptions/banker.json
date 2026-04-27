@@ -33,6 +33,7 @@
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para donar una cantidad específica al fondo.",
     "beggar": {
+        "button": "🏤 Fondo",
         "title": "🏤 **FONDO MILITAR DE HERR HANS**",
         "description": "Herr Hans recauda fondos para proyectos del cuartel con la misma disciplina con que dirige sus tropas. La contribución es un deber, no una opción.",
         "title_campaign": "**Campaña actual**",

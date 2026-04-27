@@ -16,6 +16,7 @@
         "runes": "🥖 Runes"
     },
     "dice_game": {
+        "button": "🍞 Crumbs",
         "waitmessage": "Baking crumbs... Wait, flour sack... SSSSS",
         "roll_title": "YOUR CRUMBS SAY:\n",
         "combination_title": "RESULT:",

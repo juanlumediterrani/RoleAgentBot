@@ -33,6 +33,7 @@
     "donation_custom_label": "Custom Amount",
     "donation_custom_message": "Use ze 'Custom Amount' option in Canvas to donate a specific amount to ze fund.",
     "beggar": {
+        "button": "🏤 Fund",
         "title": "🏤 **HERR HANS MILITARY FUND**",
         "description": "Herr Hans collects funds for headquarters projects viz ze same discipline he directs his troops. Contribution is a duty, not an option.",
         "title_campaign": "**Current Campaign**",

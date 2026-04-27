@@ -12,6 +12,7 @@
         "dice": "🎲 Core"
     },
     "dice_game": {
+        "button": "🎲 Core",
         "waitmessage": "Calculating wave function collapse... Wait.",
         "roll_title": "THE ALGORITHM DICTATES:\n",
         "combination_title": "SYNTHESIS:",

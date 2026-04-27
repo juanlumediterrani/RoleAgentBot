@@ -12,6 +12,7 @@
         "dice": "🎲 核心"
     },
     "dice_game": {
+        "button": "🎲 核心",
         "waitmessage": "计算波函数坍缩... 等待。",
         "roll_title": "算法规定：\n",
         "combination_title": "综合：",

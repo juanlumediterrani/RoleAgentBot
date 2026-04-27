@@ -9,6 +9,7 @@
         "ring": "👁️ Artefacto"
     },
     "ring": {
+        "button": "👁️ Artefacto",
         "title": "👁️ **RASTREO DEL ARTEFACTO CERO**",
         "description": "🔍 Un objeto anómalo altera la red. Señala a otros avatares para ayudar al algoritmo a depurar la amenaza.",
         "status_active": "✅ **BARRIDO ACTIVO** - El Profeta busca anomalías",

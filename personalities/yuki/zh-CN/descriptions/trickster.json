@@ -12,6 +12,7 @@
         "dice": "🎲 お座敷遊び"
     },
     "dice_game": {
+        "button": "🎲 お座敷遊び",
         "waitmessage": "正在计算结果……请稍候。",
         "roll_title": "结果为：\n",
         "combination_title": "组合：",

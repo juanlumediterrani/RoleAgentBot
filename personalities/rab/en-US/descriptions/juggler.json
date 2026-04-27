@@ -9,6 +9,7 @@
         "ring": "👁️ Artifact"
     },
     "ring": {
+        "button": "👁️ Artifact",
         "title": "👁️ **ZERO ARTIFACT TRACKING**",
         "description": "🔍 An anomalous object alters the network. Point to other avatars to help the algorithm debug the threat.",
         "status_active": "✅ **ACTIVE SWEEP** - The Prophet seeks anomalies",
@@ -42,5 +43,4 @@
         "config_juggler_description": "Adjust coordination center parameters",
         "config_juggler_emoji": "🎯"
     }
-
 }

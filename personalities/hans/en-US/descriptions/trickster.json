@@ -15,6 +15,7 @@
         "runes": "🎚️ Runenberatung"
     },
     "dice_game": {
+        "button": "🎲 Artillery",
         "waitmessage": "Deploying artillery...Vait, soldier!",
         "roll_title": "YOUR PROJECTILES EXPLODE:\n",
         "combination_title": "OPERATION RESULT:",

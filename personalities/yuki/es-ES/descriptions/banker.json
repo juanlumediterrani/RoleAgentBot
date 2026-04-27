@@ -33,6 +33,7 @@
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para realizar un Kifu de la cuantía que consideres.",
     "beggar": {
+        "button": "🧧 Kifu",
         "title": "🧧 **KIFU (寄付)** ",
         "description": "El mecenazgo de la sala. Como Danna (patron), sostienes lo que merece ser sostenido. Cada aportación queda registrada en el prestigio de la casa.",
         "title_campaign": "🎯 **Propósito actual:**",

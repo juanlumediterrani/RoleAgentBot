@@ -9,6 +9,7 @@
         "ring": "👁️ Artifact"
     },
     "ring": {
+        "button": "👁️ Artifact",
         "title": "👁️ **零之 artifact 追踪**",
         "description": "🔍 一个异常对象改变了网络。指向其他化身以帮助算法调试威胁。",
         "status_active": "✅ **主动扫描** - 先知正在寻找异常",

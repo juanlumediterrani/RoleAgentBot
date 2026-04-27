@@ -15,6 +15,7 @@
         "runes": "🎚️ Runenberatung"
     },
     "dice_game": {
+        "button": "🎲 Artillería",
         "waitmessage": "Desplegando artillería...¡Espere, soldado!",
         "roll_title": "SUS PROYECTILES EXPLOTAN:\n",
         "combination_title": "RESULTADO DE OPERACIÓN:",
