@@ -45,6 +45,14 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Labores** Los módulos de Labores son las cadenas que Igorrr arrastra para servir al Amo y vigilar a los sacos de harina.",
       "behavior_section": "**Tics Nerviosos** Aquí se configuran los caprichos del Amo. Solo para los que mandan en la panadería.",
+      "shortcuts_section": "**Acceso Rápido** Configura hasta 5 botones de atajo en el Canvas principal para acceso inmediato a tus labores favoritas. Disponible en Configuración > Atajos.",
+      "shortcuts_messages": {
+        "title": "Configuración de Acceso Rápido",
+        "description": "Configura acceso inmediato a labores",
+        "saved": "✅ Atajo configurado con éxito... JEJEJE",
+        "failed": "❌ FALLO AL CONFIGURAR ATAJO... SSSSS",
+        "cancelled": "Configuración cancelada... DESESTIMADA"
+      },
       "tips_section": "**Susurros útiles** -Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir... -Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
     },
     "canvas_home_messages": {

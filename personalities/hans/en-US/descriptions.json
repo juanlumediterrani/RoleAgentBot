@@ -27,6 +27,14 @@
       "separator": "═══════════════════════════════════════",
       "roles_section": "**OPERATION MODULES** Ze modules are authorized capabilities to maintain order and discipline among ze recruits.",
       "behavior_section": "**BEHAVIOR PROTOCOLS** SCHNELL! Configure ze behavior protocols. ONLY FOR SUPERIOR OFFICERS!",
+      "shortcuts_section": "**QUICK ACCESS** Configure up to 5 shortcut buttons in ze Canvas home for immediate access to your authorized modules. Available in Settings > Shortcuts.",
+      "shortcuts_messages": {
+        "title": "QUICK ACCESS CONFIGURATION",
+        "description": "Configure immediate access to authorized modules",
+        "saved": "✅ Shortcut configured successfully, Zivilist!",
+        "failed": "❌ FAILED TO CONFIGURE SHORTCUT!",
+        "cancelled": "Configuration cancelled, dismissed!"
+      },
       "tips_section": "**STRICT ORDERS** -Ask how a command vorks: 'how does ze command dice vork'! -Ze best capabilities are inside each operational module!"
     },
     "canvas_home_messages": {

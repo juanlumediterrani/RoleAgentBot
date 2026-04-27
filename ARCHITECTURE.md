@@ -687,7 +687,81 @@ help/
 | `!canvas <bot_name> …`      | Only matching bot replies |
 | `!canvas <unknown_name> …`  | No bot responds          |
 
-### 12.4 Interaction flow (Trace 7)
+### 12.4 Canvas Shortcuts
+
+The Canvas home view supports up to 5 configurable shortcut buttons that provide quick access to frequently used roles and subroles. This feature is admin-only and configured via the settings dropdown.
+
+#### 12.4.1 Data model
+
+Shortcuts are stored per-server in `server_config.json` under the `canvas.shortcuts` key:
+
+```json
+{
+  "canvas": {
+    "shortcuts": [
+      {
+        "id": 1,
+        "enabled": true,
+        "label": "Trickster - Dice",
+        "target_role": "trickster",
+        "target_subrole": "dice"
+      },
+      ...
+    ]
+  }
+}
+```
+
+Each shortcut has:
+- `id`: Position (1-5)
+- `enabled`: Whether the shortcut is active
+- `label`: Display text (cleaned of bold formatting and tree symbols)
+- `target_role`: Target role name (e.g., "trickster")
+- `target_subrole`: Optional target subrole (e.g., "dice")
+
+#### 12.4.2 Subrole mapping
+
+Some subroles use different names in the JSON configuration versus the Canvas surface names. A mapping table ensures correct navigation:
+
+```python
+SUBROLE_TO_SURFACE = {
+    "nordic_runes": "runes",
+    "dice_game": "dice",
+    "poe2": "league",
+    "beggar": "beggar",
+}
+```
+
+#### 12.4.3 Button implementation
+
+`CanvasShortcutButton` reuses existing navigation logic:
+
+- For roles: Uses `CanvasRoleButton` logic via `_build_canvas_role_view`
+- For subroles: Uses `CanvasRoleDetailButton` logic via `_build_canvas_role_detail_view`
+
+This ensures consistency with the standard role navigation system.
+
+#### 12.4.4 Configuration UI
+
+The configuration flow uses a single ephemeral message with two modes:
+
+**List mode**: Shows 5 buttons (one per shortcut position). Each button displays the current shortcut label or `#N` if unconfigured. Clicking enters config mode.
+
+**Config mode**: Shows a dropdown to select a role/subrole and Confirm/Cancel buttons. The dropdown options use personality descriptions for labels. When a selection is made, the dropdown is recreated with the selected value shown in the placeholder.
+
+All messages are injected from `descriptions.json` under `help_menu.shortcuts_messages` with per-personality translations.
+
+#### 12.4.5 Label resolution
+
+Shortcut labels are resolved in this order:
+
+1. Subrole-specific section (e.g., `descriptions.json["role_descriptions"]["shaman"]["nordic_runes"]["title"]`)
+2. Fallback to `subrole_buttons` using surface name mapping
+3. Final fallback to generated label (role title + subrole title)
+
+Labels are cleaned of bold formatting (`**`) and tree symbols (`└`) before being used as button text.
+
+### 12.5 Interaction flow (Trace 7)
 
 ```
 !canvas received

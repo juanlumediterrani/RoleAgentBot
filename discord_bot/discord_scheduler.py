@@ -26,6 +26,7 @@ class DiscordScheduler:
     - treasure_hunter_global_scheduler (1 min, runs on interval_hours)
     - news_watcher_global_scheduler (1 min, runs on interval_hours)
     - news_watcher_subscription_processor (1 min, runs on interval_hours)
+    - global_feed_health_scheduler (1 min, runs on interval_hours)
     - database_cleanup (24 h)
     - banker_global_scheduler (24 h) → banker_task() across all servers
     """
@@ -51,6 +52,7 @@ class DiscordScheduler:
         self._treasure_hunter_next_run: Optional[datetime] = None
         self._news_watcher_next_run: Optional[datetime] = None
         self._subscription_processor_next_runs: dict = {}
+        self._global_feed_health_next_run: Optional[datetime] = None
 
     async def start(self):
         """Register Discord-bound jobs and start the scheduler if we own it."""
@@ -118,7 +120,15 @@ class DiscordScheduler:
             timeout_seconds=600,
         )
 
-        # 5. Database cleanup - every 24 hours
+        # 5. Global feed health scheduler - every 1 minute (checks interval internally)
+        self.scheduler.register(
+            "global_feed_health_scheduler",
+            self._run_global_feed_health_scheduler,
+            Schedule.every(minutes=1),
+            timeout_seconds=600,
+        )
+
+        # 6. Database cleanup - every 24 hours
         self.scheduler.register(
             "database_cleanup",
             self._run_database_cleanup,
@@ -126,7 +136,7 @@ class DiscordScheduler:
             timeout_seconds=300,
         )
 
-        # 6. Banker global task - every 24 hours (creates wallets, daily TAE, dice pot)
+        # 7. Banker global task - every 24 hours (creates wallets, daily TAE, dice pot)
         banker_cfg = self.agent_config.get("roles", {}).get("banker", {})
         if banker_cfg.get("enabled", False):
             interval_hours = float(banker_cfg.get("interval_hours", 24))
@@ -136,9 +146,9 @@ class DiscordScheduler:
                 Schedule.every(hours=interval_hours),
                 timeout_seconds=600,
             )
-            logger.info(f"[DiscordScheduler] Registered 6 jobs (banker every {interval_hours}h)")
+            logger.info(f"[DiscordScheduler] Registered 7 jobs (banker every {interval_hours}h)")
         else:
-            logger.info("[DiscordScheduler] Registered 5 jobs (banker disabled)")
+            logger.info("[DiscordScheduler] Registered 6 jobs (banker disabled)")
 
     async def _run_discord_task_scheduler(self):
         """Run Discord-dependent subrole tasks.
@@ -288,6 +298,41 @@ class DiscordScheduler:
                 logger.debug(f"[NW_SUBSCRIPTION_PROCESSOR] Next global run in {time_until.total_seconds() // 60:.0f} minutes")
         except Exception as e:
             logger.error(f"[NW_SUBSCRIPTION_PROCESSOR] Error in subscription processor: {e}")
+
+    async def _run_global_feed_health_scheduler(self):
+        """Run global RSS feed health check task.
+
+        Checks health of all RSS feeds periodically in background without blocking startup.
+        """
+        if not self.bot.is_ready():
+            return
+
+        try:
+            nw_config = self.agent_config.get("roles", {}).get("news_watcher", {})
+            if not nw_config.get("enabled", False):
+                logger.debug("[GLOBAL_FEED_HEALTH] news_watcher disabled in agent_config, skipping")
+                return
+
+            interval_hours = nw_config.get("feed_health_interval_hours", 24)
+            now = datetime.now()
+
+            if self._global_feed_health_next_run is None or now >= self._global_feed_health_next_run:
+                logger.info(f"[GLOBAL_FEED_HEALTH] Running feed health check (interval: {interval_hours}h)")
+
+                try:
+                    from roles.news_watcher.global_feed_health import check_global_feed_health_async
+                    await check_global_feed_health_async()
+                    logger.info("[GLOBAL_FEED_HEALTH] Feed health check completed")
+                except Exception as e:
+                    logger.error(f"[GLOBAL_FEED_HEALTH] Error executing feed health check: {e}")
+
+                self._global_feed_health_next_run = now + timedelta(hours=interval_hours)
+                logger.info(f"[GLOBAL_FEED_HEALTH] Next run scheduled for: {self._global_feed_health_next_run}")
+            else:
+                time_until = self._global_feed_health_next_run - now
+                logger.debug(f"[GLOBAL_FEED_HEALTH] Next run in {time_until.total_seconds() // 60:.0f} minutes")
+        except Exception as e:
+            logger.error(f"[GLOBAL_FEED_HEALTH] Error in feed health scheduler: {e}")
 
     async def _run_database_cleanup(self):
         """Run database cleanup task.

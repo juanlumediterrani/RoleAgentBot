@@ -47,6 +47,7 @@
     "news_watcher": {
       "enabled": true,
       "interval_hours": 1,
+      "feed_health_interval_hours": 24,
       "script": "roles/news_watcher/news_watcher.py"
     },
     "treasure_hunter": {

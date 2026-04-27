@@ -45,6 +45,14 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Roles** Los módulos de Roles son algunas capacidades del bot para dar algunos servicios a los usuarios.",
       "behavior_section": "**Comportamiento** En esta sección configurarás algunos comportamientos interactuables del bot. Solo para Admins",
+      "shortcuts_section": "**Atajos** Configura hasta 5 botones de acceso rápido en la vista principal del Canvas para tus roles y subroles favoritos. Disponible en Configuración > Atajos.",
+      "shortcuts_messages": {
+        "title": "Atajos del Canvas",
+        "description": "Configura botones de acceso rápido",
+        "saved": "✅ Atajo guardado correctamente",
+        "failed": "❌ Error al guardar atajo",
+        "cancelled": "Configuración cancelada"
+      },
       "tips_section": "**Algunos consejos** -Puedes preguntarle al bot cómo funciona un comando como: '¿cómo funciona el comando dice?' -Las partes más jugosas del bot están dentro de cada rol"
     },
     "canvas_home_messages": {

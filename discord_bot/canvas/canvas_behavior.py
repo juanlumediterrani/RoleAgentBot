@@ -59,12 +59,14 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     # Get settings language and role labels
     label_server_language = action_labels.get("server_language", "🌐 Server Language")
     label_role_management = action_labels.get("role_management", "🎛️ Role Management")
+    label_shortcuts_config = action_labels.get("shortcuts_config", "⚡ Shortcuts")
     label_current = action_labels.get("current", "Current:")
     label_enabled = action_labels.get("enabled", "Enabled")
     label_disabled = action_labels.get("disabled", "Disabled")
     label_always_enabled = action_labels.get("always_enabled", "Always enabled")
     settings_lang = behavior_messages.get("settings", {}).get("language_select", {}).get("description", "Change the bot's language for this server")
     settings_role = "Enable or disable bot roles"  # This could also be added to descriptions if needed
+    settings_shortcuts = "Configure quick access buttons on Canvas home"
 
     admin_options = [
         (f"{button_greetings}: {label_on}", "greetings_on", desc_boolean_toggle),
@@ -86,6 +88,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         "settings": [
             (f"{label_server_language}", "language_settings", settings_lang),
             (f"{label_role_management}", "role_control", settings_role),
+            (f"{label_shortcuts_config}", "shortcuts_config", settings_shortcuts),
         ] if admin_visible else [],
         "personality": [],  # Personality view uses custom dropdown, not action items
     }

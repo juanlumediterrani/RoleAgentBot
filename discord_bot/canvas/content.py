@@ -1874,12 +1874,14 @@ def _build_canvas_help(guild=None) -> str:
     separator = help_messages.get("separator", "-" * 45)
     roles = help_messages.get("roles_section", "**Roles**\nThe Roles modules are some capabilities for the bot to give some services to the users.")
     behavior = help_messages.get("behavior_section", "**Behavior**\nIn this section you'll configurate some interactuable behaviors of the bot. Only for Admins")
+    shortcuts = help_messages.get("shortcuts_section", "**Shortcuts**\nConfigure up to 5 quick access buttons in the Canvas home view for your favorite roles and subroles. Available in Settings > Shortcuts.")
     tips = help_messages.get("tips_section", "**Some tips**\n-You can ask to the bot how works a command like: 'how works the command dice?'\n-The most jouicy parts of the bots its inside of each role")
     
     return (
         f"{separator}\n"
         f"{roles}\n"
         f"{behavior}\n"
+        f"{shortcuts}\n"
         f"{separator}\n"
         f"{tips}"   
     )

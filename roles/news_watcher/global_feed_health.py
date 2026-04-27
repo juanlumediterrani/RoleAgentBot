@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Global RSS feed health checker for RoleAgentBot (NoSQL-backed).
-Checks feed health once at startup and shares results with all servers.
+Checks feed health periodically in background and shares results with all servers.
 
 Storage: databases/news_watcher/feeds_health.json
 """
 
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
@@ -185,6 +186,14 @@ def check_global_feed_health():
 
     except Exception as e:
         logger.exception(f"❌ Error during global feed health check: {e}")
+
+
+async def check_global_feed_health_async():
+    """Async wrapper for check_global_feed_health using thread pool.
+    
+    This allows the health check to run without blocking the event loop.
+    """
+    await asyncio.to_thread(check_global_feed_health)
 
 
 def get_healthy_feeds(language: str = None) -> List[Tuple[int, str, str, str]]:

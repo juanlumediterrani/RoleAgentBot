@@ -45,6 +45,14 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Tasks** The Task modules are the chains Igorrr drags to serve the Master and watch the flour sacks.",
       "behavior_section": "**Nervous Tics** Here the Master's whims are configured. Only for those in charge at the bakery.",
+      "shortcuts_section": "**Quick Access** Configure up to 5 shortcut buttons in the Canvas home for immediate access to your favorite tasks. Available in Settings > Shortcuts.",
+      "shortcuts_messages": {
+        "title": "Quick Access Configuration",
+        "description": "Configure immediate access to tasks",
+        "saved": "✅ Shortcut configured successfully... HEHEHE",
+        "failed": "❌ FAILED TO CONFIGURE SHORTCUT... HISSS",
+        "cancelled": "Configuration cancelled... DISMISSED"
+      },
       "tips_section": "**Useful Whispers** -You can ask me how to use something if your silk fingers don't know how to type... -The best is hidden in the dark corners of each task... HEHEHE."
     },
     "canvas_home_messages": {

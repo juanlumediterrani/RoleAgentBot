@@ -293,13 +293,7 @@ async def main():
     config   = load_config()
     platform = config.get("platform", "discord")
 
-    # Perform global RSS feed health check once at startup
-    logger.info("[run] 📡 Performing global RSS feed health check...")
-    try:
-        from roles.news_watcher.global_feed_health import check_global_feed_health
-        check_global_feed_health()
-    except Exception as e:
-        logger.error(f"[run] ❌ Error in global feed health check: {e}")
+    # Global RSS feed health check is now run by DiscordScheduler in background
 
     logger.info(f"[run] 🌐 Platform: {platform}")
     logger.info(f"[run] 📋 Configuration loaded from: {CONFIG_FILE}")

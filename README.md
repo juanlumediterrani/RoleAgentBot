@@ -60,6 +60,32 @@ The bot's personality subtly evolves weekly based on server interactions:
 - **Role-Specific Views**: Customized UI for each role's capabilities
 - **Admin Panels**: Advanced configuration views for administrators
 - **DM/Channel Fallback**: Respects user privacy preferences
+- **Canvas Shortcuts**: Admin-only configurable quick access buttons for frequently used roles and subroles
+
+#### Canvas Shortcuts
+
+The Canvas home view supports up to 5 configurable shortcut buttons that provide quick access to frequently used roles and subroles. This feature is admin-only and configured via the settings dropdown.
+
+**Features:**
+- Configure up to 5 shortcuts pointing to any role or subrole
+- Subrole navigation correctly maps to detail views (not parent role overviews)
+- Labels use personality descriptions with proper fallback chains
+- All UI messages are localized per personality and language
+- Single ephemeral message configuration flow with dynamic dropdown updates
+
+**Configuration:**
+1. Open Canvas UI with `!canvas`
+2. Navigate to Settings > Shortcuts
+3. Click a shortcut button (#1-#5) to configure
+4. Select role/subrole from dropdown
+5. Confirm to save
+
+**Data Storage:**
+Shortcuts are stored per-server in `server_config.json` under `canvas.shortcuts` with:
+- Position ID (1-5)
+- Enabled status
+- Display label (cleaned of formatting)
+- Target role and optional subrole
 
 ### 🛡️ Safety & Rate Limiting
 

@@ -12,6 +12,7 @@ import random
 import time
 from datetime import datetime
 from discord.ext import commands
+from discord.ui import View, Button
 
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, call_llm_async, _build_conversation_user_prompt
@@ -1320,17 +1321,10 @@ async def _process_chat_message(message):
                 wikipedia_button_label = scholar_messages.get("wikipedia_button_label", "📖 Read on Wikipedia")
                 
                 # Create button component for Wikipedia link
-                button = {
-                    "type": 2,  # Button component type
-                    "style": 5,  # Link button style
-                    "label": wikipedia_button_label,
-                    "url": wiki_url
-                }
-                components = [{
-                    "type": 1,  # Action row type
-                    "components": [button]
-                }]
-                await message.channel.send(response, components=components)
+                view = View()
+                button = Button(style=discord.ButtonStyle.url, label=wikipedia_button_label, url=wiki_url)
+                view.add_item(button)
+                await message.channel.send(response, view=view)
                 logger.info(f"📚 Sent Wikipedia response with link button: {wiki_url}")
             else:
                 await message.channel.send(response)

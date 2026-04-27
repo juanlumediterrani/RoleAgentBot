@@ -27,6 +27,14 @@
       "separator": "═══════════════════════════════════════",
       "roles_section": "**MÓDULOS DE OPERACIÓN** Los módulos son capacidades autorizadas para mantener el orden y la disciplina entre los reclutas.",
       "behavior_section": "**PROTOCOLOS DE COMPORTAMIENTO** ¡SCHNELL! Configura los protocolos de comportamiento. ¡SOLO PARA OFICIALES SUPERIORES!",
+      "shortcuts_section": "**ACCESO RÁPIDO** Configura hasta 5 botones de atajo en el Canvas principal para acceso inmediato a tus módulos autorizados. Disponible en Configuración > Atajos.",
+      "shortcuts_messages": {
+        "title": "CONFIGURACIÓN DE ACCESO RÁPIDO",
+        "description": "Configura acceso inmediato a módulos autorizados",
+        "saved": "✅ Atajo configurado con éxito, ¡Zivilist!",
+        "failed": "❌ ¡FALLO EN LA CONFIGURACIÓN DEL ATAJO!",
+        "cancelled": "Configuración cancelada, ¡desestimada!"
+      },
       "tips_section": "**ÓRDENES ESTRICTAS** -¡Preguntar cómo funciona un comando: '¿cómo funciona el comando dice?'! -¡Las mejores capacidades están dentro de cada módulo operativo!"
     },
     "canvas_home_messages": {

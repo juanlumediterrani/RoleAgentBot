@@ -27,6 +27,14 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Módulos y Pieles** Los módulos son 'roles' que el bot puede asumir para otorgar servicios específicos a los usuarios.",
       "behavior_section": "**Protocolos de Comportamiento** Configuración de las rutinas de interacción del androide. Exclusivo para Administradores (Cualquier peregrino puede borrar alli su informacion).",
+      "shortcuts_section": "**Acceso Rápido** Configura hasta 5 botones de atajo en el Canvas principal para acceso inmediato a tus módulos favoritos. Disponible en Configuración > Atajos.",
+      "shortcuts_messages": {
+        "title": "Configuración de Acceso Rápido",
+        "description": "Configura acceso inmediato a módulos",
+        "saved": "✅ Atajo configurado con éxito",
+        "failed": "❌ Error al configurar atajo",
+        "cancelled": "Configuración cancelada"
+      },
       "tips_section": "**Sugerencias de navegación** -Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?' -La verdadera sabiduría reside en la experiencia de cada rol."
     },
     "canvas_home_messages": {

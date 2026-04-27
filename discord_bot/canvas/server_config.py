@@ -674,6 +674,134 @@ def set_welcome_channel(server_id: str, channel_id: str, updated_by: str = None)
     return set_behavior_config(server_id, "welcome", enabled, existing_config, updated_by)
 
 
+# ==================== Canvas Shortcuts Configuration ====================
+
+def get_canvas_shortcuts(server_id: str) -> list[Dict[str, Any]]:
+    """Get canvas shortcuts configuration for a server.
+    
+    Reads from server_config.json["canvas"]["shortcuts"]
+    
+    Args:
+        server_id: Discord server/guild ID
+        
+    Returns:
+        List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
+    """
+    if not server_id or server_id == "0":
+        return []
+    
+    config = _load_server_config(server_id)
+    canvas_config = config.get("canvas", {})
+    shortcuts = canvas_config.get("shortcuts", [])
+    
+    # Ensure shortcuts is a list
+    if not isinstance(shortcuts, list):
+        return []
+    
+    return shortcuts
+
+
+def set_canvas_shortcuts(server_id: str, shortcuts: list[Dict[str, Any]]) -> bool:
+    """Set canvas shortcuts configuration for a server.
+    
+    Saves to server_config.json["canvas"]["shortcuts"]
+    
+    Args:
+        server_id: Discord server/guild ID
+        shortcuts: List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
+        
+    Returns:
+        True if successful
+    """
+    if not server_id or server_id == "0":
+        logger.warning("Cannot set canvas shortcuts for invalid server_id")
+        return False
+    
+    config = _load_server_config(server_id)
+    
+    # Ensure canvas section exists
+    if "canvas" not in config:
+        config["canvas"] = {}
+    
+    # Validate shortcuts structure
+    validated_shortcuts = []
+    for shortcut in shortcuts[:5]:  # Max 5 shortcuts
+        if isinstance(shortcut, dict):
+            validated_shortcuts.append({
+                "id": shortcut.get("id", len(validated_shortcuts) + 1),
+                "enabled": bool(shortcut.get("enabled", True)),
+                "label": str(shortcut.get("label", ""))[:40],  # Max 40 chars for label
+                "target_role": str(shortcut.get("target_role", "")),
+                "target_subrole": shortcut.get("target_subrole")  # Can be None or string
+            })
+    
+    config["canvas"]["shortcuts"] = validated_shortcuts
+    
+    success = _save_server_config(server_id, config)
+    if success:
+        logger.info(f"Updated canvas shortcuts for server {server_id}: {len(validated_shortcuts)} shortcuts")
+    return success
+
+
+def get_canvas_shortcut(server_id: str, shortcut_id: int) -> Optional[Dict[str, Any]]:
+    """Get a specific canvas shortcut by ID.
+    
+    Args:
+        server_id: Discord server/guild ID
+        shortcut_id: Shortcut ID (1-5)
+        
+    Returns:
+        Shortcut dict or None if not found
+    """
+    shortcuts = get_canvas_shortcuts(server_id)
+    for shortcut in shortcuts:
+        if shortcut.get("id") == shortcut_id:
+            return shortcut
+    return None
+
+
+def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, label: str = "", 
+                       target_role: str = "", target_subrole: Optional[str] = None) -> bool:
+    """Set a specific canvas shortcut.
+    
+    Args:
+        server_id: Discord server/guild ID
+        shortcut_id: Shortcut ID (1-5)
+        enabled: Whether the shortcut is enabled
+        label: Display label for the button
+        target_role: Target role name
+        target_subrole: Target subrole name (optional)
+        
+    Returns:
+        True if successful
+    """
+    shortcuts = get_canvas_shortcuts(server_id)
+    
+    # Update existing shortcut or add new one
+    updated = False
+    for shortcut in shortcuts:
+        if shortcut.get("id") == shortcut_id:
+            shortcut["enabled"] = enabled
+            shortcut["label"] = label[:40]
+            shortcut["target_role"] = target_role
+            shortcut["target_subrole"] = target_subrole
+            updated = True
+            break
+    
+    if not updated:
+        # Add new shortcut if we have room
+        if len(shortcuts) < 5:
+            shortcuts.append({
+                "id": shortcut_id,
+                "enabled": enabled,
+                "label": label[:40],
+                "target_role": target_role,
+                "target_subrole": target_subrole
+            })
+    
+    return set_canvas_shortcuts(server_id, shortcuts)
+
+
 # ==================== Migration Helpers ====================
 # Note: SQLite migration helpers removed - all data migrated to NoSQL (role_configs_nosql.py)
 

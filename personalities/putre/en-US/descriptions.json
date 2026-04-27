@@ -45,6 +45,14 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Roles** Role modules are some bot capabilities to provide some services to users.",
       "behavior_section": "**Behavior** In this section you will configure some interactable bot behaviors. Admins only",
+      "shortcuts_section": "**Shortcuts** Configure up to 5 quick access buttons in the Canvas home view for your favorite roles and subroles. Available in Settings > Shortcuts.",
+      "shortcuts_messages": {
+        "title": "Canvas Shortcuts",
+        "description": "Configure quick access buttons",
+        "saved": "✅ Shortcut saved successfully",
+        "failed": "❌ Failed to save shortcut",
+        "cancelled": "Configuration cancelled"
+      },
       "tips_section": "**Some tips** -You can ask the bot how a command works like: 'how does the say command work?' -The juiciest parts of the bot are inside each role"
     },
     "canvas_home_messages": {
