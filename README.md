@@ -69,7 +69,7 @@ The Canvas home view supports up to 5 configurable shortcut buttons that provide
 **Features:**
 - Configure up to 5 shortcuts pointing to any role or subrole
 - Subrole navigation correctly maps to detail views (not parent role overviews)
-- Labels use personality descriptions with proper fallback chains
+- Labels use personality descriptions with proper fallback chains (button → title → subrole_buttons)
 - All UI messages are localized per personality and language
 - Single ephemeral message configuration flow with dynamic dropdown updates
 

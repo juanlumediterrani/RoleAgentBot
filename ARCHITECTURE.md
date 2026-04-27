@@ -755,9 +755,15 @@ All messages are injected from `descriptions.json` under `help_menu.shortcuts_me
 
 Shortcut labels are resolved in this order:
 
-1. Subrole-specific section (e.g., `descriptions.json["role_descriptions"]["shaman"]["nordic_runes"]["title"]`)
-2. Fallback to `subrole_buttons` using surface name mapping
-3. Final fallback to generated label (role title + subrole title)
+**For roles:**
+1. Role-specific `button` field (e.g., `descriptions.json["role_descriptions"]["banker"]["button"]`)
+2. Fallback to generated label (role name)
+
+**For subroles:**
+1. Subrole-specific `button` field (e.g., `descriptions.json["role_descriptions"]["trickster"]["dice_game"]["button"]`)
+2. Fallback to subrole-specific `title` field if `button` doesn't exist
+3. Fallback to `subrole_buttons` using surface name mapping
+4. Final fallback to generated label (role name + subrole name)
 
 Labels are cleaned of bold formatting (`**`) and tree symbols (`└`) before being used as button text.
 
