@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
 """
-RoleAgentBot - Main orchestrator
-Starts the main Discord bot and launches each role as a subprocess
-according to the interval configured in agent_config.json.
+RoleAgentBot - Main orchestrator.
+
+Responsibilities:
+- Load and validate agent_config.json.
+- Run the global RSS feed health check at startup.
+- Start RunSupervisor (in-process Supervisor + JobScheduler infrastructure)
+  which owns memory maintenance jobs and the MC actor.
+- Run the Discord bot coroutine. The Discord bot itself owns DiscordScheduler
+  (subrole ticker, news_watcher, treasure_hunter, banker, database_cleanup),
+  so this entry point keeps zero per-role scheduling logic of its own.
+
+All work runs in a single asyncio event loop; there are no subprocesses.
 """
 
 import asyncio
 import json
 import os
-import re
 import sys
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from agent_logging import get_logger
 
@@ -23,24 +31,16 @@ except ImportError:
     ValidationError = Exception
 
 from agent_engine import (
-    _get_subrole_frequency_from_config,
-    get_active_subroles,
-    get_mc_mode,
-    should_execute_subrole_task,
-    execute_subrole_internal_task,
-    generate_daily_memory_summary,
     refresh_due_recent_memories,
     refresh_due_relationship_memories,
-    get_due_subrole_tasks_for_server,
 )
 from agent_mind import generate_weekly_personality_evolution
 
 logger = get_logger('run')
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# ── Paths ───────────────────────────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).parent.resolve()
 CONFIG_FILE = BASE_DIR / "agent_config.json"
-PYTHON     = sys.executable   # same interpreter from active venv
 
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -69,77 +69,7 @@ def load_config() -> dict:
     
     return config
 
-# ── Subprocess launcher ───────────────────────────────────────────────────────
-
-_persistent_tasks: dict = {}
-
-# Mapping from script path to module path (for in-process imports)
-def _script_to_module(script_rel: str) -> str:
-    """Convert 'roles/news_watcher/news_watcher.py' -> 'roles.news_watcher.news_watcher'."""
-    return script_rel.replace("/", ".").removesuffix(".py")
-
-
-async def launch_role(name: str, script_rel: str, persistent: bool = False):
-    """Run the role's async main() in-process (replaces subprocess approach).
-
-    For non-persistent roles: awaits the coroutine and logs its result.
-    For persistent roles: schedules the coroutine as a background task and
-    keeps a handle in _persistent_tasks to avoid duplicate launches.
-    """
-    script = BASE_DIR / script_rel
-    if not script.exists():
-        logger.warning(f"[run] ⚠️  Script not found for '{name}': {script}")
-        return
-
-    if persistent:
-        current_task = _persistent_tasks.get(name)
-        if current_task and not current_task.done():
-            logger.info(f"[run] 🔄 Persistent role '{name}' already active, skipping relaunch")
-            return
-
-    module_name = _script_to_module(script_rel)
-    logger.info(f"[run] 🚀 Running role '{name}' → {module_name}.main()")
-    try:
-        import importlib
-        module = importlib.import_module(module_name)
-        if not hasattr(module, "main"):
-            logger.error(f"[run] ❌ Module '{module_name}' has no async main()")
-            return
-
-        if persistent:
-            task = asyncio.create_task(module.main(), name=f"role:{name}")
-            _persistent_tasks[name] = task
-            logger.info(f"[run] 🔄 Persistent role '{name}' launched as task")
-            return
-
-        await module.main()
-        logger.info(f"[run] ✅ Role '{name}' finished")
-    except Exception as e:
-        logger.error(f"[run] ❌ Error launching '{name}': {e}", exc_info=True)
-
-async def execute_recent_memory_summary_all_servers():
-    from agent_db import get_all_server_ids
-
-    server_ids = get_all_server_ids()
-    if not server_ids:
-        logger.info("[run] 🧠 No servers found for recent memory refresh")
-        return
-
-    total_refreshed = 0
-    for idx, server_id in enumerate(server_ids):
-        try:
-            # Small delay between servers to avoid Vertex AI rate limiting
-            if idx > 0:
-                await asyncio.sleep(2)
-            refreshed = await asyncio.to_thread(refresh_due_recent_memories, server_id)
-            if refreshed:
-                total_refreshed += refreshed
-                logger.info(f"[run] 🧠 Recent memory summary refreshed for '{server_id}' (PRIORITY: 1)")
-        except Exception as e:
-            logger.error(f"[run] ❌ Error refreshing recent memory for server '{server_id}': {e}")
-
-    if total_refreshed:
-        logger.info(f"[run] 🧠 Recent memory refresh completed across servers: {total_refreshed} update(s)")
+# ── Memory maintenance jobs (called by RunSupervisor.JobScheduler) ──────────────
 
 
 async def execute_daily_memory_summary_all_servers():
@@ -283,80 +213,6 @@ async def execute_weekly_personality_evolution_all_servers():
         )
 
 
-def _build_optional_role_schedule(config: dict) -> dict[str, datetime]:
-    roles_cfg = config.get("roles", {})
-    next_run: dict[str, datetime] = {}
-    now = datetime.now()
-
-    for name, cfg in roles_cfg.items():
-        enabled = cfg.get("enabled", False)
-        logger.info(f"[run] 🔍 Config enabled={enabled} → '{name}' {'✅' if enabled else '❌'}")
-        if not enabled:
-            logger.info(f"[run] 💤 Role '{name}' disabled")
-            continue
-
-        if name == "mc":
-            mc_mode = get_mc_mode()
-            logger.info(f"[run] 🎵 MC mode: '{mc_mode}'")
-            if mc_mode == "integrated":
-                logger.info("[run] 🎵 MC integrated mode, skipping separate launch")
-                continue
-            if mc_mode != "standalone":
-                logger.info(f"[run] 🎵 MC mode '{mc_mode}' not recognized, skipping")
-                continue
-            logger.info("[run] 🎵 MC standalone mode, launching as process")
-
-        # Skip roles without interval_hours (e.g., juggler)
-        if "interval_hours" not in cfg:
-            logger.info(f"[run] 📋 Role '{name}' enabled — no scheduled interval")
-            continue
-
-        next_run[name] = now
-        logger.info(f"[run] 📋 Role '{name}' enabled — every {cfg['interval_hours']}h")
-
-    return next_run
-
-
-def _get_due_role_tasks(next_run: dict[str, datetime], now: datetime) -> list[str]:
-    return [name for name, scheduled_for in next_run.items() if now >= scheduled_for]
-
-
-async def _execute_optional_role_tasks(roles_cfg: dict, next_run: dict[str, datetime], now: datetime):
-    pending_roles = _get_due_role_tasks(next_run, now)
-    if not pending_roles:
-        return
-
-    await asyncio.gather(*[
-        launch_role(
-            name,
-            roles_cfg[name]["script"],
-            persistent=roles_cfg[name].get("persistent", False),
-        )
-        for name in pending_roles
-    ])
-
-    for name in pending_roles:
-        hours = roles_cfg[name]["interval_hours"]
-        next_run[name] = datetime.now() + timedelta(hours=hours)
-        logger.info(f"[run] ⏳ '{name}' next execution: {next_run[name]:%H:%M:%S}")
-
-
-async def _execute_optional_subrole_tasks():
-    """DISABLED: Subrole tasks now run in discord_task_scheduler (bot process) where bot instance is connected.
-    
-    The main scheduler process cannot access Discord's bot instance because it runs in a separate
-    process. Discord-dependent tasks (beggar, news_watcher, treasure_hunter) are now executed
-    by discord_task_scheduler inside agent_discord.py where the bot is actually connected.
-    """
-    try:
-        # Subrole tasks are now handled by discord_task_scheduler in the bot process
-        # This function is kept for backward compatibility but does nothing
-        logger.debug("[run] Subrole tasks disabled - handled by discord_task_scheduler in bot process")
-        return
-    except Exception as e:
-        logger.error(f"[run] 🎭 Error in subrole tasks: {e}")
-
-
 async def execute_gdpr_retention_all_servers():
     """Apply the configured GDPR retention policy on every server database."""
     try:
@@ -403,71 +259,7 @@ async def execute_gdpr_retention_all_servers():
         logger.error(f"[run] 🧹 Prompt log retention failed: {e}")
 
 
-async def _execute_optional_non_role_tasks(now: datetime, next_non_role_run: dict[str, datetime]):
-    task_specs = [
-        ("daily_memory", execute_daily_memory_summary_all_servers, timedelta(days=1), "Next daily memory summary"),
-        ("weekly_personality_evolution", execute_weekly_personality_evolution_all_servers, timedelta(weeks=1), "Next weekly personality evolution"),
-        ("gdpr_retention", execute_gdpr_retention_all_servers, timedelta(hours=24), "Next GDPR retention sweep"),
-    ]
-    for task_key, task_func, interval, log_label in task_specs:
-        if now < next_non_role_run[task_key]:
-            continue
-        await task_func()
-        next_non_role_run[task_key] = datetime.now() + interval
-        logger.info(f"[run] 🧠 {log_label}: {next_non_role_run[task_key]:%Y-%m-%d %H:%M:%S}")
-    await execute_recent_memory_summary_all_servers()
-    # Small delay to avoid overlap and give priority to recent memory
-    await asyncio.sleep(5)
-    await execute_relationship_memory_refresh_all_servers()
-
-
-# ── Role scheduler ────────────────────────────────────────────────────────────
-
-async def scheduler(config: dict, supervisor_active: bool = False):
-    """Role scheduler loop.
-
-    When *supervisor_active* is True the RunSupervisor already handles
-    non-role maintenance tasks (daily memory, GDPR, etc.), so this loop
-    only dispatches periodic role scripts.  When False (fallback) it also
-    runs the legacy non-role task scheduling.
-    """
-    roles_cfg = config.get("roles", {})
-    logger.info(f"[run] 📋 Starting scheduler with {len(roles_cfg)} configured roles")
-    next_run = _build_optional_role_schedule(config)
-
-    if not next_run:
-        logger.info("[run] ℹ️  No active roles. Only the main bot is running.")
-
-    next_non_role_run = None
-    if not supervisor_active:
-        # Legacy fallback: schedule non-role tasks ourselves
-        next_daily_memory_run = datetime.now() + timedelta(hours=24)
-        next_weekly_evolution_run = datetime.now() + timedelta(weeks=1)
-        try:
-            _gdpr_cfg = config.get("gdpr", {}) or {}
-            _gdpr_every_hours = int(_gdpr_cfg.get("run_every_hours", 24))
-        except Exception:
-            _gdpr_every_hours = 24
-        next_gdpr_retention_run = datetime.now() + timedelta(hours=_gdpr_every_hours)
-
-        next_non_role_run = {
-            "daily_memory": next_daily_memory_run,
-            "weekly_personality_evolution": next_weekly_evolution_run,
-            "gdpr_retention": next_gdpr_retention_run,
-        }
-        logger.info("[run] ⚠️  RunSupervisor not active — legacy non-role scheduling enabled")
-    else:
-        logger.info("[run] ✅ RunSupervisor handles non-role tasks; scheduler only dispatches roles")
-
-    while True:
-        now = datetime.now()
-        await _execute_optional_role_tasks(roles_cfg, next_run, now)
-        await _execute_optional_subrole_tasks()
-        if next_non_role_run is not None:
-            await _execute_optional_non_role_tasks(now, next_non_role_run)
-        await asyncio.sleep(30)
-
-# ── Main Discord bot ─────────────────────────────────────────────────────────
+# ── Main Discord bot ───────────────────────────────────────────────────────────────────
 
 async def discord_bot():
     """
@@ -527,7 +319,12 @@ async def main():
         run_sup = None
 
     if platform == "discord":
-        always_on_tasks = [discord_bot(), scheduler(config, supervisor_active=run_sup is not None)]
+        # The Discord bot owns its own DiscordScheduler (started in on_ready) for
+        # subrole ticker, news_watcher, treasure_hunter, banker, and database
+        # cleanup. RunSupervisor (above) owns memory maintenance jobs and the
+        # MC actor. There are no longer any role subprocesses or per-role
+        # scheduling logic in this entry point.
+        always_on_tasks = [discord_bot()]
     elif platform == "telegram":
         logger.info("[run] ℹ️  Telegram selected — main bot pending implementation")
         always_on_tasks = []

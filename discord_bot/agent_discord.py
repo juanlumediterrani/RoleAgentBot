@@ -10,9 +10,8 @@ import discord
 import asyncio
 import random
 import time
-from datetime import datetime, timedelta
-from typing import Optional, Dict
-from discord.ext import commands, tasks
+from datetime import datetime
+from discord.ext import commands
 
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, call_llm_async, _build_conversation_user_prompt
@@ -156,286 +155,11 @@ def get_bot_instance():
     return bot
 
 # --- AUTOMATIC TASKS ---
-
-@tasks.loop(minutes=1)
-async def discord_task_scheduler():
-    """Run all Discord-dependent scheduled tasks inside the bot process.
-    
-    This scheduler executes tasks that need access to Discord (like beggar, news_watcher)
-    from within the bot process where the bot instance is actually connected to Discord.
-    Tasks that don't need Discord (memory operations) run in the main scheduler process.
-    """
-    if not bot.is_ready():
-        return
-    
-    try:
-        from agent_db import get_all_server_ids
-        from agent_engine import get_due_subrole_tasks_for_server, execute_subrole_internal_task
-        
-        server_ids = get_all_server_ids()
-        if not server_ids:
-            return
-        
-        for server_id in server_ids:
-            tasks_to_execute = get_due_subrole_tasks_for_server(server_id)
-            if not tasks_to_execute:
-                continue
-            
-            logger.info(f"[BOT_SCHEDULER] Server {server_id}: executing {len(tasks_to_execute)} subrole task(s): {[name for name, _ in tasks_to_execute]}")
-            
-            for subrole_name, subrole_config in tasks_to_execute:
-                try:
-                    await execute_subrole_internal_task(
-                        subrole_name, subrole_config,
-                        bot_instance=bot,  # Pass the actual connected bot instance
-                        server_id=server_id
-                    )
-                except Exception as e:
-                    logger.error(f"[BOT_SCHEDULER] Error in {subrole_name} for {server_id}: {e}")
-    except Exception as e:
-        logger.error(f"[BOT_SCHEDULER] Error in task scheduler: {e}")
-
-@discord_task_scheduler.before_loop
-async def _before_task_scheduler():
-    await bot.wait_until_ready()
-
-
-# --- GLOBAL TREASURE HUNTER SCHEDULER ---
-# This runs independently of servers, based only on agent_config settings
-_treasure_hunter_next_run: Optional[datetime] = None
-
-@tasks.loop(minutes=1)
-async def treasure_hunter_global_scheduler():
-    """Global treasure hunter scheduler - runs based on agent_config, not per-server.
-    
-    This scheduler is INDEPENDENT of servers. It runs if:
-    1. treasure_hunter is enabled in agent_config.json
-    2. The interval_hours have passed since last run
-    
-    This is NOT a subrole task - it's a global role task that manages POE2
-    price tracking across all active servers.
-    """
-    global _treasure_hunter_next_run
-    
-    if not bot.is_ready():
-        return
-    
-    try:
-        # Check if treasure_hunter is enabled in agent_config
-        th_config = agent_config.get("roles", {}).get("treasure_hunter", {})
-        if not th_config.get("enabled", False):
-            logger.debug("[TH_SCHEDULER] treasure_hunter disabled in agent_config, skipping")
-            return
-        
-        # Get interval from agent_config (default 1 hour)
-        interval_hours = th_config.get("interval_hours", 1)
-        
-        # Check if it's time to run
-        now = datetime.now()
-        if _treasure_hunter_next_run is None or now >= _treasure_hunter_next_run:
-            logger.info(f"[TH_SCHEDULER] Running treasure_hunter task (interval: {interval_hours}h)")
-            
-            try:
-                from roles.treasure_hunter.treasure_hunter import ejecutar_mision_treasure_hunter
-                
-                # Execute the treasure hunter mission (non-blocking)
-                await ejecutar_mision_treasure_hunter(agent_config, server_name=None)
-                
-                logger.info("[TH_SCHEDULER] treasure_hunter task completed successfully")
-                
-            except Exception as e:
-                logger.error(f"[TH_SCHEDULER] Error executing treasure_hunter task: {e}")
-            
-            # Schedule next run
-            _treasure_hunter_next_run = now + timedelta(hours=interval_hours)
-            logger.info(f"[TH_SCHEDULER] Next treasure_hunter run scheduled for: {_treasure_hunter_next_run}")
-        else:
-            time_until = _treasure_hunter_next_run - now
-            logger.debug(f"[TH_SCHEDULER] Next run in {time_until.total_seconds() // 60:.0f} minutes")
-            
-    except Exception as e:
-        logger.error(f"[TH_SCHEDULER] Error in treasure_hunter scheduler: {e}")
-
-
-# --- GLOBAL NEWS WATCHER SCHEDULER ---
-# This runs independently of servers, downloads news in background
-_news_watcher_next_run: Optional[datetime] = None
-
-@tasks.loop(minutes=1)
-async def news_watcher_global_scheduler():
-    """Global news watcher scheduler - downloads news in background based on agent_config.
-    
-    This scheduler is INDEPENDENT of servers. It runs if:
-    1. news_watcher is enabled in agent_config.json
-    2. The interval_hours have passed since last run
-    
-    This downloads news from all feeds and stores them in the global database.
-    The subscription processing task then uses this cached news.
-    """
-    global _news_watcher_next_run
-    
-    if not bot.is_ready():
-        return
-    
-    try:
-        # Check if news_watcher is enabled in agent_config
-        nw_config = agent_config.get("roles", {}).get("news_watcher", {})
-        if not nw_config.get("enabled", False):
-            logger.debug("[NW_SCHEDULER] news_watcher disabled in agent_config, skipping")
-            return
-        
-        # Get interval from agent_config (default 1 hour)
-        interval_hours = nw_config.get("interval_hours", 1)
-        
-        # Check if it's time to run
-        now = datetime.now()
-        if _news_watcher_next_run is None or now >= _news_watcher_next_run:
-            logger.info(f"[NW_SCHEDULER] Running news download task (interval: {interval_hours}h)")
-            
-            try:
-                from roles.news_watcher.news_downloader import download_all_feeds_global
-                from roles.news_watcher.global_feed_health import get_healthy_feeds
-                
-                # Get all healthy feeds
-                healthy_feeds = get_healthy_feeds()
-                if healthy_feeds:
-                    # Download news in background (non-blocking)
-                    download_task = asyncio.create_task(download_all_feeds_global(healthy_feeds))
-                    logger.info(f"[NW_SCHEDULER] Started background download for {len(healthy_feeds)} feeds")
-                else:
-                    logger.warning("[NW_SCHEDULER] No healthy feeds found to download")
-                
-                logger.info("[NW_SCHEDULER] News download task initiated")
-                
-            except Exception as e:
-                logger.error(f"[NW_SCHEDULER] Error executing news download task: {e}")
-            
-            # Schedule next run
-            _news_watcher_next_run = now + timedelta(hours=interval_hours)
-            logger.info(f"[NW_SCHEDULER] Next news download run scheduled for: {_news_watcher_next_run}")
-        else:
-            time_until = _news_watcher_next_run - now
-            logger.debug(f"[NW_SCHEDULER] Next run in {time_until.total_seconds() // 60:.0f} minutes")
-            
-    except Exception as e:
-        logger.error(f"[NW_SCHEDULER] Error in news_watcher scheduler: {e}")
-
-@treasure_hunter_global_scheduler.before_loop
-async def _before_treasure_hunter_scheduler():
-    await bot.wait_until_ready()
-
-@news_watcher_global_scheduler.before_loop
-async def _before_news_watcher_scheduler():
-    await bot.wait_until_ready()
-
-
-# --- GLOBAL NEWS WATCHER SUBSCRIPTION PROCESSOR SCHEDULER ---
-# This runs independently of servers, processes subscriptions based on server-specific frequency
-_subscription_processor_next_runs: Dict[str, datetime] = {}
-_subscription_processor_global_next_run: Optional[datetime] = None
-
-@tasks.loop(minutes=1)
-async def news_watcher_subscription_processor():
-    """Global news watcher subscription processor - processes subscriptions based on server-specific frequency.
-    
-    This scheduler is INDEPENDENT of servers. It runs if:
-    1. news_watcher is enabled in agent_config.json
-    2. The global interval_hours from agent_config have passed since last run
-    3. The server-specific interval_hours have passed since last run for that server
-    
-    This processes subscriptions for each server individually, checking server_config.json
-    for the configured frequency. It downloads fresh news if needed based on feed update frequency.
-    """
-    global _subscription_processor_next_runs, _subscription_processor_global_next_run
-    
-    if not bot.is_ready():
-        return
-    
-    try:
-        # Check if news_watcher is enabled in agent_config
-        nw_config = agent_config.get("roles", {}).get("news_watcher", {})
-        if not nw_config.get("enabled", False):
-            logger.debug("[NW_SUBSCRIPTION_PROCESSOR] news_watcher disabled in agent_config, skipping")
-            return
-        
-        # Get global interval from agent_config (default 1 hour)
-        global_interval_hours = nw_config.get("interval_hours", 1)
-        
-        # Check if it's time to run globally
-        now = datetime.now()
-        if _subscription_processor_global_next_run is None or now >= _subscription_processor_global_next_run:
-            logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Running global subscription processing (interval: {global_interval_hours}h)")
-            
-            # Get all servers
-            servers = bot.guilds
-            
-            for guild in servers:
-                server_id = str(guild.id)
-                
-                # Get server-specific frequency from server_config.json
-                from discord_bot.canvas.server_config import get_news_watcher_frequency, is_role_enabled
-                if not is_role_enabled(server_id, "news_watcher"):
-                    logger.debug(f"[NW_SUBSCRIPTION_PROCESSOR] news_watcher disabled for server {server_id}, skipping")
-                    continue
-                
-                interval_hours = get_news_watcher_frequency(server_id, default_hours=1)
-                
-                # Check if it's time to run for this server
-                last_run = _subscription_processor_next_runs.get(server_id)
-                if last_run is None or now >= last_run:
-                    logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Processing server {server_id} (frequency: {interval_hours}h)")
-                    
-                    try:
-                        from roles.news_watcher.subscription_processor import process_server_subscriptions
-                        
-                        # Process this server's subscriptions (non-blocking)
-                        await process_server_subscriptions(bot, server_id, agent_config)
-                        
-                        logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Server {server_id} processing completed")
-                        
-                    except Exception as e:
-                        logger.error(f"[NW_SUBSCRIPTION_PROCESSOR] Error processing server {server_id}: {e}")
-                    
-                    # Schedule next run for this server
-                    _subscription_processor_next_runs[server_id] = now + timedelta(hours=interval_hours)
-                    logger.debug(f"[NW_SUBSCRIPTION_PROCESSOR] Server {server_id} next run scheduled for: {_subscription_processor_next_runs[server_id]}")
-            
-            # Schedule next global run
-            _subscription_processor_global_next_run = now + timedelta(hours=global_interval_hours)
-            logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Next global run scheduled for: {_subscription_processor_global_next_run}")
-        else:
-            time_until = _subscription_processor_global_next_run - now
-            logger.debug(f"[NW_SUBSCRIPTION_PROCESSOR] Next global run in {time_until.total_seconds() // 60:.0f} minutes")
-            
-    except Exception as e:
-        logger.error(f"[NW_SUBSCRIPTION_PROCESSOR] Error in subscription processor: {e}")
-
-@news_watcher_subscription_processor.before_loop
-async def _before_subscription_processor():
-    await bot.wait_until_ready()
-
-@tasks.loop(hours=24)
-async def database_cleanup():
-    active_server_key = (get_server_id() or "").strip()
-    target_guild = None
-    if active_server_key:
-        active_key_lower = active_server_key.lower()
-        for g in bot.guilds:
-            if str(getattr(g, "id", "")) == active_server_key:
-                target_guild = g
-                break
-            if getattr(g, "name", "").lower() == active_key_lower:
-                target_guild = g
-                break
-    if target_guild is None and bot.guilds:
-        target_guild = bot.guilds[0]
-    if target_guild is None:
-        return
-    db_instance = get_db_for_server(target_guild)
-    rows = await asyncio.to_thread(db_instance.clean_old_interactions, 30)
-    from discord_bot.discord_utils import get_server_key
-    server_key = get_server_key(target_guild)
-    logger.info(f"🧹 Cleanup in {target_guild.name} ({server_key}): {rows} records deleted.")
+# Legacy @tasks.loop schedulers (discord_task_scheduler,
+# treasure_hunter_global_scheduler, news_watcher_global_scheduler,
+# news_watcher_subscription_processor, database_cleanup) were removed in 0.6.2.
+# All Discord-bound periodic tasks are now registered in DiscordScheduler
+# (discord_bot/discord_scheduler.py) which is started in on_ready().
 
 
 async def set_bot_presence_message(guild=None, bot_instance=None):
@@ -687,30 +411,29 @@ async def on_ready():
     set_bot_discord_id(bot.user.id)
     logger.info(f"🤖 Bot Discord ID registered: {bot.user.id}")
 
-    # Automatic tasks - using new JobScheduler-based scheduler
+    # Automatic tasks: DiscordScheduler registers its jobs onto the SHARED
+    # JobScheduler owned by RunSupervisor (single-scheduler architecture, 0.6.2).
+    # Jobs registered here: discord_task_scheduler (subrole ticker),
+    # treasure_hunter_global_scheduler, news_watcher_global_scheduler,
+    # news_watcher_subscription_processor, database_cleanup, banker_global_scheduler.
+    # See discord_bot/discord_scheduler.py for the runner methods.
     try:
-        discord_scheduler = get_discord_scheduler(bot, agent_config)
+        from run_supervisor import get_run_supervisor
+        external_sched = get_run_supervisor().job_scheduler
+        discord_scheduler = get_discord_scheduler(
+            bot, agent_config, external_scheduler=external_sched
+        )
         await discord_scheduler.start()
-        logger.info("🔄 Discord JobScheduler started (replaces @tasks.loop schedulers)")
+        logger.info(
+            "🔄 DiscordScheduler jobs registered on RunSupervisor.job_scheduler "
+            "(single-scheduler architecture)"
+        )
     except Exception as e:
-        logger.error(f"❌ Failed to start Discord JobScheduler: {e}")
-        logger.warning("⚠️ Falling back to legacy @tasks.loop schedulers")
-        # Fallback to legacy schedulers if new scheduler fails
-        if not database_cleanup.is_running():
-            database_cleanup.start()
-            logger.info("🧹 DB cleanup task started (legacy)")
-        if not discord_task_scheduler.is_running():
-            discord_task_scheduler.start()
-            logger.info("🎭 Discord task scheduler started (legacy)")
-        if not treasure_hunter_global_scheduler.is_running():
-            treasure_hunter_global_scheduler.start()
-            logger.info("💎 Treasure Hunter global scheduler started (legacy)")
-        if not news_watcher_global_scheduler.is_running():
-            news_watcher_global_scheduler.start()
-            logger.info("📰 News Watcher global scheduler started (legacy)")
-        if not news_watcher_subscription_processor.is_running():
-            news_watcher_subscription_processor.start()
-            logger.info("📰 News Watcher subscription processor started")
+        logger.error(
+            f"❌ Failed to start DiscordScheduler: {e}. "
+            "Periodic Discord-bound tasks will NOT run this session.",
+            exc_info=True,
+        )
     
     await set_mc_presence_if_enabled()
     

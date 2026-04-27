@@ -60,7 +60,7 @@ Two role integration modes:
 | Mode                      | What it means                                 | Examples                                                                                |
 | ------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `Integrated Discord role` | Command handlers live inside the main bot    | `mc`, every `*_discord.py` module                                                       |
-| `Scheduled role task`     | Autonomous logic run on a timer as subprocess | `news_watcher.py`, `treasure_hunter.py`, `trickster.py`, `shaman.py`, `banker.py`, `juggler.py` |
+| `Scheduled role task`     | Autonomous logic run on a timer as a `JobScheduler` job (in-process) | `news_watcher`, `treasure_hunter`, `banker`, plus the subrole ticker (`beggar`, `ring`) |
 
 ---
 
@@ -68,25 +68,26 @@ Two role integration modes:
 
 ### 3.1 `run.py` (current entry point)
 
-System orchestrator. Docker `CMD ["python", "run.py"]`:
+System orchestrator. Docker `CMD ["python", "run.py"]`. As of 0.6.2, `run.py` is intentionally
+slim — it owns no per-role scheduling logic of its own:
 
-- `main()` loads `agent_config.json`.
-- Runs **global RSS feed health check** once at startup (`roles/news_watcher/global_feed_health.py`).
+- `main()` loads `agent_config.json` (with optional schema validation).
+- Runs the **global RSS feed health check** once at startup
+  (`roles/news_watcher/global_feed_health.py`).
 - Instantiates `RunSupervisor` (`run_supervisor.py`) and registers:
-  - The **MC actor** (Supervisor-managed persistent coroutine with restart policy, see §20.3).
-  - The **memory maintenance jobs** (`daily_memory_summary`, `weekly_personality_evolution`,
-    `recent_memory_summary`, `relationship_memory_refresh`, `gdpr_retention`) on `JobScheduler`.
-- `asyncio.gather(discord_bot(), scheduler(config, supervisor_active=True))`:
-  - `discord_bot()` runs the in-process Discord client (§3.2).
-  - `scheduler()` is a slim loop that **dispatches periodic role scripts as subprocesses**
-    (news_watcher, treasure_hunter, trickster, shaman, banker, juggler) via `launch_role()`.
-    When `supervisor_active=True`, non-role tasks are owned by `RunSupervisor` instead.
+  - The **MC actor** (`Supervisor`-managed persistent coroutine with restart policy, §20.3).
+  - The **memory maintenance jobs** on `RunSupervisor.job_scheduler`:
+    `daily_memory_summary`, `weekly_personality_evolution`, `recent_memory_summary`,
+    `relationship_memory_refresh`, `gdpr_retention`.
+- `asyncio.gather(discord_bot())`: only the in-process Discord client is gathered — there is no
+  longer a separate `scheduler()` loop. The bot's `on_ready` (§3.2) registers the Discord-bound
+  jobs onto the same `RunSupervisor.job_scheduler`, so the entire process runs on a **single
+  `JobScheduler` instance** (single-scheduler architecture).
 
-> **Migration target (0.6.x)**: `RunSupervisor` is intended to become the single task launcher and
-> entry point. Today, `run.py` retains the role-script subprocess scheduler because each role
-> module (e.g. `roles/news_watcher/news_watcher.py`) is still designed as a standalone script
-> rather than an in-process coroutine factory. Migrating each role to a `JobScheduler.register()`
-> callable is the remaining piece. See §20.7.
+> **0.6.2 invariant**: there are no subprocesses anywhere in the runtime. There is exactly one
+> `JobScheduler` driving every periodic task (memory, MC actor, subrole ticker, news_watcher,
+> treasure_hunter, banker, database_cleanup) and one `Supervisor` for long-lived actors (MC).
+> The legacy `launch_role()` subprocess launcher and `scheduler()` loop were removed.
 
 ### 3.2 `discord_bot/agent_discord.py`
 
@@ -449,32 +450,46 @@ Two distinct registration paths exist depending on whether a role exposes Discor
 These roles still appear under `agent_config.json::roles`, contribute to `_get_active_roles_section`
 (prompt assembly, §5.2), and may declare subroles, but do not register top-level Discord commands.
 
-### 9.2 Periodic role execution (two-tier model)
+### 9.2 Periodic role execution (single-scheduler model, 0.6.2)
 
-**Tier A — Role-level work as subprocesses** (`run.py::launch_role`):
+Every periodic role task in the bot runs as a coroutine job on a **single
+`JobScheduler` instance** (`RunSupervisor.job_scheduler`). There are no subprocesses, no
+duplicate schedulers, and no role-script CLI entry points kept alive by the runtime.
 
-For every enabled role whose config defines a `script`, `run.py`'s `scheduler()` loop launches the
-script as an isolated subprocess (`asyncio.create_subprocess_exec`) with its own stdout/stderr
-pipes when `interval_hours` elapses. Used by `news_watcher`, `treasure_hunter`, `trickster`,
-`shaman`, `banker`, `juggler` (the `juggler.py` script is currently a thin no-op kept for parity).
+The jobs are registered in two waves:
 
-> **Migration note:** the long-term intent is for these to become `JobScheduler.register()`
-> coroutines hosted by `RunSupervisor` so they share the bot's asyncio loop, eliminating
-> subprocess fork overhead and IPC. The split persists today only because each role script
-> was authored as a CLI-style entry point. See §3.1 and §20.7.
+1. **At startup** (`run.py::main` → `RunSupervisor.register_memory_jobs`):
+   - `daily_memory_summary` (1 h tick, per-server staggered).
+   - `weekly_personality_evolution` (6 h tick, per-server staggered).
+   - `recent_memory_summary` (4 h).
+   - `relationship_memory_refresh` (1 h).
+   - `gdpr_retention` (configurable, default 24 h).
 
-**Tier B — Subrole tasks in the bot process** (`discord_bot/discord_scheduler.py` /
-`discord_bot/agent_discord.py`):
+2. **On Discord ready** (`agent_discord.py::on_ready` → `DiscordScheduler.start()` with
+   `external_scheduler=RunSupervisor.job_scheduler`):
+   - `discord_task_scheduler` (1 min) — drives the **subrole ticker**: iterates guilds, calls
+     `get_due_subrole_tasks_for_server(server_id)`, executes due subroles in-process via
+     `execute_subrole_internal_task(...)` (e.g. `roles/banker/subroles/beggar/beggar_task.py`),
+     and updates `next_run = now + frequency_hours` per server.
+   - `treasure_hunter_global_scheduler` (1 min ticker, runs on `interval_hours` from config) —
+     `roles/treasure_hunter/treasure_hunter.py::ejecutar_mision_treasure_hunter`.
+   - `news_watcher_global_scheduler` (1 min ticker, runs on `interval_hours`) — kicks
+     `roles/news_watcher/news_downloader.py::download_all_feeds_global` in the background.
+   - `news_watcher_subscription_processor` (1 min ticker, runs on global + per-server intervals)
+     — `roles/news_watcher/subscription_processor.py::process_server_subscriptions`.
+   - `database_cleanup` (24 h) — purges old interactions from the legacy SQLite DB.
+   - `banker_global_scheduler` (24 h) — `roles/banker/banker.py::banker_task`: creates wallets,
+     initializes the dice-game pot, distributes daily TAE.
 
-A 1-minute tick iterates guilds and calls `get_due_subrole_tasks_for_server(server_id)`. Due
-subroles (`beggar`, `ring`) are executed in-process via
-`execute_subrole_internal_task(subrole_name, subrole_config, bot_instance=bot, ...)`, which
-delegates to the concrete task module (e.g. `roles/banker/subroles/beggar/beggar_task.py`).
-After execution, `mark_subrole_executed()` updates `next_run = now + frequency_hours`.
+> **Per-server enable/disable** is enforced inside each job: jobs read
+> `server_config.json` via `discord_bot/canvas/server_config.py::is_role_enabled` and skip
+> servers where the role is locally disabled. The single global scheduler stays simple; per-server
+> gating lives next to the role logic.
 
-`treasure_hunter` and `news_watcher` also have **in-bot global schedulers** (separate from their
-role subprocesses) that drive global price/feed updates and per-server alerts using the bot's
-Discord context.
+> **DiscordScheduler is a registration helper, not a separate runtime.** It exposes the
+> Discord-bound jobs as bound methods on its instance, but its `start()` method registers them
+> on whatever `JobScheduler` it was constructed with. In production, that scheduler is
+> `RunSupervisor.job_scheduler`; in standalone tests, it can fall back to creating its own.
 
 ### 9.4 Role catalog
 
@@ -1109,30 +1124,40 @@ databases/{server_id}/
 - `run_supervisor.py`: RunSupervisor wrapper integrating Supervisor + JobScheduler
 - `rabctl.py`: CLI tool for IPC control (status, trigger, pause, resume, restart, shutdown, health, metrics)
 
-**Runtime Topology (0.6.2):**
+**Runtime Topology (0.6.2 — single-scheduler):**
 
 ```text
 run.py main()                                       (Docker CMD: python run.py)
-├── RunSupervisor (new infrastructure, in-process)
+├── RunSupervisor (in-process)
 │   ├── Supervisor (actors)
 │   │   └── mc (Music Controller — persistent actor with restart policy)
-│   ├── JobScheduler (in-process periodic jobs)
-│   │   ├── daily_memory_summary       (tick=1h, per-server staggered)
-│   │   ├── recent_memory_summary      (4h)
-│   │   ├── relationship_memory_refresh (1h)
-│   │   ├── weekly_personality_evolution (tick=6h, per-server staggered)
-│   │   └── gdpr_retention             (configurable, default 24h)
+│   ├── job_scheduler  ← THE SINGLE JobScheduler instance for the whole bot
+│   │   ├── (registered at startup by RunSupervisor.register_memory_jobs)
+│   │   │   ├── daily_memory_summary        (tick=1h, per-server staggered)
+│   │   │   ├── recent_memory_summary       (4h)
+│   │   │   ├── relationship_memory_refresh (1h)
+│   │   │   ├── weekly_personality_evolution (tick=6h, per-server staggered)
+│   │   │   └── gdpr_retention              (configurable, default 24h)
+│   │   └── (registered on Discord on_ready by DiscordScheduler.start with
+│   │        external_scheduler=RunSupervisor.job_scheduler)
+│   │       ├── discord_task_scheduler           (1min, subrole ticker)
+│   │       ├── treasure_hunter_global_scheduler (1min ticker, runs on interval_hours)
+│   │       ├── news_watcher_global_scheduler    (1min ticker, runs on interval_hours)
+│   │       ├── news_watcher_subscription_processor (1min, per-server intervals)
+│   │       ├── database_cleanup                 (24h)
+│   │       └── banker_global_scheduler          (24h)
 │   ├── IPC Server (/tmp/rab_ipc.sock)  — see §20.5 (rabctl)
 │   └── Scheduler State Persistence    (next_run, status, last_shutdown)
-├── discord_bot() (in-process, same asyncio loop)
-│   ├── ChatMessageQueue (8 workers, maxsize=100, §19.1)
-│   ├── _LLM_SEMAPHORE (max 10 concurrent orchestrations, §19.1)
-│   ├── DiscordScheduler (JobScheduler-backed, owns subrole ticker / TH / NW)
-│   └── on_message → enqueue → workers → call_llm_async (§8.2)
-└── scheduler() (legacy slim loop)
-    └── launch_role()  → role-script subprocesses (news_watcher, treasure_hunter,
-        trickster, shaman, banker, juggler) — see §3.1 migration note.
+└── discord_bot() (in-process, same asyncio loop)
+    ├── ChatMessageQueue (8 workers, maxsize=100, §19.1)
+    ├── _LLM_SEMAPHORE (max 10 concurrent orchestrations, §19.1)
+    ├── DiscordScheduler (registration helper; uses RunSupervisor.job_scheduler)
+    └── on_message → enqueue → workers → call_llm_async (§8.2)
 ```
+
+There are **no subprocesses**, **no `@tasks.loop` legacy schedulers**, and **no second
+`JobScheduler` instance**. The legacy `run.py::launch_role` and `scheduler()` loop, plus the
+five `@tasks.loop` schedulers in `agent_discord.py`, were removed in 0.6.2.
 
 **JobScheduler Features:**
 - Jobs with schedules (interval, cron-like)
@@ -1194,19 +1219,19 @@ See `roleagentbot.service` for systemd configuration:
 - `PoE2Standard.db` → NoSQL.
 - `global_news_db` replaced with `global_news_nosql`.
 
-**Fase C** — Process Refactor: PARTIAL ⚠️
+**Fase C** — Process Refactor: COMPLETED ✓ (0.6.2)
 
-- COMPLETED:
-  - 5 `@tasks.loop` → `JobScheduler` (in-bot, via `discord_bot/discord_scheduler.py`).
-  - Memory maintenance jobs in `RunSupervisor.JobScheduler`.
-  - Persistent roles (`mc`) → `Supervisor`-managed actors.
-  - `scheduler_state.json` persistence.
-  - IPC + `rabctl.py`.
-- PENDING (0.6.x targets):
-  - `run.py::launch_role()` still spawns subprocesses for role-level scripts
-    (news_watcher, treasure_hunter, trickster, shaman, banker, juggler). These need to be
-    converted into in-process `JobScheduler` coroutines so that `RunSupervisor` becomes the
-    **single task launcher** (see §3.1 migration note).
+- 5 `@tasks.loop` → `JobScheduler` (`discord_bot/discord_scheduler.py`).
+- Memory maintenance jobs in `RunSupervisor.job_scheduler`.
+- Persistent roles (`mc`) → `Supervisor`-managed actors.
+- `scheduler_state.json` persistence.
+- IPC + `rabctl.py`.
+- **0.6.2 finalisation**: `run.py::launch_role` and the slim `scheduler()` loop were
+  removed. `banker_task()` is now a job on the shared scheduler. `DiscordScheduler` was
+  refactored to register its jobs onto `RunSupervisor.job_scheduler` via the new
+  `external_scheduler` parameter, eliminating the second `JobScheduler` instance and the
+  duplicate news_watcher/treasure_hunter execution paths. The runtime now has exactly one
+  task launcher (`RunSupervisor.job_scheduler`) and zero subprocesses.
 
 **Fase D** — Agent Memory NoSQL: COMPLETED ✓ (validation period)
 
@@ -1269,15 +1294,26 @@ See `roleagentbot.service` for systemd configuration:
 - `agent_db.py` (`AgentDatabase`) — full removal pending the post-migration validation window.
 - `agent_roles_db.py` further reduction — pending validation that all callers go through NoSQL.
 
-**Open work towards "single launcher" (Fase C completion):**
+**Single-launcher convergence — DONE in 0.6.2.** `run.py::launch_role`, `scheduler()`, and the
+five `@tasks.loop` schedulers in `agent_discord.py` were deleted. The runtime has exactly one
+`JobScheduler` (`RunSupervisor.job_scheduler`) hosting both the memory maintenance jobs and the
+Discord-bound jobs (registered on `on_ready` via `DiscordScheduler.start(external_scheduler=...)`).
+`run.py` is now a thin entry point: load config → start RunSupervisor → run `discord_bot()`.
 
-- Convert `roles/news_watcher/news_watcher.py`, `roles/treasure_hunter/treasure_hunter.py`,
-  `roles/banker/banker.py`, `roles/shaman/shaman.py`, `roles/trickster/trickster.py`, and
-  `roles/juggler/juggler.py` from standalone CLI scripts into in-process coroutine factories
-  that `RunSupervisor.JobScheduler` can register directly. Once done, `run.py::launch_role`
-  and the `scheduler()` slim loop can be deleted, and `run_supervisor.py` (or `run.py`
-  rewritten as a thin wrapper) becomes the single entry point.
-- `roleagentbot.service` should then be updated accordingly (currently invokes `python run.py`).
+**Optional next step — single entry point:** `run.py` could be reduced to a 5-line shim that
+delegates to `run_supervisor.py::main()`, or `run_supervisor.py` could be promoted to be the
+Docker `CMD`/systemd `ExecStart`. Today both work; the choice is purely cosmetic.
+
+**Cohesion follow-ups (not blocking, see §9.1):**
+
+- `agent_discord.py` still detects the `WIKIPEDIA` and `README` sentinels emitted by the LLM.
+  This logic could move into `roles/scholar/` for full role cohesion.
+- Several `discord_bot/canvas/canvas_*.py` modules import role internals (DBs, message helpers).
+  Each role could expose a public Canvas-facing API to keep its internals private.
+- Thin role scripts `roles/juggler/juggler.py`, `roles/shaman/shaman.py`, `roles/trickster/trickster.py`,
+  `roles/scholar/scholar.py` no longer have any scheduled callers; only their helper functions
+  (system prompts, sentinel handlers) are imported. Consider renaming/dropping the empty `main()`
+  entry points to make the dead code obvious.
 
 **Test coverage gaps:**
 

@@ -17,18 +17,34 @@ logger = get_logger("discord_scheduler")
 class DiscordScheduler:
     """Manages scheduled tasks for the Discord bot using JobScheduler.
 
-    Replaces the existing @tasks.loop schedulers in agent_discord.py:
-    - discord_task_scheduler (1 min) → subrole tasks
-    - treasure_hunter_global_scheduler (1 min) → POE2 price updates
-    - news_watcher_global_scheduler (1 min) → news downloads
-    - news_watcher_subscription_processor (1 min) → subscription processing
-    - database_cleanup (24 hours) → DB cleanup
+    Hosts every Discord-context-bound periodic task; replaces both the legacy
+    @tasks.loop schedulers in agent_discord.py and the old role-script
+    dispatcher (run.py::launch_role).
+
+    Registered jobs:
+    - discord_task_scheduler (1 min) → subrole tasks (beggar, ring, ...)
+    - treasure_hunter_global_scheduler (1 min, runs on interval_hours)
+    - news_watcher_global_scheduler (1 min, runs on interval_hours)
+    - news_watcher_subscription_processor (1 min, runs on interval_hours)
+    - database_cleanup (24 h)
+    - banker_global_scheduler (24 h) → banker_task() across all servers
     """
 
-    def __init__(self, bot_instance, agent_config: dict):
+    def __init__(
+        self,
+        bot_instance,
+        agent_config: dict,
+        external_scheduler: Optional[JobScheduler] = None,
+    ):
         self.bot = bot_instance
         self.agent_config = agent_config
-        self.scheduler = JobScheduler(tick_seconds=60.0, logger=logger)
+
+        # When `external_scheduler` is provided (typical: RunSupervisor.job_scheduler),
+        # we register our jobs on the shared scheduler so the whole bot runs on a
+        # single JobScheduler instance. When None we own a private scheduler
+        # (used by tests / standalone scenarios).
+        self._owns_scheduler = external_scheduler is None
+        self.scheduler = external_scheduler or JobScheduler(tick_seconds=60.0, logger=logger)
         self._running = False
 
         # Track next run times for interval-based jobs
@@ -37,29 +53,33 @@ class DiscordScheduler:
         self._subscription_processor_next_runs: dict = {}
 
     async def start(self):
-        """Start the JobScheduler and register all jobs."""
+        """Register Discord-bound jobs and start the scheduler if we own it."""
         if self._running:
             logger.warning("[DiscordScheduler] Already running")
             return
 
         self._running = True
-        logger.info("[DiscordScheduler] Starting scheduler")
+        mode = "standalone" if self._owns_scheduler else "shared (RunSupervisor)"
+        logger.info(f"[DiscordScheduler] Registering jobs ({mode})")
 
-        # Register all jobs
+        # Register all jobs on whatever scheduler we have
         self._register_jobs()
 
-        # Start scheduler in background
-        asyncio.create_task(self.scheduler.run_forever())
+        # Only run a private scheduler when we own it; otherwise rely on the
+        # external one (RunSupervisor) to drive ticks.
+        if self._owns_scheduler:
+            asyncio.create_task(self.scheduler.run_forever())
 
         logger.info("[DiscordScheduler] Started successfully")
 
     async def stop(self):
-        """Stop the JobScheduler."""
+        """Stop the private scheduler (if any). Shared schedulers are stopped by their owner."""
         if not self._running:
             return
 
         logger.info("[DiscordScheduler] Stopping...")
-        await self.scheduler.stop()
+        if self._owns_scheduler:
+            await self.scheduler.stop()
         self._running = False
         logger.info("[DiscordScheduler] Stopped")
 
@@ -106,7 +126,19 @@ class DiscordScheduler:
             timeout_seconds=300,
         )
 
-        logger.info("[DiscordScheduler] Registered 5 jobs")
+        # 6. Banker global task - every 24 hours (creates wallets, daily TAE, dice pot)
+        banker_cfg = self.agent_config.get("roles", {}).get("banker", {})
+        if banker_cfg.get("enabled", False):
+            interval_hours = float(banker_cfg.get("interval_hours", 24))
+            self.scheduler.register(
+                "banker_global_scheduler",
+                self._run_banker_task,
+                Schedule.every(hours=interval_hours),
+                timeout_seconds=600,
+            )
+            logger.info(f"[DiscordScheduler] Registered 6 jobs (banker every {interval_hours}h)")
+        else:
+            logger.info("[DiscordScheduler] Registered 5 jobs (banker disabled)")
 
     async def _run_discord_task_scheduler(self):
         """Run Discord-dependent subrole tasks.
@@ -289,6 +321,23 @@ class DiscordScheduler:
         except Exception as e:
             logger.error(f"Error in database cleanup: {e}")
 
+    async def _run_banker_task(self):
+        """Run banker global task across all servers.
+
+        Replaces run.py::launch_role for banker. Calls roles.banker.banker.banker_task()
+        which iterates server directories, creates wallets, initializes the dice game pot,
+        and distributes daily TAE.
+        """
+        if not self.bot.is_ready():
+            return
+
+        try:
+            from roles.banker.banker import banker_task
+            await banker_task()
+            logger.info("[BANKER_SCHEDULER] banker_task completed successfully")
+        except Exception as e:
+            logger.error(f"[BANKER_SCHEDULER] Error executing banker_task: {e}", exc_info=True)
+
     def get_status(self) -> dict:
         """Get scheduler status."""
         return self.scheduler.status()
@@ -298,11 +347,23 @@ class DiscordScheduler:
 _discord_scheduler_instance: Optional[DiscordScheduler] = None
 
 
-def get_discord_scheduler(bot_instance=None, agent_config: Optional[dict] = None) -> DiscordScheduler:
-    """Get or create the global DiscordScheduler instance."""
+def get_discord_scheduler(
+    bot_instance=None,
+    agent_config: Optional[dict] = None,
+    external_scheduler: Optional[JobScheduler] = None,
+) -> DiscordScheduler:
+    """Get or create the global DiscordScheduler instance.
+
+    When `external_scheduler` is provided on first call, the DiscordScheduler
+    will register its jobs on that shared JobScheduler instead of creating
+    its own. This is how the production runtime consolidates everything on
+    `RunSupervisor.job_scheduler`.
+    """
     global _discord_scheduler_instance
     if _discord_scheduler_instance is None:
         if bot_instance is None or agent_config is None:
             raise ValueError("bot_instance and agent_config required for first initialization")
-        _discord_scheduler_instance = DiscordScheduler(bot_instance, agent_config)
+        _discord_scheduler_instance = DiscordScheduler(
+            bot_instance, agent_config, external_scheduler=external_scheduler
+        )
     return _discord_scheduler_instance
