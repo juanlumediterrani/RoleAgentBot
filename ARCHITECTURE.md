@@ -632,7 +632,7 @@ Typical view structure:
 
 ### 12.2 Navigation tree
 
-```
+```text
 !canvas → home/overview
 home/
 ├── overview
@@ -1365,8 +1365,6 @@ See `roleagentbot.service` for systemd configuration:
 **By design:**
 
 - Banker role remains in SQLite (transactional semantics over wallets/transfers — see §13.4).
-- Markdown lint warnings throughout this file (MD031/MD032/MD040/MD060) are pre-existing and
-  intentionally untouched to keep refactor diffs focused on substantive content.
 
 **Pending validation (deletion deferred):**
 
@@ -1399,4 +1397,100 @@ Docker `CMD`/systemd `ExecStart`. Today both work; the choice is purely cosmetic
 - E2E tests for news_watcher + PoE2 (medium priority).
 - No automated load-test harness for the §19.1 backpressure layers; smoke-tested manually with
   a `ChatMessageQueue(maxsize=3, num_workers=2)` + 5-message flood (see refactor session).
+
+---
+
+## 21. Future Implementations (git branch RAG)
+
+### 21.1 CX Agent Studio Integration (Option 1: Reasoning Backend)
+
+**Objective:** Integrate CX Agent Studio (Google Cloud) as a centralized multi-agent reasoning backend, maintaining the existing Discord infrastructure.
+
+**Proposed architecture:**
+
+```text
+Discord Gateway → agent_discord.py → MCP Client → CX Agent Studio (root agent)
+                                                      ↓
+                                            Role-specific sub-agents
+                                            (news_watcher, banker, scholar, etc.)
+                                                      ↓
+                                            Tools (Python code, data stores, APIs)
+                                                      ↓
+                                            Response → Discord
+```
+
+**Component mapping:**
+- **Root agent**: Main router (replaces `_process_chat_message` logic)
+- **Role-specific sub-agents**:
+  - `news_watcher` → sub-agent with Google Search tool
+  - `banker` → sub-agent with Python code tool (wallet DB)
+  - `treasure_hunter` → sub-agent with data store tool (price history)
+  - `scholar` → sub-agent with Wikipedia tool
+  - `juggler`, `shaman`, `trickster` → sub-agents with Python code tools
+- **Personality**: Migrate `personality.json` → CX Agent instructions (XML-structured)
+- **Memory**: Migrate JsonStore/JsonlRingBuffer → CX Agent data store tools
+- **Scheduling**: Maintain local JobScheduler, invoking CX Agent via MCP for periodic tasks
+
+**Implementation:**
+
+### Phase 1: MCP Client (2-3 weeks)
+
+- New module: `discord_bot/cx_mcp_client.py`
+- Implement `CXAgentMCPClient` with `call_agent(agent_id, message)`
+- Configure CX Agent Studio project
+- Create basic root agent
+- Test basic chat via MCP
+
+### Phase 2: Role Migration (4-6 weeks)
+
+- Create sub-agents in CX Agent Studio
+- Migrate tools per role:
+  - Google Search tool for news_watcher
+  - Python code tools for banker, trickster, shaman
+  - Data store tool for treasure_hunter
+  - Wikipedia tool for scholar
+- Test integration with Canvas UI
+
+### Phase 3: Memory Migration (3-4 weeks)
+
+- Migrate JsonStore → CX Agent data store
+- Implement bidirectional sync (NoSQL local ↔ CX Agent)
+- Migrate notable recollections system
+- Test persistence
+
+### Phase 4: Optimization (2-3 weeks)
+
+- Use AI-augmented building to generate new roles
+- Implement test case hill climbing
+- Optimize instructions with refine tools
+- Quality evaluation
+
+### Advantages
+
+- Native multi-agent orchestration with automatic routing
+- Better reasoning with Gemini optimized for CX
+- AI-augmented development (automatic agent generation)
+- Integrated evaluation and testing (test case hill climbing)
+- Ultra-low latency voice (future)
+- Export/import workflow for versioning
+
+### Disadvantages
+
+- Google Cloud dependency
+- Additional latency (MCP round-trip)
+- CX Agent Studio cost (~$0.25-2.50/day estimated)
+- Loss of fine-grained control over current fallback chain (Vertex AI → Groq → Mistral)
+
+### Estimated cost
+
+- Chat: ~100 tokens/prompt × 50 requests/day = 5K tokens/day
+- Roles: ~200 tokens/task × 100 tasks/day = 20K tokens/day
+- **Total**: ~25K tokens/day → ~$0.25-2.50/day (depends on Gemini model)
+
+### Technical considerations
+
+- CX Agent Studio MCP server exposes tools: `export_app`, `import_app`, `create_agent`, `update_agent`
+- Personality requires JSON → XML instructions conversion
+- Data store tools require schema definition
+- Execution type: asynchronous for high-latency tools (news_watcher), synchronous for low-latency (banker)
 
