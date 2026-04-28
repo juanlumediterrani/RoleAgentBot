@@ -203,8 +203,17 @@ async def answer_question(question: str, user_id: str = None, user_name: str = N
             if response.startswith("WIKIPEDIA "):
                 # Extract topic (remove "WIKIPEDIA " prefix)
                 topic = response[10:].strip()
-                # Get language from personality
-                lang = get_personality_language(server_id)
+                # Get language from server_config.json (not personality directory)
+                from discord_bot.canvas.server_config import get_server_language
+                lang_code = get_server_language(server_id)
+                # Map to Wikipedia language codes
+                lang_map = {
+                    "en-US": "en",
+                    "es-ES": "es",
+                    "zh-CN": "zh",
+                    "zh-CH": "zh"
+                }
+                lang = lang_map.get(lang_code, "en")
                 # Fetch Wikipedia extract
                 logger.info(f"Fetching Wikipedia for topic: {topic} (lang: {lang})")
                 wiki_result = await fetch_wikipedia_extract(topic, lang)

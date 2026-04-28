@@ -52,7 +52,7 @@
       "description": "画布面板是您与系统核心的直接接口。",
       "interestingthings": "**枢纽数据：**",
       "recentsynthesistitle": "🔁 **最近数据流**",
-      "pilgrimdatatitle": "朝圣者数据：",
+      "pilgrimdatatitle": "**朝圣者数据：**",
       "dailymemorytitle": "💾 **硅基记忆**",
       "personalsynthesistitle": "📂 **与朝圣者的纽带**",
       "dm_default_server_title": "🔔 **链接到枢纽：{server_name}**",

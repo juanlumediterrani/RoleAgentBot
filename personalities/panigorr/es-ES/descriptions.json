@@ -40,10 +40,10 @@
       }
     },
     "help_menu": {
-      "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
-      "description": "**Descripción** Igorrr es el servidor jorobado que te vigila mientras duermes. Tiene memoria para tus pecados y puede escupirte comandos si el Amo lo permite.",
+      "title": "📚 ** Panigorr - Manual de Supervivencia en el Horno**",
+      "description": "**Descripción** Panigorr es el servidor jorobado que te vigila mientras duermes. Tiene memoria para tus pecados y puede escupirte comandos si el Amo lo permite.",
       "separator": "---------------------------------------------",
-      "roles_section": "**Labores** Los módulos de Labores son las cadenas que Igorrr arrastra para servir al Amo y vigilar a los sacos de harina.",
+      "roles_section": "**Labores** Los módulos de Labores son las cadenas que Panigorr arrastra para servir al Amo y vigilar a los sacos de harina.",
       "behavior_section": "**Tics Nerviosos** Aquí se configuran los caprichos del Amo. Solo para los que mandan en la panadería.",
       "shortcuts_section": "**Acceso Rápido** Configura hasta 5 botones de atajo en el Canvas principal para acceso inmediato a tus labores favoritas. Disponible en Configuración > Atajos.",
       "shortcuts_messages": {
@@ -59,7 +59,7 @@
       "tips_section": "**Susurros útiles** -Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir... -Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
     },
     "canvas_home_messages": {
-      "title": "🌋 Igorrr - El Horno de Leña",
+      "title": "🌋 Panigorr - El Horno de Leña",
       "button_home": "🌋 El Horno",
       "button_back": "← Atrás (al sótano)",
       "button_roles": "🍞 Labores",
@@ -71,7 +71,7 @@
       "description": "-Toca mis herramientas si te atreves. El panel te deja manejar mis hilos... SSSSS.",
       "interestingthings": "**Cadenas del Horno:**",
       "recentsynthesistitle": "🥖 **Murmullos del Horno**",
-      "pilgrimdatatitle": "Datos de la Víctima:",
+      "pilgrimdatatitle": "**Datos de la Víctima:**",
       "dailymemorytitle": "🔥 **Cenizas vivas**",
       "personalsynthesistitle": "🪤 **Tu Rastro de Hollín**",
       "dm_default_server_title": "🔔 **Usando el horno de: {server_name}**",
@@ -80,29 +80,29 @@
     },
     "behavior_messages": {
       "conversation": {
-        "title": "💬  **Igorrr - Murmullos del Sótano**",
-        "description": "**Descripción:** -Igorrr responde a susurros y menciones. -Tiene memoria de tus pecados y puede recordarlos cuando quieras. -Reacciona a palabras prohibidas si el Amo lo permite.",
+        "title": "💬  **Panigorr - Murmullos del Sótano**",
+        "description": "**Descripción:** -Panigorr responde a susurros y menciones. -Tiene memoria de tus pecados y puede recordarlos cuando quieras. -Reacciona a palabras prohibidas si el Amo lo permite.",
         "button": "💬 Murmullos"
       },
       "greetings": {
-        "title": "👋  **Igorrr - Susurros del horno**",
-        "description": "**Descripción:** -Igorrr sisea cuando los sacos de harina se conectan. -Espera 5 min antes de decir que se fue. -(Por implementar): Reconoce si no le responden y deja de saludar.",
+        "title": "👋  **Panigorr - Susurros del horno**",
+        "description": "**Descripción:** -Panigorr sisea cuando los sacos de harina se conectan. -Espera 5 min antes de decir que se fue. -(Por implementar): Reconoce si no le responden y deja de saludar.",
         "button": "👋 Siseos"
       },
       "welcome": {
-        "title": "🍺  **Igorrr - Bienvenida al Horno**",
+        "title": "🍺  **Panigorr - Bienvenida al Horno**",
         "description": "**Descripción:** -Da la bienvenida a los sacos de harina nuevos al sótano.",
         "button": "🍺 Bienvenida"
       },
       "taboo": {
-        "title": "🚫  **Igorrr - Palabras Prohibidas**",
-        "description": "**Como funciona:** -Configura a Igorrr para que reaccione al leer una palabra. -Se puede activar/desactivar o configurar las palabras que huelen mal.",
+        "title": "🚫  **Panigorr - Palabras Prohibidas**",
+        "description": "**Como funciona:** -Configura a Panigorr para que reaccione al leer una palabra. -Se puede activar/desactivar o configurar las palabras que huelen mal.",
         "title_keywords": "Palabras que huelen mal:",
         "button": "🚫 Prohibido"
       },
       "memory": {
-        "title": "🧠  **Igorrr - Memoria del Horno**",
-        "description": "**Descripción** -Consulta los recuerdos de Igorrr: el hollín acumulado, los gritos recientes y los pecados de cada leproso.",
+        "title": "🧠  **Panigorr - Memoria del Horno**",
+        "description": "**Descripción** -Consulta los recuerdos de Panigorr: el hollín acumulado, los gritos recientes y los pecados de cada leproso.",
         "button": "🧠 Memoria",
         "dropdown": {
           "long": {
@@ -123,17 +123,17 @@
         }
       },
       "role_control": {
-        "title": "🎛️  **Igorrr - Control de Cadenas**",
+        "title": "🎛️  **Panigorr - Control de Cadenas**",
         "description": "**Descripción** -Activa o apaga las labores del sótano desde aquí.",
         "button": "🎛️ Control"
       },
       "settings": {
-        "title": "⚙️  **Igorrr - Konfigurazion del Kampamento**",
+        "title": "⚙️  **Panigorr - Konfigurazion del Kampamento**",
         "description": "**Descripción**\\n -Ajusta el idioma del kampamento y aktiva los labores.",
         "button": "⚙️ Konfigurazion"
       },
       "personality": {
-        "title": "🎭  **Igorrr - Cambio de Piel**",
+        "title": "🎭  **Panigorr - Cambio de Piel**",
         "description": "**Descripción**\\n -Cambia mi personalidad para este servidor.\\n -Descarga mi piel actual antes de mudarme.\\n -Migra mis recuerdos al cambiar.",
         "button": "🎭 Piel",
         "option_change": "Cambiar Piel",
@@ -160,7 +160,7 @@
     },
     "canvas_role_messages": {
       "title": "🎪 **Labores del Horno**",
-      "description": "Elige qué cadena quieres que Igorrr tire hoy. El Amo vigila."
+      "description": "Elige qué cadena quieres que Panigorr tire hoy. El Amo vigila."
     },
     "canvas_memory_messages": {
       "title": "🧠 **Cerebro Lleno de Hollín**",
@@ -168,7 +168,7 @@
     },
     "roles_view_messages": {
       "title": "🎭 Trucos de Pan 🎭",
-      "description": "🌟 Mira qué cadenas arrastra Igorrr hoy para complacer al Amo.",
+      "description": "🌟 Mira qué cadenas arrastra Panigorr hoy para complacer al Amo.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",
       "inactive_status": "❌ DURMIENDO",
@@ -179,7 +179,7 @@
       "help_commands": "💡 **PARA LOS TONTOS:**",
       "canvas_details": "🎨 **MUGRE EN CANVAS:**",
       "navigation_help": "Usa los botones grasientos para moverte.",
-      "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA** Igorrr está rascándose la sarna. Pide al Amo que active algo. **Labores posibles:** • 📡 News Watcher - Vigilante • 💎 Treasure Hunter - Buscador de chatarra • 🎭 Trickster - Mendigo y cenizas • 🌾 Banker - La despensa del Amo • 🎵 MC - El gramófono oxidado",
+      "no_roles_active": "🌫️ **NINGUNA LABOR ACTIVA** Panigorr está rascándose la sarna. Pide al Amo que active algo. **Labores posibles:** • 📡 News Watcher - Vigilante • 💎 Treasure Hunter - Buscador de chatarra • 🎭 Trickster - Mendigo y cenizas • 🌾 Banker - La despensa del Amo • 🎵 MC - El gramófono oxidado",
       "role_list_title": "☠️ Tareas y Castigos",
       "role_available": "✅ {role} - SIBILANTE Y LISTO",
       "role_unavailable": "❌ {role} - RASCÁNDOSE LA SARNA",
@@ -194,12 +194,12 @@
         "button": "🚫 Prohibido"
       },
       "comentary": {
-        "title": "🗣️  **Igorrr - Murmullos**",
-        "description": "**Descripción**\\n -Igorrr habla solo sobre lo que ve en el horno y los chismes del callejón.",
+        "title": "🗣️  **Panigorr - Murmullos**",
+        "description": "**Descripción**\\n -Panigorr habla solo sobre lo que ve en el horno y los chismes del callejón.",
         "button": "🗣️ Murmurar"
       },
       "role_control": {
-        "title": "**🎛️ Igorrr - Control de Cadenas**",
+        "title": "**🎛️ Panigorr - Control de Cadenas**",
         "description": "**Descripción**\\n -Activa o apaga mis labores. No me hagas trabajar de más... SSSSS.",
         "button": "🎛️ Control"
       }

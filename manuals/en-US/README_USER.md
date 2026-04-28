@@ -14,7 +14,7 @@ Available personalities:
 - **Putre** — aggressive orc, blunt and direct
 - **Yuki** — distinct style and voice
 - **Hans** — distinct style and voice
-- **Igorrr** — distinct style and voice
+- **Panigorr** — distinct style and voice
 
 Each server can have a different active personality. Language is also configurable per server (English, Spanish, Chinese). Use `!canvas` to change personality and language for your server.
 

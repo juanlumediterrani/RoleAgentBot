@@ -40,10 +40,10 @@
       }
     },
     "help_menu": {
-      "title": "📚 ** Igorrr - Oven Survival Manual**",
-      "description": "**Description** Igorrr is the hunchback servant who watches you while you sleep. He has memory for your sins and can spit commands at you if the Master allows.",
+      "title": "📚 ** Panigorr - Oven Survival Manual**",
+      "description": "**Description** Panigorr is the hunchback servant who watches you while you sleep. He has memory for your sins and can spit commands at you if the Master allows.",
       "separator": "---------------------------------------------",
-      "roles_section": "**Tasks** The Task modules are the chains Igorrr drags to serve the Master and watch the flour sacks.",
+      "roles_section": "**Tasks** The Task modules are the chains Panigorr drags to serve the Master and watch the flour sacks.",
       "behavior_section": "**Nervous Tics** Here the Master's whims are configured. Only for those in charge at the bakery.",
       "shortcuts_section": "**Quick Access** Configure up to 5 shortcut buttons in the Canvas home for immediate access to your favorite tasks. Available in Settings > Shortcuts.",
       "shortcuts_messages": {
@@ -59,7 +59,7 @@
       "tips_section": "**Useful Whispers** -You can ask me how to use something if your silk fingers don't know how to type... -The best is hidden in the dark corners of each task... HEHEHE."
     },
     "canvas_home_messages": {
-      "title": "🌋 Igorrr - The Wood Oven",
+      "title": "🌋 Panigorr - The Wood Oven",
       "button_home": "🌋 The Oven",
       "button_back": "← Back (to the basement)",
       "button_roles": "🍞 Tasks",
@@ -70,7 +70,7 @@
       "description": "-Touch my tools if you dare. The panel lets you handle my threads... SSSSS.",
       "interestingthings": "**Oven Chains:**",
       "recentsynthesistitle": "**Oven Whispers**",
-      "pilgrimdatatitle": "Victim Data:",
+      "pilgrimdatatitle": "**Victim Data:**",
       "dailymemorytitle": "**Living Ashes**",
       "personalsynthesistitle": "**Your Soot Trail**",
       "dm_default_server_title": "**Using the oven of: {server_name}**",
@@ -79,29 +79,29 @@
     },
     "behavior_messages": {
       "conversation": {
-        "title": "💬  **Igorrr - Basement Whispers**",
-        "description": "**Description:** -Igorrr responds to whispers and mentions. -He has memory of your sins and can recall them when you want. -He reacts to forbidden words if the Master allows.",
+        "title": "💬  **Panigorr - Basement Whispers**",
+        "description": "**Description:** -Panigorr responds to whispers and mentions. -He has memory of your sins and can recall them when you want. -He reacts to forbidden words if the Master allows.",
         "button": "💬 Whispers"
       },
       "greetings": {
-        "title": "👋  **Igorrr - Oven Hisses**",
-        "description": "**Description:** -Igorrr hisses when flour sacks connect. -He waits 5 min before saying they left. -(To implement): Recognizes if they don't respond and stops greeting.",
+        "title": "👋  **Panigorr - Oven Hisses**",
+        "description": "**Description:** -Panigorr hisses when flour sacks connect. -He waits 5 min before saying they left. -(To implement): Recognizes if they don't respond and stops greeting.",
         "button": "👋 Hisses"
       },
       "welcome": {
-        "title": "🍺  **Igorrr - Welcome to the Oven**",
+        "title": "🍺  **Panigorr - Welcome to the Oven**",
         "description": "**Description:** -Welcomes new flour sacks to the basement.",
         "button": "🍺 Welcome"
       },
       "taboo": {
-        "title": "🚫  **Igorrr - Forbidden Words**",
-        "description": "**How it works:** -Configure Igorrr to react when reading a word. -Can be activated/deactivated or the words that smell bad can be configured.",
+        "title": "🚫  **Panigorr - Forbidden Words**",
+        "description": "**How it works:** -Configure Panigorr to react when reading a word. -Can be activated/deactivated or the words that smell bad can be configured.",
         "title_keywords": "Words that smell bad:",
         "button": "🚫 Forbidden"
       },
       "memory": {
-        "title": "🧠  **Igorrr - Oven Memory**",
-        "description": "**Description** -Consult Igorrr's memories: the accumulated soot, recent screams, and each leper's sins.",
+        "title": "🧠  **Panigorr - Oven Memory**",
+        "description": "**Description** -Consult Panigorr's memories: the accumulated soot, recent screams, and each leper's sins.",
         "button": "🧠 Memory",
         "dropdown": {
           "long": {
@@ -122,17 +122,17 @@
         }
       },
       "role_control": {
-        "title": "🎛️  **Igorrr - Chain Control**",
+        "title": "🎛️  **Panigorr - Chain Control**",
         "description": "**Description** -Activate or deactivate basement tasks from here.",
         "button": "🎛️ Control"
       },
       "settings": {
-        "title": "⚙️  **Igorrr - Kamp Konfiguration**",
+        "title": "⚙️  **Panigorr - Kamp Konfiguration**",
         "description": "**Description**\\n -Adjust the kamp language and aktivate tasks.",
         "button": "⚙️ Konfiguration"
       },
       "personality": {
-        "title": "🎭  **Igorrr - Skin Change**",
+        "title": "🎭  **Panigorr - Skin Change**",
         "description": "**Description**\\n -Change my personality for this server.\\n -Download my current skin before moving.\\n -Migrate my memories when changing.",
         "button": "🎭 Skin",
         "option_change": "Change Skin",
@@ -159,7 +159,7 @@
     },
     "canvas_role_messages": {
       "title": "🎪 **Oven Tasks**",
-      "description": "Choose which chain you want Igorrr to drag today. The Master watches."
+      "description": "Choose which chain you want Panigorr to drag today. The Master watches."
     },
     "canvas_memory_messages": {
       "title": "🧠 **Soot-Filled Brain**",
@@ -167,7 +167,7 @@
     },
     "roles_view_messages": {
       "title": "🎭 Bread Tricks 🎭",
-      "description": "🌟 Look at what chains Igorrr drags today to please the Master.",
+      "description": "🌟 Look at what chains Panigorr drags today to please the Master.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",
       "inactive_status": "❌ SLEEPING",
@@ -178,7 +178,7 @@
       "help_commands": "💡 **FOR THE FOOLS:**",
       "canvas_details": "🎨 **CANVAS FILTH:**",
       "navigation_help": "Use the greasy buttons to move around.",
-      "no_roles_active": "🌫️ **NO ACTIVE TASK** Igorrr is scratching his scabies. Ask the Master to activate something. **Possible tasks:** • 📡 News Watcher - Watcher • 💎 Treasure Hunter - Scrap searcher • 🎭 Trickster - Beggar and ashes • 🌾 Banker - The Master's pantry • 🎵 MC - The rusty gramophone",
+      "no_roles_active": "🌫️ **NO ACTIVE TASK** Panigorr is scratching his scabies. Ask the Master to activate something. **Possible tasks:** • 📡 News Watcher - Watcher • 💎 Treasure Hunter - Scrap searcher • 🎭 Trickster - Beggar and ashes • 🌾 Banker - The Master's pantry • 🎵 MC - The rusty gramophone",
       "role_list_title": "☠️ Tasks and Punishments",
       "role_available": "✅ {role} - HISSING AND READY",
       "role_unavailable": "❌ {role} - SCRATCHING SCABIES",
@@ -193,12 +193,12 @@
         "button": "🚫 Forbidden"
       },
       "comentary": {
-        "title": "🗣️  **Igorrr - Whispers**",
-        "description": "**Description**\\n -Igorrr talks to himself about what he sees in the oven and alley gossip.",
+        "title": "🗣️  **Panigorr - Whispers**",
+        "description": "**Description**\\n -Panigorr talks to himself about what he sees in the oven and alley gossip.",
         "button": "🗣️ Mutter"
       },
       "role_control": {
-        "title": "**🎛️ Igorrr - Chain Control**",
+        "title": "**🎛️ Panigorr - Chain Control**",
         "description": "**Description**\\n -Activate or deactivate my tasks. Don't make me work too much... SSSSS.",
         "button": "🎛️ Control"
       }

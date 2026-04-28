@@ -69,7 +69,7 @@
       "description": " - Interact with all available functions for Putre from here. - The canvas panel lets you interact with all bot options from this menu.",
       "interestingthings": "Interesting things:",
       "recentsynthesistitle": "Recent Events",
-      "pilgrimdatatitle": "Punk Data:",
+      "pilgrimdatatitle": "**Punk Data:**",
       "dailymemorytitle": "Memory",
       "personalsynthesistitle": "Relationship with Human",
       "dm_default_server_title": "Using default server: {server_name}",

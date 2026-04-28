@@ -46,6 +46,15 @@ def _get_server_config_path(server_id: str) -> Path:
     return base_dir / "databases" / server_id / "server_config.json"
 
 
+def _get_shortcuts_path(server_id: str) -> Path:
+    """Get the path to shortcuts.json for a specific server.
+    
+    Stores in: databases/{server_id}/shortcuts.json
+    """
+    base_dir = Path(__file__).parent.parent.parent
+    return base_dir / "databases" / server_id / "shortcuts.json"
+
+
 def _load_server_config(server_id: str) -> Dict[str, Any]:
     """Load configuration for a specific server from its server_config.json.
     
@@ -800,6 +809,184 @@ def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, 
             })
     
     return set_canvas_shortcuts(server_id, shortcuts)
+
+
+# ==================== Canvas Shortcuts per User ====================
+
+def _load_user_shortcuts(server_id: str) -> Dict[str, Any]:
+    """Load shortcuts configuration for all users from shortcuts.json.
+    
+    Args:
+        server_id: Discord server/guild ID
+        
+    Returns:
+        Dict mapping user_id to list of shortcuts
+    """
+    shortcuts_path = _get_shortcuts_path(server_id)
+    
+    if not shortcuts_path.exists():
+        return {}
+    
+    try:
+        with _lock:
+            with open(shortcuts_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning(f"Failed to load shortcuts for server {server_id}: {e}")
+        return {}
+
+
+def _save_user_shortcuts(server_id: str, shortcuts_data: Dict[str, Any]) -> bool:
+    """Save shortcuts configuration for all users to shortcuts.json.
+    
+    Args:
+        server_id: Discord server/guild ID
+        shortcuts_data: Dict mapping user_id to list of shortcuts
+        
+    Returns:
+        True if successful
+    """
+    if not server_id or server_id == "0":
+        logger.warning("Cannot save user shortcuts for invalid server_id")
+        return False
+    
+    shortcuts_path = _get_shortcuts_path(server_id)
+    
+    # Ensure directory exists
+    shortcuts_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        with _lock:
+            with open(shortcuts_path, 'w', encoding='utf-8') as f:
+                json.dump(shortcuts_data, f, indent=2, ensure_ascii=False)
+        return True
+    except IOError as e:
+        logger.warning(f"Failed to save shortcuts for server {server_id}: {e}")
+        return False
+
+
+def get_user_shortcuts(server_id: str, user_id: str) -> list[Dict[str, Any]]:
+    """Get canvas shortcuts configuration for a specific user.
+    
+    Reads from databases/{server_id}/shortcuts.json[user_id]
+    
+    Args:
+        server_id: Discord server/guild ID
+        user_id: Discord user ID
+        
+    Returns:
+        List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
+    """
+    if not server_id or server_id == "0" or not user_id:
+        return []
+    
+    shortcuts_data = _load_user_shortcuts(server_id)
+    user_shortcuts = shortcuts_data.get(user_id, [])
+    
+    # Ensure shortcuts is a list
+    if not isinstance(user_shortcuts, list):
+        return []
+    
+    return user_shortcuts
+
+
+def set_user_shortcuts(server_id: str, user_id: str, shortcuts: list[Dict[str, Any]]) -> bool:
+    """Set canvas shortcuts configuration for a specific user.
+    
+    Saves to databases/{server_id}/shortcuts.json[user_id]
+    
+    Args:
+        server_id: Discord server/guild ID
+        user_id: Discord user ID
+        shortcuts: List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
+        
+    Returns:
+        True if successful
+    """
+    if not server_id or server_id == "0" or not user_id:
+        logger.warning("Cannot set user shortcuts for invalid server_id or user_id")
+        return False
+    
+    shortcuts_data = _load_user_shortcuts(server_id)
+    
+    # Validate shortcuts structure
+    validated_shortcuts = []
+    for shortcut in shortcuts[:5]:  # Max 5 shortcuts
+        if isinstance(shortcut, dict):
+            validated_shortcuts.append({
+                "id": shortcut.get("id", len(validated_shortcuts) + 1),
+                "enabled": bool(shortcut.get("enabled", True)),
+                "label": str(shortcut.get("label", ""))[:40],  # Max 40 chars for label
+                "target_role": str(shortcut.get("target_role", "")),
+                "target_subrole": shortcut.get("target_subrole")  # Can be None or string
+            })
+    
+    shortcuts_data[user_id] = validated_shortcuts
+    
+    success = _save_user_shortcuts(server_id, shortcuts_data)
+    if success:
+        logger.info(f"Updated canvas shortcuts for user {user_id} in server {server_id}: {len(validated_shortcuts)} shortcuts")
+    return success
+
+
+def get_user_shortcut(server_id: str, user_id: str, shortcut_id: int) -> Optional[Dict[str, Any]]:
+    """Get a specific canvas shortcut by ID for a specific user.
+    
+    Args:
+        server_id: Discord server/guild ID
+        user_id: Discord user ID
+        shortcut_id: Shortcut ID (1-5)
+        
+    Returns:
+        Shortcut dict or None if not found
+    """
+    shortcuts = get_user_shortcuts(server_id, user_id)
+    for shortcut in shortcuts:
+        if shortcut.get("id") == shortcut_id:
+            return shortcut
+    return None
+
+
+def update_user_shortcut(server_id: str, user_id: str, shortcut_id: int, enabled: bool, label: str, target_role: str, target_subrole: Optional[str] = None) -> bool:
+    """Update or create a canvas shortcut for a specific user.
+    
+    Args:
+        server_id: Discord server/guild ID
+        user_id: Discord user ID
+        shortcut_id: Shortcut ID (1-5)
+        enabled: Whether the shortcut is enabled
+        label: Display label for the button
+        target_role: Target role name
+        target_subrole: Target subrole name (optional)
+        
+    Returns:
+        True if successful
+    """
+    shortcuts = get_user_shortcuts(server_id, user_id)
+    
+    # Update existing shortcut or add new one
+    updated = False
+    for shortcut in shortcuts:
+        if shortcut.get("id") == shortcut_id:
+            shortcut["enabled"] = enabled
+            shortcut["label"] = label[:40]
+            shortcut["target_role"] = target_role
+            shortcut["target_subrole"] = target_subrole
+            updated = True
+            break
+    
+    if not updated:
+        # Add new shortcut if we have room
+        if len(shortcuts) < 5:
+            shortcuts.append({
+                "id": shortcut_id,
+                "enabled": enabled,
+                "label": label[:40],
+                "target_role": target_role,
+                "target_subrole": target_subrole
+            })
+    
+    return set_user_shortcuts(server_id, user_id, shortcuts)
 
 
 # ==================== Migration Helpers ====================

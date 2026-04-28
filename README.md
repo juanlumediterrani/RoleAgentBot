@@ -6,15 +6,13 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 ![Discord](https://img.shields.io/badge/Discord-2.7.0-green)
 ![License](https://img.shields.io/badge/License-Custom%20License-orange)
 
-![Main Characters](banners/maincharacters.png)
-
-![Roles](banners/roles.png)
-
 ## ✨ Features
 
 ### 🎭 Multi-Personality System
 
-- **Multiple Personalities**: Switch between different AI personalities (Rab, Putre, Kronk, Yuki, Hans, Igorrr, and more)
+![Main Characters](banners/maincharacters.png)
+
+- **Multiple Personalities**: Switch between different AI personalities (Rab, Putre, Kronk, Yuki, Hans, Panigorr, and more)
 - **Server-Specific Selection**: Configure different personalities per Discord server via Canvas UI or commands
 - **Character Voice**: Each personality has unique speech patterns, vocabulary, and behavioral traits
 - **Dynamic Responses**: AI maintains character consistency across all interactions
@@ -44,6 +42,8 @@ The bot's personality subtly evolves weekly based on server interactions:
 - **Notable Recollections**: Stores significant events for future reference and dreaming
 
 ### 🎮 Modular Role System
+
+![Roles](banners/roles.png)
 
 - **News Watcher**: RSS feed monitoring with AI-powered content filtering
 - **Treasure Hunter**: Path of Exile 2 item price tracking and market analysis

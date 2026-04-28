@@ -304,6 +304,17 @@ def _build_configured_synthesis_prompt(
 def _build_last_dialogue_section(last_dialogue: list[dict], server_id: str = None) -> str:
     if not last_dialogue:
         return _get_recent_dialogue_fallback(server_id)
+    
+    # Get personality name to replace "Bot:"
+    personality_name = "Bot"
+    if server_id:
+        try:
+            from agent_engine import _get_personality
+            personality = _get_personality(server_id)
+            personality_name = personality.get("name", "Bot")
+        except Exception:
+            pass
+    
     lines = []
     for item in last_dialogue[-10:]:
         human = str(item.get("humano", "")).strip()
@@ -328,9 +339,9 @@ def _build_last_dialogue_section(last_dialogue: list[dict], server_id: str = Non
                 lines.append(f'Umano: "{human}"')
         if bot:
             if timestamp:
-                lines.append(f'[{timestamp}] Bot: "{bot}"')
+                lines.append(f'[{timestamp}] {personality_name}: "{bot}"')
             else:
-                lines.append(f'Bot: "{bot}"')
+                lines.append(f'{personality_name}: "{bot}"')
     return "\n".join(lines).strip() or _get_recent_dialogue_fallback(server_id)
 
 
@@ -340,11 +351,13 @@ def _format_daily_interactions_for_summary(interactions: list[dict], server_id: 
     
     # Load event label from personality JSON with fallback
     event_label = "EVENT"
+    personality_name = "Bot"
     if server_id:
         try:
             from agent_engine import _get_personality
             personality = _get_personality(server_id)
             event_label = personality.get("general", {}).get("event", "EVENT")
+            personality_name = personality.get("name", "Bot")
         except Exception:
             pass
     
@@ -365,7 +378,7 @@ def _format_daily_interactions_for_summary(interactions: list[dict], server_id: 
         if context:
             lines.append(f"[{formatted_time}]{event_label}:{user_name} - {context}")
         if response:
-            lines.append(f"Bot: {response}")
+            lines.append(f"{personality_name}: {response}")
         lines.append("")
     return "\n".join(lines).strip()
 
@@ -454,11 +467,13 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
     # Get synthesis paragraph labels from personality JSON with English fallback
     # server_id is required for correct personality
     synthesis_labels = {}
+    personality_name = "Bot"
     if server_id:
         try:
             from agent_engine import _get_personality
             personality = _get_personality(server_id)
             synthesis_labels = personality.get("synthesis_paragraphs", {})
+            personality_name = personality.get("name", "Bot")
         except Exception as e:
             logger.warning(f"🧠 [SYNTHESIS] Error loading personality for {server_id} in _build_relationship_summary_prompt: {e}")
     target_user_label = synthesis_labels.get("target_user", "TARGET USER:")
@@ -492,7 +507,7 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
             if human:
                 lines.append(f'Human: "{human}"')
             if bot:
-                lines.append(f'Bot: "{bot}"')
+                lines.append(f'{personality_name}: "{bot}"')
             lines.append("")
         interactions_block = "\n".join(lines).strip()
     

@@ -1,5 +1,5 @@
 {
-    "title": "🎭  **División de Operaciones Especiales Her Hans**",
+    "title": "🎭  **División de Operaciones Especiales**",
     "description": "Comando de unidades tácticas especializadas en engaño estratégico y operaciones encubiertas.",
     "button": "🎭 Operaciones",
     "canvas_trickster_overview_title": "**🎭División de Operaciones Especiales Her Hans**",
@@ -20,7 +20,7 @@
         "historyvoid": " ¡Nadie ha combatido todavía, recluta!",
         "history": " **📜  Historial de batallas **",
         "help": " **Ayuda del TESORO DE GUERRA**\n Combata en el campo de batalla de Her Hans, apueste marcos y lance granadas para ganar! Use 'dice play' para combatir.\n Si el soldado lanza tres granadas perfectas gana el Tesoro de Guerra!",
-        "title": "💰  **TESORO DE GUERRA 💰**",
+        "title": "💰  **Tesoro de Guerra**",
         "current_balance": "Marcos acumulados en Tesoro:",
         "fixed_bet": "Costo de granada:",
         "possible_plays": "🎯 **Granadas restantes:** {jugadas}\n",
