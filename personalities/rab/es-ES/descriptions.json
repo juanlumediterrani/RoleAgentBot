@@ -31,6 +31,9 @@
       "shortcuts_messages": {
         "title": "Configuración de Acceso Rápido",
         "description": "Configura acceso inmediato a módulos",
+        "settings_description": "Configura botones de acceso rápido en el Canvas principal",
+        "placeholder_select_role": "Selecciona tu rol o subrol...",
+        "configure_shortcut": "Configurar Atajo {shortcut_id} - Selecciona un rol o subrol:",
         "saved": "✅ Atajo configurado con éxito",
         "failed": "❌ Error al configurar atajo",
         "cancelled": "Configuración cancelada"

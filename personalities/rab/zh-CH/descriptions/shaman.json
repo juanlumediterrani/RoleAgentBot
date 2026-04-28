@@ -6,14 +6,14 @@
         "nordic_runes": "🀄 **虚空代码** - 从量子虚空中提取宇宙真相的碎片"
     },
     "moon_phases": {
-        "new_moon": "🌑 新月",
-        "waxing_crescent": "🌒 娥眉月",
-        "first_quarter": "🌓 上弦月",
-        "waxing_gibbous": "🌔 盈凸月",
-        "full_moon": "🌕 满月",
-        "waning_gibbous": "🌖 亏凸月",
-        "last_quarter": "🌗 下弦月",
-        "waning_crescent": "🌘 残月"
+        "new_moon": "新月 🌑",
+        "waxing_crescent": "娥眉月 🌒",
+        "first_quarter": "上弦月 🌓",
+        "waxing_gibbous": "盈凸月 🌔",
+        "full_moon": "满月 🌕",
+        "waning_gibbous": "亏凸月 🌖",
+        "last_quarter": "下弦月 🌗",
+        "waning_crescent": "残月 🌘"
     },
     "nordic_runes": {
         "button": "🀄 虚空代码",

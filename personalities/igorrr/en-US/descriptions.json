@@ -49,6 +49,9 @@
       "shortcuts_messages": {
         "title": "Quick Access Configuration",
         "description": "Configure immediate access to tasks",
+        "settings_description": "Configure quick access buttons on Canvas home",
+        "placeholder_select_role": "Select your role or subrole...",
+        "configure_shortcut": "Configure Shortcut {shortcut_id} - Select a role or subrole:",
         "saved": "✅ Shortcut configured successfully... HEHEHE",
         "failed": "❌ FAILED TO CONFIGURE SHORTCUT... HISSS",
         "cancelled": "Configuration cancelled... DISMISSED"
@@ -163,7 +166,7 @@
       "description": "Erase my memories if you want me to forget how much disgust you give me. Or watch me remember your sins."
     },
     "roles_view_messages": {
-      "title": "🎭 Igorrr's Tasks 🎭",
+      "title": "🎭 Bread Tricks 🎭",
       "description": "🌟 Look at what chains Igorrr drags today to please the Master.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",

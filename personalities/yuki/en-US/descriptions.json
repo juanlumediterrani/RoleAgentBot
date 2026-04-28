@@ -49,6 +49,9 @@
       "shortcuts_messages": {
         "title": "Quick Access Configuration",
         "description": "Configure immediate access to arts",
+        "settings_description": "Configure quick access buttons on Canvas home",
+        "placeholder_select_role": "Select your role or subrole...",
+        "configure_shortcut": "Configure Shortcut {shortcut_id} - Select a role or subrole:",
         "saved": "✅ Shortcut configured successfully",
         "failed": "❌ Failed to configure shortcut",
         "cancelled": "Configuration cancelled"

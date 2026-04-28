@@ -49,6 +49,9 @@
       "shortcuts_messages": {
         "title": "Canvas Shortcuts",
         "description": "Configure quick access buttons",
+        "settings_description": "Configure quick access buttons on Canvas home",
+        "placeholder_select_role": "Select your role or subrole...",
+        "configure_shortcut": "Configure Shortcut {shortcut_id} - Select a role or subrole:",
         "saved": "✅ Shortcut saved successfully",
         "failed": "❌ Failed to save shortcut",
         "cancelled": "Configuration cancelled"

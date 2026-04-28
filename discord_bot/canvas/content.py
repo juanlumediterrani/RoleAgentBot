@@ -1709,6 +1709,9 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     ])
     
     # Section: Pilgrim Data
+    status_lines.extend([
+        pilgrimdatatitle,
+    ])
     if roles_config.get('banker', {}).get('enabled'):
         banker_info = _get_banker_wallet_info(server_id, author_id, coin_emoji, banker_title)
         if banker_info:

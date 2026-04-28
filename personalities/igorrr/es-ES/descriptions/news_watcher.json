@@ -1,5 +1,5 @@
 {
-    "title": "**📡 El Ojo del Horno de Igorrr**",
+    "title": "**📡 El Ojo del Horno**",
     "description": "Igorrr espía el mundo desde la ventana llena de hollín y avisa cuando algo va a arder.",
     "button": "📡 Ojo del Horno",
     "active_subscriptions": "🎯 Mugre que vigilo",
@@ -13,8 +13,8 @@
     "news_item_date": "🕐 Cuando lo vi",
     "no_recent_news": "🌫️ Nada nuevo que arder... SSSSS.",
     "watcher_help": " **Ojo del Horno** - Usa `!canvas` → News Watcher para que Igorrr te enseñe a espiar",
-    "canvas_watcher_overview_title": "📡 El Ojo de Igorrr",
-    "canvas_title": "📡 El Ojo del Horno de Igorrr",
+    "canvas_watcher_overview_title": "📡 Ojo del Horno",
+    "canvas_title": "📡 El Ojo del Horno",
     "select_watcher_action": "📡 Elige qué espiar...",
     "add_subscription": "Añadir Basura",
     "add_description": "Vigilar un nuevo tipo de porquería",

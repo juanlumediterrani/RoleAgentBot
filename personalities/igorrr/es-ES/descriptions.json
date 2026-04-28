@@ -49,6 +49,9 @@
       "shortcuts_messages": {
         "title": "Configuración de Acceso Rápido",
         "description": "Configura acceso inmediato a labores",
+        "settings_description": "Configura botones de acceso rápido en el Canvas principal",
+        "placeholder_select_role": "Elige tu labor o subrutina...",
+        "configure_shortcut": "Configurar Atajo {shortcut_id} - Elige una labor o subrutina:",
         "saved": "✅ Atajo configurado con éxito... JEJEJE",
         "failed": "❌ FALLO AL CONFIGURAR ATAJO... SSSSS",
         "cancelled": "Configuración cancelada... DESESTIMADA"
@@ -164,7 +167,7 @@
       "description": "Borra mis recuerdos si quieres que olvide cuánto asco me das. O mírame recordar tus pecados."
     },
     "roles_view_messages": {
-      "title": "🎭 Labores de Igorrr 🎭",
+      "title": "🎭 Trucos de Pan 🎭",
       "description": "🌟 Mira qué cadenas arrastra Igorrr hoy para complacer al Amo.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",

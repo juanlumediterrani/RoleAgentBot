@@ -49,6 +49,9 @@
       "shortcuts_messages": {
         "title": "Atajos del Canvas",
         "description": "Configura botones de acceso rápido",
+        "settings_description": "Configura botones de acceso rápido en el Canvas principal",
+        "placeholder_select_role": "Selecciona tu rol o subrol...",
+        "configure_shortcut": "Configurar Atajo {shortcut_id} - Selecciona un rol o subrol:",
         "saved": "✅ Atajo guardado correctamente",
         "failed": "❌ Error al guardar atajo",
         "cancelled": "Configuración cancelada"

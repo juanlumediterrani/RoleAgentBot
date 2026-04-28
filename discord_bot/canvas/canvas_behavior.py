@@ -66,7 +66,9 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     label_always_enabled = action_labels.get("always_enabled", "Always enabled")
     settings_lang = behavior_messages.get("settings", {}).get("language_select", {}).get("description", "Change the bot's language for this server")
     settings_role = "Enable or disable bot roles"  # This could also be added to descriptions if needed
-    settings_shortcuts = "Configure quick access buttons on Canvas home"
+    help_messages = descriptions.get("help_menu", {})
+    shortcuts_messages = help_messages.get("shortcuts_messages", {})
+    settings_shortcuts = shortcuts_messages.get("settings_description", "Configure quick access buttons on Canvas home")
 
     admin_options = [
         (f"{button_greetings}: {label_on}", "greetings_on", desc_boolean_toggle),

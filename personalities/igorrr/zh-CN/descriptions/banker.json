@@ -1,5 +1,5 @@
 {
-    "title": "**🌾 伊戈尔滴储藏室**",
+    "title": "**🌾 火炉储藏室**",
     "description": "驼背仆人管理你滴面粉袋子和炉子里滴交易。",
     "button": "🌾 炉子储藏室",
     "coin": "🌾",
@@ -8,7 +8,7 @@
     "no_transactions_yet": "还没偷过...嘶嘶嘶。",
     "current_balance": "🌾📦 当前面粉袋子：",
     "account_holder": "👤 可怜滴面粉袋子：",
-    "server": "🏦 伊戈尔滴地下室",
+    "server": "🏦 地下室",
     "opening_bonus": "初始口粮",
     "TAE_DAILY": "每日口粮",
     "BEGGAR_DONATION": "地下室捐赠",

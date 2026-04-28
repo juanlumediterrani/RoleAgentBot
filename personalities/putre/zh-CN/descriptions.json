@@ -49,6 +49,9 @@
       "shortcuts_messages": {
         "title": "Canvas快捷方式",
         "description": "配置快速访问按钮",
+        "settings_description": "在Canvas主页配置快速访问按钮",
+        "placeholder_select_role": "选择你的角色或子角色...",
+        "configure_shortcut": "配置快捷方式 {shortcut_id} - 选择角色或子角色:",
         "saved": "✅ 快捷方式保存成功",
         "failed": "❌ 保存快捷方式失败",
         "cancelled": "配置已取消"

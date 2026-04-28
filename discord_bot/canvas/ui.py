@@ -2481,6 +2481,7 @@ class ShortcutRoleSelect(discord.ui.Select):
         server_id = str(shortcuts_view.canvas_view.guild.id) if shortcuts_view.canvas_view.guild else None
         personality_descriptions = _get_personality_descriptions(server_id)
         role_descriptions = personality_descriptions.get("role_descriptions", {})
+        shortcuts_messages = personality_descriptions.get("help_menu", {}).get("shortcuts_messages", {})
         
         for role_name in valid_roles:
             role_cfg = agent_config.get("roles", {}).get(role_name, {})
@@ -2531,7 +2532,7 @@ class ShortcutRoleSelect(discord.ui.Select):
                 else:
                     placeholder = f"Selected: {selected_value.title()}"
         else:
-            placeholder = "Select role or subrole..."
+            placeholder = shortcuts_messages.get("placeholder_select_role", "Select role or subrole...")
         
         super().__init__(
             placeholder=placeholder,
@@ -2617,10 +2618,16 @@ class ShortcutsConfigView(discord.ui.View):
     
     async def _configure_shortcut(self, interaction: discord.Interaction, shortcut_id: int):
         """Switch to config mode for a specific shortcut."""
+        # Get personality descriptions for messages
+        server_id = str(self.canvas_view.guild.id) if self.canvas_view.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        shortcuts_messages = personality_descriptions.get("help_menu", {}).get("shortcuts_messages", {})
+        configure_shortcut = shortcuts_messages.get("configure_shortcut", "Configure Shortcut {shortcut_id} - Select a role or subrole:")
+        
         # Create new view in config mode
         config_view = ShortcutsConfigView(self.canvas_view, mode="config", shortcut_id=shortcut_id)
         await interaction.response.edit_message(
-            content=f"⚡ **Configure Shortcut {shortcut_id}** - Select a role or subrole:",
+            content=f"⚡ **{configure_shortcut.format(shortcut_id=shortcut_id)}**",
             view=config_view
         )
     

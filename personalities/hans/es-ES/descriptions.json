@@ -31,6 +31,9 @@
       "shortcuts_messages": {
         "title": "CONFIGURACIÓN DE ACCESO RÁPIDO",
         "description": "Configura acceso inmediato a módulos autorizados",
+        "settings_description": "Configura botones de acceso rápido en el Canvas principal",
+        "placeholder_select_role": "Selecciona tu rol o subrol...",
+        "configure_shortcut": "Configurar Atajo {shortcut_id} - Selecciona un rol o subrol:",
         "saved": "✅ Atajo configurado con éxito, ¡Zivilist!",
         "failed": "❌ ¡FALLO EN LA CONFIGURACIÓN DEL ATAJO!",
         "cancelled": "Configuración cancelada, ¡desestimada!"
