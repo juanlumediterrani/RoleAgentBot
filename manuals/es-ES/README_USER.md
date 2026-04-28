@@ -14,7 +14,7 @@ Personalidades disponibles:
 - **Putre** — orco agresivo, directo y sin filtros
 - **Yuki** — estilo y voz distintivos
 - **Hans** — estilo y voz distintivos
-- **Igorrr** — estilo y voz distintivos
+- **Panigorr** — estilo y voz distintivos
 
 Cada servidor puede tener una personalidad activa diferente. El idioma también es configurable por servidor (inglés, español, chino). Usa `!canvas` para cambiar la personalidad y el idioma de tu servidor.
 

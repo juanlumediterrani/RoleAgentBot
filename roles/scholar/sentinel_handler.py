@@ -63,9 +63,17 @@ async def process_wikipedia_sentinel(
         topic = response.strip()[10:].strip()
         logger.info(f"📚 Wikipedia topic extracted: {topic}")
 
-        # Get language from personality
-        from roles.scholar.scholar import get_personality_language
-        lang = get_personality_language(server_id)
+        # Get language from server_config.json (not personality directory)
+        from discord_bot.canvas.server_config import get_server_language
+        lang_code = get_server_language(server_id)
+        # Map to Wikipedia language codes
+        lang_map = {
+            "en-US": "en",
+            "es-ES": "es",
+            "zh-CN": "zh",
+            "zh-CH": "zh"
+        }
+        lang = lang_map.get(lang_code, "en")
 
         # Fetch Wikipedia extract
         from roles.scholar.wikipedia_fetcher import fetch_wikipedia_extract

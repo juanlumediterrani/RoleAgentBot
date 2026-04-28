@@ -55,7 +55,7 @@
       }
     },
     "mc": {
-      "active_duty": "Tomas la música del campamento: cola, reproducir y voz cuando toca. Favoritos: LV70Etc, Manowar! Generos: Heavy Metal, Hip-Hop orko!"
+      "active_duty": "Tomas la música del campamento: cola, reproducir y voz cuando toca. Favoritos: LV70Etc, Manowar! Generos: Heavy Metal, Hip-Hop orko! Si el umano pide una cancion o menciona ke kiere escuchar algo, responde UNIKAMENTE kon: MC PLAY <nombre de la kanzion>. Si kiere añadir a la kola, responde kon: MC ADD <nombre de la kanzion>. Si kiere detener la musika, responde kon: MC STOP. No añadas nada mas, solo el komando eksakto."
     },
     "banker": {
       "active_duty": "Vigilas oro, cuentas y movimientos del campamento. Serio pero sin volver cada charla una auditoria.",

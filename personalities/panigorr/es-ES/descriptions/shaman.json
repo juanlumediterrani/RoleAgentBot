@@ -1,6 +1,6 @@
 {
     "title": "♨️ **Vapores Místicos**",
-    "description": "Hornea las runas del destino con Igorrr y descubre lo que las migajas quemadas tienen para decirte.",
+    "description": "Hornea las runas del destino con Panigorr y descubre lo que las migajas quemadas tienen para decirte.",
     "button": "♨️ Vapores",
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **Runas de Pan** - Escribe runas en pan, hornéalas y lee el destino en las migajas quemadas"
@@ -18,7 +18,7 @@
     "nordic_runes": {
         "button": "🥖 Runas de Pan",
         "title": "🥖 **Runas de Pan** 🥖",
-        "description": "Igorrr escribe runas en pan y las hornea para ver tu futuro en las migajas quemadas... SSSSS",
+        "description": "Panigorr escribe runas en pan y las hornea para ver tu futuro en las migajas quemadas... SSSSS",
         "title_available_readings": "🔥 **Tipos de Hornada** 🔥\n",
         "available_readings": "- **Ceniza única** (rápida): Una sola migaja que apunta al presente.\n - **Tres panes** (temporal): Masa (pasado), Horneado (presente), Ceniza (futuro).\n - **Cruz de cinco** (horno completo): Cinco panes en cruz para ver todo el desastre.\n - **Cruz rúnica** (el gran horno): SSSSS... Siete panes, el máximo del caos.\n",
         "history": "📓 **Presagios anteriores** 📓",
@@ -30,7 +30,7 @@
         "reading_types": "🥖 Tipos de hornada: single, three, cross, runic_cross. ¡SSSSS!",
         "invalid_type": "🥖 ¡PUAJ! Tipo inválido saco de harina. Usa: single, three, cross, runic_cross.",
         "no_question": "🥖 ¡SSSSS! Sin pregunta no hay pan. Escribe algo.",
-        "reading_saved": "🔮 ¡SSSSS! Igorrr guardó tu lectura de runas en los pergaminos grasientos!",
+        "reading_saved": "🔮 ¡SSSSS! Panigorr guardó tu lectura de runas en los pergaminos grasientos!",
         "error": "🔮 ¡SSSSS! ¡El horno escupió las cenizas! ¡intenta de nuevo saco de harina!",
         "single_cast": "🥖 **LANZAMIENTO DE CENIZA ÚNICA** �",
         "three_cast": "🥖 **LANZAMIENTO DE TRES CENIZAS** 🥖",
@@ -84,7 +84,7 @@
             "rune": "Ceniza",
             "description": "Descripción",
             "success": "🔮 ¡SSSSS! Las Cenizas han hablado saco de harina!",
-            "saved": "🔮 ¡SSSSS! Igorrr ha guardado tu tirada en los pergaminos grasientos!"
+            "saved": "🔮 ¡SSSSS! Panigorr ha guardado tu tirada en los pergaminos grasientos!"
         }
     }
 }

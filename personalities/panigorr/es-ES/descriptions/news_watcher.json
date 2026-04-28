@@ -1,6 +1,6 @@
 {
     "title": "**📡 El Ojo del Horno**",
-    "description": "Igorrr espía el mundo desde la ventana llena de hollín y avisa cuando algo va a arder.",
+    "description": "Panigorr espía el mundo desde la ventana llena de hollín y avisa cuando algo va a arder.",
     "button": "📡 Ojo del Horno",
     "active_subscriptions": "🎯 Mugre que vigilo",
     "subscription_categories": "📂 Tipos de Basura",
@@ -12,7 +12,7 @@
     "news_item_description": "📝 Susurro",
     "news_item_date": "🕐 Cuando lo vi",
     "no_recent_news": "🌫️ Nada nuevo que arder... SSSSS.",
-    "watcher_help": " **Ojo del Horno** - Usa `!canvas` → News Watcher para que Igorrr te enseñe a espiar",
+    "watcher_help": " **Ojo del Horno** - Usa `!canvas` → News Watcher para que Panigorr te enseñe a espiar",
     "canvas_watcher_overview_title": "📡 Ojo del Horno",
     "canvas_title": "📡 El Ojo del Horno",
     "select_watcher_action": "📡 Elige qué espiar...",
@@ -31,9 +31,9 @@
     "subscription_feed": "🔗 Fuente: {feed}",
     "news_source": "📡 De donde vino el grito",
     "news_summary": "📝 El susurro en pocas palabras",
-    "news_opinion": "💭 Lo que piensa Igorrr",
+    "news_opinion": "💭 Lo que piensa Panigorr",
     "no_news_found": "🌫️ No hay gritos nuevos... el mundo está aburrido",
-    "checking_news": "🔄 Igorrr se asoma a la ventana... SSSSS...",
+    "checking_news": "🔄 Panigorr se asoma a la ventana... SSSSS...",
     "news_check_complete": "✅ Ya espié todo. Nada que arder por ahora.",
     "error_checking_news": "❌ ¡KHÉ! El humo me nubló la vista. No pude espiar.",
     "dropdown": {

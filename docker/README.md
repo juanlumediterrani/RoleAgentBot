@@ -70,7 +70,7 @@ DISCORD_TOKEN_PUTRE=tu_token_putre
 - **Putre**: Personalidad principal del proyecto (español)
 - **Putre(English)**: Versión en inglés de Putre
 - **Hans**: Nueva personalidad mejorada (alemán)
-- **Igorrr**: Personalidad experimental (ruso)
+- **Panigorr**: Personalidad experimental (ruso)
 - **Kronk**: Personalidad en desarrollo (incompleta)
 
 ### Configuración de Personalidades

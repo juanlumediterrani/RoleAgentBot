@@ -1935,13 +1935,14 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
         self._add_shortcut_buttons()
 
     def _add_shortcut_buttons(self):
-        """Add shortcut buttons from server_config.json."""
+        """Add shortcut buttons from user-specific shortcuts.json."""
         if not self.guild:
             return
         
         server_id = str(self.guild.id)
-        from .server_config import get_canvas_shortcuts
-        shortcuts = get_canvas_shortcuts(server_id)
+        user_id = str(self.author_id)
+        from .server_config import get_user_shortcuts
+        shortcuts = get_user_shortcuts(server_id, user_id)
         
         # Filter only enabled shortcuts
         enabled_shortcuts = [s for s in shortcuts if s.get("enabled", False)]
@@ -2567,14 +2568,15 @@ class ShortcutsConfigView(discord.ui.View):
         super().__init__(timeout=300)
         self.canvas_view = canvas_view
         self.server_id = str(canvas_view.guild.id) if canvas_view.guild else "0"
+        self.user_id = str(canvas_view.author_id)
         self.agent_config = canvas_view.agent_config
         self.mode = mode  # "list" or "config"
         self.shortcut_id = shortcut_id  # Only used in config mode
         self.selected_value = None  # Only used in config mode
         
         # Load current shortcuts
-        from .server_config import get_canvas_shortcuts
-        self.shortcuts = get_canvas_shortcuts(self.server_id)
+        from .server_config import get_user_shortcuts
+        self.shortcuts = get_user_shortcuts(self.server_id, self.user_id)
         
         # Add items based on mode
         if self.mode == "list":
@@ -2668,9 +2670,10 @@ class ShortcutsConfigView(discord.ui.View):
         label = label.replace("**", "").replace("└", "").strip()
         
         # Save shortcut with the cleaned label
-        from .server_config import set_canvas_shortcut
-        success = set_canvas_shortcut(
+        from .server_config import update_user_shortcut
+        success = update_user_shortcut(
             self.server_id,
+            self.user_id,
             self.shortcut_id,
             enabled=True,
             label=label,

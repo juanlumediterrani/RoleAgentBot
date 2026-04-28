@@ -1,6 +1,6 @@
 {
     "title": "**♨️ Mystic Vapors**",
-    "description": "Bake the destiny runes with Igorrr and discover what the burnt crumbs have to tell you.",
+    "description": "Bake the destiny runes with Panigorr and discover what the burnt crumbs have to tell you.",
     "button": "♨️ Vapors",
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **Bread Runes** - Write runes on bread, bake them and read destiny in burnt crumbs"
@@ -18,7 +18,7 @@
     "nordic_runes": {
         "button": "🥖 Bread Runes",
         "title": "🥖 **Bread Runes** 🥖",
-        "description": "Igorrr writes runes on bread and bakes them to see your future in burnt crumbs... SSSSS",
+        "description": "Panigorr writes runes on bread and bakes them to see your future in burnt crumbs... SSSSS",
         "title_available_readings": "🔥 **Baking Types** 🔥\n",
         "available_readings": "- **Single ash** (quick): One single crumb pointing to the present.\n - **Three breads** (temporal): Dough (past), Baking (present), Ash (future).\n - **Cross of five** (complete oven): Five breads in cross to see the whole disaster.\n - **Runic cross** (the great oven): SSSSS... Seven breads, maximum chaos.\n",
         "history": "📓 **Previous Omens** 📓",
@@ -30,7 +30,7 @@
         "reading_types": "🥖 Baking types: single, three, cross, runic_cross. SSSSS!",
         "invalid_type": "🥖 PUH! Invalid type flour sack. Use: single, three, cross, runic_cross.",
         "no_question": "🥖 SSSSS! No question no bread. Write something.",
-        "reading_saved": "🔮 SSSSS! Igorrr saved your rune reading in the greasy scrolls!",
+        "reading_saved": "🔮 SSSSS! Panigorr saved your rune reading in the greasy scrolls!",
         "error": "🔮 SSSSS! The oven spat the ashes! Try again flour sack!",
         "single_cast": "🥖 **SINGLE ASH CASTING** 🥖",
         "three_cast": "🥖 **THREE ASH CASTING** 🥖",
@@ -84,7 +84,7 @@
             "rune": "Ash",
             "description": "Description",
             "success": "🔮 SSSSS! The Ashes have spoken flour sack!",
-            "saved": "🔮 SSSSS! Igorrr has saved your cast in the greasy scrolls!"
+            "saved": "🔮 SSSSS! Panigorr has saved your cast in the greasy scrolls!"
         }
     }
 }

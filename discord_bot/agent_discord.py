@@ -980,48 +980,29 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
         
         # Build memory sections using proper functions
         memory_block = _build_prompt_memory_block(server=server_id)
+        relationship_block = _build_prompt_relationship_block(server=server_id, user_id=str(message.author.id))
+        last_interactions_block = _build_prompt_last_interactions_block(server=server_id, user_id=str(message.author.id))
         
-        # Use message.author for relationship context
-        relationship_block = _build_prompt_relationship_block(
-            user_id=message.author.id,
-            user_name=message.author.display_name,
-            server=server_id
-        )
-        last_interactions_block = _build_prompt_last_interactions_block(
-            user_id=message.author.id,
-            server=server_id
-        )
-        
-        # Build the prompt with proper memory sections
-        prompt_parts = []
-        
-        # Add memory block if available
-        if memory_block:
-            prompt_parts.append(memory_block)
-        
-        # Add relationship block if available
-        if relationship_block:
-            prompt_parts.append(relationship_block)
-        
-        # Add last interactions block if available
-        if last_interactions_block:
-            prompt_parts.append(last_interactions_block)
-        
-        # Add mission and task
-        prompt_parts.extend([
-            "",
+        # Build prompt parts
+        prompt_parts = [
             mission,
             "",
-        ])
+            memory_block,
+            "",
+            relationship_block,
+            "",
+            last_interactions_block,
+            "",
+            task,
+        ]
         
-        # Add rules with their own label
-        if rules: 
+        # Add golden rules if available
+        if rules:
+            prompt_parts.append("")
             for rule in rules:
                 prompt_parts.append(rule)
 
         prompt_parts.extend([
-            "",
-            task,
             "",
             server_personality.get("closing", "## Personality RESPONSE:"),
         ])
@@ -1049,10 +1030,91 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
             return response
         else:
             return f"GRAAAH! Who are you accusing? '{accused_username}' doesn't exist in this server! Stop wasting my time, stupid human!"
-            
+
     except Exception as e:
         logger.exception(f"Error handling false accusation: {e}")
         return f"GRAAAH! Who are you accusing? '{accused_username}' doesn't exist in this server! Stop wasting my time, stupid human!"
+
+
+async def _process_mc_flag(message, llm_response: str, server_id: str, is_public: bool) -> discord.Message | None:
+    """Process MC PLAY/ADD/STOP command from LLM response.
+
+    Returns the ephemeral message that was sent/edited.
+    """
+    try:
+        # Import the MC extraction function
+        from roles.mc.mc import extract_mc_command
+
+        # Extract the command from MC flag
+        mc_command = extract_mc_command(llm_response)
+
+        if not mc_command:
+            logger.warning("MC flag found but could not extract command")
+            return None
+
+        logger.info(f"🎵 MC flag detected: {mc_command['action']} {mc_command.get('song', '')} (from user {message.author.name})")
+
+        # Check if MC commands are available
+        from roles.mc.mc_discord import get_mc_commands_instance
+        mc_commands = get_mc_commands_instance()
+
+        if not mc_commands:
+            logger.warning("MC commands not available")
+            return None
+
+        # Check if message is from a guild (MC only works in servers)
+        if not message.guild:
+            logger.warning("MC commands only work in servers, not DMs")
+            return None
+
+        # Get MC messages from descriptions with fallback
+        def _get_mc_text(key: str, fallback: str) -> str:
+            try:
+                from agent_engine import _get_personality_descriptions
+                descriptions = _get_personality_descriptions(server_id)
+                mc_messages = descriptions.get("role_descriptions", {}).get("mc", {})
+                value = mc_messages.get(key)
+                return str(value) if value else fallback
+            except Exception:
+                return fallback
+
+        # Execute the appropriate MC command
+        action = mc_command['action']
+        song = mc_command.get('song')
+
+        # Send initial ephemeral message
+        initial_message = await message.channel.send("🎵 Processing...", ephemeral=True)
+
+        if action == 'PLAY':
+            if song:
+                args = song.split()
+                await mc_commands.cmd_play(message, args, silent=True)
+                response_text = _get_mc_text("song_playing_result", f"🎵 Playing: {song}").format(song=song)
+                await initial_message.edit(content=response_text)
+            else:
+                await initial_message.edit(content="🎵 I need a song name to play...")
+        elif action == 'ADD':
+            if song:
+                args = song.split()
+                await mc_commands.cmd_add(message, args, silent=True)
+                response_text = _get_mc_text("song_added_result", f"🎵 Added to queue: {song}").format(song=song)
+                await initial_message.edit(content=response_text)
+            else:
+                await initial_message.edit(content="🎵 I need a song name to add...")
+        elif action == 'STOP':
+            await mc_commands.cmd_stop(message, [], silent=True)
+            response_text = _get_mc_text("playback_stopped", "🎵 Music stopped and queue cleared")
+            await initial_message.edit(content=response_text)
+        else:
+            logger.warning(f"Unknown MC action: {action}")
+            await initial_message.delete()
+            return None
+
+        return initial_message
+
+    except Exception as e:
+        logger.exception(f"Error processing MC flag: {e}")
+        return None
 
 
 async def _process_chat_message(message):
@@ -1298,6 +1360,11 @@ async def _process_chat_message(message):
         if response and "ACCUSE" in response:
             accusation_response = await _process_accuse_flag(message, response, server_id, is_public)
 
+        # Check for MC PLAY/ADD/STOP flag in LLM response
+        mc_response = None
+        if response and "MC " in response:
+            mc_response = await _process_mc_flag(message, response, server_id, is_public)
+
         # Send response to user (either original LLM response or accusation-specific response)
         # For DMs, send personality embed first with server-specific identity
         if not is_public:
@@ -1306,8 +1373,11 @@ async def _process_chat_message(message):
             logger.info(f"📨 DM embed call: server_id={server_id} (using same as LLM response)")
             await send_personality_embed_dm(message.author, bot, None, server_id)
             # Pin is only set/changed via greeting buttons — no refresh here
-        
-        if accusation_response:
+
+        if mc_response:
+            # MC response is already sent as ephemeral, no need to send again
+            pass
+        elif accusation_response:
             # Send the accusation-specific response
             await message.channel.send(accusation_response)
         elif response and response.strip():
@@ -1319,7 +1389,7 @@ async def _process_chat_message(message):
                 personality_descriptions = _get_personality_descriptions(server_id)
                 scholar_messages = personality_descriptions.get("role_descriptions", {}).get("scholar", {})
                 wikipedia_button_label = scholar_messages.get("wikipedia_button_label", "📖 Read on Wikipedia")
-                
+
                 # Create button component for Wikipedia link
                 view = View()
                 button = Button(style=discord.ButtonStyle.url, label=wikipedia_button_label, url=wiki_url)
