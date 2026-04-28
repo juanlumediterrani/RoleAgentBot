@@ -601,6 +601,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
             "mc": "mc.json",
             "juggler": "juggler.json",
             "shaman": "shaman.json",
+            "scholar": "scholar.json",
         }
         
         # For main roles, load from individual description files
@@ -1359,7 +1360,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
         response = call_llm(
             system_instruction=_build_system_prompt(server_personality_for_call, server_id),
             prompt=complete_prompt,
-            async_mode=True,
+            background=True,
             call_type="subrole_async",
             temperature=0.95,
             max_tokens=1024,

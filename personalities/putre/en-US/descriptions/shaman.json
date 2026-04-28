@@ -5,10 +5,18 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🔮 **Nordic Runes** - Cast ancient runes to receive wisdom and guidance"
     },
-    "subrole_buttons": {
-        "runes": "🔮 Runes"
+    "moon_phases": {
+        "new_moon": "New Moon 🌑",
+        "waxing_crescent": "Waxing Crescent 🌒",
+        "first_quarter": "First Quarter 🌓",
+        "waxing_gibbous": "Waxing Gibbous 🌔",
+        "full_moon": "Full Moon 🌕",
+        "waning_gibbous": "Waning Gibbous 🌖",
+        "last_quarter": "Last Quarter 🌗",
+        "waning_crescent": "Waning Crescent 🌘"
     },
     "nordic_runes": {
+        "button": "🔮 Runes",
         "title": "🔮  **Putre - Seer of Ancient Nordic Runes**",
         "description": "Approach and illuminate your destiny with ancient Nordic knowledge. The Elder Futhark runes speak with truth and power, showing the path for warriors and orcs alike.",
         "title_available_readings": "🌔 **Types of rune readings** 🌔\n",

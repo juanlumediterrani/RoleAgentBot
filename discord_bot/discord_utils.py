@@ -7,6 +7,7 @@ import os
 import time
 import hashlib
 import json
+import threading
 from datetime import datetime, timedelta
 
 import discord
@@ -77,7 +78,7 @@ def is_admin(ctx, guild=None) -> bool:
 def initialize_roles_from_database(agent_config=None, guild=None) -> bool:
     """Initialize roles system - PRIMARY: server_config.json.
     
-    Note: Migration from agent_config happens once at server startup in init_roles_config.py,
+    Note: Migration from agent_config happens once at server startup via server_config.json,
     not here. This function only ensures default roles exist in server_config.json.
     """
     try:
@@ -424,6 +425,14 @@ _last_command_time = {}
 _chat_rate_limit = {}
 CHAT_COOLDOWN_SECONDS = 3
 
+# Global token-bucket rate limiter for chat LLM calls (roadmap §Concurrency)
+# Protects against message floods across all users/servers combined.
+GLOBAL_CHAT_RATE_CAPACITY = 50          # max burst tokens
+GLOBAL_CHAT_RATE_REFILL_PER_SEC = 50.0  # sustained msg/s
+_global_chat_bucket_tokens = float(GLOBAL_CHAT_RATE_CAPACITY)
+_global_chat_bucket_last_refill = time.time()
+_global_chat_bucket_lock = threading.Lock()
+
 
 def get_event_key(event_type, ctx_or_message):
     """Generate a unique key for each event."""
@@ -480,6 +489,39 @@ def check_chat_rate_limit(user_id):
             return True
     _chat_rate_limit[user_id] = now
     return False
+
+
+def check_global_chat_rate_limit() -> bool:
+    """Global token-bucket rate limiter for chat LLM calls.
+
+    Returns True if the request should be DROPPED (bucket empty), False if allowed.
+    Allows bursts up to GLOBAL_CHAT_RATE_CAPACITY and sustained throughput of
+    GLOBAL_CHAT_RATE_REFILL_PER_SEC messages/second across all users and servers.
+    """
+    global _global_chat_bucket_tokens, _global_chat_bucket_last_refill
+    now = time.time()
+    with _global_chat_bucket_lock:
+        elapsed = now - _global_chat_bucket_last_refill
+        if elapsed > 0:
+            _global_chat_bucket_tokens = min(
+                float(GLOBAL_CHAT_RATE_CAPACITY),
+                _global_chat_bucket_tokens + elapsed * GLOBAL_CHAT_RATE_REFILL_PER_SEC,
+            )
+            _global_chat_bucket_last_refill = now
+        if _global_chat_bucket_tokens >= 1.0:
+            _global_chat_bucket_tokens -= 1.0
+            try:
+                from agent_metrics import incr as _metrics_incr
+                _metrics_incr("rate_limit.global.allowed")
+            except Exception:
+                pass
+            return False
+        try:
+            from agent_metrics import incr as _metrics_incr
+            _metrics_incr("rate_limit.global.dropped")
+        except Exception:
+            pass
+        return True
 
 
 # --- DYNAMIC GREETING CONFIGURATION ---
@@ -557,7 +599,6 @@ def get_greeting_enabled(guild) -> bool:
 
 # --- PROCESS LOCKING ---
 
-import threading
 import fcntl
 import tempfile
 

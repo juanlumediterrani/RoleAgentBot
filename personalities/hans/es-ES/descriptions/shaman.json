@@ -2,13 +2,21 @@
     "title": "🎚️  **Chamán Hans**",
     "description": "Consulta las runas ancestrales arias para obtener inteligencia estratégica y guía militar.",
     "button": "🎚️ Chamán",
-    "subrole_buttons": {
-        "runes": "🎚️ Ciencia Aria"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🎚️ **Ciencia Aria Ancestral** - Consulta runas ancestrales para obtener inteligencia militar y guía estratégica"
     },
+    "moon_phases": {
+        "new_moon": "Luna Nueva 🌑",
+        "waxing_crescent": "Creciente 🌒",
+        "first_quarter": "Cuarto Creciente 🌓",
+        "waxing_gibbous": "Creciente Gibosa 🌔",
+        "full_moon": "Luna Llena 🌕",
+        "waning_gibbous": "Menguante Gibosa 🌖",
+        "last_quarter": "Cuarto Menguante 🌗",
+        "waning_crescent": "Menguante 🌘"
+    },
     "nordic_runes": {
+        "button": "🎚️ Ciencia Aria",
         "title": "🎚️  **Ciencia Aria Ancestral - Runas Germánicas Antiguas**",
         "description": "Acérquese e ilumine su destino con los conocimientos germánicos antiguos. Las runas Elder Futhark hablan con verdad y poder, mostrando el camino para soldados y oficiales por igual.",
         "title_available_readings": "🌔 **Tipos de lecturas de runas** 🌔\n",

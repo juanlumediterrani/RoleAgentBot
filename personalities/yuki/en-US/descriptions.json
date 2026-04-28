@@ -45,6 +45,17 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Arts and Paths** Paths are the different ways Yuki can be present to offer specific services to visitors.",
       "behavior_section": "**Presence Protocols** Configuration of Yuki's interaction routines. Exclusive for Administrators.",
+      "shortcuts_section": "**Quick Access** Configure up to 5 shortcut buttons in the Canvas home for immediate access to your favorite arts. Available in Settings > Shortcuts.",
+      "shortcuts_messages": {
+        "title": "Quick Access Configuration",
+        "description": "Configure immediate access to arts",
+        "settings_description": "Configure quick access buttons on Canvas home",
+        "placeholder_select_role": "Select your role or subrole...",
+        "configure_shortcut": "Configure Shortcut {shortcut_id} - Select a role or subrole:",
+        "saved": "✅ Shortcut configured successfully",
+        "failed": "❌ Failed to configure shortcut",
+        "cancelled": "Configuration cancelled"
+      },
       "tips_section": "**Suggestions** -You can ask me about my own protocols: 'how does the dice module work?' -Each path has its own rhythm and requires its own listening."
     },
     "canvas_home_messages": {
@@ -58,7 +69,8 @@
       "personalitystatus": "Active Presence:",
       "description": "Access each part of the hall from here to access the services.",
       "interestingthings": "**Things in the Hall:** ",
-      "recentsynthesistitle": "🌊 **Recent Flow**",
+      "recentsynthesistitle": "🌊 **Recent Flow",
+      "pilgrimdatatitle": "Guest Data:",
       "dailymemorytitle": "🗻 **Memory**",
       "personalsynthesistitle": "👥 **Bond with Visitor**",
       "dm_default_server_title": "🔔 **Connected to room: {server_name}**",

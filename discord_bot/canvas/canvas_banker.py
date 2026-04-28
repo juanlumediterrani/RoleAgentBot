@@ -8,15 +8,8 @@ from .state import _get_canvas_beggar_state
 from .canvas_base import CanvasModal
 
 logger = core.logger
-get_banker_db_instance = None  # Now using roles_db directly
 get_server_key = core.get_server_key
 is_admin = core.is_admin
-
-# Import roles database for banker functionality
-try:
-    from agent_roles_db import get_roles_db_instance
-except ImportError:
-    get_roles_db_instance = None
 
 # Import agent engine for subrole task execution
 try:
@@ -24,17 +17,13 @@ try:
 except ImportError:
     execute_subrole_internal_task = None
 
-# Import banker messages
+# Import banker public API (stable interface for Canvas)
 try:
-    from roles.banker.banker_messages import get_messages
+    from roles.banker.api import get_messages, get_canvas_message, get_banker_roles_db_instance
 except ImportError:
     get_messages = None
-
-# Import beggar canvas messages
-try:
-    from roles.banker.subroles.beggar.beggar_messages import get_canvas_message
-except ImportError:
     get_canvas_message = None
+    get_banker_roles_db_instance = None
 
 
 def _get_server_db_path(guild) -> str:
@@ -60,7 +49,7 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
     server_id = "Unknown Server"
     history = []
 
-    if guild is not None and get_roles_db_instance is not None:
+    if guild is not None:
         try:
             server_key = get_server_key(guild)
             server_id = str(guild.id)
@@ -71,19 +60,18 @@ def build_canvas_role_banker(agent_config: dict, admin_visible: bool, guild=None
                 member = guild.get_member(author_id)
                 user_name = member.display_name if member else "Unknown User"
 
-                from roles.banker.banker_db import get_banker_roles_db_instance
                 db_banker_roles = get_banker_roles_db_instance(server_key)
                 db_banker_roles.create_wallet(user_id, user_name, 'user')
 
                 try:
-                    from roles.banker.banker_discord import _initialize_dice_game_account
+                    from roles.banker.api import _initialize_dice_game_account
                     _initialize_dice_game_account(user_id, user_name, server_id, server_key)
                 except Exception:
                     pass
 
                 balance = db_banker_roles.get_balance(user_id)
                 # Get transaction history from the banker database
-                history = db_banker_roles.roles_db.get_banker_transactions(user_id, limit=5)
+                history = db_banker_roles.get_transaction_history(user_id, limit=5)
 
                 tae = db_banker_roles.get_tae(server_id)
         except Exception as error:
@@ -232,7 +220,7 @@ class BankerConfigModal(CanvasModal):
         if not is_admin(interaction, guild=eff_guild):
             await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
             return
-        if get_roles_db_instance is None:
+        if get_banker_roles_db_instance is None:
             await interaction.response.send_message("❌ Banker database is not available.", ephemeral=True)
             return
         try:
@@ -251,7 +239,7 @@ class BankerConfigModal(CanvasModal):
                 return
 
         try:
-            db_banker = get_roles_db_instance(str(eff_guild.id))
+            db_banker = get_banker_roles_db_instance(str(eff_guild.id))
             if self.action_name == "config_tae":
                 ok = db_banker.set_tae(str(eff_guild.id), amount)
                 label = "TAE"
@@ -306,8 +294,7 @@ class BeggarDonationModal(CanvasModal):
                 return
 
             # Import the BeggarDonationView from beggar_discord
-            from roles.banker.subroles.beggar.beggar_discord import BeggarDonationView
-            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+            from roles.banker.api import BeggarDonationView, get_beggar_config
 
             eff_guild = interaction.guild or getattr(self, 'guild', None)
             if not eff_guild:
@@ -355,7 +342,7 @@ class BeggarFrequencyModal(CanvasModal):
                 )
                 return
 
-            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+            from roles.banker.api import get_beggar_config
             from .server_config import set_role_config_value
             from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
             from .ui import CanvasRoleDetailView
@@ -407,7 +394,7 @@ class BeggarFrequencyModal(CanvasModal):
 
 async def handle_canvas_banker_action(interaction: discord.Interaction, action_name: str, view) -> None:
     """Handle banker role actions like balance, TAE, bonus display, and beggar subrole."""
-    if get_roles_db_instance is None:
+    if get_banker_roles_db_instance is None:
         await interaction.response.send_message("❌ Banker systems are not available.", ephemeral=True)
         return
 
@@ -417,7 +404,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
             await interaction.response.send_message("❌ Banker actions require a server context.", ephemeral=True)
             return
         server_key = get_server_key(eff_guild)
-        db_banker = get_roles_db_instance(server_key)
+        db_banker = get_banker_roles_db_instance(server_key)
         server_id = str(eff_guild.id)
         server_name = eff_guild.name
         user_id = str(view.author_id)
@@ -426,7 +413,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
 
         # Handle beggar subrole actions
         if action_name in {"beggar_on", "beggar_off", "beggar_frequency", "beggar_force_minigame"}:
-            from roles.banker.subroles.beggar.beggar_db import get_beggar_config
+            from roles.banker.api import get_beggar_config
             from .server_config import set_role_config_value
 
             beggar_config = get_beggar_config(server_id)
@@ -459,7 +446,7 @@ async def handle_canvas_banker_action(interaction: discord.Interaction, action_n
                 return
             elif action_name == "beggar_force_minigame":
                 # Force minigame execution
-                from roles.banker.subroles.beggar.beggar_task import BeggarMinigame
+                from roles.banker.api import BeggarMinigame
 
                 if not interaction.response.is_done():
                     await interaction.response.defer(ephemeral=True)

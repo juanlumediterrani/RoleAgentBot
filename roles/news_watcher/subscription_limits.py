@@ -3,13 +3,16 @@
 This module provides subscription limit tracking and enforcement
 to prevent abuse and manage resources effectively.
 Similar to fatigue limits but for news subscriptions.
+
+Storage: databases/news_watcher/global_subscription_limits.json (NoSQL)
 """
 
-import sqlite3
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Tuple, Dict
+from typing import Optional, Dict
+
+from persistence.json_store import JsonStore
 from agent_logging import get_logger
 
 logger = get_logger('subscription_limits')
@@ -51,83 +54,55 @@ def get_subscription_limits_config() -> Dict:
 
 
 class GlobalSubscriptionLimits:
-    """Global subscription limit tracker across all servers."""
+    """Global subscription limit tracker across all servers (NoSQL-backed)."""
     
-    def __init__(self, db_path: Path = None):
-        if db_path is None:
-            # Use a global database in the databases/news_watcher directory
+    def __init__(self, store_path: Path = None):
+        if store_path is None:
             base_dir = Path(__file__).parent.parent.parent
-            news_watcher_db_dir = base_dir / "databases" / "news_watcher"
-            news_watcher_db_dir.mkdir(parents=True, exist_ok=True)
-            self.db_path = news_watcher_db_dir / "global_subscription_limits.db"
-        else:
-            self.db_path = db_path
+            news_watcher_dir = base_dir / "databases" / "news_watcher"
+            news_watcher_dir.mkdir(parents=True, exist_ok=True)
+            store_path = news_watcher_dir / "global_subscription_limits.json"
+
+        self._store = JsonStore(
+            store_path,
+            default_factory=lambda: {},
+            keep_backup=False,
+        )
         self._lock = asyncio.Lock()
-        self._init_db()
-    
-    def _init_db(self):
-        """Initialize global subscription limits database."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute('PRAGMA journal_mode=DELETE;')
-                conn.commit()
-                
-                # Initialize subscription count table
-                self._init_subscription_count_table()
-                
-                logger.info(f"✅ Global subscription limits database ready at {self.db_path}")
-        except Exception as e:
-            logger.exception(f"❌ Error initializing global subscription limits database: {e}")
-    
-    def _init_subscription_count_table(self):
-        """Initialize subscription count tracking table."""
-        try:
-            with sqlite3.connect(str(self.db_path)) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS user_subscription_counts (
-                        user_id TEXT PRIMARY KEY,
-                        subscription_count INTEGER DEFAULT 0,
-                        last_updated TEXT NOT NULL
-                    )
-                ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_subscription_user ON user_subscription_counts (user_id)')
-                conn.commit()
-        except Exception as e:
-            logger.exception(f"❌ Error creating user_subscription_counts table: {e}")
+        logger.info(f"✅ Global subscription limits ready at {store_path}")
     
     async def get_user_subscription_count(self, user_id: str) -> int:
         """Get total subscription count for a user across all servers."""
         try:
-            async with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT subscription_count FROM user_subscription_counts WHERE user_id = ?', (user_id,))
-                    result = cursor.fetchone()
-                    return result[0] if result else 0
+            state = self._store.load()
+            entry = state.get(str(user_id))
+            if entry is None:
+                return 0
+            return entry.get("subscription_count", 0)
         except Exception as e:
             logger.exception(f"Error getting user subscription count: {e}")
             return 0
     
+    def _set_count(self, user_id: str, count: int):
+        """Internal: persist count for user_id."""
+        now = datetime.now().isoformat()
+        def updater(state: Dict) -> Dict:
+            state[str(user_id)] = {
+                "subscription_count": count,
+                "last_updated": now,
+            }
+            return state
+        self._store.update(updater)
+
     async def increment_user_subscription_count(self, user_id: str) -> bool:
         """Increment subscription count for a user."""
         try:
             async with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    current_count = await self.get_user_subscription_count(user_id)
-                    new_count = current_count + 1
-                    current_date = datetime.now().isoformat()
-                    
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO user_subscription_counts 
-                        (user_id, subscription_count, last_updated)
-                        VALUES (?, ?, ?)
-                    ''', (user_id, new_count, current_date))
-                    conn.commit()
-                    logger.debug(f"Incremented subscription count for user {user_id}: {current_count} -> {new_count}")
-                    return True
+                current = await self.get_user_subscription_count(user_id)
+                new_count = current + 1
+                self._set_count(user_id, new_count)
+                logger.debug(f"Incremented subscription count for user {user_id}: {current} -> {new_count}")
+                return True
         except Exception as e:
             logger.exception(f"Error incrementing user subscription count: {e}")
             return False
@@ -136,20 +111,11 @@ class GlobalSubscriptionLimits:
         """Decrement subscription count for a user."""
         try:
             async with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    current_count = await self.get_user_subscription_count(user_id)
-                    new_count = max(0, current_count - 1)
-                    current_date = datetime.now().isoformat()
-                    
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO user_subscription_counts 
-                        (user_id, subscription_count, last_updated)
-                        VALUES (?, ?, ?)
-                    ''', (user_id, new_count, current_date))
-                    conn.commit()
-                    logger.debug(f"Decremented subscription count for user {user_id}: {current_count} -> {new_count}")
-                    return True
+                current = await self.get_user_subscription_count(user_id)
+                new_count = max(0, current - 1)
+                self._set_count(user_id, new_count)
+                logger.debug(f"Decremented subscription count for user {user_id}: {current} -> {new_count}")
+                return True
         except Exception as e:
             logger.exception(f"Error decrementing user subscription count: {e}")
             return False
@@ -166,7 +132,7 @@ class GlobalSubscriptionLimits:
             for server_id in server_ids:
                 try:
                     db = get_news_watcher_db_instance(server_id)
-                    if db and db.db_path.exists():
+                    if db:
                         # Count all subscriptions for this user (both DM and channel)
                         subscriptions = db.get_all_active_subscriptions()
                         user_subs = [s for s in subscriptions if s[1] == user_id]  # s[1] is user_id
@@ -176,15 +142,7 @@ class GlobalSubscriptionLimits:
             
             # Update the global count
             async with self._lock:
-                with sqlite3.connect(str(self.db_path), timeout=30) as conn:
-                    cursor = conn.cursor()
-                    current_date = datetime.now().isoformat()
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO user_subscription_counts 
-                        (user_id, subscription_count, last_updated)
-                        VALUES (?, ?, ?)
-                    ''', (user_id, total_count, current_date))
-                    conn.commit()
+                self._set_count(user_id, total_count)
             
             logger.info(f"Recalculated subscription count for user {user_id}: {total_count}")
             return total_count

@@ -2,9 +2,6 @@
     "title": " 🎷  **Gramófono Oxidado** 🎷",
     "description": "Igorrr arrastra sus pies hasta el rincón del ruido para hacer sufrir a todos.",
     "button": "️🎷 Gramófono Oxidado",
-    "subrole_buttons": {
-        "overview": "️🎼 Saco"
-    },
     "canvas_mc_subtitle": "🎼 Klavijas de kontrol",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Uza el menu dezplegabe para pedime ruidos, pa ve el saco, o pa meter ma ruidos umano.",
@@ -40,11 +37,11 @@
     "queue_cleared": "🗑️ Sako vaziao",
     "last_song_removed": "🔙 Último ruido eliminao del saco",
     "history_displayed": "📜 Historial mostrado",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Ajustar Estruendo",
         "mc_play": "Reproducir Ahora",
         "mc_play_description": "Pedime un ruido y lo reproduzco inmediatamente",
-        "mc_add": "Meter en el Saco", 
+        "mc_add": "Meter en el Saco",
         "mc_add_description": "Mete un ruido al final del saco de reproduksion",
         "mc_skip": "Saltar Ruido",
         "mc_skip_description": "Salta el ruido aktual y pasa al siguiente",

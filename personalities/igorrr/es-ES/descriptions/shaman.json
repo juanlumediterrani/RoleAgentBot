@@ -2,13 +2,21 @@
     "title": "♨️ **Vapores Místicos**",
     "description": "Hornea las runas del destino con Igorrr y descubre lo que las migajas quemadas tienen para decirte.",
     "button": "♨️ Vapores",
-    "subrole_buttons": {
-        "runes": "🥖 Runas de Pan"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **Runas de Pan** - Escribe runas en pan, hornéalas y lee el destino en las migajas quemadas"
     },
+    "moon_phases": {
+        "new_moon": "Luna Nueva 🌑",
+        "waxing_crescent": "Creciente 🌒",
+        "first_quarter": "Cuarto Creciente 🌓",
+        "waxing_gibbous": "Creciente Gibosa 🌔",
+        "full_moon": "Luna Llena 🌕",
+        "waning_gibbous": "Menguante Gibosa 🌖",
+        "last_quarter": "Cuarto Menguante 🌗",
+        "waning_crescent": "Menguante 🌘"
+    },
     "nordic_runes": {
+        "button": "🥖 Runas de Pan",
         "title": "🥖 **Runas de Pan** 🥖",
         "description": "Igorrr escribe runas en pan y las hornea para ver tu futuro en las migajas quemadas... SSSSS",
         "title_available_readings": "🔥 **Tipos de Hornada** 🔥\n",

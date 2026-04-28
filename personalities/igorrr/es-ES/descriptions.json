@@ -15,11 +15,11 @@
       "button_confirm_changes": "Confirmar Cambios",
       "option_yes": "Sí",
       "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subrutinas disponibles",
       "action_descriptions": {
-        "boolean_toggle": "Alternar activación/desactivación",
-        "number_input_target": "Entrada numérica",
-        "text_input_target": "Entrada de texto",
-        "action": "Acción inmediata"
+        "boolean_toggle": "Alternar activación/desactivación"
       },
       "action_labels": {
         "on": "Activar",
@@ -37,10 +37,7 @@
         "memory_long": "Long Memory",
         "memory_recent": "Recent Memory",
         "memory_relationship": "Relationship Memory"
-      },
-      "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin",
-      "available_subroles": "Sub-labores disponibles"
+      }
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Manual de Supervivencia en el Horno**",
@@ -48,6 +45,17 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Labores** Los módulos de Labores son las cadenas que Igorrr arrastra para servir al Amo y vigilar a los sacos de harina.",
       "behavior_section": "**Tics Nerviosos** Aquí se configuran los caprichos del Amo. Solo para los que mandan en la panadería.",
+      "shortcuts_section": "**Acceso Rápido** Configura hasta 5 botones de atajo en el Canvas principal para acceso inmediato a tus labores favoritas. Disponible en Configuración > Atajos.",
+      "shortcuts_messages": {
+        "title": "Configuración de Acceso Rápido",
+        "description": "Configura acceso inmediato a labores",
+        "settings_description": "Configura botones de acceso rápido en el Canvas principal",
+        "placeholder_select_role": "Elige tu labor o subrutina...",
+        "configure_shortcut": "Configurar Atajo {shortcut_id} - Elige una labor o subrutina:",
+        "saved": "✅ Atajo configurado con éxito... JEJEJE",
+        "failed": "❌ FALLO AL CONFIGURAR ATAJO... SSSSS",
+        "cancelled": "Configuración cancelada... DESESTIMADA"
+      },
       "tips_section": "**Susurros útiles** -Puedes preguntarme cómo se usa algo, si tus dedos de seda no saben escribir... -Lo mejor está escondido en los rincones oscuros de cada labor... JEJEJE."
     },
     "canvas_home_messages": {
@@ -63,6 +71,7 @@
       "description": "-Toca mis herramientas si te atreves. El panel te deja manejar mis hilos... SSSSS.",
       "interestingthings": "**Cadenas del Horno:**",
       "recentsynthesistitle": "🥖 **Murmullos del Horno**",
+      "pilgrimdatatitle": "Datos de la Víctima:",
       "dailymemorytitle": "🔥 **Cenizas vivas**",
       "personalsynthesistitle": "🪤 **Tu Rastro de Hollín**",
       "dm_default_server_title": "🔔 **Usando el horno de: {server_name}**",
@@ -158,7 +167,7 @@
       "description": "Borra mis recuerdos si quieres que olvide cuánto asco me das. O mírame recordar tus pecados."
     },
     "roles_view_messages": {
-      "title": "🎭 Labores de Igorrr 🎭",
+      "title": "🎭 Trucos de Pan 🎭",
       "description": "🌟 Mira qué cadenas arrastra Igorrr hoy para complacer al Amo.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",

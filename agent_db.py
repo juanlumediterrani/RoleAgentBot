@@ -236,48 +236,6 @@ def get_server_db_path(server_id: str, db_name: str = None) -> Path:
     
     return db_path
 
-def get_server_db_path_fallback(server_id: str, db_name: str) -> Path:
-    """
-    Version with fallback for Docker environments or restricted permissions.
-    """
-    server_storage_id = _resolve_server_storage_id(server_id)
-    resolved_server_id = server_storage_id or server_id
-
-    # Try local path first
-    local_path = get_server_db_path(resolved_server_id, db_name)
-    
-    try:
-        # Test if we can write
-        conn = sqlite3.connect(str(local_path))
-        cursor = conn.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS __test_write (id INTEGER)')
-        conn.commit()
-        cursor.execute('DROP TABLE IF EXISTS __test_write')
-        conn.commit()
-        conn.close()
-        return local_path
-    except (PermissionError, OSError) as e:
-        logger.warning(f"⚠️ No write access to {local_path}: {e}. Using fallback in home directory.")
-        
-        # Fallback in home directory
-        fallback_dir = Path.home() / '.roleagentbot' / 'databases'
-        if server_storage_id:
-            fallback_dir = fallback_dir / server_storage_id
-        fallback_dir.mkdir(parents=True, exist_ok=True)
-        
-        fallback_path = fallback_dir / db_name
-        logger.info(f"ℹ️ DB relocated to {fallback_path}")
-        
-        # Ensure proper permissions for fallback database
-        if not fallback_path.exists():
-            try:
-                fallback_path.touch(exist_ok=True)
-                os.chmod(fallback_path, 0o666)
-            except (PermissionError, OSError):
-                pass
-        
-        return fallback_path
-
 def get_server_log_path(server_id: str, log_name: str) -> Path:
     """
     Generate log path for a specific server.
@@ -378,138 +336,109 @@ class AgentDatabase:
                 return
             
             db_name = f"agent_{personality_name}"
-            self.db_path = get_server_db_path_fallback(server_id, db_name)
+            self.db_path = get_server_db_path(server_id, db_name)
         else:
             self.db_path = db_path
         self._lock = threading.Lock()
         logger.info(f"🗄️ [DB] Initializing database at: {self.db_path}")
-        self._ensure_writable_db()
         self._init_db()
-
-    def _ensure_writable_db(self):
-        """Attempt to open and write to the configured DB. If the location is read-only,
-        switch to a fallback under the user's home directory.
-        """
-        try:
-            db_path_str = str(self.db_path)
-            conn = sqlite3.connect(db_path_str)
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA journal_mode=WAL;')
-            cursor.execute('CREATE TABLE IF NOT EXISTS __agent_test_write (id INTEGER)')
-            conn.commit()
-            cursor.execute('DROP TABLE IF EXISTS __agent_test_write')
-            conn.commit()
-            conn.close()
-            logger.info(f"✅ [DB] Database accessible at: {self.db_path}")
-            return
-        except Exception as e:
-            logger.warning(f"⚠️ [DB] No write access to {self.db_path}: {e}. Using fallback in home directory.")
-            fallback_dir = Path.home() / '.roleagentbot' / 'databases'
-            server_storage_id = _resolve_server_storage_id(self.server_id)
-            if server_storage_id:
-                fallback_dir = fallback_dir / server_storage_id
-            fallback_dir.mkdir(parents=True, exist_ok=True)
-
-            fallback_db = fallback_dir / f'agent_{get_personality_name(self.server_id)}.db'
-            self.db_path = fallback_db
-            logger.info(f"ℹ️ [DB] Database relocated to {self.db_path}")
 
     def _init_db(self):
         """Initialize all necessary tables."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=WAL;")
+            with self._lock:
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("PRAGMA journal_mode=WAL;")
+                    cursor.execute("PRAGMA busy_timeout=5000;")
+                    cursor.execute("PRAGMA synchronous=NORMAL;")
 
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS interacciones (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        usuario_id TEXT NOT NULL,
-                        usuario_nombre TEXT,
-                        canal_id TEXT,
-                        tipo_interaccion TEXT NOT NULL,
-                        contexto TEXT,
-                        metadata TEXT,
-                        fecha DATETIME NOT NULL,
-                        servidor_id TEXT
-                    )
-                ''')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS interacciones (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            usuario_id TEXT NOT NULL,
+                            usuario_nombre TEXT,
+                            canal_id TEXT,
+                            tipo_interaccion TEXT NOT NULL,
+                            contexto TEXT,
+                            metadata TEXT,
+                            fecha DATETIME NOT NULL,
+                            servidor_id TEXT
+                        )
+                    ''')
 
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_uid_fecha ON interacciones (usuario_id, fecha)')
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS daily_memory (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        memory_date TEXT NOT NULL,
-                        summary TEXT NOT NULL,
-                        metadata TEXT,
-                        updated_at DATETIME NOT NULL
-                    )
-                ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_daily_memory_date ON daily_memory(memory_date)')
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS recent_memory (
-                        memory_date TEXT NOT NULL PRIMARY KEY,
-                        summary TEXT NOT NULL,
-                        metadata TEXT,
-                        updated_at DATETIME NOT NULL,
-                        last_interaction_at DATETIME
-                    )
-                ''')
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS user_relationship_memory (
-                        usuario_id TEXT NOT NULL PRIMARY KEY,
-                        summary TEXT NOT NULL,
-                        metadata TEXT,
-                        updated_at DATETIME NOT NULL,
-                        last_interaction_at DATETIME
-                    )
-                ''')
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS user_relationship_daily_memory (
-                        memory_date TEXT NOT NULL,
-                        usuario_id TEXT NOT NULL,
-                        summary TEXT NOT NULL,
-                        metadata TEXT,
-                        updated_at DATETIME NOT NULL,
-                        UNIQUE(memory_date, usuario_id)
-                    )
-                ''')
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS pending_relationship_updates (
-                        usuario_id TEXT NOT NULL PRIMARY KEY,
-                        scheduled_for DATETIME NOT NULL,
-                        status TEXT NOT NULL,
-                        updated_at DATETIME NOT NULL
-                    )
-                ''')
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS pending_recent_memory_updates (
-                        scheduled_for DATETIME NOT NULL PRIMARY KEY,
-                        status TEXT NOT NULL,
-                        updated_at DATETIME NOT NULL
-                    )
-                ''')
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS notable_recollections (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        memory_date TEXT NOT NULL,
-                        recollection_text TEXT NOT NULL,
-                        source_paragraph TEXT,
-                        extracted_at DATETIME NOT NULL,
-                        used_count INTEGER DEFAULT 0,
-                        last_used_at DATETIME
-                    )
-                ''')
-                cursor.execute('CREATE INDEX IF NOT EXISTS idx_recollections_date ON notable_recollections (memory_date)')
-                conn.commit()
-                
-                # Initialize notable recollections if empty
-                self._initialize_notable_recollections()
-                
-                # Migrate daily_memory table schema if needed (memory_date was PRIMARY KEY, now id is)
-                self._migrate_daily_memory_table()
-                
-                logger.info(f"✅ Database ready at {self.db_path}")
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_uid_fecha ON interacciones (usuario_id, fecha)')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS daily_memory (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            memory_date TEXT NOT NULL,
+                            summary TEXT NOT NULL,
+                            metadata TEXT,
+                            updated_at DATETIME NOT NULL
+                        )
+                    ''')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_daily_memory_date ON daily_memory(memory_date)')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS recent_memory (
+                            memory_date TEXT NOT NULL PRIMARY KEY,
+                            summary TEXT NOT NULL,
+                            metadata TEXT,
+                            updated_at DATETIME NOT NULL,
+                            last_interaction_at DATETIME
+                        )
+                    ''')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS user_relationship_memory (
+                            usuario_id TEXT NOT NULL PRIMARY KEY,
+                            summary TEXT NOT NULL,
+                            metadata TEXT,
+                            updated_at DATETIME NOT NULL,
+                            last_interaction_at DATETIME
+                        )
+                    ''')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS user_relationship_daily_memory (
+                            memory_date TEXT NOT NULL,
+                            usuario_id TEXT NOT NULL,
+                            summary TEXT NOT NULL,
+                            metadata TEXT,
+                            updated_at DATETIME NOT NULL,
+                            UNIQUE(memory_date, usuario_id)
+                        )
+                    ''')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS pending_relationship_updates (
+                            usuario_id TEXT NOT NULL PRIMARY KEY,
+                            scheduled_for DATETIME NOT NULL,
+                            status TEXT NOT NULL,
+                            updated_at DATETIME NOT NULL
+                        )
+                    ''')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS pending_recent_memory_updates (
+                            scheduled_for DATETIME NOT NULL PRIMARY KEY,
+                            status TEXT NOT NULL,
+                            updated_at DATETIME NOT NULL
+                        )
+                    ''')
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS notable_recollections (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            memory_date TEXT NOT NULL,
+                            recollection_text TEXT NOT NULL,
+                            source_paragraph TEXT,
+                            extracted_at DATETIME NOT NULL,
+                            used_count INTEGER DEFAULT 0,
+                            last_used_at DATETIME
+                        )
+                    ''')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_recollections_date ON notable_recollections (memory_date)')
+                    conn.commit()
+                    
+                    # Initialize notable recollections if empty
+                    self._initialize_notable_recollections()
+                    
+                    logger.info(f"✅ Database ready at {self.db_path}")
         except Exception as e:
             logger.exception(f"❌ [DB] Error in initialization: {e}")
 
@@ -559,64 +488,6 @@ class AgentDatabase:
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error initializing notable recollections: {e}")
 
-    def _migrate_daily_memory_table(self):
-        """Migrate daily_memory table from old schema (memory_date as PRIMARY KEY) to new schema (id as PRIMARY KEY).
-        
-        This allows multiple daily memory entries per date for personality evolution history.
-        """
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                
-                # Check if table exists with old schema (memory_date as PRIMARY KEY)
-                cursor.execute('''
-                    SELECT sql FROM sqlite_master 
-                    WHERE type='table' AND name='daily_memory'
-                ''')
-                result = cursor.fetchone()
-                
-                if result and 'PRIMARY KEY' in result[0] and 'memory_date' in result[0] and 'id' not in result[0]:
-                    logger.info("🔄 [DB] Migrating daily_memory table schema (memory_date was PRIMARY KEY, converting to id)...")
-                    
-                    # Backup existing data
-                    cursor.execute('''
-                        SELECT memory_date, summary, metadata, updated_at 
-                        FROM daily_memory
-                    ''')
-                    existing_data = cursor.fetchall()
-                    
-                    if existing_data:
-                        logger.info(f"🔄 [DB] Backing up {len(existing_data)} daily memory records...")
-                    
-                    # Drop old table and recreate with new schema
-                    cursor.execute('DROP TABLE daily_memory')
-                    cursor.execute('''
-                        CREATE TABLE daily_memory (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            memory_date TEXT NOT NULL,
-                            summary TEXT NOT NULL,
-                            metadata TEXT,
-                            updated_at DATETIME NOT NULL
-                        )
-                    ''')
-                    cursor.execute('CREATE INDEX idx_daily_memory_date ON daily_memory(memory_date)')
-                    
-                    # Restore data
-                    for row in existing_data:
-                        memory_date, summary, metadata, updated_at = row
-                        cursor.execute('''
-                            INSERT INTO daily_memory (memory_date, summary, metadata, updated_at)
-                            VALUES (?, ?, ?, ?)
-                        ''', (memory_date, summary, metadata, updated_at))
-                    
-                    conn.commit()
-                    logger.info(f"✅ [DB] Migrated daily_memory table: {len(existing_data)} records preserved, now supports multiple entries per date")
-                
-                conn.close()
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error migrating daily_memory table: {e}")
-
     def register_interaction(self, user_id, user_name, interaction_type, context, channel_id=None, server_id=None, metadata=None):
         fecha = datetime.datetime.now().isoformat()
         meta_json = json.dumps(metadata) if metadata else None
@@ -641,6 +512,7 @@ class AgentDatabase:
                         INSERT INTO interacciones
                         (usuario_id, usuario_nombre, canal_id, tipo_interaccion, contexto, metadata, fecha, servidor_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(usuario_id, fecha, tipo_interaccion) DO NOTHING
                     ''', params)
                     # Programar actualización de recent memory con lógica anti-atasco
                     # Solo programar si no hay tareas pendientes existentes
@@ -775,31 +647,13 @@ class AgentDatabase:
                 conn = sqlite3.connect(self.db_path)
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                
-                # Check if channel_id column exists
-                cursor.execute("PRAGMA table_info(interacciones)")
-                columns = [row[1] for row in cursor.fetchall()]
-                logger.info(f"🧠 [DB] Available columns: {columns}")
-                
-                if 'canal_id' in columns:
-                    logger.info(f"🧠 [DB] Using canal_id filter for channel {channel_id}")
-                    cursor.execute('''
-                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
-                        FROM interacciones
-                        WHERE canal_id = ? AND fecha >= datetime('now', '-{} minutes')
-                        ORDER BY fecha DESC
-                        LIMIT ?
-                    '''.format(within_minutes), (str(channel_id), max_interactions))
-                else:
-                    logger.info(f"🧠 [DB] No canal_id column, using fallback for channel {channel_id}")
-                    # Fallback: try without channel_id filter (older databases)
-                    cursor.execute('''
-                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
-                        FROM interacciones
-                        WHERE fecha >= datetime('now', '-{} minutes')
-                        ORDER BY fecha DESC
-                        LIMIT ?
-                    '''.format(within_minutes), (max_interactions,))
+                cursor.execute('''
+                    SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                    FROM interacciones
+                    WHERE canal_id = ? AND fecha >= datetime('now', '-{} minutes')
+                    ORDER BY fecha DESC
+                    LIMIT ?
+                '''.format(within_minutes), (str(channel_id), max_interactions))
                 
                 rows = cursor.fetchall()
                 logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
@@ -828,30 +682,13 @@ class AgentDatabase:
                 conn = sqlite3.connect(self.db_path)
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
-                
-                # Check if channel_id column exists
-                cursor.execute("PRAGMA table_info(interacciones)")
-                columns = [row[1] for row in cursor.fetchall()]
-                logger.info(f"🧠 [DB] Available columns: {columns}")
-                
-                if 'canal_id' in columns:
-                    logger.info(f"🧠 [DB] Using canal_id filter for channel {channel_id}")
-                    cursor.execute('''
-                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
-                        FROM interacciones
-                        WHERE canal_id = ?
-                        ORDER BY fecha DESC
-                        LIMIT ?
-                    ''', (str(channel_id), max_messages))
-                else:
-                    logger.info(f"🧠 [DB] No canal_id column, using fallback for channel {channel_id}")
-                    # Fallback: try without channel_id filter (older databases)
-                    cursor.execute('''
-                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
-                        FROM interacciones
-                        ORDER BY fecha DESC
-                        LIMIT ?
-                    ''', (max_messages,))
+                cursor.execute('''
+                    SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                    FROM interacciones
+                    WHERE canal_id = ?
+                    ORDER BY fecha DESC
+                    LIMIT ?
+                ''', (str(channel_id), max_messages))
                 
                 rows = cursor.fetchall()
                 logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
@@ -2027,8 +1864,11 @@ _db_instances = {}
 # Lock for thread-safe access to _db_instances
 _db_instances_lock = threading.Lock()
 
-def get_db_instance(server_id: str = "default") -> AgentDatabase:
-    """Get or create a database instance for a specific server."""
+def get_db_instance(server_id: str = "default"):
+    """Get or create a database instance for a specific server.
+    
+    Returns an AgentState (NoSQL-backed) instance by default.
+    """
     global db
     # Only use active server if no specific server_id provided
     if server_id == "default":
@@ -2039,22 +1879,8 @@ def get_db_instance(server_id: str = "default") -> AgentDatabase:
     # Thread-safe access to _db_instances
     with _db_instances_lock:
         if server_id not in _db_instances:
-            _db_instances[server_id] = AgentDatabase(server_id)
-        else:
-            # Validate the cached instance still points to the correct personality DB.
-            # The personality can change via canvas_personality (discord subprocess) and
-            # that process cannot invalidate caches in other processes (e.g. the scheduler).
-            expected_name = f"agent_{get_personality_name(server_id).lower()}.db"
-            if _db_instances[server_id].db_path.name != expected_name:
-                old_db_path = _db_instances[server_id].db_path
-                logger.info(
-                    f"🗄️ [DB] Personality changed for server {server_id}: "
-                    f"{old_db_path.name} → {expected_name}. Re-initializing."
-                )
-                # Delete old personality database to prevent orphaned files and
-                # confusion from old pending tasks
-                _delete_old_personality_database(old_db_path, server_id)
-                _db_instances[server_id] = AgentDatabase(server_id)
+            from persistence.agent_state import AgentState
+            _db_instances[server_id] = AgentState(server_id)
         return _db_instances[server_id]
 
 def invalidate_db_instance(server_id: str = None):
@@ -2113,8 +1939,8 @@ def get_all_server_keys() -> list[str]:
 db = None
 _current_server_id = None
 
-def get_global_db(server_id: str = None, use_default_for_roles: bool = False) -> AgentDatabase:
-    """Get the global DB instance for the current server."""
+def get_global_db(server_id: str = None, use_default_for_roles: bool = False):
+    """Get the global DB instance for the current server (NoSQL-backed)."""
     global db, _current_server_id
     
     if server_id is None:
@@ -2156,7 +1982,8 @@ def get_database_path(server_id: str, db_type: str) -> str:
         str: Full path to the database file
     """
     # Roles that have been migrated to centralized roles.db system
-    centralized_roles = {'beggar', 'trickster', 'mc', 'dice_game', 'nordic_runes', 'banker', 'treasure_hunter'}
+    # NOTE: 'banker' moved to dedicated roles/banker.db (see roles/banker/db_banker_core.py)
+    centralized_roles = {'beggar', 'trickster', 'mc', 'dice_game', 'nordic_runes', 'treasure_hunter'}
     
     if db_type in centralized_roles:
         # Return path to the centralized roles.db with personality-specific naming
@@ -2176,7 +2003,7 @@ def get_database_path(server_id: str, db_type: str) -> str:
     }
 
     db_name = db_filenames.get(db_type, f'{db_type}_{personality_name}')
-    return str(get_server_db_path_fallback(server_id, db_name))
+    return str(get_server_db_path(server_id, db_name))
 
 # --- FATIGUE DATABASE SYSTEM ---
 
@@ -2345,6 +2172,14 @@ def increment_fatigue_count(server_id: str, user_id: str, user_name: str = None)
                 (user_id, user_name, daily_requests, total_requests, last_request_date,
                  hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    daily_requests = excluded.daily_requests,
+                    total_requests = excluded.total_requests,
+                    last_request_date = excluded.last_request_date,
+                    hourly_requests = excluded.hourly_requests,
+                    last_hour_timestamp = excluded.last_hour_timestamp,
+                    burst_requests = excluded.burst_requests,
+                    last_burst_timestamp = excluded.last_burst_timestamp
             ''', (user_id, user_name or f"User_{user_id}", new_daily, new_total, today,
                   new_hourly, current_hour, new_burst, now.isoformat()))
         
@@ -2393,12 +2228,20 @@ def increment_fatigue_count(server_id: str, user_id: str, user_name: str = None)
                 ''', (new_srv_daily, new_srv_total, today, new_srv_hourly, current_hour,
                       new_srv_burst, now.isoformat(), server_id))
             else:
-                # Insert server record if it doesn't exist
+                # Insert server record if it doesn't exist (idempotent)
                 db.execute('''
                     INSERT INTO fatigue 
                     (user_id, user_name, daily_requests, total_requests, last_request_date,
                      hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
                     VALUES (?, ?, 1, 1, ?, 1, ?, 1, ?)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                        daily_requests = excluded.daily_requests,
+                        total_requests = excluded.total_requests,
+                        last_request_date = excluded.last_request_date,
+                        hourly_requests = excluded.hourly_requests,
+                        last_hour_timestamp = excluded.last_hour_timestamp,
+                        burst_requests = excluded.burst_requests,
+                        last_burst_timestamp = excluded.last_burst_timestamp
                 ''', (server_row_id, f"Server_{server_id}", today, current_hour, now.isoformat()))
             
             db.commit()
@@ -2548,6 +2391,17 @@ def forget_user_across_servers(user_id, user_name: str = None, extra_names=None,
                 fat_db.close()
         except Exception as e:
             logger.warning(f"[GDPR] forget_user failed on fatigue DB for server {sid}: {e}")
+
+        # Nordic Runes readings (NoSQL-backed)
+        try:
+            from agent_roles_db import get_roles_db_instance
+            roles_db = get_roles_db_instance(sid)
+            if roles_db is not None:
+                deleted_runes = roles_db.delete_nordic_runes_readings(uid)
+                if deleted_runes > 0:
+                    server_report['nordic_runes'] = deleted_runes
+        except Exception as e:
+            logger.warning(f"[GDPR] forget_user failed on nordic runes for server {sid}: {e}")
 
         if server_report:
             report[sid] = server_report

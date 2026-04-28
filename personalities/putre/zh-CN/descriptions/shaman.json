@@ -5,10 +5,18 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🔮 **北欧符文** - 投古老符文获智慧和指引"
     },
-    "subrole_buttons": {
-        "runes": "🔮 符文"
+    "moon_phases": {
+        "new_moon": "新月 🌑",
+        "waxing_crescent": "娥眉月 🌒",
+        "first_quarter": "上弦月 🌓",
+        "waxing_gibbous": "盈凸月 🌔",
+        "full_moon": "满月 🌕",
+        "waning_gibbous": "亏凸月 🌖",
+        "last_quarter": "下弦月 🌗",
+        "waning_crescent": "残月 🌘"
     },
     "nordic_runes": {
+        "button": "🔮 符文",
         "title": "**🔮 普特雷 - 古老北欧符文先知**",
         "description": "靠近并照亮你的命运，用古老的北欧知识。Elder Futhark符文以真相和力量说话，为战士和兽人展示道路。",
         "title_available_readings": "🌔 **符文阅读类型** 🌔\n",

@@ -140,7 +140,7 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                 )
                 if role_view is None:
                     await ctx.send(
-                        f"❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hunter`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, `!canvas role shaman`, or detailed views like `!canvas role trickster dice`. You can also use `!canvas <bot_name> role <name>` to target a specific bot."
+                        f"❌ Unknown or unavailable role. Use: `!canvas role news_watcher`, `!canvas role treasure_hunter`, `!canvas role trickster`, `!canvas role banker`, `!canvas role mc`, `!canvas role shaman`, `!canvas role scholar`, or detailed views like `!canvas role trickster dice`. You can also use `!canvas <bot_name> role <name>` to target a specific bot."
                     )
                     return
 

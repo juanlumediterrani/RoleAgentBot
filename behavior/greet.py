@@ -7,7 +7,7 @@ import time
 import discord
 import asyncio
 from agent_logging import get_logger
-from agent_mind import call_llm, _build_conversation_user_prompt, _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
+from agent_mind import call_llm_async, _build_conversation_user_prompt, _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
 from agent_engine import _build_system_prompt, _get_personality
 from discord_bot.discord_utils import get_greeting_enabled, get_server_key, get_db_for_server, send_dm_with_personality
 
@@ -202,11 +202,10 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
         system_instruction = _build_system_prompt(server_personality, server_id)
         
         # Generate greeting
-        saludo = await asyncio.to_thread(
-            call_llm,
+        saludo = await call_llm_async(
             system_instruction=system_instruction,
             prompt=greeting_prompt,
-            async_mode=False,
+            background=False,
             call_type="think",
             critical=True,
             logger=logger,
@@ -539,11 +538,19 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
         
         for guild in eligible_guilds:
             try:
+                # Get user's display name for this specific server
+                member = guild.get_member(after.id)
+                if member:
+                    user_display_name = member.display_name
+                else:
+                    # Fallback to global name if member not found in guild
+                    user_display_name = after.global_name or after.name
+                
                 greeting_data = {
                     'discord_cfg': discord_cfg,
                     'presence_cfg': presence_cfg
                 }
-                await _send_greeting_to_user(after.id, after.display_name, guild, greeting_data, bot)
+                await _send_greeting_to_user(after.id, user_display_name, guild, greeting_data, bot)
             except Exception as e:
                 logger.error(f"Error sending greeting to {after.name} from server {guild.name}: {e}")
                 # Continue with other servers even if one fails

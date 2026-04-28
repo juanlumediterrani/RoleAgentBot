@@ -2,13 +2,21 @@
     "title": "🎚️  **Shaman Hans**",
     "description": "Consult ancient Aryan runes for strategic intelligence and military guidance.",
     "button": "🎚️ Shaman",
-    "subrole_buttons": {
-        "runes": "🎚️ Aryan Science"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🎚️ **Ancient Aryan Science** - Consult ancient runes for military intelligence and strategic guidance"
     },
+    "moon_phases": {
+        "new_moon": "New Moon 🌑",
+        "waxing_crescent": "Waxing Crescent 🌒",
+        "first_quarter": "First Quarter 🌓",
+        "waxing_gibbous": "Waxing Gibbous 🌔",
+        "full_moon": "Full Moon 🌕",
+        "waning_gibbous": "Waning Gibbous 🌖",
+        "last_quarter": "Last Quarter 🌗",
+        "waning_crescent": "Waning Crescent 🌘"
+    },
     "nordic_runes": {
+        "button": "🎚️ Aryan Science",
         "title": "🎚️  **Ancient Aryan Science - Old Germanic Runes**",
         "description": "Approach and illuminate your destiny viz ancient Germanic knowledge. Ze Elder Futhark runes speak viz truth and power, showing ze path for soldiers and officers alike.",
         "title_available_readings": "🌔 **Types of Rune Readings** 🌔\n",

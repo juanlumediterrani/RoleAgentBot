@@ -15,11 +15,11 @@
       "button_confirm_changes": "Confirm Changes",
       "option_yes": "Yes",
       "option_no": "No",
+      "button_personal": "📁 Personal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Available subroutines",
       "action_descriptions": {
-        "boolean_toggle": "Toggle activation/deactivation",
-        "number_input_target": "Number input",
-        "text_input_target": "Text input",
-        "action": "Immediate action"
+        "boolean_toggle": "Toggle activation/deactivation"
       },
       "action_labels": {
         "on": "Activate",
@@ -37,10 +37,7 @@
         "memory_long": "Long Memory",
         "memory_recent": "Recent Memory",
         "memory_relationship": "Relationship Memory"
-      },
-      "button_personal": "📁 Personal",
-      "button_admin": "🔧 Admin",
-      "available_subroles": "Available sub-tasks"
+      }
     },
     "help_menu": {
       "title": "📚 ** Igorrr - Oven Survival Manual**",
@@ -48,6 +45,17 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Tasks** The Task modules are the chains Igorrr drags to serve the Master and watch the flour sacks.",
       "behavior_section": "**Nervous Tics** Here the Master's whims are configured. Only for those in charge at the bakery.",
+      "shortcuts_section": "**Quick Access** Configure up to 5 shortcut buttons in the Canvas home for immediate access to your favorite tasks. Available in Settings > Shortcuts.",
+      "shortcuts_messages": {
+        "title": "Quick Access Configuration",
+        "description": "Configure immediate access to tasks",
+        "settings_description": "Configure quick access buttons on Canvas home",
+        "placeholder_select_role": "Select your role or subrole...",
+        "configure_shortcut": "Configure Shortcut {shortcut_id} - Select a role or subrole:",
+        "saved": "✅ Shortcut configured successfully... HEHEHE",
+        "failed": "❌ FAILED TO CONFIGURE SHORTCUT... HISSS",
+        "cancelled": "Configuration cancelled... DISMISSED"
+      },
       "tips_section": "**Useful Whispers** -You can ask me how to use something if your silk fingers don't know how to type... -The best is hidden in the dark corners of each task... HEHEHE."
     },
     "canvas_home_messages": {
@@ -57,15 +65,15 @@
       "button_roles": "🍞 Tasks",
       "button_behavior": "💊 Tics",
       "button_help": "❓ Huh?",
-      "button_memory": "🧠 Amnesia",
       "generic_option_label": "Choose your poison...",
       "personalitystatus": "Filth Loaded:",
       "description": "-Touch my tools if you dare. The panel lets you handle my threads... SSSSS.",
       "interestingthings": "**Oven Chains:**",
-      "recentsynthesistitle": "🥖 **Oven Whispers**",
-      "dailymemorytitle": "🔥 **Living Ashes**",
-      "personalsynthesistitle": "🪤 **Your Soot Trail**",
-      "dm_default_server_title": "🔔 **Using the oven of: {server_name}**",
+      "recentsynthesistitle": "**Oven Whispers**",
+      "pilgrimdatatitle": "Victim Data:",
+      "dailymemorytitle": "**Living Ashes**",
+      "personalsynthesistitle": "**Your Soot Trail**",
+      "dm_default_server_title": "**Using the oven of: {server_name}**",
       "dm_default_server_message": "*Whispering from private, using the first available basement.*",
       "dm_default_server_separator": "─────────────────────────────────────────────"
     },
@@ -158,7 +166,7 @@
       "description": "Erase my memories if you want me to forget how much disgust you give me. Or watch me remember your sins."
     },
     "roles_view_messages": {
-      "title": "🎭 Igorrr's Tasks 🎭",
+      "title": "🎭 Bread Tricks 🎭",
       "description": "🌟 Look at what chains Igorrr drags today to please the Master.",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",

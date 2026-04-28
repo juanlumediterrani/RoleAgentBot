@@ -908,6 +908,9 @@ from .canvas_shaman import (
     RuneCastingModal as _RuneCastingModal,
     handle_canvas_shaman_action as _HandleCanvasShamanAction,
 )
+from .canvas_scholar import (
+    handle_canvas_scholar_action as _HandleCanvasScholarAction,
+)
 from .canvas_treasure_hunter import (
     Poe2ItemModal as _Poe2ItemModal,
     Poe2PurchaseLiquidateView as _Poe2PurchaseLiquidateView,
@@ -1011,6 +1014,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "banker": ("Banker", "Wallet and economy"),
             "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
+            "scholar": ("Scholar", "Knowledge and archives"),
         }
         options = []
         for role_name in _get_enabled_roles(agent_config):
@@ -1066,7 +1070,7 @@ class CanvasRoleSelect(discord.ui.Select):
         # Also filter out subroles (beggar is a subrole of banker)
         roles_cfg = (view.agent_config or {}).get("roles", {})
         all_roles = [
-            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc"]
+            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc", "scholar"]
             if roles_cfg.get(role, {}).get("enabled", False)
         ]
         enabled_roles = _get_enabled_roles(view.agent_config, interaction.guild)
@@ -1078,6 +1082,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "banker": ("Banker", "Wallet and economy"),
             "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
+            "scholar": ("Scholar", "Knowledge and archives"),
         }
         
         embed = discord.Embed(
@@ -1354,6 +1359,9 @@ class CanvasRoleActionSelect(discord.ui.Select):
         if self.role_name == "shaman":
             await _HandleCanvasShamanAction(interaction, action_name, view)
             return
+        if self.role_name == "scholar":
+            await _HandleCanvasScholarAction(interaction, action_name, view)
+            return
         if self.role_name == "juggler":
             from .canvas_juggler import handle_canvas_juggler_modal_submit
             # Handle ring actions that need modal input
@@ -1621,6 +1629,21 @@ class CanvasBehaviorActionSelect(discord.ui.Select):
             role_view = RoleManagementView(view)
             await interaction.response.send_message("🎛️ **Gestión de Roles** - Selecciona un rol para activar/desactivar:", view=role_view, ephemeral=True)
             return
+        if action_name == "shortcuts_config":
+            if not view.admin_visible:
+                error_settings_admin_only = general_answers.get("error_settings_admin_only", "❌ This settings option is admin-only.")
+                await interaction.response.send_message(error_settings_admin_only, ephemeral=True)
+                return
+            # Send ephemeral message with shortcuts configuration view
+            server_id = get_server_key(view.guild) if view.guild else None
+            personality_descriptions = _get_personality_descriptions(server_id)
+            shortcuts_messages = personality_descriptions.get("help_menu", {}).get("shortcuts_messages", {})
+            shortcuts_title = shortcuts_messages.get("title", "Canvas Shortcuts")
+            shortcuts_description = shortcuts_messages.get("description", "Configure quick access buttons")
+            
+            shortcuts_view = ShortcutsConfigView(view)
+            await interaction.response.send_message(f"⚡ **{shortcuts_title}** - {shortcuts_description}:", view=shortcuts_view, ephemeral=True)
+            return
         if action_name in {"taboo_on", "taboo_off"}:
             if not view.admin_visible or not eff_guild:
                 error_behavior_admin_only = general_answers.get("error_behavior_admin_only", "❌ This behavior option is admin-only.")
@@ -1803,6 +1826,82 @@ class CanvasNavHelpButton(discord.ui.Button):
         await view._show_section(interaction, "help")
 
 
+class CanvasShortcutButton(discord.ui.Button):
+    """Button for Canvas shortcuts that navigates to a specific role/subrole - reuses existing button logic."""
+    
+    def __init__(self, label: str, target_role: str, target_subrole: str = None, row=1):
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, row=row)
+        self.target_role = target_role
+        self.target_subrole = target_subrole
+    
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        eff_guild = interaction.guild or getattr(view, 'guild', None)
+        
+        # Reuse CanvasRoleButton logic for role navigation
+        if not self.target_subrole:
+            content = _build_canvas_role_view(
+                self.target_role,
+                view.agent_config,
+                view.admin_visible,
+                eff_guild,
+                view.author_id,
+            )
+            if not content:
+                await _safe_send_interaction_message(interaction, f"❌ Role {self.target_role} is not available.", ephemeral=True)
+                return
+            
+            detail_view = CanvasRoleDetailView(
+                author_id=view.author_id,
+                role_name=self.target_role,
+                agent_config=view.agent_config,
+                admin_visible=view.admin_visible,
+                sections=view.sections,
+                guild=eff_guild,
+                previous_view=view,
+            )
+            detail_view.message = interaction.message
+            role_embed = _build_canvas_role_embed(
+                self.target_role, content, view.admin_visible, "overview", 
+                None, detail_view.auto_response_preview, 
+                server_id=get_server_key(eff_guild) if eff_guild else None
+            )
+            detail_view.current_embed = role_embed
+            await interaction.response.edit_message(content=None, embed=role_embed, view=detail_view)
+        else:
+            # Reuse CanvasRoleDetailButton logic for subrole navigation
+            content = _build_canvas_role_detail_view(
+                self.target_role,
+                self.target_subrole,
+                view.agent_config,
+                view.admin_visible,
+                eff_guild,
+                view.author_id,
+            )
+            if not content:
+                await _safe_send_interaction_message(interaction, f"❌ Subrole {self.target_subrole} is not available.", ephemeral=True)
+                return
+            
+            detail_view = CanvasRoleDetailView(
+                author_id=view.author_id,
+                role_name=self.target_role,
+                agent_config=view.agent_config,
+                admin_visible=view.admin_visible,
+                sections=view.sections,
+                current_detail=self.target_subrole,
+                guild=eff_guild,
+                previous_view=view,
+            )
+            detail_view.message = interaction.message
+            detail_embed = _build_canvas_role_embed(
+                self.target_role, content, view.admin_visible, self.target_subrole,
+                None, detail_view.auto_response_preview,
+                server_id=get_server_key(eff_guild) if eff_guild else None
+            )
+            detail_view.current_embed = detail_embed
+            await interaction.response.edit_message(content=None, embed=detail_embed, view=detail_view)
+
+
 class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, discord.ui.View):
     """Interactive button-based Canvas navigation for top-level sections."""
 
@@ -1832,6 +1931,37 @@ class CanvasNavigationView(TimeoutResetMixin, BackButtonMixin, HomeButtonMixin, 
         self.add_item(CanvasNavRolesButton(label=roles_label))
         self.add_item(CanvasNavBehaviorButton(label=behavior_label))
         self.add_item(CanvasNavHelpButton(label=help_label))
+        # Add shortcut buttons below navigation buttons
+        self._add_shortcut_buttons()
+
+    def _add_shortcut_buttons(self):
+        """Add shortcut buttons from server_config.json."""
+        if not self.guild:
+            return
+        
+        server_id = str(self.guild.id)
+        from .server_config import get_canvas_shortcuts
+        shortcuts = get_canvas_shortcuts(server_id)
+        
+        # Filter only enabled shortcuts
+        enabled_shortcuts = [s for s in shortcuts if s.get("enabled", False)]
+        
+        # Add shortcut buttons (max 5, row 1 for shortcuts)
+        for shortcut in enabled_shortcuts[:5]:
+            label = shortcut.get("label", "")
+            target_role = shortcut.get("target_role", "")
+            target_subrole = shortcut.get("target_subrole")
+            
+            if not label or not target_role:
+                continue
+            
+            button = CanvasShortcutButton(
+                label=label,
+                target_role=target_role,
+                target_subrole=target_subrole,
+                row=1
+            )
+            self.add_item(button)
 
     async def on_timeout(self) -> None:
         """Called when the view times out - delete the entire message."""
@@ -1925,6 +2055,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
         button_shaman = _roles_desc.get("shaman", {}).get("button", "Shaman")
         button_mc = _roles_desc.get("mc", {}).get("button", "MC")
         button_juggler = _roles_desc.get("juggler", {}).get("button", "Juggler")
+        button_scholar = _roles_desc.get("scholar", {}).get("button", "Scholar")
 
         role_labels = {
             "news_watcher": button_watcher,
@@ -1934,6 +2065,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
             "shaman": button_shaman,
             "mc": button_mc,
             "juggler": button_juggler,
+            "scholar": button_scholar,
         }
         
         # Get all enabled roles
@@ -2325,6 +2457,286 @@ class TabooKeywordModal(CanvasModal):
             await interaction.response.send_message(applied_text, ephemeral=True)
 
 
+class ShortcutRoleSelect(discord.ui.Select):
+    """Dropdown for selecting role/subrole for a shortcut."""
+    
+    # Map subrole JSON keys to Canvas surface names
+    SUBROLE_TO_SURFACE = {
+        "nordic_runes": "runes",
+        "dice_game": "dice",
+        "poe2": "league",
+        "beggar": "beggar",
+    }
+    
+    def __init__(self, shortcut_id: int, shortcuts_view, agent_config, selected_value=None):
+        self.shortcut_id = shortcut_id
+        self.shortcuts_view = shortcuts_view
+        self.agent_config = agent_config
+        self.selected_value = selected_value
+        
+        # Build options from available roles and subroles using existing button labels
+        options = []
+        valid_roles = ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman", "scholar"]
+        
+        server_id = str(shortcuts_view.canvas_view.guild.id) if shortcuts_view.canvas_view.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        role_descriptions = personality_descriptions.get("role_descriptions", {})
+        shortcuts_messages = personality_descriptions.get("help_menu", {}).get("shortcuts_messages", {})
+        
+        for role_name in valid_roles:
+            role_cfg = agent_config.get("roles", {}).get(role_name, {})
+            if not role_cfg.get("enabled", False):
+                continue
+            
+            # Add main role option - use role button from descriptions
+            role_desc = role_descriptions.get(role_name, {})
+            role_label = role_desc.get("button", role_name.replace("_", " ").title())
+            options.append(discord.SelectOption(label=role_label, value=f"{role_name}"))
+            
+            # Add subroles if available - use subrole button labels from descriptions
+            subroles = role_cfg.get("subroles", {})
+            for subrole_name, subrole_cfg in subroles.items():
+                if subrole_cfg.get("enabled", False):
+                    # Get the button label from personality descriptions
+                    # Try subrole-specific section first (e.g., "dice_game": {"button": ...})
+                    subrole_section = role_desc.get(subrole_name, {})
+                    subrole_label = subrole_section.get("button")
+                    
+                    # Fallback to title if button doesn't exist
+                    if not subrole_label:
+                        subrole_label = subrole_section.get("title")
+                    
+                    # Fallback to generated label if neither exists
+                    if not subrole_label:
+                        subrole_label = subrole_name.replace("_", " ").title()
+                    
+                    # Use surface name for value (e.g., "runes" instead of "nordic_runes")
+                    surface_name = self.SUBROLE_TO_SURFACE.get(subrole_name, subrole_name)
+                    options.append(discord.SelectOption(label=f"  └ {subrole_label}", value=f"{role_name}:{surface_name}"))
+        
+        # Set placeholder based on selected value - use the actual label from options
+        if selected_value:
+            # Find the actual label from the options
+            selected_label = None
+            for option in options:
+                if option.value == selected_value:
+                    selected_label = option.label.strip()
+                    break
+            if selected_label:
+                placeholder = f"Selected: {selected_label}"
+            else:
+                # Fallback if not found
+                if ":" in selected_value:
+                    role, subrole = selected_value.split(":", 1)
+                    placeholder = f"Selected: {role.title()} - {subrole.title()}"
+                else:
+                    placeholder = f"Selected: {selected_value.title()}"
+        else:
+            placeholder = shortcuts_messages.get("placeholder_select_role", "Select role or subrole...")
+        
+        super().__init__(
+            placeholder=placeholder,
+            options=options[:25],  # Discord limit
+            min_values=1,
+            max_values=1
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        selected = self.values[0]
+        self.shortcuts_view.selected_value = selected
+        self.shortcuts_view.confirm_button.disabled = False
+        
+        # Remove the old dropdown and add a new one with updated placeholder
+        # Find the dropdown (first item should be the dropdown)
+        for item in self.shortcuts_view.children:
+            if isinstance(item, ShortcutRoleSelect):
+                self.shortcuts_view.remove_item(item)
+                break
+        
+        # Add new dropdown with selected value (row is set in the dropdown constructor)
+        new_dropdown = ShortcutRoleSelect(self.shortcut_id, self.shortcuts_view, self.shortcuts_view.agent_config, selected)
+        self.shortcuts_view.add_item(new_dropdown)
+        
+        await interaction.response.edit_message(view=self.shortcuts_view)
+
+
+class ShortcutsConfigView(discord.ui.View):
+    """View for configuring Canvas shortcuts - handles both list and config states."""
+    
+    def __init__(self, canvas_view: "CanvasBehaviorView", mode="list", shortcut_id=None):
+        super().__init__(timeout=300)
+        self.canvas_view = canvas_view
+        self.server_id = str(canvas_view.guild.id) if canvas_view.guild else "0"
+        self.agent_config = canvas_view.agent_config
+        self.mode = mode  # "list" or "config"
+        self.shortcut_id = shortcut_id  # Only used in config mode
+        self.selected_value = None  # Only used in config mode
+        
+        # Load current shortcuts
+        from .server_config import get_canvas_shortcuts
+        self.shortcuts = get_canvas_shortcuts(self.server_id)
+        
+        # Add items based on mode
+        if self.mode == "list":
+            self._add_shortcut_buttons()
+        elif self.mode == "config":
+            self._add_config_ui()
+    
+    def _add_shortcut_buttons(self):
+        """Add buttons for configuring each shortcut (list mode)."""
+        for i in range(1, 6):
+            shortcut = self.shortcuts[i-1] if i-1 < len(self.shortcuts) else None
+            label = shortcut.get("label", f"#{i}") if shortcut else f"#{i}"
+            enabled = shortcut.get("enabled", False) if shortcut else False
+            
+            # Use emoji to indicate status
+            status_emoji = "✅" if enabled else "⬜"
+            
+            button = discord.ui.Button(
+                label=f"{status_emoji} Shortcut {i}: {label[:20]}",
+                style=discord.ButtonStyle.secondary if enabled else discord.ButtonStyle.secondary,
+                row=(i-1) // 3  # 3 buttons per row
+            )
+            button.callback = lambda interaction, sid=i: self._configure_shortcut(interaction, sid)
+            self.add_item(button)
+    
+    def _add_config_ui(self):
+        """Add dropdown and confirm/cancel buttons (config mode)."""
+        # Add role/subrole dropdown with selected value
+        self.add_item(ShortcutRoleSelect(self.shortcut_id, self, self.agent_config, self.selected_value))
+        
+        # Add confirm button
+        self.confirm_button = discord.ui.Button(label="✓ Confirm", style=discord.ButtonStyle.success, row=1)
+        self.confirm_button.disabled = not self.selected_value
+        self.confirm_button.callback = self._confirm
+        self.add_item(self.confirm_button)
+        
+        # Add cancel button
+        cancel_button = discord.ui.Button(label="✕ Cancel", style=discord.ButtonStyle.secondary, row=1)
+        cancel_button.callback = self._cancel
+        self.add_item(cancel_button)
+    
+    async def _configure_shortcut(self, interaction: discord.Interaction, shortcut_id: int):
+        """Switch to config mode for a specific shortcut."""
+        # Get personality descriptions for messages
+        server_id = str(self.canvas_view.guild.id) if self.canvas_view.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        shortcuts_messages = personality_descriptions.get("help_menu", {}).get("shortcuts_messages", {})
+        configure_shortcut = shortcuts_messages.get("configure_shortcut", "Configure Shortcut {shortcut_id} - Select a role or subrole:")
+        
+        # Create new view in config mode
+        config_view = ShortcutsConfigView(self.canvas_view, mode="config", shortcut_id=shortcut_id)
+        await interaction.response.edit_message(
+            content=f"⚡ **{configure_shortcut.format(shortcut_id=shortcut_id)}**",
+            view=config_view
+        )
+    
+    async def _confirm(self, interaction: discord.Interaction):
+        """Confirm shortcut configuration and return to list mode."""
+        if not self.selected_value:
+            await interaction.response.send_message("❌ Please select a role/subrole first.", ephemeral=True)
+            return
+        
+        # Parse selected value
+        if ":" in self.selected_value:
+            target_role, target_subrole = self.selected_value.split(":", 1)
+        else:
+            target_role = self.selected_value
+            target_subrole = None
+        
+        # Get the label from the dropdown option (which uses personality descriptions)
+        # Find the selected option in the dropdown
+        label = None
+        for item in self.children:
+            if isinstance(item, ShortcutRoleSelect):
+                for option in item.options:
+                    if option.value == self.selected_value:
+                        label = option.label.strip()
+                        break
+                break
+        
+        if not label:
+            # Fallback to generated label
+            role_label = target_role.replace("_", " ").title()
+            if target_subrole:
+                subrole_label = target_subrole.replace("_", " ").title()
+                label = f"{role_label} - {subrole_label}"
+            else:
+                label = role_label
+        
+        # Clean label: remove bold formatting and tree symbol
+        label = label.replace("**", "").replace("└", "").strip()
+        
+        # Save shortcut with the cleaned label
+        from .server_config import set_canvas_shortcut
+        success = set_canvas_shortcut(
+            self.server_id,
+            self.shortcut_id,
+            enabled=True,
+            label=label,
+            target_role=target_role,
+            target_subrole=target_subrole
+        )
+        
+        # Get personality descriptions for messages
+        server_id = str(self.canvas_view.guild.id) if self.canvas_view.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        shortcuts_messages = personality_descriptions.get("help_menu", {}).get("shortcuts_messages", {})
+        shortcuts_title = shortcuts_messages.get("title", "Canvas Shortcuts")
+        shortcuts_description = shortcuts_messages.get("description", "Configure quick access buttons")
+        shortcuts_saved = shortcuts_messages.get("saved", "✅ Shortcut saved successfully")
+        shortcuts_failed = shortcuts_messages.get("failed", "❌ Failed to save shortcut")
+        
+        if success:
+            # Return to list mode with updated shortcuts
+            list_view = ShortcutsConfigView(self.canvas_view, mode="list")
+            await interaction.response.edit_message(
+                content=f"⚡ **{shortcuts_title}** - {shortcuts_description}:",
+                view=list_view
+            )
+        else:
+            await interaction.response.send_message(shortcuts_failed, ephemeral=True)
+    
+    async def _cancel(self, interaction: discord.Interaction):
+        """Cancel and return to list mode."""
+        # Get personality descriptions for messages
+        server_id = str(self.canvas_view.guild.id) if self.canvas_view.guild else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        shortcuts_messages = personality_descriptions.get("help_menu", {}).get("shortcuts_messages", {})
+        shortcuts_title = shortcuts_messages.get("title", "Canvas Shortcuts")
+        shortcuts_description = shortcuts_messages.get("description", "Configure quick access buttons")
+        
+        list_view = ShortcutsConfigView(self.canvas_view, mode="list")
+        await interaction.response.edit_message(
+            content=f"⚡ **{shortcuts_title}** - {shortcuts_description}:",
+            view=list_view
+        )
+    
+    async def _go_back(self, interaction: discord.Interaction):
+        """Return to settings view."""
+        from .content import _build_canvas_behavior_detail, _build_canvas_behavior_embed
+        
+        title, description, content = _build_canvas_behavior_detail(
+            "settings", 
+            self.canvas_view.admin_visible, 
+            self.canvas_view.guild, 
+            self.canvas_view.agent_config, 
+            author_id=str(self.canvas_view.author_id)
+        ) or (None, None, "")
+        
+        next_view = CanvasBehaviorView(
+            author_id=self.canvas_view.author_id,
+            sections=self.canvas_view.sections,
+            admin_visible=self.canvas_view.admin_visible,
+            agent_config=self.canvas_view.agent_config,
+            current_detail="settings",
+            guild=self.canvas_view.guild,
+        )
+        
+        behavior_embed = _build_canvas_behavior_embed(content or "", self.canvas_view.admin_visible, None, title, description)
+        await interaction.response.edit_message(embed=behavior_embed, view=next_view)
+
+
 class RoleManagementView(discord.ui.View):
     """View for role management dropdown."""
     
@@ -2349,13 +2761,13 @@ class RoleManagementDropdown(discord.ui.Select):
         # Role configuration with display names and internal names
         # MC is always enabled (cannot be toggled)
         roles_config = [
-            {"internal": "news_watcher", "display": role_descriptions.get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "treasure_hunter", "display": role_descriptions.get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "trickster", "display": role_descriptions.get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "banker", "display": role_descriptions.get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "mc", "display": role_descriptions.get("mc", {}).get("title", "🥁 Putre Tamborilero!").replace("**", "").strip(), "always_enabled": True},
-            {"internal": "juggler", "display": role_descriptions.get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "shaman", "display": role_descriptions.get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "news_watcher", "display": role_descriptions.get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").strip(), "always_enabled": False},
+            {"internal": "treasure_hunter", "display": role_descriptions.get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").strip(), "always_enabled": False},
+            {"internal": "trickster", "display": role_descriptions.get("trickster", {}).get("title", "🎭Trilero Putre").strip(), "always_enabled": False},
+            {"internal": "banker", "display": role_descriptions.get("banker", {}).get("title", "💰 El Gran Kofre de Putre").strip(), "always_enabled": False},
+            {"internal": "mc", "display": role_descriptions.get("mc", {}).get("title", "🥁 Putre Tamborilero!").strip(), "always_enabled": True},
+            {"internal": "juggler", "display": role_descriptions.get("juggler", {}).get("title", "🤹 El Juglah Putre").strip(), "always_enabled": False},
+            {"internal": "shaman", "display": role_descriptions.get("shaman", {}).get("title", "🐺 Chamán Putre").strip(), "always_enabled": False},
         ]
         
         # Get current state for each role
@@ -2436,12 +2848,12 @@ class RoleManagementDropdown(discord.ui.Select):
         # Build success message
         state_text = general.get("state_enabled", "Activado") if new_state else general.get("state_disabled", "Desactivado")
         role_display_map = {
-            "news_watcher": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(),
-            "treasure_hunter": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(),
-            "trickster": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(),
-            "banker": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(),
-            "juggler": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(),
-            "shaman": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(),
+            "news_watcher": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").strip(),
+            "treasure_hunter": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").strip(),
+            "trickster": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").strip(),
+            "banker": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").strip(),
+            "juggler": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").strip(),
+            "shaman": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").strip(),
         }
         role_display = role_display_map.get(role_name, role_name)
         
@@ -2450,13 +2862,13 @@ class RoleManagementDropdown(discord.ui.Select):
         # Update the dropdown with new states
         new_options = []
         roles_config = [
-            {"internal": "news_watcher", "display": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "treasure_hunter", "display": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "trickster", "display": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "banker", "display": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "mc", "display": descriptions.get("role_descriptions", {}).get("mc", {}).get("title", "🥁 Putre Tamborilero!").replace("**", "").strip(), "always_enabled": True},
-            {"internal": "juggler", "display": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").replace("**", "").strip(), "always_enabled": False},
-            {"internal": "shaman", "display": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").replace("**", "").strip(), "always_enabled": False},
+            {"internal": "news_watcher", "display": descriptions.get("role_descriptions", {}).get("news_watcher", {}).get("title", "🎯 Vigia de Noticias").strip(), "always_enabled": False},
+            {"internal": "treasure_hunter", "display": descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("title", "💎 Putre Cazador de Tesoros").strip(), "always_enabled": False},
+            {"internal": "trickster", "display": descriptions.get("role_descriptions", {}).get("trickster", {}).get("title", "🎭Trilero Putre").strip(), "always_enabled": False},
+            {"internal": "banker", "display": descriptions.get("role_descriptions", {}).get("banker", {}).get("title", "💰 El Gran Kofre de Putre").strip(), "always_enabled": False},
+            {"internal": "mc", "display": descriptions.get("role_descriptions", {}).get("mc", {}).get("title", "🥁 Putre Tamborilero!").strip(), "always_enabled": True},
+            {"internal": "juggler", "display": descriptions.get("role_descriptions", {}).get("juggler", {}).get("title", "🤹 El Juglah Putre").strip(), "always_enabled": False},
+            {"internal": "shaman", "display": descriptions.get("role_descriptions", {}).get("shaman", {}).get("title", "🐺 Chamán Putre").strip(), "always_enabled": False},
         ]
         
         for role in roles_config:

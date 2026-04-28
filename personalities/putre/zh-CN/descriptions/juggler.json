@@ -5,11 +5,9 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **戒指猎人** - 指控可疑的人拿了唯一戒指"
     },
-    "subrole_buttons": {
-        "ring": "👁️ 戒指"
-    },
     "ring": {
-        "title": "👁️ **普特雷戒指猎人** 👁️",
+        "button": "👁️ 戒指",
+        "title": "👁️ **普特雷戒指猎人**",
         "description": "🔍 戒指猎人会追你到时间尽头，指控别人来避免这苦差。",
         "status_active": "✅ **追捕中** - 普特雷在找戒指",
         "status_inactive": "❌ **追捕暂停** - 普特雷在休息",

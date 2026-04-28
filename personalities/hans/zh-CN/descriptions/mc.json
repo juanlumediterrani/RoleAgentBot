@@ -2,9 +2,6 @@
     "title": "📯  **赫尔汉斯军事音乐官员**",
     "description": "阿赫通！赫尔汉斯指挥军事音乐。在语音频道报到接收纪律进行曲，新兵！",
     "button": "📯 进行曲",
-    "subrole_buttons": {
-        "overview": "📯 进行曲"
-    },
     "canvas_mc_subtitle": "**严格指挥**",
     "canvas_mc_separator": "═════════════════════════════════",
     "canvas_mc_description": "施内尔！使用菜单申请授权进行曲、检查播放队列，或添加纪律音乐！没有借口，齐维利斯特！",
@@ -40,11 +37,11 @@
     "mc_clear": "🗑️ 编队已清理！",
     "last_song_removed": "🔙 最后一首进行曲已从编队删除！",
     "history_displayed": "📜 历史已审查！",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "调整进行曲音量！",
         "mc_play": "立即播放！",
         "mc_play_description": "申请授权进行曲并立即播放！不要延迟！",
-        "mc_add": "添加到编队！", 
+        "mc_add": "添加到编队！",
         "mc_add_description": "添加进行曲到播放编队末尾！保持秩序！",
         "mc_skip": "跳过进行曲！",
         "mc_skip_description": "跳过当前进行曲到下一首！齐步走！",

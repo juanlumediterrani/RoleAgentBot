@@ -45,6 +45,17 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Artes y Caminos** Los caminos son las diferentes formas en que Yuki puede estar presente para ofrecer servicios específicos a los visitantes.",
       "behavior_section": "**Protocolos de Presencia** Configuración de las rutinas de interacción de Yuki. Exclusivo para Administradores.",
+      "shortcuts_section": "**Acceso Rápido** Configura hasta 5 botones de atajo en el Canvas principal para acceso inmediato a tus artes favoritas. Disponible en Configuración > Atajos.",
+      "shortcuts_messages": {
+        "title": "Configuración de Acceso Rápido",
+        "description": "Configura acceso inmediato a artes",
+        "settings_description": "Configura botones de acceso rápido en el Canvas principal",
+        "placeholder_select_role": "Selecciona tu rol o subrol...",
+        "configure_shortcut": "Configurar Atajo {shortcut_id} - Selecciona un rol o subrol:",
+        "saved": "✅ Atajo configurado con éxito",
+        "failed": "❌ Error al configurar atajo",
+        "cancelled": "Configuración cancelada"
+      },
       "tips_section": "**Sugerencias** -Puedes consultarme sobre mis propios protocolos: '¿cómo funciona el módulo dice?' -Cada camino tiene su propio ritmo y requiere su propia escucha."
     },
     "canvas_home_messages": {
@@ -59,6 +70,7 @@
       "description": "Accede a cada parte del salon dese aquí para acceder a los servicios.",
       "interestingthings": "**Cosas del Salón:** ",
       "recentsynthesistitle": "🌊 **Flujo Reciente**",
+      "pilgrimdatatitle": "Datos del Invitado:",
       "dailymemorytitle": "🗻 **Memoria**",
       "personalsynthesistitle": "👥 **Vinculo con el Visitante**",
       "dm_default_server_title": "🔔 **Conectada a la sala: {server_name}**",

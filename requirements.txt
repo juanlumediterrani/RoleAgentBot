@@ -12,3 +12,4 @@ ffmpeg-python
 davey
 PyNaCl
 curl_cffi
+pydantic>=2.0.0

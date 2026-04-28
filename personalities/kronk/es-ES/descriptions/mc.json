@@ -2,9 +2,6 @@
     "title": "🎵  **MC Kronk**",
     "description": "Kronk está aquí para la música. Conéctalo a un canal de voz.",
     "button": "🎵 MC",
-    "subrole_buttons": {
-        "overview": "🎵 Música"
-    },
     "canvas_mc_subtitle": "Control de Música",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Usa el menú para pedir canciones, ver la cola, o añadir más música.",
@@ -40,11 +37,11 @@
     "queue_cleared": "🗑️ Cola limpiada",
     "last_song_removed": "🔙 Última canción eliminada",
     "history_displayed": "📜 Historial mostrado",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Ajustar Volumen",
         "mc_play": "Reproducir Ahora",
         "mc_play_description": "Pide una canción y la reproduce inmediatamente",
-        "mc_add": "Añadir a la Cola", 
+        "mc_add": "Añadir a la Cola",
         "mc_add_description": "Añade una canción al final de la cola de reproducción",
         "mc_skip": "Saltar Canción",
         "mc_skip_description": "Salta la canción actual y pasa a la siguiente",

@@ -45,7 +45,18 @@
       "separator": "---------------------------------------------",
       "roles_section": "**角色** 角色模块是机器人可提供的一些服务。",
       "behavior_section": "**行为** 在本节中，你可以配置机器人一些可交互的行为。仅限管理员",
-      "tips_section": "**一些建议** -你可以问机器人某个命令怎么工作，比如：‘骰子命令怎么工作？’ -机器人最有趣的部分在每个角色内部"
+      "shortcuts_section": "**快捷方式** 在Canvas主视图中配置最多5个快速访问按钮，用于你最喜欢的角色和子角色。可在设置 > 快捷方式中找到。",
+      "shortcuts_messages": {
+        "title": "Canvas快捷方式",
+        "description": "配置快速访问按钮",
+        "settings_description": "在Canvas主页配置快速访问按钮",
+        "placeholder_select_role": "选择你的角色或子角色...",
+        "configure_shortcut": "配置快捷方式 {shortcut_id} - 选择角色或子角色:",
+        "saved": "✅ 快捷方式保存成功",
+        "failed": "❌ 保存快捷方式失败",
+        "cancelled": "配置已取消"
+      },
+      "tips_section": "**一些提示** -你可以问机器人命令如何工作，比如：'say命令是如何工作的？' -机器人最有趣的部分在每个角色内部"
     },
     "canvas_home_messages": {
       "title": "🧭 普特雷罗盘",
@@ -59,6 +70,7 @@
       "description": " - 从这里与普特雷所有可用功能互动。 - Canvas面板允许你从这个菜单与机器人所有选项互动。",
       "interestingthings": "**有趣的东西：**",
       "recentsynthesistitle": "🚩 **最近事件**",
+      "pilgrimdatatitle": "朋克数据：",
       "dailymemorytitle": "🗿 **记忆**",
       "personalsynthesistitle": "🍻 **与两脚兽的关系**",
       "dm_default_server_title": "🔔 **使用默认服务器：{server_name}**",

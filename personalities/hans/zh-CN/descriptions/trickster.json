@@ -9,17 +9,12 @@
         "beggar": "🏢 **特别基金** - 为团部筹集资金，立即捐赠。",
         "dice_game": "🎲 **战场** - 向敌人发射重炮并夺取战争财宝！"
     },
-    "subrole_buttons": {
-        "dice": "🎲 火炮",
-        "beggar": "🏢 特别基金",
-        "runes": "🎚️ Runenberatung"
-    },
     "dice_game": {
+        "button": "🎲 火炮",
         "waitmessage": "部署火炮...等待，士兵！",
         "roll_title": "你的炮弹爆炸了：\n",
         "combination_title": "行动结果：",
         "prize_title": "战争财宝：",
-        "current_pot_title": " **💰 战争财宝 💰**",
         "ranking": " **:trophy:  战斗员排名 **",
         "rankingvoid": " 前线没有战斗员，士兵！",
         "historyvoid": " 还没有人战斗，新兵！",

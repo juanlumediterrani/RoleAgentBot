@@ -3,11 +3,6 @@
     "description": "Haz que Putre monitorice precios de objetos en diferentes juegos y te envie alertas cuando el precio este en una zona de max/min",
     "button": "💎 Tesoros",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 Objetos",
-        "league": "🏆 Liga",
-        "admin": "🔧 Admin"
-    },
     "user_flows_title": "Flujo para el usuario",
     "user_flows_1": "Selecciona el juego que quieres suscribirte",
     "user_flows_2": "Navega en el para configurarlo y selecionar los items deseados.",
@@ -18,7 +13,8 @@
     "admin_flows_title": "Flujo para admin",
     "admin_flows_1": "Navega dentro de los subroles para activarlos y configurarlos, desde su admin view.",
     "poe2": {
-        "title": "💎 **Tesoros en Path of Exile 2** 👺" ,
+        "button": "👺 POE2",
+        "title": "💎 **Tesoros en Path of Exile 2** 👺",
         "description": "Haz que Putre monitorice precios y te envie alertas",
         "current_league": "🏆 **Liga Aktual**: {league}",
         "league_description": "Aqui se muestran las diferentes ligas que puedes selecionar y los hits del momento en esa liga.",

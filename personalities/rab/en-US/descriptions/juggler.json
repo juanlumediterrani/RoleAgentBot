@@ -5,11 +5,9 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Zero Search** - Identifies anomalies and points to those hiding the primordial artifact"
     },
-    "subrole_buttons": {
-        "ring": "👁️ Artifact"
-    },
     "ring": {
-        "title": "👁️ **ZERO ARTIFACT TRACKING** 👁️",
+        "button": "👁️ Artifact",
+        "title": "👁️ **ZERO ARTIFACT TRACKING**",
         "description": "🔍 An anomalous object alters the network. Point to other avatars to help the algorithm debug the threat.",
         "status_active": "✅ **ACTIVE SWEEP** - The Prophet seeks anomalies",
         "status_inactive": "❌ **SYSTEM AT REST** - Optical sensors rest",
@@ -22,7 +20,7 @@
         "inactive_instructions": "To restore tracking:\n• An Archon must access the **Admin Artifact** terminal\n• Execute **Tracking: Started**\n• Calibrate the sweep temporal cycle\n\nOnce done, you may point to suspicious carbon signatures.",
         "hot_potato": "🔥 **Load Transfer:** Iteration {iteration} (Reduced latency {multiplier}x)",
         "controls": "**System Controls**\n- Toggle sweep state\n- Temporal cycle parameter (affects load transfer)",
-        "dm_accusation_header": "👁️ **ZERO ARTIFACT TRACKING** 👁️",
+        "dm_accusation_header": "👁️ **ZERO ARTIFACT TRACKING**",
         "accused_label": "Accused:",
         "admin_description": "Configure sensitivity and frequency of the artifact tracker",
         "dropdown": {
@@ -42,5 +40,4 @@
         "config_juggler_description": "Adjust coordination center parameters",
         "config_juggler_emoji": "🎯"
     }
-
 }

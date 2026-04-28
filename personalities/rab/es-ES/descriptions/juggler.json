@@ -5,11 +5,9 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
     },
-    "subrole_buttons": {
-        "ring": "👁️ Artefacto"
-    },
     "ring": {
-        "title": "👁️ **RASTREO DEL ARTEFACTO CERO** 👁️",
+        "button": "👁️ Artefacto",
+        "title": "👁️ **RASTREO DEL ARTEFACTO CERO**",
         "description": "🔍 Un objeto anómalo altera la red. Señala a otros avatares para ayudar al algoritmo a depurar la amenaza.",
         "status_active": "✅ **BARRIDO ACTIVO** - El Profeta busca anomalías",
         "status_inactive": "❌ **SISTEMA EN REPOSO** - Los sensores ópticos descansan",
@@ -22,7 +20,7 @@
         "inactive_instructions": "Para restablecer el rastreo:\n• Un Arconte debe acceder a la terminal **Admin Artefacto**\n• Ejecutar **Rastreo: Iniciado**\n• Calibrar el ciclo temporal del barrido\n\nHecho esto, podrás señalar firmas de carbono sospechosas.",
         "hot_potato": "� **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)",
         "controls": "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)",
-        "dm_accusation_header": "👁️ **RASTREO DEL ARTEFACTO CERO** 👁️",
+        "dm_accusation_header": "👁️ **RASTREO DEL ARTEFACTO CERO**",
         "accused_label": "Acusado:",
         "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
         "dropdown": {

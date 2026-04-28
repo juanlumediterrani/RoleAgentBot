@@ -42,7 +42,6 @@
       "roll_title": "🎲 **TU TIRA:**",
       "combination_title": "📊 **KOMBINACION:**",
       "prize_title": "💰 **PREMIO:**",
-      "current_pot_title": "💎 **BOTE ACTUA:**",
       "big_pot_announcement": "🤑 ¡BOTE ARDE COMO FUEGO! 🤑 El bote ta inxao kon **{balance:,} moneda de oro**! ¡Uza `!bote jugar` para pillarlo umano! 🎲"
     },
     "dice_game_balance_messages": {

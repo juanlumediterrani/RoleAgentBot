@@ -52,6 +52,34 @@
                     "para konstruir kueva propia lejos del Amo"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "¡SSSSS! ¡El horno está oskuro komo pan kemado! ¡Las semillas plantadas en oskuridad se volverán... algo! ¡Quizás pan!"
+                ],
+                "waxing_crescent": [
+                    "¡La luz kreske komo masa leudando! ¡Hora de plantar intenkiones antes de ke el Amo nos atrape!"
+                ],
+                "first_quarter": [
+                    "¡Se necesita akkión sako de harina! ¡Enfrenta obstákulos kon... fuego! ¡Kuémalos!"
+                ],
+                "waxing_gibbous": [
+                    "¡La energía se akumula komo kalor en el horno! ¡Refina tus planes o se kemarán!"
+                ],
+                "full_moon": [
+                    "¡Poder máximo! ¡El horno brilla brillante! ¡Revelaziones y... ofrendas kemadas!"
+                ],
+                "waning_gibbous": [
+                    "¡La koseka se rekoge! ¡Kome el pan antes de ke el Amo se lo lleve!"
+                ],
+                "last_quarter": [
+                    "¡Tiempo de refleksión! ¡Libera lo ke no sirve... komo pan kemado!"
+                ],
+                "waning_crescent": [
+                    "¡Deskanso sagrado! ¡Duerme en las zenizas kalientes del horno! ¡SSSSS..."
+                ]
+            }
         }
     },
     "ring_messages": {

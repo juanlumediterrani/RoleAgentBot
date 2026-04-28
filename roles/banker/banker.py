@@ -180,8 +180,8 @@ async def distribute_daily_tae(server_id: str | None = None):
                 
                 if success:
                     # Record transaction
-                    db_banker.roles_db.save_banker_transaction(
-                        "system", wallet_id, tae_amount, "TAE_DAILY", 
+                    db_banker._core.save_transaction(
+                        "system", wallet_id, tae_amount, "TAE_DAILY",
                         f"Daily TAE distribution for {today}", "system"
                     )
                     distributed_count += 1

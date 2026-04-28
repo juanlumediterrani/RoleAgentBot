@@ -6,7 +6,7 @@ from discord_bot import discord_core_commands as core
 from .state import _get_canvas_watcher_method_label, _get_canvas_watcher_frequency_hours
 
 logger = core.logger
-get_news_watcher_db_instance = core.get_news_watcher_db_instance
+get_news_watcher_db_instance = core.get_news_watcher_db_instance if hasattr(core, 'get_news_watcher_db_instance') and core.get_news_watcher_db_instance is not None else None
 
 
 def _get_nw_descriptions(guild=None) -> dict:
@@ -265,7 +265,7 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -408,7 +408,7 @@ class CanvasWatcherAddModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -476,7 +476,7 @@ class CanvasWatcherDeleteModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -543,7 +543,7 @@ class CanvasWatcherListModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -872,7 +872,7 @@ class CanvasWatcherPersonalUnsubscribeModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            from roles.news_watcher.watcher_commands import WatcherCommands
+            from roles.news_watcher.api import WatcherCommands
 
             class MockMessage:
                 def __init__(self, channel, author, guild):
@@ -1129,7 +1129,7 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
 
     if action_name == "watcher_run_now":
         try:
-            from roles.news_watcher.news_watcher import process_subscriptions
+            from roles.news_watcher.api import process_subscriptions
             from discord_bot.discord_http import DiscordHTTP
             from agent_engine import get_discord_token
 
@@ -1146,7 +1146,7 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
         return
     elif action_name == "watcher_run_personal":
         try:
-            from roles.news_watcher.news_watcher import process_subscriptions
+            from roles.news_watcher.api import process_subscriptions
             from discord_bot.discord_http import DiscordHTTP
             from agent_engine import get_discord_token
 
@@ -1192,6 +1192,13 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
         # Get all channel subscriptions with unified system
         all_channel_subs = []
         
+        # Import to get feed names
+        from roles.news_watcher.global_feed_health import get_healthy_feeds
+        
+        # Get healthy feeds to map feed_id to feed name
+        healthy_feeds = get_healthy_feeds()
+        feed_map = {fid: name for fid, name, url, cat in healthy_feeds}
+        
         # Get all unified subscriptions and filter for channel subscriptions
         unified_subs = db.get_all_active_subscriptions()
         for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
@@ -1201,17 +1208,13 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
                 
             channel_name = f"#{channel_id}"  # Fallback name
             
-            # Determine content based on method
-            if method == "flat":
-                content = ""
-            elif method == "keyword":
-                content = keywords or ""
-            elif method == "general":
-                content = premises or ""
+            # Get feed name
+            if feed_id:
+                feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
             else:
-                content = ""
+                feed_name = "all feeds"
             
-            all_channel_subs.append((channel_id, channel_name, category, content, feed_id is None))
+            all_channel_subs.append((channel_id, channel_name, category, feed_name, method))
         
         total_count = len(all_channel_subs)
         max_subs = 5
@@ -1221,13 +1224,8 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
             usage_info += "- No active channel subscriptions\n"
         else:
             subscriptions_list = []
-            for channel_id, channel_name, category, keywords, all_feeds in all_channel_subs:
-                if all_feeds:
-                    subscriptions_list.append(f"  📰 {category} (all feeds) - #{channel_name}")
-                elif keywords:
-                    subscriptions_list.append(f"  🔍 {category} (keywords: {keywords}, all feeds) - #{channel_name}")
-                else:
-                    subscriptions_list.append(f"  📰 {category} (feed #{channel_name})")
+            for channel_id, channel_name, category, feed_name, method in all_channel_subs:
+                subscriptions_list.append(f"🔍 {category} ({feed_name}) - {method}")
             
             for sub in subscriptions_list:
                 usage_info += f"{sub}\n"
@@ -1260,54 +1258,36 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
     """Get formatted user subscriptions information for canvas display."""
     try:
         if get_news_watcher_db_instance is None:
-            return "**Active subscriptions**\n- Unable to load subscription data"
+            return "- Unable to load subscription data"
 
         db = get_news_watcher_db_instance(str(guild.id))
         user_id = str(author_id)
 
+        # Import to get feed names
+        from roles.news_watcher.global_feed_health import get_healthy_feeds
+        
+        # Get healthy feeds to map feed_id to feed name
+        healthy_feeds = get_healthy_feeds()
+        feed_map = {fid: name for fid, name, url, cat in healthy_feeds}
+
         # Get unified subscriptions
         subscriptions = db.get_user_subscriptions(user_id)
         current_count = len(subscriptions)
-        max_subs = 10  # Increased limit for unified system
-        
-        _nw = _get_nw_descriptions(guild)
-        title_active_subscriptions = _nw.get("title_active_subscriptions", "**Active subscriptions**")
-        usage_info = f"{title_active_subscriptions} ({current_count}/{max_subs})\n"
-        title_no_active_subscriptions = _nw.get("title_no_active_subscriptions", "- No active subscriptions")
         
         if current_count == 0:
-            usage_info += f"{title_no_active_subscriptions}\n"
-        else:
-            title_your_subscriptions = _nw.get("title_your_subscriptions", "- **Your subscriptions:**")
-            subscriptions_info = f"{title_your_subscriptions}\n"
-
-            # Display unified subscriptions with method-specific formatting
-            for i, (sub_id, sub_user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by) in enumerate(subscriptions, 1):
-                if method == "flat":
-                    icon = "📰"
-                    method_name = "Flat"
-                    content = ""
-                elif method == "keyword":
-                    icon = "🔍"
-                    method_name = "Keywords"
-                    content = f" - {keywords}" if keywords else ""
-                elif method == "general":
-                    icon = "🤖"
-                    method_name = "AI"
-                    content = f" - {premises[:30]}..." if premises and len(premises) > 30 else f" - {premises}" if premises else ""
-                else:
-                    icon = "❓"
-                    method_name = method.title()
-                    content = ""
-                
-                if feed_id:
-                    subscriptions_info += f"  {i}. {icon} {method_name}: {category} (feed #{feed_id}){content}\n"
-                else:
-                    subscriptions_info += f"  {i}. {icon} {method_name}: {category} (all feeds){content}\n"
-
-            usage_info += subscriptions_info
-
-        return usage_info
+            return "- No active subscriptions"
+        
+        subscriptions_list = []
+        for sub_id, sub_user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in subscriptions:
+            # Get feed name
+            if feed_id:
+                feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
+            else:
+                feed_name = "all feeds"
+            
+            subscriptions_list.append(f"🔍 {category} ({feed_name}) - {method}")
+        
+        return "\n".join(subscriptions_list[:10])
 
     except Exception as e:
         logger.warning(f"Could not load user subscriptions for Canvas: {e}")

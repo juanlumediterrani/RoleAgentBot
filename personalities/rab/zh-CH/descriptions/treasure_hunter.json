@@ -3,11 +3,6 @@
     "description": "允许先知在多个模拟中扫描价值波动，并在算法检测到异常时接收预测。",
     "button": "💎 遗物",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 artifact",
-        "league": "🏆 周期",
-        "admin": "🔧 管理"
-    },
     "user_flows_title": "实体协议",
     "user_flows_1": "选择你希望聚焦我光学器件的模拟。",
     "user_flows_2": "导航参数以标记你的灵魂渴望追踪的 artifact。",
@@ -18,7 +13,8 @@
     "admin_flows_title": "执政官协议",
     "admin_flows_1": "进入模块以激活并校准其基本功能。",
     "poe2": {
-        "title": "💎 **流放之路 2 中的异常** 👺" ,
+        "button": "👺 POE2",
+        "title": "💎 **流放之路 2 中的异常** 👺",
         "description": "部署我的传感器以观察市场并预测物品的命运",
         "current_league": "🏆 **维度周期**：{league}",
         "league_description": "显示可用的时空周期和当前最共振的异常。",

@@ -8,21 +8,18 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **SINGULARITY** - Challenge the machine, alter chance, and absorb the core"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Core"
-    },
     "dice_game": {
+        "button": "🎲 Core",
         "waitmessage": "Calculating wave function collapse... Wait.",
         "roll_title": "THE ALGORITHM DICTATES:\n",
         "combination_title": "SYNTHESIS:",
         "prize_title": "ABSORBED MATTER:",
-        "current_pot_title": " 💡 **THE SINGULARITY** 💡",
         "ranking": " **:trophy: ENTITY REGISTER**",
         "rankingvoid": " The void reigns. No entity has altered the table.",
         "historyvoid": " The quantum events book is blank.",
         "history": " **📜 Collapse History**",
         "help": " **Singularity Protocols**\n Intervene in the Prophet's chance. Use the 'Execute Iteration' button in Canvas to initiate the sequence.\n Perfect harmony (three ones) grants you the entire core!",
-        "title": "💡 **THE SINGULARITY**",
+        "title": "💡 **The Singularity**",
         "current_balance": "Matter condensed in the core:",
         "fixed_bet": "Execution cost:",
         "possible_plays": "🎯 **Remaining allowed cycles:** {jugadas}\n",
@@ -113,7 +110,7 @@
         "dm_no_servers_available": "❌ Isolation detected. Connect to a server before attempting to collapse chance.",
         "dm_server_access_error": "❌ A firewall rejects your link. Try from inside the nexus.",
         "big_pot": "🔥 **THE SINGULARITY IS AT CRITICAL POINT!** 🔥\nThe sensor marks **{balance:,}** light fragments! Use `!canvas` → Trickster to assimilate them. 🎲",
-        "rules": " -**Perfect Alignment (1-1-1)** 👁️ Triggers collapse and you absorb THE SINGULARITY!\n - High escalation **(4,5,6)** multiplies impact by ten (**x5**). You break the sequence!\n - Any symmetric **Trinity** returns **x3** your input energy.\n - A **Duality** (pair) allows you to **recover** the iteration cost.\n ",
+        "rules": " -**Perfect Alignment (1-1-1)** Triggers collapse and you absorb THE SINGULARITY!\n - High escalation **(4,5,6)** multiplies impact by ten (**x5**). You break the sequence!\n - Any symmetric **Trinity** returns **x3** your input energy.\n - A **Duality** (pair) allows you to **recover** the iteration cost.\n ",
         "description": "**Description:** Venture into deep chance. Intervene in the probability core and discover if the machine's algorithm favors your carbon signature."
     }
 }

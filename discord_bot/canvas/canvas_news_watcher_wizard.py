@@ -3,9 +3,9 @@
 import discord
 from discord_bot import discord_core_commands as core
 from discord_bot.discord_utils import get_server_key
+from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
 
 logger = core.logger
-get_news_watcher_db_instance = core.get_news_watcher_db_instance
 
 
 def _get_nw_descriptions(guild=None) -> dict:
@@ -68,6 +68,7 @@ class NewsWatcherWizard:
         self.interaction = interaction  # Current interaction (updates with each selection)
         self.is_admin = is_admin
         self.step = 0
+        self.wizard_message = None  # Store the wizard message for editing
         self.data = {
             'method': None,
             'category': None,
@@ -112,7 +113,7 @@ class NewsWatcherWizard:
         ]
         
         method_select = discord.ui.Select(
-            placeholder=dropdown_descriptions.get("wizard_method_placeholder", "🔧 Seleccionar método de suscripción..."),
+            placeholder=dropdown_descriptions.get("wizard_method_placeholder", "🔧 Select subscription method..."),
             options=method_options,
             min_values=1,
             max_values=1,
@@ -142,7 +143,7 @@ class NewsWatcherWizard:
         ]
         
         category_select = discord.ui.Select(
-            placeholder=dropdown_descriptions.get("wizard_category_placeholder", "📂 Seleccionar categoría de noticias..."),
+            placeholder=dropdown_descriptions.get("wizard_category_placeholder", "📂 Select news category..."),
             options=category_options,
             min_values=1,
             max_values=1,
@@ -180,6 +181,11 @@ class NewsWatcherWizard:
             view=view,
             ephemeral=True
         )
+        try:
+            self.wizard_message = await self.interaction.original_response()
+        except Exception as e:
+            logger.warning(f"Could not get original response for wizard message: {e}")
+            self.wizard_message = None
     
     async def _check_and_proceed(self):
         """Check if both method and category are selected, then proceed."""
@@ -262,22 +268,35 @@ class NewsWatcherWizard:
                 else:
                     await self._show_premises_modal(interaction)
             else:
-                await interaction.response.edit_message(
-                    content=f"✅ Source selected: {self.data['feed_name']}",
-                    view=None
-                )
+                # Fallback to original interaction if wizard_message is None
+                if self.wizard_message:
+                    await self.wizard_message.edit(
+                        content=f"✅ Source selected: {self.data['feed_name']}",
+                        view=None
+                    )
+                else:
+                    await self.original_interaction.edit_original_response(
+                        content=f"✅ Source selected: {self.data['feed_name']}",
+                        view=None
+                    )
                 await self._complete_subscription()
         
         select.callback = callback
         
         step2_title = news_watcher.get("wizard_step2_title", "📋 **Step 2/3: Select News Source**")
         step2_desc = news_watcher.get("wizard_step2_desc", "Choose a specific feed or all feeds:")
-        
-        await self.interaction.followup.send(
-            content=f"{step2_title}\n{step2_desc}",
-            view=view,
-            ephemeral=True
-        )
+
+        # Fallback to original interaction if wizard_message is None
+        if self.wizard_message:
+            await self.wizard_message.edit(
+                content=f"{step2_title}\n{step2_desc}",
+                view=view
+            )
+        else:
+            await self.original_interaction.edit_original_response(
+                content=f"{step2_title}\n{step2_desc}",
+                view=view
+            )
     
     async def _show_keywords_modal(self, interaction: discord.Interaction):
         """Show modal for entering 5 keywords with personality defaults."""
@@ -305,9 +324,9 @@ class NewsWatcherWizard:
                     keywords.append(item.value.strip())
             
             self.data['keywords'] = keywords
-            await modal_interaction.response.send_message(
+            await modal_interaction.response.edit_message(
                 content=f"✅ Keywords configured: {', '.join(keywords)}",
-                ephemeral=True
+                view=None
             )
             await self._complete_subscription()
         
@@ -317,13 +336,14 @@ class NewsWatcherWizard:
         await interaction.response.send_modal(modal)
     
     async def _show_premises_modal(self, interaction: discord.Interaction):
-        """Show modal for entering 5 premises with personality defaults."""
+        """Show modal for entering up to 3 premises with personality defaults."""
         # Get default premises from personality
         default_premises = self._get_default_premises()
         
-        modal = discord.ui.Modal(title="🤖 Configure AI Premises", timeout=300)
+        modal = discord.ui.Modal(title="🤖 Configure AI Premises (Max 3)", timeout=300)
         
-        for i in range(5):
+        # Limit to 3 premises maximum
+        for i in range(3):
             default_val = default_premises[i] if i < len(default_premises) else ""
             text_input = discord.ui.TextInput(
                 label=f"Premise {i+1}",
@@ -341,10 +361,18 @@ class NewsWatcherWizard:
                 if item.value and item.value.strip():
                     premises.append(item.value.strip())
             
+            # Validate maximum 3 premises
+            if len(premises) > 3:
+                await modal_interaction.response.send_message(
+                    "❌ Maximum 3 premises allowed. Please remove some and try again.",
+                    ephemeral=True
+                )
+                return
+            
             self.data['premises'] = premises
-            await modal_interaction.response.send_message(
+            await modal_interaction.response.edit_message(
                 content=f"✅ Premises configured: {len(premises)} premises set",
-                ephemeral=True
+                view=None
             )
             await self._complete_subscription()
         
@@ -399,14 +427,19 @@ class NewsWatcherWizard:
             server_id = str(self.guild.id)
             db = get_news_watcher_db_instance(server_id)
             
-            if not db.db_path.exists() or db.db_path.stat().st_size == 0:
-                db._init_db()
+            logger.info(f"[Wizard _complete_subscription] server_id={server_id}, db={db is not None}")
+            
+            if db is None:
+                await self.interaction.followup.send("❌ Failed to initialize database for this server", ephemeral=True)
+                return
             
             # Check subscription limit before creating
             from roles.news_watcher.subscription_limits import check_user_subscription_limit, increment_user_subscription_count
             
             # Check limit (no admin exemption - only premium SKU users)
+            logger.info(f"[Wizard _complete_subscription] Checking subscription limit for user_id={self.user_id}")
             limit_check = await check_user_subscription_limit(self.user_id, is_admin=False)
+            logger.info(f"[Wizard _complete_subscription] Limit check: allowed={limit_check.allowed}, reason={limit_check.reason}")
             if not limit_check.allowed:
                 await self.interaction.followup.send(f"❌ {limit_check.reason}", ephemeral=True)
                 return
@@ -432,42 +465,65 @@ class NewsWatcherWizard:
                         break
             
             # Create subscription (don't increment global count here, we do it manually after)
-            subscription_id = await db.create_subscription(
-                user_id=user_id,
-                channel_id=channel_id,
-                category=self.data['category'],
-                feed_id=feed_id,
-                premises=premises_str,
-                keywords=keywords_str,
-                method=self.data['method'],
-                created_by=self.user_id,
-                increment_global_count=False
-            )
+            logger.info(f"[Wizard _complete_subscription] Calling create_subscription with user_id={user_id}, channel_id={channel_id}, category={self.data['category']}, feed_id={feed_id}, method={self.data['method']}")
+            try:
+                subscription_id = await db.create_subscription(
+                    user_id=user_id,
+                    channel_id=channel_id,
+                    category=self.data['category'],
+                    feed_id=feed_id,
+                    premises=premises_str,
+                    keywords=keywords_str,
+                    method=self.data['method'],
+                    created_by=self.user_id,
+                    increment_global_count=False
+                )
+            except Exception as create_err:
+                logger.exception(f"[Wizard _complete_subscription] Exception during create_subscription: {create_err}")
+                await self.interaction.followup.send(f"❌ Error creating subscription: {str(create_err)}", ephemeral=True)
+                return
+            logger.info(f"[Wizard _complete_subscription] create_subscription returned subscription_id={subscription_id}")
             
             if subscription_id:
                 # Increment global subscription count
                 await increment_user_subscription_count(self.user_id)
-                
+
                 target = "channel" if self.is_admin else "your DM"
                 source_desc = self.data['feed_name']
-                if self.data['method'] == 'keyword':
-                    filter_desc = f"with keywords: {', '.join(self.data['keywords'])}"
-                elif self.data['method'] == 'general':
-                    filter_desc = f"with {len(self.data['premises'])} AI premises"
+
+                # Load descriptions from news_watcher.json
+                news_watcher = _get_nw_descriptions(self.guild)
+                success_title = news_watcher.get("wizard_success_title", "✅ **Subscription Created!**")
+                category_label = news_watcher.get("wizard_category_label", "Category")
+                source_label = news_watcher.get("wizard_source_label", "Source")
+                delivery_label = news_watcher.get("wizard_delivery_label", "Delivery")
+                delivery_channel = news_watcher.get("wizard_delivery_channel", "channel")
+                delivery_dm = news_watcher.get("wizard_delivery_dm", "your DM")
+                footer_text = news_watcher.get("wizard_footer_text", "You'll receive news matching your configuration.")
+
+                target_text = delivery_channel if self.is_admin else delivery_dm
+
+                # Fallback to original interaction if wizard_message is None
+                if self.wizard_message:
+                    await self.wizard_message.edit(
+                        content=f"{success_title}\n\n"
+                        f"{category_label}: {self.data['category'].title()}\n"
+                        f"{source_label}: {source_desc}\n"
+                        f"{delivery_label}: {target_text}\n\n"
+                        f"{footer_text}\n"
+                        f"📊 {limit_check.reason}",
+                        view=None
+                    )
                 else:
-                    filter_desc = ""
-                
-                await self.interaction.followup.send(
-                    f"✅ **Subscription Created!**\n\n"
-                    f"📰 Method: {self.data['method'].title()}\n"
-                    f"📂 Category: {self.data['category'].title()}\n"
-                    f"📡 Source: {source_desc}\n"
-                    f"{f'🔍 {filter_desc}' if filter_desc else ''}\n"
-                    f"📍 Delivery: {target}\n\n"
-                    f"You'll receive news matching your configuration.\n"
-                    f"📊 {limit_check.reason}",
-                    ephemeral=True
-                )
+                    await self.original_interaction.edit_original_response(
+                        content=f"{success_title}\n\n"
+                        f"{category_label}: {self.data['category'].title()}\n"
+                        f"{source_label}: {source_desc}\n"
+                        f"{delivery_label}: {target_text}\n\n"
+                        f"{footer_text}\n"
+                        f"📊 {limit_check.reason}",
+                        view=None
+                    )
             else:
                 await self.interaction.followup.send("❌ Failed to create subscription. You may already be subscribed to this combination.", ephemeral=True)
         

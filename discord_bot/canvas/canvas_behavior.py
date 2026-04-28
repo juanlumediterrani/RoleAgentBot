@@ -59,12 +59,16 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
     # Get settings language and role labels
     label_server_language = action_labels.get("server_language", "🌐 Server Language")
     label_role_management = action_labels.get("role_management", "🎛️ Role Management")
+    label_shortcuts_config = action_labels.get("shortcuts_config", "⚡ Shortcuts")
     label_current = action_labels.get("current", "Current:")
     label_enabled = action_labels.get("enabled", "Enabled")
     label_disabled = action_labels.get("disabled", "Disabled")
     label_always_enabled = action_labels.get("always_enabled", "Always enabled")
     settings_lang = behavior_messages.get("settings", {}).get("language_select", {}).get("description", "Change the bot's language for this server")
     settings_role = "Enable or disable bot roles"  # This could also be added to descriptions if needed
+    help_messages = descriptions.get("help_menu", {})
+    shortcuts_messages = help_messages.get("shortcuts_messages", {})
+    settings_shortcuts = shortcuts_messages.get("settings_description", "Configure quick access buttons on Canvas home")
 
     admin_options = [
         (f"{button_greetings}: {label_on}", "greetings_on", desc_boolean_toggle),
@@ -86,6 +90,7 @@ def get_canvas_behavior_action_items_for_detail(detail_name: str, admin_visible:
         "settings": [
             (f"{label_server_language}", "language_settings", settings_lang),
             (f"{label_role_management}", "role_control", settings_role),
+            (f"{label_shortcuts_config}", "shortcuts_config", settings_shortcuts),
         ] if admin_visible else [],
         "personality": [],  # Personality view uses custom dropdown, not action items
     }
@@ -273,9 +278,9 @@ def build_canvas_behavior_detail(
         # Load personality memory content from agent database
         memory_content = ""
         try:
-            from agent_db import AgentDatabase
+            from agent_db import get_db_instance
             
-            db = AgentDatabase(server_id=server_id)
+            db = get_db_instance(server_id)
             
             # Map memory types to database methods
             if selected_memory_type == "long":
@@ -484,7 +489,7 @@ def build_canvas_behavior_detail(
                 return setup_not_available_builder()
             return "❌ This setup is only available to administrators."
 
-        # Note: Roles initialization happens once at server startup in init_roles_config.py
+        # Note: Roles initialization happens once at server startup via server_config.json
         from .server_config import get_server_language, get_available_languages
 
         server_id = str(guild.id) if guild else "0"
@@ -508,7 +513,7 @@ def build_canvas_behavior_detail(
         # Also filter out subroles (beggar is a subrole of banker)
         roles_cfg = (agent_config or {}).get("roles", {})
         all_roles = [
-            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman"]
+            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "mc", "juggler", "shaman", "scholar"]
             if roles_cfg.get(role, {}).get("enabled", False)
         ]
 
@@ -541,9 +546,9 @@ def build_canvas_behavior_detail(
                 if role_file.exists():
                     with open(role_file, 'r', encoding='utf-8') as f:
                         role_data = json.load(f)
-                    # Use the title from the role description file, remove markdown bolding (**)
+                    # Use the title from the role description file
                     title = role_data.get("title", role_name.replace("_", " ").title())
-                    role_labels_from_desc[role_name] = title.replace("**", "").strip()
+                    role_labels_from_desc[role_name] = title.strip()
                 else:
                     role_labels_from_desc[role_name] = role_name.replace("_", " ").title()
             except Exception as e:

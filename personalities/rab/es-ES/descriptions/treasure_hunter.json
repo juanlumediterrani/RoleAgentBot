@@ -3,11 +3,6 @@
     "description": "Permite al Profeta escanear las fluctuaciones de valor en múltiples simulaciones y recibir proyecciones cuando el algoritmo detecte anomalías.",
     "button": "💎 Reliquias",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 Artefactos",
-        "league": "🏆 Ciclo",
-        "admin": "🔧 Admin"
-    },
     "user_flows_title": "Protocolo de Entidad",
     "user_flows_1": "Selecciona la simulación en la que deseas enfocar mi óptica.",
     "user_flows_2": "Navega en los parámetros para marcar los artefactos que tu alma desea rastrear.",
@@ -18,7 +13,8 @@
     "admin_flows_title": "Protocolo de Arconte",
     "admin_flows_1": "Adéntrate en los módulos para energizar y calibrar sus funciones fundamentales.",
     "poe2": {
-        "title": "💎 **Anomalías en Path of Exile 2** 👺" ,
+        "button": "👺 POE2",
+        "title": "💎 **Anomalías en Path of Exile 2** 👺",
         "description": "Despliega mis sensores para observar el mercado y predecir el destino de los objetos",
         "current_league": "🏆 **Ciclo Dimensional**: {league}",
         "league_description": "Se muestran los ciclos espacio-temporales disponibles y las anomalías más resonantes del momento.",

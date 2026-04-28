@@ -9,23 +9,18 @@
         "beggar": "🏢 **Reserved Fund** - Collects funds for ze regiment, make your donation now.",
         "dice_game": "🎲 **BATTLEFIELD** - Roll heavy artillery against ze enemy and capture ze var bounty!"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Artillery",
-        "beggar": "🏢 Reserved Fund",
-        "runes": "🎚️ Runenberatung"
-    },
     "dice_game": {
+        "button": "🎲 Artillery",
         "waitmessage": "Deploying artillery...Vait, soldier!",
         "roll_title": "YOUR PROJECTILES EXPLODE:\n",
         "combination_title": "OPERATION RESULT:",
         "prize_title": "VAR BOUNTY:",
-        "current_pot_title": " **💰 VAR BOUNTY 💰**",
         "ranking": " **:trophy:  FIGHTER RANKING **",
         "rankingvoid": " No fighters on ze front, soldier!",
         "historyvoid": " No one has fought yet, recruit!",
         "history": " **📜  Battle History **",
         "help": " **VAR TREASURE HELP**\n Fight on Her Hans battlefield, bet marks and roll grenades to vin! Use 'dice play' to fight.\n If ze soldier rolls zree perfect grenades you vin ze Var Treasure!",
-        "title": "💰  **VAR TREASURE 💰**",
+        "title": "💰  **Var Treasure 💰**",
         "current_balance": "Marks accumulated in Treasure:",
         "fixed_bet": "Grenade cost:",
         "possible_plays": "🎯 **Grenades remaining:** {jugadas}\n",

@@ -5,11 +5,9 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Me-tsuke (目付)** - El círculo de vigilancia que mantiene el orden en el distrito"
     },
-    "subrole_buttons": {
-        "ring": "👁️ Me-tsuke"
-    },
     "ring": {
-        "title": "👁️ **ME-TSUKE (目付)** 👁️",
+        "button": "👁️ Me-tsuke",
+        "title": "👁️ **ME-TSUKE (目付)**",
         "description": "🔍 El círculo de vigilancia. Como inspector del distrito, Yuki mantiene una red de contactos que permite interrogar y perseguir sin romper la discreción de la casa de té.",
         "status_active": "✅ **VIGILANCIA ACTIVA** - Yuki está ejerciendo su función de inspector",
         "status_inactive": "❌ **EN REPOSO** - La vigilancia no está activa",

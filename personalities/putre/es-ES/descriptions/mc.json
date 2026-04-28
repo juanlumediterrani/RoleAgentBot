@@ -1,10 +1,7 @@
- {
+{
     "title": "**🥁 Putre Tamborilero!**",
     "description": "Putre Tamborilero, invitalo a un canal de voz para que reproduzca musica por ti.",
     "button": "🥁 Tamborilero",
-    "subrole_buttons": {
-        "overview": "🤘 Kola"
-    },
     "canvas_mc_subtitle": "Klavijas de kontrol",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Uza el menu dezplegabe para pedime kanciones, pa ve la kola, o pa anyadi ma kanciones umano.",
@@ -40,11 +37,11 @@
     "queue_cleared": "🗑️ Kola limpiada",
     "last_song_removed": "🔙 Última kanzion eliminada de la kola",
     "history_displayed": "📜 Historial mostrado",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Ajustar Volumen",
         "mc_play": "Reproducir Ahora",
         "mc_play_description": "Pedime una kanzion y la reproduzko inmediatamente",
-        "mc_add": "Añadir a la Kola", 
+        "mc_add": "Añadir a la Kola",
         "mc_add_description": "Añade una kanzion al final de la kola de reproduksion",
         "mc_skip": "Saltar Kanzion",
         "mc_skip_description": "Salta la kanzion aktual y pasa a la siguiente",

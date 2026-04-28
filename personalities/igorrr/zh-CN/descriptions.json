@@ -15,11 +15,11 @@
       "button_confirm_changes": "确认更改",
       "option_yes": "是",
       "option_no": "否",
+      "button_personal": "📁 个人",
+      "button_admin": "🔧 管理",
+      "available_subroles": "可用子程序",
       "action_descriptions": {
-        "boolean_toggle": "切换开/关",
-        "number_input_target": "数字输入",
-        "text_input_target": "文本输入",
-        "action": "立即执行"
+        "boolean_toggle": "切换开/关"
       },
       "action_labels": {
         "on": "激活",
@@ -37,10 +37,7 @@
         "memory_long": "Long Memory",
         "memory_recent": "Recent Memory",
         "memory_relationship": "Relationship Memory"
-      },
-      "button_personal": "📁 个人",
-      "button_admin": "🔧 管理",
-      "available_subroles": "可用子任务"
+      }
     },
     "help_menu": {
       "title": "📚 ** 伊戈尔 - 火炉生存手册**",
@@ -48,6 +45,17 @@
       "separator": "---------------------------------------------",
       "roles_section": "**任务** 任务模块是伊戈尔为主人服务、盯着面粉袋子的锁链。",
       "behavior_section": "**神经抽搐** 这里配置主人的任性。只给管面包店的人用。",
+      "shortcuts_section": "**快速访问** 在Canvas主界面配置最多5个快捷按钮，以便立即访问你喜欢的任务。可在设置 > 快捷方式中找到。",
+      "shortcuts_messages": {
+        "title": "快速访问配置",
+        "description": "配置立即访问任务",
+        "settings_description": "在Canvas主页配置快速访问按钮",
+        "placeholder_select_role": "选择你的角色或子角色...",
+        "configure_shortcut": "配置快捷方式 {shortcut_id} - 选择角色或子角色:",
+        "saved": "✅ 快捷方式配置成功...嘎嘎嘎",
+        "failed": "❌ 快捷方式配置失败...嘶嘶嘶",
+        "cancelled": "配置已取消...驳回"
+      },
       "tips_section": "**有用滴嘶嘶声** -你可以问俺这玩意咋用，要是你滴丝绸手指不会打字... -好东西藏在每个任务的黑暗角落里...嘎嘎嘎。"
     },
     "canvas_home_messages": {
@@ -63,6 +71,7 @@
       "description": "-敢碰俺滴工具就从这儿开始。面板让你摆弄俺的线...嘶嘶嘶。",
       "interestingthings": "**火炉的锁链：**",
       "recentsynthesistitle": "🥖 **火炉的嘟囔**",
+      "pilgrimdatatitle": "受害者数据：",
       "dailymemorytitle": "🔥 **活灰烬**",
       "personalsynthesistitle": "🪤 **你的烟灰痕迹**",
       "dm_default_server_title": "🔔 **使用火炉来自：{server_name}**",
@@ -158,7 +167,7 @@
       "description": "删掉俺的记忆，要是你想让俺忘记你有多恶心。或者看俺记住你的罪过。"
     },
     "roles_view_messages": {
-      "title": "🎭 伊戈尔的任务 🎭",
+      "title": "🎭 面包戏法 🎭",
       "description": "🌟 看看伊戈尔今天为主人拉哪些锁链。",
       "role_categories": "──────────────────────────────",
       "enabled_status": "general.active",

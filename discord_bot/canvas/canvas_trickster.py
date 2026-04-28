@@ -322,15 +322,13 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         if amount <= 0:
             await interaction.followup.send("❌ Donation amount must be positive.", ephemeral=True)
             return
-        db_banker = get_roles_db_instance(server_key)
         donor_id = str(author_id)
         donor_name = interaction.user.display_name
         from roles.banker.banker_db import get_banker_roles_db_instance
         from roles.banker.subroles.beggar.beggar_db import get_beggar_config
         db_banker_roles = get_banker_roles_db_instance(server_key)
         db_banker_roles.create_wallet(donor_id, donor_name, "user")
-        wallet = db_banker.get_banker_wallet(donor_id)
-        current_balance = wallet.get("balance", 0) if wallet else 0
+        current_balance = db_banker_roles.get_balance(donor_id)
         if current_balance < amount:
             await interaction.followup.send(f"❌ Solo tienes {current_balance:,} de oro disponible.", ephemeral=True)
             return

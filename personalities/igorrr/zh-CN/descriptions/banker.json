@@ -1,5 +1,5 @@
 {
-    "title": "**🌾 伊戈尔滴储藏室**",
+    "title": "**🌾 火炉储藏室**",
     "description": "驼背仆人管理你滴面粉袋子和炉子里滴交易。",
     "button": "🌾 炉子储藏室",
     "coin": "🌾",
@@ -8,7 +8,7 @@
     "no_transactions_yet": "还没偷过...嘶嘶嘶。",
     "current_balance": "🌾📦 当前面粉袋子：",
     "account_holder": "👤 可怜滴面粉袋子：",
-    "server": "🏦 伊戈尔滴地下室",
+    "server": "🏦 地下室",
     "opening_bonus": "初始口粮",
     "TAE_DAILY": "每日口粮",
     "BEGGAR_DONATION": "地下室捐赠",
@@ -25,14 +25,11 @@
         "config_bonus_description": "改新来者滴面粉袋子",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "🌾 储藏室",
-        "beggar": "🔒 地下室"
-    },
     "donation_label": "捐赠：",
     "donation_custom_label": "自定义数量",
     "donation_custom_message": "用画布滴'自定义数量'选项来捐赠。伊戈尔会在油腻滴本子上记下来。",
     "beggar": {
+        "button": "🔒 地下室",
         "title": "🔒 **地下室项目**",
         "description": "伊戈尔给地下室项目收面粉。主人不知道。或者知道。伊戈尔不说。",
         "title_campaign": "**当前项目**",

@@ -207,7 +207,7 @@ async def process_server_subscriptions(bot, server_id: str, agent_config: dict):
     """
     try:
         from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
-        from roles.news_watcher.global_news_db import get_global_news_db
+        from .global_news_nosql import get_global_news_nosql
         from roles.news_watcher.global_feed_health import get_healthy_feeds
         from discord_bot.canvas.server_config import get_news_watcher_frequency
         
@@ -225,8 +225,8 @@ async def process_server_subscriptions(bot, server_id: str, agent_config: dict):
         
         logger.info(f"[SUBSCRIPTION_PROCESSOR] Processing {len(subscriptions)} subscriptions for server {server_id}")
         
-        # Get global news DB
-        global_db = get_global_news_db()
+        # Get global news DB (NoSQL)
+        global_db = get_global_news_nosql()
         
         # Get server-specific frequency from server_config.json
         interval_hours = get_news_watcher_frequency(server_id, default_hours=1)
@@ -292,7 +292,17 @@ async def process_server_subscriptions(bot, server_id: str, agent_config: dict):
                 articles = []
                 for news_item in news_items:
                     try:
-                        title, source_url, summary, published_date, first_seen = news_item[:5]
+                        title = news_item.get("title")
+                        source_url = news_item.get("source_url")
+                        summary = news_item.get("summary")
+                        published_date = news_item.get("published_date")
+                        first_seen = news_item.get("first_seen")
+                        
+                        # Skip articles without valid description (false positives)
+                        if not summary or summary.strip() == '' or summary.strip() == 'No description':
+                            logger.debug(f"[SUBSCRIPTION_PROCESSOR] Skipping article without valid description: '{title[:50]}...'")
+                            continue
+                        
                         articles.append({
                             'title': title,
                             'link': source_url,

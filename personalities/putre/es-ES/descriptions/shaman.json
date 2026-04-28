@@ -5,10 +5,18 @@
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir saburía y guia"
     },
-    "subrole_buttons": {
-        "runes": "🔮 Runas"
+    "moon_phases": {
+        "new_moon": "Luna Nueva 🌑",
+        "waxing_crescent": "Creciente 🌒",
+        "first_quarter": "Cuarto Kreciente 🌓",
+        "waxing_gibbous": "Kreciente Gibosa 🌔",
+        "full_moon": "Luna Llena 🌕",
+        "waning_gibbous": "Menguante Gibosa 🌖",
+        "last_quarter": "Kuarto Menguante 🌗",
+        "waning_crescent": "Menguante 🌘"
     },
     "nordic_runes": {
+        "button": "🔮 Runas",
         "title": "**🔮 Putre - Vidente de Runas Nórdicas Antiguas**",
         "description": "Acercate y alumbra tu destino con los conocimientos nordicos antiguos. Las runas Elder Futhark hablan con verdad y poder, mostrando el camino para guerreros y orcos por igual.",
         "title_available_readings": "🌔 **Tipos de lecturas de runas** 🌔\n",

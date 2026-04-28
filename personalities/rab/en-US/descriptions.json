@@ -17,7 +17,9 @@
       "option_no": "No",
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
-      "available_subroles": "Available subroutines"
+      "available_subroles": "Available subroutines",
+      "toggle_on_description": "Enable role",
+      "toggle_off_description": "Disable role"
     },
     "help_menu": {
       "title": "📚 ** RAB - Attendance Register**",
@@ -25,6 +27,17 @@
       "separator": "---------------------------------------------",
       "roles_section": "**Modules and Skins** Modules are 'roles' the bot can assume to provide specific services to users.",
       "behavior_section": "**Behavior Protocols** Configuration of the android's interaction routines. Exclusive to Administrators (Any pilgrim can delete their information there).",
+      "shortcuts_section": "**Quick Access** Configure up to 5 shortcut buttons in the Canvas home for immediate access to your favorite modules. Available in Settings > Shortcuts.",
+      "shortcuts_messages": {
+        "title": "Quick Access Configuration",
+        "description": "Configure immediate access to modules",
+        "settings_description": "Configure quick access buttons on Canvas home",
+        "placeholder_select_role": "Select your role or subrole...",
+        "configure_shortcut": "Configure Shortcut {shortcut_id} - Select a role or subrole:",
+        "saved": "✅ Shortcut configured successfully",
+        "failed": "❌ Failed to configure shortcut",
+        "cancelled": "Configuration cancelled"
+      },
       "tips_section": "**Navigation Suggestions** -You can consult me about my own protocols: 'how does the dice module work?' -True wisdom resides in the experience of each role."
     },
     "canvas_home_messages": {
@@ -39,6 +52,7 @@
       "description": "The canvas panel is your direct interface with the system core.",
       "interestingthings": "**Nexus Data:**",
       "recentsynthesistitle": "🔁 **Recent Data Flow**",
+      "pilgrimdatatitle": "Pilgrim Data:",
       "dailymemorytitle": "💾 **Silicon Memory**",
       "personalsynthesistitle": "📂 **Bond with the Pilgrim**",
       "dm_default_server_title": "🔔 **Linked to nexus: {server_name}**",

@@ -1,0 +1,15 @@
+{
+    "title": "📚 **营地智者**",
+    "description": "通过普特雷营地视角访问兽人部落的古老智慧。提出任何问题，我将从世代相传的卷轴中分享。",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 营地智者 📚",
+    "dropdown": {
+        "select_action": "📋 执行指令...",
+        "toggle_on": "✅ 启用学者",
+        "toggle_off": "❌ 禁用学者"
+    },
+    "wikipedia_button_label": "📖 在维基百科阅读",
+    "controls_title": "**控制**",
+    "controls": "- 启用或禁用学者角色",
+    "admin_flows": "切换学者角色以启用或禁用它。"
+}

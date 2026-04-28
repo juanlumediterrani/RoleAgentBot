@@ -102,6 +102,11 @@ class NewsDownloader:
                     logger.warning(f"[FEED WARNING] Entry title matches feed title for {feed_name}: '{title[:50]}...'. Skipping malformed entry.")
                     continue
 
+                # Skip entries without valid description (false positives)
+                if not summary or summary.strip() == '' or summary.strip() == 'No description':
+                    logger.debug(f"[FEED SKIP] Skipping entry without valid description from {feed_name}: '{title[:50]}...'")
+                    continue
+
                 # Debug logging to check title extraction
                 logger.debug(f"[FEED DEBUG] Feed: {feed_name}, Entry title: '{title[:50]}...', Link: '{link[:50]}...'")
 
@@ -242,9 +247,9 @@ async def download_all_feeds_global(feeds: list) -> dict:
         Dict with feed_url as key and list of new items as value
     """
     try:
-        from roles.news_watcher.global_news_db import get_global_news_db
-        
-        global_db = get_global_news_db()
+        from .global_news_nosql import get_global_news_nosql
+
+        global_db = get_global_news_nosql()
         downloader = NewsDownloader(global_db)
         
         results = {}

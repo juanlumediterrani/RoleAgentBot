@@ -8,21 +8,18 @@
     "canvas_trickster_subrole_descriptions": {
         "dice_game": "🎲 **THE POT** - Play against the bank, roll the dice and take the pot!"
     },
-    "subrole_buttons": {
-        "dice": "🎲 Pot"
-    },
     "dice_game": {
+        "button": "🎲 Pot",
         "waitmessage": "Rolling dice...Wait!",
         "roll_title": "YOUR BONES SAY:\n",
         "combination_title": "RESULT:",
         "prize_title": "LOOT WON:",
-        "current_pot_title": " **💰 THE POT 💰**",
         "ranking": " **:trophy:  POT RANKING **",
         "rankingvoid": " No one in table human!",
         "historyvoid": " No one has played yet human!",
         "history": " **📜  Game History **",
         "help": " **POT HELP**\n Play Putre's POT, bet gold and roll dice to win! Use the 'Roll Dice' button in Canvas to play.\n If the human rolls three ones wins the POT!",
-        "title": "💰 **THE POT** 💰",
+        "title": "💰 **The Pot**",
         "current_balance": "Gold piled in POT:",
         "fixed_bet": "Price to roll:",
         "possible_plays": "🎯 **Remaining bet:** {jugadas}\n",
@@ -113,7 +110,7 @@
         "dm_no_servers_available": "❌ No servers available. Please execute dice actions from a server.",
         "dm_server_access_error": "❌ Could not access a server. Please execute dice actions from a server.",
         "big_pot": "🔥 **THE POT BURNS LIKE AN ELF VILLAGE!** 🔥\nThere are **{balance:,}** gold coins! Use `!canvas` → Trickster to steal it or Putre will stomp you! 🎲",
-        "rules": " -**Gruumsh's Eye Trio** 👁️ and take the **POT**!\n -High straight **(4,5,6)** multiplies **x5** the bet! BLOODY RAID 🗡️ !\n - Roll any **Trio** of broken skulls 💀 and take **x3** of the bet.\n - A **Pair** of tusks 🐺 **will return** the bet.\n ",
+        "rules": " -**Gruumsh's Eye Trio** and take the **POT**!\n -High straight **(4,5,6)** multiplies **x5** the bet! BLOODY RAID 🗡️ !\n - Roll any **Trio** of broken skulls 💀 and take **x3** of the bet.\n - A **Pair** of tusks 🐺 **will return** the bet.\n ",
         "description": "**Description:**GRRR! Test your luck with Putre's POT! 🎲 Roll the dice against the bank and take all the gold if you can!"
     }
 }

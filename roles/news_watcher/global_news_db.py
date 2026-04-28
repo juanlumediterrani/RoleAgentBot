@@ -43,7 +43,8 @@ class GlobalNewsDatabase:
             # Connect and force file permissions
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
-            cursor.execute('PRAGMA journal_mode=DELETE;')
+            cursor.execute('PRAGMA journal_mode=WAL;')
+            cursor.execute('PRAGMA busy_timeout=5000;')
             conn.close()
             
             # Force DB file permissions
@@ -83,7 +84,8 @@ class GlobalNewsDatabase:
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
                 cursor = conn.cursor()
-                cursor.execute("PRAGMA journal_mode=DELETE;")
+                cursor.execute("PRAGMA journal_mode=WAL;")
+                cursor.execute("PRAGMA busy_timeout=5000;")
                 conn.commit()
                 
                 # Initialize global news tracking table

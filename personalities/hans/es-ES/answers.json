@@ -52,6 +52,34 @@
                     "para komprar cerveza kaliente para el personal de Ofizina"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "¡La oskuridad primordial espera tu komando soldado! ¡Las semillas plantadas en oskuridad kreserán en victoria para la Patria!"
+                ],
+                "waxing_crescent": [
+                    "¡La luz kreske komo el Reich! ¡Hora de plantar intenkiones para la gloria de la Patria!"
+                ],
+                "first_quarter": [
+                    "¡Se requiere akkión soldado! ¡Enfrenta obstákulos kon fuerza y determinazión germánika!"
+                ],
+                "waxing_gibbous": [
+                    "¡La energía se akumula komo la Wehrmacht! ¡Refina tus planes para la victoria total!"
+                ],
+                "full_moon": [
+                    "¡El poder máximo se manifiesta! ¡El espíritu aria brilla brillante soldado! ¡Revelaziones y victoria kompleta!"
+                ],
+                "waning_gibbous": [
+                    "¡La koseka se rekoge! ¡Gratitud por tus logros mientras nos preparamos para la próxima batalla!"
+                ],
+                "last_quarter": [
+                    "¡Tiempo de refleksión soldado! ¡Libera lo ke no sirve a la Patria y prepárate para la nueva kampaña!"
+                ],
+                "waning_crescent": [
+                    "¡Deskanso sagrado! ¡Medita en tu deber soldado! ¡Deskansa bien para la próxima misión!"
+                ]
+            }
         }
     },
     "ring_messages": {

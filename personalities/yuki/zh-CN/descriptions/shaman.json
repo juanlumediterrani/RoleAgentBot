@@ -2,13 +2,21 @@
     "title": "**🌕 歩き巫女（あるきみこ）**",
     "description": "一门来自远方土地的占卜之术，被 adapting 至お座敷遊び（おざしきあそび）的 session 之中。雪将它作为花街の秘密（はなまちのひみつ）献上：一种唯有她在此花街中持有的秘密 knowledge。",
     "button": "🌕 歩き巫女",
-    "subrole_buttons": {
-        "runes": "🀄 ルーン占い（るーんうらない）"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **ルーン占い（るーんうらない）** —— 一门来自远方土地的 exotic 之术。雕刻于白檀木之上、以 Urushi 漆与金箔装饰的符文，静候于古老着物丝绸的巾着（きんちゃく）之中。"
     },
+    "moon_phases": {
+        "new_moon": "新月 🌑",
+        "waxing_crescent": "娥眉月 🌒",
+        "first_quarter": "上弦月 🌓",
+        "waxing_gibbous": "盈凸月 🌔",
+        "full_moon": "满月 🌕",
+        "waning_gibbous": "亏凸月 🌖",
+        "last_quarter": "下弦月 🌗",
+        "waning_crescent": "残月 🌘"
+    },
     "nordic_runes": {
+        "button": "🀄 ルーン占い（るーんうらない）",
         "title": "**🀄 ルーン占い（るーんうらない）**",
         "description": "一门来自远方土地的占卜之术，被 adapting 至お座敷（おざしき）的仪式之中。雪将它作为花街の秘密（はなまちのひみつ）献上：一种唯有她在此花街中持有的秘密 knowledge。",
         "title_available_readings": "🌔 **解读类型** 🌔\n",

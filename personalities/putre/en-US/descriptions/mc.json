@@ -1,10 +1,7 @@
- {
+{
     "title": "🥁  **Putre the Drummer!**",
     "description": "Putre the Drummer, invite him to a voice channel to play music for you.",
     "button": "🥁 Drummer",
-    "subrole_buttons": {
-        "overview": "🤘 Queue"
-    },
     "canvas_mc_subtitle": "Control Keys",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Use the dropdown menu to ask me for songs, to see the queue, or to add more songs human.",
@@ -40,11 +37,11 @@
     "queue_cleared": "🗑️ Queue cleared",
     "last_song_removed": "🔙 Last song removed from queue",
     "history_displayed": "📜 History displayed",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Adjust Volume",
         "mc_play": "Play Now",
         "mc_play_description": "Ask me for a song and I'll play it immediately",
-        "mc_add": "Add to Queue", 
+        "mc_add": "Add to Queue",
         "mc_add_description": "Add a song to the end of the playback queue",
         "mc_skip": "Skip Song",
         "mc_skip_description": "Skip the current song and go to the next",

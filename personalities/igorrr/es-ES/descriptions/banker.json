@@ -1,5 +1,5 @@
 {
-    "title": "**🌾 La Despensa de Igorrr**",
+    "title": "**🌾 Despensa del Horno**",
     "description": "El siervo jorobado administra tus sacos de harina y transacciones del horno.",
     "button": "🌾 Despensa del Horno",
     "coin": "🌾",
@@ -8,7 +8,7 @@
     "no_transactions_yet": "No hay robos aún... SSSSS.",
     "current_balance": "🌾📦 Sacos de Harina Actuales:",
     "account_holder": "👤 Saco de Harina Pobre:",
-    "server": "🏦 Sótano de Igorrr",
+    "server": "🏦 Sótano",
     "opening_bonus": "Ración inicial",
     "TAE_DAILY": "Ración Diaria",
     "BEGGAR_DONATION": "Donación al Sótano",
@@ -25,14 +25,11 @@
         "config_bonus_description": "Cambiar sacos de harina para recién llegados",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "🌾 Despensa",
-        "beggar": "🔒 Sótano"
-    },
     "donation_label": "Donar:",
     "donation_custom_label": "Cantidad personalizada",
     "donation_custom_message": "Usa la opción 'Cantidad Personalizada' del Canvas para donar. Igorrr lo anotará en el libro mugrienta.",
     "beggar": {
+        "button": "🔒 Sótano",
         "title": "🔒 **Proyectos del sótano** ",
         "description": "Igorrr junta harina para proyectos del sótano. El amo no sabe nada. O sí sabe. Igorrr no dice.",
         "title_campaign": "**Proyecto aktual**",

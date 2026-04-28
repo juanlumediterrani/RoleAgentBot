@@ -5,9 +5,7 @@ Handles comprehensive database creation when bot joins new servers.
 
 from agent_logging import get_logger
 from agent_db import get_db_instance
-from agent_roles_db import get_roles_db_instance
 import asyncio
-import sqlite3
 import os
 import shutil
 import json
@@ -364,20 +362,12 @@ async def _bootstrap_daily_memory_if_missing(server_key: str, guild_name: str, l
 
     try:
         db_instance = get_db_instance(server_key)
-        with db_instance._lock:
-            conn = sqlite3.connect(db_instance.db_path)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT summary FROM daily_memory
-                WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
-                ORDER BY updated_at DESC LIMIT 1
-            """)
-            result = cursor.fetchone()
-            conn.close()
-
-        if result and result[0] and result[0].strip():
-            log.info(f"🧠 Daily memory already exists for '{guild_name}': {result[0][:50]}...")
-            return
+        most_recent = db_instance.get_most_recent_daily_memory_record()
+        if most_recent:
+            existing_summary = (most_recent.get("summary") or "").strip()
+            if existing_summary and existing_summary != "[Error in internal task]":
+                log.info(f"🧠 Daily memory already exists for '{guild_name}': {existing_summary[:50]}...")
+                return
 
         log.info(f"🧠 {context_label} for '{guild_name}', scheduling daily memory bootstrap...")
 
@@ -402,9 +392,9 @@ def initialize_all_databases_for_server(server_id: str, agent_config: dict = Non
     
     This function creates and initializes all database instances that the bot needs:
     - Main agent database (conversations, memory, etc.)
-    - Roles database (role configurations, subrole data)
-    - Behavior database (greetings, interactions, etc.)
-    - All role-specific databases (banker, news_watcher, etc.)
+    - Role-specific databases (banker, news_watcher, etc.)
+    
+    Note: Roles database has been migrated to NoSQL (role_configs_nosql.py).
     
     Args:
         server_id: Discord guild ID for the new server
@@ -427,17 +417,7 @@ def initialize_all_databases_for_server(server_id: str, agent_config: dict = Non
     except Exception as e:
         logger.error(f"❌ Failed to initialize agent database for server {server_id}: {e}")
     
-    # 2. Roles Database (centralized)
-    total_count += 1
-    try:
-        roles_db = get_roles_db_instance(server_id)
-        # Note: Role initialization is now handled by init_roles_config.py using server_config.json
-        logger.info(f"✅ Roles database initialized for server {server_id}")
-        success_count += 1
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize roles database for server {server_id}: {e}")
-    
-    # 3. Role-specific Databases
+    # 2. Role-specific Databases
     role_databases = [
         ("banker", "roles.banker.banker_db", "BankerRolesDB"),
         ("news_watcher", "roles.news_watcher.db_role_news_watcher", "DatabaseRoleNewsWatcher"),
@@ -446,8 +426,8 @@ def initialize_all_databases_for_server(server_id: str, agent_config: dict = Non
         ("dice_game", "roles.trickster.subroles.dice_game.dice_game_db", "DiceGameRolesDB"),
     ]
     
-    # Note: Some trickster subroles use centralized roles.db instead of separate databases
-    # ring, nordic_runes, beggar are handled through the centralized roles system
+    # Note: Some trickster subroles use centralized roles system (NoSQL)
+    # ring, nordic_runes, beggar are handled through role_configs_nosql.py
     
     for role_name, module_path, class_name in role_databases:
         total_count += 1
@@ -469,7 +449,7 @@ def initialize_all_databases_for_server(server_id: str, agent_config: dict = Non
         except Exception as e:
             logger.error(f"❌ Failed to initialize {role_name} database for server {server_id}: {e}")
     
-    # 5. Summary
+    # 3. Summary
     success_rate = (success_count / total_count) * 100 if total_count > 0 else 0
     logger.info(f"📊 Database initialization complete for server {server_id}: {success_count}/{total_count} ({success_rate:.1f}%)")
     
@@ -579,7 +559,7 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
     # 2. Load default roles configuration from agent_config.json
     total_count += 1
     try:
-        from .canvas.server_config import set_role_config_value
+        from .canvas.server_config import set_role_config, set_role_config_value
         from agent_engine import AGENT_CFG
         
         # Get roles from agent_config.json
@@ -591,7 +571,7 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
         
         for role_name in default_roles:
             # Enable each default role if not already configured
-            set_role_config_value(server_key, role_name, "enabled", True)
+            set_role_config(server_key, role_name, enabled=True)
             
             # Also migrate subroles from agent_config.json (store under parent role config)
             role_cfg = agent_roles_cfg.get(role_name, {})
@@ -610,19 +590,6 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
         success_count += 1
     except Exception as e:
         logger.warning(f"Failed to load default roles for server '{guild_name}': {e}")
-    
-    # 4. Initialize roles configuration (migration and defaults)
-    total_count += 1
-    try:
-        from init_roles_config import init_roles_config_for_server
-        roles_success = init_roles_config_for_server(server_key)
-        if roles_success:
-            logger.info(f"⚙️ Roles configuration initialized for server {guild_name}")
-            success_count += 1
-        else:
-            logger.warning(f"⚠️ Roles configuration failed for server {guild_name}")
-    except Exception as e:
-        logger.error(f"❌ Error initializing roles configuration for server {guild_name}: {e}")
     
     # Summary
     success_rate = (success_count / total_count) * 100 if total_count > 0 else 0

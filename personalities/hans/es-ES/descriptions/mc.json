@@ -2,9 +2,6 @@
     "title": "📯  **Her Hans Oficial de Música Militar**",
     "description": "¡ACHTUNG! Her Hans está al mando de la música militar. ¡Presentarse en canal de voz para recibir marchas disciplinadas, recluta!",
     "button": "📯 Marchas",
-    "subrole_buttons": {
-        "overview": "📯 Marchas"
-    },
     "canvas_mc_subtitle": "**Comando estricto**",
     "canvas_mc_separator": "═════════════════════════════════",
     "canvas_mc_description": "¡SCHNELL! ¡Usar el menú para solicitar marchas autorizadas, inspeccionar la cola de reproducción, o añadir música disciplinada! ¡Sin excusas, Zivilist!",
@@ -40,11 +37,11 @@
     "mc_clear": "🗑️ ¡Formación limpiada!",
     "last_song_removed": "🔙 ¡Última marcha eliminada de formación!",
     "history_displayed": "📜 ¡Historial revisado!",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "¡Ajustar volumen de marcha!",
         "mc_play": "¡Reproducir ahora!",
         "mc_play_description": "¡Solicitar marcha autorizada y reproducir inmediatamente! ¡Sin demoras!",
-        "mc_add": "¡Añadir a formación!", 
+        "mc_add": "¡Añadir a formación!",
         "mc_add_description": "¡Añadir marcha al final de la formación de reproducción! ¡Mantener orden!",
         "mc_skip": "¡Saltar marcha!",
         "mc_skip_description": "¡Saltar marcha actual y pasar a siguiente! ¡Marchar al unísono!",

@@ -17,7 +17,9 @@
       "option_no": "No",
       "button_personal": "📁 Personal",
       "button_admin": "🔧 Admin",
-      "available_subroles": "SUBMÓDULOS DISPONIBLES"
+      "available_subroles": "SUBMÓDULOS DISPONIBLES",
+      "toggle_on_description": "Activar rol",
+      "toggle_off_description": "Desactivar rol"
     },
     "help_menu": {
       "title": "📚 ** Her Hans - MANUAL DE INSTRUCCIONES**",
@@ -25,6 +27,17 @@
       "separator": "═══════════════════════════════════════",
       "roles_section": "**MÓDULOS DE OPERACIÓN** Los módulos son capacidades autorizadas para mantener el orden y la disciplina entre los reclutas.",
       "behavior_section": "**PROTOCOLOS DE COMPORTAMIENTO** ¡SCHNELL! Configura los protocolos de comportamiento. ¡SOLO PARA OFICIALES SUPERIORES!",
+      "shortcuts_section": "**ACCESO RÁPIDO** Configura hasta 5 botones de atajo en el Canvas principal para acceso inmediato a tus módulos autorizados. Disponible en Configuración > Atajos.",
+      "shortcuts_messages": {
+        "title": "CONFIGURACIÓN DE ACCESO RÁPIDO",
+        "description": "Configura acceso inmediato a módulos autorizados",
+        "settings_description": "Configura botones de acceso rápido en el Canvas principal",
+        "placeholder_select_role": "Selecciona tu rol o subrol...",
+        "configure_shortcut": "Configurar Atajo {shortcut_id} - Selecciona un rol o subrol:",
+        "saved": "✅ Atajo configurado con éxito, ¡Zivilist!",
+        "failed": "❌ ¡FALLO EN LA CONFIGURACIÓN DEL ATAJO!",
+        "cancelled": "Configuración cancelada, ¡desestimada!"
+      },
       "tips_section": "**ÓRDENES ESTRICTAS** -¡Preguntar cómo funciona un comando: '¿cómo funciona el comando dice?'! -¡Las mejores capacidades están dentro de cada módulo operativo!"
     },
     "canvas_home_messages": {
@@ -39,6 +52,7 @@
       "description": "¡El panel Canvas permite control total sobre todas las operaciones!",
       "interestingthings": "**Operaciones Activas:**",
       "recentsynthesistitle": "🧐 **Reporte actual**",
+      "pilgrimdatatitle": "Datos del Recluta:",
       "dailymemorytitle": "🗺️ **Análisis del frente**",
       "personalsynthesistitle": "👞 **Expediente del recluta**",
       "dm_default_server_title": "🔔 **USANDO SERVIDOR POR DEFECTO: {server_name}**",

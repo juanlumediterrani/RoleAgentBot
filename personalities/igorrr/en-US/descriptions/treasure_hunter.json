@@ -1,13 +1,8 @@
 {
-    "title": "**💎 Igorrr's Grain-Seeker**",
+    "title": "**💎 Grain-Seeker**",
     "description": "Igorrr watches flour suppliers and warns when to buy, and when to sell product.",
     "button": "💎 Grain-Seeker",
     "button_poe2": "👺 POE2",
-    "subrole_buttons": {
-        "items": "💎 Grains",
-        "league": "🏆 League",
-        "admin": "🔧 Admin"
-    },
     "user_flows_title": "Flow for the Master",
     "user_flows_1": "Select the game you want Igorrr to steal",
     "user_flows_2": "Navigate to configure and select the desired grains.",
@@ -18,6 +13,7 @@
     "admin_flows_title": "Flow for the Master",
     "admin_flows_1": "Navigate within subroles to activate and configure them, from the Master's view.",
     "poe2": {
+        "button": "👺 POE2",
         "title": "💎 **Treasures in Path of Exile 2** 👺",
         "description": "Have Igorrr watch prices and send you alerts",
         "current_league": "🏆 **League where I steal**: {league}",

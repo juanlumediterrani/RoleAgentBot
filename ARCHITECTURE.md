@@ -60,31 +60,50 @@ Two role integration modes:
 | Mode                      | What it means                                 | Examples                                                                                |
 | ------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `Integrated Discord role` | Command handlers live inside the main bot    | `mc`, every `*_discord.py` module                                                       |
-| `Scheduled role task`     | Autonomous logic run on a timer as subprocess | `news_watcher.py`, `treasure_hunter.py`, `trickster.py`, `shaman.py`, `banker.py`, `juggler.py` |
+| `Scheduled role task`     | Autonomous logic run on a timer as a `JobScheduler` job (in-process) | `news_watcher`, `treasure_hunter`, `banker`, plus the subrole ticker (`beggar`, `ring`) |
 
 ---
 
 ## 3. Entry Points
 
-### 3.1 `run.py`
+### 3.1 `run.py` (current entry point)
 
-System orchestrator:
+System orchestrator. Docker `CMD ["python", "run.py"]`. As of 0.6.2, `run.py` is intentionally
+slim — it owns no per-role scheduling logic of its own:
 
-- `main()` loads `agent_config.json`.
-- Runs **global RSS feed health check** once at startup (`roles/news_watcher/global_feed_health.py`).
-- `asyncio.gather(discord_bot(), scheduler(config))` keeps both layers alive.
-- The scheduler iterates enabled roles, computes `next_run`, launches due roles as subprocesses, and runs non-role periodic tasks (daily memory, weekly personality evolution).
+- `main()` loads `agent_config.json` (with optional schema validation).
+- Runs the **global RSS feed health check** once at startup
+  (`roles/news_watcher/global_feed_health.py`).
+- Instantiates `RunSupervisor` (`run_supervisor.py`) and registers:
+  - The **MC actor** (`Supervisor`-managed persistent coroutine with restart policy, §20.3).
+  - The **memory maintenance jobs** on `RunSupervisor.job_scheduler`:
+    `daily_memory_summary`, `weekly_personality_evolution`, `recent_memory_summary`,
+    `relationship_memory_refresh`, `gdpr_retention`.
+- `asyncio.gather(discord_bot())`: only the in-process Discord client is gathered — there is no
+  longer a separate `scheduler()` loop. The bot's `on_ready` (§3.2) registers the Discord-bound
+  jobs onto the same `RunSupervisor.job_scheduler`, so the entire process runs on a **single
+  `JobScheduler` instance** (single-scheduler architecture).
+
+> **0.6.2 invariant**: there are no subprocesses anywhere in the runtime. There is exactly one
+> `JobScheduler` driving every periodic task (memory, MC actor, subrole ticker, news_watcher,
+> treasure_hunter, banker, database_cleanup) and one `Supervisor` for long-lived actors (MC).
+> The legacy `launch_role()` subprocess launcher and `scheduler()` loop were removed.
 
 ### 3.2 `discord_bot/agent_discord.py`
 
-Main Discord runtime:
+Main Discord runtime (in-process, same asyncio loop as `RunSupervisor`):
 
 - Builds the Discord client with limited intents.
 - `on_ready()` calls `initialize_server_complete(guild, agent_config, is_startup=True)` per guild, then:
   - Registers **core commands** (`register_core_commands`).
   - Registers **role commands dynamically** (`register_all_role_commands` → `discord_role_loader._try_register_role`).
+  - Starts the **chat message queue** (`ChatMessageQueue`, §19.1) via `get_chat_queue().start(_process_chat_message)`.
+  - Starts the unified **JobScheduler-based scheduler** (`get_discord_scheduler().start()`) which
+    owns the in-bot periodic tasks (subrole task ticker, treasure hunter scheduler, news watcher
+    scheduler, DB cleanup). When that scheduler fails to start, the legacy `@tasks.loop` fallbacks kick in.
 - `on_guild_join()` calls `initialize_server_complete(..., is_startup=False)`.
-- Drives background loops: subrole task scheduler (1 min tick), daily DB cleanup, treasure hunter hourly loop, MC voice idle timeout, ring state refresh.
+- `on_message()` performs taboo detection, applies the global rate limiter, and **enqueues** the
+  message into `ChatMessageQueue` instead of awaiting `_process_chat_message` directly.
 
 ### 3.3 `agent_engine.py`
 
@@ -99,7 +118,13 @@ Personality + prompt orchestration:
 
 LLM layer and memory synthesis:
 
-- `call_llm()` is the **single entry point** for every LLM call in the system.
+- `call_llm(...)` — **blocking** entry point for sync contexts. Internally submits the Vertex AI
+  SDK call to a shared `ThreadPoolExecutor` (`_VERTEXAI_EXECUTOR`).
+- `call_llm_async(...)` — **awaitable** entry point for asyncio contexts (Discord, schedulers).
+  Wraps `call_llm` with `asyncio.to_thread` plus `asyncio.wait_for`, so the event loop is never
+  blocked. **All Discord-facing call sites use this variant.** See §8.2 for the fallback chain.
+- Both share the `background: bool` parameter to select foreground (30 s) vs background (120 s)
+  Vertex timeout.
 - Builds conversational prompts (`_build_conversation_user_prompt`, `_build_conversation_channel_prompt`, `_build_prompt_memory_block`, `_build_prompt_relationship_block`).
 - Generates daily memory (`generate_daily_memory_summary`) and weekly personality evolution (`generate_weekly_personality_evolution`).
 
@@ -118,15 +143,17 @@ Global, cross-server defaults. Relevant keys:
 
 Current canonical role set:
 
-- `news_watcher` (hourly)
-- `treasure_hunter` (hourly; PoE2)
-- `trickster` (12 h) — subrole: `dice_game`
-- `shaman` (24 h) — subrole: `nordic_runes`
-- `mc` (integrated, no interval; voice features)
-- `banker` (24 h) — subrole: `beggar`
-- `juggler` (24 h) — subrole: `ring`
+- `news_watcher` (hourly) — Discord commands + scheduled subprocess.
+- `treasure_hunter` (hourly; PoE2) — Discord commands + scheduled subprocess.
+- `trickster` — Discord commands; subrole: `dice_game` (UI-driven, no timer).
+- `shaman` — Discord commands; subrole: `nordic_runes` (interactive).
+- `mc` (integrated, no interval) — voice features; runs as a `Supervisor` actor (§20.3).
+- `banker` (24 h) — Discord commands + scheduled subprocess; subrole: `beggar` (12 h, in-bot ticker).
+- `juggler` — System-prompt-only role (no `*_discord.py`); subrole: `ring` (24 h, in-bot ticker, accusation flow §9.4).
+- `scholar` — System-prompt-only role (no `*_discord.py`); used in chat flow when the LLM emits a
+  Wikipedia sentinel (§7.2). Performs Wikipedia fetch + second LLM call.
 
-> **Note vs. older docs:** `beggar` moved from `trickster` → `banker`; `ring` moved from `trickster` → `juggler`; `nordic_runes` moved into the new `shaman` role.
+> **Note vs. older docs:** `beggar` moved from `trickster` → `banker`; `ring` moved from `trickster` → `juggler`; `nordic_runes` moved into the new `shaman` role; `scholar` is the latest addition (Wikipedia knowledge).
 
 ### 4.2 Per-server configuration
 
@@ -359,19 +386,36 @@ Responsibilities:
 
 ### 8.2 Fallback chain (Trace 3)
 
+The pipeline is exposed in two flavours:
+
+- `call_llm(...)` — **blocking**. For sync contexts (background workers,
+  thread-isolated tasks). Internally submits the SDK call to a shared
+  `ThreadPoolExecutor` (`_VERTEXAI_EXECUTOR`, `max_workers=10`) and waits via
+  `Future.result(timeout=...)`.
+- `call_llm_async(...)` — **awaitable**. For asyncio contexts (Discord event
+  handlers, schedulers). Wraps `call_llm` with `asyncio.to_thread` plus an
+  `asyncio.wait_for` outer safety timeout, so the event loop and Discord
+  heartbeat are never blocked.
+
 ```text
-call_llm()
-├── Attempt 1 — Vertex AI (gemini-2.5-flash)
-│   └── _call_vertexai_sync() in a thread with 30 s timeout
-│
-├── on failure / timeout → Attempt 2 — Groq (llama-3.3-70b-versatile)
-│   └── _call_groq_fallback() via agent_runtime.get_groq_client()
-│
-└── on failure → Attempt 3 — Mistral (mistral-medium-latest)
-    └── _call_mistral_fallback()
+call_llm_async()                         call_llm()
+├── asyncio.wait_for(outer_timeout)      ├── Attempt 1 — Vertex AI (gemini-2.5-flash)
+│   └── asyncio.to_thread(call_llm) ────►│   └── _invoke_vertexai()
+│                                        │       └── _VERTEXAI_EXECUTOR.submit(...).result(timeout)
+│                                        │           foreground=30 s | background=120 s
+│                                        │
+│                                        ├── on None  → Attempt 2 — Groq (llama-3.3-70b-versatile)
+│                                        │   └── _call_groq_fallback()
+│                                        │
+│                                        └── on error → Attempt 3 — Mistral (mistral-medium-latest)
+│                                            └── _call_mistral_fallback()
+└── on TimeoutError → _get_fallback_response(critical)
 ```
 
-If all three fail the function returns an empty/fallback string and the caller decides how to degrade (critical vs. tolerant).
+The `background: bool` parameter selects the Vertex timeout (30 s for
+foreground/chat, 120 s for memory/personality-evolution tasks). If all three
+providers fail the function returns an empty/fallback string and the caller
+decides how to degrade (critical vs. tolerant).
 
 ### 8.3 Post-processing
 
@@ -387,20 +431,65 @@ If all three fail the function returns an empty/fallback string and the caller d
 
 ### 9.1 Role registration
 
-`discord_bot/discord_role_loader.py`:
+Two distinct registration paths exist depending on whether a role exposes Discord commands:
 
-- Iterates a canonical registry (`news_watcher`, `treasure_hunter`, `trickster`, `shaman`, `banker`, `juggler`) and `mc` separately.
-- Checks `is_role_enabled_check(role_name, agent_config)`.
-- Calls `_try_register_role(bot, module_path, func_name, personality, agent_config)` for each enabled role.
-- Every role provides a `<role>_discord.py` module with its own command registration function.
+**Roles with Discord commands** (`discord_bot/discord_role_loader.py::ROLE_REGISTRY`):
 
-### 9.2 Scheduled role subprocesses
+- Canonical registry: `news_watcher`, `treasure_hunter`, `trickster`, `banker`, `shaman`.
+- `mc` is registered separately via `MC_REGISTRY` (always loaded if enabled).
+- For each enabled role, `_try_register_role(bot, module_path, func_name, personality, agent_config)`
+  imports the `<role>_discord.py` module and invokes its command-registration function. Most slash
+  commands are now deprecated in favour of Canvas (§12); the legacy commands log a warning.
 
-For every enabled role with a `script`, `run.py::launch_role()` runs the script as an isolated subprocess (`asyncio.create_subprocess_exec`) with its own stdout/stderr pipes. The scheduler schedules the next run by `interval_hours`.
+**System-prompt-only roles** (no `*_discord.py`):
 
-### 9.3 Internal subrole task ticker
+- `juggler` — provides ring sentinel handling and prompt missions; never registers commands.
+- `scholar` — provides Wikipedia/README handling and prompt missions; invoked by `agent_discord.py`
+  when the LLM response starts with the `WIKIPEDIA <topic>` sentinel (§7.2).
 
-`discord_bot/agent_discord.py` runs a 1-minute loop that iterates guilds and invokes `get_due_subrole_tasks_for_server(server_id)`. Due subroles (e.g. `beggar`, `ring`) are executed in-process via `execute_subrole_internal_task(subrole_name, subrole_config, bot_instance=bot, ...)`, which delegates to the concrete task module (e.g. `roles/banker/subroles/beggar/beggar_task.py`). After execution, `mark_subrole_executed()` updates `next_run = now + frequency_hours`.
+These roles still appear under `agent_config.json::roles`, contribute to `_get_active_roles_section`
+(prompt assembly, §5.2), and may declare subroles, but do not register top-level Discord commands.
+
+### 9.2 Periodic role execution (single-scheduler model, 0.6.2)
+
+Every periodic role task in the bot runs as a coroutine job on a **single
+`JobScheduler` instance** (`RunSupervisor.job_scheduler`). There are no subprocesses, no
+duplicate schedulers, and no role-script CLI entry points kept alive by the runtime.
+
+The jobs are registered in two waves:
+
+1. **At startup** (`run.py::main` → `RunSupervisor.register_memory_jobs`):
+   - `daily_memory_summary` (1 h tick, per-server staggered).
+   - `weekly_personality_evolution` (6 h tick, per-server staggered).
+   - `recent_memory_summary` (4 h).
+   - `relationship_memory_refresh` (1 h).
+   - `gdpr_retention` (configurable, default 24 h).
+
+2. **On Discord ready** (`agent_discord.py::on_ready` → `DiscordScheduler.start()` with
+   `external_scheduler=RunSupervisor.job_scheduler`):
+   - `discord_task_scheduler` (1 min) — drives the **subrole ticker**: iterates guilds, calls
+     `get_due_subrole_tasks_for_server(server_id)`, executes due subroles in-process via
+     `execute_subrole_internal_task(...)` (e.g. `roles/banker/subroles/beggar/beggar_task.py`),
+     and updates `next_run = now + frequency_hours` per server.
+   - `treasure_hunter_global_scheduler` (1 min ticker, runs on `interval_hours` from config) —
+     `roles/treasure_hunter/treasure_hunter.py::ejecutar_mision_treasure_hunter`.
+   - `news_watcher_global_scheduler` (1 min ticker, runs on `interval_hours`) — kicks
+     `roles/news_watcher/news_downloader.py::download_all_feeds_global` in the background.
+   - `news_watcher_subscription_processor` (1 min ticker, runs on global + per-server intervals)
+     — `roles/news_watcher/subscription_processor.py::process_server_subscriptions`.
+   - `database_cleanup` (24 h) — purges old interactions from the legacy SQLite DB.
+   - `banker_global_scheduler` (24 h) — `roles/banker/banker.py::banker_task`: creates wallets,
+     initializes the dice-game pot, distributes daily TAE.
+
+> **Per-server enable/disable** is enforced inside each job: jobs read
+> `server_config.json` via `discord_bot/canvas/server_config.py::is_role_enabled` and skip
+> servers where the role is locally disabled. The single global scheduler stays simple; per-server
+> gating lives next to the role logic.
+
+> **DiscordScheduler is a registration helper, not a separate runtime.** It exposes the
+> Discord-bound jobs as bound methods on its instance, but its `start()` method registers them
+> on whatever `JobScheduler` it was constructed with. In production, that scheduler is
+> `RunSupervisor.job_scheduler`; in standalone tests, it can fall back to creating its own.
 
 ### 9.4 Role catalog
 
@@ -444,6 +533,21 @@ For every enabled role with a `script`, `run.py::launch_role()` runs the script 
   - If `<username>` matches a member of the guild → the accusation pointer in the ring DB moves to that user.
   - If it does not match → a follow-up prompt (memory + relationship + last interactions + "false accusation" task) is issued to the LLM so the bot replies accordingly.
 - Admins enable the subrole and set frequency via Canvas or commands.
+
+#### `scholar`
+
+- System-prompt-only role: contributes a `CURRENT DUTY - SCHOLAR` mission section so the LLM
+  knows it can answer encyclopaedic questions and may request Wikipedia content.
+- **Wikipedia sentinel flow** (Trace 11):
+  1. User asks a question. First LLM pass returns either a direct answer or
+     `WIKIPEDIA <topic>` (URL-format, underscores instead of spaces).
+  2. `agent_discord.py::_process_chat_message` detects the sentinel, fetches the article extract
+     via `roles/scholar/wikipedia_fetcher.py` (cached in `roles/scholar/wikipedia_cache.db`).
+  3. A second LLM call (`call_llm_async`, `call_type="wikipedia_enhanced"`) is issued with the
+     user's question + the Wikipedia extract attached to the system prompt.
+- A parallel `README` sentinel triggers `_build_readme_prompt` to inject the user-facing manual
+  (per-language `manuals/<lang>/README_USER.md`) into the second pass — used when the user asks
+  about bot capabilities (§9.4 README sentinel handler).
 
 #### `mc` (integrated)
 
@@ -583,7 +687,86 @@ help/
 | `!canvas <bot_name> …`      | Only matching bot replies |
 | `!canvas <unknown_name> …`  | No bot responds          |
 
-### 12.4 Interaction flow (Trace 7)
+### 12.4 Canvas Shortcuts
+
+The Canvas home view supports up to 5 configurable shortcut buttons that provide quick access to frequently used roles and subroles. This feature is admin-only and configured via the settings dropdown.
+
+#### 12.4.1 Data model
+
+Shortcuts are stored per-server in `server_config.json` under the `canvas.shortcuts` key:
+
+```json
+{
+  "canvas": {
+    "shortcuts": [
+      {
+        "id": 1,
+        "enabled": true,
+        "label": "Trickster - Dice",
+        "target_role": "trickster",
+        "target_subrole": "dice"
+      },
+      ...
+    ]
+  }
+}
+```
+
+Each shortcut has:
+- `id`: Position (1-5)
+- `enabled`: Whether the shortcut is active
+- `label`: Display text (cleaned of bold formatting and tree symbols)
+- `target_role`: Target role name (e.g., "trickster")
+- `target_subrole`: Optional target subrole (e.g., "dice")
+
+#### 12.4.2 Subrole mapping
+
+Some subroles use different names in the JSON configuration versus the Canvas surface names. A mapping table ensures correct navigation:
+
+```python
+SUBROLE_TO_SURFACE = {
+    "nordic_runes": "runes",
+    "dice_game": "dice",
+    "poe2": "league",
+    "beggar": "beggar",
+}
+```
+
+#### 12.4.3 Button implementation
+
+`CanvasShortcutButton` reuses existing navigation logic:
+
+- For roles: Uses `CanvasRoleButton` logic via `_build_canvas_role_view`
+- For subroles: Uses `CanvasRoleDetailButton` logic via `_build_canvas_role_detail_view`
+
+This ensures consistency with the standard role navigation system.
+
+#### 12.4.4 Configuration UI
+
+The configuration flow uses a single ephemeral message with two modes:
+
+**List mode**: Shows 5 buttons (one per shortcut position). Each button displays the current shortcut label or `#N` if unconfigured. Clicking enters config mode.
+
+**Config mode**: Shows a dropdown to select a role/subrole and Confirm/Cancel buttons. The dropdown options use personality descriptions for labels. When a selection is made, the dropdown is recreated with the selected value shown in the placeholder.
+
+All messages are injected from `descriptions.json` under `help_menu.shortcuts_messages` with per-personality translations.
+
+#### 12.4.5 Label resolution
+
+Shortcut labels are resolved in this order:
+
+**For roles:**
+1. Role-specific `button` field (e.g., `descriptions.json["role_descriptions"]["banker"]["button"]`)
+2. Fallback to generated label (role name)
+
+**For subroles:**
+1. Subrole-specific `button` field (e.g., `descriptions.json["role_descriptions"]["trickster"]["dice_game"]["button"]`)
+2. Fallback to subrole-specific `title` field if `button` doesn't exist
+3. Fallback to generated label (role name + subrole name)
+
+Labels are cleaned of bold formatting (`**`) and tree symbols (`└`) before being used as button text.
+
+### 12.5 Interaction flow (Trace 7)
 
 ```
 !canvas received
@@ -604,7 +787,7 @@ Dropdown/Button.callback()
 
 ### 13.1 Per-server layout
 
-```
+```text
 databases/
 └── <server_id>/
     ├── server_config.json           ← active personality, language, toggles
@@ -614,42 +797,66 @@ databases/
     │   ├── answers.json
     │   ├── descriptions.json
     │   └── personality_backup_*.json
-    ├── agent.db                     ← AgentDatabase (§13.2)
-    ├── banker.db, news_watcher.db, mc.db, trickster.db, shaman.db, juggler.db …
+    ├── state.json                   ← AgentState (NoSQL canonical store, §13.2)
+    ├── interactions.jsonl           ← JsonlRingBuffer (§20.2)
+    ├── memory_*.jsonl               ← daily/recent/relationship memory streams
+    ├── recollections.jsonl
+    ├── banker.db                    ← Banker SQLite (only legacy SQLite that remains)
+    ├── agent.db                     ← AgentDatabase (DEPRECATED, kept for migration only)
     └── treasure_hunter/             ← PoE2 per-league state
 ```
 
-Shared DBs (cross-server):
+Shared / cross-server stores:
 
 - `data/global_feeds.db` — RSS feed health and shared article store.
 - `databases/shared_poe2/` — PoE2 item map and price history.
+- `databases/global/news/*.jsonl` — global news article tracking (NoSQL).
 
-### 13.2 `agent_db.py` (AgentDatabase)
+### 13.2 NoSQL canonical store (`persistence/agent_state.py`)
 
-Core SQLite store per server. Tracks:
+In 0.6.1+, the per-server canonical store is **NoSQL** (JSON + JSONL ring buffers) accessed through
+`AgentState`. See §20.2 for the full module list. `AgentState` provides the same logical surface
+as the legacy `AgentDatabase` (interactions, recent dialogue window, daily/recent/relationship
+memory, notable recollections, pinned DM sessions, fatigue counters) but persists to disk via:
 
-- Interaction history.
-- Recent dialogue window.
-- Daily memory records.
-- Recent memory records.
-- User relationship memory (+ daily snapshots, pending refresh queue).
-- Notable recollections.
-- Pinned DM sessions (`pin_dm_session`).
-- Fatigue counters.
+- `persistence/json_store.py` — atomic, schema-versioned JSON documents with backups.
+- `persistence/jsonl_store.py` — append-only ring buffers with bounded retention.
 
-Falls back to relocation-by-id when the active server is ambiguous.
+`AgentState` instances are cached per server (`get_agent_state(server_id)`).
 
-### 13.3 Server initialization
+### 13.3 Legacy `agent_db.py` (`AgentDatabase`)
 
-`discord_bot/db_init.py::initialize_server_complete(guild, agent_config, is_startup)` is the **single unified entry point** for setting up a guild. It runs:
+`agent_db.py::AgentDatabase` is **legacy SQLite** retained for:
 
-1. Database initialization (agent, roles, behavior, role-specific).
-2. Default roles loading (enabled set).
-3. News-watcher feed health bootstrap (if enabled).
-4. Server-specific logging setup.
-5. Mark as active server (only on startup).
+- Read paths still used by older code that has not yet been migrated to `AgentState`.
+- A 1-week post-migration validation window (see §20.9).
 
-Called both by `on_ready()` (per guild, `is_startup=True`) and by `on_guild_join()` (`is_startup=False`). The legacy `initialize_databases_for_guild()` is kept with a deprecation warning for backward compatibility.
+New code MUST go through `AgentState`. `AgentDatabase` writes are no longer the source of truth.
+Its SQLite file (`databases/<server_id>/agent.db`) is configured with WAL +
+`busy_timeout=5000` + `synchronous=NORMAL` for safety during the deprecation window.
+
+### 13.4 Banker — the lone SQLite holdout
+
+Banker remains on SQLite by design (`databases/<server_id>/banker.db`, managed by
+`roles/banker/db_banker_core.py`). The decision is documented in §20.9: banker's transactional
+semantics over wallets/transfers benefit from SQLite's atomicity guarantees, and the migration
+cost-benefit was deemed unfavourable.
+
+### 13.5 Server initialization
+
+`discord_bot/db_init.py::initialize_server_complete(guild, agent_config, is_startup)` is the
+**single unified entry point** for setting up a guild. It runs:
+
+1. Initialize NoSQL stores (`AgentState`, role-specific NoSQL stores).
+2. Initialize remaining SQLite stores (banker; legacy AgentDatabase if not yet retired).
+3. Default roles loading (enabled set).
+4. News-watcher feed health bootstrap (if enabled).
+5. Server-specific logging setup.
+6. Mark as active server (only on startup).
+
+Called both by `on_ready()` (per guild, `is_startup=True`) and by `on_guild_join()`
+(`is_startup=False`). The legacy `initialize_databases_for_guild()` is kept with a deprecation
+warning for backward compatibility.
 
 ---
 
@@ -866,22 +1073,330 @@ The following items exist in the codebase but warrant deeper documentation in fu
 - **News watcher cache keys**: premise hash format and cache invalidation rules.
 - **Treasure hunter PoE1 support**: reserved, not implemented.
 
-### 19.1 Performance & Scalability Improvements (Future Implementation)
+### 19.1 Concurrency & Backpressure Architecture
 
-The current architecture has known concurrency limitations that need mitigation to handle high-volume message floods (10,000+ concurrent messages):
+The bot is designed to absorb message floods (≫1 000 concurrent inbound
+messages) without blocking the Discord gateway heartbeat or exhausting memory.
+Defense in depth is enforced at six layers, ordered from outermost to innermost:
 
-- **LLM Call Architecture**: `agent_mind.py::call_llm()` uses synchronous threading with `thread.join(timeout=30.0)` which blocks the asyncio event loop. Needs migration to fully async using `asyncio.to_thread` or HTTP async client.
-- **Global Concurrency Control**: No global semaphore limits concurrent LLM calls. Current rate limiting is per-user only (`discord_utils.py::check_chat_rate_limit()`). Needs global rate limit and semaphore (e.g., max 10 concurrent messages).
-- **Message Queue System**: No queue with backpressure for handling message spikes. Messages are processed immediately in `on_message()` without queuing. Needs async message queue with priority and backpressure when queue is full.
-- **Database Lock Contention**: `agent_db.py` and `agent_roles_db.py` use global `threading.Lock()` which causes contention under high load. Needs connection pooling with thread-local connections and WAL mode.
-- **Load Monitoring**: No metrics for active LLM calls, latency tracking, or queue depth. Needs instrumentation for observability.
+```text
+Discord on_message
+    │
+    ▼
+[1] check_global_chat_rate_limit()        ← discord_bot/discord_utils.py
+    │  Token bucket: capacity=50, refill=50 msg/s. Drops if empty.
+    ▼
+[2] check_chat_rate_limit(user_id)        ← discord_bot/discord_utils.py
+    │  Per-user 3 s cooldown.
+    ▼
+[3] ChatMessageQueue.enqueue(message)     ← discord_bot/message_queue.py
+    │  Bounded asyncio.Queue (maxsize=100). Drops on overflow.
+    │  Drained by 8 worker tasks running _process_chat_message.
+    ▼
+[4] async with _LLM_SEMAPHORE: ...        ← discord_bot/agent_discord.py
+    │  asyncio.Semaphore(10) caps concurrent LLM orchestrations.
+    ▼
+[5] await call_llm_async(...)             ← agent_mind.py
+    │  asyncio.wait_for(asyncio.to_thread(call_llm), outer_timeout)
+    ▼
+[6] _VERTEXAI_EXECUTOR (max_workers=10)   ← agent_mind.py
+       Future.result(timeout=30 s | 120 s) per provider.
+       Falls back: Vertex → Groq → Mistral → canned response.
+```
 
-**Planned Mitigation Roadmap**:
-1. Add `asyncio.Semaphore(10)` in `discord_bot/agent_discord.py::_process_chat_message()`
-2. Implement global rate limiting in `discord_utils.py` (e.g., 50 messages/second)
-3. Create `call_llm_async()` using `asyncio.to_thread()` in `agent_mind.py`
-4. Implement message queue with backpressure in new `discord_bot/message_queue.py`
-5. Replace global DB locks with connection pooling and WAL mode
-6. Add metrics for active calls, latency, and queue depth
+**Key implementation files**:
 
-When any of these is specified more precisely in code, extend the corresponding section above rather than adding historical "refactor note" sections at the bottom.
+- `agent_mind.py` — `call_llm`, `call_llm_async`, `_invoke_vertexai`, the shared
+  `concurrent.futures.ThreadPoolExecutor` (`_VERTEXAI_EXECUTOR`), and the
+  fallback chain.
+- `discord_bot/discord_utils.py` — `check_chat_rate_limit` (per user) and
+  `check_global_chat_rate_limit` (global token bucket).
+- `discord_bot/message_queue.py` — `ChatMessageQueue` with bounded queue and
+  worker pool. Started in `on_ready`, drained on shutdown.
+- `discord_bot/agent_discord.py` — `_LLM_SEMAPHORE`, the wired-up `on_message`
+  → `enqueue` handoff, and `_process_chat_message` running under workers.
+- `agent_metrics.py` — thread-safe counters / gauges / latency rings consumed
+  by all the layers above.
+
+**Database concurrency**: SQLite databases use `journal_mode=WAL` with
+`busy_timeout=5000` so that readers and writers do not block each other under
+load (`agent_db.py`, `news_watcher/global_news_db.py`, plus the per-role DBs
+in `roles/treasure_hunter/`). Per-instance `threading.Lock()` is retained
+within each DB class to serialise multi-statement operations on a single
+connection.
+
+**Observability**: `agent_metrics.py` exposes `incr`, `set_gauge`, and
+`record_latency` to the hot paths. Snapshots via `get_metrics()` /
+`format_metrics()` include:
+
+- `llm.vertexai.{ok,timeout,error,empty}`, `llm.groq.{ok,error}`,
+  `llm.mistral.ok`, `llm.async.outer_timeout`.
+- `chat_queue.{enqueued,dropped,processed,failed}` and gauge `chat_queue.size`.
+- `rate_limit.global.{allowed,dropped}`.
+- Per-`call_type` latency stats (`avg`, `p50`, `p95`, `p99`, `max`) for each
+  provider, e.g. `vertexai:think`, `groq:scholar`.
+
+**Tuning knobs** (constants, not config — change in code):
+
+- `agent_mind.py::VERTEXAI_TIMEOUT_FOREGROUND` (30 s) /
+  `VERTEXAI_TIMEOUT_BACKGROUND` (120 s).
+- `agent_mind.py::_VERTEXAI_EXECUTOR` `max_workers` (10).
+- `discord_utils.py::GLOBAL_CHAT_RATE_CAPACITY` (50) /
+  `GLOBAL_CHAT_RATE_REFILL_PER_SEC` (50.0).
+- `agent_discord.py::_LLM_SEMAPHORE` size (10).
+- `message_queue.py::ChatMessageQueue` `maxsize` (100) / `num_workers` (8).
+
+---
+
+## 20. NoSQL + Supervisor + JobScheduler Architecture (2026 Refactor)
+
+### 20.1 Overview
+
+The bot has been refactored from SQLite + subprocess-based architecture to NoSQL (JSON/JSONL) + in-process Supervisor + JobScheduler. This eliminates ~5000 LOC of subprocess management code and provides unified process management with restart policies, timeouts, semaphores, circuit breakers, and observability.
+
+### 20.2 Persistence Layer (NoSQL)
+
+**Modules:**
+- `persistence/json_store.py`: Thread-safe atomic JSON document storage with schema versioning and backups
+- `persistence/jsonl_store.py`: Append-only JSONL with rotation and retention limits
+- `persistence/agent_state.py`: Facade for agent state using NoSQL backend (same API as AgentDatabase)
+- `agent_memory_nosql.py`: NoSQL backend for agent memory (state.json + interactions.jsonl)
+- `global_news_nosql.py`: NoSQL backend for global news tracking
+- `role_configs_nosql.py`: NoSQL backend for role configurations (except banker)
+- `poe2_nosql.py`: NoSQL backend for POE2 price history and items catalog
+
+**File Structure:**
+```
+databases/shared/
+├── news/
+│   ├── seen.json              # Global news tracking
+│   └── feeds_health.json      # Feed health status
+├── poe2/
+│   ├── prices_latest.json     # Latest prices per item
+│   ├── prices_history.jsonl   # Price history (rotating)
+│   └── items_catalog.json     # Items catalog
+└── scheduler_state.json       # Job scheduler state persistence
+
+databases/{server_id}/
+├── state.json                 # Agent state (daily/recent memory, relationships, recollections)
+└── interactions.jsonl         # Interaction log (rotating)
+```
+
+**Retention Limits:**
+- Daily memory: 14 paragraphs
+- Recent memory: 12 paragraphs
+- Recollections: 50 entries
+- Relationships: 200 entries
+- Interactions: 250 entries (last 90 days)
+- POE2 price history: 30 days
+- News history: 30 days
+
+### 20.3 Process Management (Supervisor + JobScheduler)
+
+**Modules:**
+- `supervisor/supervisor.py`: Actor manager with restart policies and backoff
+- `supervisor/scheduler.py`: Async job scheduler with retries, timeouts, semaphores, circuit breakers
+- `supervisor/heartbeat.py`: Health monitoring for actors
+- `supervisor/policies.py`: Restart policies (permanent, transient, one-shot)
+- `supervisor/ipc.py`: Unix-socket IPC for runtime control
+- `supervisor/scheduler_state.py`: Scheduler state persistence (next_run, status, last_shutdown)
+- `run_supervisor.py`: RunSupervisor wrapper integrating Supervisor + JobScheduler
+- `rabctl.py`: CLI tool for IPC control (status, trigger, pause, resume, restart, shutdown, health, metrics)
+
+**Runtime Topology (0.6.2 — single-scheduler):**
+
+```text
+run.py main()                                       (Docker CMD: python run.py)
+├── RunSupervisor (in-process)
+│   ├── Supervisor (actors)
+│   │   └── mc (Music Controller — persistent actor with restart policy)
+│   ├── job_scheduler  ← THE SINGLE JobScheduler instance for the whole bot
+│   │   ├── (registered at startup by RunSupervisor.register_memory_jobs)
+│   │   │   ├── daily_memory_summary        (tick=1h, per-server staggered)
+│   │   │   ├── recent_memory_summary       (4h)
+│   │   │   ├── relationship_memory_refresh (1h)
+│   │   │   ├── weekly_personality_evolution (tick=6h, per-server staggered)
+│   │   │   └── gdpr_retention              (configurable, default 24h)
+│   │   └── (registered on Discord on_ready by DiscordScheduler.start with
+│   │        external_scheduler=RunSupervisor.job_scheduler)
+│   │       ├── discord_task_scheduler           (1min, subrole ticker)
+│   │       ├── treasure_hunter_global_scheduler (1min ticker, runs on interval_hours)
+│   │       ├── news_watcher_global_scheduler    (1min ticker, runs on interval_hours)
+│   │       ├── news_watcher_subscription_processor (1min, per-server intervals)
+│   │       ├── database_cleanup                 (24h)
+│   │       └── banker_global_scheduler          (24h)
+│   ├── IPC Server (/tmp/rab_ipc.sock)  — see §20.5 (rabctl)
+│   └── Scheduler State Persistence    (next_run, status, last_shutdown)
+└── discord_bot() (in-process, same asyncio loop)
+    ├── ChatMessageQueue (8 workers, maxsize=100, §19.1)
+    ├── _LLM_SEMAPHORE (max 10 concurrent orchestrations, §19.1)
+    ├── DiscordScheduler (registration helper; uses RunSupervisor.job_scheduler)
+    └── on_message → enqueue → workers → call_llm_async (§8.2)
+```
+
+There are **no subprocesses**, **no `@tasks.loop` legacy schedulers**, and **no second
+`JobScheduler` instance**. The legacy `run.py::launch_role` and `scheduler()` loop, plus the
+five `@tasks.loop` schedulers in `agent_discord.py`, were removed in 0.6.2.
+
+**JobScheduler Features:**
+- Jobs with schedules (interval, cron-like)
+- Retry policies with backoff
+- Timeout enforcement
+- Semaphore for concurrency control
+- Circuit breaker for fault tolerance
+- Pause/resume/trigger runtime control
+- Prometheus metrics export
+
+### 20.4 Migration Scripts
+
+- `migrate_sqlite_to_json.py`: One-shot SQLite → NoSQL migration for global databases
+- `migrate_agent_to_nosql.py`: One-shot agent_*.db → state.json migration with backup
+
+### 20.5 CLI Control (rabctl)
+
+```bash
+# Get status
+rabctl status
+
+# Trigger a job manually
+rabctl trigger daily_memory_summary
+
+# Pause/resume a job
+rabctl pause recent_memory_refresh
+rabctl resume recent_memory_refresh
+
+# Restart an actor
+rabctl restart mc
+
+# Shutdown supervisor
+rabctl shutdown
+
+# Health check (for systemd)
+rabctl health  # exit 0/1
+
+# Get Prometheus metrics
+rabctl metrics
+```
+
+### 20.6 Systemd Unit
+
+See `roleagentbot.service` for systemd configuration:
+- `Restart=on-failure` with `RestartSec=10`
+- Health check via `rabctl health`
+- Metrics exposed via `rabctl metrics`
+
+### 20.7 Roadmap Completion Status
+
+**Fase A** — Infrastructure: COMPLETED ✓
+
+- `persistence/` + `supervisor/` with tests (105 tests passing).
+
+**Fase B** — NoSQL Volatiles: COMPLETED ✓
+
+- `global_news.db` → NoSQL.
+- `poe2STDpricehistory.db` → NoSQL.
+- `PoE2Standard.db` → NoSQL.
+- `global_news_db` replaced with `global_news_nosql`.
+
+**Fase C** — Process Refactor: COMPLETED ✓ (0.6.2)
+
+- 5 `@tasks.loop` → `JobScheduler` (`discord_bot/discord_scheduler.py`).
+- Memory maintenance jobs in `RunSupervisor.job_scheduler`.
+- Persistent roles (`mc`) → `Supervisor`-managed actors.
+- `scheduler_state.json` persistence.
+- IPC + `rabctl.py`.
+- **0.6.2 finalisation**: `run.py::launch_role` and the slim `scheduler()` loop were
+  removed. `banker_task()` is now a job on the shared scheduler. `DiscordScheduler` was
+  refactored to register its jobs onto `RunSupervisor.job_scheduler` via the new
+  `external_scheduler` parameter, eliminating the second `JobScheduler` instance and the
+  duplicate news_watcher/treasure_hunter execution paths. The runtime now has exactly one
+  task launcher (`RunSupervisor.job_scheduler`) and zero subprocesses.
+
+**Fase D** — Agent Memory NoSQL: COMPLETED ✓ (validation period)
+
+- `persistence/agent_state.py` is the canonical facade.
+- Table-by-table migration to `state.json` + `interactions.jsonl`.
+- One-shot `agent_*.db → state.json` converter (`migrate_agent_to_nosql.py`).
+- `agent_db.py` deletion is pending the validation window in §20.9.
+
+**Fase E** — Roles NoSQL: COMPLETED ✓ (banker exempted by design)
+
+- Roles migrated to NoSQL except `banker` (transactional SQLite, §13.4).
+- `agent_roles_db.py` is now a thin compatibility facade that delegates to NoSQL stores.
+
+**Fase F** — Observability: COMPLETED ✓
+
+- Prometheus metrics per job (via `supervisor/scheduler.py`).
+- Healthcheck: `rabctl health` → exit 0/1.
+- Systemd unit + `Restart=on-failure`.
+- Documentation in ARCHITECTURE.md.
+
+**Fase G** — Concurrency & Backpressure (0.6.2): COMPLETED ✓
+
+- `agent_mind.call_llm_async` + shared `_VERTEXAI_EXECUTOR` (`concurrent.futures`) replaces the
+  old `threading.Thread + thread.join` blocking pattern. Discord heartbeat is no longer blocked.
+- `discord_utils.check_global_chat_rate_limit` token bucket (50 msg/s) ahead of per-user cooldown.
+- `discord_bot/agent_discord.py::_LLM_SEMAPHORE` caps concurrent chat LLM orchestrations at 10.
+- `discord_bot/message_queue.py::ChatMessageQueue` bounded queue (maxsize=100) with 8 workers;
+  drops on overflow rather than accumulating an unbounded coroutine backlog.
+- SQLite WAL + `busy_timeout=5000` on all remaining SQL stores.
+- `agent_metrics.py` thread-safe counters/gauges/latency rings consumed by all hot paths.
+- Full architecture documented in §19.1.
+
+### 20.8 Migration Guidelines
+
+**For existing deployments:**
+1. Backup databases: `cp -r databases databases.bak`
+2. Run migration: `python3 migrate_sqlite_to_json.py`
+3. Run agent migration: `python3 migrate_agent_to_nosql.py --db-path databases/{server_id}/agent_{server_id}.db --server-id {server_id}`
+4. Install systemd unit: `sudo cp roleagentbot.service /etc/systemd/system/`
+5. Enable service: `sudo systemctl enable roleagentbot`
+6. Start service: `sudo systemctl start roleagentbot`
+7. Verify health: `./rabctl health`
+8. Check metrics: `./rabctl metrics`
+
+**Rollback:**
+1. Stop service: `sudo systemctl stop roleagentbot`
+2. Restore databases: `rm -rf databases && mv databases.bak databases`
+3. Start service: `sudo systemctl start roleagentbot`
+
+### 20.9 Known Limitations & Open Items (0.6.2)
+
+**By design:**
+
+- Banker role remains in SQLite (transactional semantics over wallets/transfers — see §13.4).
+- Markdown lint warnings throughout this file (MD031/MD032/MD040/MD060) are pre-existing and
+  intentionally untouched to keep refactor diffs focused on substantive content.
+
+**Pending validation (deletion deferred):**
+
+- `agent_db.py` (`AgentDatabase`) — full removal pending the post-migration validation window.
+- `agent_roles_db.py` further reduction — pending validation that all callers go through NoSQL.
+
+**Single-launcher convergence — DONE in 0.6.2.** `run.py::launch_role`, `scheduler()`, and the
+five `@tasks.loop` schedulers in `agent_discord.py` were deleted. The runtime has exactly one
+`JobScheduler` (`RunSupervisor.job_scheduler`) hosting both the memory maintenance jobs and the
+Discord-bound jobs (registered on `on_ready` via `DiscordScheduler.start(external_scheduler=...)`).
+`run.py` is now a thin entry point: load config → start RunSupervisor → run `discord_bot()`.
+
+**Optional next step — single entry point:** `run.py` could be reduced to a 5-line shim that
+delegates to `run_supervisor.py::main()`, or `run_supervisor.py` could be promoted to be the
+Docker `CMD`/systemd `ExecStart`. Today both work; the choice is purely cosmetic.
+
+**Cohesion follow-ups (not blocking, see §9.1):**
+
+- `agent_discord.py` still detects the `WIKIPEDIA` and `README` sentinels emitted by the LLM.
+  This logic could move into `roles/scholar/` for full role cohesion.
+- Several `discord_bot/canvas/canvas_*.py` modules import role internals (DBs, message helpers).
+  Each role could expose a public Canvas-facing API to keep its internals private.
+- Thin role scripts `roles/juggler/juggler.py`, `roles/shaman/shaman.py`, `roles/trickster/trickster.py`,
+  `roles/scholar/scholar.py` no longer have any scheduled callers; only their helper functions
+  (system prompts, sentinel handlers) are imported. Consider renaming/dropping the empty `main()`
+  entry points to make the dead code obvious.
+
+**Test coverage gaps:**
+
+- E2E tests for news_watcher + PoE2 (medium priority).
+- No automated load-test harness for the §19.1 backpressure layers; smoke-tested manually with
+  a `ChatMessageQueue(maxsize=3, num_workers=2)` + 5-message flood (see refactor session).
+

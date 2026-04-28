@@ -2,7 +2,7 @@
     "title": "🔑 **El Gran Kofre de Putre**",
     "description": "El orco tesorero te administra tus cuentas y transacciones de oro.",
     "button": "🪙 Tesorero",
-    "coin":"🪙",
+    "coin": "🪙",
     "wallet_information": "Estao aktual del Kofre:",
     "recent_transactions_title": "Zakeos Rezientes",
     "no_transactions_yet": "No ay zakeos todabia",
@@ -16,7 +16,7 @@
     "dice_game_win": "Ganancia de Dados",
     "dice_game_pot_update": "Aktualización del Pot de Dados",
     "dice_game_pot_refill": "Recarga del Pot",
-    "dropdown":{
+    "dropdown": {
         "select_banker_action": "💰 Selekzionar aksion de tesoro...",
         "config_tae": "Konfigurar TAE",
         "config_tae_description": "Ajustar la tasa diaria de oro",
@@ -25,26 +25,23 @@
         "config_bonus_description": "Ajustar monedas para novatos",
         "config_bonus_emoji": "🎁"
     },
-    "subrole_buttons": {
-        "overview": "💰 Zaka",
-        "beggar": "🙏 Volunta"
-    },
     "donation_label": "Donar:",
     "donation_custom_label": "Personaliza",
     "donation_custom_message": "Usa la opcion 'Cantidad Personalizada' del Canvas para donar una cantidad personalizada!",
     "beggar": {
-        "title": "🪙 **REKAUDACIONE PUTRE** 🪙",
+        "button": "🙏 Volunta",
+        "title": "🪙 **REKAUDACIONE PUTRE**",
         "description": " Putre recauda oro para proyectos del clan, dona oro regularmente y Putre te lo agradecera cada semana.\n Si tienes suerte puede que te devuelva algo.",
-        "title_campaign":"**Campanya atual**",
-        "title_reason":"Razon:",
-        "no_reason_recorded":"No ay razon registrada todavia",
-        "current_fund":"Oro akumulado:",
-        "title_instructions":"**Instrucciones**",
-        "instructions":" - Haz click donar en el menu desplegable de abajo.\n - Espera a los resultados semanales al final de esta.\n - Participa con cualquier cantidad y Putre lo tendra en cuenta.\n",
-        "title_donations":"📊 ** Donaciones:**",
-        "no_donations":" No hay donaciones todavia. Se el primero en contribuir!",
+        "title_campaign": "**Campanya atual**",
+        "title_reason": "Razon:",
+        "no_reason_recorded": "No ay razon registrada todavia",
+        "current_fund": "Oro akumulado:",
+        "title_instructions": "**Instrucciones**",
+        "instructions": " - Haz click donar en el menu desplegable de abajo.\n - Espera a los resultados semanales al final de esta.\n - Participa con cualquier cantidad y Putre lo tendra en cuenta.\n",
+        "title_donations": "📊 ** Donaciones:**",
+        "no_donations": " No hay donaciones todavia. Se el primero en contribuir!",
         "beggar_donation_success": "¡Grazia po donar {amount} de 🪙 pa la cauza: {reason}! 💪",
-        "dropdown":{
+        "dropdown": {
             "beggar_donate": "Volunta: Donar",
             "beggar_donate_description": "Hacer una donacion para proyectos del clan",
             "beggar_donate_emoji": "🙏",

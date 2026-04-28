@@ -244,53 +244,6 @@ class POE2SubroleManager:
         """Check if user is authorized to use POE2 commands (has access to an activated server)."""
         return self.get_user_active_server(user_id) is not None
     
-    def _add_default_objectives(self, user_id: str, league: str):
-        """Add default objectives for a league."""
-        default_items = self._default_objectives.get(league, [])
-        
-        # Get items from item list to find item IDs
-        items = self.load_item_list(league)
-        
-        try:
-            conn = self.init_price_history_db(league)
-            cursor = conn.cursor()
-            
-            # Add default items if not already present
-            for item_name in default_items:
-                item_id = items.get(item_name.lower())
-                if item_id:
-                    cursor.execute('''
-                        INSERT OR IGNORE INTO objectives (item_name, item_id, league, active, user_id)
-                        VALUES (?, ?, ?, 1, ?)
-                    ''', (item_name, item_id, league, user_id))
-                else:
-                    logger.warning(f"Item ID not found for default objective: {item_name}")
-            
-            conn.commit()
-            conn.close()
-            logger.info(f"Added {len(default_items)} default objectives for {league} on user {user_id}")
-            
-        except Exception as e:
-            logger.error(f"Error adding default objectives: {e}")
-    
-    def _download_default_objectives_history(self, user_id: str, league: str):
-        """Download price history for default objectives."""
-        default_items = self._default_objectives.get(league, [])
-        
-        # Get item list to find item IDs
-        items = self.load_item_list(league)
-        
-        for item_name in default_items:
-            item_id = items.get(item_name.lower())
-            if item_id:
-                try:
-                    self._download_item_history(item_name, league, item_id)
-                    logger.info(f"Downloaded history for default objective: {item_name}")
-                except Exception as e:
-                    logger.error(f"Failed to download history for {item_name}: {e}")
-            else:
-                logger.warning(f"Item ID not found for default objective: {item_name}")
-    
     def get_league_abbreviation(self, league: str) -> str:
         """Get league abbreviation for file names."""
         league_mapping = {
@@ -377,25 +330,6 @@ class POE2SubroleManager:
             ON items_registry(league)
         ''')
         
-        # Create objectives table (unchanged)
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS objectives (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_name TEXT NOT NULL,
-                item_id INTEGER NOT NULL,
-                league TEXT NOT NULL,
-                active INTEGER DEFAULT 1,
-                user_id TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Create index on objectives
-        conn.execute('''
-            CREATE INDEX IF NOT EXISTS idx_objectives_user_league 
-            ON objectives(user_id, league)
-        ''')
-        
         conn.commit()
         return conn
     
@@ -413,7 +347,8 @@ class POE2SubroleManager:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 price REAL NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                quantity INTEGER
+                quantity INTEGER,
+                UNIQUE(timestamp)
             )
         ''')
         
@@ -613,7 +548,7 @@ class POE2SubroleManager:
             return None, None
     
     def add_objective(self, server_id: str, user_id: str, item_name: str) -> Tuple[bool, str]:
-        """Add an item to objectives for a user on a server."""
+        """Add an item to objectives for a user on a server using NoSQL."""
         if not server_id or not self.is_activated(server_id):
             active_servers = self.get_active_servers()
             if not active_servers:
@@ -630,36 +565,6 @@ class POE2SubroleManager:
             return False, f"Item '{item_name}' not found in {league} league."
         
         try:
-            conn = self.init_price_history_db(league)
-            cursor = conn.cursor()
-            
-            # Clean up any duplicates for this user first
-            cursor.execute('''
-                DELETE FROM objectives 
-                WHERE id NOT IN (
-                    SELECT MIN(id) 
-                    FROM objectives 
-                    WHERE user_id = ? AND league = ?
-                    GROUP BY item_name
-                ) AND user_id = ? AND league = ?
-            ''', (user_id, league, user_id, league))
-            
-            # Check if already exists for this user
-            cursor.execute('''
-                SELECT id FROM objectives 
-                WHERE item_name = ? AND league = ? AND user_id = ?
-            ''', (item_name, league, user_id))
-            
-            if cursor.fetchone():
-                conn.close()
-                return False, f"Item '{item_name}' is already in objectives."
-            
-            # Add to objectives
-            cursor.execute('''
-                INSERT INTO objectives (item_name, item_id, league, active, user_id)
-                VALUES (?, ?, ?, 1, ?)
-            ''', (item_name, item_id, league, user_id))
-
             roles_db = self._get_roles_db(server_id)
             subscription = roles_db.get_poe2_subscription(user_id, server_id)
             tracked_items = subscription.get('tracked_items', []) if subscription else []
@@ -668,7 +573,7 @@ class POE2SubroleManager:
             # Check if item already tracked (by name)
             existing = next((item for item in tracked_items if isinstance(item, dict) and item.get('item_name') == item_name), None)
             if existing:
-                tracked_items.remove(existing)
+                return False, f"Item '{item_name}' is already in objectives."
             
             # Add item with item_id
             tracked_items.append({
@@ -677,10 +582,7 @@ class POE2SubroleManager:
             })
             
             if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases):
-                conn.close()
                 return False, f"Error saving subscription for '{item_name}'."
-            
-            conn.commit()
             
             try:
                 self._download_item_history(item_name, league, item_id)
@@ -688,7 +590,6 @@ class POE2SubroleManager:
             except Exception as e:
                 logger.error(f"Failed to download price history for {item_name}: {e}")
             
-            conn.close()
             return True, f"Added '{item_name}' to objectives."
             
         except Exception as e:
@@ -723,7 +624,7 @@ class POE2SubroleManager:
             raise
     
     def remove_objective(self, server_id: str, user_id: str, item_name: str) -> Tuple[bool, str]:
-        """Remove an item from objectives for a user on a server."""
+        """Remove an item from objectives for a user on a server using NoSQL."""
         if not server_id or not self.is_activated(server_id):
             active_servers = self.get_active_servers()
             if not active_servers:
@@ -733,64 +634,37 @@ class POE2SubroleManager:
         league = self.get_user_league(user_id, server_id)
         
         try:
-            conn = self.init_price_history_db(league)
-            cursor = conn.cursor()
+            roles_db = self._get_roles_db(server_id)
+            subscription = roles_db.get_poe2_subscription(user_id, server_id)
+            tracked_items = subscription.get('tracked_items', []) if subscription else []
+            purchases = subscription.get('purchases', []) if subscription else []
             
             # Try by name first
-            cursor.execute('''
-                DELETE FROM objectives 
-                WHERE item_name = ? AND league = ? AND user_id = ?
-            ''', (item_name, league, user_id))
-            
-            if cursor.rowcount > 0:
-                roles_db = self._get_roles_db(server_id)
-                subscription = roles_db.get_poe2_subscription(user_id, server_id)
-                tracked_items = subscription.get('tracked_items', []) if subscription else []
-                purchases = subscription.get('purchases', []) if subscription else []
-                tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item.get('item_name') != item_name]
+            existing = next((item for item in tracked_items if isinstance(item, dict) and item.get('item_name') == item_name), None)
+            if existing:
+                tracked_items = [item for item in tracked_items if item.get('item_name') != item_name]
                 if tracked_items:
                     roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases)
                 else:
                     roles_db.delete_poe2_subscription(user_id, server_id)
-                conn.commit()
-                conn.close()
                 return True, f"Removed '{item_name}' from objectives."
             
             # Try by number
             try:
                 item_num = int(item_name)
-                cursor.execute('''
-                    SELECT item_name FROM objectives 
-                    WHERE league = ? AND user_id = ? ORDER BY id
-                ''', (league, user_id))
-                
-                objectives = cursor.fetchall()
-                if 1 <= item_num <= len(objectives):
-                    item_to_remove = objectives[item_num - 1][0]
-                    cursor.execute('''
-                        DELETE FROM objectives 
-                        WHERE item_name = ? AND league = ? AND user_id = ?
-                    ''', (item_to_remove, league, user_id))
-                    roles_db = self._get_roles_db(server_id)
-                    subscription = roles_db.get_poe2_subscription(user_id, server_id)
-                    tracked_items = subscription.get('tracked_items', []) if subscription else []
-                    purchases = subscription.get('purchases', []) if subscription else []
-                    tracked_items = [tracked_item for tracked_item in tracked_items if tracked_item.get('item_name') != item_to_remove]
+                if 1 <= item_num <= len(tracked_items):
+                    item_to_remove = tracked_items[item_num - 1]
+                    tracked_items.pop(item_num - 1)
                     if tracked_items:
                         roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases)
                     else:
                         roles_db.delete_poe2_subscription(user_id, server_id)
-                    
-                    conn.commit()
-                    conn.close()
-                    logger.info(f"➖ Removed objective #{item_num}: {item_to_remove} for user {user_id}")
-                    return True, f"Removed objective #{item_num}: '{item_to_remove}'"
+                    logger.info(f"➖ Removed objective #{item_num}: {item_to_remove.get('item_name')} for user {user_id}")
+                    return True, f"Removed objective #{item_num}: '{item_to_remove.get('item_name')}'"
                 else:
-                    conn.close()
-                    return False, f"Invalid number. There are {len(objectives)} objectives."
+                    return False, f"Invalid number. There are {len(tracked_items)} objectives."
                     
             except ValueError:
-                conn.close()
                 return False, f"Item '{item_name}' not found in objectives."
                 
         except Exception as e:
@@ -798,7 +672,7 @@ class POE2SubroleManager:
             return False, f"Error removing objective: {e}"
     
     def list_objectives(self, server_id: str, user_id: str) -> Tuple[bool, str]:
-        """List all objectives for a user with current prices using per-item table structure."""
+        """List all objectives for a user with current prices using NoSQL."""
         if not server_id or not self.is_activated(server_id):
             active_servers = self.get_active_servers()
             if not active_servers:
@@ -808,35 +682,27 @@ class POE2SubroleManager:
         league = self.get_user_league(user_id, server_id)
         
         try:
-            conn = self.init_price_history_db(league)
-            cursor = conn.cursor()
+            roles_db = self._get_roles_db(server_id)
+            subscription = roles_db.get_poe2_subscription(user_id, server_id)
+            tracked_items = subscription.get('tracked_items', []) if subscription else []
             
-            cursor.execute('''
-                SELECT item_name, item_id, active, created_at 
-                FROM objectives 
-                WHERE league = ? AND user_id = ?
-                ORDER BY id
-            ''', (league, user_id))
-            
-            objectives = cursor.fetchall()
-            conn.close()
-            
-            if not objectives:
+            if not tracked_items:
                 return True, "No objectives configured."
             
             response = f"🔮 **POE2 Objectives - {league}**\n\n"
             
-            for i, (name, item_id, active, created_at) in enumerate(objectives, 1):
-                status = "✅" if active else "❌"
+            for i, item in enumerate(tracked_items, 1):
+                item_name = item.get('item_name', 'Unknown')
+                item_id = item.get('item_id')
                 
-                # Get latest price using new per-item table
+                # Get latest price using per-item table
                 price_data = self.get_latest_price_for_item(league, item_id) if item_id else None
                 current_price = price_data['price'] if price_data else None
                 
                 if current_price:
-                    response += f"  {i}. {status} {name} - **{current_price:.2f} Div**\n"
+                    response += f"  {i}. ✅ {item_name} - **{current_price:.2f} Div**\n"
                 else:
-                    response += f"  {i}. {status} {name} - *No data*\n"
+                    response += f"  {i}. ✅ {item_name} - *No data*\n"
             
             return True, response
             
@@ -986,19 +852,6 @@ class POE2SubroleManager:
             if not success:
                 return False, "Failed to save subscription"
             
-            # Add objectives to database
-            conn = self.init_price_history_db(league)
-            cursor = conn.cursor()
-            
-            for item in tracked_items:
-                cursor.execute('''
-                    INSERT OR IGNORE INTO objectives (item_name, item_id, league, active, user_id)
-                    VALUES (?, ?, ?, 1, ?)
-                ''', (item['item_name'], item['item_id'], league, user_id))
-            
-            conn.commit()
-            conn.close()
-            
             logger.info(f"✅ Created subscription for user {user_id} in {league} with {len(tracked_items)} default items")
             return True, f"Subscription created with {len(tracked_items)} default items"
             
@@ -1048,7 +901,7 @@ class POE2SubroleManager:
     # ─── Enhanced Add Objective with Background Download ──────────────────────
     
     async def add_objective_async(self, server_id: str, user_id: str, item_name: str) -> Tuple[bool, str]:
-        """Add an item to objectives with non-blocking background download and placeholder support."""
+        """Add an item to objectives with non-blocking background download and placeholder support using NoSQL."""
         # Check activation
         if not server_id or not self.is_activated(server_id):
             active_servers = self.get_active_servers()
@@ -1066,17 +919,6 @@ class POE2SubroleManager:
             return False, f"Item '{item_name}' not found in {league} league."
         
         try:
-            # Check if item exists in global objectives database (by league)
-            conn = self.init_price_history_db(league)
-            cursor = conn.cursor()
-
-            cursor.execute('''
-                SELECT id FROM objectives
-                WHERE item_name = ? AND league = ? AND user_id = ?
-            ''', (item_name, league, user_id))
-
-            item_exists_in_objectives = cursor.fetchone() is not None
-
             # Check if item is already in user's subscription for this server
             roles_db = self._get_roles_db(server_id)
             subscription = roles_db.get_poe2_subscription(user_id, server_id)
@@ -1090,20 +932,10 @@ class POE2SubroleManager:
             )
 
             if already_in_subscription:
-                conn.close()
                 return False, f"Item '{item_name}' is already in your tracking list."
 
-            # If item doesn't exist in objectives, add it to global DB
-            if not item_exists_in_objectives:
-                # Add placeholder immediately
-                self.add_placeholder_item(user_id, item_name, league)
-
-                # Add to objectives database
-                cursor.execute('''
-                    INSERT INTO objectives (item_name, item_id, league, active, user_id)
-                    VALUES (?, ?, ?, 1, ?)
-                ''', (item_name, item_id, league, user_id))
-                conn.commit()
+            # Add placeholder immediately
+            self.add_placeholder_item(user_id, item_name, league)
 
             # Update subscription for this server
             tracked_items.append({
@@ -1112,25 +944,19 @@ class POE2SubroleManager:
             })
 
             if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases):
-                conn.close()
                 self.remove_placeholder_item(user_id, item_name, league)
                 return False, f"Error saving subscription for '{item_name}'."
 
-            conn.close()
+            # Start background download
+            task = self.start_item_download_background(item_name, league, item_id)
 
-            # Start background download only if item was just added to objectives
-            if not item_exists_in_objectives:
-                task = self.start_item_download_background(item_name, league, item_id)
+            # Set up callback to remove placeholder when done
+            def on_download_done(t):
+                self.remove_placeholder_item(user_id, item_name, league)
 
-                # Set up callback to remove placeholder when done
-                def on_download_done(t):
-                    self.remove_placeholder_item(user_id, item_name, league)
+            task.add_done_callback(on_download_done)
 
-                task.add_done_callback(on_download_done)
-
-                return True, f"Added '{item_name}' to objectives (downloading price data...)"
-            else:
-                return True, f"Added '{item_name}' to tracking list (already tracked globally)"
+            return True, f"Added '{item_name}' to objectives (downloading price data...)"
             
         except Exception as e:
             logger.error(f"Error in async add_objective: {e}")
@@ -1138,39 +964,32 @@ class POE2SubroleManager:
             return False, f"Error adding item '{item_name}'."
     
     def get_user_tracked_items_with_status(self, user_id: str, server_id: str) -> List[Dict]:
-        """Get tracked items for a user including placeholders and download status."""
+        """Get tracked items for a user including placeholders and download status using NoSQL."""
         try:
             league = self.get_user_league(user_id, server_id)
             
-            # Get regular objectives
-            conn = self.init_price_history_db(league)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT item_name, item_id, active, created_at 
-                FROM objectives 
-                WHERE league = ? AND user_id = ?
-                ORDER BY id
-            ''', (league, user_id))
+            # Get tracked items from NoSQL subscription
+            roles_db = self._get_roles_db(server_id)
+            subscription = roles_db.get_poe2_subscription(user_id, server_id)
+            tracked_items = subscription.get('tracked_items', []) if subscription else []
             
             objectives = []
-            for row in cursor.fetchall():
-                name, item_id, active, created_at = row
+            for item in tracked_items:
+                item_name = item.get('item_name')
+                item_id = item.get('item_id')
                 
                 # Check if item is still downloading
-                is_downloading = self.is_item_downloading(name, league)
+                is_downloading = self.is_item_downloading(item_name, league)
                 
                 objectives.append({
-                    'item_name': name,
+                    'item_name': item_name,
                     'item_id': item_id,
-                    'active': bool(active),
-                    'created_at': created_at,
+                    'active': True,
+                    'created_at': subscription.get('created_at'),
                     'is_placeholder': False,
                     'is_downloading': is_downloading,
                     'status': 'downloading' if is_downloading else 'ready'
                 })
-            
-            conn.close()
             
             # Add placeholder items
             placeholders = self.get_placeholder_items(user_id, league)

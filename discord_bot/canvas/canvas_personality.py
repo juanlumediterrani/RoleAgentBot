@@ -910,10 +910,10 @@ class CanvasPersonalityConfirmView(discord.ui.View):
                 # Rename other databases from old to new personality (preserve roles, behavior, etc.)
                 _rename_server_databases(server_id, old_personality, new_personality)
                 # Create new agent database for new personality
-                new_agent_db = server_db_dir / f"agent_{new_personality}.db"
-                if not new_agent_db.exists():
-                    from agent_db import AgentDatabase
-                    AgentDatabase(server_id)  # This will create the database
+                # Ensure NoSQL state directory exists for new personality
+                from agent_db import get_db_instance, invalidate_db_instance
+                invalidate_db_instance(server_id)
+                get_db_instance(server_id)
             else:
                 # Rename all databases including agent (preserve memory for new personality)
                 _rename_server_databases(server_id, old_personality, new_personality)

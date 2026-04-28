@@ -2,13 +2,21 @@
     "title": "♨️ **神秘蒸汽**",
     "description": "跟伊戈尔一起烤命运符文，发现烧焦碎屑要跟你说啥。",
     "button": "♨️ 蒸汽",
-    "subrole_buttons": {
-        "runes": "🥖 面包符文"
-    },
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🥖 **面包符文** - 在面包上写符文，烤出来，从烧焦碎屑里读命运"
     },
+    "moon_phases": {
+        "new_moon": "新月 🌑",
+        "waxing_crescent": "娥眉月 🌒",
+        "first_quarter": "上弦月 🌓",
+        "waxing_gibbous": "盈凸月 🌔",
+        "full_moon": "满月 🌕",
+        "waning_gibbous": "亏凸月 🌖",
+        "last_quarter": "下弦月 🌗",
+        "waning_crescent": "残月 🌘"
+    },
     "nordic_runes": {
+        "button": "🥖 面包符文",
         "title": "🥖 **面包符文** 🥖",
         "description": "伊戈尔在面包上写符文然后烤出来，从烧焦碎屑里看你滴未来...嘶嘶嘶",
         "title_available_readings": "🔥 **烘烤类型** 🔥\n",

@@ -5,11 +5,9 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "👁️ **Ring Hunter** - Accuse suspects of carrying the One Ring"
     },
-    "subrole_buttons": {
-        "ring": "👁️ Ring"
-    },
     "ring": {
-        "title": "👁️ **PUTRE RING HUNTER** 👁️",
+        "button": "👁️ Ring",
+        "title": "👁️ **PUTRE RING HUNTER**",
         "description": "🔍 The ring hunter will pursue you to the end of time, accuse other users to avoid that ordeal.",
         "status_active": "✅ **ACTIVE HUNT** - Putre is looking for the ring",
         "status_inactive": "❌ **INACTIVE HUNT** - Putre is resting",
@@ -22,7 +20,7 @@
         "inactive_instructions": "To activate ring functionality:\n• An admin must go to **Ring Admin**\n• Click on **Ring: On** to activate\n• Configure the frequency for automatic investigations\n\nOnce activated, you can accuse users of carrying the One Ring!",
         "hot_potato": "🔥 **Hot Potato:** Iteration {iteration} (frequency reduced by {multiplier}x)",
         "controls": "**Controls**\n- Activate or deactivate ring\n- Editable frequency box (sets base frequency and resets hot potato)",
-        "dm_accusation_header": "👁️ **RING ACCUSATION** 👁️",
+        "dm_accusation_header": "👁️ **RING ACCUSATION**",
         "accused_label": "Accused:",
         "admin_description": "Configure sensitivity and frequency of the ring tracker",
         "dropdown": {

@@ -400,7 +400,7 @@ async def _generate_personality_opinion(
         opinion = call_llm(
             system_instruction=system_instruction,
             prompt=prompt,
-            async_mode=True,
+            background=True,
             call_type="news_watcher",
             critical=False,
             server_id=server_to_use,

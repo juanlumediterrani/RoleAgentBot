@@ -99,7 +99,7 @@ async def process_taboo_trigger(message, taboo_keyword: str, server_id: str) -> 
         taboo_response = call_llm(
             system_instruction=system_instruction,
             prompt=taboo_user_message,
-            async_mode=False,
+            background=False,
             call_type="think",
             critical=True,
             metadata={

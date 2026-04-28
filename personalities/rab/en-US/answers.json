@@ -52,6 +52,34 @@
                     "to build new soul files in the void"
                 ]
             }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "The primordial void awaits your intention. Seeds planted in darkness germinate in silence."
+                ],
+                "waxing_crescent": [
+                    "Light grows slowly. Time to plant intentions and nurture new beginnings."
+                ],
+                "first_quarter": [
+                    "Action becomes necessary. Face obstacles with decision and strength."
+                ],
+                "waxing_gibbous": [
+                    "Energy accumulates. Refine your plans and prepare ground for culmination."
+                ],
+                "full_moon": [
+                    "Maximum power manifests. Revelations, completions, and energy at its highest point."
+                ],
+                "waning_gibbous": [
+                    "The harvest is gathered. Gratitude for achievements as energy begins to decline."
+                ],
+                "last_quarter": [
+                    "Time for reflection. Release what no longer serves and prepare ground for the new cycle."
+                ],
+                "waning_crescent": [
+                    "Sacred rest. Meditate, rest, and allow the cycle to complete its transformation."
+                ]
+            }
         }
     },
     "ring_messages": {

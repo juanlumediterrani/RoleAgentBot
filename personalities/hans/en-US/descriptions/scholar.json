@@ -1,0 +1,15 @@
+{
+    "title": "📚 **Reich Archivist**",
+    "description": "Access ze classified archives of ze Reich through Herr Hans's military intelligence perspective. Ask any question, and I shall share from ze official records.",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 Reich Archivist 📚",
+    "dropdown": {
+        "select_action": "📋 Execute instruction...",
+        "toggle_on": "✅ Enable Scholar",
+        "toggle_off": "❌ Disable Scholar"
+    },
+    "wikipedia_button_label": "📖 Read on Wikipedia",
+    "controls_title": "**Controls**",
+    "controls": "- Enable or disable ze Scholar role",
+    "admin_flows": "Toggle ze Scholar role to enable or disable it."
+}

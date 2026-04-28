@@ -1,0 +1,15 @@
+{
+    "title": "📚 **Bibliotecaria de la Sala**",
+    "description": "Accede a los textos antiguos y la sabiduría acumulada de la casa de té desde la perspectiva serena de Yuki. Haz cualquier pregunta, y compartiré de la biblioteca con presencia.",
+    "button": "📚 Scholar",
+    "embed_footer": "📚 Bibliotecaria de la Sala 📚",
+    "dropdown": {
+        "select_action": "📋 Ejecutar instrucción...",
+        "toggle_on": "✅ Habilitar Scholar",
+        "toggle_off": "❌ Deshabilitar Scholar"
+    },
+    "wikipedia_button_label": "📖 Leer en Wikipedia",
+    "controls_title": "**Controles**",
+    "controls": "- Habilitar o deshabilitar el rol Scholar",
+    "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."
+}

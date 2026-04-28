@@ -5,11 +5,9 @@
     "canvas_juggler_subrole_descriptions": {
         "ring": "🫓 **老面团猎人** - 指控无辜者偷了主人的老面团"
     },
-    "subrole_buttons": {
-        "ring": "🫓 面团"
-    },
     "ring": {
-        "title": "👁️ **面团猎人** 👁️",
+        "button": "🫓 面团",
+        "title": "👁️ **面团猎人**",
         "description": "伊戈尔在找谁偷了主人的老面团...是你吗？别撒谎！",
         "current_target": "🎯 **当前嫌疑人：** 暂时还没有",
         "investigation_status": "🔍 **状态：** 在黑暗角落里搜寻",

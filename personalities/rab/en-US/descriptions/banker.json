@@ -1,5 +1,5 @@
 {
-    "title": "⌛ The Karmic Core",
+    "title": "⌛ **The Karmic Core**",
     "description": "The flow guardian administers your energy reserves and transactions on the network.",
     "button": "⌛ Core",
     "coin": "🔋",
@@ -25,14 +25,11 @@
         "config_bonus_description": "Adjust particles granted to new avatars",
         "config_bonus_emoji": "⚡"
     },
-    "subrole_buttons": {
-        "overview": "⌛ Core",
-        "beggar": "🌌 Flow"
-    },
     "donation_label": "Flow:",
     "donation_custom_label": "Custom amount",
     "donation_custom_message": "Use the 'Custom Amount' option in Canvas to contribute fragments to the collective flow.",
     "beggar": {
+        "button": "🌌 Flow",
         "title": "🌌 **COLLECTIVE FLOW**",
         "description": "The core channels energy toward collective projects. Each contribution strengthens the shared flow.",
         "title_campaign": "**Active project**",

@@ -215,18 +215,10 @@ def _get_canvas_beggar_state(guild) -> dict:
         state["frequency_hours"] = beggar_config.get_frequency_hours()
         state["last_reason"] = beggar_config.get_current_reason() or state["last_reason"]
         state["target_gold"] = beggar_config.get_target_gold()
-        try:
-            from roles.banker.banker_db import get_banker_roles_db_instance
-            db_banker = get_banker_roles_db_instance(server_key)
-            db_banker.create_wallet("beggar_fund", "Beggar Fund", wallet_type='system')
-            state["fund_balance"] = db_banker.get_balance("beggar_fund")
-        except ImportError:
-            # Fallback to regular roles_db if banker_roles_db not available
-            if get_roles_db_instance is not None:
-                db_banker = get_roles_db_instance(server_key)
-                db_banker.save_banker_wallet("beggar_fund", "Beggar Fund", 0, 'system')
-                wallet = db_banker.get_banker_wallet("beggar_fund")
-                state["fund_balance"] = wallet.get('balance', 0) if wallet else 0
+        from roles.banker.banker_db import get_banker_roles_db_instance
+        db_banker = get_banker_roles_db_instance(server_key)
+        db_banker.create_wallet("beggar_fund", "Beggar Fund", wallet_type='system')
+        state["fund_balance"] = db_banker.get_balance("beggar_fund")
         if get_roles_db_instance is not None:
             roles_db = get_roles_db_instance(server_key)
             state["recent_donations"] = roles_db.get_recent_beggar_donations(limit=5)
@@ -421,6 +413,7 @@ def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
         "mc",
         "juggler",
         "shaman",
+        "scholar",
     ]
     
     # Get all roles from server_config.json

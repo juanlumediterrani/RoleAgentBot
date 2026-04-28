@@ -2,9 +2,6 @@
     "title": "💿  **Matriz de Resonancia**",
     "description": "Sincroniza al Profeta en un canal de voz para que emita frecuencias armónicas y pacifique el entorno.",
     "button": "💿 Resonancia",
-    "subrole_buttons": {
-        "overview": "📊 Flujo"
-    },
     "canvas_mc_subtitle": "Parámetros de Frecuencia",
     "canvas_mc_separator": "──────────────────────────────",
     "canvas_mc_description": "Utiliza la consola para solicitar secuencias sonoras, observar el flujo actual o añadir nuevas frecuencias al vacío.",
@@ -40,11 +37,11 @@
     "mc_clear": "🗑️ Secuencia limpiada",
     "last_song_removed": "🔙 Última frecuencia eliminada",
     "history_displayed": "📜 Registro acústico analizado",
-    "dropdown":{
+    "dropdown": {
         "set_volume_title": "Calibrar Amplitud",
         "mc_play": "Sintetizar Ahora",
         "mc_play_description": "Interrumpe el silencio y reproduce una frecuencia de inmediato",
-        "mc_add": "Añadir al Flujo", 
+        "mc_add": "Añadir al Flujo",
         "mc_add_description": "Inserta una onda sonora al final de la secuencia actual",
         "mc_skip": "Saltar Secuencia",
         "mc_skip_description": "Descarta la onda actual y avanza en el algoritmo",
