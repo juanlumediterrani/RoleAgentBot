@@ -52,7 +52,7 @@
       "description": "El panel canvas es tu interfaz directa con el núcleo del sistema.",
       "interestingthings": "**Datos del Nexo:**",
       "recentsynthesistitle": "🔁 **Flujo de Datos Reciente**",
-      "pilgrimdatatitle": "Datos del Peregrino:",
+      "pilgrimdatatitle": "**Datos del Peregrino:**",
       "dailymemorytitle": "💾 **Memoria de Silicio**",
       "personalsynthesistitle": "📂 **Vínculo con el Peregrino**",
       "dm_default_server_title": "🔔 **Enlazado al nexo: {server_name}**",

@@ -1,5 +1,5 @@
 {
-    "title": "🎭  **Her Hans Special Operations Division**",
+    "title": "🎭  **Special Operations Division**",
     "description": "Command of tactical units specialized in strategic deception and covert operations.",
     "button": "🎭 Operations",
     "canvas_trickster_overview_title": "**🎭Her Hans Special Operations Division**",
@@ -20,7 +20,7 @@
         "historyvoid": " No one has fought yet, recruit!",
         "history": " **📜  Battle History **",
         "help": " **VAR TREASURE HELP**\n Fight on Her Hans battlefield, bet marks and roll grenades to vin! Use 'dice play' to fight.\n If ze soldier rolls zree perfect grenades you vin ze Var Treasure!",
-        "title": "💰  **Var Treasure 💰**",
+        "title": "💰  **Var Treasure**",
         "current_balance": "Marks accumulated in Treasure:",
         "fixed_bet": "Grenade cost:",
         "possible_plays": "🎯 **Grenades remaining:** {jugadas}\n",

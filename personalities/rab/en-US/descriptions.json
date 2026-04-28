@@ -52,7 +52,7 @@
       "description": "The canvas panel is your direct interface with the system core.",
       "interestingthings": "**Nexus Data:**",
       "recentsynthesistitle": "🔁 **Recent Data Flow**",
-      "pilgrimdatatitle": "Pilgrim Data:",
+      "pilgrimdatatitle": "**Pilgrim Data:**",
       "dailymemorytitle": "💾 **Silicon Memory**",
       "personalsynthesistitle": "📂 **Bond with the Pilgrim**",
       "dm_default_server_title": "🔔 **Linked to nexus: {server_name}**",

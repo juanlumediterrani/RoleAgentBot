@@ -1,5 +1,5 @@
 {
-    "title": "🎭  **赫尔汉斯特种行动部**",
+    "title": "🎭  **特种行动部**",
     "description": "指挥专门从事战略欺骗和秘密行动的战术单位。",
     "button": "🎭 行动",
     "canvas_trickster_overview_title": "**🎭赫尔汉斯特种行动部**",
@@ -20,7 +20,7 @@
         "historyvoid": " 还没有人战斗，新兵！",
         "history": " **📜  战斗历史 **",
         "help": " **战争财宝帮助**\n 在赫尔汉斯战场战斗，下注马克并掷手榴弹以赢取！使用 'dice play' 来战斗。\n 如果士兵掷出三个完美手榴弹赢得战争财宝！",
-        "title": "💰  **战争财宝 💰**",
+        "title": "💰  **战争财宝**",
         "current_balance": "战争财宝中积累的马克：",
         "fixed_bet": "手榴弹成本：",
         "possible_plays": "🎯 **剩余手榴弹：** {jugadas}\n",
