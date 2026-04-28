@@ -93,6 +93,23 @@ async def run_mc_loop():
             await asyncio.sleep(60)
 
 
+def extract_mc_command(text: str) -> dict | None:
+    """Extract MC command (PLAY/ADD/STOP) from LLM response.
+    
+    Returns dict with 'action' and 'song' keys, or None if no command found.
+    Example: "MC PLAY Bohemian Rhapsody" -> {'action': 'PLAY', 'song': 'Bohemian Rhapsody'}
+    """
+    import re
+    
+    # Look for MC <ACTION> <SONG> pattern
+    match = re.search(r'MC\s+(PLAY|ADD|STOP)\s*(.+)?', text, re.IGNORECASE)
+    if match:
+        action = match.group(1).upper()
+        song = match.group(2).strip() if match.group(2) else None
+        return {'action': action, 'song': song}
+    return None
+
+
 async def main():
     logger.info("🎵 MC started...")
     await mc_task()

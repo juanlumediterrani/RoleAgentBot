@@ -342,10 +342,17 @@ class MCCommands:
             logger.warning(f"Error honding the message from MC {key}: {e}")
             return default or f"Error: {key}"
         
-    async def cmd_play(self, message, args):
-        """Play a song or add one to the queue"""
+    async def cmd_play(self, message, args, silent=False):
+        """Play a song or add one to the queue
+
+        Args:
+            message: Discord message
+            args: Song query arguments
+            silent: If True, suppress all public messages (for LLM-triggered commands)
+        """
         if not args:
-            await self._send_message(message.channel, self.get_mc_message("play_usage", "🎵 **Usage:** `!mc play <song name or song URL>`"))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message("play_usage", "🎵 **Usage:** `!mc play <song name or song URL>`"))
             return
         
         query = ' '.join(args)
@@ -353,7 +360,8 @@ class MCCommands:
         
         # Verify that user is in a voice channel
         if not message.author.voice:
-            await self._send_message(message.channel, self.get_mc_message("not_in_voice", "🎤 **You must be in a voice channel to use this command.**"))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message("not_in_voice", "🎤 **You must be in a voice channel to use this command.**"))
             return
         
         voice_channel = message.author.voice.channel
@@ -367,26 +375,30 @@ class MCCommands:
                 voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=60.0)
                 logger.info(f"MC: ✅ Successful connection to {voice_channel.name}")
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             elif not self.voice_clients[server_id].is_connected():
                 logger.info(f"MC: Reconnecting to channel {voice_channel.name}...")
                 logger.info(f"MC: Starting voice reconnection (timeout: 60s)...")
                 voice_client = await asyncio.wait_for(voice_channel.connect(), timeout=60.0)
                 logger.info(f"MC: ✅ Successful reconnection to {voice_channel.name}")
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, self.get_mc_message("reconnected_to_voice", f"🎤 **Reconnected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message("reconnected_to_voice", f"🎤 **Reconnected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             else:
                 voice_client = self.voice_clients[server_id]
                 # Check if in correct channel
                 if voice_client.channel != voice_channel:
                     logger.info(f"MC: Moving from {voice_client.channel.name} to {voice_channel.name}")
                     await voice_client.move_to(voice_channel)
-                    await self._send_message(message.channel, self.get_mc_message("moved_to_voice", f"🎤 **Moved to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
+                    if not silent:
+                        await self._send_message(message.channel, self.get_mc_message("moved_to_voice", f"🎤 **Moved to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
         except asyncio.TimeoutError:
             logger.error(f"MC: Timeout connecting to {voice_channel.name}")
             # Don't send timeout message if already connected and playing
             if server_id not in self.voice_clients or not self.voice_clients[server_id].is_connected():
-                await self._send_message(message.channel, self.get_mc_message('timeout_connecting'))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message('timeout_connecting'))
             return
         except discord.errors.ClientException as e:
             if "Already connected to a voice channel" in str(e):
@@ -395,22 +407,27 @@ class MCCommands:
                 if voice_client:
                     logger.info(f"MC: Already connected to {voice_channel.name} (using existing client)")
                     self.voice_clients[server_id] = voice_client
-                    await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
+                    if not silent:
+                        await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
                 else:
                     logger.error(f"MC: Error: Discord says connected but no voice client")
-                    await self._send_message(message.channel, self.get_mc_message('voice_connection_error'))
+                    if not silent:
+                        await self._send_message(message.channel, self.get_mc_message('voice_connection_error'))
                     return
             else:
                 logger.exception(f"MC: Discord connection error: {e}")
-                await self._send_message(message.channel, self.get_mc_message('discord_connect_error'))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message('discord_connect_error'))
                 return
         except Exception as e:
             logger.exception(f"MC: General error connecting to {voice_channel.name}: {e}")
-            await self._send_message(message.channel, self.get_mc_message('general_connect_error'))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message('general_connect_error'))
             return
         
         # Search for the song (non-blocking, runs in background)
-        await self._send_message(message.channel, self.get_mc_message("searching_for_song", "🔍 **Searching for song...**", server_id=server_id))
+        if not silent:
+            await self._send_message(message.channel, self.get_mc_message("searching_for_song", "🔍 **Searching for song...**", server_id=server_id))
         
         try:
             # Configure yt-dlp with enhanced options to bypass bot detection
@@ -469,24 +486,34 @@ class MCCommands:
             error_msg = str(e)
             if "Sign in to confirm you're not a bot" in error_msg:
                 logger.error(f"MC: YouTube bot detection error: {e}")
-                await self._send_message(message.channel, 
-                    "🚫 **YouTube bot detection detected**\n\n"
-                    "This happens when YouTube blocks automated access. Try:\n"
-                    "• Using a direct YouTube URL instead of search\n"
-                    "• Waiting a few minutes and trying again\n"
-                    "• Using a different song or source\n\n"
-                    "If this persists, consider using YouTube cookies for authentication.")
+                if not silent:
+                    await self._send_message(message.channel, 
+                        "🚫 **YouTube bot detection detected**\n\n"
+                        "This happens when YouTube blocks automated access. Try:\n"
+                        "• Using a direct YouTube URL instead of search\n"
+                        "• Waiting a few minutes and trying again\n"
+                        "• Using a different song or source\n\n"
+                        "If this persists, consider using YouTube cookies for authentication.")
             else:
                 logger.exception(f"MC: yt-dlp DownloadError: {e}")
-                await self._send_message(message.channel, self.get_mc_message("play_error", f"❌ **Download error:** {error_msg}"))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message("play_error", f"❌ **Download error:** {error_msg}"))
         except Exception as e:
             logger.exception(f"Error finding song {e}")
-            await self._send_message(message.channel, self.get_mc_message("play_error", "❌ **I could not find the song. **"))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message("play_error", "❌ **I could not find the song. **"))
     
-    async def cmd_add(self, message, args):
-        """Add a song to the tail of the queue"""
+    async def cmd_add(self, message, args, silent=False):
+        """Add a song to the tail of the queue
+
+        Args:
+            message: Discord message
+            args: Song query arguments
+            silent: If True, suppress all public messages (for LLM-triggered commands)
+        """
         if not args:
-            await self._send_message(message.channel, "🎵 **Usage:** `!mc add <song name or song URL>`")
+            if not silent:
+                await self._send_message(message.channel, "🎵 **Usage:** `!mc add <song name or song URL>`")
             return
         
         query = ' '.join(args)
@@ -494,7 +521,8 @@ class MCCommands:
         
         # Verify that user is in a voice channel
         if not message.author.voice:
-            await self._send_message(message.channel, self.get_mc_message("not_in_voice", "🎤 **You must be in a voice channel to use this command.**"))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message("not_in_voice", "🎤 **You must be in a voice channel to use this command.**"))
             return
         
         voice_channel = message.author.voice.channel
@@ -506,19 +534,22 @@ class MCCommands:
                 logger.info(f"MC: Connecting to channel {voice_channel.name}...")
                 voice_client = await voice_channel.connect()
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message("connected_to_voice", f"🎤 **Connected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             elif not self.voice_clients[server_id].is_connected():
                 logger.info(f"MC: Reconnecting to channel {voice_channel.name}...")
                 voice_client = await voice_channel.connect()
                 self.voice_clients[server_id] = voice_client
-                await self._send_message(message.channel, self.get_mc_message("reconnected_to_voice", f"🎤 **Reconnected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message("reconnected_to_voice", f"🎤 **Reconnected to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
             else:
                 voice_client = self.voice_clients[server_id]
 
                 if voice_client.channel != voice_channel:
                     logger.info(f"MC: Moving from {voice_client.channel.name} to {voice_channel.name}")
                     await voice_client.move_to(voice_channel)
-                    await self._send_message(message.channel, self.get_mc_message("moved_to_voice", f"🎤 **Moved to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
+                    if not silent:
+                        await self._send_message(message.channel, self.get_mc_message("moved_to_voice", f"🎤 **Moved to {voice_channel.name}**", server_id=server_id, channel_name=voice_channel.name))
         except discord.errors.ClientException as e:
             if "Already connected to a voice channel" in str(e):
 
@@ -528,19 +559,23 @@ class MCCommands:
                     self.voice_clients[server_id] = voice_client
                 else:
                     logger.error(f"MC: Error: Discord says connected but no voice client")
-                    await self._send_message(message.channel, self.get_mc_message('voice_connection_error'))
+                    if not silent:
+                        await self._send_message(message.channel, self.get_mc_message('voice_connection_error'))
                     return
             else:
                 logger.exception(f"MC: Discord connection error: {e}")
-                await self._send_message(message.channel, self.get_mc_message('discord_connect_error'))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message('discord_connect_error'))
                 return
         except Exception as e:
             logger.exception(f"MC: General error connecting to {voice_channel.name}: {e}")
-            await self._send_message(message.channel, self.get_mc_message('general_connect_error'))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message('general_connect_error'))
             return
         
 
-        await self._send_message(message.channel, self.get_mc_message("searching_for_song", "🔍 **Searching for the song...**", server_id=server_id))
+        if not silent:
+            await self._send_message(message.channel, self.get_mc_message("searching_for_song", "🔍 **Searching for the song...**", server_id=server_id))
         
         try:
             # Configure yt-dlp with enhanced options to bypass bot detection
@@ -596,10 +631,12 @@ class MCCommands:
                 logger.error(f"MC: YouTube bot detection error in add: {e}")
             else:
                 logger.exception(f"MC: yt-dlp DownloadError in add: {e}")
-                await self._send_message(message.channel, self.get_mc_message("play_error", f"❌ **Download error:** {error_msg}"))
+                if not silent:
+                    await self._send_message(message.channel, self.get_mc_message("play_error", f"❌ **Download error:** {error_msg}"))
         except Exception as e:
             logger.exception(f"Error finding song {e}")
-            await self._send_message(message.channel, self.get_mc_message("play_error", "❌ **I couldn't find the song**"))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message("play_error", "❌ **I couldn't find the song**"))
     
     async def cmd_skip(self, message, args):
         """Skip the current song"""
@@ -616,12 +653,19 @@ class MCCommands:
         self.voice_clients[server_id].stop()
         await self._send_message(message.channel, self.get_mc_message("song_skipped", "⏭️ **Song skipped.**"))
     
-    async def cmd_stop(self, message, args):
-        """Stop the reproduction and clear the queue"""
+    async def cmd_stop(self, message, args, silent=False):
+        """Stop the reproduction and clear the queue
+
+        Args:
+            message: Discord message
+            args: Command arguments (unused)
+            silent: If True, suppress all public messages (for LLM-triggered commands)
+        """
         server_id = str(message.guild.id)
-        
+
         if server_id not in self.voice_clients or not self.voice_clients[server_id].is_connected():
-            await self._send_message(message.channel, self.get_mc_message("not_connected", "🎤 **I am not connected to any channel.**"))
+            if not silent:
+                await self._send_message(message.channel, self.get_mc_message("not_connected", "🎤 **I am not connected to any channel.**"))
             return
         
         self.voice_clients[server_id].stop()
@@ -637,7 +681,8 @@ class MCCommands:
         if server_id in self.queues:
             self.queues[server_id].clear()
         
-        await self._send_message(message.channel, self.get_mc_message("queue_cleared", "⏹️ **Playback stopped and queue cleared.**"))
+        if not silent:
+            await self._send_message(message.channel, self.get_mc_message("queue_cleared", "⏹️ **Playback stopped and queue cleared.**"))
     
     async def cmd_queue(self, message, args):
         """Show the current queue and resume the reproduction"""
