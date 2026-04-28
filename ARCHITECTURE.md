@@ -210,7 +210,7 @@ When the personality changes (`!setpersonality` or during `initialize_server_com
 2. Looks for `avatar.webp` / `avatar.png` next to it.
 3. Updates **nickname + per-guild avatar** in a single Discord REST call:
 
-   ```
+   ```http
    PATCH /guilds/{guild.id}/members/@me
    Body: {"nick": "...", "avatar": "<base64>"}
    ```
@@ -241,6 +241,7 @@ If the LLM or parsing fails, nothing is written (safe rollback). If the server p
 - **`extend <personality>`** — compares `<personality>/es-ES` against `rab/es-ES` (canonical reference) to identify missing sections when extending a personality with new roles/features.
 
 The script recursively walks all JSON files (including `descriptions/*.json`) and reports:
+
 - Missing files in the target
 - Missing keys (present in reference, absent in target)
 - Empty values (strings, lists, dicts)
@@ -300,7 +301,7 @@ Five logical layers, all server-scoped:
 
 `_build_conversation_user_prompt` / `_build_conversation_channel_prompt` produce:
 
-```
+```text
 [memory block: daily + recent + optional recollection]
 [relationship block for this user]
 [last interactions window]
@@ -485,7 +486,6 @@ The jobs are registered in two waves:
 > `server_config.json` via `discord_bot/canvas/server_config.py::is_role_enabled` and skip
 > servers where the role is locally disabled. The single global scheduler stays simple; per-server
 > gating lives next to the role logic.
-
 > **DiscordScheduler is a registration helper, not a separate runtime.** It exposes the
 > Discord-bound jobs as bound methods on its instance, but its `start()` method registers them
 > on whatever `JobScheduler` it was constructed with. In production, that scheduler is
@@ -670,7 +670,7 @@ help/
 
 `!canvas` supports targeting when multiple bots share a guild:
 
-```
+```text
 !canvas [section] [target] [detail]
 !canvas <bot_name> [section] [target] [detail]
 ```
@@ -713,6 +713,7 @@ Shortcuts are stored per-server in `server_config.json` under the `canvas.shortc
 ```
 
 Each shortcut has:
+
 - `id`: Position (1-5)
 - `enabled`: Whether the shortcut is active
 - `label`: Display text (cleaned of bold formatting and tree symbols)
@@ -756,10 +757,12 @@ All messages are injected from `descriptions.json` under `help_menu.shortcuts_me
 Shortcut labels are resolved in this order:
 
 **For roles:**
+
 1. Role-specific `button` field (e.g., `descriptions.json["role_descriptions"]["banker"]["button"]`)
 2. Fallback to generated label (role name)
 
 **For subroles:**
+
 1. Subrole-specific `button` field (e.g., `descriptions.json["role_descriptions"]["trickster"]["dice_game"]["button"]`)
 2. Fallback to subrole-specific `title` field if `button` doesn't exist
 3. Fallback to generated label (role name + subrole name)
@@ -768,7 +771,7 @@ Labels are cleaned of bold formatting (`**`) and tree symbols (`└`) before bei
 
 ### 12.5 Interaction flow (Trace 7)
 
-```
+```text
 !canvas received
 ├── bot-name filter / param shift
 ├── render_view()
@@ -881,7 +884,7 @@ Separated from general logging to preserve LLM trace fidelity:
 
 Layout:
 
-```
+```text
 logs/
 ├── prompt.log                     ← fallback (no server context)
 └── <server_id>/
@@ -900,7 +903,7 @@ Grouped under `behavior/`, mounted inside the main bot process.
 - **Welcome** (`welcome.py`) — same skeleton, triggered by `on_member_join`.
 - **Taboo** (`taboo/`) — configured per guild; on a taboo word match in a subscribed channel the bot builds a dedicated prompt:
 
-  ```
+  ```text
   [memory block]
   [relationship block for the author]
   [last channel interactions]
@@ -1157,6 +1160,7 @@ The bot has been refactored from SQLite + subprocess-based architecture to NoSQL
 ### 20.2 Persistence Layer (NoSQL)
 
 **Modules:**
+
 - `persistence/json_store.py`: Thread-safe atomic JSON document storage with schema versioning and backups
 - `persistence/jsonl_store.py`: Append-only JSONL with rotation and retention limits
 - `persistence/agent_state.py`: Facade for agent state using NoSQL backend (same API as AgentDatabase)
@@ -1166,7 +1170,8 @@ The bot has been refactored from SQLite + subprocess-based architecture to NoSQL
 - `poe2_nosql.py`: NoSQL backend for POE2 price history and items catalog
 
 **File Structure:**
-```
+
+```text
 databases/shared/
 ├── news/
 │   ├── seen.json              # Global news tracking
@@ -1183,6 +1188,7 @@ databases/{server_id}/
 ```
 
 **Retention Limits:**
+
 - Daily memory: 14 paragraphs
 - Recent memory: 12 paragraphs
 - Recollections: 50 entries
@@ -1194,6 +1200,7 @@ databases/{server_id}/
 ### 20.3 Process Management (Supervisor + JobScheduler)
 
 **Modules:**
+
 - `supervisor/supervisor.py`: Actor manager with restart policies and backoff
 - `supervisor/scheduler.py`: Async job scheduler with retries, timeouts, semaphores, circuit breakers
 - `supervisor/heartbeat.py`: Health monitoring for actors
@@ -1239,6 +1246,7 @@ There are **no subprocesses**, **no `@tasks.loop` legacy schedulers**, and **no 
 five `@tasks.loop` schedulers in `agent_discord.py`, were removed in 0.6.2.
 
 **JobScheduler Features:**
+
 - Jobs with schedules (interval, cron-like)
 - Retry policies with backoff
 - Timeout enforcement
