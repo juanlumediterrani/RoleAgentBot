@@ -14,24 +14,24 @@ def _get_nw_descriptions(guild=None) -> dict:
     import json
     from pathlib import Path
     from discord_bot.db_init import get_server_personality_dir
-    
+
     if not guild:
         return {}
-    
+
     try:
         server_id = str(guild.id)
         personality_dir = get_server_personality_dir(server_id)
-        
+
         if personality_dir:
             descriptions_dir = Path(personality_dir) / "descriptions"
             news_watcher_path = descriptions_dir / "news_watcher.json"
-            
+
             if news_watcher_path.exists():
                 with open(news_watcher_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
     except Exception as e:
         logger.warning(f"Could not load news_watcher descriptions: {e}")
-    
+
     return {}
 
 
@@ -74,24 +74,24 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
     def _watcher_text(self, key: str, fallback: str) -> str:
         # Safe nested access with fallbacks
         news_watcher = _get_nw_descriptions(getattr(self, '_guild', None))
-        
+
         # Now dropdown is directly in news_watcher, not nested under canvas
         watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
-        
+
         # Ensure watcher_descriptions is a dict
         if not isinstance(watcher_descriptions, dict):
             watcher_descriptions = {}
-            
+
         value = watcher_descriptions.get(key)
         return str(value).strip() if value else fallback
 
     def __init__(self, view):
         self._guild = getattr(view, 'guild', None)
         is_admin = view.current_detail == "admin"
-        
+
         # Get descriptions from news_watcher.json
         news_watcher = _get_nw_descriptions(self._guild)
-        
+
         # Simplified options - just Subscribe and Unsubscribe
         options = [
             discord.SelectOption(
@@ -113,7 +113,7 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
                 emoji="📋"
             ),
         ]
-        
+
         super().__init__(
             placeholder=self._watcher_text("select_action", "📋 Select action..."),
             options=options,
@@ -134,11 +134,11 @@ class CanvasWatcherSubscriptionSelect(discord.ui.Select):
             wizard = NewsWatcherWizard(interaction, is_admin=is_admin)
             await wizard.start()
             return
-        
+
         if action_name == "unsubscribe":
             await interaction.response.send_modal(CanvasWatcherPersonalUnsubscribeModal(self.canvas_view, interaction.client))
             return
-        
+
         if action_name == "list_subscriptions":
             content = build_canvas_role_news_watcher_detail(
                 self.canvas_view.current_detail,
@@ -162,10 +162,10 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
     def __init__(self, view):
         # Safe nested access with fallbacks
         news_watcher = _get_nw_descriptions(getattr(view, 'guild', None))
-        
+
         # Now dropdown is directly in news_watcher, not nested under canvas
         watcher_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
-        
+
         # Ensure watcher_descriptions is a dict
         if not isinstance(watcher_descriptions, dict):
             watcher_descriptions = {}
@@ -175,7 +175,7 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
             return str(value).strip() if value else fallback
 
         self._watcher_text = _watcher_text
-        
+
         # Simplified options - Subscribe, Unsubscribe, List, Frequency for channel subscriptions
         options = [
             discord.SelectOption(
@@ -203,7 +203,7 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
                 emoji="⏱️"
             ),
         ]
-        
+
         super().__init__(
             placeholder=_watcher_text("select_admin_action", "⚙️ Select admin action..."),
             options=options,
@@ -216,14 +216,14 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         action_name = self.values[0]
         self.canvas_view.watcher_last_action = action_name
-        
+
         if action_name == "subscribe":
             # Launch the wizard for admin (channel subscription)
             from .canvas_news_watcher_wizard import NewsWatcherWizard
             wizard = NewsWatcherWizard(interaction, is_admin=True)
             await wizard.start()
             return
-        
+
         if action_name in {"list_categories", "list_subscriptions"}:
             content = build_canvas_role_news_watcher_detail(
                 "admin",
@@ -238,17 +238,17 @@ class CanvasWatcherAdminActionSelect(discord.ui.Select):
             if not interaction.response.is_done():
                 await interaction.response.edit_message(content=None, embed=embed, view=self.canvas_view)
             return
-        
+
         if action_name == "list_feeds_by_category":
             if not interaction.response.is_done():
                 await interaction.response.send_modal(CanvasWatcherFeedsByCategoryModal(self.canvas_view))
             return
-        
+
         if action_name == "frequency":
             if not interaction.response.is_done():
                 await interaction.response.send_modal(CanvasWatcherFrequencyModal(self.canvas_view))
             return
-        
+
         await handle_canvas_watcher_action(interaction, action_name, self.canvas_view)
 
 
@@ -322,7 +322,7 @@ class CanvasWatcherSubscribeModal(discord.ui.Modal):
                         method="general",
                         created_by=str(view.author_id)
                     )
-                    
+
                     if subscription_id:
                         result_msg = f"General channel subscription created for {category}"
                         if feed_id:
@@ -658,7 +658,7 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                     if 1 <= feed_id <= len(feeds):
                         global_feed_id = feeds[feed_id - 1][0]
                         ok = False
-                        
+
                         if method == "flat":
                             # Create flat subscription
                             ok = db.create_subscription(
@@ -700,7 +700,7 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                                 except Exception:
                                     # English fallback
                                     premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
-                            
+
                             # Create general subscription
                             ok = db.create_subscription(
                                 channel_id=channel_id,
@@ -759,7 +759,7 @@ class CanvasWatcherChannelSubscribeModal(discord.ui.Modal):
                         except Exception:
                             # English fallback
                             premises_str = "War outbreak or nuclear escalation,Bankruptcy of a country or large corporation,Global magnitude catastrophe"
-                    
+
                     # Create general subscription for all feeds
                     ok = db.create_subscription(
                         channel_id=channel_id,
@@ -826,20 +826,20 @@ class CanvasWatcherChannelUnsubscribeModal(discord.ui.Modal):
             db = get_news_watcher_db_instance(str(interaction.guild.id))
             channel_id = str(interaction.channel.id)
             index = int(str(self.number_input.value).strip())
-            
+
             # Get unified channel subscriptions
             channel_subscriptions = db.get_channel_subscriptions(channel_id)
-            
+
             if index < 1 or index > len(channel_subscriptions):
                 logger.warning(f"Invalid subscription number: {index}")
                 return
 
             # Get the subscription to delete
             sub_id, sub_user_id, sub_channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by = channel_subscriptions[index - 1]
-            
+
             # Delete using the new unified system
             ok = db.delete_subscription(sub_id)
-            
+
             if not ok:
                 logger.warning("Could not cancel channel subscription")
                 return
@@ -901,21 +901,21 @@ class CanvasWatcherPersonalUnsubscribeModal(discord.ui.Modal):
                 return
 
             user_id = str(interaction.user.id)
-            
+
             # Get unified subscriptions
             subscriptions = watcher_commands.db_watcher.get_user_subscriptions(user_id)
-            
+
             if not subscriptions:
                 await interaction.response.send_message("❌ You have no active subscriptions to unsubscribe from.", ephemeral=True)
                 return
-            
+
             if index > len(subscriptions):
                 await interaction.response.send_message(f"❌ Invalid subscription number. You only have {len(subscriptions)} subscription(s).", ephemeral=True)
                 return
-            
+
             # Get the subscription to delete
             sub_id, sub_user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by = subscriptions[index - 1]
-            
+
             # Delete using the new unified system
             success = watcher_commands.db_watcher.delete_subscription(sub_id)
 
@@ -952,13 +952,13 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
         try:
             # Validate input first
             hours_str = str(self.hours_input.value).strip()
-            
+
             try:
                 hours_int = int(hours_str)
             except ValueError:
                 await interaction.response.send_message("❌ Invalid format. Please enter a number between 1 and 24.", ephemeral=True)
                 return
-            
+
             if not 1 <= hours_int <= 24:
                 await interaction.response.send_message("❌ Frequency must be between 1 and 24 hours.", ephemeral=True)
                 return
@@ -966,7 +966,7 @@ class CanvasWatcherFrequencyModal(discord.ui.Modal):
             if interaction.guild:
                 server_id = str(interaction.guild.id)
                 from discord_bot.canvas.server_config import set_news_watcher_frequency
-                
+
                 # Use server_config to set frequency per server
                 if set_news_watcher_frequency(server_id, hours_int):
                     result_msg = f"✅ Watcher frequency set to {hours_int} hours"
@@ -1069,7 +1069,7 @@ async def handle_canvas_watcher_action(interaction: discord.Interaction, action_
         view.watcher_selected_method = method_name
         view.watcher_last_action = None
         current_detail = "admin" if view.current_detail == "admin" else "personal"
-        
+
         # Add informational message about system update
         info_message = f"Method `{method_name}` noted. Note: Server-wide method configuration has been replaced with individual subscription methods."
         content = build_canvas_role_news_watcher_detail(current_detail, view.admin_visible, view.guild, view.author_id, selected_method=view.watcher_selected_method, last_action=view.watcher_last_action)
@@ -1176,7 +1176,7 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
         # Safe nested access with fallbacks
         news_watcher = _get_nw_descriptions(guild)
         dropdown = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
-        
+
         def _watcher_text(key: str, fallback: str) -> str:
             # Try dropdown first, then main level
             value = dropdown.get(key)
@@ -1188,34 +1188,34 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
             return f"**{_watcher_text('channel_subscriptions_title', 'Channel subscriptions')}**\n- Unable to load channel subscription data"
 
         db = get_news_watcher_db_instance(str(guild.id))
-        
+
         # Get all channel subscriptions with unified system
         all_channel_subs = []
-        
+
         # Import to get feed names
         from roles.news_watcher.global_feed_health import get_healthy_feeds
-        
+
         # Get healthy feeds to map feed_id to feed name
         healthy_feeds = get_healthy_feeds()
         feed_map = {fid: name for fid, name, url, cat in healthy_feeds}
-        
+
         # Get all unified subscriptions and filter for channel subscriptions
         unified_subs = db.get_all_active_subscriptions()
         for subscription_id, user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in unified_subs:
             # Only include channel subscriptions
             if not channel_id:
                 continue
-                
+
             channel_name = f"#{channel_id}"  # Fallback name
-            
+
             # Get feed name
             if feed_id:
                 feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
             else:
                 feed_name = "all feeds"
-            
+
             all_channel_subs.append((channel_id, channel_name, category, feed_name, method))
-        
+
         total_count = len(all_channel_subs)
         max_subs = 5
         usage_info = f"**{_watcher_text('channel_subscriptions_title', 'Channel subscriptions')}** ({total_count}/{max_subs})\n"
@@ -1226,7 +1226,7 @@ def get_canvas_channel_subscriptions_info(guild) -> str:
             subscriptions_list = []
             for channel_id, channel_name, category, feed_name, method in all_channel_subs:
                 subscriptions_list.append(f"🔍 {category} ({feed_name}) - {method}")
-            
+
             for sub in subscriptions_list:
                 usage_info += f"{sub}\n"
 
@@ -1265,7 +1265,7 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
 
         # Import to get feed names
         from roles.news_watcher.global_feed_health import get_healthy_feeds
-        
+
         # Get healthy feeds to map feed_id to feed name
         healthy_feeds = get_healthy_feeds()
         feed_map = {fid: name for fid, name, url, cat in healthy_feeds}
@@ -1273,10 +1273,10 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
         # Get unified subscriptions
         subscriptions = db.get_user_subscriptions(user_id)
         current_count = len(subscriptions)
-        
+
         if current_count == 0:
             return "- No active subscriptions"
-        
+
         subscriptions_list = []
         for sub_id, sub_user_id, channel_id, category, feed_id, premises, keywords, method, subscribed_at, created_by in subscriptions:
             # Get feed name
@@ -1284,9 +1284,9 @@ def get_canvas_user_subscriptions_info(guild, author_id: int) -> str:
                 feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
             else:
                 feed_name = "all feeds"
-            
+
             subscriptions_list.append(f"🔍 {category} ({feed_name}) - {method}")
-        
+
         return "\n".join(subscriptions_list[:10])
 
     except Exception as e:
@@ -1307,7 +1307,7 @@ def build_canvas_role_news_watcher_detail(
     """Build a detailed News Watcher view with 3-block structure."""
     # Safe nested access with fallbacks
     news_watcher = _get_nw_descriptions(guild)
-    
+
     # Ensure watcher_descriptions is a dict
     if not isinstance(news_watcher, dict):
         watcher_descriptions = {}

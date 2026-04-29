@@ -20,10 +20,7 @@ try:
 except Exception:
     get_news_watcher_db_instance = None
 
-try:
-    from roles.shaman.subroles.nordic_runes.nordic_runes_db import get_nordic_runes_db_instance
-except Exception:
-    get_nordic_runes_db_instance = None
+# Nordic runes now uses RoleConfigsNoSQL directly, no separate DB instance needed
 
 try:
     from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
@@ -72,12 +69,12 @@ def _get_canvas_dice_state(guild) -> dict:
         from roles.banker.banker_db import get_banker_roles_db_instance
         db_banker = get_banker_roles_db_instance(server_key)
         server_id = str(guild.id)
-        
+
         # Use server_config instead of roles_db
         from .server_config import get_role_config_value
         fixed_bet = get_role_config_value(server_id, "dice_game", "config.fixed_bet", default=1)
         announcements_active = get_role_config_value(server_id, "dice_game", "config.announcements_active", default=True)
-        
+
         db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
         state["pot_balance"] = db_banker.get_balance("dice_game_pot")
         state["bet"] = fixed_bet
@@ -94,7 +91,7 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
         server_key = get_server_key(guild)
         roles_db = get_roles_db_instance(server_key)
         history = roles_db.get_dice_game_history(1000)
-        
+
         # Aggregate stats by user like in dice_game_discord.py
         player_stats = {}
         for play in history:
@@ -110,10 +107,10 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
             player_stats[user_id]['total_won'] += play['prize']
             player_stats[user_id]['total_plays'] += 1
             player_stats[user_id]['total_bet'] += play['bet']
-        
+
         # Sort by total won
         ranking_data = sorted(player_stats.items(), key=lambda x: x[1]['total_won'], reverse=True)[:limit]
-        
+
         rows: list[dict] = []
         for position, (user_id, stats) in enumerate(ranking_data, 1):
             member = None
@@ -122,14 +119,14 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
             except AttributeError:
                 # Mock guild or missing method, use user_name from stats
                 pass
-            
+
             player_name = member.display_name if member is not None else stats['user_name']
             total_won = stats['total_won']
             total_bet = stats['total_bet']
             total_plays = stats['total_plays']
             balance = total_won - total_bet
             profitability = (total_won / total_bet * 100) if total_bet > 0 else 0
-            
+
             rows.append({
                 "position": position,
                 "player_name": player_name,
@@ -146,13 +143,109 @@ def _get_canvas_dice_ranking(guild, limit: int = 5) -> list[dict]:
         return []
 
 
-def _get_canvas_dice_history(guild, limit: int = 5) -> list[dict]:
+def _get_canvas_cubilete_state(guild) -> dict:
+    state = {
+        "pot_balance": 0,
+        "bet": 2,
+        "announcements_active": True,
+        "title": _personality_answers.get("cubilete_balance_messages", {}).get("title", "💰 **THE POT - {servidor}** 💰\n"),
+    }
+    if guild is None:
+        return state
+    try:
+        server_key = get_server_key(guild)
+        from roles.banker.banker_db import get_banker_roles_db_instance
+        db_banker = get_banker_roles_db_instance(server_key)
+        server_id = str(guild.id)
+
+        # Use server_config instead of roles_db
+        from .server_config import get_role_config_value
+        # Get TAE from banker config
+        tae = get_role_config_value(server_id, "banker", "config.tae", default=1)
+        # Fixed bet is 2xTAE
+        fixed_bet = tae * 2
+        announcements_active = get_role_config_value(server_id, "cubilete", "config.announcements_active", default=True)
+
+        db_banker.create_wallet("cubilete_pot", "Cubilete Pot", wallet_type='system')
+        state["pot_balance"] = db_banker.get_balance("cubilete_pot")
+        state["bet"] = fixed_bet
+        state["announcements_active"] = announcements_active
+    except Exception as e:
+        logger.warning(f"Could not load cubilete state for Canvas: {e}")
+    return state
+
+
+def _get_canvas_cubilete_ranking(guild, limit: int = 5) -> list[dict]:
     if guild is None or get_roles_db_instance is None:
         return []
     try:
         server_key = get_server_key(guild)
         roles_db = get_roles_db_instance(server_key)
-        history = roles_db.get_dice_game_history(limit)
+        history = roles_db.get_cubilete_history(1000)
+
+        # Aggregate stats by user, tracking biggest prize (maximum pot won)
+        player_stats = {}
+        for play in history:
+            user_id = play['user_id']
+            user_name = play['user_name']
+            if user_id not in player_stats:
+                player_stats[user_id] = {
+                    'user_name': user_name,
+                    'biggest_prize': 0,
+                    'total_plays': 0,
+                    'total_bet': 0,
+                    'total_won': 0
+                }
+            player_stats[user_id]['total_won'] += play['prize']
+            player_stats[user_id]['total_plays'] += 1
+            player_stats[user_id]['total_bet'] += play['bet']
+            # Track biggest prize (maximum pot won)
+            player_stats[user_id]['biggest_prize'] = max(player_stats[user_id]['biggest_prize'], play['prize'])
+
+        # Sort by biggest prize (maximum pot won) instead of total won
+        ranking_data = sorted(player_stats.items(), key=lambda x: x[1]['biggest_prize'], reverse=True)[:limit]
+
+        rows: list[dict] = []
+        for position, (user_id, stats) in enumerate(ranking_data, 1):
+            member = None
+            try:
+                member = guild.get_member(int(user_id)) if str(user_id).isdigit() else None
+            except AttributeError:
+                # Mock guild or missing method, use user_name from stats
+                pass
+
+            player_name = member.display_name if member is not None else stats['user_name']
+            biggest_prize = stats['biggest_prize']
+            total_won = stats['total_won']
+            total_bet = stats['total_bet']
+            total_plays = stats['total_plays']
+            balance = total_won - total_bet
+            profitability = (total_won / total_bet * 100) if total_bet > 0 else 0
+
+            rows.append({
+                "position": position,
+                "player_name": player_name,
+                "prize": biggest_prize,  # Now shows biggest prize instead of total won
+                "total_plays": total_plays,
+                "total_won": total_won,
+                "total_bet": total_bet,
+                "balance": balance,
+                "profitability": profitability,
+                "biggest_prize": biggest_prize,  # Add biggest_prize field for reference
+            })
+        return rows
+    except Exception as e:
+        logger.warning(f"Could not load cubilete ranking for Canvas: {e}")
+        return []
+
+
+def _get_canvas_cubilete_history(guild, limit: int = 5) -> list[dict]:
+    if guild is None or get_roles_db_instance is None:
+        return []
+    try:
+        server_key = get_server_key(guild)
+        roles_db = get_roles_db_instance(server_key)
+        history = roles_db.get_cubilete_history(limit)
         rows: list[dict] = []
         for play in history:
             rows.append({
@@ -171,7 +264,7 @@ def _get_canvas_dice_history(guild, limit: int = 5) -> list[dict]:
             })
         return rows
     except Exception as e:
-        logger.warning(f"Could not load dice history for Canvas: {e}")
+        logger.warning(f"Could not load cubilete history for Canvas: {e}")
         return []
 
 
@@ -242,18 +335,18 @@ def _get_canvas_ring_state(guild) -> dict:
         return state
     try:
         server_id = str(guild.id)
-        
+
         # PRIMARY: Check ring subrole in server_config
         ring_enabled = False
         ring_config = {}
-        
+
         try:
             from .server_config import get_role_config_value
             ring_enabled = get_role_config_value(server_id, "juggler", "config.subroles.ring.enabled", default=False)
             ring_config = get_role_config_value(server_id, "juggler", "config.subroles.ring.config", default={})
         except Exception as e:
             logger.warning(f"Error checking ring enabled in server_config: {e}")
-        
+
         # SECONDARY: Use ring_discord state as fallback for additional fields
         if not ring_config:
             from roles.juggler.subroles.ring.ring_discord import _get_ring_state
@@ -264,27 +357,27 @@ def _get_canvas_ring_state(guild) -> dict:
                     ring_config['frequency_hours'] = current.get("frequency_hours", 24)
                     ring_config['accused_user_id'] = current.get("target_user_id", "")
                     ring_config['accused_user_name'] = current.get("target_user_name", "Unknown bearer")
-        
+
         # Update state with gathered information
         state["enabled"] = ring_enabled
         state["frequency_hours"] = int(ring_config.get('frequency_hours', 24))
-        
+
         # Get user ID and name for display (check both locations for compatibility)
         accused_user_id = ring_config_data.get('accused_user_id', '') if ring_config_data else ''
         if not accused_user_id:
             accused_user_id = ring_config.get('accused_user_id', '')
         if not accused_user_id:
             accused_user_id = ring_config.get('target_user_id', '')
-        
+
         accused_user_name = ring_config_data.get('accused_user_name', '') if ring_config_data else ''
         if not accused_user_name:
             accused_user_name = ring_config.get('accused_user_name', '')
         if not accused_user_name:
             accused_user_name = ring_config.get('target_user_name', "Unknown bearer")
-        
+
         # Log what Canvas loaded for debugging
         logger.info(f"🎭 [CANVAS RING] Server {server_id} - Canvas loaded: accused_user_id='{accused_user_id}', accused_user_name='{accused_user_name}'")
-        
+
         # For display purposes, show the name if available, otherwise show ID
         if accused_user_name and accused_user_name != "Unknown bearer":
             state["target_user_name"] = accused_user_name
@@ -292,7 +385,7 @@ def _get_canvas_ring_state(guild) -> dict:
             state["target_user_name"] = f"ID: {accused_user_id}"
         else:
             state["target_user_name"] = "Unknown bearer"
-        
+
         # Load description from personality
         subrole_cfg = (PERSONALITY.get("roles", {}).get("juggler", {}).get("subroles", {}) or {}).get("ring", {})
         state["description"] = str(subrole_cfg.get("description", "")).strip()
@@ -312,7 +405,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
         return state
     try:
         manager = get_poe2_manager()
-        
+
         # Handle DM case - find any active server
         if guild is None:
             server_id = ""  # Empty string for DM - let manager find active server
@@ -322,11 +415,11 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
         else:
             server_id = str(guild.id)
             state["activated"] = manager.is_activated(server_id)
-        
+
         user_id = str(author_id) if author_id else ""
         league = manager.get_user_league(user_id, server_id) if user_id else "Standard"
         state["league"] = league
-        
+
         # Load tracked_items from subscription with item_id and add latest prices
         if user_id and get_roles_db_instance is not None:
             try:
@@ -343,7 +436,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
                         else:
                             item_name = item
                             item_id = None
-                        
+
                         # Get latest price from global price database
                         latest_price = None
                         if item_id:
@@ -353,7 +446,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
                                     latest_price = price_data.get('price')
                             except Exception:
                                 pass
-                        
+
                         enriched_objectives.append({
                             'item_name': item_name,
                             'item_id': item_id,
@@ -362,7 +455,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
                     state["objectives"] = enriched_objectives
             except Exception as e:
                 logger.warning(f"Could not load tracked_items for Canvas: {e}")
-        
+
         # Load purchases from subscription with latest prices
         if user_id and get_roles_db_instance is not None:
             try:
@@ -375,7 +468,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
                     for purchase in purchases:
                         item_id = purchase.get('item_id')
                         item_name = purchase.get('item_name', '')
-                        
+
                         # Get latest price from global price database
                         latest_price = None
                         if item_id:
@@ -385,7 +478,7 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
                                     latest_price = price_data.get('price')
                             except Exception:
                                 pass
-                        
+
                         enriched_purchase = dict(purchase)
                         enriched_purchase['current_price'] = latest_price
                         enriched_purchases.append(enriched_purchase)
@@ -399,11 +492,11 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
 
 def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
     """Get enabled roles from agent_config.json AND server_config.json in fixed order (must match content.py role_configs).
-    
+
     Roles must be enabled in BOTH agent_config.json (global) AND server_config.json (per-server).
     """
     enabled = []
-    
+
     # Fixed order of roles (must match content.py role_configs)
     role_order = [
         "news_watcher",
@@ -415,7 +508,7 @@ def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
         "shaman",
         "scholar",
     ]
-    
+
     # Get all roles from server_config.json
     from .server_config import get_all_roles_config
     from agent_db import get_server_id
@@ -425,13 +518,13 @@ def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
         server_id = str(guild.id)
     else:
         server_id = get_server_id()
-    
+
     # Get all roles from server_config
     roles_config = get_all_roles_config(server_id)
-    
+
     # Get roles from agent_config for global filtering
     roles_cfg = (agent_config or {}).get("roles", {})
-    
+
     # Filter enabled roles in fixed order (exclude subroles like beggar which is under banker)
     # Role must be enabled in BOTH agent_config (global) AND server_config (per-server)
     for role_name in role_order:
@@ -439,10 +532,10 @@ def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
         global_enabled = roles_cfg.get(role_name, {}).get("enabled", False)
         # Check server-specific enabled in server_config
         server_enabled = roles_config.get(role_name, {}).get("enabled", False)
-        
+
         if global_enabled and server_enabled:
             enabled.append(role_name)
-    
+
     logger.info(f"Loaded {len(enabled)} enabled roles (agent_config + server_config): {enabled}")
     return enabled
 

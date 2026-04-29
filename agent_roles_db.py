@@ -47,46 +47,9 @@ class RolesDatabase:
         return self._nosql_cache
     
     # ─────────────────────────────────────────────────────────────────────
-    # The following methods have been migrated to NoSQL (role_configs_nosql).
-    # They delegate to self._nosql (the RoleConfigsNoSQL facade for this server).
-    # Signatures preserved for backward compatibility with existing call sites.
+    # Nordic runes migrated to NoSQL - legacy wrappers removed (2026-04-29)
+    # Code now uses RoleConfigsNoSQL directly via nordic_runes_discord.py
     # ─────────────────────────────────────────────────────────────────────
-
-    def save_nordic_runes_reading(self, user_id: str, question: str, runes_drawn: List[str],
-                                  interpretation: str, reading_type: str) -> int:
-        """Save a rune reading (NoSQL-backed)."""
-        try:
-            self._nosql.save_nordic_runes_reading(user_id, question, runes_drawn, interpretation, reading_type)
-            return 0  # legacy callers ignore the ID
-        except Exception as e:
-            logger.error(f"Failed to save nordic runes reading: {e}")
-            raise
-
-    def get_nordic_runes_readings(self, user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent rune readings for a user (NoSQL-backed)."""
-        return self._nosql.get_nordic_runes_readings(user_id, limit)
-
-    def get_nordic_runes_stats(self, user_id: str) -> Dict[str, Any]:
-        """Aggregate rune-reading stats from JSONL tail."""
-        try:
-            readings = self._nosql.get_nordic_runes_readings(user_id, limit=1000)
-            total = len(readings)
-            if total == 0:
-                return {'total_readings': 0, 'favorite_type': None}
-            counts: Dict[str, int] = {}
-            for r in readings:
-                t = r.get('reading_type')
-                if t:
-                    counts[t] = counts.get(t, 0) + 1
-            favorite = max(counts.items(), key=lambda x: x[1])[0] if counts else None
-            return {'total_readings': total, 'favorite_type': favorite}
-        except Exception as e:
-            logger.error(f"Failed to get reading stats: {e}")
-            return {'total_readings': 0, 'favorite_type': None}
-
-    def delete_nordic_runes_readings(self, user_id: str) -> int:
-        """Delete all rune readings for a user (GDPR)."""
-        return self._nosql.delete_nordic_runes_readings(user_id)
 
     def save_ring_accusation(self, accuser_id: str, accused_id: str,
                              accusation: str, evidence: str = None) -> int:
@@ -138,7 +101,44 @@ class RolesDatabase:
     def get_dice_game_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent dice game plays (NoSQL-backed)."""
         return self._nosql.get_dice_game_history(limit)
-    
+
+    def save_cubilete_stats(self, user_id: str, total_plays: int = 0,
+                             total_bet: int = 0, total_won: int = 0, pots_won: int = 0,
+                             biggest_prize: int = 0, last_play: str = None) -> bool:
+        """Save cubilete stats (NoSQL-backed)."""
+        return self._nosql.save_cubilete_stats(
+            user_id, total_plays=total_plays, total_bet=total_bet,
+            total_won=total_won, pots_won=pots_won,
+            biggest_prize=biggest_prize, last_play=last_play,
+        )
+
+    def get_cubilete_stats(self, user_id: str) -> Dict[str, Any]:
+        """Get cubilete stats (NoSQL-backed). Returns zeroed dict if missing."""
+        data = self._nosql.get_cubilete_stats(user_id)
+        if data:
+            return data
+        return {
+            'total_plays': 0, 'total_bet': 0, 'total_won': 0, 'pots_won': 0,
+            'biggest_prize': 0, 'last_play': None, 'created_at': None, 'updated_at': None,
+        }
+
+    def save_cubilete_play(self, user_id: str, user_name: str, bet: int,
+                            dice: str, combination: str, prize: int,
+                            pot_before: int, pot_after: int) -> int:
+        """Save a cubilete play (NoSQL-backed)."""
+        try:
+            self._nosql.save_cubilete_play(
+                user_id, user_name, bet, dice, combination, prize, pot_before, pot_after,
+            )
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to save cubilete play: {e}")
+            raise
+
+    def get_cubilete_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent cubilete plays (NoSQL-backed)."""
+        return self._nosql.get_cubilete_history(limit)
+
     def is_role_enabled(self, role_name: str, server_id: str) -> bool:
         """Check if a role is enabled for a server - DEPRECATED: Use server_config.is_role_enabled instead."""
         from discord_bot.canvas.server_config import is_role_enabled as server_is_role_enabled

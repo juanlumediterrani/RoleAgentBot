@@ -376,7 +376,7 @@ class AgentMemoryNoSQL:
         """Add a daily memory entry (retention: max 14)."""
         try:
             target_date = memory_date or datetime.now().date().isoformat()
-            
+
             # Validate entry before storing
             if VALIDATION_AVAILABLE and DailyMemoryEntry:
                 entry_to_validate = {
@@ -390,7 +390,7 @@ class AgentMemoryNoSQL:
                 except Exception as e:
                     logger.warning(f"⚠️ [NoSQL] Daily memory validation failed: {e}. Skipping entry.")
                     return False
-            
+
             def updater(state: Dict[str, Any]) -> Dict[str, Any]:
                 daily = state.get("daily_memory", [])
                 daily.append({
@@ -591,7 +591,7 @@ class AgentMemoryNoSQL:
                 except Exception as e:
                     logger.warning(f"⚠️ [NoSQL] Relationship validation failed: {e}. Skipping entry.")
                     return False
-            
+
             def updater(state: Dict[str, Any]) -> Dict[str, Any]:
                 relationships = state.get("relationships", {})
                 relationships[str(user_id)] = {
@@ -779,7 +779,7 @@ class AgentMemoryNoSQL:
         try:
             from datetime import date as _date
             target_date = memory_date or _date.today().isoformat()
-            
+
             # Validate entry before storing
             if VALIDATION_AVAILABLE and NotableRecollection:
                 entry_to_validate = {
@@ -795,7 +795,7 @@ class AgentMemoryNoSQL:
                 except Exception as e:
                     logger.warning(f"⚠️ [NoSQL] Recollection validation failed: {e}. Skipping entry.")
                     return 0
-            
+
             rec_id = 0
             def updater(state: Dict[str, Any]) -> Dict[str, Any]:
                 nonlocal rec_id

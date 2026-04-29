@@ -37,6 +37,43 @@
                     "💸 **NOT ENOUGH**... Accumulate more sacks first... SSSSS",
                     "💸 **SCARCE FLOUR**... You need fortune to bake... SSSSS"
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **YOU WON!** The dice came out well... SSSSS",
+                    "🎉 **VICTORY!** The dough rose... SSSSS",
+                    "🎉 **TRIUMPH!** The oven was good today... SSSSS",
+                    "🎉 **EXCELLENT!** The dice didn't burn... SSSSS",
+                    "🎉 **IMPRESSIVE!** The Master will be pleased... SSSSS"
+                ],
+                "youlose":[
+                    "😢 **YOU LOST**... The dice burned... SSSSS",
+                    "😢 **BAD LUCK**... The dough didn't rise... SSSSS",
+                    "😢 **NOT THIS TIME**... The oven was cold... SSSSS",
+                    "😢 **WELL**... The dice stuck... SSSSS",
+                    "😢 **BUT DON'T GIVE UP**... The Master will punish me... SSSSS"
+                ],
+                "high_pot":[
+                    "💰 **THE BASKET GROWS!** The flour accumulates... SSSSS",
+                    "💰 **BASKET SURGING!** The prize gets big... SSSSS",
+                    "💰 **ACCUMULATING!** The basket shines... SSSSS",
+                    "💰 **FORTUNE AWAITS!** The basket claims its destiny... SSSSS",
+                    "💰 **MAGIC BASKET!** The flour waits for the lucky one... SSSSS"
+                ],
+                "pot_winner":[
+                    "🎉 **BASKET WINNER!!** You conquered the oven's dice!... SSSSS",
+                    "🎉 **BASKET CONQUERED!!** You are the Master's chosen!... SSSSS",
+                    "🎉 **JACKPOT!!** The basket is yours!... SSSSS",
+                    "🎉 **LEGENDARY FORTUNE!!** You won the dice!... SSSSS",
+                    "🎉 **BASKET IS YOURS!!** An epic victory!... SSSSS"
+                ],
+                "not_gold":[
+                    "💸 **NO FLOUR**... You don't have enough sacks... SSSSS",
+                    "💸 **INSUFFICIENT FUNDS**... You need more flour sacks... SSSSS",
+                    "💸 **EMPTY POCKETS**... Check your sacks... SSSSS",
+                    "💸 **NOT ENOUGH**... Accumulate more sacks first... SSSSS",
+                    "💸 **SCARCE FLOUR**... You need fortune to roll... SSSSS"
+                ]
             }
         },
         "banker":{

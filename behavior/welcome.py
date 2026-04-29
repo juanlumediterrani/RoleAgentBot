@@ -22,33 +22,33 @@ _MIN_SECONDS_BETWEEN_WELCOMES = 3  # Minimum 3 seconds between LLM calls
 async def _wait_for_welcome_rate_limit():
     """Ensure minimum delay between welcome messages to avoid Vertex AI saturation."""
     global _LAST_GLOBAL_WELCOME_TIME
-    
+
     current_time = time.time()
     time_since_last = current_time - _LAST_GLOBAL_WELCOME_TIME
-    
+
     if time_since_last < _MIN_SECONDS_BETWEEN_WELCOMES:
         wait_time = _MIN_SECONDS_BETWEEN_WELCOMES - time_since_last
         logger.debug(f"Welcome rate limit: waiting {wait_time:.1f}s before next welcome")
         await asyncio.sleep(wait_time)
-    
+
     _LAST_GLOBAL_WELCOME_TIME = time.time()
 
 
 async def handle_member_join(member, discord_cfg):
     """
     Handle a new member joining the server - send a welcome message.
-    
+
     Args:
         member: discord.Member - the member who joined
         discord_cfg: discord configuration from personality
     """
     # Apply global rate limiting to prevent Vertex AI saturation
     await _wait_for_welcome_rate_limit()
-    
+
     try:
         server_id = str(member.guild.id)
         server_name = get_server_key(member.guild)
-        
+
         # Check if welcome is enabled from server_config.json
         try:
             from discord_bot.canvas.server_config import is_behavior_enabled
@@ -63,28 +63,28 @@ async def handle_member_join(member, discord_cfg):
             if not greeting_cfg.get("enabled", True):
                 logger.info(f"Welcome messages disabled for guild {member.guild.name} (from config)")
                 return
-        
+
         # Get welcome channel
         welcome_info = await get_welcome_channel_info(member.guild, discord_cfg)
         if not welcome_info:
             logger.warning(f"No welcome channel found for guild {member.guild.name}")
             return
-        
+
         welcome_channel = welcome_info["channel"]
-        
+
         # Check if welcome is enabled from config (secondary check)
         greeting_cfg = discord_cfg.get("member_greeting", {})
         if not greeting_cfg.get("enabled", True):
             logger.info(f"Welcome messages disabled for guild {member.guild.name} (from config)")
             return
-        
+
         # Build welcome prompt
         welcome_prompt = build_welcome_prompt(member.display_name, str(member.id), member.guild)
-        
+
         # Build system instruction
         personality = _get_personality(server_id) if server_id else _get_personality()
         system_instruction = _build_system_prompt(personality, server_id)
-        
+
         # Generate welcome message
         saludo = await call_llm_async(
             system_instruction=system_instruction,
@@ -94,11 +94,11 @@ async def handle_member_join(member, discord_cfg):
             critical=True,
             logger=logger,
         )
-        
+
         # Send welcome message
         await welcome_channel.send(f"🎉 {member.mention} {saludo}")
         logger.info(f"Welcome message sent to {member.name} in {member.guild.name}")
-        
+
         # Register interaction in agent database (databases/<server_id>/agent_*.db)
         try:
             db_instance = get_db_for_server(member.guild)
@@ -112,7 +112,7 @@ async def handle_member_join(member, discord_cfg):
             )
         except Exception as db_error:
             logger.warning(f"Could not register interaction in database: {db_error}")
-            
+
     except Exception as e:
         logger.error(f"Error in welcome handler for {member.name}: {e}")
         # Send fallback message
@@ -131,12 +131,12 @@ async def handle_member_join(member, discord_cfg):
 def build_welcome_prompt(user_display_name: str, user_id: str, guild) -> str:
     """
     Build a comprehensive contextual prompt for member welcome messages.
-    
+
     Args:
         user_display_name: Display name of the user being welcomed
         user_id: Discord user ID
         guild: Discord guild object
-        
+
     Returns:
         Comprehensive contextual prompt with memory, relationship, and interaction history
     """
@@ -149,7 +149,7 @@ def build_welcome_prompt(user_display_name: str, user_id: str, guild) -> str:
     task_template = greetings_cfg.get("task", "Welcome {username} to the server.")
     golden_rules = greetings_cfg.get("golden_rules", [])
     response_title = greetings_cfg.get("response_title", "## WRITE ONLY THE WELCOME IN THE WORDS OF THE PERSONALITY:")
-    
+
     # Build individual blocks using specific functions
     memory_block = _build_prompt_memory_block(server=server_name)
     relationship_block = _build_prompt_relationship_block(
@@ -161,10 +161,10 @@ def build_welcome_prompt(user_display_name: str, user_id: str, guild) -> str:
         user_id=user_id,
         server=server_name
     )
-    
+
     # Format the task with username
     task = task_template.format(username=user_display_name)
-    
+
     # Build the complete prompt structure
     prompt_sections = [
         memory_block,
@@ -175,18 +175,18 @@ def build_welcome_prompt(user_display_name: str, user_id: str, guild) -> str:
         "\n".join(golden_rules),  # Golden rules from prompts.json
         response_title  # Response title from prompts.json
     ]
-    
+
     # Filter out empty sections
     non_empty_sections = [section for section in prompt_sections if section and section.strip()]
-    
+
     result = "\n\n".join(non_empty_sections)
-    
+
     # Validate result is not empty
     if not result or not result.strip():
         logger.warning(f"🧠 [WELCOME] build_welcome_prompt returning empty prompt (server={server_name}, user={user_display_name}, user_id={user_id})")
         # Fallback to minimal prompt
         result = f"{task}\n\n{response_title}"
-    
+
     return result
 
 async def get_welcome_channel_info(guild, discord_cfg):
@@ -195,16 +195,16 @@ async def get_welcome_channel_info(guild, discord_cfg):
     Searches for appropriate channel based on keywords configured in descriptions.json.
     Tests if bot can send messages to channel before saving it.
     Stores the chosen channel in database for future use.
-    
+
     Args:
         guild: discord.Guild
         discord_cfg: discord configuration from personality
-        
+
     Returns:
         dict with channel info or None if not found
     """
     server_name = get_server_key(guild)
-    
+
     # First, check if we have a stored welcome channel in server_config.json
     try:
         from discord_bot.canvas.server_config import get_welcome_channel
@@ -212,7 +212,7 @@ async def get_welcome_channel_info(guild, discord_cfg):
     except Exception as e:
         logger.warning(f"Error getting welcome channel from server_config: {e}")
         stored_channel_id = None
-    
+
     if stored_channel_id:
         # Verify the stored channel still exists
         stored_channel = guild.get_channel(int(stored_channel_id))
@@ -234,19 +234,19 @@ async def get_welcome_channel_info(guild, discord_cfg):
                 logger.warning(f"Error testing stored channel {stored_channel.name} ({stored_channel.id}): {e}")
         else:
             logger.warning(f"Stored welcome channel {stored_channel_id} no longer exists, searching for new channel")
-    
+
     # No stored channel or it's invalid, search for appropriate channel
     personality = _get_personality(str(guild.id))
     descriptions = personality.get("descriptions", {})
     welcome_keywords = descriptions.get("welcome_channel_keywords", {})
-    
+
     # Search with language-specific keywords first
     language_specific_keywords = welcome_keywords.get("language_specific", [])
     general_keywords = welcome_keywords.get("general", ["general"])
-    
+
     # Combine keywords: language-specific first, then general
     all_keywords = language_specific_keywords + general_keywords
-    
+
     for keyword in all_keywords:
         for channel in guild.text_channels:
             if keyword.lower() in channel.name.lower():
@@ -273,7 +273,7 @@ async def get_welcome_channel_info(guild, discord_cfg):
                 except Exception as e:
                     logger.warning(f"Error testing channel {channel.name} ({channel.id}): {e}")
                     continue
-    
+
     # No keyword match found, fallback to first text channel
     if guild.text_channels:
         channel = guild.text_channels[0]
@@ -298,6 +298,6 @@ async def get_welcome_channel_info(guild, discord_cfg):
             logger.error(f"Cannot send messages to first text channel {channel.name} ({channel.id}) either")
         except Exception as e:
             logger.error(f"Error testing first text channel {channel.name} ({channel.id}): {e}")
-    
+
     logger.warning(f"No suitable welcome channel found in guild {guild.name} - bot lacks permissions to send messages")
     return None

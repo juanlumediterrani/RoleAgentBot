@@ -55,10 +55,10 @@ logger = get_logger('discord_core')
 def _get_discord_config(server_id: str) -> dict:
     """
     Get discord configuration for a specific server using the new universal loader.
-    
+
     Args:
         server_id: Server ID for server-specific configuration
-        
+
     Returns:
         dict: Discord configuration (empty fallback since answers.json removed)
     """
@@ -68,7 +68,7 @@ def _get_discord_config(server_id: str) -> dict:
 def _get_personality_answers() -> dict:
     """
     Legacy compatibility function for canvas.state.py.
-    
+
     Returns the entire answers.json content for backward compatibility.
     This should be replaced with specific get_personality_message() calls.
     """
@@ -92,30 +92,30 @@ def get_taboo_state(guild_id: int) -> dict:
     state = _taboo_state_by_guild_id.get(guild_id)
     if state is None:
         server_key = str(guild_id)
-        
+
         # Try to get from server_config.json first
         try:
             from discord_bot.canvas.server_config import get_behavior_config
             taboo_config = get_behavior_config(server_key, "taboo", default_enabled=False)
-            
+
             # Get default keywords from prompts.json/behaviors/taboo
             taboo_defaults = PERSONALITY.get("behaviors", {}).get("taboo", {})
             default_keywords = list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else []
-            
+
             # Get keywords from config or use defaults
             config = taboo_config.get("config", {}) if taboo_config else {}
             keywords = config.get("keywords", default_keywords) if config else default_keywords
-            
+
             # Get current state from server_config.json
             state = {
                 "enabled": taboo_config.get("enabled", False) if taboo_config else False,
                 "keywords": keywords,
                 "response": taboo_defaults.get("response", "WARNING: That word is not appropriate here!")
             }
-            
+
             # Cache the state
             _taboo_state_by_guild_id[guild_id] = state
-            
+
         except Exception as e:
             logger.error(f"Error getting taboo state from server_config.json: {e}")
             # Fallback to empty state
@@ -125,7 +125,7 @@ def get_taboo_state(guild_id: int) -> dict:
                 "response": "WARNING: That word is not appropriate here!"
             }
             _taboo_state_by_guild_id[guild_id] = state
-    
+
     return state
 
 
@@ -133,11 +133,11 @@ def update_taboo_state(guild_id: int, enabled: bool = None, keywords: list = Non
     """Update taboo state in server_config.json."""
     try:
         server_key = str(guild_id)
-        
+
         # Get default keywords from prompts.json/behaviors/taboo
         taboo_defaults = PERSONALITY.get("behaviors", {}).get("taboo", {})
         default_keywords = list(taboo_defaults.get("keywords", [])) if isinstance(taboo_defaults.get("keywords", []), list) else []
-        
+
         # Get current config
         try:
             from discord_bot.canvas.server_config import get_behavior_config, set_behavior_config
@@ -149,32 +149,32 @@ def update_taboo_state(guild_id: int, enabled: bool = None, keywords: list = Non
             logger.error(f"Error getting current taboo config: {e}")
             current_enabled = False
             current_keywords = default_keywords
-        
+
         # Update enabled status if provided
         if enabled is not None:
             current_enabled = enabled
             # When enabling, restore default keywords if none exist
             if enabled and not current_keywords:
                 current_keywords = default_keywords
-        
+
         # Update keywords if provided
         if keywords is not None:
             current_keywords = [kw.lower().strip() for kw in keywords if kw.strip()]
-        
+
         # Save to server_config.json
         try:
             set_behavior_config(server_key, "taboo", current_enabled, {"keywords": current_keywords}, updated_by="admin_command")
-            
+
             # Update cache
             if guild_id in _taboo_state_by_guild_id:
                 _taboo_state_by_guild_id[guild_id]["enabled"] = current_enabled
                 _taboo_state_by_guild_id[guild_id]["keywords"] = current_keywords
-            
+
             return True
         except Exception as e:
             logger.error(f"Error saving taboo state to server_config.json: {e}")
             return False
-        
+
     except Exception as e:
         logger.error(f"Error updating taboo state: {e}")
         return False
@@ -197,7 +197,6 @@ from discord_bot.canvas.state import (
     _get_canvas_watcher_frequency_hours,
     _get_canvas_dice_state,
     _get_canvas_dice_ranking,
-    _get_canvas_dice_history,
     _get_canvas_beggar_state,
     _get_canvas_ring_state,
     _get_canvas_poe2_state,
@@ -261,7 +260,7 @@ def register_core_commands(bot, agent_config):
     _personality_name = PERSONALITY.get("name", "unknown")
     _personality_answers = PERSONALITY.get("answers", {})
     _discord_cfg = PERSONALITY.get("discord", {})
-    
+
     # --- COMMAND NAMES ---
     greet_name = f"greet{_personality_name}"
     nogreet_name = f"nogreet{_personality_name}"
@@ -277,7 +276,7 @@ def register_core_commands(bot, agent_config):
         """Enable or disable roles dynamically."""
         server_id = str(ctx.guild.id) if ctx.guild else None
         role_cfg = {}
-        
+
         if not is_admin(ctx):
             await ctx.send(role_cfg.get("role_no_permission", "❌ Only administrators can enable or disable roles."))
             return
@@ -799,7 +798,7 @@ def register_core_commands(bot, agent_config):
 
             try:
                 from discord_bot.discord_utils import (
-                    get_server_personality_display_name, 
+                    get_server_personality_display_name,
                     get_server_personality_avatar_path,
                     get_server_key
                 )
@@ -828,7 +827,7 @@ def register_core_commands(bot, agent_config):
                 # Status summary
                 nick_synced = configured_name and current_nick == configured_name
                 avatar_configured = avatar_path is not None
-                
+
                 if nick_synced and avatar_configured:
                     response += "✅ Identity fully synced with personality configuration."
                 elif nick_synced:
@@ -870,27 +869,27 @@ def register_core_commands(bot, agent_config):
             try:
                 # Check if personality exists in global personalities folder
                 base_dir = os.path.dirname(os.path.dirname(__file__))
-                
+
                 # Get server's language to check correct subdirectory
                 from discord_bot.canvas.server_config import get_server_language
                 server_language = get_server_language(server_key)
-                
+
                 # New structure: personalities/<name>/<language>/
                 global_personality_path = os.path.join(base_dir, 'personalities', personality_name, server_language)
-                
+
                 # Fallback to old structure if language subdirectory doesn't exist
                 if not os.path.exists(global_personality_path):
                     global_personality_path = os.path.join(base_dir, 'personalities', personality_name)
-                
+
                 if not os.path.exists(global_personality_path):
                     # List available personalities
                     available = []
                     personalities_dir = os.path.join(base_dir, 'personalities')
                     if os.path.exists(personalities_dir):
-                        available = [d for d in os.listdir(personalities_dir) 
-                                   if os.path.isdir(os.path.join(personalities_dir, d)) 
+                        available = [d for d in os.listdir(personalities_dir)
+                                   if os.path.isdir(os.path.join(personalities_dir, d))
                                    and not d.startswith('.')]
-                    
+
                     await ctx.send(
                         f"❌ Personality '{personality_name}' not found.\n"
                         f"Available: {', '.join(available) if available else 'None'}"
@@ -907,7 +906,7 @@ def register_core_commands(bot, agent_config):
                 # 1. Copy personality to server-specific directory and update config
                 from discord_bot.db_init import copy_personality_to_server
                 copy_success = copy_personality_to_server(server_key, personality_name, language=server_language, update_config=True)
-                
+
                 if not copy_success:
                     await ctx.send("❌ Failed to copy personality files. Check logs.")
                     return
@@ -922,7 +921,7 @@ def register_core_commands(bot, agent_config):
                     changes.append("nickname")
                 if identity_result['avatar_changed']:
                     changes.append("avatar")
-                
+
                 if identity_result['success']:
                     change_msg = f"({', '.join(changes)} updated)" if changes else "(no visual changes)"
                     await ctx.send(

@@ -214,3 +214,66 @@ class MCPreferences(BaseModel):
         except (ValueError, AttributeError) as e:
             raise ValueError(f"Invalid ISO timestamp: {v}") from e
         return v
+
+
+class AstrologyReading(BaseModel):
+    """Schema for astrology reading history."""
+    
+    user_id: str = Field(..., min_length=1)
+    reading_type: str = Field(..., min_length=1)
+    calculation_data: Dict[str, Any] = Field(default_factory=dict)
+    interpretation: str = Field(default="")
+    question: str = Field(default="")
+    created_at: str  # ISO timestamp
+    
+    @field_validator('created_at')
+    @classmethod
+    def validate_iso_timestamp(cls, v: str) -> str:
+        """Validate that timestamp is valid ISO 8601 format."""
+        try:
+            datetime.fromisoformat(v.replace('Z', '+00:00'))
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f"Invalid ISO timestamp: {v}") from e
+        return v
+
+
+class AstrologyBirthData(BaseModel):
+    """Schema for user birth data."""
+    
+    user_id: str = Field(..., min_length=1)
+    birth_date: str = Field(..., min_length=1)  # YYYY-MM-DD format
+    birth_time: Optional[str] = Field(default=None)  # HH:MM format
+    created_at: str  # ISO timestamp
+    updated_at: str  # ISO timestamp
+    
+    @field_validator('birth_date')
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
+        """Validate that birth_date is in YYYY-MM-DD format."""
+        try:
+            datetime.strptime(v, '%Y-%m-%d')
+        except ValueError as e:
+            raise ValueError(f"Invalid date format (expected YYYY-MM-DD): {v}") from e
+        return v
+    
+    @field_validator('birth_time')
+    @classmethod
+    def validate_time_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that birth_time is in HH:MM format if provided."""
+        if v is None:
+            return v
+        try:
+            datetime.strptime(v, '%H:%M')
+        except ValueError as e:
+            raise ValueError(f"Invalid time format (expected HH:MM): {v}") from e
+        return v
+    
+    @field_validator('created_at', 'updated_at')
+    @classmethod
+    def validate_iso_timestamp(cls, v: str) -> str:
+        """Validate that timestamps are valid ISO 8601 format."""
+        try:
+            datetime.fromisoformat(v.replace('Z', '+00:00'))
+        except (ValueError, AttributeError) as e:
+            raise ValueError(f"Invalid ISO timestamp: {v}") from e
+        return v

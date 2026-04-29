@@ -27,7 +27,7 @@ def build_canvas_role_scholar(agent_config: dict, admin_visible: bool, guild=Non
     """Build the Scholar role overview."""
     server_id = get_server_key(guild) if guild else None
     scholar_messages = _get_scholar_descriptions(server_id)
-    
+
     # Get general messages
     general_messages = {}
     try:

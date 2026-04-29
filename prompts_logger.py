@@ -40,7 +40,7 @@ def _get_logging_messages():
                     personality_name = Path(personality_rel).stem
             else:
                 personality_name = "default"
-        
+
         # Load prompts.json from personality directory (check server-specific first)
         try:
             from agent_runtime import get_personality_directory
@@ -49,7 +49,7 @@ def _get_logging_messages():
         except:
             # Fall back to global personality directory
             prompts_path = _BASE_DIR / "personalities" / personality_name / "prompts.json"
-        
+
         if prompts_path.exists():
             with open(prompts_path, 'r', encoding='utf-8') as f:
                 prompts_data = json.load(f)
@@ -59,7 +59,7 @@ def _get_logging_messages():
     except Exception as e:
         # If anything fails, return fallbacks
         pass
-    
+
     return _FALLBACK_LOGGING_MESSAGES
 
 LOG_DIR = Path(__file__).parent / 'logs'
@@ -107,24 +107,24 @@ def get_prompts_logger(server_id=None):
     """
     Gets a dedicated logger for prompts with custom formatting.
     If server_id is provided, creates server-specific logging.
-    
+
     Args:
         server_id (str, optional): Discord server ID for server-specific logging
-    
+
     Returns:
         logging.Logger: Logger configured for prompt logging
     """
     # Create logger name based on server_id
     logger_name = f'prompts_{server_id}' if server_id else 'prompts'
     logger = logging.getLogger(logger_name)
-    
+
     # Avoid adding handlers multiple times
     if logger.handlers:
         return logger
-    
+
     logger.propagate = False
     logger.setLevel(logging.INFO)
-    
+
     # Create server-specific log directory and file
     if server_id:
         server_log_dir = LOG_DIR / server_id
@@ -132,13 +132,13 @@ def get_prompts_logger(server_id=None):
         prompts_log_file = server_log_dir / 'prompt.log'
     else:
         prompts_log_file = LOG_DIR / 'prompt.log'
-    
+
     # Custom formatter for clear separation
     formatter = logging.Formatter(
         '%(asctime)s | %(levelname)s | %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
     # File handler with rotation
     try:
         file_handler = RotatingFileHandler(
@@ -152,13 +152,13 @@ def get_prompts_logger(server_id=None):
         logger.addHandler(file_handler)
     except (PermissionError, OSError) as e:
         print(f"⚠️ Cannot create prompts log file {prompts_log_file}: {e}")
-    
+
     return logger
 
 def log_prompt(prompt_type, content, metadata=None, server_id=None):
     """
     Logs a prompt with clear separation and metadata.
-    
+
     Args:
         prompt_type (str): Type of prompt (e.g., 'system', 'user', 'consolidated', 'subrole')
         content (str): The prompt content
@@ -168,23 +168,23 @@ def log_prompt(prompt_type, content, metadata=None, server_id=None):
     if not is_prompt_logging_enabled():
         return
     logger = get_prompts_logger(server_id)
-    
+
     # Create separator
     separator = "=" * 80
-    
+
     # Build log entry
     log_lines = [
         separator,
         f"PROMPT TYPE: {prompt_type.upper()}",
         f"TIMESTAMP: {datetime.now().isoformat()}"
     ]
-    
+
     # Add metadata if provided
     if metadata:
         log_lines.append("METADATA:")
         for key, value in metadata.items():
             log_lines.append(f"  {key}: {value}")
-    
+
     log_lines.extend([
         separator,
         "CONTENT:",
@@ -192,7 +192,7 @@ def log_prompt(prompt_type, content, metadata=None, server_id=None):
         separator,
         ""  # Empty line for spacing
     ])
-    
+
     # Join and log
     log_entry = "\n".join(log_lines)
     logger.info(log_entry)
@@ -204,7 +204,7 @@ def log_system_prompt(content, role=None, server=None, server_id=None):
         metadata['role'] = role
     if server:
         metadata['server'] = server
-    
+
     log_prompt('system', content, metadata, server_id)
 
 def log_user_prompt(content, user_id=None, server=None, role=None, server_id=None):
@@ -216,7 +216,7 @@ def log_user_prompt(content, user_id=None, server=None, role=None, server_id=Non
         metadata['server'] = server
     if role:
         metadata['role'] = role
-    
+
     log_prompt('user', content, metadata, server_id)
 
 def log_final_llm_prompt(provider, call_type, system_instruction, user_prompt, role=None, server=None, metadata=None, server_id=None):
@@ -268,7 +268,7 @@ def log_consolidated_context(content, role=None, server=None, interaction_count=
         metadata['server'] = server
     if interaction_count:
         metadata['interaction_count'] = interaction_count
-    
+
     log_prompt('consolidated', content, metadata, server_id)
 
 def log_readme_enhanced_prompt(original_question, readme_content, enhanced_prompt, system_instruction=None, role=None, server=None, server_id=None):
@@ -296,7 +296,7 @@ def log_subrole_prompt(subrole_name, content, role=None, server=None, server_id=
         metadata['role'] = role
     if server:
         metadata['server'] = server
-    
+
     log_prompt('subrole', content, metadata, server_id)
 
 def log_agent_response(content, role=None, server=None, response_length=None, server_id=None):
@@ -308,7 +308,7 @@ def log_agent_response(content, role=None, server=None, response_length=None, se
         metadata['server'] = server
     if response_length:
         metadata['response_length'] = response_length
-    
+
     log_prompt('response', content, metadata, server_id)
 
 

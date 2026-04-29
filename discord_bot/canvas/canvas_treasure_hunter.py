@@ -60,20 +60,20 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
         self.item_name = item_name
         self.current_price = current_price
         self.author_id = author_id
-        
+
         try:
             # Get translations
             translations = self._get_translations()
             title_text = translations.get("modal_purchase_title", "Record Purchase")
             label_text = translations.get("modal_purchase_label", "Purchase Price")
-            
+
             self.title = title_text
-            
+
             # Price input with placeholder showing current price (if available)
             price_placeholder = "Purchase price (e.g., 100.50)"
             if current_price is not None:
                 price_placeholder = f"Current price: {current_price:.2f} Div (enter purchase price)"
-            
+
             self.price_input = discord.ui.TextInput(
                 label=label_text,
                 placeholder=price_placeholder,
@@ -85,7 +85,7 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
         except Exception as e:
             logger.exception(f"Error in Poe2PurchaseAddModal __init__: {e}")
             raise
-    
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         """Restrict the modal to the original Canvas author."""
         logger.info(f"Poe2PurchaseAddModal interaction_check: interaction.user.id={interaction.user.id}, self.author_id={self.author_id}")
@@ -95,7 +95,7 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
             return False
         logger.info("Poe2PurchaseAddModal interaction check passed")
         return True
-    
+
     def _get_translations(self) -> dict:
         """Get treasure_hunter translations from personality descriptions."""
         try:
@@ -106,7 +106,7 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
         except Exception as e:
             logger.exception(f"Error getting treasure_hunter translations: {e}")
             return {}
-    
+
     async def on_submit(self, interaction: discord.Interaction):
         try:
             if get_poe2_manager is None:
@@ -130,7 +130,7 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
             manager = get_poe2_manager()
             server_id = "" if self.guild is None else str(self.guild.id)
             user_id = str(self.author_id)
-            
+
             from agent_roles_db import get_roles_db_instance
             roles_db = get_roles_db_instance(server_id)
             subscription = roles_db.get_poe2_subscription(user_id, server_id)
@@ -138,7 +138,7 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
             if not subscription:
                 await interaction.response.send_message("❌ No POE2 subscription found.", ephemeral=True)
                 return
-            
+
             league = subscription.get("league", "Standard")
 
             # Get item_id from item list
@@ -148,13 +148,13 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
                 item_id = items.get(item_name.lower())
             except Exception as e:
                 logger.warning(f"Could not find item_id for '{item_name}': {e}")
-            
+
             purchases = subscription.get("purchases", [])
             existing = next((p for p in purchases if p["item_name"] == item_name), None)
             if existing:
                 await interaction.response.send_message(f"❌ Item '{item_name}' already purchased at {existing['buy_price']:.2f} Div.", ephemeral=True)
                 return
-            
+
             new_purchase = {
                 "item_name": item_name,
                 "item_id": item_id,
@@ -162,16 +162,16 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
                 "buy_timestamp": datetime.now().isoformat()
             }
             purchases.append(new_purchase)
-            
+
             tracked_items = subscription.get("tracked_items", [])
-            
+
             if not roles_db.save_poe2_subscription(user_id, server_id, league, tracked_items, purchases):
                 await interaction.response.send_message("❌ Failed to save purchase.", ephemeral=True)
                 return
-            
+
             from .content import _build_canvas_role_detail_view, _build_canvas_role_embed
             from discord_bot.canvas.ui import CanvasRoleDetailView
-            
+
             content = _build_canvas_role_detail_view(
                 "treasure_hunter",
                 "poe2",
@@ -190,12 +190,12 @@ class Poe2PurchaseAddModal(discord.ui.Modal):
                 guild=self.view.guild,
                 message=interaction.message,
             )
-            
+
             translations = self._get_translations()
             purchase_msg_template = translations.get("purchase_recorded_message", "✅ Purchase recorded: {item_name} at {purchase_price:.2f} Div")
             success_msg = purchase_msg_template.format(item_name=item_name, purchase_price=purchase_price)
             next_view.auto_response_preview = success_msg
-            
+
             server_id = core.get_server_key(self.view.guild) if self.view.guild else None
             detail_embed = _build_canvas_role_embed(
                 "treasure_hunter",
@@ -221,11 +221,11 @@ class Poe2PurchaseItemSelectView(discord.ui.View):
         self.view = view
         self.tracked_items = tracked_items
         self.current_prices = current_prices
-        
+
         # Get translations
         translations = self._get_translations()
         select_placeholder = translations.get("modal_select_placeholder", "Choose an option from your list")
-        
+
         # Add current price to each option label
         options = []
         for idx, item in enumerate(tracked_items):
@@ -245,7 +245,7 @@ class Poe2PurchaseItemSelectView(discord.ui.View):
                 current_price = current_prices[item_name]
                 label = f"{item_name} (Current: {current_price:.2f} Div)"
             options.append(discord.SelectOption(label=label, value=value))
-        
+
         self.item_select = discord.ui.Select(
             placeholder=select_placeholder,
             min_values=1,
@@ -254,7 +254,7 @@ class Poe2PurchaseItemSelectView(discord.ui.View):
         )
         self.item_select.callback = self.on_select
         self.add_item(self.item_select)
-    
+
     def _get_translations(self) -> dict:
         """Get treasure_hunter translations from personality descriptions."""
         try:
@@ -265,7 +265,7 @@ class Poe2PurchaseItemSelectView(discord.ui.View):
         except Exception as e:
             logger.exception(f"Error getting treasure_hunter translations: {e}")
             return {}
-    
+
     async def on_select(self, interaction: discord.Interaction):
         """Handle item selection and open the purchase modal."""
         selected_value = self.item_select.values[0]
@@ -612,7 +612,7 @@ async def handle_canvas_treasure_hunter_action(interaction: discord.Interaction,
             from agent_roles_db import get_roles_db_instance
             roles_db = get_roles_db_instance(server_id)
             existing_subscription = roles_db.get_poe2_subscription(user_id, server_id)
-            
+
             if existing_subscription:
                 # User has subscription - just update league
                 ok = manager.set_user_league(user_id, league, server_id)
@@ -732,7 +732,7 @@ def _treasure_text_factory(treasure_messages: dict, treasure_descriptions: dict)
 
 def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, guild=None, author_id: int | None = None) -> str:
     """Build the Treasure Hunter role view.
-    
+
     POE2 subrole is only shown if:
     1. treasure_hunter is enabled in agent_config.json (global setting)
     2. POE2 is activated for this server (local toggle)
@@ -741,7 +741,7 @@ def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, g
 
     # Check if treasure_hunter is enabled in agent_config (global setting)
     th_global_enabled = (agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
-    
+
     state = _get_canvas_poe2_state(guild, author_id)
     objective_count = len(state.get("objectives", []))
 
@@ -754,7 +754,7 @@ def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, g
         f"- {_treasure_text('task_map_1', 'Items: maintain tracked objectives')}",
         f"- {_treasure_text('task_map_2', 'Alerts: Receive some alerts when the prize of the items touch som max/min prize')}",
     ]
-    
+
     # Only show POE2 subrole info if treasure_hunter is enabled globally
     if th_global_enabled:
         parts.extend([
@@ -762,7 +762,7 @@ def build_canvas_role_treasure_hunter(agent_config: dict, admin_visible: bool, g
             f"**{_treasure_text('available_subroles_title', 'Available Subroles')}**",
             f"**POE2 state:** {'On' if state.get('activated', False) else 'Off'} | league {state.get('league', 'Standard')} | {objective_count} tracked item(s)",
         ])
-    
+
     if admin_visible:
         parts.extend([
             "",
@@ -781,7 +781,7 @@ def build_canvas_role_treasure_hunter_detail(
 ) -> str | None:
     """Build a detailed Treasure Hunter view based on detail_name."""
     _treasure_text = _get_treasure_text_factory(guild)
-    
+
     if detail_name in {"personal", "poe2", "items"}:
         state = _get_canvas_poe2_state(guild, author_id)
         # Handle both old format (strings) and new format (dicts with item_name and current_price)
@@ -795,7 +795,7 @@ def build_canvas_role_treasure_hunter_detail(
                 else:
                     item_name = item
                     current_price = None
-                
+
                 # Show item name with current price if available
                 if current_price is not None:
                     items_lines.append(f"- {item_name}: **{current_price:.2f} Div**")
@@ -804,7 +804,7 @@ def build_canvas_role_treasure_hunter_detail(
             items_block = "\n".join(items_lines)
         else:
             items_block = "- No tracked items yet"
-        
+
         # Build purchases block with current prices
         purchases = state.get("purchases", [])
         purchases_block = ""
@@ -827,10 +827,10 @@ def build_canvas_role_treasure_hunter_detail(
             purchases_block = "\n".join(purchases_lines)
         else:
             purchases_block = _treasure_text("poe2.no_purchases", "- No purchases recorded")
-        
+
         # Extract label from current_league by removing the placeholder
         league_label = _treasure_text("poe2.current_league", "🏆 **Current League**: {league}").replace(": {league}", "")
-        
+
         return "\n".join([
             _treasure_text("poe2.description", "Manage your POE2 tracked items and league preferences."),
             league_label,

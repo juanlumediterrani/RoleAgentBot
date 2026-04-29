@@ -37,6 +37,43 @@
                     "💸 **NO ALCANZA**... Acumula más sacos primero... SSSSS",
                     "💸 **HARINA ESCASA**... Necesitas fortuna para hornear... SSSSS"
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **¡GANASTE!** Los dados salieron bien... SSSSS",
+                    "🎉 **¡VICTORIA!** La masa subió... SSSSS",
+                    "🎉 **¡TRIUNFO!** El horno fue bueno hoy... SSSSS",
+                    "🎉 **¡EXCELENTE!** Los dados no se quemaron... SSSSS",
+                    "🎉 **¡IMPRESIONANTE!** El Amo estará contento... SSSSS"
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... Los dados se quemaron... SSSSS",
+                    "😢 **MALA SUERTE**... La masa no subió... SSSSS",
+                    "😢 **NO FUE ESTA VEZ**... El horno estaba frío... SSSSS",
+                    "😢 **VAYA**... Los dados se pegaron... SSSSS",
+                    "😢 **PERO NO TE RINDAS**... El Amo me castigará... SSSSS"
+                ],
+                "high_pot":[
+                    "💰 **¡LA CESTA CRECE!** La harina se acumula... SSSSS",
+                    "💰 **¡CESTA EN AUGE!** El premio se hace grande... SSSSS",
+                    "💰 **¡ACUMULANDO!** La cesta brilla... SSSSS",
+                    "💰 **¡FORTUNA EN ESPERA!** La cesta reclama su destino... SSSSS",
+                    "💰 **¡CESTA MÁGICA!** La harina espera al afortunado... SSSSS"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DE LA CESTA!!** ¡Has conquistado los dados del horno!... SSSSS",
+                    "🎉 **¡¡CESTA CONQUISTADA!!** ¡Eres el elegido del Amo!... SSSSS",
+                    "🎉 **¡¡JACKPOT!!** ¡La cesta es tuya!... SSSSS",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has ganado los dados!... SSSSS",
+                    "🎉 **¡¡CESTA TUYA!!** ¡Una victoria épica!... SSSSS"
+                ],
+                "not_gold":[
+                    "💸 **SIN HARINA**... No tienes suficientes sacos... SSSSS",
+                    "💸 **FONDOS INSUFICIENTES**... Necesitas más sacos de harina... SSSSS",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tus sacos... SSSSS",
+                    "💸 **NO ALCANZA**... Acumula más sacos primero... SSSSS",
+                    "💸 **HARINA ESCASA**... Necesitas fortuna para tirar... SSSSS"
+                ]
             }
         },
         "banker":{

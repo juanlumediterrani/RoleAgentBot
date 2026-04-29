@@ -37,6 +37,43 @@
                     "💸 **NOT ENOUGH**... Accumulate more gold first... ⚔️",
                     "💸 **SCARCE TREASURE**... Need fortune to play... ⚔️"
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **YOU WON!** The skulls gave you reason! ⚔️",
+                    "🎉 **VICTORY!** The orc triumphs! ⚔️",
+                    "🎉 **TRIUMPH!** You defeated destiny! ⚔️",
+                    "🎉 **EXCELLENT!** Your axe is strong! ⚔️",
+                    "🎉 **IMPRESSIVE!** A master play! ⚔️"
+                ],
+                "youlose":[
+                    "😢 **YOU LOST**... The skulls were cruel... ⚔️",
+                    "😢 **BAD LUCK**... Destiny was superior... ⚔️",
+                    "😢 **NOT THIS TIME**... Luck is fickle... ⚔️",
+                    "😢 **DARN**... Your axe failed... ⚔️",
+                    "😢 **BUT DON'T GIVE UP**... Next time will be better! ⚔️"
+                ],
+                "high_pot":[
+                    "💰 **THE POT GROWS!** The loot accumulates! ⚔️",
+                    "💰 **POT SURGING!** The prize becomes legendary! ⚔️",
+                    "💰 **ACCUMULATING!** The pot shines with promise! ⚔️",
+                    "💰 **FORTUNE AWAITS!** The pot claims its destiny! ⚔️",
+                    "💰 **MAGIC POT!** Gold awaits the lucky one! ⚔️"
+                ],
+                "pot_winner":[
+                    "🎉 **POT WINNER!!** You conquered the treasure! ⚔️",
+                    "🎉 **POT CONQUERED!!** You are the chosen one! ⚔️",
+                    "🎉 **JACKPOT!!** The pot is yours! ⚔️",
+                    "🎉 **LEGENDARY FORTUNE!!** You won the grand prize! ⚔️",
+                    "🎉 **POT IS YOURS!!** An epic victory! ⚔️"
+                ],
+                "not_gold":[
+                    "💸 **NO GOLD**... You don't have enough coins... ⚔️",
+                    "💸 **INSUFFICIENT FUNDS**... Need more gold... ⚔️",
+                    "💸 **EMPTY POCKETS**... Check your treasure... ⚔️",
+                    "💸 **NOT ENOUGH**... Accumulate more gold first... ⚔️",
+                    "💸 **SCARCE TREASURE**... Need fortune to play... ⚔️"
+                ]
             }
         },
         "banker":{

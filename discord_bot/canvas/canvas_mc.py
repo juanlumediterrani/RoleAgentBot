@@ -15,37 +15,37 @@ logger = core.logger
 def _load_mc_descriptions(server_id: str = None) -> dict:
     """
     Load MC descriptions from server-specific mc.json file, with fallback to personality.
-    
+
     Args:
         server_id: Discord server ID for server-specific descriptions
-        
+
     Returns:
         dict: MC descriptions loaded from mc.json or empty dict if not found
     """
     if not server_id:
         return {}
-    
+
     try:
         # First try server-specific mc.json
         # Path: databases/{server_id}/rab/descriptions/mc.json
         from agent_db import DB_DIR
         mc_json_path = DB_DIR / server_id / "rab" / "descriptions" / "mc.json"
-        
+
         if mc_json_path.exists():
             with open(mc_json_path, encoding="utf-8") as f:
                 return json.load(f)
-        
+
         # Fallback to personality mc.json
         from agent_runtime import get_personality_directory
         personality_dir = get_personality_directory(server_id)
         personality_mc_path = personality_dir / "descriptions" / "mc.json"
-        
+
         if personality_mc_path.exists():
             with open(personality_mc_path, encoding="utf-8") as f:
                 return json.load(f)
     except Exception as e:
         logger.warning(f"Failed to load mc.json for server {server_id}: {e}")
-    
+
     return {}
 
 
@@ -300,7 +300,7 @@ class CanvasMCSongModal(CanvasModal):
         self.action_name = action_name
         self.view = view
         self.mc_commands = mc_commands
-        
+
         from .content import _get_personality_descriptions
         server_id = core.get_server_key(view.guild) if view.guild else None
         mc_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("mc", {})

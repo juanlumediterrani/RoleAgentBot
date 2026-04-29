@@ -224,7 +224,7 @@ class JsonStore:
         """Validate data against the Pydantic schema if available."""
         if not PYDANTIC_AVAILABLE or self._schema is None:
             return
-        
+
         try:
             self._schema(**data)
         except PydanticValidationError as e:

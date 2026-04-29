@@ -37,6 +37,43 @@
                     "💸 **NOT ENOUGH**... Accumulate more Marks first!",
                     "💸 **SCARCE TREASURE**... You need fortune to fight!"
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **SIEG!** Tactical victory, Zivilist!",
+                    "🎉 **TRIUMPH!** Excellent dice strategy, Soldier!",
+                    "🎉 **YOU VON!** Ze dice hit ze target!",
+                    "🎉 **EXCELLENT!** Operation accomplished viz success!",
+                    "🎉 **BRILLIANT!** You are a first-class officer!"
+                ],
+                "youlose":[
+                    "😢 **DEFEAT**... Ze dice vere adverse zis time!",
+                    "😢 **TACTICAL FAILURE**... Review your strategy, Zivilist!",
+                    "😢 **YOU LOST**... Ze operation failed!",
+                    "😢 **BAD LUCK**... Train again!",
+                    "😢 **NOT ZIS TIME**... Try again!"
+                ],
+                "high_pot":[
+                    "💰 **ZE POT GROWS!** Ze Wehrmacht treasure accumulates!",
+                    "💰 **POT INCREASING!** Reserves grow!",
+                    "💰 **ACCUMULATING RESOURCES!** Ze pot becomes legendary!",
+                    "💰 **MILITARY FORTUNE!** Ze pot claims its owner!",
+                    "💰 **MAGICAL RESERVES!** Ze Marks await ze conqueror!"
+                ],
+                "pot_winner":[
+                    "🎉 **POT VINNER!!** You have conquered ze Wehrmacht treasure!",
+                    "🎉 **TOTAL VICTORY!!** Ze pot is yours, Soldier!",
+                    "🎉 **TACTICAL JACKPOT!!** You have von ze grand prize!",
+                    "🎉 **LEGENDARY CONQUEST!!** You are ze owner of ze pot!",
+                    "🎉 **POT CONQUERED!!** An epic victory!"
+                ],
+                "not_gold":[
+                    "💸 **NO MARKS**... You do not have enough resources!",
+                    "💸 **INSUFFICIENT RESERVES**... You need more Marks!",
+                    "💸 **EMPTY POCKETS**... Review your military treasure!",
+                    "💸 **NOT ENOUGH**... Accumulate more Marks first!",
+                    "💸 **SCARCE TREASURE**... You need fortune to play!"
+                ]
             }
         },
         "banker":{

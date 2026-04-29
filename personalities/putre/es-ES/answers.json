@@ -37,6 +37,43 @@
                     "💸 **NO ALCANZA**... Acumula más oro primero... ⚔️",
                     "💸 **TESORO ESCASO**... Necesitas fortuna para jugar... ⚔️"
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **¡GANASTE!** ¡Los kraneos te dieron la razón! ⚔️",
+                    "🎉 **¡VICTORIA!** ¡El orco triunfa! ⚔️",
+                    "🎉 **¡TRIUNFO!** ¡Has vencido al destino! ⚔️",
+                    "🎉 **¡EXCELENTE!** ¡Tu acha es fuerte! ⚔️",
+                    "🎉 **¡IMPRESIONANTE!** ¡Una jugada maestra! ⚔️"
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... Los kraneos fueron crueles... ⚔️",
+                    "😢 **MALA SUERTE**... El destino fue superior... ⚔️",
+                    "😢 **NO FUE ESTA VEZ**... La suerte es kaprichosa... ⚔️",
+                    "😢 **VAYA**... Tu acha falló... ⚔️",
+                    "😢 **PERO NO TE RINDAS**... ¡La próxima será mejor! ⚔️"
+                ],
+                "high_pot":[
+                    "💰 **¡EL BOTE CRECE!** ¡El botín se akumula! ⚔️",
+                    "💰 **¡BOTE EN AUGE!** ¡El premio se hace legendario! ⚔️",
+                    "💰 **¡AKUMULANDO!** ¡El bote brilla kon promesa! ⚔️",
+                    "💰 **¡FORTUNA EN ESPERA!** ¡El bote reklama su destino! ⚔️",
+                    "💰 **¡BOTE MÁGICO!** ¡El oro espera al afortunado! ⚔️"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DEL BOTE!!** ¡Has konquistado el tesoro! ⚔️",
+                    "🎉 **¡¡BOTE KONQUISTADO!!** ¡Eres el elegido! ⚔️",
+                    "🎉 **¡¡JACKPOT!!** ¡El bote es tuyo! ⚔️",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has ganado el gran premio! ⚔️",
+                    "🎉 **¡¡BOTE TUYO!!** ¡Una victoria épica! ⚔️"
+                ],
+                "not_gold":[
+                    "💸 **SIN ORO**... No tienes suficientes monedas... ⚔️",
+                    "💸 **FONDOS INSUFICIENTES**... Nesesitas más oro... ⚔️",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tu tesoro... ⚔️",
+                    "💸 **NO ALCANZA**... Akumula más oro primero... ⚔️",
+                    "💸 **TESORO ESCASO**... Nesesitas fortuna para jugar... ⚔️"
+                ]
             }
         },
         "banker":{

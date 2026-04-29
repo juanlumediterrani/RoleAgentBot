@@ -6,10 +6,13 @@ import json
 import discord
 
 from discord_bot import discord_core_commands as core
+from roles.trickster.subroles.cubilete.cubilete_messages import get_cubilete_messages
 from discord_bot.discord_utils import translate_dice_combination
 from .state import (
     _get_canvas_dice_state,
     _get_canvas_dice_ranking,
+    _get_canvas_cubilete_state,
+    _get_canvas_cubilete_ranking,
 )
 from .canvas_base import CanvasModal
 
@@ -56,7 +59,7 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
                     break
         else:
             value = trickster_messages.get(key)
-        
+
         return str(value).strip() if value else fallback
 
     def _general_text(key: str, fallback: str) -> str:
@@ -70,12 +73,12 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
         server_id = str(guild.id) if guild else None
         if server_id:
             from .server_config import is_role_enabled, get_role_config_value
-            
+
             # Check trickster role is enabled
             trickster_enabled = is_role_enabled(server_id, "trickster", default_enabled=False)
             if trickster_enabled:
                 # Get all enabled trickster subroles from server_config (stored under parent role)
-                trickster_subroles = ['dice_game']
+                trickster_subroles = ['dice_game', 'cubilete']
                 for subrole in trickster_subroles:
                     subrole_enabled = get_role_config_value(server_id, "trickster", f"config.subroles.{subrole}.enabled", False)
                     if subrole_enabled:
@@ -85,12 +88,12 @@ def build_canvas_role_trickster(agent_config: dict, admin_visible: bool, guild=N
         # Fallback to agent_config if server_config fails
         subroles = (agent_config or {}).get("roles", {}).get("trickster", {}).get("subroles", {})
         active_subroles = [name for name, cfg in subroles.items() if isinstance(cfg, dict) and cfg.get("enabled", False)]
-    
+
     dice_state = _get_canvas_dice_state(guild)
-    
+
     separator = _trickster_text("canvas_trickster_overview_separator", "---------")
     subrole_descriptions = trickster_messages.get("canvas_trickster_subrole_descriptions", {})
-    
+
     active_descriptions = []
     for subrole in active_subroles:
         if subrole in subrole_descriptions:
@@ -114,7 +117,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
     if detail_name == "overview":
         # Use the main overview function
         return build_canvas_role_trickster({}, admin_visible, guild)
-    
+
     from .content import _get_personality_descriptions
     server_id = get_server_key(guild) if guild else None
     personality_descriptions = _get_personality_descriptions(server_id)
@@ -135,7 +138,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                     break
         else:
             value = trickster_messages.get(key)
-        
+
         return str(value).strip() if value else fallback
 
     if detail_name in {"dice", "game"}:
@@ -188,7 +191,7 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                     date_str = dt.strftime("%d/%m %H:%M")
                 except:
                     date_str = created_at[:16] if created_at else ''
-                
+
                 dice_display = "🎲".join(dice.split('-')) if dice else "???"
                 # Translate combination from English fallback to personality-specific text
                 translated_combination = translate_dice_combination(combination, trickster_messages)
@@ -196,22 +199,174 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                 parts.append(f"👤 {user_name} | {dice_display} → {translated_combination} | {prize_emoji} {prize:,}")
         else:
             parts.append(descriptions.get("historyvoid", "📊 Any play in the game. Be the first!"))
-        
+
         parts.append("─" * 45)
-        parts += {  
-            "",    
+        parts += {
+            "",
             f"**{pot_title} {dice_state['pot_balance']:,}** :coin: ",
             f"{fixed_bet} {dice_state.get('bet', 1):,} :coin:",
         }
         return "\n".join(parts)
 
+    if detail_name in {"cubilete"}:
+        cubilete_state = _get_canvas_cubilete_state(guild)
+        descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("cubilete", {})
+
+        # Use fallback messages if descriptions not available
+        if not descriptions:
+            try:
+                descriptions = get_cubilete_messages(str(guild.id) if guild else None)
+            except Exception:
+                descriptions = {}
+
+        title = _trickster_text("cubilete.title", "🎲 CUBILETE")
+        pot_title = _trickster_text("cubilete.current_balance", "💎 **CURRENT POT:**")
+        fixed_bet = _trickster_text("cubilete.fixed_bet", "💎 **FIXED BET:**")
+        game_description = _trickster_text("cubilete.description", "Play Cubilete and win big prizes!")
+        cubilete_rules = _trickster_text("cubilete.rules", "-Repoker (5 identical) you won the POT!\n -Poker (4 identical) you won x4 the bet.\n -Full (3+2) you won x3 the bet.\n -Trio (3 identical) you won x1.5 the bet.\n -Double Pair returns the bet.\n -Pair returns half the bet.")
+        parts = [
+            game_description,
+            "**Rules**",
+            cubilete_rules,
+            "",
+        ]
+
+        ranking_data = _get_canvas_cubilete_ranking(guild, 10)
+        ranking_title = _trickster_text("cubilete.ranking", "**🏆 CUBILETE RANKING**")
+        parts.append(ranking_title)
+        if ranking_data:
+            for player in ranking_data:
+                medal = "🥇" if player["position"] == 1 else "🥈" if player["position"] == 2 else "🥉" if player["position"] == 3 else "🏅"
+                parts.append(f"{medal} **#{player['position']}** {player['player_name']} | 🏆 Biggest Prize: {player['prize']:,} | Games: {player['total_plays']}")
+        else:
+            parts.append(_trickster_text("cubilete.rankingvoid", "📊 No ranked players yet. Be the first to play!"))
+
+        parts.append("─" * 45)
+        server_key = get_server_key(guild)
+        server_id = str(guild.id) if guild else server_key
+        if get_roles_db_instance is None:
+            parts.append(_trickster_text("cubilete.historyvoid", "📊 Any play in the game. Be the first!"))
+            return "\n".join(parts)
+        db_cubilete = get_roles_db_instance(server_key)
+        history = db_cubilete.get_cubilete_history(10)
+        history_title = _trickster_text("cubilete.history", "**📜 CUBILETE HISTORY**")
+        parts.append(history_title)
+
+        parts.append("─" * 45)
+        if history:
+            from roles.trickster.subroles.cubilete.cubilete import DICE_VALUES
+            for record in history:
+                user_name = record.get('user_name', 'Unknown')
+                dice = record.get('dice', '')
+                combination = record.get('combination', '')
+                prize = record.get('prize', 0)
+                created_at = record.get('created_at', '')
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    date_str = dt.strftime("%d/%m %H:%M")
+                except:
+                    date_str = created_at[:16] if created_at else ''
+
+                # Convert dice values to emojis
+                if dice:
+                    dice_values = dice.split('-')
+                    dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
+                else:
+                    dice_display = "???"
+                # Translate combination from English fallback to personality-specific text
+                translated_combination = translate_dice_combination(combination, trickster_messages)
+                prize_emoji = "💰" if prize > 0 else "💸"
+                parts.append(f"👤 {user_name} | {dice_display} → {translated_combination} | {prize_emoji} {prize:,}")
+        else:
+            parts.append(descriptions.get("historyvoid", "📊 Any play in the game. Be the first!"))
+
+        parts.append("─" * 45)
+        parts += {
+            "",
+            f"**{pot_title} {cubilete_state['pot_balance']:,}** :coin: ",
+            f"{fixed_bet} {cubilete_state.get('bet', 1):,} :coin:",
+        }
+        return "\n".join(parts)
+
+    if detail_name in {"cubilete_ranking"}:
+        descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("cubilete", {})
+
+        # Use fallback messages if descriptions not available
+        if not descriptions:
+            try:
+                descriptions = get_cubilete_messages(str(guild.id) if guild else None)
+            except Exception:
+                descriptions = {}
+
+        ranking_data = _get_canvas_cubilete_ranking(guild, 10)
+        ranking_title = _trickster_text("cubilete.ranking", "**🏆 CUBILETE RANKING**")
+        parts = [ranking_title]
+        parts.append("─" * 45)
+        if ranking_data:
+            for player in ranking_data:
+                medal = "🥇" if player["position"] == 1 else "🥈" if player["position"] == 2 else "🥉" if player["position"] == 3 else "🏅"
+                parts.append(f"{medal} **#{player['position']}** {player['player_name']} | 🏆 Biggest Prize: {player['prize']:,} | Games: {player['total_plays']}")
+        else:
+            parts.append(_trickster_text("cubilete.rankingvoid", "📊 No ranked players yet. Be the first to play!"))
+        return "\n".join(parts)
+
+    if detail_name in {"cubilete_history"}:
+        descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("cubilete", {})
+
+        # Use fallback messages if descriptions not available
+        if not descriptions:
+            try:
+                descriptions = get_cubilete_messages(str(guild.id) if guild else None)
+            except Exception:
+                descriptions = {}
+
+        server_key = get_server_key(guild)
+        server_id = str(guild.id) if guild else server_key
+        if get_roles_db_instance is None:
+            return _trickster_text("cubilete.historyvoid", "📊 Any play in the game. Be the first!")
+        db_cubilete = get_roles_db_instance(server_key)
+        history = db_cubilete.get_cubilete_history(10)
+        history_title = _trickster_text("cubilete.history", "**📜 CUBILETE HISTORY**")
+        parts = [history_title]
+        parts.append("─" * 45)
+
+        if history:
+            from roles.trickster.subroles.cubilete.cubilete import DICE_VALUES
+            for record in history:
+                user_name = record.get('user_name', 'Unknown')
+                dice = record.get('dice', '')
+                combination = record.get('combination', '')
+                prize = record.get('prize', 0)
+                created_at = record.get('created_at', '')
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    date_str = dt.strftime("%d/%m %H:%M")
+                except:
+                    date_str = created_at[:16] if created_at else ''
+
+                # Convert dice values to emojis
+                if dice:
+                    dice_values = dice.split('-')
+                    dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
+                else:
+                    dice_display = "???"
+                # Translate combination from English fallback to personality-specific text
+                translated_combination = translate_dice_combination(combination, trickster_messages)
+                prize_emoji = "💰" if prize > 0 else "💸"
+                parts.append(f"👤 {user_name} | {dice_display} → {translated_combination} | {prize_emoji} {prize:,}")
+        else:
+            parts.append(descriptions.get("historyvoid", "📊 Any play in the game. Be the first!"))
+        return "\n".join(parts)
+
     if detail_name in {"dice_admin"}:
         dice_state = _get_canvas_dice_state(guild)
         hot_pot = int(dice_state["bet"] * 72)
-        
+
         # Get personality descriptions with English fallbacks
         descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("dice_game", {})
-        
+
         return "\n".join([
             "🎲 Trickster Canvas - Dice / Admin",
             _trickster_text("dice_game.admin_description", "Configure dice game settings and announcements"),
@@ -231,6 +386,39 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
             _trickster_text("dice_game.no_other_buttons", "- No other subrole buttons are shown in this admin screen"),
         ])
 
+    if detail_name in {"cubilete_admin"}:
+        cubilete_state = _get_canvas_cubilete_state(guild)
+        hot_pot = int(cubilete_state["bet"] * 72)
+
+        # Get personality descriptions with English fallbacks
+        descriptions = personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("cubilete", {})
+
+        # Use fallback messages if descriptions not available
+        if not descriptions:
+            try:
+                descriptions = get_cubilete_messages(str(guild.id) if guild else None)
+            except Exception:
+                descriptions = {}
+
+        return "\n".join([
+            "🎲 Trickster Canvas - Cubilete / Admin",
+            _trickster_text("cubilete.admin_description", "Configure cubilete game settings and announcements"),
+            _trickster_text("cubilete.current_settings", "**Current settings**"),
+            f"{_trickster_text('cubilete.current_fixed_bet', '**Current fixed bet:**')} {cubilete_state['bet']:,} {_trickster_text('cubilete.gold_suffix', 'gold')}",
+            f"{_trickster_text('cubilete.current_pot', '**Current pot:**')} {cubilete_state['pot_balance']:,} {_trickster_text('cubilete.gold_suffix', 'gold')}",
+            f"{_trickster_text('cubilete.big_pot_threshold', '**Big pot threshold:**')} ~{hot_pot:,} {_trickster_text('cubilete.gold_suffix', 'gold')}",
+            "",
+            _trickster_text("cubilete.controls_title", "**Controls**"),
+            f"{_trickster_text('cubilete.announcements_status', '- Announcements:')} {'On' if cubilete_state['announcements_active'] else 'Off'}",
+            _trickster_text("cubilete.editable_fixed_bet", "- Editable fixed bet input"),
+            _trickster_text("cubilete.editable_pot_value", "- Editable pot value input"),
+            _trickster_text("cubilete.announcement_selector", "- Announcement on/off selector"),
+            "",
+            _trickster_text("cubilete.routing_title", "**Routing**"),
+            _trickster_text("cubilete.back_only", "- Back only from here"),
+            _trickster_text("cubilete.no_other_buttons", "- No other subrole buttons are shown in this admin screen"),
+        ])
+
     return None
 
 
@@ -239,6 +427,8 @@ class TricksterActionModal(CanvasModal):
         titles = {
             "dice_fixed_bet": "Dice Fixed Bet",
             "dice_pot_value": "Dice Pot Value",
+            "cubilete_fixed_bet": "Cubilete Fixed Bet",
+            "cubilete_pot_value": "Cubilete Pot Value",
             "beggar_frequency": "Beggar Frequency",
             "beggar_donate": "Beggar Donation",
         }
@@ -250,12 +440,16 @@ class TricksterActionModal(CanvasModal):
         label_map = {
             "dice_fixed_bet": "Gold amount",
             "dice_pot_value": "New pot balance",
+            "cubilete_fixed_bet": "Gold amount",
+            "cubilete_pot_value": "New pot balance",
             "beggar_frequency": "Hours",
             "beggar_donate": "Gold amount",
         }
         placeholder_map = {
             "dice_fixed_bet": "15",
             "dice_pot_value": "500",
+            "cubilete_fixed_bet": "15",
+            "cubilete_pot_value": "500",
             "beggar_frequency": "6",
             "beggar_donate": "25",
         }
@@ -283,7 +477,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
     # Defer immediately to prevent interaction timeout
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
-    
+
     server_key = get_server_key(guild)
     server_id = str(guild.id)
     server_name = guild.name
@@ -310,7 +504,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         # Defer the interaction to avoid timeout issues
         if not interaction.response.is_done():
             await interaction.response.defer(ephemeral=True)
-        
+
         if get_roles_db_instance is None:
             await interaction.followup.send("❌ Beggar donation systems are not available.", ephemeral=True)
             return
@@ -335,48 +529,48 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         beggar_config = get_beggar_config(server_id)
         reason = beggar_config.get_current_reason() or "el proyecto actual del clan"
         target_gold = beggar_config.get_target_gold()
-        
+
         # Process donation with proper error handling
         donation_success = False
         error_message = ""
-        
+
         try:
             # Update user balance (deduct donation)
             user_update_success = db_banker_roles.update_balance(
-                donor_id, donor_name, 
+                donor_id, donor_name,
                 -amount, "BEGGAR_DONATION", f"Donation: {reason}"
             )
-            
+
             if not user_update_success:
                 error_message = "Error deducting gold from your account."
                 logger.error(f"Failed to deduct {amount} gold from user {donor_id}")
                 raise RuntimeError("User balance update failed")
-            
+
             # Update beggar fund (add donation)
             fund_update_success = db_banker_roles.update_balance(
-                "beggar_fund", "Beggar Fund", 
+                "beggar_fund", "Beggar Fund",
                 amount, "BEGGAR_DONATION", f"Donation from {donor_name}: {reason}"
             )
-            
+
             if not fund_update_success:
                 error_message = "Error adding gold to beggar fund."
                 logger.error(f"Failed to add {amount} gold to beggar fund")
                 # Rollback user balance
                 db_banker_roles.update_balance(
-                    donor_id, donor_name, 
+                    donor_id, donor_name,
                     amount, "BEGGAR_DONATION", "Reversal - failed donation"
                 )
                 raise RuntimeError("Fund balance update failed")
-            
+
             # Update beggar statistics
             roles_db = get_roles_db_instance(server_key)
             stats_update_success = roles_db.update_beggar_donation(donor_id, donor_name, amount, reason)
-            
+
             if not stats_update_success:
                 error_message = "Error updating donation statistics."
                 logger.error(f"Failed to update beggar statistics for {donor_id}")
                 # This is non-critical, donation still processed
-            
+
             # Save donation request
             roles_db.save_beggar_request(
                 donor_id,
@@ -386,14 +580,14 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
                 str(interaction.channel.id) if interaction.channel else None,
                 None,
             )
-            
+
             donation_success = True
-            
+
         except Exception as e:
             logger.error(f"Donation processing error for {donor_id}: {e}")
             if not error_message:
                 error_message = "Database error during donation processing."
-        
+
         if not donation_success:
             await interaction.followup.send(
                 f"❌ {error_message} Please try again later.",
@@ -402,7 +596,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             return
 
         fund_balance = db_banker_roles.get_balance("beggar_fund")
-        
+
         # Try to refresh the view, but don't let it prevent the success message
         try:
             current_detail = getattr(view, "current_detail", "beggar") if view else "beggar"
@@ -425,7 +619,7 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             f"🎯 Target: {target_gold:,}\n"
             f"📣 Reason: {reason}"
         )
-        
+
         await interaction.followup.send(success_message, ephemeral=True)
         return
 
@@ -460,9 +654,9 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
         await interaction.followup.send(message, ephemeral=True)
         return
 
-    if action_name in {"dice_fixed_bet", "dice_pot_value"}:
+    if action_name in {"dice_fixed_bet", "dice_pot_value", "cubilete_fixed_bet", "cubilete_pot_value"}:
         if get_roles_db_instance is None or get_roles_db_instance is None:
-            await interaction.followup.send("❌ Dice game systems are not available.", ephemeral=True)
+            await interaction.followup.send("❌ Game systems are not available.", ephemeral=True)
             return
         try:
             amount = int(raw_value)
@@ -473,29 +667,32 @@ async def handle_canvas_trickster_modal_submit(interaction: discord.Interaction,
             await interaction.followup.send("❌ Amount must be zero or greater.", ephemeral=True)
             return
         try:
-            if action_name == "dice_fixed_bet":
+            game_name = "dice_game" if action_name.startswith("dice_") else "cubilete"
+            if action_name in {"dice_fixed_bet", "cubilete_fixed_bet"}:
                 if amount < 1 or amount > 1000:
                     await interaction.followup.send("❌ Fixed bet must be between 1 and 1000 gold.", ephemeral=True)
                     return
                 from .server_config import set_role_config_value
-                ok = set_role_config_value(server_id, "dice_game", "config.fixed_bet", amount)
+                ok = set_role_config_value(server_id, game_name, "config.fixed_bet", amount)
             else:
                 from roles.banker.banker_db import get_banker_roles_db_instance
                 db_banker = get_banker_roles_db_instance(server_key)
-                db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type="system")
-                current_balance = db_banker.get_balance("dice_game_pot")
+                pot_wallet = "dice_game_pot" if action_name == "dice_pot_value" else "cubilete_pot"
+                pot_name = "Dice Game Pot" if action_name == "dice_pot_value" else "Cubilete Pot"
+                db_banker.create_wallet(pot_wallet, pot_name, wallet_type="system")
+                current_balance = db_banker.get_balance(pot_wallet)
                 delta = amount - current_balance
-                ok = db_banker.update_balance("dice_game_pot", "Dice Game Pot", delta, "DICE_POT_ADMIN_SET", "Canvas pot update", str(interaction.user.id), interaction.user.display_name)
+                ok = db_banker.update_balance(pot_wallet, pot_name, delta, f"{game_name.upper()}_POT_ADMIN_SET", "Canvas pot update", str(interaction.user.id), interaction.user.display_name)
                 if not ok:
                     raise RuntimeError("Could not update pot balance")
                 state = _get_canvas_dice_state(guild)
                 message = (
-                    f"✅ Dice pot balance updated to `{amount}` gold.\n"
+                    f"✅ {game_name.replace('_', ' ').title()} pot balance updated to `{amount}` gold.\n"
                     f"Current fixed bet: {state['bet']:,} gold"
                 )
         except Exception as e:
-            logger.exception(f"Canvas trickster dice update failed: {e}")
-            await interaction.followup.send("❌ Could not update dice settings.", ephemeral=True)
+            logger.exception(f"Canvas trickster game update failed: {e}")
+            await interaction.followup.send("❌ Could not update game settings.", ephemeral=True)
             return
         await interaction.followup.send(message, ephemeral=True)
 
@@ -518,9 +715,20 @@ async def handle_canvas_trickster_action(interaction: discord.Interaction, actio
                 ok = True
             except Exception as e:
                 logger.error(f"Failed to update dice announcements in server_config: {e}")
+        if action_name in {"cubilete_announcements_on", "cubilete_announcements_off"}:
+            if get_roles_db_instance is None:
+                await interaction.response.send_message("❌ Cubilete game database is not available.", ephemeral=True)
+                return
+            enabled = action_name == "cubilete_announcements_on"
+            try:
+                from .server_config import set_role_config_value
+                set_role_config_value(server_key, "cubilete", "config.announcements_active", enabled)
+                ok = True
+            except Exception as e:
+                logger.error(f"Failed to update cubilete announcements in server_config: {e}")
                 ok = False
-            current_detail = "dice_admin"
-            applied_text = f"Dice announcements {'enabled' if enabled else 'disabled'}."
+            current_detail = "cubilete_admin"
+            applied_text = f"Cubilete announcements {'enabled' if enabled else 'disabled'}."
         elif action_name in {"beggar_on", "beggar_off"}:
             try:
                 from roles.banker.subroles.beggar.beggar_db import get_beggar_config

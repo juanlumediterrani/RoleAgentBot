@@ -3,7 +3,8 @@
     "description": "Observe and ask questions of the universe to the orc shaman.",
     "button": "🐺 Shaman",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🔮 **Nordic Runes** - Cast ancient runes to receive wisdom and guidance"
+        "nordic_runes": "🔮 **Nordic Runes** - Cast ancient runes to receive wisdom and guidance",
+        "astrology": "🌟 **Astrology** - Sefer Yetzirah Hebrew letters for divination"
     },
     "moon_phases": {
         "new_moon": "New Moon 🌑",
@@ -86,6 +87,51 @@
             "description": "Description",
             "success": "🔮 UHHH! The Ancient Runes have spoken human!",
             "saved": "🔮 UHHH! Putre has saved your cast in the ancient scrolls!"
+        }
+    },
+    "astrology": {
+        "button": "🌟 Astrology",
+        "welcome": "✨ Welcome to Sefer Yetzirah Astrology! I can interpret the 32 paths of wisdom through Hebrew letters.",
+        "birth_title": "🌟 BIRTH CHART (MAZAL HA'LEIDA) 🌟",
+        "moment_title": "⏰ MOMENT READING (SHA'AT HA'SHE'ELA) ⏰",
+        "year_title": "📅 PERSONAL YEAR (SHANAH PERATIT) 📅",
+        "integrated_title": "🔮 INTEGRATED READING 🔮",
+        "letters_title": "📜 THE 22 HEBREW LETTERS 📜",
+        "history": "📓 **ASTROLOGY READING HISTORY** (Last {count}) 📓",
+        "stats": "\n**Total Readings:** {total}\n**Favorite Type:** {favorite}",
+        "help_content": "The Sefer Yetzirah system reveals the 32 paths of wisdom through 22 Hebrew letters (3 Mothers, 7 Doubles, 12 Simples). Each reading interprets the spiritual forces at work in a situation.",
+        "invalid_command": "Invalid command. Use `!astrology help` for available commands.",
+        "missing_birth_date": "Please provide your birth date in format YYYY-MM-DD.",
+        "missing_birth_year": "Please provide your birth year or save your birth data first with `!astrology save_birth`.",
+        "no_birth_data_saved": "No birth data saved. Please save your birth data first with `!astrology save_birth YYYY-MM-DD`.",
+        "invalid_date_format": "Invalid date format. Please use YYYY-MM-DD for dates and HH:MM for times.",
+        "birth_data_saved": "✨ Your birth data has been saved successfully!",
+        "history_empty": "📓 You have no previous astrology readings. Start with `!astrology birth`!",
+        "error": "An error occurred. Please try again.",
+        "labels": {
+            "question": "Question",
+            "element": "Element",
+            "planet": "Planet",
+            "sign": "Sign",
+            "meaning": "Meaning",
+            "keywords": "Keywords",
+            "interpretation": "Interpretation"
+        },
+        "dropdown": {
+            "astrology_birth": "Birth Chart",
+            "astrology_moment": "Moment Reading",
+            "astrology_year": "Personal Year",
+            "astrology_integrated": "Integrated Reading",
+            "astrology_history": "Reading History",
+            "astrology_letters": "Hebrew Letters",
+            "astrology_save_birth": "Save Birth Data",
+            "astrology_birth_description": "Calculate your permanent birth chart with Element, Planet, and Sign",
+            "astrology_moment_description": "Interpret the spiritual forces at this specific moment",
+            "astrology_year_description": "Calculate your personal year theme",
+            "astrology_integrated_description": "Comprehensive reading combining birth, year, and moment",
+            "astrology_history_description": "View your previous astrology readings",
+            "astrology_letters_description": "View all 22 Hebrew letters with meanings",
+            "astrology_save_birth_description": "Save your birth date and time for calculations"
         }
     }
 }
