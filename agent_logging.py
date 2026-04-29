@@ -2,10 +2,11 @@
 
 Design goals:
 
-1. **Single canonical admin log** — ``logs/runtime.log`` always receives every
-   record the bot emits so operators have one authoritative timeline to grep.
+1. **Global runtime log** — ``logs/runtime.log`` receives only global records
+   (startup, shutdown, system-level events). Server-specific records are
+   excluded to avoid duplication.
 2. **Per-server files without cross-contamination** — records emitted while a
-   server context is bound are *also* tee'd to ``logs/<server>/<personality>.log``.
+   server context is bound go to ``logs/<server>/<personality>.log``.
    Routing is done by a demux handler that reads a ``ContextVar``; because
    ``ContextVar`` propagates through asyncio tasks, every coroutine spawned
    inside a ``with server_log_context(...)`` block lands in the right file.
@@ -145,6 +146,22 @@ class _ServerContextFilter(logging.Filter):
         return True
 
 
+class _RuntimeOnlyFilter(logging.Filter):
+    """Filter out server-bound records from the runtime log to avoid duplication.
+
+    Records with a server_id should go ONLY to the per-server log file,
+    not to the global runtime.log.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
+        sid = _ctx_server_id.get()
+        # Reject records that have server context - they go to per-server logs
+        if sid:
+            return False
+        # Accept only global records without server context
+        return True
+
+
 class _ServerDemuxHandler(logging.Handler):
     """Tee every context-bound record into its per-server log file."""
 
@@ -195,7 +212,8 @@ def _build_runtime_handler() -> Optional[logging.Handler]:
         fh = RotatingFileHandler(RUNTIME_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding='utf-8')
         fh.setLevel(logging.INFO)
         fh.setFormatter(_FORMATTER)
-        fh.addFilter(_ServerContextFilter())
+        # Use RuntimeOnlyFilter to exclude server-bound records from runtime.log
+        fh.addFilter(_RuntimeOnlyFilter())
         return fh
     except (PermissionError, OSError) as e:
         print(f"⚠️ Could not open runtime log {RUNTIME_LOG_FILE}: {e}")

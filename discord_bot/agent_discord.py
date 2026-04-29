@@ -1162,8 +1162,20 @@ async def _process_chat_message(message):
                     server_context = f"DM (last server: {server_id})"
                     logger.info(f"DM from {message.author.name} - last server from DB: {server_id}")
                 else:
-                    server_context = "DM (no server context)"
-                    logger.info(f"DM from {message.author.name} - no server history found")
+                    # Assign default server (first server the bot is in) when no server context
+                    if bot.guilds:
+                        from discord_bot.discord_utils import get_server_key
+                        default_guild = bot.guilds[0]
+                        server_id = get_server_key(default_guild)
+                        server_context = f"DM (default server: {default_guild.name})"
+                        logger.info(f"DM from {message.author.name} - no server history, using default server {default_guild.name} ({server_id})")
+                        # Pin this default server for future DMs
+                        from agent_db import pin_dm_session
+                        pin_dm_session(message.author.id, server_id)
+                        logger.info(f"Pinned DM session for user {message.author.name} to default server {default_guild.name} ({server_id})")
+                    else:
+                        server_context = "DM (no server context - bot not in any servers)"
+                        logger.info(f"DM from {message.author.name} - no server history and bot not in any servers")
 
         active_roles = []
         roles_config = AGENT_CFG.get("roles", {})

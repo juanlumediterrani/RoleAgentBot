@@ -75,6 +75,17 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
             target_name = (target or "").strip().lower()
             detail_name = (detail or "").strip().lower()
 
+            # Pin DM session to this server if command is executed in a server
+            if ctx.guild:
+                try:
+                    from agent_db import pin_dm_session
+                    from discord_bot.discord_utils import get_server_key
+                    server_id = get_server_key(ctx.guild)
+                    pin_dm_session(ctx.author.id, server_id)
+                    logger.info(f"Pinned DM session for user {ctx.author.name} to server {ctx.guild.name} ({server_id})")
+                except Exception as e:
+                    logger.debug(f"Could not pin DM session: {e}")
+
             # Resolve guild early so DM interactions behave as if the user were
             # on their last server (including admin privileges if applicable).
             guild = ctx.guild

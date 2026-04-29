@@ -179,7 +179,15 @@ def build_welcome_prompt(user_display_name: str, user_id: str, guild) -> str:
     # Filter out empty sections
     non_empty_sections = [section for section in prompt_sections if section and section.strip()]
     
-    return "\n\n".join(non_empty_sections)
+    result = "\n\n".join(non_empty_sections)
+    
+    # Validate result is not empty
+    if not result or not result.strip():
+        logger.warning(f"🧠 [WELCOME] build_welcome_prompt returning empty prompt (server={server_name}, user={user_display_name}, user_id={user_id})")
+        # Fallback to minimal prompt
+        result = f"{task}\n\n{response_title}"
+    
+    return result
 
 async def get_welcome_channel_info(guild, discord_cfg):
     """

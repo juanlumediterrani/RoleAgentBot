@@ -1293,6 +1293,7 @@ def _build_conversation_user_prompt(
     
     # Get database instance for memory retrieval
     if not server:
+        logger.warning(f"🧠 [MIND] _build_conversation_user_prompt returning empty: no server provided (user_id={user_id}, user_name={user_name})")
         return ""
     server_id = server
     db_instance = get_global_db(server_id=server_id)
@@ -1354,7 +1355,18 @@ def _build_conversation_user_prompt(
     
     response_title = personality.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
     prompt_sections.append(response_title)
-    return "\n".join(prompt_sections)
+    
+    result = "\n".join(prompt_sections)
+    
+    # Validate result is not empty
+    if not result or not result.strip():
+        logger.warning(f"🧠 [MIND] _build_conversation_user_prompt returning empty prompt (server={server_id}, user_id={user_id}, user_name={user_name})")
+        # Fallback to minimal prompt
+        message_title = personality.get("synthesis_paragraphs", {}).get("message_title", "## A USER NAMED {user_name} TELL YOU:")
+        message_title = message_title.replace("{user_name}", user_name or "User")
+        result = f"{message_title}\n\n{user_content or ''}\n\n{response_title}"
+    
+    return result
 
 
 def _build_prompt_last_interactions_block(
@@ -1666,7 +1678,16 @@ async def _build_conversation_channel_prompt(
     
     response_title = personality.get("synthesis_paragraphs", {}).get("response_title", "## ANSWER WITH THE WORDS OF THE PERSONALITY:")
     prompt_sections.append(response_title)
-    return "\n".join(prompt_sections)
+    
+    result = "\n".join(prompt_sections)
+    
+    # Validate result is not empty
+    if not result or not result.strip():
+        logger.warning(f"🧠 [MIND] _build_conversation_channel_prompt returning empty prompt (server={server_id}, user_id={user_id}, user_name={user_name})")
+        # Fallback to minimal prompt
+        result = f"{response_title}\n\n{content}"
+    
+    return result
 
 
 def _detect_and_retrieve_memory(user_content: str, db_instance, user_id: str, server_id: str = None) -> str:
@@ -1854,24 +1875,28 @@ def call_llm(
     )
 
     if not is_simulation_mode() and VERTEXAI_AVAILABLE and _init_vertexai():
-        logger.debug(f"{log_prefix} Vertex AI -> gemini-2.5-flash (timeout={timeout}s, temp={temperature}, max_tokens={max_tokens})")
-        result = _invoke_vertexai(
-            system_instruction=system_instruction,
-            prompt=prompt,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            start_time=start_time,
-            call_type=call_type,
-            logger=logger,
-            user_id=user_id,
-            user_name=user_name,
-            server_id=server_id,
-            timeout=timeout,
-            log_prefix=log_prefix,
-        )
-        if result is not None:
-            return result
-        logger.debug(f"{log_prefix} Vertex AI returned no result, falling back to Groq")
+        # Validate prompt is not empty before calling Vertex AI
+        if not prompt or not prompt.strip():
+            logger.warning(f"{log_prefix} Prompt is empty, skipping Vertex AI and using Groq directly (call_type={call_type}, server_id={server_id}, user_id={user_id})")
+        else:
+            logger.debug(f"{log_prefix} Vertex AI -> gemini-2.5-flash (timeout={timeout}s, temp={temperature}, max_tokens={max_tokens})")
+            result = _invoke_vertexai(
+                system_instruction=system_instruction,
+                prompt=prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                start_time=start_time,
+                call_type=call_type,
+                logger=logger,
+                user_id=user_id,
+                user_name=user_name,
+                server_id=server_id,
+                timeout=timeout,
+                log_prefix=log_prefix,
+            )
+            if result is not None:
+                return result
+            logger.debug(f"{log_prefix} Vertex AI returned no result, falling back to Groq")
     else:
         if is_simulation_mode():
             logger.debug(f"{log_prefix} Simulation mode, using Groq directly")

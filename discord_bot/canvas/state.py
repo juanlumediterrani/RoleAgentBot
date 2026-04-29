@@ -398,9 +398,9 @@ def _get_canvas_poe2_state(guild, author_id: int | None = None) -> dict:
 
 
 def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
-    """Get enabled roles from server_config.json in fixed order (must match content.py role_configs).
+    """Get enabled roles from agent_config.json AND server_config.json in fixed order (must match content.py role_configs).
     
-    Migration to server_config.json is required - this function will fail if server_config.json is not available.
+    Roles must be enabled in BOTH agent_config.json (global) AND server_config.json (per-server).
     """
     enabled = []
     
@@ -429,13 +429,21 @@ def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
     # Get all roles from server_config
     roles_config = get_all_roles_config(server_id)
     
+    # Get roles from agent_config for global filtering
+    roles_cfg = (agent_config or {}).get("roles", {})
+    
     # Filter enabled roles in fixed order (exclude subroles like beggar which is under banker)
+    # Role must be enabled in BOTH agent_config (global) AND server_config (per-server)
     for role_name in role_order:
-        role_config = roles_config.get(role_name, {})
-        if role_config.get("enabled", False):
+        # Check global enabled in agent_config
+        global_enabled = roles_cfg.get(role_name, {}).get("enabled", False)
+        # Check server-specific enabled in server_config
+        server_enabled = roles_config.get(role_name, {}).get("enabled", False)
+        
+        if global_enabled and server_enabled:
             enabled.append(role_name)
     
-    logger.info(f"Loaded {len(enabled)} enabled roles from server_config: {enabled}")
+    logger.info(f"Loaded {len(enabled)} enabled roles (agent_config + server_config): {enabled}")
     return enabled
 
 
