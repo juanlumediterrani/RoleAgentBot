@@ -8,7 +8,7 @@
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🔥 **喂炉子** - 给炉子项目讨面粉，永远烧着！",
         "dice_game": "🍞 **炉子碎屑** - 烤面包赌面粉袋子，谁会烧焦？",
-        "cubilete": "🎲 **炉子骰子** - 掷烤焦滴骰子抢炉子滴篮子！"
+        "cubilete": "🎲 **焦炭骰子** - 滚动烤箱骰子，如果你敢的话，偷走篮子！"
     },
     "dice_game": {
         "button": "🍞 碎屑",
@@ -16,7 +16,7 @@
         "roll_title": "你滴碎屑说：\n",
         "combination_title": "结果：",
         "prize_title": "烤焦面粉：",
-        "ranking": " **:trophy: 炉子受害者 **",
+        "ranking": " **🏆 炉子受害者 **",
         "rankingvoid": " 还没有受害者，嘎嘎嘎！",
         "historyvoid": " 还没人玩过...真无聊",
         "history": " **📜 苦难历史 **",
@@ -114,7 +114,7 @@
         "roll_title": "你滴骰子说：\n",
         "combination_title": "结果：",
         "prize_title": "烤焦面粉：",
-        "ranking": " **:trophy: 炉子受害者 **",
+        "ranking": " **🏆 炉子受害者 **",
         "rankingvoid": " 还没有受害者，嘎嘎嘎！",
         "historyvoid": " 还没人玩过...真无聊",
         "history": " **📜 苦难历史 **",

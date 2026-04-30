@@ -129,7 +129,7 @@ class AgentMemoryNoSQL:
         server_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        """Register an interaction (append to JSONL)."""
+        """Register an interaction (append to JSONL) and schedule memory updates."""
         try:
             record = {
                 "usuario_id": str(user_id),
@@ -142,6 +142,24 @@ class AgentMemoryNoSQL:
                 "servidor_id": str(server_id) if server_id else None,
             }
             self._interactions.append(record)
+
+            # Schedule recent memory update (same logic as SQLite version)
+            # Only schedule if no pending tasks exist (anti-clogging logic)
+            pending_recent = self.get_due_pending_recent_memory_refreshes()
+            if not pending_recent:
+                scheduled_for = self.schedule_recent_memory_update(delay_minutes=60)
+                logger.debug(f"🧠 [NoSQL] Scheduled recent memory update: {scheduled_for}")
+            else:
+                logger.debug(f"🧠 [NoSQL] Recent memory update already pending, skipping new task")
+
+            # Schedule relationship update with 5-minute delay to avoid overlap
+            # Recent memory has priority, relationship runs 5 minutes after
+            relationship_scheduled_for = self.schedule_relationship_update(
+                str(user_id), delay_minutes=65  # 60 + 5 delay
+            )
+            if relationship_scheduled_for:
+                logger.debug(f"🧠 [NoSQL] Scheduled relationship update for user {user_id}: {relationship_scheduled_for} (5min delay)")
+
             logger.debug(f"✅ [NoSQL] Interaction registered: user_id={user_id}, type={interaction_type}")
             return True
         except Exception as e:
@@ -766,6 +784,41 @@ class AgentMemoryNoSQL:
         except Exception as e:
             logger.exception(f"⚠️ [NoSQL] Error clearing stale relationship states: {e}")
             return 0
+
+    def clear_all_interactions(self) -> int:
+        """Delete all interactions from the interactions.jsonl file."""
+        try:
+            # Truncate the interactions.jsonl file to empty
+            with self._interactions._lock:
+                if self._interactions.path.exists():
+                    # Write empty content to truncate the file
+                    with self._interactions.path.open("w", encoding="utf-8") as f:
+                        f.write("")
+                    logger.info(f"🗑️ [NoSQL] Cleared all interactions from {self._interactions.path}")
+                    return 0  # We don't track count before deletion
+                else:
+                    logger.info(f"🗑️ [NoSQL] Interactions file does not exist, nothing to clear")
+                    return 0
+        except Exception as e:
+            logger.exception(f"⚠️ [NoSQL] Error clearing all interactions: {e}")
+            return 0
+
+    def clear_all_memory(self) -> bool:
+        """Delete all memory including state.json and interactions.jsonl."""
+        try:
+            # Clear interactions
+            self.clear_all_interactions()
+
+            # Clear state.json by resetting to default
+            def reset_to_default(state: Dict[str, Any]) -> Dict[str, Any]:
+                return self._default_state()
+            self._state.update(reset_to_default)
+
+            logger.info(f"🗑️ [NoSQL] Cleared all memory (state.json and interactions.jsonl) for server {self.server_id}")
+            return True
+        except Exception as e:
+            logger.exception(f"⚠️ [NoSQL] Error clearing all memory: {e}")
+            return False
 
     # --- Notable Recollections ---
 

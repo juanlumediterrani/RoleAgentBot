@@ -3,12 +3,12 @@
   "default_language": "en-US",
   "platform": "discord",
   "llm": {
-    "max_tokens": 2048
+    "max_tokens": 4096
   },
   "dev_options": {
-    "prompt_logging": true,
+    "prompt_logging": false,
     "prompt_log_retention_days": 15,
-    "dev_commands_enabled": true,
+    "dev_commands_enabled": false,
     "_comment": "prompt_logging persists full LLM prompts and responses to logs/<server>/prompt.log. Enable ONLY for development. prompt_log_retention_days auto-deletes prompt.log* files older than N days as a safety net against human error. dev_commands_enabled enables test/development commands (test memories, force watcher, etc). Set to false in production."
   },
   "gdpr": {
@@ -70,6 +70,9 @@
       "script": "roles/shaman/shaman.py",
       "subroles": {
         "nordic_runes": {
+          "enabled": true
+        },
+        "astrology": {
           "enabled": true
         }
       }

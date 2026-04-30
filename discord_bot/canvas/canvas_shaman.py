@@ -18,6 +18,23 @@ is_admin = core.is_admin
 set_role_enabled = core.set_role_enabled
 _personality_answers = core._personality_answers
 
+
+async def send_long_message(destination, message):
+    """Send a message, splitting it into chunks if it exceeds Discord's 2000 character limit.
+    
+    Args:
+        destination: discord.User, discord.TextChannel, or interaction followup
+        message: The message content to send (str)
+    """
+    MAX_LENGTH = 2000
+    if len(message) <= MAX_LENGTH:
+        await destination.send(message)
+    else:
+        # Split message into chunks
+        for i in range(0, len(message), MAX_LENGTH):
+            chunk = message[i:i + MAX_LENGTH]
+            await destination.send(chunk)
+
 try:
     from agent_roles_db import get_roles_db_instance
 except ImportError:
@@ -334,7 +351,9 @@ class RuneCastingModal(CanvasModal):
             "runes_cross": messages.get('cross_cast', "🔮 **FIVE RUNE CROSS CASTING** 🔮"),
             "runes_runic_cross": messages.get('runic_cross_cast', "🔮 **SEVEN RUNE RUNIC CROSS CASTING** 🔮"),
         }
-        super().__init__(title=title_map.get(action_name, "Rune Casting"), timeout=300.0, author_id=author_id)
+        # Clean bold markdown from title
+        modal_title = title_map.get(action_name, "Rune Casting").replace('**', '')
+        super().__init__(title=modal_title, timeout=300.0, author_id=author_id)
         self.action_name = action_name
         self.guild = guild
         self.reading_type = reading_type
@@ -390,7 +409,8 @@ class RuneCastingModal(CanvasModal):
                 response = result
                 interpretation_parts = []
 
-            embed_title = self.title_map.get(self.action_name, "🔮 Rune Reading")
+            # Clean bold markdown from embed title
+            embed_title = self.title_map.get(self.action_name, "🔮 Rune Reading").replace('**', '')
             _server_id = get_server_key(interaction.guild) if interaction.guild else None
 
             try:
@@ -406,15 +426,20 @@ class RuneCastingModal(CanvasModal):
                 )
                 runes_embed.set_footer(text=f"{saved_msg}")
 
+                # Merge personality info into runes embed
+                runes_embed.set_author(name=personality_embed.title)
+                if personality_embed.thumbnail:
+                    runes_embed.set_thumbnail(url=personality_embed.thumbnail.url)
+
                 if avatar_file:
-                    await interaction.user.send(embeds=[personality_embed, runes_embed], file=avatar_file)
+                    await interaction.user.send(embed=runes_embed, file=avatar_file)
                 else:
-                    await interaction.user.send(embeds=[personality_embed, runes_embed])
+                    await interaction.user.send(embed=runes_embed)
                 logger.info(f"Successfully sent rune reading via DM to user {interaction.user.id}")
 
                 for interpretation_msg in interpretation_parts:
                     await asyncio.sleep(0.5)
-                    await interaction.user.send(interpretation_msg)
+                    await send_long_message(interaction.user, interpretation_msg)
                     logger.info(f"Successfully sent rune interpretation via DM to user {interaction.user.id}")
 
             except discord.Forbidden:
@@ -433,7 +458,7 @@ class RuneCastingModal(CanvasModal):
 
                 for interpretation_msg in interpretation_parts:
                     await asyncio.sleep(0.5)
-                    await interaction.followup.send(interpretation_msg, ephemeral=True)
+                    await send_long_message(interaction.followup, interpretation_msg)
 
             except discord.errors.NotFound:
                 logger.info("Interaction expired, attempting direct DM for rune reading")
@@ -450,13 +475,18 @@ class RuneCastingModal(CanvasModal):
                     )
                     runes_embed.set_footer(text=f"{saved_msg}")
 
+                    # Merge personality info into runes embed
+                    runes_embed.set_author(name=personality_embed.title)
+                    if personality_embed.thumbnail:
+                        runes_embed.set_thumbnail(url=personality_embed.thumbnail.url)
+
                     if avatar_file:
-                        await interaction.user.send(embeds=[personality_embed, runes_embed], file=avatar_file)
+                        await interaction.user.send(embed=runes_embed, file=avatar_file)
                     else:
-                        await interaction.user.send(embeds=[personality_embed, runes_embed])
+                        await interaction.user.send(embed=runes_embed)
                     for interpretation_msg in interpretation_parts:
                         await asyncio.sleep(0.5)
-                        await interaction.user.send(interpretation_msg)
+                        await send_long_message(interaction.user, interpretation_msg)
                 except Exception as e:
                     logger.error(f"Failed to send rune reading via DM: {e}")
                     if hasattr(interaction, "channel") and interaction.channel:
@@ -470,7 +500,7 @@ class RuneCastingModal(CanvasModal):
                             await interaction.channel.send(embed=embed)
                             for interpretation_msg in interpretation_parts:
                                 await asyncio.sleep(0.5)
-                                await interaction.channel.send(interpretation_msg)
+                                await send_long_message(interaction.channel, interpretation_msg)
                         except Exception as channel_error:
                             logger.error(f"Failed to send to channel: {channel_error}")
                     else:
@@ -513,14 +543,15 @@ class AstrologyReadingModal(CanvasModal):
         self.reading_type = reading_type
         self.title_map = title_map
 
-        # Add question input
-        self.add_item(discord.ui.TextInput(
-            label=astrology_messages.get("labels", {}).get("question", "Question"),
-            placeholder="What question or situation would you like guidance on?",
-            style=discord.TextStyle.paragraph,
-            required=True,
-            max_length=500,
-        ))
+        # Add question input ONLY for moment and integrated readings (birth and year don't use questions)
+        if reading_type in ["moment", "integrated"]:
+            self.add_item(discord.ui.TextInput(
+                label=astrology_messages.get("labels", {}).get("question", "Question"),
+                placeholder="What question or situation would you like guidance on?",
+                style=discord.TextStyle.paragraph,
+                required=True,
+                max_length=500,
+            ))
 
         # Add birth date input for birth chart
         if reading_type == "birth":
@@ -550,14 +581,18 @@ class AstrologyReadingModal(CanvasModal):
             ))
 
     async def on_submit(self, interaction: discord.Interaction):
-        question = self.children[0].value.strip()
-
-        if not question:
-            server_id = get_server_key(interaction.guild) if interaction.guild else None
-            shaman_messages = _get_shaman_descriptions(server_id)
-            astrology_messages = shaman_messages.get("astrology", {})
-            await interaction.response.send_message(f"❌ {astrology_messages.get('no_question', 'Please provide a question.')}", ephemeral=True)
-            return
+        # Extract question only for moment and integrated readings (birth and year don't have question field)
+        question = None
+        if self.reading_type in ["moment", "integrated"]:
+            question = self.children[0].value.strip() if self.children else None
+            if not question:
+                server_id = get_server_key(interaction.guild) if interaction.guild else None
+                shaman_messages = _get_shaman_descriptions(server_id)
+                astrology_messages = shaman_messages.get("astrology", {})
+                await interaction.response.send_message(f"❌ {astrology_messages.get('no_question', 'Please provide a question.')}", ephemeral=True)
+                return
+        else:
+            question = None
 
         await interaction.response.defer(ephemeral=True)
 
@@ -567,38 +602,44 @@ class AstrologyReadingModal(CanvasModal):
                 return
 
             from roles.shaman.subroles.astrology.astrology_db import get_astrology_db_instance
-            db = get_astrology_db_instance()
-            astrology = Astrology(db)
+            from discord_bot.discord_core_commands import get_server_key
+            server_id = get_server_key(interaction.guild) if interaction.guild else None
+            db = get_astrology_db_instance(server_id)
+            astrology = Astrology()
             from datetime import datetime, time
 
-            result_data = None
+            input_data = {}
             if self.reading_type == "birth":
-                birth_date_str = self.children[1].value.strip()
-                birth_time_str = self.children[2].value.strip() if len(self.children) > 2 else None
+                # For birth, children[0] is birth_date, children[1] is birth_time (no question field)
+                birth_date_str = self.children[0].value.strip()
+                birth_time_str = self.children[1].value.strip() if len(self.children) > 1 else None
                 try:
                     birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d").date()
                     birth_time = datetime.strptime(birth_time_str, "%H:%M").time() if birth_time_str else None
-                    result_data = astrology.calculate_birth_chart(birth_date, birth_time)
+                    input_data = {'birth_date': birth_date, 'birth_time': birth_time}
                     # Save birth data
                     user_id = str(interaction.user.id)
-                    db.save_astrology_birth_data(user_id, birth_date_str, birth_time_str)
+                    db.save_birth_data(user_id, birth_date_str, birth_time_str)
                 except ValueError:
                     await interaction.followup.send("❌ Invalid date format. Use YYYY-MM-DD for dates and HH:MM for times.", ephemeral=True)
                     return
-            elif self.reading_type == "moment":
-                result_data = astrology.calculate_moment_reading(datetime.now())
             elif self.reading_type == "year":
-                birth_year_str = self.children[1].value.strip()
+                # For year, children[0] is birth_year (no question field)
+                birth_year_str = self.children[0].value.strip()
                 try:
                     birth_year = int(birth_year_str)
-                    result_data = astrology.calculate_personal_year(birth_year)
+                    current_year = datetime.now().year
+                    input_data = {'birth_year': birth_year, 'current_year': current_year}
                 except ValueError:
-                    await interaction.followup.send("❌ Invalid year format. Please use a 4-digit year.", ephemeral=True)
+                    await interaction.followup.send("❌ Invalid year format. Please enter a 4-digit year (e.g., 1990).", ephemeral=True)
                     return
+            elif self.reading_type == "moment":
+                # For moment, children[0] is question, use current datetime
+                input_data = {'question_date': datetime.now(), 'question_time': datetime.now().time()}
             elif self.reading_type == "integrated":
-                # Get user's birth data
+                # For integrated, children[0] is question, get user's birth data
                 user_id = str(interaction.user.id)
-                birth_data = db.get_astrology_birth_data(user_id)
+                birth_data = db.get_birth_data(user_id)
                 if not birth_data:
                     await interaction.followup.send("❌ Please save your birth data first using 'Save Birth Data'.", ephemeral=True)
                     return
@@ -606,33 +647,32 @@ class AstrologyReadingModal(CanvasModal):
                 try:
                     birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d").date()
                     birth_year = birth_date.year
-                    result_data = astrology.calculate_integrated_reading(birth_date, birth_year, datetime.now())
+                    input_data = {
+                        'birth_date': birth_date,
+                        'birth_time': None,  # Not used in integrated reading
+                        'question_date': datetime.now(),
+                        'question_time': datetime.now().time()
+                    }
                 except ValueError:
                     await interaction.followup.send("❌ Invalid birth data format.", ephemeral=True)
                     return
 
-            # Format the result
-            from roles.shaman.subroles.astrology.astrology_messages import get_letter_translations, get_position_translation
-            server_id = get_server_key(interaction.guild) if interaction.guild else None
-            letter_translations = get_letter_translations(server_id)
-            position_translations = get_position_translation(server_id)
+            # Use get_reading() to get calculation data + AI interpretation
+            reading_result = astrology.get_reading(
+                self.reading_type,
+                input_data,
+                question,
+                server_id
+            )
 
-            response_parts = []
-            for layer_name, layer_data in result_data.items():
-                letter_name = layer_data["letter"]["name"]
-                letter_info = letter_translations.get(letter_name, {})
-                pos_key = layer_data["letter"]["category"] + "_" + layer_name
-                pos_name = position_translations.get(pos_key, layer_name.title())
+            result_data = reading_result['calculation_data']
+            interpretation = reading_result['interpretation']
 
-                response_parts.append(f"**{pos_name}**: {letter_info.get('meaning', letter_name)}")
-                response_parts.append(f"  Keywords: {letter_info.get('keywords', '')}")
-                response_parts.append(f"  {letter_info.get('interpretation', '')}")
-                response_parts.append("")
-
-            response = "\n".join(response_parts)
+            # Use the AI interpretation directly (no manual formatting needed)
+            response = interpretation
 
             # Save reading
-            db.save_astrology_reading(
+            db.save_reading(
                 str(interaction.user.id),
                 self.reading_type,
                 result_data,
@@ -661,10 +701,15 @@ class AstrologyReadingModal(CanvasModal):
                 )
                 astrology_embed.set_footer(text=f"{saved_msg}")
 
+                # Merge personality info into astrology embed
+                astrology_embed.set_author(name=personality_embed.title)
+                if personality_embed.thumbnail:
+                    astrology_embed.set_thumbnail(url=personality_embed.thumbnail.url)
+
                 if avatar_file:
-                    await interaction.user.send(embeds=[personality_embed, astrology_embed], file=avatar_file)
+                    await interaction.user.send(embed=astrology_embed, file=avatar_file)
                 else:
-                    await interaction.user.send(embeds=[personality_embed, astrology_embed])
+                    await interaction.user.send(embed=astrology_embed)
                 logger.info(f"Successfully sent astrology reading via DM to user {interaction.user.id}")
 
             except discord.Forbidden:
@@ -696,10 +741,15 @@ class AstrologyReadingModal(CanvasModal):
                     )
                     astrology_embed.set_footer(text=f"{saved_msg}")
 
+                    # Merge personality info into astrology embed
+                    astrology_embed.set_author(name=personality_embed.title)
+                    if personality_embed.thumbnail:
+                        astrology_embed.set_thumbnail(url=personality_embed.thumbnail.url)
+
                     if avatar_file:
-                        await interaction.user.send(embeds=[personality_embed, astrology_embed], file=avatar_file)
+                        await interaction.user.send(embed=astrology_embed, file=avatar_file)
                     else:
-                        await interaction.user.send(embeds=[personality_embed, astrology_embed])
+                        await interaction.user.send(embed=astrology_embed)
                 except Exception as e:
                     logger.error(f"Failed to send astrology reading via DM: {e}")
                     if hasattr(interaction, "channel") and interaction.channel:
@@ -823,9 +873,11 @@ async def handle_canvas_shaman_action(interaction: discord.Interaction, action_n
                         return
 
                     from roles.shaman.subroles.astrology.astrology_db import get_astrology_db_instance
-                    db = get_astrology_db_instance()
+                    from discord_bot.discord_core_commands import get_server_key
+                    server_id = get_server_key(interaction.guild) if interaction.guild else None
+                    db = get_astrology_db_instance(server_id)
                     user_id = str(interaction.user.id)
-                    db.save_astrology_birth_data(user_id, birth_date_str, birth_time_str)
+                    db.save_birth_data(user_id, birth_date_str, birth_time_str)
 
                     server_id = get_server_key(interaction.guild) if interaction.guild else None
                     shaman_messages = _get_shaman_descriptions(server_id)
@@ -838,7 +890,7 @@ async def handle_canvas_shaman_action(interaction: discord.Interaction, action_n
             return
 
         # --- Astrology info actions ---
-        if action_name in {"astrology_history", "astrology_letters"}:
+        if action_name in {"astrology_history", "astrology_letters", "astrology_letters_1", "astrology_letters_2", "astrology_letters_3"}:
             await _handle_canvas_astrology_action(interaction, action_name, view)
             return
 
@@ -954,9 +1006,10 @@ class RuneDetailButton(discord.ui.Button):
         else:
             keywords_str = str(keywords)
 
+        # Add LTR marks to force left-to-right direction for mixed rune/English text
         content = (
-            f"{'-'*45}\n **{r['symbol']} {r['name']}**: {keywords_str}\n{'-'*45}\n"
-            f"{title_interpretation} {r['interpretation']}"
+            f"\u200E{'-'*45}\n \u200E**{r['symbol']} {r['name']}**: \u200E{keywords_str}\n\u200E{'-'*45}\n"
+            f"\u200E{title_interpretation} \u200E{r['interpretation']}"
         )
         await interaction.response.send_message(content, ephemeral=True)
 
@@ -1361,16 +1414,32 @@ async def _handle_canvas_astrology_action(interaction: discord.Interaction, acti
         _astrology_desc = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("shaman", {}).get("astrology", {})
 
         from roles.shaman.subroles.astrology.astrology_db import get_astrology_db_instance
-        db = get_astrology_db_instance()
+        db = get_astrology_db_instance(server_id)
 
         content_parts = []
+        letters_page_data = []  # structured data for Hebrew letter detail buttons
 
-        if action_name == "astrology_history":
+        _PAGE_ACTIONS = {
+            "astrology_letters_1": 1,
+            "astrology_letters_2": 2,
+            "astrology_letters_3": 3,
+        }
+
+        if action_name in _PAGE_ACTIONS:
+            page = _PAGE_ACTIONS[action_name]
+            try:
+                from roles.shaman.api import get_hebrew_letters_list_content, get_hebrew_letters_page_data
+                content_parts.append(get_hebrew_letters_list_content(page, server_id))
+                letters_page_data = get_hebrew_letters_page_data(page, server_id)
+            except Exception as e:
+                logger.exception(f"Canvas Hebrew letters list page {page} failed: {e}")
+                content_parts.extend([f"📜 THE 22 HEBREW LETTERS - PAGE {page}", f"❌ **ERROR!** Could not load Hebrew letters list page {page}."])
+        elif action_name == "astrology_history":
             try:
                 title_history = _astrology_desc.get("history", "📓 **ASTROLOGY READING HISTORY** 📓")
                 user_id = str(interaction.user.id)
-                readings = db.get_astrology_readings(user_id, limit=10)
-                stats = db.get_astrology_stats(user_id)
+                readings = db.get_user_readings(user_id, limit=10)
+                stats = db.get_reading_stats(user_id)
 
                 if not readings:
                     content_parts.append(title_history)
@@ -1421,6 +1490,7 @@ async def _handle_canvas_astrology_action(interaction: discord.Interaction, acti
         from discord_bot.canvas.ui import CanvasRoleDetailView
 
         role_embed = _build_canvas_role_embed("shaman", content, view.admin_visible, "astrology", None, f"Viewed {action_name.replace('astrology_', '').title()}")
+        role_embed.title = ""  # Force empty title since content already includes the page title
         view.current_embed = role_embed
 
         base_view = CanvasRoleDetailView(
@@ -1435,13 +1505,20 @@ async def _handle_canvas_astrology_action(interaction: discord.Interaction, acti
         )
         base_view.auto_response_preview = f"Viewed {action_name.replace('astrology_', '').title()}"
 
+        # Wrap with Hebrew letter buttons only for list pages
+        if letters_page_data:
+            page = _PAGE_ACTIONS.get(action_name, 1)
+            next_view = HebrewLetterPageView(base_view, letters_page_data, page)
+        else:
+            next_view = base_view
+
         try:
-            await interaction.response.edit_message(content=None, embed=role_embed, view=base_view)
+            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
         except discord.InteractionResponded:
-            await interaction.followup.edit_message(interaction.message.id, embed=role_embed, view=base_view)
+            await interaction.followup.edit_message(interaction.message.id, embed=role_embed, view=next_view)
         except discord.NotFound:
             try:
-                await interaction.followup.send(embed=role_embed, view=base_view, ephemeral=True)
+                await interaction.followup.send(embed=role_embed, view=next_view, ephemeral=True)
             except discord.NotFound:
                 logger.debug("Canvas astrology interaction expired completely")
         except Exception as e:
@@ -1459,4 +1536,401 @@ async def _handle_canvas_astrology_action(interaction: discord.Interaction, acti
             try:
                 await interaction.followup.send("❌ An unexpected error occurred.", ephemeral=True)
             except discord.NotFound:
-                logger.warning("Canvas shaman interaction expired during error handling")
+                logger.warning("Canvas shaman astrology interaction expired during error handling")
+
+
+# ============================================================================
+# HEBREW LETTERS PAGE VIEWS (similar to RUNES PAGE VIEWS)
+# ============================================================================
+
+class HebrewLetterDetailButton(discord.ui.Button):
+    """Button representing one Hebrew letter; clicking shows an ephemeral detail card."""
+
+    def __init__(self, letter_data: dict, row: int):
+        label = f"{letter_data['symbol']} {letter_data['name']}"
+        super().__init__(
+            label=label,
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"hebrew_letter_detail_{letter_data['key']}",
+            row=row,
+        )
+        self.letter_data = letter_data
+
+    async def callback(self, interaction: discord.Interaction):
+        l = self.letter_data
+        labels = l.get('labels', {})
+        title_interpretation = labels.get("interpretation", "Interpretación")
+
+        # Format keywords as comma-separated string
+        keywords = l.get('keywords', [])
+        if isinstance(keywords, list):
+            keywords_str = ', '.join(keywords)
+        else:
+            keywords_str = str(keywords)
+
+        # Add LTR marks to force left-to-right direction for mixed Hebrew/English text
+        content = (
+            f"\u200E{'-'*45}\n \u200E**{l['symbol']} {l['name']}**: \u200E{keywords_str}\n\u200E{'-'*45}\n"
+            f"\u200E{title_interpretation} \u200E{l['interpretation']}"
+        )
+        await interaction.response.send_message(content, ephemeral=True)
+
+
+class HebrewLetterPageActionSelect(discord.ui.Select):
+    """Custom select for Hebrew letters page that uses parent view's context."""
+
+    def __init__(self, parent_view):
+        # Copy options from parent's CanvasRoleActionSelect
+        from .ui import CanvasRoleActionSelect
+        for item in parent_view.children:
+            if isinstance(item, CanvasRoleActionSelect):
+                options = item.options
+                placeholder = item.placeholder
+                self._role_name = item.role_name
+                self._detail_name = item.detail_name
+                break
+        else:
+            options = []
+            placeholder = "Choose an option..."
+            self._role_name = "shaman"
+            self._detail_name = "astrology"
+
+        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options, row=2)
+        self._parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        # Adapted logic from CanvasRoleActionSelect callback, using parent_view
+        from .ui import _get_canvas_auto_response_preview
+        from discord_bot.canvas.canvas_banker import BankerConfigModal, BeggarDonationModal
+        from discord_bot.canvas.ui import RoleFrequencyModal
+
+        action_name = self.values[0]
+        self._parent_view.auto_response_preview = _get_canvas_auto_response_preview(self._role_name, action_name)
+
+        eff_guild = interaction.guild or getattr(self._parent_view, 'guild', None)
+
+        if self._role_name == "banker" and action_name in {"config_tae", "config_bonus"}:
+            if not self._parent_view.admin_visible:
+                await interaction.response.send_message("❌ This banker option is admin-only.", ephemeral=True)
+                return
+            await interaction.response.send_modal(BankerConfigModal(action_name, self._parent_view.author_id, eff_guild))
+            return
+
+        if self._role_name == "banker" and action_name == "beggar_donate":
+            if not eff_guild:
+                await interaction.response.send_message("❌ Donations are only available in a server.", ephemeral=True)
+                return
+            await interaction.response.send_modal(BeggarDonationModal(eff_guild, self._parent_view.author_id, self._parent_view))
+            return
+
+        if action_name == "watcher_frequency":
+            if not self._parent_view.admin_visible:
+                await interaction.response.send_message("❌ This role option is admin-only.", ephemeral=True)
+                return
+            await interaction.response.send_modal(RoleFrequencyModal(self._role_name, action_name, self._parent_view.agent_config, self._parent_view, self._parent_view.author_id))
+            return
+
+        if self._role_name == "treasure_hunter" and action_name in {"poe2_item_add", "poe2_item_remove"}:
+            # Allow POE2 item operations in DM
+            from discord_bot.canvas.canvas_treasure_hunter import handle_canvas_treasure_action
+            await handle_canvas_treasure_action(interaction, self._parent_view, action_name)
+            return
+
+        if self._role_name == "shaman" and action_name.startswith("astrology_letters_"):
+            from discord_bot.canvas.canvas_shaman import _handle_canvas_hebrew_letters_action
+            await _handle_canvas_hebrew_letters_action(interaction, action_name, self._parent_view)
+            return
+
+        if self._role_name == "shaman" and action_name.startswith("runes_"):
+            from discord_bot.canvas.canvas_shaman import _handle_canvas_runes_action
+            await _handle_canvas_runes_action(interaction, action_name, self._parent_view)
+            return
+
+        # Default handler for other actions
+        from discord_bot.canvas.content import _build_canvas_role_embed
+        from discord_bot.canvas.ui import CanvasRoleDetailView
+
+        role_embed = _build_canvas_role_embed(
+            self._role_name,
+            action_name,
+            self._parent_view.admin_visible,
+            self._detail_name,
+            self._parent_view.agent_config,
+            f"Selected {action_name}"
+        )
+
+        base_view = CanvasRoleDetailView(
+            author_id=self._parent_view.author_id,
+            role_name=self._role_name,
+            agent_config=self._parent_view.agent_config,
+            admin_visible=self._parent_view.admin_visible,
+            sections=self._parent_view.sections,
+            current_detail=self._detail_name,
+            guild=self._parent_view.guild,
+            previous_view=self._parent_view,
+        )
+        base_view.current_embed = role_embed
+
+        try:
+            await interaction.response.edit_message(content=None, embed=role_embed, view=base_view)
+        except discord.InteractionResponded:
+            await interaction.followup.edit_message(interaction.message.id, embed=role_embed, view=base_view)
+        except discord.NotFound:
+            try:
+                await interaction.followup.send(embed=role_embed, view=base_view, ephemeral=True)
+            except discord.NotFound:
+                pass
+        except Exception as e:
+            logger.exception(f"HebrewLetterPageActionSelect callback failed: {e}")
+            if not interaction.response.is_done():
+                await interaction.response.send_message("❌ Error al actualizar vista.", ephemeral=True)
+
+
+class HebrewLetterPageNavButton(discord.ui.Button):
+    """Button for navigating between Hebrew letters pages."""
+
+    def __init__(self, target_page: int, label: str, row: int):
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, row=row)
+        self.target_page = target_page
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        parent_view = view._parent
+
+        # Get Hebrew letters page data for the target page
+        try:
+            from roles.shaman.api import get_hebrew_letters_page_data, get_hebrew_letters_list_content
+            server_id = get_server_key(parent_view.guild) if parent_view.guild else None
+
+            letters_page_data = get_hebrew_letters_page_data(self.target_page, server_id)
+            content = get_hebrew_letters_list_content(self.target_page, server_id)
+
+            from .content import _build_canvas_role_embed
+            from discord_bot.canvas.ui import CanvasRoleDetailView
+
+            role_embed = _build_canvas_role_embed("shaman", content, parent_view.admin_visible, "astrology", None, f"Viewed Hebrew letters page {self.target_page}")
+            role_embed.title = ""  # Force empty title since content already includes the page title
+
+            # Create new base view with target page
+            base_view = CanvasRoleDetailView(
+                author_id=parent_view.author_id,
+                role_name=parent_view.role_name,
+                agent_config=parent_view.agent_config,
+                admin_visible=parent_view.admin_visible,
+                sections=parent_view.sections,
+                current_detail="astrology",
+                guild=parent_view.guild,
+                previous_view=parent_view.previous_view,
+            )
+            base_view.auto_response_preview = f"Viewed Hebrew letters page {self.target_page}"
+
+            # Wrap with HebrewLetterPageView for the target page
+            next_view = HebrewLetterPageView(base_view, letters_page_data, self.target_page)
+
+            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
+            logger.info(f"✅ HebrewLetterPageNavButton navigated to Hebrew letters page {self.target_page}")
+        except Exception as e:
+            logger.exception(f"HebrewLetterPageNavButton failed: {e}")
+            await interaction.response.send_message("❌ Error al navegar a la página de letras hebreas.", ephemeral=True)
+
+
+class HebrewLetterPageBackButton(discord.ui.Button):
+    """Custom back button for Hebrew letters pages that navigates to astrology overview instead of shaman overview."""
+
+    def __init__(self, row=4, label="Back"):
+        super().__init__(label=label, style=discord.ButtonStyle.primary, row=row)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        parent_view = view._parent
+
+        # Navigate to astrology overview using the standard canvas navigation
+        # This rebuilds the astrology detail view (overview) for the shaman role
+        from .ui import _build_canvas_role_detail_view
+        from .content import _build_canvas_role_embed
+
+        try:
+            content = _build_canvas_role_detail_view(
+                parent_view.role_name,
+                "astrology",
+                parent_view.agent_config,
+                parent_view.admin_visible,
+                parent_view.guild,
+                parent_view.author_id,
+            )
+            role_embed = _build_canvas_role_embed(
+                parent_view.role_name,
+                content,
+                parent_view.admin_visible,
+                "astrology",
+                None,
+                "Viewed astrology overview"
+            )
+            # Force empty title to avoid extra "shaman //" title
+            role_embed.title = ""
+
+            # Create a new CanvasRoleDetailView for astrology overview
+            from .ui import CanvasRoleDetailView
+            next_view = CanvasRoleDetailView(
+                author_id=parent_view.author_id,
+                role_name=parent_view.role_name,
+                agent_config=parent_view.agent_config,
+                admin_visible=parent_view.admin_visible,
+                sections=parent_view.sections,
+                current_detail="astrology",
+                guild=parent_view.guild,
+                previous_view=parent_view.previous_view,
+            )
+            next_view.current_embed = role_embed
+
+            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
+            logger.info("✅ HebrewLetterPageBackButton navigated to astrology overview")
+        except Exception as e:
+            logger.exception(f"HebrewLetterPageBackButton failed: {e}")
+            await interaction.response.send_message("❌ Error al navegar al overview de astrology.", ephemeral=True)
+
+
+class HebrewLetterPageView(discord.ui.View):
+    """A View that wraps a CanvasRoleDetailView and adds one button per Hebrew letter on the page."""
+
+    def __init__(self, parent_view, letters_page_data: list, page: int = 1):
+        super().__init__(timeout=parent_view.timeout if hasattr(parent_view, 'timeout') else 600)
+        self._parent = parent_view
+        self.page = page
+
+        # Load navigation labels from server-specific shaman.json with fallback
+        try:
+            from roles.shaman.api import get_hebrew_letters_list_content
+            server_id = get_server_key(parent_view.guild) if parent_view.guild else None
+            # Load messages to get nav_page label
+            from roles.shaman.subroles.astrology.astrology_messages import load_personality_messages, ENGLISH_MESSAGES
+            messages = load_personality_messages(server_id)
+            nav_page = messages.get('nav_page', ENGLISH_MESSAGES.get('nav_page', "Page"))
+        except Exception:
+            # Fallback to English if loading fails
+            nav_page = "Page"
+
+        # Add Hebrew letter buttons in rows 0-1 (max 5 per row)
+        num_letters = min(len(letters_page_data), 10)
+        for idx, letter_data in enumerate(letters_page_data[:10]):  # max 10 buttons
+            self.add_item(HebrewLetterDetailButton(letter_data, row=idx // 5))
+
+        # Add page navigation buttons at the end of row 1 (after letter buttons)
+        # Calculate position based on how many letter buttons are in row 1
+        row_1_letter_count = max(0, num_letters - 5)  # letters in row 1 (after first 5)
+        if row_1_letter_count < 5:  # Only add if there's space
+            if page == 1:
+                self.add_item(HebrewLetterPageNavButton(2, f"{nav_page} 2 ▶", row=1))
+            elif page == 2:
+                if row_1_letter_count <= 3:  # Need space for 2 buttons
+                    self.add_item(HebrewLetterPageNavButton(1, f"◀ {nav_page} 1", row=1))
+                    self.add_item(HebrewLetterPageNavButton(3, f"{nav_page} 3 ▶", row=1))
+            elif page == 3:
+                self.add_item(HebrewLetterPageNavButton(2, f"◀ {nav_page} 2", row=1))
+
+        # Add action dropdown that delegates to parent view (row 2)
+        self.add_item(HebrewLetterPageActionSelect(parent_view))
+
+        # Copy navigation items from parent view, but replace back button with custom one
+        from .ui import CanvasSmartBackButton
+        for item in parent_view.children:
+            # Skip the standard back button and add our custom one
+            if hasattr(item, 'row') and item.row is not None and item.row >= 3:
+                if isinstance(item, CanvasSmartBackButton):
+                    # Replace with custom back button
+                    self.add_item(HebrewLetterPageBackButton(row=item.row, label=item.label))
+                else:
+                    self.add_item(item)
+
+    # Delegate attribute access for author_id, guild, etc. to the parent view
+    def __getattr__(self, name):
+        return getattr(self._parent, name)
+
+
+async def _handle_canvas_hebrew_letters_action(interaction: discord.Interaction, action_name: str, view) -> None:
+    """Handle Hebrew letters info/history actions with dynamic content."""
+    try:
+        try:
+            from roles.shaman.api import get_hebrew_letters_page_data, get_hebrew_letters_list_content
+        except ImportError as e:
+            logger.error(f"Failed to import Hebrew letters modules: {e}")
+            await interaction.response.send_message("❌ Hebrew letters system is not available.", ephemeral=True)
+            return
+
+        guild = interaction.guild
+        from .content import _get_personality_descriptions
+        server_id = get_server_key(guild) if guild else None
+        _astrology_desc = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("shaman", {}).get("astrology", {})
+
+        content_parts = []
+        letters_page_data = []  # structured data for Hebrew letter detail buttons
+
+        _PAGE_ACTIONS = {
+            "astrology_letters_1": 1,
+            "astrology_letters_2": 2,
+            "astrology_letters_3": 3,
+            "astrology_letters": 1,
+        }
+
+        if action_name in _PAGE_ACTIONS:
+            page = _PAGE_ACTIONS[action_name]
+            try:
+                content_parts.append(get_hebrew_letters_list_content(page, server_id))
+                letters_page_data = get_hebrew_letters_page_data(page, server_id)
+            except Exception as e:
+                logger.exception(f"Canvas Hebrew letters list page {page} failed: {e}")
+                content_parts.extend([f"📜 THE 22 HEBREW LETTERS {page}", f"❌ **ERROR!** Could not load Hebrew letters list page {page}."])
+        else:
+            await interaction.response.send_message("❌ Unknown Hebrew letters action.", ephemeral=True)
+            return
+
+        content = "\n".join(content_parts)
+        from .content import _build_canvas_role_embed
+        from discord_bot.canvas.ui import CanvasRoleDetailView
+
+        role_embed = _build_canvas_role_embed("shaman", content, view.admin_visible, "astrology", None, f"Viewed {action_name.replace('astrology_', '').title()}")
+        role_embed.title = ""  # Force empty title since content already includes the page title
+
+        base_view = CanvasRoleDetailView(
+            author_id=view.author_id,
+            role_name=view.role_name,
+            agent_config=view.agent_config,
+            admin_visible=view.admin_visible,
+            sections=view.sections,
+            current_detail="astrology",
+            guild=view.guild,
+            previous_view=view,
+        )
+        base_view.auto_response_preview = f"Viewed {action_name.replace('astrology_', '').title()}"
+
+        # Wrap with Hebrew letter buttons only for list pages
+        if letters_page_data:
+            next_view = HebrewLetterPageView(base_view, letters_page_data, page)
+        else:
+            next_view = base_view
+
+        try:
+            await interaction.response.edit_message(content=None, embed=role_embed, view=next_view)
+        except discord.InteractionResponded:
+            await interaction.followup.edit_message(interaction.message.id, embed=role_embed, view=next_view)
+        except discord.NotFound:
+            try:
+                await interaction.followup.send(embed=role_embed, view=next_view, ephemeral=True)
+            except discord.NotFound:
+                logger.debug("Canvas Hebrew letters interaction expired completely")
+        except Exception as e:
+            logger.exception(f"Failed to edit canvas Hebrew letters message: {e}")
+            try:
+                await interaction.followup.send("❌ Error al actualizar vista. Por favor intenta de nuevo.", ephemeral=True)
+            except discord.NotFound:
+                logger.warning("Canvas Hebrew letters interaction expired during error handling")
+
+    except Exception as e:
+        logger.exception(f"Unexpected error in Canvas Hebrew letters action: {e}")
+        if not interaction.response.is_done():
+            await interaction.response.send_message("❌ An unexpected error occurred.", ephemeral=True)
+        else:
+            try:
+                await interaction.followup.send("❌ An unexpected error occurred.", ephemeral=True)
+            except discord.NotFound:
+                logger.warning("Canvas Hebrew letters interaction expired during error handling")

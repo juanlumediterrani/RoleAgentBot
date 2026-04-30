@@ -360,10 +360,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "personal": "poe2",
     }
     # For treasure_hunter, admin view should use main title, not a subrole title
-    # For shaman runes and astrology detail, use None to prevent title duplication with content
     if surface_name == "admin" and role_name == "treasure_hunter":
-        detail_key = None
-    elif role_name == "shaman" and surface_name in {"runes", "astrology"}:
         detail_key = None
     elif surface_name and surface_name not in {"overview", "admin"}:
         base = surface_name.replace("_admin", "")
@@ -382,16 +379,13 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "scholar": _get_embed_role_title("scholar", detail_key),
     }
     title = role_titles.get(role_name, "Canvas")
-    # Override title for shaman runes and astrology detail to prevent parent title from appearing
-    if role_name == "shaman" and surface_name in {"runes", "astrology"}:
-        title = ""
     blocks = _split_canvas_blocks(content)
     role_colors = {
         "news_watcher": discord.Color.blue(),
         "treasure_hunter": discord.Color.dark_gold(),
         "trickster": discord.Color.magenta(),
         "banker": discord.Color.green(),
-        "mc": discord.Color.purple(),
+        "mc": discord.Color.light_gray(),
         "shaman": discord.Color.dark_purple(),
         "juggler": discord.Color.orange(),
         "scholar": discord.Color.teal(),
@@ -423,6 +417,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
             embed.add_field(name=block_title, value=value, inline=False)
 
     footer_title = role_titles.get(role_name, role_name)
+    footer_title = _extract_bold_text(footer_title)
     embed.set_footer(text=f"{footer_title} • {'admin' if admin_visible else 'user'} view")
 
     # Add user thumbnail for banker role (like !banker balance)
@@ -430,6 +425,15 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         embed.set_thumbnail(url=user.display_avatar.url if user.display_avatar else None)
 
     return embed
+
+
+def _extract_bold_text(text: str) -> str:
+    """Extract text from markdown bold markers (**text**)."""
+    import re
+    if not text:
+        return text
+    # Remove all ** markers
+    return re.sub(r'\*\*', '', text)
 
 
 def _truncate_canvas_field_value(value: str, limit: int = 1024) -> str:
@@ -514,6 +518,16 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "runes_runes_1": "Show all runes with descriptions - Page 1 (Fehu to Gebo)",
             "runes_runes_2": "Show all runes with descriptions - Page 2 (Wunjo to Perthro)",
             "runes_runes_3": "Show all runes with descriptions - Page 3 (Algiz to Othala)",
+            "astrology_birth": "Interpret your permanent soul pattern from birth date and time.",
+            "astrology_moment": "Get guidance for a specific moment or question.",
+            "astrology_year": "Understand the spiritual forces of your personal year.",
+            "astrology_integrated": "Comprehensive reading combining birth, moment, and year.",
+            "astrology_history": "Show your recent astrology reading history.",
+            "astrology_letters": "Show the 22 Hebrew letters with their meanings.",
+            "astrology_letters_1": "Show Hebrew letters with descriptions - Page 1 (Mother Letters)",
+            "astrology_letters_2": "Show Hebrew letters with descriptions - Page 2 (Double Letters)",
+            "astrology_letters_3": "Show Hebrew letters with descriptions - Page 3 (Simple Letters)",
+            "astrology_save_birth": "Save your birth date and time for personalized readings.",
             "announcements_on": "Dice announcements enabled for this server.",
             "announcements_off": "Dice announcements disabled for this server.",
             "dice_fixed_bet": "The bot will ask for the fixed bet amount and update the dice game configuration.",
@@ -658,9 +672,7 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("overview", {}).get("button", "Overview"), "overview"),
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("beggar", {}).get("button", "Beggar"), "beggar"),
         ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
-        "mc": [
-            (personality_descriptions.get("role_descriptions", {}).get("mc", {}).get("overview", {}).get("button", button_personal), "overview"),
-        ],
+        "mc": [],
         "shaman": (
             [(button_personal, "runes")]
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), "runes_admin")] if admin_visible else [])
@@ -880,11 +892,19 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             ]
 
     if role_name == "shaman":
+        # Get personality descriptions for shaman subroles
+        _personality_descriptions = _get_personality_descriptions(server_id)
+
         if detail_name == "runes":
-            # Check if runes subrole is enabled
-            runes_enabled = True  # Temporarily force enabled for testing
-            if agent_config:
-                runes_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
+            # Check if runes subrole is enabled from server_config
+            try:
+                from .server_config import get_role_config_value
+                runes_enabled = get_role_config_value(server_id, "shaman", "config.subroles.nordic_runes.enabled", False)
+            except Exception:
+                # Fallback to agent_config if server_config fails
+                runes_enabled = False
+                if agent_config:
+                    runes_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
 
             if not runes_enabled:
                 # Runes disabled - only show info actions
@@ -929,16 +949,19 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (canvas_labels.get("runes_runes_3", english_fallbacks["runes_runes_3"]), "runes_runes_3", _runes_text("runes_runes_3_description", "Action"), "🗻"),
             ]
         elif detail_name == "astrology":
-            # Check if astrology subrole is enabled
-            astrology_enabled = True  # Temporarily force enabled for testing
-            if agent_config:
-                astrology_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("astrology", {}).get("enabled", False)
+            # Check if astrology subrole is enabled from server_config
+            try:
+                from .server_config import get_role_config_value
+                astrology_enabled = get_role_config_value(server_id, "shaman", "config.subroles.astrology.enabled", False)
+            except Exception:
+                # Fallback to agent_config if server_config fails
+                astrology_enabled = False
+                if agent_config:
+                    astrology_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("astrology", {}).get("enabled", False)
 
             if not astrology_enabled:
-                # Astrology disabled - only show info actions
-                return [
-                    ("Astrology: Types", "astrology_types", "Action"),
-                ]
+                # Astrology disabled - no actions available
+                return []
 
             # Astrology enabled - show all reading actions
             # Get personality messages for dropdown labels
@@ -960,6 +983,9 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 "astrology_integrated": "Astrology: Integrated Reading",
                 "astrology_history": "Astrology: History",
                 "astrology_letters": "Astrology: Hebrew Letters",
+                "astrology_letters_1": "Astrology: Hebrew Letters I",
+                "astrology_letters_2": "Astrology: Hebrew Letters II",
+                "astrology_letters_3": "Astrology: Hebrew Letters III",
                 "astrology_save_birth": "Astrology: Save Birth Data",
             }
 
@@ -970,7 +996,9 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (canvas_labels.get("astrology_integrated", english_fallbacks["astrology_integrated"]), "astrology_integrated", _astrology_text("astrology_integrated_description", "Text input target"), "🔮"),
                 (canvas_labels.get("astrology_save_birth", english_fallbacks["astrology_save_birth"]), "astrology_save_birth", _astrology_text("astrology_save_birth_description", "Text input target"), "💾"),
                 (canvas_labels.get("astrology_history", english_fallbacks["astrology_history"]), "astrology_history", _astrology_text("astrology_history_description", "Action"), "📓"),
-                (canvas_labels.get("astrology_letters", english_fallbacks["astrology_letters"]), "astrology_letters", _astrology_text("astrology_letters_description", "Action"), "📜"),
+                (canvas_labels.get("astrology_letters_1", english_fallbacks["astrology_letters_1"]), "astrology_letters_1", _astrology_text("astrology_letters_1_description", "Action"), "🗻"),
+                (canvas_labels.get("astrology_letters_2", english_fallbacks["astrology_letters_2"]), "astrology_letters_2", _astrology_text("astrology_letters_2_description", "Action"), "🗻"),
+                (canvas_labels.get("astrology_letters_3", english_fallbacks["astrology_letters_3"]), "astrology_letters_3", _astrology_text("astrology_letters_3_description", "Action"), "🗻"),
             ]
         return []
         if detail_name == "dice_admin" and admin_visible:

@@ -115,7 +115,7 @@ class CanvasMCActionSelect(discord.ui.Select):
             discord.SelectOption(label=label, value=value, description=description, emoji=emoji)
             for label, value, description, emoji in mc_actions
         ]
-        super().__init__(placeholder=_mc_text("select_mc_action", "🎵 Select MC action..."), min_values=1, max_values=1, options=options[:25], row=1)
+        super().__init__(placeholder=_mc_text("select_mc_action", "🎵 Select MC action..."), min_values=1, max_values=1, options=options[:25], row=2)
         self.canvas_view = view
 
     async def callback(self, interaction: discord.Interaction):
@@ -458,3 +458,53 @@ class CanvasMCVolumeModal(CanvasModal):
             await interaction.response.edit_message(content=None, embed=embed, view=self.view)
         except Exception as error:
             logger.exception(f"Error in MC volume modal: {error}")
+
+
+class CanvasMCActionButton(discord.ui.Button):
+    """Action button for MC controls (play/add/skip/stop)."""
+
+    def __init__(self, action_name: str, canvas_view):
+        self.action_name = action_name
+        self.canvas_view = canvas_view
+
+        from .content import _get_personality_descriptions
+        server_id = core.get_server_key(canvas_view.guild) if canvas_view.guild else None
+        mc_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("mc", {})
+        mc_messages_fallback = core._personality_answers.get("mc_messages", {})
+        mc_json_data = _load_mc_descriptions(server_id)
+
+        def _mc_text(key: str, fallback: str) -> str:
+            # First try mc.json (server-specific), then descriptions.json, then fallback
+            value = mc_json_data.get(key, mc_descriptions.get(key, mc_messages_fallback.get(key)))
+            return str(value).strip() if value else fallback
+
+        # Get button emoji
+        emoji_map = {
+            "mc_play": "▶️",
+            "mc_add": "↪️",
+            "mc_skip": "⏭️",
+            "mc_stop": "⏹️",
+        }
+
+        emoji = emoji_map.get(action_name)
+
+        super().__init__(label=None, emoji=emoji, style=discord.ButtonStyle.secondary, row=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.canvas_view
+        if not interaction.guild:
+            await interaction.response.send_message("❌ MC actions are only available in a server.", ephemeral=True)
+            return
+
+        # Handle modal actions (play, add) separately
+        if self.action_name in {"mc_play", "mc_add"}:
+            from roles.mc.mc_discord import get_mc_commands_instance
+            mc_commands = get_mc_commands_instance()
+            if not mc_commands:
+                await interaction.response.send_message("❌ MC commands are not initialized.", ephemeral=True)
+                return
+            await interaction.response.send_modal(CanvasMCSongModal(self.action_name, view, mc_commands, view.author_id))
+            return
+
+        # Handle direct actions (skip, stop)
+        await _handle_canvas_mc_action(interaction, self.action_name, view)

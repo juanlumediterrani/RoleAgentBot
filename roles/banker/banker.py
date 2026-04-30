@@ -68,12 +68,12 @@ async def create_wallets_for_all_server_members(server_id: str | None = None):
                         
                         # Create wallet with opening bonus (10x TAE)
                         was_created = db_banker.create_wallet(
-                            member_id, member_name, guild_id, wallet_type='user'
+                            member_id, member_name, wallet_type='user'
                         )
                         
                         if was_created:
                             created_count += 1
-                            initial_balance = db_banker.get_balance(member_id, guild_id)
+                            initial_balance = db_banker.get_balance(member_id)
                             logger.info(f"💰 Created wallet for {member_name} with {initial_balance} coins")
                         else:
                             existing_count += 1

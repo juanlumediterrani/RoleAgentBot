@@ -1,15 +1,15 @@
 {
     "title": "📚 **Archivista de la Gran Biblioteca**",
     "description": "Accede a los vastos registros de la civilización humana a través de mi perspectiva sintética y mística. Haz cualquier pregunta, y compartiré lo que los archivos contienen.",
-    "button": "📚 Scholar",
+    "button": "📚 Archivista",
     "embed_footer": "📚 Archivista de la Gran Biblioteca 📚",
     "dropdown": {
         "select_action": "📋 Ejecutar instrucción...",
-        "toggle_on": "✅ Habilitar Scholar",
-        "toggle_off": "❌ Deshabilitar Scholar"
+        "toggle_on": "✅ Habilitar Archivista",
+        "toggle_off": "❌ Deshabilitar Archivista"
     },
     "wikipedia_button_label": "📖 Leer en Wikipedia",
     "controls_title": "**Controles**",
-    "controls": "- Habilitar o deshabilitar el rol Scholar",
-    "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."
+    "controls": "- Habilitar o deshabilitar el rol Archivista",
+    "admin_flows": "Alterna el rol Archivista para habilitar o deshabilitarlo."
 }

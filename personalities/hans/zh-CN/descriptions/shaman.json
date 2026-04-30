@@ -3,7 +3,8 @@
     "description": "咨询古代雅利安符文以获得战略情报和军事指引。",
     "button": "📜 祖先遗产",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🎚️ **雅利安古代科学** - 咨询古代符文以获得军事情报和战略指引"
+        "nordic_runes": "🎚️ **雅利安古代科学** - 咨询古代符文以获得军事情报和战略指引",
+        "astrology": "🌟 **占星术** - 创造之书希伯来字母用于占卜。目前正在开发中。"
     },
     "moon_phases": {
         "new_moon": "新月 🌑",

@@ -1,22 +1,22 @@
 {
-    "title": "🎭  **Special Operations Division**",
-    "description": "Command of tactical units specialized in strategic deception and covert operations.",
-    "button": "🎭 Operations",
-    "canvas_trickster_overview_title": "**🎭Her Hans Special Operations Division**",
+    "title": "🎲  **Combat Wager Officer**",
+    "description": "Officer in charge of managing wagers and games of chance on the battlefield.",
+    "button": "🎲 Wagers",
+    "canvas_trickster_overview_title": "**🎲 Her Hans Combat Wager Officer**",
     "canvas_trickster_overview_description": "General status of deployed units.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🏢 **Reserved Fund** - Collects funds for ze regiment, make your donation now.",
         "dice_game": "🎲 **BATTLEFIELD** - Roll heavy artillery against ze enemy and capture ze var bounty!",
-        "cubilete": "🎲 **TACTICAL CUBILETE** - Roll command dice and capture ze Wehrmacht pot!"
+        "cubilete": "🎲 **COMMAND DICE** - Roll tactical dice and capture ze war booty!"
     },
     "dice_game": {
-        "button": "🎲 Artillery",
+        "button": "💣 Artillery",
         "waitmessage": "Deploying artillery...Vait, soldier!",
         "roll_title": "YOUR PROJECTILES EXPLODE:\n",
         "combination_title": "OPERATION RESULT:",
         "prize_title": "VAR BOUNTY:",
-        "ranking": " **:trophy:  FIGHTER RANKING **",
+        "ranking": " **🏆  FIGHTER RANKING **",
         "rankingvoid": " No fighters on ze front, soldier!",
         "historyvoid": " No one has fought yet, recruit!",
         "history": " **📜  Battle History **",
@@ -145,7 +145,7 @@
         "roll_title": "YOUR COMMAND DICE:\n",
         "combination_title": "TACTICAL RESULT:",
         "prize_title": "WEHRMACHT BOUNTY:",
-        "ranking": " **:trophy:  OFFICER RANKING **",
+        "ranking": " **🏆  OFFICER RANKING **",
         "rankingvoid": " No officers on ze front, soldier!",
         "historyvoid": " No one has played yet, recruit!",
         "history": " **📜  Operation History **",

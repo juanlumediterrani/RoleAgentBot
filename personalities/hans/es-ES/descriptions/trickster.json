@@ -1,22 +1,22 @@
 {
-    "title": "🎭  **División de Operaciones Especiales**",
-    "description": "Comando de unidades tácticas especializadas en engaño estratégico y operaciones encubiertas.",
-    "button": "🎭 Operaciones",
-    "canvas_trickster_overview_title": "**🎭División de Operaciones Especiales Her Hans**",
+    "title": "🎲  **Oficial de Apuestas de Combate**",
+    "description": "Oficial encargado de gestionar las apuestas y juegos de azar en el frente de batalla.",
+    "button": "🎲 Apuestas",
+    "canvas_trickster_overview_title": "**🎲 Oficial de Apuestas de Combate Her Hans**",
     "canvas_trickster_overview_description": "Estado general de unidades desplegadas.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🏢 **Partida reservada** - Recauda fondos para el regimiento, haz tu donativo ya.",
         "dice_game": "🎲 **CAMPO DE BATALLA** - Lance artillería pesada contra el enemigo y capture el botín de guerra!",
-        "cubilete": "🎲 **CUBILETE TÁCTICO** - Lance los dados de comando y capture el botín de la Wehrmacht!"
+        "cubilete": "🎲 **DADOS DE COMANDO** - Lance los dados tácticos y capture el botín de guerra!"
     },
     "dice_game": {
-        "button": "🎲 Artillería",
+        "button": "💣 Artillería",
         "waitmessage": "Desplegando artillería...¡Espere, soldado!",
         "roll_title": "SUS PROYECTILES EXPLOTAN:\n",
         "combination_title": "RESULTADO DE OPERACIÓN:",
         "prize_title": "BOTÍN DE GUERRA:",
-        "ranking": " **:trophy:  CLASIFICACIÓN DE COMBATIENTES **",
+        "ranking": " **🏆  CLASIFICACIÓN DE COMBATIENTES **",
         "rankingvoid": " ¡No hay combatientes en el frente, soldado!",
         "historyvoid": " ¡Nadie ha combatido todavía, recluta!",
         "history": " **📜  Historial de batallas **",
@@ -145,7 +145,7 @@
         "roll_title": "SUS DADOS DE COMANDO:\n",
         "combination_title": "RESULTADO TÁCTICO:",
         "prize_title": "BOTÍN WEHRMACHT:",
-        "ranking": " **:trophy:  CLASIFICACIÓN DE OFICIALES **",
+        "ranking": " **🏆  CLASIFICACIÓN DE OFICIALES **",
         "rankingvoid": " ¡No hay oficiales en el frente, soldado!",
         "historyvoid": " ¡Nadie ha jugado todavía, recluta!",
         "history": " **📜  Historial de operaciones **",

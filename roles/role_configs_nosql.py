@@ -1280,14 +1280,31 @@ class RoleConfigsNoSQL:
         """Save user's birth data."""
         try:
             now = datetime.now().isoformat()
+
+            # Validate birth data before saving
+            if VALIDATION_AVAILABLE and AstrologyBirthData:
+                birth_data_to_validate = {
+                    "user_id": str(user_id),
+                    "birth_date": birth_date,
+                    "birth_time": birth_time,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                try:
+                    AstrologyBirthData(**birth_data_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Astrology birth data validation failed: {e}. Skipping save.")
+                    return False
+
             data = {
                 'birth_date': birth_date,
                 'birth_time': birth_time,
                 'created_at': now,
                 'updated_at': now,
             }
-            self._astrology_birth_data.data[str(user_id)] = data
-            self._astrology_birth_data.save()
+            def mutator(doc: dict) -> None:
+                doc[str(user_id)] = data
+            self._astrology_birth_data.update(mutator)
             return True
         except Exception as e:
             logger.error(f"Failed to save astrology birth data: {e}")
@@ -1296,7 +1313,7 @@ class RoleConfigsNoSQL:
     def get_astrology_birth_data(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user's birth data."""
         try:
-            return self._astrology_birth_data.data.get(str(user_id))
+            return self._astrology_birth_data.load().get(str(user_id))
         except Exception as e:
             logger.error(f"Failed to get astrology birth data: {e}")
             return None
@@ -1306,13 +1323,31 @@ class RoleConfigsNoSQL:
                               interpretation: str, question: str = "") -> bool:
         """Save an astrology reading to history."""
         try:
+            now = datetime.now().isoformat()
+
+            # Validate reading data before saving
+            if VALIDATION_AVAILABLE and AstrologyReading:
+                reading_to_validate = {
+                    "user_id": str(user_id),
+                    "reading_type": reading_type,
+                    "calculation_data": calculation_data,
+                    "interpretation": interpretation,
+                    "question": question,
+                    "created_at": now,
+                }
+                try:
+                    AstrologyReading(**reading_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Astrology reading validation failed: {e}. Skipping save.")
+                    return False
+
             entry = {
                 'user_id': str(user_id),
                 'reading_type': reading_type,
                 'calculation_data': calculation_data,
                 'interpretation': interpretation,
                 'question': question,
-                'created_at': datetime.now().isoformat(),
+                'created_at': now,
             }
             self._astrology_readings.append(entry)
             return True

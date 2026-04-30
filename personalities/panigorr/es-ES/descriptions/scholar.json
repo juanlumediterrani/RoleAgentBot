@@ -1,15 +1,15 @@
 {
     "title": "📚 **Archivista del Sótano**",
     "description": "Accede al conocimiento prohibido del Amo desde la perspectiva húmeda del sótano de Panigorr. Haz cualquier pregunta, y compartiré de los tomos podridos... SSSSS...",
-    "button": "📚 Scholar",
+    "button": "📚 Archivista",
     "embed_footer": "📚 Archivista del Sótano 📚",
     "dropdown": {
         "select_action": "📋 Ejecutar instrucción...",
-        "toggle_on": "✅ Habilitar Scholar",
-        "toggle_off": "❌ Deshabilitar Scholar"
+        "toggle_on": "✅ Habilitar Archivista",
+        "toggle_off": "❌ Deshabilitar Archivista"
     },
     "wikipedia_button_label": "📖 Leer en Wikipedia",
     "controls_title": "**Controles**",
-    "controls": "- Habilitar o deshabilitar el rol Scholar",
-    "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."
+    "controls": "- Habilitar o deshabilitar el rol Archivista",
+    "admin_flows": "Alterna el rol Archivista para habilitar o deshabilitarlo."
 }

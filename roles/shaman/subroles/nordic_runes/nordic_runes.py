@@ -17,6 +17,17 @@ from roles.trickster.subroles.base_role import BaseRole
 
 logger = logging.getLogger(__name__)
 
+# Minimum character lengths for each reading type (based on golden rules)
+# With 25% tolerance, the minimum acceptable length is 75% of these values
+READING_MIN_LENGTHS = {
+    'single': 500,      # 500-1000 chars, min with 25% tolerance = 375
+    'three': 1250,      # 1250-1800 chars, min with 25% tolerance = 1000
+    'cross': 2400,      # 2400-3600 chars, min with 25% tolerance = 2000
+    'runic_cross': 5000 # 5000-5800 chars, min with 25% tolerance = 2700
+}
+
+TOLERANCE_PERCENTAGE = 0.25  # 25% tolerance for minimum length
+
 try:
     import sys
     import os
@@ -55,6 +66,42 @@ def _get_personality_dir(server_id: str = None) -> str:
     except:
         # Fallback to putre if something goes wrong
         return os.path.join(project_root, "personalities", "putre")
+
+
+def _validate_reading_length(response: str, reading_type: str) -> bool:
+    """
+    Validate if the reading response meets the minimum length requirement.
+    
+    Args:
+        response: The AI-generated reading response
+        reading_type: Type of reading (single, three, cross, runic_cross)
+    
+    Returns:
+        bool: True if response meets minimum length (with 25% tolerance), False otherwise
+    """
+    min_length = READING_MIN_LENGTHS.get(reading_type)
+    if not min_length:
+        logger.warning(f"Unknown reading type for length validation: {reading_type}")
+        return True  # Allow unknown types to pass
+    
+    response_length = len(response)
+    min_acceptable = int(min_length * (1 - TOLERANCE_PERCENTAGE))
+    
+    meets_requirement = response_length >= min_acceptable
+    
+    if not meets_requirement:
+        logger.warning(
+            f"❌ [LENGTH_VALIDATION] Reading too short for {reading_type}: "
+            f"{response_length} chars (minimum acceptable: {min_acceptable} chars, "
+            f"expected minimum: {min_length} chars with {TOLERANCE_PERCENTAGE*100}% tolerance)"
+        )
+    else:
+        logger.info(
+            f"✅ [LENGTH_VALIDATION] Reading length OK for {reading_type}: "
+            f"{response_length} chars (minimum acceptable: {min_acceptable} chars)"
+        )
+    
+    return meets_requirement
 
 
 class NordicRunes:
@@ -540,27 +587,56 @@ class NordicRunes:
             server_personality = _get_personality(server_id) if server_id else PERSONALITY
             system_instruction = _build_system_prompt(server_personality, server_id)
             
-            # Step 7: Get AI response using call_llm function (logging handled centrally in agent_mind.py)
-            ai_response = call_llm(
-                system_instruction=system_instruction,
-                prompt=formatted_prompt,
-                background=False,
-                call_type="nordic_runes",
-                critical=True,
-                server_id=server_id,
-                metadata={
-                    "interaction_type": "role_command",
-                    "role_context": "nordic_runes_interpreter",
-                    "mission_prompt_key": "nordic_runes"
-                }
-            )
+            # Step 7: Get AI response with length validation and retry logic (max 2 retries)
+            max_retries = 2
+            ai_response = ""
+            best_response = ""
+            best_response_length = 0
             
-            # Log the AI response
-            logger.info(f"🔮 [NORDIC_RUNES_AI] AI response received:")
-            logger.info(f"Response length: {len(ai_response)} characters")
-            logger.info(f"Full response:\n{ai_response}")
+            for attempt in range(max_retries + 1):  # +1 for initial attempt
+                logger.info(f"🔄 [LENGTH_VALIDATION] Attempt {attempt + 1}/{max_retries + 1} for {reading_type} reading")
+                
+                # Get AI response using call_llm function
+                ai_response = call_llm(
+                    system_instruction=system_instruction,
+                    prompt=formatted_prompt,
+                    background=False,
+                    call_type="nordic_runes",
+                    critical=True,
+                    server_id=server_id,
+                    metadata={
+                        "interaction_type": "role_command",
+                        "role_context": "nordic_runes_interpreter",
+                        "mission_prompt_key": "nordic_runes"
+                    }
+                )
+                
+                # Validate the response length
+                is_valid = _validate_reading_length(ai_response, reading_type)
+                response_length = len(ai_response)
+                
+                # Keep track of the longest response
+                if response_length > best_response_length:
+                    best_response = ai_response
+                    best_response_length = response_length
+                
+                # Log the AI response
+                logger.info(f"🔮 [NORDIC_RUNES_AI] AI response received (attempt {attempt + 1}):")
+                logger.info(f"Response length: {response_length} characters")
+                
+                if is_valid:
+                    logger.info(f"✅ [LENGTH_VALIDATION] Reading passed validation on attempt {attempt + 1}")
+                    return ai_response
+                
+                # If not valid and we have retries left, log and continue
+                if attempt < max_retries:
+                    logger.warning(f"⚠️ [LENGTH_VALIDATION] Reading failed validation, retrying... (attempt {attempt + 1}/{max_retries + 1})")
+                else:
+                    logger.error(f"❌ [LENGTH_VALIDATION] Reading failed validation after {max_retries + 1} attempts")
+                    logger.warning(f"⚠️ [LENGTH_VALIDATION] Returning best response ({best_response_length} chars) despite failing validation")
             
-            return ai_response
+            # If all retries failed, return the longest response we got
+            return best_response
             
         except Exception as e:
             logger.error(f"Error getting AI interpretation: {e}")

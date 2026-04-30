@@ -6,16 +6,16 @@
     "canvas_trickster_overview_description": "tle de esta view.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!",
-        "cubilete": "🎲 **CUBILETE** - Tira los kraneos de Putre y roba el bote!"
+        "dice_game": "💀 **EL BOTE** - Juega contra la banca, tira los dados y llevate el bote!",
+        "cubilete": "🎲 **Dados de Huesos** - Tira los cráneos de Putre y roba el bote!"
     },
     "dice_game": {
-        "button": "🎲 Bote",
+        "button": "💀 Bote",
         "waitmessage": "Tirando daos...Ezpera!",
         "roll_title": "TUS GUESOS DIZEN:\n",
         "combination_title": "RESULTAO:",
         "prize_title": "BOTIN GANAO:",
-        "ranking": " **:trophy:  PUNTUASIONE BOTE **",
+        "ranking": " **🏆  PUNTUASIONE BOTE **",
         "rankingvoid": " No a nadie en tabla umano!",
         "historyvoid": " No a jugao nadie todavia umano!",
         "history": " **📜  Istorial de jugas **",
@@ -120,7 +120,7 @@
         "roll_title": "TUS KRANEOS DIZEN:\n",
         "combination_title": "RESULTAO:",
         "prize_title": "BOTIN GANAO:",
-        "ranking": " **:trophy:  PUNTUASIONE CUBILETE **",
+        "ranking": " **🏆  PUNTUASIONE CUBILETE **",
         "rankingvoid": " No a nadie en tabla umano!",
         "historyvoid": " No a jugao nadie todavia umano!",
         "history": " **📜  Istorial de jugas **",

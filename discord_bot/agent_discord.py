@@ -16,7 +16,7 @@ from discord.ui import View, Button
 
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, call_llm_async, _build_conversation_user_prompt
-from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
+from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response, is_switch_response
 from agent_db import set_current_server, get_server_id, get_db_instance
 from agent_logging import get_logger, update_log_file_path, server_log_context
 from discord_bot.discord_utils import (
@@ -1117,6 +1117,118 @@ async def _process_mc_flag(message, llm_response: str, server_id: str, is_public
         return None
 
 
+async def _process_switch_sentinel(message, response: str, server_id: str, is_public: bool) -> str | None:
+    """Process SWITCH_<personality> sentinel response from LLM for DM personality switching.
+
+    When the LLM emits "SWITCH_<personality>" in a DM, this function:
+    1. Extracts the personality name
+    2. Finds a server where the user and bot share membership that has that personality
+    3. Pins the DM session to that server
+    4. Sends a forced greeting from that personality
+
+    Args:
+        message: Discord message object
+        response: The LLM response that starts with "SWITCH_"
+        server_id: Current server ID (may be None for DMs)
+        is_public: Whether the message is from a public channel
+
+    Returns:
+        None if not a SWITCH response or processing failed, otherwise returns after sending greeting
+    """
+    # Only process in DMs
+    if is_public:
+        return None
+
+    try:
+        from postprocessor import is_switch_response, extract_switch_personality
+
+        if not is_switch_response(response):
+            return None
+
+        personality_name = extract_switch_personality(response)
+        if not personality_name:
+            logger.warning("SWITCH response detected but could not extract personality name")
+            return None
+
+        logger.info(f"👋 SWITCH response detected: user wants to switch to personality '{personality_name}'")
+
+        # Find servers where user and bot share membership
+        mutual_guilds = []
+        for guild in bot.guilds:
+            member = guild.get_member(message.author.id)
+            if member:
+                mutual_guilds.append(guild)
+
+        if not mutual_guilds:
+            logger.info(f"User {message.author.name} shares no servers with the bot")
+            await message.channel.send(f"No compartes ningún servidor conmigo donde pueda encontrar la personalidad '{personality_name}'.")
+            return None
+
+        # Find which mutual server has the requested personality
+        target_guild = None
+        target_server_id = None
+
+        for guild in mutual_guilds:
+            guild_id = str(guild.id)
+            try:
+                from agent_db import get_personality_name
+                guild_personality = get_personality_name(guild_id)
+                if guild_personality and guild_personality.lower() == personality_name:
+                    target_guild = guild
+                    target_server_id = guild_id
+                    logger.info(f"Found personality '{personality_name}' in server: {guild.name} ({guild_id})")
+                    break
+            except Exception as e:
+                logger.debug(f"Could not check personality for server {guild.name}: {e}")
+                continue
+
+        if not target_guild:
+            logger.info(f"Personality '{personality_name}' not found in any shared server")
+            available_personalities = set()
+            for guild in mutual_guilds:
+                try:
+                    from agent_db import get_personality_name
+                    guild_personality = get_personality_name(str(guild.id))
+                    if guild_personality:
+                        available_personalities.add(guild_personality.lower())
+                except Exception:
+                    pass
+
+            if available_personalities:
+                await message.channel.send(
+                    f"No encontré la personalidad '{personality_name}' en nuestros servidores compartidos. "
+                    f"Personalidades disponibles: {', '.join(sorted(available_personalities))}"
+                )
+            else:
+                await message.channel.send(f"No encontré la personalidad '{personality_name}' en nuestros servidores compartidos.")
+            return None
+
+        # Pin the DM session to the target server
+        from agent_db import pin_dm_session
+        pin_dm_session(message.author.id, target_server_id)
+        logger.info(f"Pinned DM session for user {message.author.name} to server {target_guild.name} ({target_server_id})")
+
+        # Send forced greeting from the target personality
+        from behavior.greet import _send_greeting_to_user
+        greeting_data = {
+            'discord_cfg': {},
+            'presence_cfg': {'enabled': True, 'fallback': 'Te saludo desde otro servidor.'}
+        }
+
+        # Get user's display name for this specific server
+        member = target_guild.get_member(message.author.id)
+        user_display_name = member.display_name if member else message.author.display_name
+
+        await _send_greeting_to_user(message.author.id, user_display_name, target_guild, greeting_data, bot)
+
+        logger.info(f"✅ Forced greeting sent from personality '{personality_name}' in server {target_guild.name}")
+        return True
+
+    except Exception as e:
+        logger.exception(f"Error processing SWITCH sentinel: {e}")
+        return None
+
+
 async def _process_chat_message(message):
     """Process normal chat messages (DMs and mentions) with rate limiting."""
     # Global rate limit (token bucket): protects against floods across all users.
@@ -1298,6 +1410,14 @@ async def _process_chat_message(message):
         )
         if wiki_response is not None:
             response, wiki_url = wiki_response
+
+        # Check if this is a SWITCH response (personality switching in DMs)
+        if is_switch_response(response):
+            logger.info(f"👋 SWITCH response detected from {message.author.name}")
+            switch_result = await _process_switch_sentinel(message, response, server_id, is_public)
+            if switch_result is not None:
+                # SWITCH sentinel handled the response, skip normal processing
+                return
 
         # Check if this is a NADA_QUE_DECIR response (nothing to say)
         nothing_to_say_keyword = server_personality.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")

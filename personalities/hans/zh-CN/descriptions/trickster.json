@@ -1,22 +1,22 @@
 {
-    "title": "🎭  **特种行动部**",
-    "description": "指挥专门从事战略欺骗和秘密行动的战术单位。",
-    "button": "🎭 行动",
-    "canvas_trickster_overview_title": "**🎭赫尔汉斯特种行动部**",
+    "title": "🎲  **战斗赌博军官**",
+    "description": "负责管理战场赌博和运气游戏的军官。",
+    "button": "🎲 赌博",
+    "canvas_trickster_overview_title": "**🎲 赫尔汉斯战斗赌博军官**",
     "canvas_trickster_overview_description": "部署单位的一般状态。",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🏢 **特别基金** - 为团部筹集资金，立即捐赠。",
         "dice_game": "🎲 **战场** - 向敌人发射重炮并夺取战争财宝！",
-        "cubilete": "🎲 **战术古比莱特** - 掷指挥骰子并夺取国防军奖池！"
+        "cubilete": "🎲 **指挥骰子** - 滚动战术骰子，夺取战利品！"
     },
     "dice_game": {
-        "button": "🎲 火炮",
+        "button": "💣 火炮",
         "waitmessage": "部署火炮...等待，士兵！",
         "roll_title": "你的炮弹爆炸了：\n",
         "combination_title": "行动结果：",
         "prize_title": "战争财宝：",
-        "ranking": " **:trophy:  战斗员排名 **",
+        "ranking": " **🏆  战斗员排名 **",
         "rankingvoid": " 前线没有战斗员，士兵！",
         "historyvoid": " 还没有人战斗，新兵！",
         "history": " **📜  战斗历史 **",
@@ -145,7 +145,7 @@
         "roll_title": "你的指挥骰子：\n",
         "combination_title": "战术结果：",
         "prize_title": "国防军财宝：",
-        "ranking": " **:trophy:  军官排名 **",
+        "ranking": " **🏆  军官排名 **",
         "rankingvoid": " 前线没有军官，士兵！",
         "historyvoid": " 还没有人玩，新兵！",
         "history": " **📜  行动历史 **",

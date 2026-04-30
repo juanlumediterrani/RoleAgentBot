@@ -144,7 +144,8 @@ class CubileteGame:
             # Prepare result
             result = {
                 'success': True,
-                'dice': dice_display,
+                'dice': ' '.join([str(d) for d in dice]),  # Save as numbers for consistency
+                'dice_display': dice_display,  # Emoji version for display
                 'dice_values': dice,
                 'combination': combination_desc,
                 'combination_type': combination_type,
@@ -202,8 +203,17 @@ def get_cubilete_game_instance(bet_multiplier_tae: int = 2) -> CubileteGame:
     return _game_instance
 
 
-def process_play(player_id: str, player_name: str, server_display_name: str, current_pot: int, server_id: str = None) -> Dict[str, Any]:
-    """Process a cubilete play request."""
+def process_play(player_id: str, player_name: str, server_display_name: str, current_pot: int, server_id: str = None, dice: List[int] = None) -> Dict[str, Any]:
+    """Process a cubilete play request.
+    
+    Args:
+        player_id: Player ID
+        player_name: Player name
+        server_display_name: Server display name
+        current_pot: Current pot balance
+        server_id: Server ID
+        dice: Optional pre-rolled dice (from Canvas UI). If None, new dice will be rolled.
+    """
     try:
         # server_id is always passed from Discord context (ctx.guild.id)
         if server_id is None:
@@ -248,39 +258,69 @@ def process_play(player_id: str, player_name: str, server_display_name: str, cur
         
         # Play the game with actual pot balance
         game = get_cubilete_game_instance(bet_multiplier)
-        result = game.play_game(player_id, player_name, server_id, actual_current_pot, bet)
+
+        # Use pre-rolled dice if provided (from Canvas UI), otherwise roll new dice
+        if dice is not None:
+            # Use the provided dice to calculate result
+            dice_display = game.dice_to_display(dice)
+            combination_type, combination_desc, multiplier = game.analyze_combination(dice, server_id)
+            prize = game.calculate_prize(combination_type, actual_current_pot, bet)
+
+            # Calculate new pot balance (pot only affected by bet, not prize - prize comes from bank)
+            if combination_type == 'repoker':
+                new_pot_balance = 0
+            else:
+                new_pot_balance = actual_current_pot + bet
+
+            result = {
+                'success': True,
+                'dice': ' '.join([str(d) for d in dice]),  # Save as numbers for consistency
+                'dice_display': dice_display,  # Emoji version for display
+                'dice_values': dice,
+                'combination': combination_desc,
+                'combination_type': combination_type,
+                'prize': prize,
+                'bet': bet,
+                'pot_before': actual_current_pot,
+                'pot_after': new_pot_balance,
+                'jackpot': combination_type == 'repoker',
+                'message': game._format_result_message(dice_display, combination_desc, prize, new_pot_balance, server_id)
+            }
+        else:
+            # Roll new dice (normal flow)
+            result = game.play_game(player_id, player_name, server_id, actual_current_pot, bet)
+
         result['announcements'] = []
-        
+
         # Integrate with banker system for gold transactions
         banker_message = ""
-        
+
         if result['success']:
             try:
                 from roles.banker.banker_db import get_banker_roles_db_instance
                 banker_roles_db = get_banker_roles_db_instance(server_id)
                 banker_roles_db.create_wallet("cubilete_pot", "Cubilete Pot", 'system')
                 banker_roles_db.create_wallet(player_id, player_name, 'user')
-                
+
                 # Use the actual_current_pot we already obtained
                 result['pot_before'] = actual_current_pot
                 prize = result.get('prize', 0)
-                
-                if prize > 0 and actual_current_pot < prize:
-                    result['success'] = False
-                    result['message'] = "❌ The pot does not have enough gold to pay that prize."
-                    return result
-                
-                result['pot_after'] = 0 if result.get('jackpot') else (actual_current_pot + bet - prize)
-                result['message'] = game._format_result_message(result['dice'], result['combination'], prize, result['pot_after'], server_id)
+
+                # Only overwrite pot_after and message for new rolls (not for pre-rolled dice from Canvas)
+                if dice is None:
+                    # Prizes come from bank (generated money), not from pot
+                    # Pot only affected on jackpot (repoker)
+                    result['pot_after'] = 0 if result.get('jackpot') else (actual_current_pot + bet)
+                    result['message'] = game._format_result_message(result['dice'], result['combination'], prize, result['pot_after'], server_id)
 
                 # Deduct the bet amount from player's wallet
                 bet_deducted = banker_roles_db.update_balance(
                     player_id, player_name,
-                    -bet, "cubilete_bet", 
-                    f"Cubilete bet: {result['dice']}", 
+                    -bet, "cubilete_bet",
+                    f"Cubilete bet: {result['dice']}",
                     "cubilete", "Cubilete System"
                 )
-                
+
                 if not bet_deducted:
                     banker_message = "❌ Not enough gold to place the bet."
                     result['success'] = False
@@ -290,11 +330,11 @@ def process_play(player_id: str, player_name: str, server_display_name: str, cur
                     if result['prize'] > 0:
                         prize_added = banker_roles_db.update_balance(
                             player_id, player_name,
-                            result['prize'], "cubilete_win", 
-                            f"Cubilete winnings: {result['combination']}", 
+                            result['prize'], "cubilete_win",
+                            f"Cubilete winnings: {result['combination']}",
                             "cubilete", "Cubilete System"
                         )
-                        
+
                         if not prize_added:
                             banker_message = "⚠️ You won, but the prize could not be added to the wallet."
                             result['success'] = False
@@ -323,7 +363,7 @@ def process_play(player_id: str, player_name: str, server_display_name: str, cur
                                 opening_bonus = tae * pot_refill_multiplier
                             except:
                                 opening_bonus = tae * 15
-                            
+
                             if opening_bonus > 0:
                                 refill_result = banker_roles_db.update_balance(
                                     "cubilete_pot", "Cubilete Pot",
@@ -341,7 +381,7 @@ def process_play(player_id: str, player_name: str, server_display_name: str, cur
             except Exception as e:
                 # If banker integration fails, still allow the game but warn
                 banker_message = f"⚠️ Banker integration failed: {str(e)}"
-        
+
         if result['success']:
             # Update player statistics
             try:

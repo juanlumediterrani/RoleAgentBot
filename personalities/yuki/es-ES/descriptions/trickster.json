@@ -6,16 +6,16 @@
     "canvas_trickster_overview_description": "Accede a los módulos de probabilidad y azar de la sala.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **Ozashiki-asobi (お座敷遊び) ** - Desafía al azar y reclama el fondo acumulado",
-        "cubilete": "🎲 **CUBILETE** - Juega al Cubilete y gana la copa de Sake"
+        "dice_game": "� **Ozashiki-asobi (お座敷遊び) ** - Desafía al azar y reclama el fondo acumulado",
+        "cubilete": "🎲 **Dados de Sake** - Juega al cubilete y gana la copa de sake"
     },
     "dice_game": {
-        "button": "🎲 Ozashiki-asobi",
+        "button": "🍶 Ozashiki-asobi",
         "waitmessage": "Calculando resultado... Un momento.",
         "roll_title": "EL RESULTADO ES:\n",
         "combination_title": "COMBINACIÓN:",
         "prize_title": "GANANCIA:",
-        "ranking": " **:trophy: CLASIFICACIÓN**",
+        "ranking": " **🏆 CLASIFICACIÓN**",
         "rankingvoid": " Sin registros todavía. Sé el primero en jugar.",
         "historyvoid": " No hay partidas registradas aún.",
         "history": " **📜 Historial de Partidas**",
@@ -120,7 +120,7 @@
         "roll_title": "EL RESULTADO ES:\n",
         "combination_title": "COMBINACIÓN:",
         "prize_title": "GANANCIA:",
-        "ranking": " **:trophy: CLASIFICACIÓN**",
+        "ranking": " **🏆 CLASIFICACIÓN**",
         "rankingvoid": " Sin registros todavía. Sé el primero en jugar.",
         "historyvoid": " No hay partidas registradas aún.",
         "history": " **📜 Historial de Partidas**",

@@ -247,3 +247,39 @@ def is_nothing_to_say_response(text, keyword="NADA_QUE_DECIR"):
 
     # Accept if the response is essentially just the keyword (with minor variations)
     return s_clean == keyword_clean or s_clean.startswith(keyword_clean)
+
+def is_switch_response(text):
+    """Detects if the LLM responded with 'SWITCH_<personality>' following the golden rule for DM personality switching."""
+    if not text:
+        return False
+
+    s = _sanitize_text(text)
+
+    # Check if response starts with SWITCH_ followed by a personality name (case-insensitive)
+    import re
+    if not re.match(r'^\s*SWITCH_\S+', s, re.IGNORECASE):
+        return False
+
+    return True
+
+def extract_switch_personality(text):
+    """Extract the personality name from a SWITCH_ response.
+
+    Args:
+        text: The LLM response containing SWITCH_<personality>
+
+    Returns:
+        The personality name (lowercase) or None if not found
+    """
+    if not text:
+        return None
+
+    s = _sanitize_text(text)
+
+    # Extract personality name after SWITCH_ (case-insensitive)
+    import re
+    match = re.match(r'^\s*SWITCH_(\S+)', s, re.IGNORECASE)
+    if match:
+        return match.group(1).lower()
+
+    return None

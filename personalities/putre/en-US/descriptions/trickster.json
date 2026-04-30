@@ -6,16 +6,16 @@
     "canvas_trickster_overview_description": "tle of this view.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **THE POT** - Play against the bank, roll the dice and take the pot!",
-        "cubilete": "🎲 **CUBILETE** - Roll Putre's skulls and steal the pot!"
+        "dice_game": "💀 **THE POT** - Play against the bank, roll the dice and take the pot!",
+        "cubilete": "🎲 **BONE DICE** - Roll Putre's skulls and steal the pot!"
     },
     "dice_game": {
-        "button": "🎲 Pot",
+        "button": "💀 Pot",
         "waitmessage": "Rolling dice...Wait!",
         "roll_title": "YOUR BONES SAY:\n",
         "combination_title": "RESULT:",
         "prize_title": "LOOT WON:",
-        "ranking": " **:trophy:  POT RANKING **",
+        "ranking": " **🏆  POT RANKING **",
         "rankingvoid": " No one in table human!",
         "historyvoid": " No one has played yet human!",
         "history": " **📜  Game History **",
@@ -120,7 +120,7 @@
         "roll_title": "YOUR SKULLS SAY:\n",
         "combination_title": "RESULT:",
         "prize_title": "LOOT WON:",
-        "ranking": " **:trophy:  CUBILETE RANKING **",
+        "ranking": " **🏆  CUBILETE RANKING **",
         "rankingvoid": " No one in table human!",
         "historyvoid": " No one has played yet human!",
         "history": " **📜  Game History **",

@@ -905,6 +905,18 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             # Step 3: Handle databases FIRST (before copying new personality)
             # This ensures we preserve/transfer memory before new personality overwrites files
             if delete_memory:
+                # Clear all memory (interactions.jsonl and state.json) from NoSQL system BEFORE deleting databases
+                try:
+                    from persistence.agent_state import get_agent_state
+                    agent_state = get_agent_state(server_id)
+                    if agent_state and agent_state._memory:
+                        agent_state._memory.clear_all_memory()
+                        if logger:
+                            logger.info(f"✅ Cleared all NoSQL memory (interactions.jsonl and state.json) for server {server_id}")
+                except Exception as e:
+                    if logger:
+                        logger.warning(f"⚠️ Could not clear NoSQL memory: {e}")
+
                 # Delete ONLY the agent database (memory) of the old personality
                 _delete_database(server_id, f"agent_{old_personality}.db")
                 # Rename other databases from old to new personality (preserve roles, behavior, etc.)

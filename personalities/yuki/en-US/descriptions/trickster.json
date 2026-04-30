@@ -6,16 +6,16 @@
     "canvas_trickster_overview_description": "Access the hall's probability and chance modules.",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **Ozashiki-asobi (お座敷遊び) ** - Challenge chance and claim the accumulated fund",
-        "cubilete": "🎲 **CUBILETE** - Play Cubilete and win the Sake cup"
+        "dice_game": "� **Ozashiki-asobi (お座敷遊び) ** - Challenge chance and claim the accumulated fund",
+        "cubilete": "🎲 **SAKE DICE** - Play cubilete and win the sake cup"
     },
     "dice_game": {
-        "button": "🎲 Ozashiki-asobi",
+        "button": "🍶 Ozashiki-asobi",
         "waitmessage": "Calculating result... A moment.",
         "roll_title": "THE RESULT IS:\n",
         "combination_title": "COMBINATION:",
         "prize_title": "WINNING:",
-        "ranking": " **:trophy: RANKING**",
+        "ranking": " **🏆 RANKING**",
         "rankingvoid": " No records yet. Be the first to play.",
         "historyvoid": " No games recorded yet.",
         "history": " **📜 Game History**",
@@ -120,7 +120,7 @@
         "roll_title": "THE RESULT IS:\n",
         "combination_title": "COMBINATION:",
         "prize_title": "WINNING:",
-        "ranking": " **:trophy: RANKING**",
+        "ranking": " **🏆 RANKING**",
         "rankingvoid": " No records yet. Be the first to play.",
         "historyvoid": " No games recorded yet.",
         "history": " **📜 Game History**",

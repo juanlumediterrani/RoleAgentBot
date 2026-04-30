@@ -8,7 +8,7 @@
     "canvas_trickster_subrole_descriptions": {
         "beggar": "🔥 **Alimentar el horno** - Pide harina para proyectos del horno, siempre encendido!",
         "dice_game": "🍞 **Migajas del Horno** - Hornear pan y apostar sacos de harina, ¿quién se quema?",
-        "cubilete": "🎲 **Dados del Horno** - Tira los dados carbonizados y roba la cesta del horno!"
+        "cubilete": "🎲 **Dados Carbonizados** - Tira los dados del horno y roba la cesta si te atreves!"
     },
     "dice_game": {
         "button": "🍞 Migajas",
@@ -16,7 +16,7 @@
         "roll_title": "TUS MIGAJAS DICEN:\n",
         "combination_title": "RESULTADO:",
         "prize_title": "HARINA QUEMADA:",
-        "ranking": " **:trophy:  VÍCTIMAS DEL HORNO **",
+        "ranking": " **🏆  VÍCTIMAS DEL HORNO **",
         "rankingvoid": " No hay víctimas todavía, JEJEJE!",
         "historyvoid": " Nadie ha jugado todavía... qué aburrido",
         "history": " **📜  Historial de sufrimientos **",
@@ -114,7 +114,7 @@
         "roll_title": "TUS DADOS DICEN:\n",
         "combination_title": "RESULTADO:",
         "prize_title": "HARINA QUEMADA:",
-        "ranking": " **:trophy:  VÍCTIMAS DEL HORNO **",
+        "ranking": " **🏆  VÍCTIMAS DEL HORNO **",
         "rankingvoid": " No hay víctimas todavía, JEJEJE!",
         "historyvoid": " Nadie ha jugado todavía... qué aburrido",
         "history": " **📜  Historial de sufrimientos **",

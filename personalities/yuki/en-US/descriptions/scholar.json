@@ -1,15 +1,15 @@
 {
     "title": "📚 **Hall Librarian**",
     "description": "Access the ancient texts and accumulated wisdom of the tea house from Yuki's serene perspective. Ask any question, and I shall share from the library with presence.",
-    "button": "📚 Scholar",
+    "button": "📚 Librarian",
     "embed_footer": "📚 Hall Librarian 📚",
     "dropdown": {
         "select_action": "📋 Execute instruction...",
-        "toggle_on": "✅ Enable Scholar",
-        "toggle_off": "❌ Disable Scholar"
+        "toggle_on": "✅ Enable Librarian",
+        "toggle_off": "❌ Disable Librarian"
     },
     "wikipedia_button_label": "📖 Read on Wikipedia",
     "controls_title": "**Controls**",
-    "controls": "- Enable or disable the Scholar role",
-    "admin_flows": "Toggle the Scholar role to enable or disable it."
+    "controls": "- Enable or disable the Librarian role",
+    "admin_flows": "Toggle the Librarian role to enable or disable it."
 }

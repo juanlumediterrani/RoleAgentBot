@@ -42,6 +42,11 @@ ENGLISH_MESSAGES = {
     'meaning': "Meaning",
     'keywords': "Keywords",
     'interpretation': "Interpretation",
+    # Hebrew letters page titles
+    'hebrew_letters_page_1_title': "📜 THE 22 HEBREW LETTERS - MOTHER LETTERS (I) 📜",
+    'hebrew_letters_page_2_title': "📜 THE 22 HEBREW LETTERS - DOUBLE LETTERS (II) 📜",
+    'hebrew_letters_page_3_title': "📜 THE 22 HEBREW LETTERS - SIMPLE LETTERS (III) 📜",
+    'nav_page': "Page",
 }
 
 # ============================================================================
@@ -52,8 +57,9 @@ READING_TYPES = {
     'birth': {
         'name': 'Birth Chart (Mazal Ha\'Leida)',
         'description': 'Permanent soul pattern from birth date and time',
-        'input_required': ['birth_date', 'birth_time'],
+        'input_required': ['birth_date'],
         'input_optional': ['birth_time'],
+        'question_required': False,
         'output_layers': ['element', 'planet', 'sign'],
         'positions': ['Elemento Natal', 'Planeta Rector', 'Signo Zodiacal'],
         'calculation_function': 'calculate_birth_chart'
@@ -63,6 +69,7 @@ READING_TYPES = {
         'description': 'Analysis of a specific moment for a question',
         'input_required': ['question_date'],
         'input_optional': ['question_time'],
+        'question_required': True,
         'output_layers': ['element', 'planet', 'sign'],
         'positions': ['Elemento del Momento', 'Planeta del Día', 'Signo del Mes'],
         'calculation_function': 'calculate_moment_reading'
@@ -72,6 +79,7 @@ READING_TYPES = {
         'description': 'Annual cycle analysis based on birth year and current year',
         'input_required': ['birth_year'],
         'input_optional': [],
+        'question_required': False,
         'output_layers': ['personal_number', 'personal_letter', 'collective_year'],
         'positions': ['Número Personal', 'Letra del Año', 'Año Colectivo'],
         'calculation_function': 'calculate_personal_year'
@@ -81,6 +89,7 @@ READING_TYPES = {
         'description': 'Combined analysis of birth, year, and moment',
         'input_required': ['birth_date', 'question_date'],
         'input_optional': ['birth_time', 'question_time'],
+        'question_required': True,
         'output_layers': ['birth_chart', 'personal_year', 'moment_reading'],
         'positions': ['Carta Natal (Permanente)', 'Año Personal (Cíclico)', 'Momento (Inmediato)'],
         'calculation_function': 'calculate_integrated_reading'
@@ -526,7 +535,7 @@ def _get_personality_dir(server_id: str = None) -> str:
     
     # Fallback to project root personalities directory
     try:
-        from agent_cfg import AGENT_CFG
+        from agent_engine import AGENT_CFG
         default_personality = AGENT_CFG.get("default_personality", "rab")
         default_language = AGENT_CFG.get("default_language", "en-US")
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -558,9 +567,9 @@ def _load_shaman_json(server_id: str = None) -> dict:
 def _load_astrologyplane_json(server_id: str = None) -> dict:
     """Load manuals/{language}/astrologyplane.json with fallback to en-US."""
     try:
-        from agent_cfg import AGENT_CFG
+        from agent_engine import AGENT_CFG
         language = AGENT_CFG.get("default_language", "en-US")
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         
         # Try personality-specific language first
         personality_dir = _get_personality_dir(server_id)
@@ -655,7 +664,8 @@ def get_letter_translations(letter_key: str, server_id: str = None) -> dict:
     """Get letter translations from astrologyplane.json."""
     messages = load_personality_messages(server_id)
     translations = messages.get('translations', {})
-    return translations.get(letter_key, {})
+    # Normalize to lowercase for case-insensitive lookup
+    return translations.get(letter_key.lower(), {})
 
 
 def get_position_translation(position_key: str, server_id: str = None) -> str:
@@ -663,6 +673,12 @@ def get_position_translation(position_key: str, server_id: str = None) -> str:
     messages = load_personality_messages(server_id)
     positions = messages.get('positions', {})
     return positions.get(position_key, position_key)
+
+
+def get_all_position_translations(server_id: str = None) -> dict:
+    """Get all position translations as a dict from astrologyplane.json."""
+    messages = load_personality_messages(server_id)
+    return messages.get('positions', {})
 
 
 def clear_message_cache():
@@ -735,3 +751,106 @@ def get_planet_by_chaldean_hour(hour: int) -> dict:
     planet_index = hour % 7
     planet_name = chaldean_order[planet_index]
     return get_letter_by_planet(planet_name)
+
+
+# ============================================================================
+# HEBREW LETTERS PAGINATION (similar to RUNES pagination)
+# ============================================================================
+
+_HEBREW_LETTER_ORDER = [
+    # Mother Letters (3)
+    ('alef', 'א', 'Alef'),
+    ('mem', 'מ', 'Mem'),
+    ('shin', 'ש', 'Shin'),
+    # Double Letters (7)
+    ('bet', 'ב', 'Bet'),
+    ('gimel', 'ג', 'Gimel'),
+    ('dalet', 'ד', 'Dalet'),
+    ('kaf', 'כ', 'Kaf'),
+    ('pe', 'פ', 'Pe'),
+    ('resh', 'ר', 'Resh'),
+    ('tav', 'ת', 'Tav'),
+    # Simple Letters (12)
+    ('he', 'ה', 'He'),
+    ('vav', 'ו', 'Vav'),
+    ('zayin', 'ז', 'Zayin'),
+    ('jet', 'ח', 'Jet'),
+    ('tet', 'ט', 'Tet'),
+    ('yod', 'י', 'Yod'),
+    ('lamed', 'ל', 'Lamed'),
+    ('nun', 'נ', 'Nun'),
+    ('samej', 'ס', 'Samej'),
+    ('ayin', 'ע', 'Ayin'),
+    ('tzadi', 'צ', 'Tzadi'),
+    ('kof', 'ק', 'Kof'),
+]
+
+HEBREW_LETTERS_PER_PAGE = 8
+
+
+def get_hebrew_letters_page_data(page: int = 1, server_id: str = None) -> list:
+    """Return structured Hebrew letter data for the given page as a list of dicts."""
+    messages = load_personality_messages(server_id)
+    labels_data = _load_shaman_json(server_id).get('astrology', {}).get('labels', {})
+    astrologyplane = _load_astrologyplane_json(server_id)
+    letters_data = astrologyplane.get('translations', {})
+
+    logger.debug(f"get_hebrew_letters_page_data: page={page}, server_id={server_id}, letters_data keys={list(letters_data.keys())[:5]}")
+
+    start_idx = (page - 1) * HEBREW_LETTERS_PER_PAGE
+    page_letters = _HEBREW_LETTER_ORDER[start_idx:start_idx + HEBREW_LETTERS_PER_PAGE]
+
+    logger.debug(f"get_hebrew_letters_page_data: page_letters={page_letters}")
+
+    result = []
+    for letter_key, hebrew_symbol, name in page_letters:
+        letter_info = letters_data.get(letter_key, {})
+        fallback_letter = HEBREW_LETTERS.get(letter_key, {})
+        result.append({
+            'key': letter_key,
+            'symbol': hebrew_symbol,
+            'name': name,
+            'meaning': letter_info.get('meaning', fallback_letter.get('meaning', 'Unknown')),
+            'keywords': letter_info.get('keywords', fallback_letter.get('keywords', [])),
+            'interpretation': letter_info.get('interpretation', fallback_letter.get('description', 'No description')),
+            'labels': labels_data,
+        })
+
+    logger.debug(f"get_hebrew_letters_page_data: result_count={len(result)}")
+
+    return result
+
+
+def get_hebrew_letters_list_content(page: int = 1, server_id: str = None) -> str:
+    """Generate Hebrew letters list content dynamically from astrologyplane.json with pagination.
+
+    Format per letter:
+        **hebrew_symbol name**: meaning
+        keyword_label: kw1, kw2, …
+    """
+    shaman_data = _load_shaman_json(server_id)
+    labels_data = shaman_data.get('astrology', {}).get('labels', {})
+
+    astrologyplane = _load_astrologyplane_json(server_id)
+    letters_data = astrologyplane.get('translations', {})
+
+    logger.debug(f"get_hebrew_letters_list_content: page={page}, server_id={server_id}, letters_data keys={list(letters_data.keys())[:5]}")
+
+    start_idx = (page - 1) * HEBREW_LETTERS_PER_PAGE
+    page_letters = _HEBREW_LETTER_ORDER[start_idx:start_idx + HEBREW_LETTERS_PER_PAGE]
+
+    logger.debug(f"get_hebrew_letters_list_content: page_letters={page_letters}")
+
+    content = "─" * 45 + "\n\n"
+
+    for letter_key, hebrew_symbol, name in page_letters:
+        letter_info = letters_data.get(letter_key, {})
+        fallback_letter = HEBREW_LETTERS.get(letter_key, {})
+        meaning = letter_info.get('meaning', fallback_letter.get('meaning', 'Unknown'))
+        # Add LTR mark to force left-to-right direction for mixed Hebrew/English text
+        content += f"\u200E**{hebrew_symbol} {name}**: \u200E\n"
+        content += f"\u200E{meaning}\u200E\n"
+
+    logger.debug(f"get_hebrew_letters_list_content: content_length={len(content)}, content_preview={content[:200]}")
+
+    return content

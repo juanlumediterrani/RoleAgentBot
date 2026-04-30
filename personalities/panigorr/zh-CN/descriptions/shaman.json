@@ -3,7 +3,8 @@
     "description": "跟伊戈尔一起烤命运符文，发现烧焦碎屑要跟你说啥。",
     "button": "♨️ 蒸汽",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🥖 **面包符文** - 在面包上写符文，烤出来，从烧焦碎屑里读命运"
+        "nordic_runes": "🥖 **面包符文** - 在面包上写符文，烤出来，从烧焦碎屑里读命运",
+        "astrology": "🌟 **占星术** - 创造之书希伯来字母用于占卜。目前正在开发中。"
     },
     "moon_phases": {
         "new_moon": "新月 🌑",

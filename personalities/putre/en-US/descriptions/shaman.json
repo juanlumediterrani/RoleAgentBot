@@ -4,7 +4,7 @@
     "button": "🐺 Shaman",
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🔮 **Nordic Runes** - Cast ancient runes to receive wisdom and guidance",
-        "astrology": "🌟 **Astrology** - Sefer Yetzirah Hebrew letters for divination"
+        "astrology": "🌟 **Astrology** - Sefer Yetzirah Hebrew letters for divination. Currently in development."
     },
     "moon_phases": {
         "new_moon": "New Moon 🌑",

@@ -2437,48 +2437,50 @@ class CubileteRollButton(discord.ui.Button):
 
         # Check if this is the last roll
         if game.roll_count >= game.max_rolls:
-            # Announce result
-            from roles.trickster.subroles.cubilete.cubilete import CubileteGame
-            cubilete = CubileteGame()
-            combination, description, multiplier = cubilete.analyze_combination(game.dice, str(guild_id))
+            # Call backend process_play for proper banker integration and DB writes
+            from roles.trickster.subroles.cubilete.cubilete import process_play
+            from discord_bot.discord_core_commands import get_server_key
+            server_key = get_server_key(guild)
 
-            # Calculate prize
-            if multiplier == 'BOTE':
-                # Pot win - get pot balance
-                from roles.banker.banker_db import get_banker_roles_db_instance
-                from discord_bot.discord_core_commands import get_server_key
-                server_key = get_server_key(guild)
-                db_banker = get_banker_roles_db_instance(server_key)
-                db_banker.create_wallet("cubilete_pot", "Cubilete Pot", wallet_type="system")
-                prize = db_banker.get_balance("cubilete_pot")
-                # Empty the pot
-                db_banker.update_balance("cubilete_pot", "Cubilete Pot", -prize, "CUBILETE_POT_WIN", str(user_id), interaction.user.display_name)
+            # Convert dice list to string format expected by backend
+            dice_str = " ".join([str(d) for d in game.dice])
+
+            # Get current pot balance
+            from roles.banker.banker_db import get_banker_roles_db_instance
+            db_banker = get_banker_roles_db_instance(server_key)
+            db_banker.create_wallet("cubilete_pot", "Cubilete Pot", wallet_type="system")
+            current_pot = db_banker.get_balance("cubilete_pot")
+
+            # Call backend process_play with kept dice from Canvas game
+            result = process_play(
+                str(user_id),
+                interaction.user.display_name,
+                guild.name if guild else "Unknown",
+                current_pot,
+                server_key,
+                dice=game.dice  # Use the dice from the Canvas game
+            )
+
+            if result.get('success'):
+                game.confirm(result.get('combination', ''), result.get('prize', 0))
             else:
-                prize = int(game.bet * multiplier)
-
-            game.confirm(combination, prize)
-
-            # Save to database
-            try:
-                roles_db = get_roles_db_instance(server_key)
-                roles_db.save_cubilete_play(
-                    user_id,
-                    interaction.user.display_name,
-                    game.dice,
-                    combination,
-                    prize,
-                    game.bet
-                )
-            except Exception as e:
-                logger.exception(f"Failed to save cubilete play: {e}")
+                await interaction.response.send_message(f"❌ {result.get('message', 'Game failed')}", ephemeral=True)
+                end_game(user_id, guild_id)
+                await _refresh_cubilete_game_view(interaction, view, None)
+                return
 
             # End the game
             end_game(user_id, guild_id)
 
-            # Show result in tapete
+            # Show result in tapete - use backend result for consistency
+            prize = result.get('prize', 0)
+            dice_display = result.get('dice_display', result.get('dice', ''))
+            combination = result.get('combination', '')
+            description = combination  # Use combination directly from result
+
             content_parts = [
                 cubilete_descriptions.get("result_title", "**🎲 CUBILETE RESULT**"),
-                f"{cubilete_descriptions.get('roll_title', '🎲 Your roll:')} {' '.join([str(d) for d in game.dice])}",
+                f"{cubilete_descriptions.get('roll_title', '🎲 Your roll:')} {dice_display}",
                 f"{cubilete_descriptions.get('combination_title', '📊 Combination:')} {description}",
                 f"{cubilete_descriptions.get('prize_title', '💰 Prize:')} {prize:,} gold coins",
             ]
@@ -2586,48 +2588,47 @@ class CubileteConfirmButton(discord.ui.Button):
             await interaction.response.send_message(cubilete_answers.get("error_must_roll_first", "❌ Must roll at least once before confirming."), ephemeral=True)
             return
 
-        # Analyze final combination
-        from roles.trickster.subroles.cubilete.cubilete import CubileteGame
-        cubilete = CubileteGame()
-        combination, description, multiplier = cubilete.analyze_combination(game.dice, str(guild_id))
+        # Call backend process_play for proper banker integration and DB writes
+        from roles.trickster.subroles.cubilete.cubilete import process_play
+        from discord_bot.discord_core_commands import get_server_key
+        server_key = get_server_key(guild)
 
-        # Calculate prize
-        if multiplier == 'BOTE':
-            # Pot win - get pot balance
-            from roles.banker.banker_db import get_banker_roles_db_instance
-            from discord_bot.discord_core_commands import get_server_key
-            server_key = get_server_key(guild)
-            db_banker = get_banker_roles_db_instance(server_key)
-            db_banker.create_wallet("cubilete_pot", "Cubilete Pot", wallet_type="system")
-            prize = db_banker.get_balance("cubilete_pot")
-            # Empty the pot
-            db_banker.update_balance("cubilete_pot", "Cubilete Pot", -prize, "CUBILETE_POT_WIN", str(user_id), interaction.user.display_name)
-        else:
-            prize = int(game.bet * multiplier)
+        # Get current pot balance
+        from roles.banker.banker_db import get_banker_roles_db_instance
+        db_banker = get_banker_roles_db_instance(server_key)
+        db_banker.create_wallet("cubilete_pot", "Cubilete Pot", wallet_type="system")
+        current_pot = db_banker.get_balance("cubilete_pot")
 
-        game.confirm(combination, prize)
+        # Call backend process_play with kept dice from Canvas game
+        result = process_play(
+            str(user_id),
+            interaction.user.display_name,
+            guild.name if guild else "Unknown",
+            current_pot,
+            server_key,
+            dice=game.dice  # Use the dice from the Canvas game
+        )
 
-        # Save to database
-        try:
-            roles_db = get_roles_db_instance(server_key)
-            roles_db.save_cubilete_play(
-                user_id,
-                interaction.user.display_name,
-                game.dice,
-                combination,
-                prize,
-                game.bet
-            )
-        except Exception as e:
-            logger.exception(f"Failed to save cubilete play: {e}")
+        if not result.get('success'):
+            await interaction.response.send_message(f"❌ {result.get('message', 'Game failed')}", ephemeral=True)
+            end_game(user_id, guild_id)
+            await _refresh_cubilete_game_view(interaction, view, None)
+            return
+
+        game.confirm(result.get('combination', ''), result.get('prize', 0))
 
         # End the game
         end_game(user_id, guild_id)
 
-        # Show result and refresh view
+        # Show result and refresh view - use backend result for consistency
+        prize = result.get('prize', 0)
+        dice_display = result.get('dice_display', result.get('dice', ''))
+        combination = result.get('combination', '')
+        description = combination  # Use combination directly from result
+
         content_parts = [
             cubilete_descriptions.get("result_title", "**🎲 CUBILETE RESULT**"),
-            f"{cubilete_descriptions.get('roll_title', '🎲 Your roll:')} {' '.join([str(d) for d in game.dice])}",
+            f"{cubilete_descriptions.get('roll_title', '🎲 Your roll:')} {dice_display}",
             f"{cubilete_descriptions.get('combination_title', '📊 Combination:')} {description}",
             f"{cubilete_descriptions.get('prize_title', '💰 Prize:')} {prize:,} gold coins",
         ]
@@ -3891,62 +3892,61 @@ async def _handle_canvas_dice_action(interaction: discord.Interaction, action_na
         return
 
     elif action_name == "cubilete_ranking":
-        # Redirect to cubilete ranking detail view
-        content = _build_canvas_role_detail_view(
-            "trickster",
-            "cubilete_ranking",
-            view.agent_config,
-            view.admin_visible,
-            guild,
-            view.author_id,
-        )
-        if not content:
-            await _safe_send_interaction_message(interaction, "❌ Cubilete ranking view is not available.", ephemeral=True)
-            return
+        # Show ranking using centralized function
+        try:
+            from .state import _get_canvas_cubilete_ranking
+            ranking_data = _get_canvas_cubilete_ranking(guild, 10)
 
-        # Store current embed in view for back navigation
-        role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "cubilete_ranking", None, "Cubilete Ranking", server_id=get_server_key(interaction.guild) if interaction.guild else None)
-        view.current_embed = role_embed
-
-        next_view = CanvasRoleDetailView(
-            author_id=view.author_id,
-            role_name="trickster",
-            agent_config=view.agent_config,
-            admin_visible=view.admin_visible,
-            current_detail="cubilete_ranking",
-        )
-        next_view.current_embed = role_embed
-        await _safe_edit_interaction_message(interaction, embed=role_embed, view=next_view)
-        return
+            rankingtitle = descriptions.get("ranking", "**🏆 CUBILETE RANKING**")
+            content_parts.append(rankingtitle)
+            content_parts.append("─" * 45)
+            if ranking_data:
+                for player in ranking_data:
+                    medal = "🥇" if player["position"] == 1 else "🥈" if player["position"] == 2 else "🥉" if player["position"] == 3 else "🏅"
+                    content_parts.append(
+                        f"{medal} **#{player['position']}** {player['player_name']} | 🏆 Biggest Prize: {player['prize']:,} | Games: {player['total_plays']}"
+                    )
+            else:
+                rankingvoid = descriptions.get("rankingvoid", "📊 No ranked players yet. Be the first to play!")
+                content_parts.append(rankingvoid)
+        except Exception as e:
+            logger.exception(f"Canvas cubilete ranking failed: {e}")
+            content_parts.extend([
+                "**🏆 CUBILETE RANKING**",
+                "❌ **ERROR!** Could not load ranking.",
+            ])
 
     elif action_name == "cubilete_history":
-        # Redirect to cubilete history detail view
-        content = _build_canvas_role_detail_view(
-            "trickster",
-            "cubilete_history",
-            view.agent_config,
-            view.admin_visible,
-            guild,
-            view.author_id,
-        )
-        if not content:
-            await _safe_send_interaction_message(interaction, "❌ Cubilete history view is not available.", ephemeral=True)
-            return
+        # Show recent history
+        try:
+            db_cubilete = get_roles_db_instance(server_key)
+            history = db_cubilete.get_cubilete_history(10)
+            historytitle = descriptions.get("history", "**📜 CUBILETE HISTORY**")
+            content_parts.append(historytitle)
+            content_parts.append("─" * 45)
 
-        # Store current embed in view for back navigation
-        role_embed = _build_canvas_role_embed("trickster", content, view.admin_visible, "cubilete_history", None, "Cubilete History", server_id=get_server_key(interaction.guild) if interaction.guild else None)
-        view.current_embed = role_embed
-
-        next_view = CanvasRoleDetailView(
-            author_id=view.author_id,
-            role_name="trickster",
-            agent_config=view.agent_config,
-            admin_visible=view.admin_visible,
-            current_detail="cubilete_history",
-        )
-        next_view.current_embed = role_embed
-        await _safe_edit_interaction_message(interaction, embed=role_embed, view=next_view)
-        return
+            if history:
+                from roles.trickster.subroles.cubilete.cubilete import DICE_VALUES
+                for record in history:
+                    user_name = record.get('user_name', 'Unknown')
+                    dice_str = record.get('dice', '')
+                    # Convert dice numbers to emojis
+                    dice_display = ' '.join([DICE_VALUES.get(int(d), str(d)) for d in dice_str.split() if d.isdigit()])
+                    combination = record.get('combination', '')
+                    prize = record.get('prize', 0)
+                    prize_emoji = "💰" if prize > 0 else "💸"
+                    content_parts.append(
+                        f"👤 {user_name} | {dice_display} → {combination} | {prize_emoji} {prize:,}"
+                    )
+            else:
+                historyvoid = descriptions.get("historyvoid", "📊 Any play in the game. Be the first!")
+                content_parts.append(historyvoid)
+        except Exception as e:
+            logger.exception(f"Canvas cubilete history failed: {e}")
+            content_parts.extend([
+                "**📜 CUBILETE HISTORY**",
+                "❌ **ERROR!** Could not load history.",
+            ])
 
     elif action_name == "cubilete_help":
         # Redirect to cubilete detail view instead of showing help
@@ -4143,8 +4143,25 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
             # For other roles, create action dropdown
             else:
                 self.add_item(CanvasRoleActionSelect(role_name, current_detail, admin_visible, self.agent_config, self.guild))
-        for label, detail_name in role_details:
-            self.add_item(CanvasRoleDetailButton(label=label, role_name=role_name, detail_name=detail_name))
+        # Check if there's an active cubilete game before adding detail buttons
+        guild_id = guild.id if guild else None
+        active_cubilete_game = None
+        if role_name == "trickster" and current_detail == "cubilete":
+            active_cubilete_game = get_active_game(self.author_id, guild_id) if guild_id else None
+
+        # Only add detail buttons (personal/admin) if no active cubilete game
+        # Skip "personal" button for MC role
+        if not (active_cubilete_game and active_cubilete_game.game_active):
+            for label, detail_name in role_details:
+                if not (role_name == "mc" and detail_name == "personal"):
+                    self.add_item(CanvasRoleDetailButton(label=label, role_name=role_name, detail_name=detail_name))
+
+        # Add MC action buttons (play/add/skip/stop) next to personal button
+        if role_name == "mc" and current_detail == "overview":
+            from .canvas_mc import CanvasMCActionButton
+            for action in ["mc_play", "mc_add", "mc_skip", "mc_stop"]:
+                self.add_item(CanvasMCActionButton(action, self))
+
         self._add_role_buttons()
 
         # Add cubilete game buttons after navigation buttons
@@ -4153,18 +4170,21 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
             cubilete_descriptions = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("trickster", {}).get("cubilete", {})
             button_label = cubilete_descriptions.get("cubilete_play_button", "🎲 Play")
 
-            # Check if there's an active game for this user
-            guild_id = guild.id if guild else None
-            active_game = get_active_game(self.author_id, guild_id) if guild_id else None
+            # Use the already-checked active game
+            active_game = active_cubilete_game
 
             if active_game and active_game.game_active:
-                # Show game buttons instead of play button
+                # Show game buttons
                 if active_game.waiting_for_bet:
                     # Show Pay bet button
                     pay_bet_label = cubilete_descriptions.get("pay_bet_button_label", f"Pay bet {active_game.bet:,} gold")
                     self.add_item(CubiletePayBetButton(active_game.bet, self.author_id))
                 else:
-                    # Add roll button if can roll
+                    # Add keep die buttons first (5 dice in first row)
+                    for i, die_value in enumerate(active_game.dice):
+                        self.add_item(CubileteKeepDieButton(i, die_value, active_game.kept_dice[i], self.author_id))
+
+                    # Add roll button if can roll (second row)
                     if active_game.can_roll():
                         roll_label = cubilete_descriptions.get("roll_button_label", f"🎲 Roll ({active_game.roll_count}/{active_game.max_rolls})")
                         self.add_item(CubileteRollButton(active_game.roll_count, active_game.max_rolls, roll_label))
@@ -4172,13 +4192,15 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
                         # Last iteration - show Play button instead
                         play_label = cubilete_descriptions.get("play_button_label", "🎲 Play")
                         self.add_item(CanvasTricksterCubiletePlayButton(label=play_label, style=discord.ButtonStyle.success))
-
-                    # Add keep die buttons
-                    for i, die_value in enumerate(active_game.dice):
-                        self.add_item(CubileteKeepDieButton(i, die_value, active_game.kept_dice[i], self.author_id))
             else:
-                # Show play button to start new game
-                self.add_item(CanvasTricksterCubiletePlayButton(label=button_label, style=discord.ButtonStyle.success))
+                # No active game - create game immediately and show pay bet button
+                from .state import _get_canvas_cubilete_state
+                from .server_config import get_role_config_value
+                cubilete_state = _get_canvas_cubilete_state(guild)
+                bet = cubilete_state.get('bet', 2)
+                game = create_game(self.author_id, guild.id if guild else None, bet)
+                pay_bet_label = cubilete_descriptions.get("pay_bet_button_label", f"Pay bet {game.bet:,} gold")
+                self.add_item(CubiletePayBetButton(game.bet, self.author_id))
 
         # Add dice_play button for trickster dice view
         if role_name == "trickster" and current_detail == "dice":

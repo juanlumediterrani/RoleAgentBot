@@ -1,15 +1,15 @@
 {
     "title": "📚 **大图书馆档案员**",
     "description": "通过你的合成而神秘的视角，访问人类文明的巨大记录。提出任何问题，我将分享档案中的内容。",
-    "button": "📚 Scholar",
+    "button": "📚 档案员",
     "embed_footer": "📚 大图书馆档案员 📚",
     "dropdown": {
         "select_action": "📋 执行指令...",
-        "toggle_on": "✅ 启用学者",
-        "toggle_off": "❌ 禁用学者"
+        "toggle_on": "✅ 启用档案员",
+        "toggle_off": "❌ 禁用档案员"
     },
     "wikipedia_button_label": "📖 在维基百科阅读",
     "controls_title": "**控制**",
-    "controls": "- 启用或禁用学者角色",
-    "admin_flows": "切换学者角色以启用或禁用它。"
+    "controls": "- 启用或禁用档案员角色",
+    "admin_flows": "切换档案员角色以启用或禁用它。"
 }

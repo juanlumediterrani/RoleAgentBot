@@ -6,16 +6,16 @@
     "canvas_trickster_overview_description": "骗子视图。",
     "canvas_trickster_overview_separator": "──────────────────────────────",
     "canvas_trickster_subrole_descriptions": {
-        "dice_game": "🎲 **奖池** - 跟庄家玩，投骰子，拿走奖池!",
-        "cubilete": "🎲 **古比莱特** - 投普特雷骷髅抢奖池!"
+        "dice_game": "💀 **奖池** - 跟庄家玩，投骰子，拿走奖池!",
+        "cubilete": "🎲 **骨头骰子** - 滚动普特雷的头骨，偷走奖池！"
     },
     "dice_game": {
-        "button": "🎲 奖池",
+        "button": "💀 奖池",
         "waitmessage": "投骰子...等等!",
         "roll_title": "你的骨头说:\n",
         "combination_title": "结果:",
         "prize_title": "赢得战利品:",
-        "ranking": " **:trophy: 奖池排名 **",
+        "ranking": " **🏆 奖池排名 **",
         "rankingvoid": " 榜上没人，两脚兽!",
         "historyvoid": " 还没人玩过，两脚兽!",
         "history": " **📜 游戏历史 **",
@@ -120,7 +120,7 @@
         "roll_title": "你的骷髅说:\n",
         "combination_title": "结果:",
         "prize_title": "赢得战利品:",
-        "ranking": " **:trophy: 古比莱特排名 **",
+        "ranking": " **🏆 古比莱特排名 **",
         "rankingvoid": " 榜上没人，两脚兽!",
         "historyvoid": " 还没人玩过，两脚兽!",
         "history": " **📜 游戏历史 **",

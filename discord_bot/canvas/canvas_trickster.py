@@ -268,10 +268,15 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                 except:
                     date_str = created_at[:16] if created_at else ''
 
-                # Convert dice values to emojis
+                # Convert dice values to emojis (handle both number and emoji formats)
                 if dice:
-                    dice_values = dice.split('-')
-                    dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
+                    # If dice already contain emojis, use them directly
+                    if '🎲' in dice:
+                        dice_display = dice
+                    else:
+                        # Convert numbers to emojis
+                        dice_values = dice.split('-')
+                        dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
                 else:
                     dice_display = "???"
                 # Translate combination from English fallback to personality-specific text
@@ -346,10 +351,15 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                 except:
                     date_str = created_at[:16] if created_at else ''
 
-                # Convert dice values to emojis
+                # Convert dice values to emojis (handle both number and emoji formats)
                 if dice:
-                    dice_values = dice.split('-')
-                    dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
+                    # If dice already contain emojis, use them directly
+                    if '🎲' in dice:
+                        dice_display = dice
+                    else:
+                        # Convert numbers to emojis
+                        dice_values = dice.split('-')
+                        dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
                 else:
                     dice_display = "???"
                 # Translate combination from English fallback to personality-specific text

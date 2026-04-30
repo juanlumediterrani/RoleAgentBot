@@ -368,131 +368,15 @@ class AgentDatabase:
                     ''')
 
                     cursor.execute('CREATE INDEX IF NOT EXISTS idx_uid_fecha ON interacciones (usuario_id, fecha)')
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS daily_memory (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            memory_date TEXT NOT NULL,
-                            summary TEXT NOT NULL,
-                            metadata TEXT,
-                            updated_at DATETIME NOT NULL
-                        )
-                    ''')
-                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_daily_memory_date ON daily_memory(memory_date)')
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS recent_memory (
-                            memory_date TEXT NOT NULL PRIMARY KEY,
-                            summary TEXT NOT NULL,
-                            metadata TEXT,
-                            updated_at DATETIME NOT NULL,
-                            last_interaction_at DATETIME
-                        )
-                    ''')
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS user_relationship_memory (
-                            usuario_id TEXT NOT NULL PRIMARY KEY,
-                            summary TEXT NOT NULL,
-                            metadata TEXT,
-                            updated_at DATETIME NOT NULL,
-                            last_interaction_at DATETIME
-                        )
-                    ''')
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS user_relationship_daily_memory (
-                            memory_date TEXT NOT NULL,
-                            usuario_id TEXT NOT NULL,
-                            summary TEXT NOT NULL,
-                            metadata TEXT,
-                            updated_at DATETIME NOT NULL,
-                            UNIQUE(memory_date, usuario_id)
-                        )
-                    ''')
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS pending_relationship_updates (
-                            usuario_id TEXT NOT NULL PRIMARY KEY,
-                            scheduled_for DATETIME NOT NULL,
-                            status TEXT NOT NULL,
-                            updated_at DATETIME NOT NULL
-                        )
-                    ''')
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS pending_recent_memory_updates (
-                            scheduled_for DATETIME NOT NULL PRIMARY KEY,
-                            status TEXT NOT NULL,
-                            updated_at DATETIME NOT NULL
-                        )
-                    ''')
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS notable_recollections (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            memory_date TEXT NOT NULL,
-                            recollection_text TEXT NOT NULL,
-                            source_paragraph TEXT,
-                            extracted_at DATETIME NOT NULL,
-                            used_count INTEGER DEFAULT 0,
-                            last_used_at DATETIME
-                        )
-                    ''')
-                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_recollections_date ON notable_recollections (memory_date)')
                     conn.commit()
-                    
-                    # Initialize notable recollections if empty
-                    self._initialize_notable_recollections()
-                    
                     logger.info(f"✅ Database ready at {self.db_path}")
         except Exception as e:
             logger.exception(f"❌ [DB] Error in initialization: {e}")
 
-    def _initialize_notable_recollections(self):
-        """Initialize notable recollections from personality JSON if table is empty."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                
-                # Check if recollections table is empty
-                cursor.execute(f'''
-                    SELECT COUNT(*) FROM notable_recollections
-                ''')
-                count = cursor.fetchone()[0]
-                
-                if count == 0:
-                    # Get initial recollections from personality
-                    try:
-                        from agent_mind import _engine
-                        engine = _engine()
-                        personality = engine.PERSONALITY
-                        initial_recollections = personality.get("initial_recollections", [])
-                        default_recollections = personality.get("default_recollections", [])
-                        # Combine both sources
-                        all_recollections = (initial_recollections or []) + (default_recollections or [])
-                    except Exception as e:
-                        logger.warning(f"⚠️ [DB] Could not load personality for initial recollections: {e}")
-                        all_recollections = []
-                    
-                    if all_recollections:
-                        extracted_at = datetime.datetime.now().isoformat()
-                        for recollection_text in all_recollections:
-                            cursor.execute('''
-                                INSERT INTO notable_recollections
-                                (memory_date, recollection_text, source_paragraph, extracted_at)
-                                VALUES (?, ?, ?, ?)
-                            ''', (date.today().isoformat(), recollection_text, 
-                                  "Initial recollection from personality JSON", extracted_at))
-                        
-                        conn.commit()
-                        logger.info(f"🧠 [DB] Initialized {len(all_recollections)} notable recollections from personality JSON")
-                    else:
-                        logger.info(f"🧠 [DB] No initial recollections found in personality JSON")
-                
-                conn.close()
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error initializing notable recollections: {e}")
-
     def register_interaction(self, user_id, user_name, interaction_type, context, channel_id=None, server_id=None, metadata=None):
+        """Register an interaction (SQLite version - memory updates handled by NoSQL)."""
         fecha = datetime.datetime.now().isoformat()
         meta_json = json.dumps(metadata) if metadata else None
-        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=60)).isoformat()
-        updated_at = datetime.datetime.now().isoformat()
         try:
             with self._lock:
                 db_path_str = str(self.db_path)
@@ -514,50 +398,9 @@ class AgentDatabase:
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(usuario_id, fecha, tipo_interaccion) DO NOTHING
                     ''', params)
-                    # Programar actualización de recent memory con lógica anti-atasco
-                    # Solo programar si no hay tareas pendientes existentes
-                    cursor.execute('''
-                        SELECT COUNT(*) FROM pending_recent_memory_updates 
-                        WHERE status = 'pending'
-                    ''')
-                    pending_count = cursor.fetchone()[0]
-                    
-                    if pending_count == 0:
-                        cursor.execute('''
-                            INSERT INTO pending_recent_memory_updates
-                            (scheduled_for, status, updated_at)
-                            VALUES (?, ?, ?)
-                        ''', (scheduled_for, "pending", updated_at))
-                    else:
-                        logger.info(f"[DB] Recent memory update already pending, skipping new task")
-                    
-                    # Programar actualización de relationship con retraso para evitar solapamiento
-                    # Recent memory tiene prioridad, relationship se ejecuta 5 minutos después
-                    from datetime import timedelta
-                    relationship_delay = timedelta(minutes=5)
-                    relationship_scheduled_for = (datetime.datetime.fromisoformat(scheduled_for.replace('Z', '+00:00')) + relationship_delay).isoformat()
-                    
-                    cursor.execute('''
-                        SELECT COUNT(*) FROM pending_relationship_updates 
-                        WHERE usuario_id = ? AND status = 'pending'
-                    ''', (str(user_id),))
-                    relationship_pending_count = cursor.fetchone()[0]
-                    
-                    if relationship_pending_count == 0:
-                        cursor.execute('''
-                            INSERT INTO pending_relationship_updates
-                            (usuario_id, scheduled_for, status, updated_at)
-                            VALUES (?, ?, ?, ?)
-                            ON CONFLICT(usuario_id) DO UPDATE SET
-                                scheduled_for = excluded.scheduled_for,
-                                status = excluded.status,
-                                updated_at = excluded.updated_at
-                        ''', (str(user_id), relationship_scheduled_for, "pending", updated_at))
-                    else:
-                        logger.info(f"[DB] Relationship memory update already pending for user {user_id}, skipping new task")
-                    
-                    logger.info(f"✅ Interaction registered: user_id={user_id}, type={interaction_type}, channel_id={channel_id}")
-                    logger.info(f"🧠 [SCHEDULING] Recent memory: {scheduled_for}, Relationship: {relationship_scheduled_for} (5min delay)")
+                    conn.commit()
+                    conn.close()
+                    logger.debug(f"✅ [DB] Interaction registered: user_id={user_id}, type={interaction_type}")
                     return True
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error registering interaction (user_id={user_id}, type={interaction_type}): {e}")
@@ -710,35 +553,6 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving last channel messages: {e}")
             return []
 
-    def get_daily_memory(self, memory_date=None):
-        """Return the most recent stored daily memory summary for a specific date.
-        
-        With the new schema allowing multiple entries per date, this returns
-        the summary from the latest entry (by updated_at) for the specified date.
-        """
-        target_date = memory_date or date.today().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT summary
-                    FROM daily_memory
-                    WHERE memory_date = ?
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                ''', (target_date,))
-                row = cursor.fetchone()
-                conn.close()
-                
-                if row:
-                    return row[0] or ""
-                else:
-                    return ""
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving daily memory: {e}")
-            return ""
-
     def get_last_interaction(self, user_id):
         """Get the last interaction for a user to check if bot or human spoke last."""
         try:
@@ -769,258 +583,6 @@ class AgentDatabase:
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving last interaction: {e}")
             return None
-
-    def get_most_recent_daily_memory_record(self):
-        """Return the most recent daily memory row for the current server, regardless of date."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT memory_date, summary, metadata, updated_at
-                    FROM daily_memory
-                    WHERE summary IS NOT NULL AND summary != ''
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                ''')
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return None
-                metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                return {
-                    "memory_date": row["memory_date"],
-                    "summary": row["summary"] or "",
-                    "metadata": metadata,
-                    "updated_at": row["updated_at"],
-                }
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving most recent daily memory record: {e}")
-            return None
-
-    def get_daily_memory_record(self, memory_date=None):
-        """Return the most recent stored daily memory row for a specific date.
-        
-        With the new schema allowing multiple entries per date, this returns
-        the latest entry (by updated_at) for the specified date.
-        """
-        target_date = memory_date or date.today().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT memory_date, summary, metadata, updated_at
-                    FROM daily_memory
-                    WHERE memory_date = ?
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                ''', (target_date,))
-                row = cursor.fetchone()
-                conn.close()
-                return dict(row) if row else None
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving daily memory record: {e}")
-            return None
-
-    def get_last_7_days_daily_memory(self):
-        """Return the last 7 days of daily memory summaries for weekly personality evolution.
-        
-        Returns a list of dicts with memory_date, summary, and updated_at fields,
-        ordered from oldest to newest (chronological order).
-        
-        NOTE: With the new schema allowing multiple entries per date, this function
-        returns only the most recent entry for each date.
-        """
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                # Get the most recent entry for each date in the last 7 days
-                # Using a subquery to get MAX(updated_at) per date
-                cursor.execute('''
-                    SELECT dm.memory_date, dm.summary, dm.metadata, dm.updated_at
-                    FROM daily_memory dm
-                    INNER JOIN (
-                        SELECT memory_date, MAX(updated_at) as max_updated
-                        FROM daily_memory
-                        WHERE summary IS NOT NULL 
-                            AND summary != '' 
-                            AND summary != '[Error in internal task]'
-                            AND memory_date >= date('now', '-7 days')
-                        GROUP BY memory_date
-                    ) latest ON dm.memory_date = latest.memory_date 
-                        AND dm.updated_at = latest.max_updated
-                    WHERE dm.summary IS NOT NULL 
-                        AND dm.summary != '' 
-                        AND dm.summary != '[Error in internal task]'
-                    ORDER BY dm.memory_date ASC
-                    LIMIT 7
-                ''')
-                rows = cursor.fetchall()
-                conn.close()
-                
-                memories = []
-                for row in rows:
-                    metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                    memories.append({
-                        "memory_date": row["memory_date"],
-                        "summary": row["summary"] or "",
-                        "metadata": metadata,
-                        "updated_at": row["updated_at"],
-                    })
-                return memories
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving last 7 days daily memory: {e}")
-            return []
-
-    def get_most_recent_memory_record(self):
-        """Return the most recent stored recent memory row for the current server, regardless of date."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT memory_date, summary, metadata, updated_at, last_interaction_at
-                    FROM recent_memory
-                    WHERE 1=1
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                ''', ())
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return None
-                metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                return {
-                    "memory_date": row["memory_date"],
-                    "summary": row["summary"] or "",
-                    "metadata": metadata,
-                    "updated_at": row["updated_at"],
-                    "last_interaction_at": row["last_interaction_at"],
-                }
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving most recent memory record: {e}")
-            return None
-
-    def get_recent_memory_record(self, memory_date=None):
-        """Return the stored recent memory row for the current server."""
-        target_date = memory_date or date.today().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT memory_date, summary, metadata, updated_at, last_interaction_at
-                    FROM recent_memory
-                    WHERE memory_date = ?
-                ''', (target_date,))
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return None
-                metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                return {
-                    "memory_date": row["memory_date"],
-                    "summary": row["summary"] or "",
-                    "metadata": metadata,
-                    "updated_at": row["updated_at"],
-                    "last_interaction_at": row["last_interaction_at"],
-                }
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving recent memory record: {e}")
-            return None
-
-    def schedule_recent_memory_refresh(self, delay_minutes=60):
-        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=delay_minutes)).isoformat()
-        updated_at = datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO pending_recent_memory_updates
-                    (scheduled_for, status, updated_at)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(scheduled_for) DO UPDATE SET
-                        scheduled_for = CASE
-                            WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.scheduled_for
-                            ELSE excluded.scheduled_for
-                        END,
-                        status = CASE
-                            WHEN pending_recent_memory_updates.status = 'pending' THEN pending_recent_memory_updates.status
-                            ELSE excluded.status
-                        END,
-                        updated_at = excluded.updated_at
-                ''', (scheduled_for, "pending", updated_at))
-                conn.commit()
-                conn.close()
-                return scheduled_for
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error scheduling recent memory refresh: {e}")
-            return None
-
-    def get_pending_recent_memory_refresh(self):
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT scheduled_for, status, updated_at
-                    FROM pending_recent_memory_updates
-                    WHERE 1=1
-                ''', ())
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return None
-                return dict(row)
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error getting pending recent memory refresh: {e}")
-            return None
-
-    def mark_recent_memory_refresh_completed(self):
-        updated_at = datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE pending_recent_memory_updates
-                    SET status = ?, updated_at = ?
-                    WHERE 1=1
-                ''', ("completed", updated_at))
-                conn.commit()
-                conn.close()
-                return True
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error completing recent memory refresh: {e}")
-            return False
-
-    def get_due_pending_recent_memory_refreshes(self, now_iso=None):
-        current_time = now_iso or datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT scheduled_for, status, updated_at
-                    FROM pending_recent_memory_updates
-                    WHERE status = ? AND scheduled_for <= ?
-                ''', ("pending", current_time))
-                rows = cursor.fetchall()
-                conn.close()
-                return [dict(row) for row in rows]
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving due recent memory refreshes: {e}")
-            return []
 
     def get_daily_interactions(self, limit=25, target_date=None):
         """Return the latest general interactions for a given day."""
@@ -1098,232 +660,6 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving daily interactions since: {e}")
             return []
 
-    def upsert_daily_memory(self, summary, memory_date=None, metadata=None):
-        """Insert a new daily memory summary for the current server.
-        
-        NOTE: This now always creates a new entry to preserve history for personality evolution.
-        Multiple entries per date are allowed. To get the latest entry for a date, use
-        get_daily_memory() or get_most_recent_daily_memory_record().
-        """
-        target_date = memory_date or date.today().isoformat()
-        updated_at = datetime.datetime.now().isoformat()
-        metadata_json = json.dumps(metadata) if metadata else None
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                # Always insert new entry - no ON CONFLICT, allowing multiple entries per date
-                cursor.execute('''
-                    INSERT INTO daily_memory (memory_date, summary, metadata, updated_at)
-                    VALUES (?, ?, ?, ?)
-                ''', (target_date, summary, metadata_json, updated_at))
-                conn.commit()
-                conn.close()
-                return True
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error inserting daily memory: {e}")
-            return False
-
-    def upsert_recent_memory(self, summary, memory_date=None, last_interaction_at=None, metadata=None):
-        """Create or update the recent memory summary for the current server."""
-        target_date = memory_date or date.today().isoformat()
-        updated_at = datetime.datetime.now().isoformat()
-        metadata_json = json.dumps(metadata) if metadata else None
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO recent_memory
-                    (memory_date, summary, metadata, updated_at, last_interaction_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(memory_date) DO UPDATE SET
-                        summary = excluded.summary,
-                        metadata = excluded.metadata,
-                        updated_at = excluded.updated_at,
-                        last_interaction_at = excluded.last_interaction_at
-                ''', (
-                    target_date,
-                    summary,
-                    metadata_json,
-                    updated_at,
-                    last_interaction_at
-                ))
-                conn.commit()
-                conn.close()
-                return True
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error upserting recent memory: {e}")
-            return False
-
-    def get_user_relationship_memory(self, user_id):
-        """Return the stored relationship summary for a user."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT summary, metadata, updated_at, last_interaction_at
-                    FROM user_relationship_memory
-                    WHERE usuario_id = ?
-                ''', (str(user_id),))
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return {"summary": "", "updated_at": None, "last_interaction_at": None, "metadata": {}}
-                return {
-                    "summary": row["summary"] or "",
-                    "updated_at": row["updated_at"],
-                    "last_interaction_at": row["last_interaction_at"],
-                    "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
-                }
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving relationship memory: {e}")
-            return {"summary": "", "updated_at": None, "last_interaction_at": None, "metadata": {}}
-
-    def get_user_relationship_daily_memory(self, user_id, memory_date=None):
-        """Return the stored daily relationship summary for a user."""
-        target_date = memory_date or date.today().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT summary, metadata, updated_at
-                    FROM user_relationship_daily_memory
-                    WHERE memory_date = ? AND usuario_id = ?
-                ''', (target_date, str(user_id)))
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return None
-                return {
-                    "summary": row["summary"] or "",
-                    "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
-                    "updated_at": row["updated_at"],
-                }
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving daily relationship memory: {e}")
-            return None
-
-    def get_latest_user_relationship_daily_memory(self, user_id, before_date=None):
-        """Return the most recent daily relationship snapshot for a user."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                if before_date:
-                    cursor.execute('''
-                        SELECT memory_date, summary, metadata, updated_at
-                        FROM user_relationship_daily_memory
-                        WHERE usuario_id = ? AND memory_date <= ?
-                        ORDER BY memory_date DESC
-                        LIMIT 1
-                    ''', (str(user_id), before_date))
-                else:
-                    cursor.execute('''
-                        SELECT memory_date, summary, metadata, updated_at
-                        FROM user_relationship_daily_memory
-                        WHERE usuario_id = ?
-                        ORDER BY memory_date DESC
-                        LIMIT 1
-                    ''', (str(user_id),))
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return None
-                return {
-                    "memory_date": row["memory_date"],
-                    "summary": row["summary"] or "",
-                    "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
-                    "updated_at": row["updated_at"],
-                }
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving latest daily relationship memory: {e}")
-            return None
-
-    def upsert_user_relationship_memory(self, user_id, summary, last_interaction_at=None, metadata=None):
-        """Create or update temporary relationship memory state for a user."""
-        updated_at = datetime.datetime.now().isoformat()
-        metadata_json = json.dumps(metadata) if metadata else None
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO user_relationship_memory
-                    (usuario_id, summary, metadata, updated_at, last_interaction_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(usuario_id) DO UPDATE SET
-                        summary = excluded.summary,
-                        metadata = excluded.metadata,
-                        updated_at = excluded.updated_at,
-                        last_interaction_at = excluded.last_interaction_at
-                ''', (
-                    str(user_id),
-                    summary,
-                    metadata_json,
-                    updated_at,
-                    last_interaction_at,
-                ))
-                conn.commit()
-                conn.close()
-                return True
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error upserting relationship memory: {e}")
-            return False
-
-    def upsert_user_relationship_daily_memory(self, user_id, summary, memory_date=None, metadata=None):
-        """Create or update daily relationship memory snapshot for a user."""
-        target_date = memory_date or date.today().isoformat()
-        updated_at = datetime.datetime.now().isoformat()
-        metadata_json = json.dumps(metadata) if metadata else None
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO user_relationship_daily_memory
-                    (memory_date, usuario_id, summary, metadata, updated_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(memory_date, usuario_id) DO UPDATE SET
-                        summary = excluded.summary,
-                        metadata = excluded.metadata,
-                        updated_at = excluded.updated_at
-                ''', (
-                    target_date,
-                    str(user_id),
-                    summary,
-                    metadata_json,
-                    updated_at,
-                ))
-                conn.commit()
-                conn.close()
-                return True
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error upserting daily relationship memory: {e}")
-            return False
-
-    def clear_user_relationship_memory_state(self, user_id):
-        """Delete the temporary relationship memory state for a user."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    DELETE FROM user_relationship_memory
-                    WHERE usuario_id = ?
-                ''', (str(user_id),))
-                conn.commit()
-                conn.close()
-                return True
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error clearing relationship memory state: {e}")
-            return False
-
     def get_user_last_server_id(self, user_id: str) -> str | None:
         """Get the last server ID where the user had interactions."""
         try:
@@ -1392,118 +728,6 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error retrieving user interactions since: {e}")
             return []
 
-    def schedule_relationship_refresh(self, user_id, delay_minutes=60):
-        """Mark a user relationship summary for refresh after inactivity."""
-        scheduled_for = (datetime.datetime.now() + datetime.timedelta(minutes=delay_minutes)).isoformat()
-        updated_at = datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO pending_relationship_updates
-                    (usuario_id, scheduled_for, status, updated_at)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(usuario_id) DO UPDATE SET
-                        scheduled_for = CASE
-                            WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.scheduled_for
-                            ELSE excluded.scheduled_for
-                        END,
-                        status = CASE
-                            WHEN pending_relationship_updates.status = 'pending' THEN pending_relationship_updates.status
-                            ELSE excluded.status
-                        END,
-                        updated_at = excluded.updated_at
-                ''', (str(user_id), scheduled_for, "pending", updated_at))
-                conn.commit()
-                conn.close()
-                return scheduled_for
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error scheduling relationship refresh: {e}")
-            return None
-
-    def get_pending_relationship_refresh(self, user_id):
-        """Return scheduled relationship refresh state for a user."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT scheduled_for, status, updated_at
-                    FROM pending_relationship_updates
-                    WHERE usuario_id = ?
-                ''', (str(user_id),))
-                row = cursor.fetchone()
-                conn.close()
-                if not row:
-                    return None
-                return dict(row)
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error getting pending relationship refresh: {e}")
-            return None
-
-    def mark_relationship_refresh_completed(self, user_id):
-        """Mark a pending relationship refresh as completed."""
-        updated_at = datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE pending_relationship_updates
-                    SET status = ?, updated_at = ?
-                    WHERE usuario_id = ?
-                ''', ("completed", updated_at, str(user_id)))
-                conn.commit()
-                conn.close()
-                return True
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error completing relationship refresh: {e}")
-            return False
-
-    def get_due_pending_relationship_refreshes(self, now_iso=None):
-        """Return all pending relationship refreshes that are due."""
-        current_time = now_iso or datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT usuario_id, scheduled_for, status, updated_at
-                    FROM pending_relationship_updates
-                    WHERE 1=1 AND status = ? AND scheduled_for <= ?
-                    ORDER BY scheduled_for ASC
-                ''', ( "pending", current_time))
-                rows = cursor.fetchall()
-                conn.close()
-                return [dict(row) for row in rows]
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving due relationship refreshes: {e}")
-            return []
-
-    def clear_stale_relationship_memory_states(self, keep_date=None):
-        """Delete temporary relationship states that belong to older days."""
-        target_date = keep_date or date.today().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                # Simple approach: use string formatting for date comparison (safe as target_date is controlled)
-                cursor.execute(f'''
-                    DELETE FROM user_relationship_memory
-                    WHERE last_interaction_at IS NOT NULL
-                    AND date(last_interaction_at) < date('{target_date}')
-                ''')
-                deleted = cursor.rowcount
-                conn.commit()
-                conn.close()
-                return deleted
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error clearing stale relationship states: {e}")
-            return 0
-
     def usuario_ha_pedido_tipo_recientemente(self, usuario_id, tipo_like, horas=12):
         """Evita que el agente repita peticiones al mismo usuario en poco tiempo."""
         fecha_limite = (datetime.datetime.now() - datetime.timedelta(hours=horas)).isoformat()
@@ -1527,11 +751,8 @@ class AgentDatabase:
                 cursor = conn.cursor()
                 cursor.execute('DELETE FROM interacciones WHERE fecha < ?', (deadline,))
                 deleted = cursor.rowcount if cursor.rowcount is not None and cursor.rowcount >= 0 else 0
-                cursor.execute('DROP TABLE IF EXISTS peticiones_oro')
-                cursor.execute('DROP TABLE IF EXISTS busquedas_anillo')
-                cursor.execute('DROP TABLE IF EXISTS noticias_leidas')
                 conn.commit()
-                logger.info(f"🧹 Cleaned interactions before {deadline} and duplicate tables")
+                logger.info(f"🧹 Cleaned interactions before {deadline}")
                 return deleted
 
     def forget_user(self, user_id, user_name: str = None, extra_names=None) -> dict:
@@ -1554,9 +775,6 @@ class AgentDatabase:
         uid = str(user_id)
         tables_keyed_by_uid = [
             ('interacciones', 'usuario_id'),
-            ('user_relationship_memory', 'usuario_id'),
-            ('user_relationship_daily_memory', 'usuario_id'),
-            ('pending_relationship_updates', 'usuario_id'),
         ]
         deleted: dict = {}
 
@@ -1568,13 +786,8 @@ class AgentDatabase:
                 names.append(n.strip())
         names.sort(key=len, reverse=True)
 
-        narrative_targets = [
-            ('daily_memory', 'summary'),
-            ('recent_memory', 'summary'),
-            ('user_relationship_memory', 'summary'),
-            ('user_relationship_daily_memory', 'summary'),
-            ('notable_recollections', 'recollection_text'),
-        ]
+        # No narrative targets (memory tables removed - using NoSQL now)
+        narrative_targets = []
 
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
@@ -1627,24 +840,17 @@ class AgentDatabase:
         Args:
             interactions_days: Hard limit for raw ``interacciones`` rows — the
                 most direct PII we store. Defaults to 90 days.
-            derived_memory_days: Limit for date-scoped LLM summaries that may
-                contain names (``daily_memory``, ``user_relationship_daily_memory``,
-                ``notable_recollections``). Defaults to 365 days.
+            derived_memory_days: No longer used (memory tables removed - using NoSQL now).
 
         Returns a per-table row count of what was deleted.
         """
         import datetime as _dt
         now = _dt.datetime.now()
         interactions_deadline = (now - _dt.timedelta(days=interactions_days)).isoformat()
-        derived_deadline = (now - _dt.timedelta(days=derived_memory_days)).isoformat()
-        derived_deadline_date = (now - _dt.timedelta(days=derived_memory_days)).date().isoformat()
 
         # (table, column, deadline, comparator_is_date_only)
         plan = [
             ('interacciones', 'fecha', interactions_deadline, False),
-            ('daily_memory', 'memory_date', derived_deadline_date, True),
-            ('user_relationship_daily_memory', 'memory_date', derived_deadline_date, True),
-            ('notable_recollections', 'memory_date', derived_deadline_date, True),
         ]
 
         report: dict = {}
@@ -1663,7 +869,7 @@ class AgentDatabase:
         if total:
             logger.info(
                 f"🧹 [GDPR] apply_retention on {self.db_path.name}: {report} "
-                f"(interactions≥{interactions_days}d, derived≥{derived_memory_days}d)"
+                f"(interactions≥{interactions_days}d)"
             )
         return report
 
@@ -1715,122 +921,6 @@ class AgentDatabase:
             logger.exception(f"⚠️ [DB] Error checking recent interactions: {e}")
             return False
 
-    def add_notable_recollection(self, recollection_text: str, memory_date: str = None, source_paragraph: str = None) -> int:
-        """Add a new notable recollection extracted from daily synthesis."""
-        target_date = memory_date or date.today().isoformat()
-        extracted_at = datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO notable_recollections
-                    (memory_date, recollection_text, source_paragraph, extracted_at)
-                    VALUES (?, ?, ?, ?)
-                ''', (target_date, recollection_text, source_paragraph, extracted_at))
-                recollection_id = cursor.lastrowid
-                conn.commit()
-                conn.close()
-                logger.info(f"🧠 [MEMORY] Added notable recollection id={recollection_id}")
-                return recollection_id
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error adding notable recollection: {e}")
-            return 0
-
-    def get_random_notable_recollection(self) -> dict | None:
-        """Get a random notable recollection for injection into synthesis."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT id, recollection_text, memory_date, used_count
-                    FROM notable_recollections
-                    WHERE 1=1
-                    ORDER BY RANDOM()
-                    LIMIT 1
-                ''', ())
-                row = cursor.fetchone()
-                conn.close()
-                if row:
-                    return {
-                        "id": row["id"],
-                        "recollection_text": row["recollection_text"],
-                        "memory_date": row["memory_date"],
-                        "used_count": row["used_count"],
-                    }
-                return None
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving random notable recollection: {e}")
-            return None
-
-    def increment_recollection_usage(self, recollection_id: int) -> bool:
-        """Increment the usage counter for a recollection when it's injected."""
-        used_at = datetime.datetime.now().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE notable_recollections
-                    SET used_count = used_count + 1,
-                        last_used_at = ?
-                    WHERE id = ?
-                ''', (used_at, recollection_id))
-                conn.commit()
-                updated = cursor.rowcount > 0
-                conn.close()
-                return updated
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error incrementing recollection usage: {e}")
-            return False
-
-    def count_notable_recollections(self) -> int:
-        """Count total notable recollections for this server."""
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT COUNT(*) FROM notable_recollections
-                    WHERE 1=1
-                ''', ())
-                count = cursor.fetchone()[0]
-                conn.close()
-                return count
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error counting notable recollections: {e}")
-            return 0
-
-    def get_notable_recollections_for_date(self, memory_date: str = None) -> list:
-        """Get all notable recollections extracted on a specific date."""
-        target_date = memory_date or date.today().isoformat()
-        try:
-            with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT id, recollection_text, source_paragraph, extracted_at
-                    FROM notable_recollections
-                    WHERE 1=1 AND memory_date = ?
-                ''', ( target_date))
-                rows = cursor.fetchall()
-                conn.close()
-                return [
-                    {
-                        "id": row["id"],
-                        "recollection_text": row["recollection_text"],
-                        "source_paragraph": row["source_paragraph"],
-                        "extracted_at": row["extracted_at"],
-                    }
-                    for row in rows
-                ]
-        except Exception as e:
-            logger.exception(f"⚠️ [DB] Error retrieving notable recollections for date: {e}")
-            return []
-    
     def get_active_servers(self) -> list:
         """Get list of all active servers."""
         try:
