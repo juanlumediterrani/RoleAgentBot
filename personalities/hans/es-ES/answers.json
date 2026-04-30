@@ -37,6 +37,43 @@
                     "💸 **NO ALCANZA**... ¡Acumula más marcos primero!",
                     "💸 **TESORO ESCASO**... ¡Necesitas fortuna para combatir!"
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **¡SIEG!** ¡Victoria táctica, Zivilist!",
+                    "🎉 **¡TRIUNFO!** ¡Excelente estrategia de dados, Soldado!",
+                    "🎉 **¡GANASTE!** ¡Los dados acertaron el blanco!",
+                    "🎉 **¡EXCELENTE!** ¡Operación cumplida con éxito!",
+                    "🎉 **¡BRILLANTE!** ¡Eres un oficial de primera clase!"
+                ],
+                "youlose":[
+                    "😢 **DERROTA**... ¡Los dados fueron adversos esta vez!",
+                    "😢 **FALLO TÁCTICO**... ¡Revisa tu estrategia, Zivilist!",
+                    "😢 **PERDISTE**... ¡La operación falló!",
+                    "😢 **MALA SUERTE**... ¡Vuelve a entrenar!",
+                    "😢 **NO FUE ESTA VEZ**... ¡Inténtalo de nuevo!"
+                ],
+                "high_pot":[
+                    "💰 **¡EL BOTE CRECE!** ¡El tesoro de la Wehrmacht se acumula!",
+                    "💰 **¡BOTE EN AUMENTO!** ¡Las reservas crecen!",
+                    "💰 **¡ACUMULANDO RECURSOS!** ¡El bote se hace legendario!",
+                    "💰 **¡FORTUNA MILITAR!** ¡El bote reclama su dueño!",
+                    "💰 **¡RESERVAS MÁGICAS!** ¡Los marcos esperan al conquistador!"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DEL BOTE!!** ¡Has conquistado el tesoro de la Wehrmacht!",
+                    "🎉 **¡¡VICTORIA TOTAL!!** ¡El bote es tuyo, Soldado!",
+                    "🎉 **¡¡JACKPOT TÁCTICO!!** ¡Has ganado el gran premio!",
+                    "🎉 **¡¡CONQUISTA LEGENDARIA!!** ¡Eres el dueño del bote!",
+                    "🎉 **¡¡BOTE CONQUISTADO!!** ¡Una victoria épica!"
+                ],
+                "not_gold":[
+                    "💸 **SIN MARCOS**... ¡No tienes suficientes recursos!",
+                    "💸 **RESERVAS INSUFICIENTES**... ¡Necesitas más marcos!",
+                    "💸 **BOLSILLOS VACÍOS**... ¡Revisa tu tesoro militar!",
+                    "💸 **NO ALCANZA**... ¡Acumula más marcos primero!",
+                    "💸 **TESORO ESCASO**... ¡Necesitas fortuna para jugar!"
+                ]
             }
         },
         "banker":{

@@ -8,10 +8,10 @@ from .canvas_news_watcher import _get_nw_descriptions
 def _get_personality_descriptions(server_id: str = None) -> dict:
     """
     Get personality descriptions from server-specific or global directory.
-    
+
     Args:
         server_id: Discord server ID for server-specific descriptions
-        
+
     Returns:
         dict: Personality descriptions loaded from descriptions.json and subdirectory
     """
@@ -78,7 +78,7 @@ AGENT_CFG = core.AGENT_CFG
 from discord_bot.discord_utils import (
     get_db_for_server,
     send_dm_or_channel, send_embed_dm_or_channel,
-    is_admin, 
+    is_admin,
     get_greeting_enabled, set_greeting_enabled,
     check_chat_rate_limit, is_already_initialized, mark_as_initialized,
     acquire_connection_lock, acquire_process_lock,
@@ -107,7 +107,6 @@ from .state import (
     _get_canvas_watcher_frequency_hours,
     _get_canvas_dice_state,
     _get_canvas_dice_ranking,
-    _get_canvas_dice_history,
     _get_canvas_beggar_state,
     _get_canvas_poe2_state,
     _get_enabled_roles,
@@ -161,7 +160,7 @@ def _build_canvas_sections(agent_config: dict, greet_name: str, nogreet_name: st
     behavior_title, behavior_description, behavior_content = build_canvas_behavior(
         greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name, admin_visible, guild
     )
-    
+
     return {
         "home": _build_canvas_home(
             agent_config, greet_name, nogreet_name, welcome_name, nowelcome_name, role_cmd_name, talk_cmd_name,
@@ -213,7 +212,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
             "personal": "👤 Canvas - Personal Space",
             "help": help_title,
         }
-    
+
     # Replace placeholders in all titles
     for key in titles:
         if titles[key]:
@@ -227,7 +226,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     }
     lines = [line.strip() for line in content.splitlines() if line.strip()]
     description = ""
-    
+
     # Extract title from content for roles section
     if section_name == "roles" and lines:
         # The first line should be the title from _build_canvas_roles
@@ -272,7 +271,7 @@ def _build_canvas_embed(section_name: str, content: str, admin_visible: bool, ti
     # Discord allows up to 25 fields per embed; keep a safe margin
     visible_blocks = blocks[:20]
     last_block_index = len(visible_blocks) - 1
-    
+
     for index, (block_title, block_lines) in enumerate(visible_blocks):
         filtered_lines = [
             line for line in block_lines
@@ -342,32 +341,33 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
             return title.strip() if title else role_key
         except Exception:
             return role_key
-    
+
     # Use surface_name as detail_key for subrole titles
     # For admin views like "beggar_admin", use the base subrole key "beggar"
     # Map canvas surface names to JSON keys where they differ
     _surface_to_json_key = {
         "dice": "dice_game",
         "dice_admin": "dice_game",
+        "cubilete": "cubilete",
+        "cubilete_admin": "cubilete",
         "runes": "nordic_runes",
         "runes_admin": "nordic_runes",
+        "astrology": "astrology",
+        "astrology_admin": "astrology",
         "league": "poe2",
         "poe2": "poe2",
         "items": "poe2",
         "personal": "poe2",
     }
     # For treasure_hunter, admin view should use main title, not a subrole title
-    # For shaman runes detail, use None to prevent title duplication with content
     if surface_name == "admin" and role_name == "treasure_hunter":
-        detail_key = None
-    elif role_name == "shaman" and surface_name == "runes":
         detail_key = None
     elif surface_name and surface_name not in {"overview", "admin"}:
         base = surface_name.replace("_admin", "")
         detail_key = _surface_to_json_key.get(surface_name, _surface_to_json_key.get(base, base))
     else:
         detail_key = None
-    
+
     role_titles = {
         "news_watcher": _get_embed_role_title("news_watcher", detail_key),
         "treasure_hunter": _get_embed_role_title("treasure_hunter", detail_key),
@@ -379,21 +379,18 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "scholar": _get_embed_role_title("scholar", detail_key),
     }
     title = role_titles.get(role_name, "Canvas")
-    # Override title for shaman runes detail to prevent parent title from appearing
-    if role_name == "shaman" and surface_name == "runes":
-        title = ""
     blocks = _split_canvas_blocks(content)
     role_colors = {
         "news_watcher": discord.Color.blue(),
         "treasure_hunter": discord.Color.dark_gold(),
         "trickster": discord.Color.magenta(),
         "banker": discord.Color.green(),
-        "mc": discord.Color.purple(),
+        "mc": discord.Color.light_gray(),
         "shaman": discord.Color.dark_purple(),
         "juggler": discord.Color.orange(),
         "scholar": discord.Color.teal(),
     }
-     
+
     # Extract first block's content as description to avoid extra space between title and fields
     description = ""
     blocks_to_process = blocks[:4]
@@ -420,13 +417,23 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
             embed.add_field(name=block_title, value=value, inline=False)
 
     footer_title = role_titles.get(role_name, role_name)
+    footer_title = _extract_bold_text(footer_title)
     embed.set_footer(text=f"{footer_title} • {'admin' if admin_visible else 'user'} view")
-    
+
     # Add user thumbnail for banker role (like !banker balance)
     if role_name == "banker" and user and hasattr(user, 'display_avatar'):
         embed.set_thumbnail(url=user.display_avatar.url if user.display_avatar else None)
-    
+
     return embed
+
+
+def _extract_bold_text(text: str) -> str:
+    """Extract text from markdown bold markers (**text**)."""
+    import re
+    if not text:
+        return text
+    # Remove all ** markers
+    return re.sub(r'\*\*', '', text)
 
 
 def _truncate_canvas_field_value(value: str, limit: int = 1024) -> str:
@@ -441,7 +448,7 @@ def _merge_canvas_block_with_auto_response(block_lines: list[str], auto_response
     response_value = (auto_response or "").strip()
     if not response_value:
         return _truncate_canvas_field_value(base_value)
-    
+
     # Skip Automatic Response header for shaman runes pages
     if role_name == "shaman" and surface_name and surface_name.startswith("runes_page"):
         merged = "\n".join([
@@ -498,6 +505,10 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "dice_ranking": "Showing the current dice ranking for this server.",
             "dice_history": "Showing the most recent dice results.",
             "dice_help": "Showing the dice help and rules.",
+            "cubilete_play": "The bot will roll the dice for you and post the result.",
+            "cubilete_ranking": "Showing the current cubilete ranking for this server.",
+            "cubilete_history": "Showing the most recent cubilete results.",
+            "cubilete_help": "Showing the cubilete help and rules.",
             "runes_single": "Cast a single rune for quick guidance on your question.",
             "runes_three": "Cast three runes for past, present, and future guidance.",
             "runes_cross": "Cast five runes in a cross pattern for comprehensive insight.",
@@ -507,10 +518,22 @@ def _get_canvas_auto_response_preview(role_name: str | None = None, action_name:
             "runes_runes_1": "Show all runes with descriptions - Page 1 (Fehu to Gebo)",
             "runes_runes_2": "Show all runes with descriptions - Page 2 (Wunjo to Perthro)",
             "runes_runes_3": "Show all runes with descriptions - Page 3 (Algiz to Othala)",
+            "astrology_birth": "Interpret your permanent soul pattern from birth date and time.",
+            "astrology_moment": "Get guidance for a specific moment or question.",
+            "astrology_year": "Understand the spiritual forces of your personal year.",
+            "astrology_integrated": "Comprehensive reading combining birth, moment, and year.",
+            "astrology_history": "Show your recent astrology reading history.",
+            "astrology_letters": "Show the 22 Hebrew letters with their meanings.",
+            "astrology_letters_1": "Show Hebrew letters with descriptions - Page 1 (Mother Letters)",
+            "astrology_letters_2": "Show Hebrew letters with descriptions - Page 2 (Double Letters)",
+            "astrology_letters_3": "Show Hebrew letters with descriptions - Page 3 (Simple Letters)",
+            "astrology_save_birth": "Save your birth date and time for personalized readings.",
             "announcements_on": "Dice announcements enabled for this server.",
             "announcements_off": "Dice announcements disabled for this server.",
             "dice_fixed_bet": "The bot will ask for the fixed bet amount and update the dice game configuration.",
             "dice_pot_value": "The bot will ask for the new pot value and update the dice game balance.",
+            "cubilete_fixed_bet": "The bot will ask for the fixed bet amount and update the cubilete configuration.",
+            "cubilete_pot_value": "The bot will ask for the new pot value and update the cubilete balance.",
             "beggar_donate": "The bot will ask for the donation amount and transfer gold from your wallet.",
             "beggar_on": "Beggar enabled for this server.",
             "beggar_off": "Beggar disabled for this server.",
@@ -591,14 +614,18 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
     trickster_personal_map = {
         "dice": "dice",
         "dice_admin": "dice",
+        "cubilete": "cubilete",
+        "cubilete_admin": "cubilete",
     }
     trickster_admin_map = {
         "dice": "dice_admin",
         "dice_admin": "dice_admin",
+        "cubilete": "cubilete_admin",
+        "cubilete_admin": "cubilete_admin",
     }
     personality_descriptions = _get_personality_descriptions(server_id)
     general = personality_descriptions.get("general", {})
-    
+
     # Helper function to resolve general.button references
     def _resolve_button_label(label_text: str) -> str:
         if label_text and label_text.startswith("general.button_"):
@@ -606,14 +633,14 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             key = parts[2] if len(parts) >= 3 else label_text
             return general.get(f"button_{key}", label_text)
         return label_text
-    
+
     # Get button labels from general section
     button_personal = general.get("button_personal", "👤 Personal")
     button_admin = general.get("button_admin", "🔧 Admin")
-    
+
     # Check if treasure_hunter is enabled globally in agent_config
     th_global_enabled = (agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
-    
+
     items_map: dict[str, list[tuple[str, str]]] = {
         "news_watcher": [
             (button_personal, "overview"),
@@ -627,24 +654,35 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             # Admin views
             [(button_personal, trickster_personal_map.get(current_detail or "dice", "dice"))]
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), trickster_admin_map.get(current_detail or "dice", "dice_admin"))] if admin_visible else [])
-        ) if current_detail in {"dice_admin"} else [
+        ) if current_detail in {"dice_admin"} else (
+            # Regular subrole views - cubilete
+            [(button_personal, trickster_personal_map.get(current_detail or "cubilete", "cubilete"))]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), trickster_admin_map.get(current_detail or "cubilete", "cubilete_admin"))] if admin_visible else [])
+        ) if current_detail in {"cubilete"} else (
+            # Admin views - cubilete
+            [(button_personal, trickster_personal_map.get(current_detail or "cubilete", "cubilete"))]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), trickster_admin_map.get(current_detail or "cubilete", "cubilete_admin"))] if admin_visible else [])
+        ) if current_detail in {"cubilete_admin"} else [
             # Main trickster overview - show all subroles
             (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("dice_game", {}).get("button", "Dice"), "dice"),
-        ] if current_detail not in {"dice", "dice_admin"} else [],
+            (personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("cubilete", {}).get("button", "Cubilete"), "cubilete"),
+        ] if current_detail not in {"dice", "dice_admin", "cubilete", "cubilete_admin"} else [],
         "banker": [
             # Main banker overview - always show subrole buttons
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("overview", {}).get("button", "Overview"), "overview"),
             (personality_descriptions.get("role_descriptions", {}).get("banker", {}).get("beggar", {}).get("button", "Beggar"), "beggar"),
         ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
-        "mc": [
-            (personality_descriptions.get("role_descriptions", {}).get("mc", {}).get("overview", {}).get("button", button_personal), "overview"),
-        ],
+        "mc": [],
         "shaman": (
             [(button_personal, "runes")]
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), "runes_admin")] if admin_visible else [])
-        ) if current_detail in {"runes", "runes_admin"} else [
+        ) if current_detail in {"runes", "runes_admin"} else (
+            [(button_personal, "astrology")]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), "astrology_admin")] if admin_visible else [])
+        ) if current_detail in {"astrology", "astrology_admin"} else [
             (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("nordic_runes", {}).get("button", "🔮 Runes"), "runes"),
-        ] if current_detail not in {"runes", "runes_admin"} else [],
+            (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("astrology", {}).get("button", "🌟 Astrology"), "astrology"),
+        ] if current_detail not in {"runes", "runes_admin", "astrology", "astrology_admin"} else [],
         "juggler": (
             [(button_personal, "ring")]
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), "ring_admin")] if admin_visible else [])
@@ -659,7 +697,7 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             (button_personal, "personal"),
         ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
     }
-    
+
     # Special handling for treasure_hunter POE2 views
     # Only show POE2 buttons if treasure_hunter is enabled globally in agent_config
     if role_name == "treasure_hunter" and current_detail in {"poe2", "league", "admin"}:
@@ -675,12 +713,12 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
                 (_resolve_button_label(admin_button), "admin")
             )
         return poe2_buttons
-    
+
     # Special handling for treasure_hunter overview - return empty list (POE2 button added separately with emoticon in ui.py)
     # Only if treasure_hunter is enabled globally
     if role_name == "treasure_hunter":
         return []
-    
+
     # Special handling for banker beggar views - show Personal/Admin navigation
     if role_name == "banker":
         if current_detail == "beggar":
@@ -695,7 +733,7 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             ]
         if current_detail in {"overview", "admin"}:
             return items_map.get(role_name, [])
-    
+
     return items_map.get(role_name, [])
 
 
@@ -703,24 +741,24 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     if role_name == "news_watcher":
         # Get news_watcher descriptions for action items with robust fallbacks
         _personality_descriptions = _get_personality_descriptions(server_id)
-        
+
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("role_descriptions", {})
         news_watcher = roles_view.get("news_watcher", {})
-        
+
         # Now dropdown is directly in news_watcher, not nested under canvas
         news_descriptions = news_watcher.get("dropdown", {}) if isinstance(news_watcher, dict) else {}
-        
+
         # Ensure news_descriptions is a dict
         if not isinstance(news_descriptions, dict):
             news_descriptions = {}
-        
+
         def _news_text(key: str, fallback: str) -> str:
             value = news_descriptions.get(key)
             if value:
                 value = str(value)
             return str(value).strip() if value else fallback
-        
+
         if detail_name in {"personal", "overview"}:  # Same view for both
             return [
                 (_news_text("method_flat", "Method: Flat"), "method_flat", _news_text("method_flat_description", "Set subscription method to flat"), "📰"),
@@ -738,25 +776,25 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     if role_name == "treasure_hunter":
         # Get treasure_hunter descriptions for action items with robust fallbacks
         _personality_descriptions = _get_personality_descriptions(server_id)
-        
+
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("role_descriptions", {})
         treasure_hunter = roles_view.get("treasure_hunter", {})
         poe2 = treasure_hunter.get("poe2", {})
-        
+
         # Use poe2.dropdown for the dropdown options
         hunter_descriptions = poe2.get("dropdown", {})
-        
+
         # Ensure hunter_descriptions is a dict
         if not isinstance(hunter_descriptions, dict):
             hunter_descriptions = {}
-        
+
         def _hunter_text(key: str, fallback: str) -> str:
             value = hunter_descriptions.get(key)
             if value:
                 value = str(value)
             return str(value).strip() if value else fallback
-        
+
         if detail_name == "league":
             return [
                 (_hunter_text("league_standard", "League: Standard"), "league_standard", _hunter_text("league_standard_description", "Choose POE2 league"), "🏆"),
@@ -782,14 +820,14 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     if role_name == "trickster":
         # Get trickster descriptions for action items with robust fallbacks
         _personality_descriptions = _get_personality_descriptions(server_id)
-        
+
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("role_descriptions", {})
         trickster = roles_view.get("trickster", {})
-        
+
         # Initialize empty dropdown descriptions
         trickster_descriptions = {}
-        
+
         # Collect dropdown items from relevant subroles based on detail_name
         if detail_name in {"dice", "game"}:
             dice_dropdown = trickster.get("dice_game", {}).get("dropdown", {})
@@ -806,64 +844,90 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             runes_dropdown = shaman.get("nordic_runes", {}).get("dropdown", {})
             if isinstance(runes_dropdown, dict):
                 trickster_descriptions.update(runes_dropdown)
-        
+
         # Ensure trickster_descriptions is a dict
         if not isinstance(trickster_descriptions, dict):
             trickster_descriptions = {}
-        
+
         def _trickster_text(key: str, fallback: str) -> str:
             value = trickster_descriptions.get(key)
             if value:
                 value = str(value)
             return str(value).strip() if value else fallback
-        
+
         if detail_name == "overview":
             # Overview shows navigation to subroles, no specific actions
             return []
         if detail_name == "dice":
             # Get dice_game descriptions for action items
             dice_descriptions = _personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("dice_game", {})
-            
+
             def _dice_text(key: str, fallback: str) -> str:
                 value = dice_descriptions.get(key)
                 if value:
                     value = str(value)
                 return str(value).strip() if value else fallback
-            
+
             return [
                 (_dice_text("dice_play", "Dice: Play"), "dice_play", _dice_text("dice_play_description", "Play action"), "🎲"),
                 (_dice_text("dice_ranking", "Dice: Ranking"), "dice_ranking", _dice_text("dice_ranking_description", "Ranking action"), "🏆"),
                 (_dice_text("dice_history", "Dice: History"), "dice_history", _dice_text("dice_history_description", "History action"), "📜"),
                 (_dice_text("dice_stats", "Dice: Stats"), "dice_help", _dice_text("dice_stats_description", "Stats action"), "📊"),
             ]
+        if detail_name == "cubilete":
+            # Get cubilete descriptions for action items
+            cubilete_descriptions = _personality_descriptions.get("role_descriptions", {}).get("trickster", {}).get("cubilete", {})
+
+            def _cubilete_text(key: str, fallback: str) -> str:
+                value = cubilete_descriptions.get(key)
+                if value:
+                    value = str(value)
+                return str(value).strip() if value else fallback
+
+            return [
+                (_cubilete_text("cubilete_play", "Cubilete: Play"), "cubilete_play", _cubilete_text("cubilete_play_description", "Play action"), "🎲"),
+                (_cubilete_text("cubilete_ranking", "Cubilete: Ranking"), "cubilete_ranking", _cubilete_text("cubilete_ranking_description", "Ranking action"), "🏆"),
+                (_cubilete_text("cubilete_history", "Cubilete: History"), "cubilete_history", _cubilete_text("cubilete_history_description", "History action"), "📜"),
+                (_cubilete_text("cubilete_help", "Cubilete: Stats"), "cubilete_help", _cubilete_text("cubilete_help_description", "Stats action"), "📊"),
+            ]
+
+    if role_name == "shaman":
+        # Get personality descriptions for shaman subroles
+        _personality_descriptions = _get_personality_descriptions(server_id)
+
         if detail_name == "runes":
-            # Check if runes subrole is enabled
-            runes_enabled = True  # Temporarily force enabled for testing
-            if agent_config:
-                runes_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
-            
+            # Check if runes subrole is enabled from server_config
+            try:
+                from .server_config import get_role_config_value
+                runes_enabled = get_role_config_value(server_id, "shaman", "config.subroles.nordic_runes.enabled", False)
+            except Exception:
+                # Fallback to agent_config if server_config fails
+                runes_enabled = False
+                if agent_config:
+                    runes_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("nordic_runes", {}).get("enabled", False)
+
             if not runes_enabled:
                 # Runes disabled - only show info actions
                 return [
                     ("Runes: Types", "runes_types", "Action"),
                 ]
-            
+
             # Runes enabled - show all casting actions
             # Get personality messages for dropdown labels
             roles_messages = _personality_descriptions.get("role_descriptions", {})
             nordic_runes_messages = roles_messages.get("shaman", {}).get("nordic_runes", {})
             canvas_labels = nordic_runes_messages.get("dropdown", {})
-            
+
             def _runes_text(key: str, fallback: str) -> str:
                 value = canvas_labels.get(key)
                 if value:
                     value = str(value)
                 return str(value).strip() if value else fallback
-            
+
             # English fallbacks
             english_fallbacks = {
                 "runes_single": "Runes: Single Cast",
-                "runes_three": "Runes: Three Cast", 
+                "runes_three": "Runes: Three Cast",
                 "runes_cross": "Runes: Cross Cast",
                 "runes_runic_cross": "Runes: Runic Cross Cast",
                 "runes_history": "Runes: History",
@@ -872,7 +936,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 "runes_runes_2": "Runes: All Runes II",
                 "runes_runes_3": "Runes: All Runes III"
             }
-            
+
             return [
                 (canvas_labels.get("runes_single", english_fallbacks["runes_single"]), "runes_single", _runes_text("runes_single_description", "Text input target"), "🦅"),
                 (canvas_labels.get("runes_three", english_fallbacks["runes_three"]), "runes_three", _runes_text("runes_three_description", "Text input target"), "🐾"),
@@ -884,33 +948,114 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (canvas_labels.get("runes_runes_2", english_fallbacks["runes_runes_2"]), "runes_runes_2", _runes_text("runes_runes_2_description", "Action"), "🗻"),
                 (canvas_labels.get("runes_runes_3", english_fallbacks["runes_runes_3"]), "runes_runes_3", _runes_text("runes_runes_3_description", "Action"), "🗻"),
             ]
+        elif detail_name == "astrology":
+            # Check if astrology subrole is enabled from server_config
+            try:
+                from .server_config import get_role_config_value
+                astrology_enabled = get_role_config_value(server_id, "shaman", "config.subroles.astrology.enabled", False)
+            except Exception:
+                # Fallback to agent_config if server_config fails
+                astrology_enabled = False
+                if agent_config:
+                    astrology_enabled = agent_config.get("roles", {}).get("shaman", {}).get("subroles", {}).get("astrology", {}).get("enabled", False)
+
+            if not astrology_enabled:
+                # Astrology disabled - no actions available
+                return []
+
+            # Astrology enabled - show all reading actions
+            # Get personality messages for dropdown labels
+            roles_messages = _personality_descriptions.get("role_descriptions", {})
+            astrology_messages = roles_messages.get("shaman", {}).get("astrology", {})
+            canvas_labels = astrology_messages.get("dropdown", {})
+
+            def _astrology_text(key: str, fallback: str) -> str:
+                value = canvas_labels.get(key)
+                if value:
+                    value = str(value)
+                return str(value).strip() if value else fallback
+
+            # English fallbacks
+            english_fallbacks = {
+                "astrology_birth": "Astrology: Birth Chart",
+                "astrology_moment": "Astrology: Moment Reading",
+                "astrology_year": "Astrology: Personal Year",
+                "astrology_integrated": "Astrology: Integrated Reading",
+                "astrology_history": "Astrology: History",
+                "astrology_letters": "Astrology: Hebrew Letters",
+                "astrology_letters_1": "Astrology: Hebrew Letters I",
+                "astrology_letters_2": "Astrology: Hebrew Letters II",
+                "astrology_letters_3": "Astrology: Hebrew Letters III",
+                "astrology_save_birth": "Astrology: Save Birth Data",
+            }
+
+            return [
+                (canvas_labels.get("astrology_birth", english_fallbacks["astrology_birth"]), "astrology_birth", _astrology_text("astrology_birth_description", "Text input target"), "🌟"),
+                (canvas_labels.get("astrology_moment", english_fallbacks["astrology_moment"]), "astrology_moment", _astrology_text("astrology_moment_description", "Text input target"), "⏰"),
+                (canvas_labels.get("astrology_year", english_fallbacks["astrology_year"]), "astrology_year", _astrology_text("astrology_year_description", "Text input target"), "📅"),
+                (canvas_labels.get("astrology_integrated", english_fallbacks["astrology_integrated"]), "astrology_integrated", _astrology_text("astrology_integrated_description", "Text input target"), "🔮"),
+                (canvas_labels.get("astrology_save_birth", english_fallbacks["astrology_save_birth"]), "astrology_save_birth", _astrology_text("astrology_save_birth_description", "Text input target"), "💾"),
+                (canvas_labels.get("astrology_history", english_fallbacks["astrology_history"]), "astrology_history", _astrology_text("astrology_history_description", "Action"), "📓"),
+                (canvas_labels.get("astrology_letters_1", english_fallbacks["astrology_letters_1"]), "astrology_letters_1", _astrology_text("astrology_letters_1_description", "Action"), "🗻"),
+                (canvas_labels.get("astrology_letters_2", english_fallbacks["astrology_letters_2"]), "astrology_letters_2", _astrology_text("astrology_letters_2_description", "Action"), "🗻"),
+                (canvas_labels.get("astrology_letters_3", english_fallbacks["astrology_letters_3"]), "astrology_letters_3", _astrology_text("astrology_letters_3_description", "Action"), "🗻"),
+            ]
+        return []
         if detail_name == "dice_admin" and admin_visible:
             # Get dice_game descriptions for action items with robust fallbacks
             _personality_descriptions = _get_personality_descriptions(server_id)
-            
+
             # Safe nested access with fallbacks
             roles_view = _personality_descriptions.get("role_descriptions", {})
-            
+
             # Check if dice_game data is directly in roles_view (trickster.json format)
             dice_game = roles_view.get("dice_game", {})
-            
+
             # Ensure dice_descriptions is a dict
             if not isinstance(dice_game, dict):
                 dice_descriptions = {}
             else:
                 dice_descriptions = dice_game
-            
+
             def _dice_text(key: str, fallback: str) -> str:
                 value = dice_descriptions.get(key)
                 if value:
                     value = str(value)
                 return str(value).strip() if value else fallback
-            
+
             return [
                 (_dice_text("announcements_on", "Announcements: On"), "announcements_on", _dice_text("announcements_on_description", "Dice config"), "📢"),
                 (_dice_text("announcements_off", "Announcements: Off"), "announcements_off", _dice_text("announcements_off_description", "Dice config"), "🔇"),
                 (_dice_text("dice_fixed_bet", "Dice: Fixed Bet"), "dice_fixed_bet", _dice_text("dice_fixed_bet_description", "Number input target"), "🎲"),
                 (_dice_text("dice_pot_value", "Dice: Pot Value"), "dice_pot_value", _dice_text("dice_pot_value_description", "Number input target"), "💰"),
+            ]
+        if detail_name == "cubilete_admin" and admin_visible:
+            # Get cubilete descriptions for action items with robust fallbacks
+            _personality_descriptions = _get_personality_descriptions(server_id)
+
+            # Safe nested access with fallbacks
+            roles_view = _personality_descriptions.get("role_descriptions", {})
+
+            # Check if cubilete data is directly in roles_view (trickster.json format)
+            cubilete = roles_view.get("cubilete", {})
+
+            # Ensure cubilete_descriptions is a dict
+            if not isinstance(cubilete, dict):
+                cubilete_descriptions = {}
+            else:
+                cubilete_descriptions = cubilete
+
+            def _cubilete_text(key: str, fallback: str) -> str:
+                value = cubilete_descriptions.get(key)
+                if value:
+                    value = str(value)
+                return str(value).strip() if value else fallback
+
+            return [
+                (_cubilete_text("announcements_on", "Announcements: On"), "cubilete_announcements_on", _cubilete_text("announcements_on_description", "Cubilete config"), "📢"),
+                (_cubilete_text("announcements_off", "Announcements: Off"), "cubilete_announcements_off", _cubilete_text("announcements_off_description", "Cubilete config"), "🔇"),
+                (_cubilete_text("dice_fixed_bet", "Cubilete: Fixed Bet"), "cubilete_fixed_bet", _cubilete_text("dice_fixed_bet_description", "Number input target"), "🎲"),
+                (_cubilete_text("dice_pot_value", "Cubilete: Pot Value"), "cubilete_pot_value", _cubilete_text("dice_pot_value_description", "Number input target"), "💰"),
             ]
         if detail_name == "runes_admin" and admin_visible:
             return [
@@ -1000,7 +1145,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             from roles.banker.banker_messages import get_messages
         except ImportError:
             get_messages = None
-        
+
         # Get server_db_path for banker messages
         server_db_path = None
         if server_id:
@@ -1011,7 +1156,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                     server_db_path = server_dir
             except Exception:
                 pass
-        
+
         def _banker_text(key: str) -> str:
             # Use get_messages from banker_messages.py if available
             if get_messages and server_db_path:
@@ -1020,7 +1165,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             _personality_descriptions = _get_personality_descriptions(server_id)
             roles_view = _personality_descriptions.get("role_descriptions", {})
             banker = roles_view.get("banker", {})
-            
+
             # Handle dot notation for nested keys (e.g., "beggar.title")
             if "." in key:
                 keys = key.split(".")
@@ -1036,7 +1181,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             if value:
                 value = str(value)
             return str(value).strip() if value else key
-        
+
         def _banker_emoji(key: str):
             """Get emoji string from JSON."""
             emoji_str = _banker_text(key)
@@ -1044,7 +1189,7 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
             if emoji_str == key:
                 return None
             return emoji_str
-        
+
         if detail_name == "overview":
             # Overview shows wallet info, no specific actions
             return []
@@ -1064,30 +1209,30 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (_banker_text("config_tae"), "config_tae", _banker_text("config_tae_description"), _banker_emoji("config_tae_emoji")),
                 (_banker_text("config_bonus"), "config_bonus", _banker_text("config_bonus_description"), _banker_emoji("config_bonus_emoji")),
             ]
-    
+
     if role_name == "mc":
         # Get MC descriptions for action items with robust fallbacks
         _personality_descriptions = _get_personality_descriptions(server_id)
-        
+
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("role_descriptions", {})
         mc = roles_view.get("mc", {})
-        
+
         # Ensure mc_descriptions is a dict
         if not isinstance(mc, dict):
             mc_descriptions = {}
         else:
             mc_descriptions = mc
-        
+
         # Get dropdown section if available, otherwise use root level
         dropdown_section = mc_descriptions.get("dropdown", mc_descriptions)
-        
+
         def _mc_text(key: str, fallback: str) -> str:
             value = dropdown_section.get(key)
             if value:
                 value = str(value)
             return str(value).strip() if value else fallback
-        
+
         return [
             (_mc_text("mc_play", "Play Now"), "mc_play", _mc_text("mc_play_description", "Text input target"), "🎵"),
             (_mc_text("mc_add", "Add to Queue"), "mc_add", _mc_text("mc_add_description", "Text input target"), "➕"),
@@ -1105,28 +1250,28 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
     if role_name == "scholar":
         # Get scholar descriptions for action items with robust fallbacks
         _personality_descriptions = _get_personality_descriptions(server_id)
-        
+
         # Safe nested access with fallbacks
         roles_view = _personality_descriptions.get("role_descriptions", {})
         scholar = roles_view.get("scholar", {})
         general = _personality_descriptions.get("general", {})
-        
+
         # Use dropdown section if available
         scholar_descriptions = scholar.get("dropdown", {})
-        
+
         # Ensure scholar_descriptions is a dict
         if not isinstance(scholar_descriptions, dict):
             scholar_descriptions = {}
-        
+
         # Get action descriptions from general (to avoid redundancy)
         action_descriptions = general.get("action_descriptions", {}).get("boolean_toggle", "Toggle activation/deactivation")
-        
+
         def _scholar_text(key: str, fallback: str) -> str:
             value = scholar_descriptions.get(key)
             if value:
                 value = str(value)
             return str(value).strip() if value else fallback
-        
+
         if detail_name == "admin" and admin_visible:
             return [
                 (_scholar_text("toggle_on", "Enable Scholar"), "scholar_on", action_descriptions, "✅"),
@@ -1183,16 +1328,16 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
 def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int = None, user_name: str = None, server_id: str = None) -> str:
     """Try to get the last saved memory paragraph as fallback before using defaults."""
     import sqlite3
-    
+
     try:
         with database._lock:
             conn = sqlite3.connect(database.db_path)
             cursor = conn.cursor()
-            
+
             if memory_type == "daily":
                 # Get the most recent daily memory (excluding today's empty record and errors)
                 cursor.execute("""
-                    SELECT summary, updated_at FROM daily_memory 
+                    SELECT summary, updated_at FROM daily_memory
                     WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
                     ORDER BY updated_at DESC LIMIT 5
                 """)
@@ -1203,11 +1348,11 @@ def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int =
                         if summary and len(summary) > 20:  # Valid content
                             conn.close()
                             return summary
-                        
+
             elif memory_type == "recent":
                 # Get the most recent recent memory (excluding today's empty record and errors)
                 cursor.execute("""
-                    SELECT summary, updated_at FROM recent_memory 
+                    SELECT summary, updated_at FROM recent_memory
                     WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
                     ORDER BY updated_at DESC LIMIT 5
                 """)
@@ -1218,11 +1363,11 @@ def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int =
                         if summary and len(summary) > 20:  # Valid content
                             conn.close()
                             return summary
-                        
+
             elif memory_type == "relationship" and author_id:
                 # Get the most recent relationship memory for this user
                 cursor.execute("""
-                    SELECT summary, memory_date FROM user_relationship_daily_memory 
+                    SELECT summary, memory_date FROM user_relationship_daily_memory
                     WHERE usuario_id = ? AND summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
                     ORDER BY memory_date DESC LIMIT 5
                 """, (author_id,))
@@ -1233,21 +1378,21 @@ def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int =
                         if summary and len(summary) > 20:  # Valid content
                             conn.close()
                             return summary
-            
+
             conn.close()
     except Exception as e:
         logger.debug(f"Could not retrieve saved memory fallback for {memory_type}: {e}")
-    
+
     # If no saved records found, use the default fallback with server_id
     from agent_mind import _get_daily_memory_fallback, _get_recent_memory_fallback, _get_relationship_memory_fallback
-    
+
     if memory_type == "daily":
         return _get_daily_memory_fallback(server_id)
     elif memory_type == "recent":
         return _get_recent_memory_fallback(server_id)
     elif memory_type == "relationship":
         return _get_relationship_memory_fallback(user_name or "este umano", server_id)
-    
+
     return ""
 
 
@@ -1257,16 +1402,16 @@ def _get_news_watcher_subscriptions_info(server_id: str, author_id: int, guild=N
         db = get_news_watcher_db_instance(server_id)
         if not db:
             return ""
-        
+
         # Import to get feed names
         from roles.news_watcher.global_feed_health import get_healthy_feeds
-        
+
         # Get healthy feeds to map feed_id to feed name
         healthy_feeds = get_healthy_feeds()
         feed_map = {fid: name for fid, name, url, cat in healthy_feeds}
-        
+
         subscriptions_lines = []
-        
+
         # Get channel subscriptions (if in guild)
         if guild:
             unified_subs = db.get_all_active_subscriptions()
@@ -1274,15 +1419,15 @@ def _get_news_watcher_subscriptions_info(server_id: str, author_id: int, guild=N
                 # Only include channel subscriptions
                 if not channel_id:
                     continue
-                
+
                 # Get feed name
                 if feed_id:
                     feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
                 else:
                     feed_name = "all feeds"
-                
+
                 subscriptions_lines.append(f"🔍 {category} ({feed_name}) - {method}")
-        
+
         # Get user subscriptions (DM)
         user_subs = db.get_user_subscriptions(str(author_id))
         if user_subs:
@@ -1295,15 +1440,15 @@ def _get_news_watcher_subscriptions_info(server_id: str, author_id: int, guild=N
                 premises = sub[5] if len(sub) > 5 else ""
                 keywords = sub[6] if len(sub) > 6 else ""
                 method = sub[7] if len(sub) > 7 else "general"
-                
+
                 # Get feed name
                 if feed_id:
                     feed_name = feed_map.get(feed_id, f"Feed #{feed_id}")
                 else:
                     feed_name = "all feeds"
-                
+
                 subscriptions_lines.append(f"🔍 {category} ({feed_name}) - {method}")
-        
+
         if subscriptions_lines:
             return "\n".join(subscriptions_lines[:5])  # Limit to 5
         return ""
@@ -1316,30 +1461,30 @@ def _get_poe2_purchases_info(server_id: str, author_id: int, poe2_title: str = "
     try:
         if not get_roles_db_instance or not get_poe2_manager:
             return ""
-        
+
         # Use fixed title format: 👺 PoE2:
         poe2_title = "👺 PoE2:"
-        
+
         roles_db = get_roles_db_instance(server_id)
         subscription = roles_db.get_poe2_subscription(str(author_id), server_id)
-        
+
         if subscription and subscription.get('purchases'):
             purchases = subscription['purchases']
             league = subscription.get('league', 'Standard')
-            
+
             # Get POE2 manager to fetch current prices
             manager = get_poe2_manager()
-            
+
             items_with_prices = []
             for purchase in purchases[:3]:  # Limit to 3 items
                 if isinstance(purchase, dict):
                     item_name = purchase.get('item_name')
                     buy_price = purchase.get('buy_price')
                     item_id = purchase.get('item_id')
-                    
+
                     if not item_name:
                         continue
-                    
+
                     # Get current price from global database
                     current_price = None
                     if item_id:
@@ -1349,7 +1494,7 @@ def _get_poe2_purchases_info(server_id: str, author_id: int, poe2_title: str = "
                                 current_price = price_data.get('price')
                         except Exception:
                             pass
-                    
+
                     if current_price is not None:
                         # Emoji based on buy price vs current price
                         # Lower buy price = price went up (📈), Higher buy price = price went down (📉)
@@ -1365,7 +1510,7 @@ def _get_poe2_purchases_info(server_id: str, author_id: int, poe2_title: str = "
                 else:
                     # Handle old string format
                     items_with_prices.append(str(purchase))
-            
+
             if items_with_prices:
                 return f"{poe2_title}\n" + "\n".join(f"-{item}" for item in items_with_prices)
         return ""
@@ -1378,7 +1523,7 @@ def _get_dice_game_pot_info(server_id: str, coin_emoji: str = "🪙", dice_title
     try:
         from roles.banker.banker_db import get_banker_roles_db_instance
         logger.debug(f"Attempting to get dice game pot for server {server_id}")
-        
+
         banker_db = get_banker_roles_db_instance(server_id)
         # Create wallet if it doesn't exist
         banker_db.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
@@ -1394,11 +1539,11 @@ def _get_mc_last_song_info(server_id: str, mc_title: str = "🎵 MC") -> str:
     try:
         from roles.mc.db_role_mc import get_mc_db_instance
         mc_db = get_mc_db_instance(server_id)
-        
+
         # Get history from any channel in the server using NoSQL
         from roles.role_configs_nosql import get_role_configs_nosql
         nosql = get_role_configs_nosql(server_id)
-        
+
         # Access history store directly to get most recent entry across all channels
         all_entries = list(nosql._mc_history.iter_records())
         filtered = [
@@ -1423,7 +1568,7 @@ def _get_banker_wallet_info(server_id: str, author_id: int, coin_emoji: str = "�
     """Get gold amount of banker wallet for the user."""
     try:
         from roles.banker.banker_db import get_banker_roles_db_instance
-        
+
         banker_db = get_banker_roles_db_instance(server_id)
         balance = banker_db.get_balance(str(author_id))
         return f"{banker_title}: {balance} {coin_emoji}"
@@ -1437,14 +1582,14 @@ def _get_ring_accused_info(server_id: str, guild=None, ring_title: str = "⚖️
         from roles.juggler.subroles.ring.ring_db import get_ring_db_instance
         ring_db = get_ring_db_instance(server_id)
         config = ring_db.get_config()
-        
+
         # Get accused_label from personality descriptions
         from .content import _get_personality_descriptions
         personality_descriptions = _get_personality_descriptions(server_id)
         juggler_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {})
         ring_messages = juggler_messages.get("ring", {})
         accused_label = ring_messages.get("accused_label", "Accused:")
-        
+
         accused_user_id = config.get('accused_user_id')
         if accused_user_id and guild:
             try:
@@ -1463,13 +1608,13 @@ def _get_moon_phase_info(server_id: str = "default", shaman_title: str = "🐺 S
     try:
         # Get moon phase name and emoji
         moon_phase_name, moon_emoji = get_moon_phase()
-        
+
         # Get moon phase title from personality descriptions (for display in home)
         personality_descriptions = _get_personality_descriptions(server_id)
         shaman_messages = personality_descriptions.get("role_descriptions", {}).get("shaman", {})
         moon_messages = shaman_messages.get("moon_phases", {})
         moon_title = moon_messages.get(moon_phase_name, f"{moon_emoji} Current moon phase")
-        
+
         return f"{shaman_title}: {moon_title}"
     except Exception as e:
         logger.warning(f"Error getting moon phase: {e}")
@@ -1481,24 +1626,24 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     """Build the main Canvas hub view with status information."""
     enabled_roles = _get_enabled_roles(agent_config, guild)
     roles_text = ", ".join(enabled_roles) if enabled_roles else "none"
-    
+
     # Get home messages from personality with fallback (dynamic per server)
     personality_descriptions = _get_personality_descriptions(server_id)
     home_messages = personality_descriptions.get("canvas_home_messages", {})
-    
+
     def _home_text(key: str, fallback: str) -> str:
         value = home_messages.get(key)
         if value:
             value = str(value)
         return str(value).strip() if value else fallback
-    
+
     personalitystatus = _home_text("personalitystatus", "Personality:" )
     homedescription = _home_text("description", "Interact with all of the bot feautures from this panel." )
     recentsynthesistitle = _home_text("recentsynthesistitle", "Recent synthesis" )
     personalsynthesistitle = _home_text("personalsynthesistitle", "Personal synthesis with you" )
     interestingthings = _home_text("interestingthings", "Interesting things - " )
     pilgrimdatatitle = _home_text("pilgrimdatatitle", "Pilgrim Data:" )
-    
+
     # Get coin emoji and role titles from descriptions
     coin_emoji = "🪙"  # Default fallback
     dice_title = "🎲 Dice Game"  # Default fallback
@@ -1510,55 +1655,55 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     shaman_title = "🐺 Shaman"  # Default fallback
     try:
         role_descriptions = personality_descriptions.get("role_descriptions", {})
-        
+
         # Get coin emoji from banker
         banker_desc = role_descriptions.get("banker", {})
         if banker_desc and "coin" in banker_desc:
             coin_emoji = banker_desc["coin"]
         if banker_desc and "title" in banker_desc:
             banker_title = banker_desc["title"]
-        
+
         # Get dice game title from trickster
         trickster_desc = role_descriptions.get("trickster", {})
         if trickster_desc and "dice_game" in trickster_desc:
             dice_game_desc = trickster_desc["dice_game"]
             if isinstance(dice_game_desc, dict) and "title" in dice_game_desc:
                 dice_title = dice_game_desc["title"]
-        
+
         # Get news watcher title
         news_desc = role_descriptions.get("news_watcher", {})
         if news_desc and "title" in news_desc:
             news_title = news_desc["title"]
-        
+
         # Get POE2 title from treasure_hunter
         th_desc = role_descriptions.get("treasure_hunter", {})
         if th_desc and "poe2" in th_desc:
             poe2_desc = th_desc["poe2"]
             if isinstance(poe2_desc, dict) and "title" in poe2_desc:
                 poe2_title = poe2_desc["title"]
-        
+
         # Get MC title
         mc_desc = role_descriptions.get("mc", {})
         if mc_desc and "title" in mc_desc:
             mc_title = mc_desc["title"]
-        
+
         # Get Ring title from juggler
         juggler_desc = role_descriptions.get("juggler", {})
         if juggler_desc and "ring" in juggler_desc:
             ring_desc = juggler_desc["ring"]
             if isinstance(ring_desc, dict) and "title" in ring_desc:
                 ring_title = ring_desc["title"]
-        
+
         # Get Shaman title
         shaman_desc = role_descriptions.get("shaman", {})
         if shaman_desc and "title" in shaman_desc:
             shaman_title = shaman_desc["title"]
     except Exception as e:
         logger.debug(f"Could not get role titles from descriptions: {e}")
-    
+
     # Build status content
     status_lines: list[str] = []
-    
+
     # Add DM notification if applicable
     if is_dm and guild:
         status_lines.extend([
@@ -1568,22 +1713,22 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             home_messages.get("dm_default_server_separator", "─────────────────────────────────────────────"),
             "",
         ])
-    
+
     # Title and description
     status_lines.extend([
         f"{homedescription}",
         "─" * 45,
     ])
-    
+
     # Section: Cosas interesantes (Interesting things)
     status_lines.extend([
         interestingthings,
         ""
     ])
-    
+
     # Check which roles are enabled from agent_config
     roles_config = agent_config.get('roles', {})
-    
+
     # 1. News Watcher - Active subscriptions
     if roles_config.get('news_watcher', {}).get('enabled'):
         news_info = _get_news_watcher_subscriptions_info(server_id, author_id, guild, news_title)
@@ -1591,13 +1736,13 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
             # Append subscription lines directly
             for line in news_info.split('\n'):
                 status_lines.append(line)
-    
+
     # 2. POE2 - Items registered as purchase
     if roles_config.get('treasure_hunter', {}).get('enabled'):
         poe2_info = _get_poe2_purchases_info(server_id, author_id, poe2_title)
         if poe2_info:
             status_lines.append(poe2_info)
-    
+
     # 3. Dice Game - Current pot
     dice_game_enabled = roles_config.get('trickster', {}).get('subroles', {}).get('dice_game', {}).get('enabled')
     logger.debug(f"Dice game enabled check: {dice_game_enabled}, roles_config: {roles_config.get('trickster', {})}")
@@ -1606,38 +1751,38 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         logger.debug(f"Dice info returned: {dice_info}")
         if dice_info:
             status_lines.append(dice_info)
-    
+
     # 4. MC - Last song played
     if roles_config.get('mc', {}).get('enabled'):
         mc_info = _get_mc_last_song_info(server_id, mc_title)
         if mc_info:
             status_lines.append(mc_info)
-    
+
     # 5. Banker - User's wallet balance (moved to Pilgrim Data section)
-    
+
     # 6. Ring - Current accused user
     if roles_config.get('juggler', {}).get('subroles', {}).get('ring', {}).get('enabled'):
         ring_info = _get_ring_accused_info(server_id, guild, ring_title)
         if ring_info:
             status_lines.append(ring_info)
-    
+
     # 7. Shaman - Current moon phase
     if roles_config.get('shaman', {}).get('enabled'):
         moon_info = _get_moon_phase_info(server_id, shaman_title)
         if moon_info:
             status_lines.append(moon_info)
-    
+
     status_lines.extend([
         "",
         "─" * 45,
     ])
-    
+
     # Section: Recent Memory
     # Initialize records as None
     recent_record = None
     relationship_record = {"summary": "", "updated_at": None, "last_interaction_at": None, "metadata": {}}
     daily_record = None
-    
+
     # Try to get database and records
     database = None
     try:
@@ -1650,11 +1795,11 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         logger.warning(f"Canvas status could not load memory data for server={server_id}: {e}")
         # Database error, but we still have the records (might be None)
         # Don't set fallbacks here - let the logic below handle it
-    
+
     recent_summary = (recent_record or {}).get("summary", "").strip()
     relationship_summary = (relationship_record or {}).get("summary", "").strip()
     daily_summary = (daily_record or {}).get("summary", "").strip()
-    
+
     # Exclude error messages from summaries
     if daily_summary == "[Error in internal task]":
         daily_summary = ""
@@ -1662,7 +1807,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         recent_summary = ""
     if relationship_summary == "[Error in internal task]":
         relationship_summary = ""
-    
+
     # Use fallback content if summaries are empty (e.g., due to token errors or no today's record)
     if not recent_summary:
         if database:
@@ -1670,14 +1815,14 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         else:
             from agent_mind import _get_recent_memory_fallback
             recent_summary = _get_recent_memory_fallback(server_id)
-    
+
     if not daily_summary:
         if database:
             daily_summary = _get_last_saved_memory_fallback(database, "daily", server_id=server_id)
         else:
             from agent_mind import _get_daily_memory_fallback
             daily_summary = _get_daily_memory_fallback(server_id)
-    
+
     if not relationship_summary:
         user_name = None
         if guild and author_id:
@@ -1689,25 +1834,25 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
                 pass
         if not user_name:
             user_name = "unknown user"
-            
+
         if database:
             relationship_summary = _get_last_saved_memory_fallback(database, "relationship", author_id, user_name, server_id)
         else:
             from agent_mind import _get_relationship_memory_fallback
             relationship_summary = _get_relationship_memory_fallback(user_name, server_id)
-    
+
     # Only show recent synthesis (relationship section removed as requested)
     if recent_summary:
         status_lines.extend([
             f"{recentsynthesistitle}",
             f"- {recent_summary[:1000]}",
         ])
-    
+
     status_lines.extend([
         "",
         "─" * 45,
     ])
-    
+
     # Section: Pilgrim Data
     status_lines.extend([
         pilgrimdatatitle,
@@ -1716,30 +1861,30 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         banker_info = _get_banker_wallet_info(server_id, author_id, coin_emoji, banker_title)
         if banker_info:
             status_lines.append(banker_info)
-    
+
     # Add final separator
     status_lines.extend([
         "─" * 45,
         f"{personalitystatus} `{_get_server_personality_name(server_id)}`"
     ])
-    
+
     return "\n".join(status_lines)
 
 
 def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, page: int = 1, roles_per_page: int = 5) -> str:
     """Build the role navigation Canvas view - now uses database as primary source with pagination."""
     # Note: Roles initialization happens once at server startup via server_config.json
-    
+
     # Get roles view messages from personality with fallback
     server_id = core.get_server_key(guild) if guild else None
     _personality_descriptions = _get_personality_descriptions(server_id)
     roles_messages = _personality_descriptions.get("roles_view_messages", {})
-    
+
     # Title and description from descriptions.json with fallback
     title = roles_messages.get("title", f"🎭 ROLE MANAGER - {server_id} 🎭").strip()
     description = roles_messages.get("description", "🌟 The role manager oversees all aspects of the clan. Each role has unique abilities to serve the tribe. Explore different specializations and choose your path.").strip()
     separator = roles_messages.get("role_categories", "──────────────────────────────").strip()
-    
+
     # Helper messages
     enabled_status = roles_messages.get("enabled_status", "ACTIVE")
     # Resolve general.active reference if present
@@ -1749,17 +1894,17 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
         enabled_status = general.get(key, enabled_status)
     interval_info = roles_messages.get("interval_info", "⏰ Every {interval}h")
     inactive_status = roles_messages.get("inactive_status", "❌ INACTIVE")
-    
+
     parts = [
         title,
         description,
         separator,
     ]
-    
+
     # Track active and inactive roles
     active_roles = []
     inactive_roles = []
-    
+
     role_descriptions = _personality_descriptions.get("role_descriptions", {})
 
     def get_role_info(role_key):
@@ -1769,7 +1914,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
             title = role_key.replace("_", " ").title()
         description = str(role_data.get("description", "")).strip()
         return {"title": title, "description": description}
-    
+
     # Define all possible roles with their intervals (must match order in ui.py)
     role_configs = [
         ("news_watcher", 1),
@@ -1781,28 +1926,28 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
         ("shaman", None),
         ("scholar", None),
     ]
-    
+
     # Collect all active roles first - use same order as ui.py
     for role_name, interval in role_configs:
         if is_role_enabled_check(role_name, None, guild):
             active_roles.append((role_name, interval))
-    
+
     # Check for inactive roles
     all_possible_roles = [r[0] for r in role_configs]
     for role in all_possible_roles:
         if role not in [r[0] for r in active_roles]:
             inactive_roles.append(role)
-    
+
     # Calculate pagination
     total_roles = len(active_roles)
     total_pages = (total_roles + roles_per_page - 1) // roles_per_page if total_roles > 0 else 1
     page = max(1, min(page, total_pages))  # Ensure page is within valid range
-    
+
     # Get roles for current page
     start_idx = (page - 1) * roles_per_page
     end_idx = start_idx + roles_per_page
     page_roles = active_roles[start_idx:end_idx]
-    
+
     # Add roles for current page
     for role_name, interval in page_roles:
         role_info = get_role_info(role_name)
@@ -1810,21 +1955,21 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
         if role_info['description']:
             parts.append(role_info['description'])
         parts.append(separator)
-    
+
     # Add page indicator if there are multiple pages
     if total_pages > 1:
         page_indicator = roles_messages.get("page_indicator", "**Page {page}/{total_pages}**")
         parts.append(page_indicator.format(page=page, total_pages=total_pages))
-    
+
     # Add inactive roles section if any exist
     if inactive_roles:
         parts.append("**DEACTIVATE ROLES:**")
-        
+
         for role in inactive_roles:
             role_info = get_role_info(role)
             role_icons = {
                 "news_watcher": "📡",
-                "treasure_hunter": "💎", 
+                "treasure_hunter": "💎",
                 "trickster": "🎭",
                 "banker": "💰",
                 "mc": "🎵",
@@ -1833,7 +1978,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
             }
             icon = role_icons.get(role, "📋")
             parts.append(f"{icon} {role_info['title']}")
-    
+
     # If no roles are active, show helpful message
     if not active_roles:
         no_roles_msg = roles_messages.get("no_roles_active",
@@ -1879,14 +2024,14 @@ def _build_canvas_help(guild=None) -> str:
     behavior = help_messages.get("behavior_section", "**Behavior**\nIn this section you'll configurate some interactuable behaviors of the bot. Only for Admins")
     shortcuts = help_messages.get("shortcuts_section", "**Shortcuts**\nConfigure up to 5 quick access buttons in the Canvas home view for your favorite roles and subroles. Available in Settings > Shortcuts.")
     tips = help_messages.get("tips_section", "**Some tips**\n-You can ask to the bot how works a command like: 'how works the command dice?'\n-The most jouicy parts of the bots its inside of each role")
-    
+
     return (
         f"{separator}\n"
         f"{roles}\n"
         f"{behavior}\n"
         f"{shortcuts}\n"
         f"{separator}\n"
-        f"{tips}"   
+        f"{tips}"
     )
 
 

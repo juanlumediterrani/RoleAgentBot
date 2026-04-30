@@ -224,7 +224,7 @@ class JsonlRingBuffer:
         """Validate a single record against the Pydantic schema if available."""
         if not PYDANTIC_AVAILABLE or self._schema is None:
             return
-        
+
         try:
             self._schema(**record)
         except PydanticValidationError as e:

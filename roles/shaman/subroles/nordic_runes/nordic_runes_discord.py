@@ -15,7 +15,6 @@ except ImportError:
 try:
     from .nordic_runes import NordicRunes
     from .nordic_runes_messages import READING_TYPES, get_message, get_reading_type, load_personality_messages
-    from .nordic_runes_db import get_nordic_runes_db_instance
 except ImportError:
     # Fallback for direct loading
     import sys
@@ -25,7 +24,6 @@ except ImportError:
     try:
         from nordic_runes import NordicRunes
         from nordic_runes_messages import READING_TYPES, get_message, get_reading_type, load_personality_messages
-        from nordic_runes_db import get_nordic_runes_db_instance
     finally:
         sys.path.remove(runes_dir)
 
@@ -44,17 +42,18 @@ class NordicRunesCommands:
         """Initialize the runes commands."""
         self.runes = NordicRunes()
         self.guild = guild
-        self.db = None
+        self.nosql = None
         if guild:
-            self.db = self._get_nordic_runes_db()
+            self.nosql = self._get_nosql_instance()
     
-    def _get_nordic_runes_db(self):
-        """Get Nordic Runes database instance for a server."""
+    def _get_nosql_instance(self):
+        """Get RoleConfigsNoSQL instance for a server."""
         if not self.guild:
-            raise ValueError("Cannot initialize Nordic Runes database: guild context is required")
+            raise ValueError("Cannot initialize NoSQL: guild context is required")
         
         server_id = str(self.guild.id)
-        return get_nordic_runes_db_instance(server_id)
+        from roles.role_configs_nosql import RoleConfigsNoSQL
+        return RoleConfigsNoSQL(server_id)
     
     async def cmd_runes(self, ctx, args: List[str]) -> str:
         """Main runes command dispatcher."""
@@ -128,7 +127,7 @@ class NordicRunesCommands:
 
             user_id = str(ctx.author.id) if hasattr(ctx, 'author') else 'unknown'
 
-            reading_id = self.db.save_reading(
+            self.nosql.save_nordic_runes_reading(
                 user_id=user_id,
                 question=parsed_question,
                 runes_drawn=reading['runes_drawn'],
@@ -136,7 +135,7 @@ class NordicRunesCommands:
                 reading_type=reading_type
             )
 
-            logger.info(f"Reading saved with ID: {reading_id}, question: '{parsed_question}'")
+            logger.info(f"Reading saved for question: '{parsed_question}'")
 
             question_label = get_message('question', server_id=server_id)
             response = f"**{question_label}:** {parsed_question}\n"
@@ -209,7 +208,7 @@ class NordicRunesCommands:
             if args and args[0].isdigit():
                 limit = min(int(args[0]), 20)  # Max 20 readings
             
-            readings = self.db.get_user_readings(user_id, limit)
+            readings = self.nosql.get_nordic_runes_readings(user_id, limit)
             
             if not readings:
                 return get_message('history_empty')
@@ -229,7 +228,19 @@ class NordicRunesCommands:
                 ) + "\n\n"
             
             # Get stats
-            stats = self.db.get_reading_stats(user_id)
+            readings_all = self.nosql.get_nordic_runes_readings(user_id, limit=1000)
+            total = len(readings_all)
+            if total == 0:
+                stats = {'total_readings': 0, 'favorite_type': None}
+            else:
+                # Calculate favorite type
+                type_counts = {}
+                for r in readings_all:
+                    rtype = r.get('reading_type', 'unknown')
+                    type_counts[rtype] = type_counts.get(rtype, 0) + 1
+                favorite_type = max(type_counts, key=type_counts.get) if type_counts else None
+                stats = {'total_readings': total, 'favorite_type': favorite_type}
+            
             stats_message = get_message('stats')
             response += stats_message.format(
                 total=stats['total_readings'],
@@ -271,7 +282,7 @@ class NordicRunesCommands:
         try:
             user_id = str(mock_message.author.id) if hasattr(mock_message, 'author') else 'canvas_user'
             
-            readings = self.db.get_user_readings(user_id, limit)
+            readings = self.nosql.get_nordic_runes_readings(user_id, limit)
             
             if not readings:
                 return get_message('history_empty')
@@ -339,10 +350,10 @@ def get_nordic_runes_commands_instance(guild=None) -> NordicRunesCommands:
     elif guild and _commands_instance.guild != guild:
         # Reinitialize if guild context changed
         _commands_instance.guild = guild
-        _commands_instance.db = _commands_instance._get_nordic_runes_db()
-    elif guild and _commands_instance.db is None:
-        # Initialize database if guild is set but db is None
-        _commands_instance.db = _commands_instance._get_nordic_runes_db()
+        _commands_instance.nosql = _commands_instance._get_nosql_instance()
+    elif guild and _commands_instance.nosql is None:
+        # Initialize NoSQL if guild is set but nosql is None
+        _commands_instance.nosql = _commands_instance._get_nosql_instance()
     return _commands_instance
 
 # Command functions for registration
@@ -353,7 +364,7 @@ async def cmd_runes(ctx, args):
     # Update the guild context if needed
     if hasattr(commands, 'guild') and commands.guild != guild:
         commands.guild = guild
-        commands.db = commands._get_nordic_runes_db()
+        commands.nosql = commands._get_nosql_instance()
     return await commands.cmd_runes(ctx, args)
 
 async def cmd_runes_cast(ctx, args):
@@ -363,7 +374,7 @@ async def cmd_runes_cast(ctx, args):
     # Update the guild context if needed
     if hasattr(commands, 'guild') and commands.guild != guild:
         commands.guild = guild
-        commands.db = commands._get_nordic_runes_db()
+        commands.nosql = commands._get_nosql_instance()
     return await commands.cmd_runes_cast(ctx, args)
 
 async def cmd_runes_history(ctx, args):
@@ -373,7 +384,7 @@ async def cmd_runes_history(ctx, args):
     # Update the guild context if needed
     if hasattr(commands, 'guild') and commands.guild != guild:
         commands.guild = guild
-        commands.db = commands._get_nordic_runes_db()
+        commands.nosql = commands._get_nosql_instance()
     return await commands.cmd_runes_history(ctx, args)
 
 async def cmd_runes_types(ctx, args):
@@ -383,7 +394,7 @@ async def cmd_runes_types(ctx, args):
     # Update the guild context if needed
     if hasattr(commands, 'guild') and commands.guild != guild:
         commands.guild = guild
-        commands.db = commands._get_nordic_runes_db()
+        commands.nosql = commands._get_nosql_instance()
     return await commands.cmd_runes_types(ctx, args)
 
 async def cmd_runes_list(ctx, args):
@@ -393,5 +404,5 @@ async def cmd_runes_list(ctx, args):
     # Update the guild context if needed
     if hasattr(commands, 'guild') and commands.guild != guild:
         commands.guild = guild
-        commands.db = commands._get_nordic_runes_db()
+        commands.nosql = commands._get_nosql_instance()
     return await commands.cmd_runes_list(ctx, args)

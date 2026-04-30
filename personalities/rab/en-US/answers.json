@@ -37,6 +37,43 @@
                     "💸 **NOT ENOUGH**... Accumulate more fragments first.",
                     "💸 **SCARCE MATTER**... You need fortune to iterate."
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **YOU WIN!** Singularity favors you, seeker.",
+                    "🎉 **VICTORY!** The algorithm aligns with you.",
+                    "🎉 **TRIUMPH!** You have collapsed probability in your favor.",
+                    "🎉 **EXCELLENT!** Fragments respond to your signature.",
+                    "🎉 **IMPRESSIVE!** The absorbed matter is yours."
+                ],
+                "youlose":[
+                    "😢 **YOU LOST**... Entropy absorbed you this time.",
+                    "😢 **BAD LUCK**... The core rejected your iteration.",
+                    "😢 **NOT THIS TIME**... The algorithm was relentless.",
+                    "😢 **ALAS**... The wave function did not collapse in your favor.",
+                    "😢 **BUT DON'T GIVE UP**... The next iteration will be different."
+                ],
+                "high_pot":[
+                    "💰 **THE SINGULARITY GROWS!** The core accumulates power.",
+                    "💰 **POT ON THE RISE!** Matter becomes legendary.",
+                    "💰 **ACCUMULATING!** Singularity shines with promise.",
+                    "💰 **FORTUNE AWAITS!** The core claims its destiny.",
+                    "💰 **MAGICAL SINGULARITY!** Fragments await the fortunate."
+                ],
+                "pot_winner":[
+                    "🎉 **SINGULARITY WINNER!!** You have absorbed the core!",
+                    "🎉 **SINGULARITY CONQUERED!!** You are the algorithm's chosen!",
+                    "🎉 **TOTAL COLLAPSE!!** The singularity is yours!",
+                    "🎉 **LEGENDARY FORTUNE!!** You have absorbed all matter!",
+                    "🎉 **CORE IS YOURS!!** A quantum victory!"
+                ],
+                "not_gold":[
+                    "💸 **NO FRAGMENTS**... You don't have enough matter.",
+                    "💸 **INSUFFICIENT FUNDS**... You need more fragments.",
+                    "💸 **EMPTY POCKETS**... Check your condensed matter.",
+                    "💸 **NOT ENOUGH**... Accumulate more fragments first.",
+                    "💸 **SCARCE MATTER**... You need fortune to iterate."
+                ]
             }
         },
         "banker":{

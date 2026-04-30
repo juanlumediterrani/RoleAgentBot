@@ -34,6 +34,8 @@ try:
         MCPlaylist,
         MCQueueEntry,
         MCPreferences,
+        AstrologyReading,
+        AstrologyBirthData,
     )
     from validation.news_watcher_schemas import UserPremises
     VALIDATION_AVAILABLE = True
@@ -48,6 +50,8 @@ except ImportError:
     MCPlaylist = None
     MCQueueEntry = None
     MCPreferences = None
+    AstrologyReading = None
+    AstrologyBirthData = None
     UserPremises = None
 
 logger = get_logger("role_configs_nosql")
@@ -65,6 +69,8 @@ class RoleConfigsNoSQL:
       - nordic_runes.jsonl: JSON lines of rune readings (history, max 100)
       - ring_accusations.jsonl: JSON lines of accusations (history, max 100)
       - dice_game_history.jsonl: JSON lines of game plays (history, max 200)
+      - astrology_birth_data.json: {user_id: {...birth_data...}}
+      - astrology_readings.jsonl: JSON lines of astrology readings (history, max 100)
     """
 
     def __init__(self, server_id: str, db_dir: Optional[Path] = None):
@@ -101,6 +107,12 @@ class RoleConfigsNoSQL:
             keep_backup=False,
         )
 
+        self._cubilete_stats = JsonStore(
+            db_dir / "cubilete_stats.json",
+            default_factory=lambda: {},
+            keep_backup=False,
+        )
+
         self._beggar_subrole = JsonStore(
             db_dir / "beggar_subrole.json",
             default_factory=lambda: {},
@@ -113,6 +125,21 @@ class RoleConfigsNoSQL:
             max_bytes=200 * 1024,
             keep_lines=80,
             schema=NordicRunesReading if VALIDATION_AVAILABLE else None,
+            validate_on_append=True,
+        )
+
+        self._astrology_birth_data = JsonStore(
+            db_dir / "astrology_birth_data.json",
+            default_factory=lambda: {},
+            keep_backup=False,
+        )
+
+        self._astrology_readings = JsonlRingBuffer(
+            db_dir / "astrology_readings.jsonl",
+            max_lines=100,
+            max_bytes=200 * 1024,
+            keep_lines=80,
+            schema=AstrologyReading if VALIDATION_AVAILABLE else None,
             validate_on_append=True,
         )
 
@@ -131,6 +158,14 @@ class RoleConfigsNoSQL:
             max_bytes=500 * 1024,
             keep_lines=150,
             # Dice game history entries vary, schema applied at method level
+        )
+
+        self._cubilete_history = JsonlRingBuffer(
+            db_dir / "cubilete_history.jsonl",
+            max_lines=200,
+            max_bytes=500 * 1024,
+            keep_lines=150,
+            # Cubilete history entries vary, schema applied at method level
         )
 
         self._beggar_request_history = JsonlRingBuffer(
@@ -608,6 +643,106 @@ class RoleConfigsNoSQL:
             return records
         except Exception as e:
             logger.exception(f"Failed to get dice game history: {e}")
+            return []
+
+    # --- Cubilete Stats ---
+
+    def save_cubilete_stats(
+        self,
+        user_id: str,
+        total_plays: int = 0,
+        total_bet: int = 0,
+        total_won: int = 0,
+        pots_won: int = 0,
+        biggest_prize: int = 0,
+        last_play: Optional[str] = None,
+    ) -> bool:
+        """Save or update cubilete statistics for a user."""
+        try:
+            now = datetime.now().isoformat()
+
+            def updater(state: Dict) -> Dict:
+                existing = state.get(str(user_id), {})
+                state[str(user_id)] = {
+                    "total_plays": total_plays,
+                    "total_bet": total_bet,
+                    "total_won": total_won,
+                    "pots_won": pots_won,
+                    "biggest_prize": biggest_prize,
+                    "last_play": last_play,
+                    "created_at": existing.get("created_at", now),
+                    "updated_at": now,
+                }
+                return state
+
+            self._cubilete_stats.update(updater)
+            logger.debug(f"Saved cubilete stats for user {user_id}")
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to save cubilete stats: {e}")
+            return False
+
+    def get_cubilete_stats(self, user_id: str) -> Dict[str, Any]:
+        """Get cubilete statistics for a user."""
+        try:
+            state = self._cubilete_stats.load()
+            stats = state.get(str(user_id))
+            if stats:
+                return stats
+            return {
+                "total_plays": 0,
+                "total_bet": 0,
+                "total_won": 0,
+                "pots_won": 0,
+                "biggest_prize": 0,
+                "last_play": None,
+                "created_at": None,
+                "updated_at": None,
+            }
+        except Exception as e:
+            logger.exception(f"Failed to get cubilete stats: {e}")
+            return {}
+
+    # --- Cubilete History ---
+
+    def save_cubilete_play(
+        self,
+        user_id: str,
+        user_name: str,
+        bet: int,
+        dice: str,
+        combination: str,
+        prize: int,
+        pot_before: int,
+        pot_after: int,
+    ) -> bool:
+        """Save a cubilete play to history."""
+        try:
+            record = {
+                "user_id": str(user_id),
+                "user_name": user_name,
+                "bet": bet,
+                "dice": dice,
+                "combination": combination,
+                "prize": prize,
+                "pot_before": pot_before,
+                "pot_after": pot_after,
+                "created_at": datetime.now().isoformat(),
+            }
+            self._cubilete_history.append(record)
+            logger.debug(f"Saved cubilete play for user {user_id}")
+            return True
+        except Exception as e:
+            logger.exception(f"Failed to save cubilete play: {e}")
+            return False
+
+    def get_cubilete_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent cubilete plays."""
+        try:
+            records = list(self._cubilete_history.tail(limit))
+            return records
+        except Exception as e:
+            logger.exception(f"Failed to get cubilete history: {e}")
             return []
 
     # --- Nordic Runes History ---
@@ -1136,6 +1271,123 @@ class RoleConfigsNoSQL:
         except Exception as e:
             logger.exception(f"Failed to set MC preferences: {e}")
             return False
+
+
+    # ==================== Astrology Methods ====================
+    
+    def save_astrology_birth_data(self, user_id: str, birth_date: str,
+                                  birth_time: Optional[str] = None) -> bool:
+        """Save user's birth data."""
+        try:
+            now = datetime.now().isoformat()
+
+            # Validate birth data before saving
+            if VALIDATION_AVAILABLE and AstrologyBirthData:
+                birth_data_to_validate = {
+                    "user_id": str(user_id),
+                    "birth_date": birth_date,
+                    "birth_time": birth_time,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                try:
+                    AstrologyBirthData(**birth_data_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Astrology birth data validation failed: {e}. Skipping save.")
+                    return False
+
+            data = {
+                'birth_date': birth_date,
+                'birth_time': birth_time,
+                'created_at': now,
+                'updated_at': now,
+            }
+            def mutator(doc: dict) -> None:
+                doc[str(user_id)] = data
+            self._astrology_birth_data.update(mutator)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save astrology birth data: {e}")
+            return False
+    
+    def get_astrology_birth_data(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user's birth data."""
+        try:
+            return self._astrology_birth_data.load().get(str(user_id))
+        except Exception as e:
+            logger.error(f"Failed to get astrology birth data: {e}")
+            return None
+    
+    def save_astrology_reading(self, user_id: str, reading_type: str,
+                              calculation_data: Dict[str, Any],
+                              interpretation: str, question: str = "") -> bool:
+        """Save an astrology reading to history."""
+        try:
+            now = datetime.now().isoformat()
+
+            # Validate reading data before saving
+            if VALIDATION_AVAILABLE and AstrologyReading:
+                reading_to_validate = {
+                    "user_id": str(user_id),
+                    "reading_type": reading_type,
+                    "calculation_data": calculation_data,
+                    "interpretation": interpretation,
+                    "question": question,
+                    "created_at": now,
+                }
+                try:
+                    AstrologyReading(**reading_to_validate)
+                except Exception as e:
+                    logger.warning(f"⚠️ [NoSQL Role] Astrology reading validation failed: {e}. Skipping save.")
+                    return False
+
+            entry = {
+                'user_id': str(user_id),
+                'reading_type': reading_type,
+                'calculation_data': calculation_data,
+                'interpretation': interpretation,
+                'question': question,
+                'created_at': now,
+            }
+            self._astrology_readings.append(entry)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save astrology reading: {e}")
+            return False
+    
+    def get_astrology_readings(self, user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent astrology readings for a user."""
+        try:
+            all_readings = self._astrology_readings.get_all()
+            user_readings = [r for r in all_readings if r.get('user_id') == str(user_id)]
+            return sorted(user_readings, key=lambda x: x.get('created_at', ''), reverse=True)[:limit]
+        except Exception as e:
+            logger.error(f"Failed to get astrology readings: {e}")
+            return []
+    
+    def get_astrology_stats(self, user_id: str) -> Dict[str, Any]:
+        """Get statistics for a user's astrology readings."""
+        try:
+            all_readings = self._astrology_readings.get_all()
+            user_readings = [r for r in all_readings if r.get('user_id') == str(user_id)]
+            
+            if not user_readings:
+                return {'total_readings': 0, 'favorite_type': None}
+            
+            type_counts = {}
+            for r in user_readings:
+                rt = r.get('reading_type', 'unknown')
+                type_counts[rt] = type_counts.get(rt, 0) + 1
+            
+            favorite_type = max(type_counts.items(), key=lambda x: x[1])[0] if type_counts else None
+            
+            return {
+                'total_readings': len(user_readings),
+                'favorite_type': favorite_type,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get astrology stats: {e}")
+            return {'total_readings': 0, 'favorite_type': None}
 
 
 # ---------------------------------------------------------------------------

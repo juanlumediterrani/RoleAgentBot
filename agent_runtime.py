@@ -62,22 +62,22 @@ def get_runtime_base_dir() -> str:
 def get_personality_directory(server_id: str = None) -> str:
     """
     Get the personality directory for a specific server.
-    
+
     Priority order:
     1. Server-specific directory from server_config.json: databases/<server_id>/<active_personality>/
     2. Server-specific directory from db_init: databases/<server_id>/<personality>/
-    
+
     ⚠️ IMPORTANT: NO FALLBACKS to personalities/ directory or _PERSONALITY_DIR
     This is intentional - all personality files MUST be in databases/<server_id>/<personality>/
     If a server lacks personality files, the system will use English fallback messages.
-    
+
     When adding new messages, if a personality-specific version is missing,
     create a neutral English fallback in the corresponding <role>_messages.py file
     (e.g., dice_game_messages.py, mc_messages.py, etc.) to ensure graceful degradation.
-    
+
     Args:
         server_id: Optional server ID for server-specific files
-        
+
     Returns:
         str: Path to the personality directory, or empty string if not found
     """
@@ -97,7 +97,7 @@ def get_personality_directory(server_id: str = None) -> str:
                     if os.path.exists(os.path.join(server_personality_dir, "personality.json")):
                         logger.debug(f"Using server-specific personality directory: {server_personality_dir}")
                         return server_personality_dir
-            
+
             # Fall back to get_server_personality_dir from db_init
             from discord_bot.db_init import get_server_personality_dir
             server_dir = get_server_personality_dir(server_id)
@@ -105,7 +105,7 @@ def get_personality_directory(server_id: str = None) -> str:
                 return server_dir
         except Exception as e:
             logger.debug(f"Could not get server personality directory for {server_id}: {e}")
-    
+
     # No server-specific directory found - return empty string
     # Caller should use English fallback messages
     return ""
@@ -114,14 +114,14 @@ def get_personality_directory(server_id: str = None) -> str:
 def get_personality_file_path(filename: str, server_id: str = None) -> str:
     """
     Get the full path to a personality file, checking server-specific copy first.
-    
+
     This is a convenience function for role files that need to access
     personality files like answers.json, descriptions.json, etc.
-    
+
     Args:
         filename: Name of the file (e.g., "answers.json", "descriptions.json")
         server_id: Optional server ID for server-specific files
-        
+
     Returns:
         str: Full path to the personality file, or empty string if not found
     """
@@ -166,7 +166,7 @@ def increment_usage(personality_name: str, user_id: str = None, user_name: str =
         # Use server_id if no user_id provided (for backward compatibility)
         target_user_id = user_id or f"server_{server_id}"
         target_user_name = user_name or f"Server_{server_id}"
-        
+
         daily, total = increment_fatigue_count(server_id, target_user_id, target_user_name)
         return daily
     except Exception as e:
@@ -182,24 +182,24 @@ def increment_usage(personality_name: str, user_id: str = None, user_name: str =
 def _load_personality_file_cached(filename: str, server_id: str) -> Dict[str, Any]:
     """
     Cached loader for personality JSON files by server.
-    
+
     Args:
         filename: Name of the personality file (e.g., "answers.json")
         server_id: Server ID for server-specific files
-        
+
     Returns:
         Dict: Loaded JSON content or empty dict if file not found
     """
     try:
         file_path = Path(get_personality_file_path(filename, server_id))
-        
+
         if not file_path.exists():
             logger.debug(f"Personality file not found: {file_path}")
             return {}
-        
+
         # Use pathlib for modern file handling
         return json.loads(file_path.read_text(encoding="utf-8"))
-        
+
     except json.JSONDecodeError as e:
         logger.error(f"Malformed JSON in {filename} for server {server_id}: {e}")
         return {}
@@ -211,33 +211,33 @@ def _load_personality_file_cached(filename: str, server_id: str) -> Dict[str, An
 def get_personality_message(filename: str, key_path: List[str], server_id: str, default: Any = None) -> Any:
     """
     Get a specific value from personality JSON files with caching.
-    
+
     Args:
         filename: Name of the personality file (e.g., "answers.json")
         key_path: List of keys to navigate the JSON structure (e.g., ["discord", "welcome_message"])
         server_id: Server ID for server-specific files
         default: Default value if key not found
-        
+
     Returns:
         Any: The requested value or default
-        
+
     Example:
         welcome_msg = get_personality_message("answers.json", ["discord", "welcome_message"], server_id, "Hello!")
     """
     if not server_id:
         logger.warning(f"No server_id provided for get_personality_message({filename}, {key_path})")
         return default
-    
+
     # Load cached data for this server
     data = _load_personality_file_cached(filename, server_id)
-    
+
     # Navigate through the key path
     for key in key_path:
         if isinstance(data, dict):
             data = data.get(key, {})
         else:
             return default
-    
+
     # Return the value if we found something non-empty, otherwise default
     return data if data != {} else default
 
@@ -245,7 +245,7 @@ def get_personality_message(filename: str, key_path: List[str], server_id: str, 
 def clear_personality_cache():
     """
     Clear the personality file cache.
-    
+
     Useful for hot-reloading configuration files while the bot is running.
     """
     _load_personality_file_cached.cache_clear()

@@ -3,7 +3,8 @@
     "description": "Hornea las runas del destino con Panigorr y descubre lo que las migajas quemadas tienen para decirte.",
     "button": "♨️ Vapores",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🥖 **Runas de Pan** - Escribe runas en pan, hornéalas y lee el destino en las migajas quemadas"
+        "nordic_runes": "🥖 **Runas de Pan** - Escribe runas en pan, hornéalas y lee el destino en las migajas quemadas",
+        "astrology": "🌟 **Astrología** - Letras hebreas del Sefer Yetzirah para adivinación. Actualmente en desarrollo."
     },
     "moon_phases": {
         "new_moon": "Luna Nueva 🌑",

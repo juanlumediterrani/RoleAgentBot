@@ -18,27 +18,27 @@ def get_memory_system_prompt() -> str:
 
 def get_memory_task_prompt(memory_type: str, memories_context: str = "") -> str:
     """Generate a structured task prompt for memory display.
-    
+
     Args:
         memory_type: Type of memory to display ('long', 'recent', 'relationship')
         memories_context: The actual memory content to display
     """
-    
+
     type_labels = {
         'long': 'Long Memory (Daily Analysis)',
         'recent': 'Recent Memory (Current Flow)',
         'relationship': 'Relationship Memory (Visitor Profile)'
     }
-    
+
     type_descriptions = {
         'long': 'Shows the comprehensive daily memory and analysis of the personality.',
         'recent': 'Shows recent events and short-term memory of the personality.',
         'relationship': 'Shows the personality\'s perception and relationship with specific users.'
     }
-    
+
     label = type_labels.get(memory_type, 'Memory')
     description = type_descriptions.get(memory_type, 'Memory display')
-    
+
     return f"""**MEMORY DISPLAY TASK**
 
 Your specific task is: **Display the {label}**.
@@ -62,7 +62,7 @@ Just show the memory:"""
 
 def format_memory_response(response: str, memory_type: str = "long") -> str:
     """Format the memory response for Discord.
-    
+
     Args:
         response: The memory content to format
         memory_type: Type of memory being displayed
@@ -74,10 +74,10 @@ def format_memory_response(response: str, memory_type: str = "long") -> str:
             'relationship': "📭 No relationship memory available."
         }
         return fallback_messages.get(memory_type, "📭 No memory available.")
-    
+
     # Clean up the response
     cleaned = str(response).strip()
-    
+
     # Add appropriate emoji based on memory type
     emojis = {
         'long': "🗺️",
@@ -85,5 +85,5 @@ def format_memory_response(response: str, memory_type: str = "long") -> str:
         'relationship': "👞"
     }
     emoji = emojis.get(memory_type, "🧠")
-    
+
     return f"{emoji} {cleaned}"

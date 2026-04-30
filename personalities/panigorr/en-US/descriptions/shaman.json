@@ -3,7 +3,8 @@
     "description": "Bake the destiny runes with Panigorr and discover what the burnt crumbs have to tell you.",
     "button": "♨️ Vapors",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🥖 **Bread Runes** - Write runes on bread, bake them and read destiny in burnt crumbs"
+        "nordic_runes": "🥖 **Bread Runes** - Write runes on bread, bake them and read destiny in burnt crumbs",
+        "astrology": "🌟 **Astrology** - Sefer Yetzirah Hebrew letters for divination. Currently in development."
     },
     "moon_phases": {
         "new_moon": "New Moon 🌑",

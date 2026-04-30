@@ -75,31 +75,31 @@ async def _wait_for_greeting_rate_limit():
     global _LAST_GLOBAL_GREETING_TIME
     import time
     import asyncio
-    
+
     current_time = time.time()
     time_since_last = current_time - _LAST_GLOBAL_GREETING_TIME
-    
+
     if time_since_last < _MIN_SECONDS_BETWEEN_GREETINGS:
         wait_time = _MIN_SECONDS_BETWEEN_GREETINGS - time_since_last
         logger.debug(f"Greeting rate limit: waiting {wait_time:.1f}s before next greeting")
         await asyncio.sleep(wait_time)
-    
+
     _LAST_GLOBAL_GREETING_TIME = time.time()
 
 
 class ReplyButton(discord.ui.Button):
     """Button to reply to a greeting and set the conversation context to this server."""
-    
+
     def __init__(self, guild: discord.Guild, server_id: str, row: int = 0):
         # Get reply button config from personality descriptions with English fallback
         personality = _get_personality(server_id) if server_id else _get_personality()
         descriptions = personality.get("descriptions", {}).get("discord", {})
         reply_button_cfg = descriptions.get("reply_button", {})
-        
+
         # Use config values or English fallbacks
         label = reply_button_cfg.get("label", "Reply")
         emoji = reply_button_cfg.get("emoji", "💬")
-        
+
         super().__init__(
             label=label,
             style=discord.ButtonStyle.primary,
@@ -108,7 +108,7 @@ class ReplyButton(discord.ui.Button):
         )
         self.guild = guild
         self.server_id = server_id
-    
+
     async def callback(self, interaction: discord.Interaction):
         """Handle reply button click - pin this server and show confirmation."""
         try:
@@ -125,15 +125,15 @@ class ReplyButton(discord.ui.Button):
                 "💬 You are now talking to me as if you were in **{server_name}**. All your responses will use this personality until you select another server."
             )
             confirmation_message = confirmation_template.format(server_name=self.guild.name)
-            
+
             # Disable the button after clicking
             self.disabled = True
             self.label = "✓ Active"
             self.style = discord.ButtonStyle.success
-            
+
             # Update the message to show the button was clicked
             await interaction.response.edit_message(view=self.view)
-            
+
             # Send a confirmation message
             await interaction.followup.send(
                 confirmation_message,
@@ -152,14 +152,14 @@ class ReplyButton(discord.ui.Button):
 
 class ReplyButtonView(discord.ui.View):
     """View containing the reply button for a greeting."""
-    
+
     def __init__(self, guild: discord.Guild, server_id: str, timeout: float = 300.0):
         super().__init__(timeout=timeout)
         self.guild = guild
         self.server_id = server_id
         self.message = None
         self.add_item(ReplyButton(guild, server_id, row=0))
-    
+
     async def on_timeout(self):
         """Called when the view times out."""
         # Disable the button
@@ -167,7 +167,7 @@ class ReplyButtonView(discord.ui.View):
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
                 child.label = "⏰ Expirado"
-        
+
         # Try to update the message
         if self.message:
             try:
@@ -179,7 +179,7 @@ class ReplyButtonView(discord.ui.View):
 async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_data: dict, bot: discord.Client):
     """
     Send the actual greeting to a user for a specific server.
-    
+
     Args:
         user_id: Discord user ID
         user_name: User display name
@@ -189,18 +189,18 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
     """
     # Apply global rate limiting to prevent Vertex AI saturation
     await _wait_for_greeting_rate_limit()
-    
+
     try:
         server_id = str(guild.id)
         server_name = get_server_key(guild)
-        
+
         # Build greeting prompt
         greeting_prompt = build_greeting_prompt(user_name, user_id, guild)
-        
+
         # Build system instruction
         server_personality = _get_personality(server_id) if server_id else _get_personality()
         system_instruction = _build_system_prompt(server_personality, server_id)
-        
+
         # Generate greeting
         saludo = await call_llm_async(
             system_instruction=system_instruction,
@@ -211,24 +211,24 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
             logger=logger,
             server_id=server_id,
         )
-        
+
         # Get user object
         user = bot.get_user(user_id) or await bot.fetch_user(user_id)
         if not user:
             logger.error(f"Could not find user {user_id} for greeting")
             return
-        
+
         # Create unified message with personality embed + greeting + reply button
         from discord_bot.discord_utils import get_server_personality_display_name, get_server_personality_avatar_path
         import os
-        
+
         # Get personality display name (server-specific priority)
         display_name = None
         if server_id:
             personality_name = get_server_personality_display_name(server_id)
             if personality_name:
                 display_name = personality_name
-        
+
         # Fallback to guild nickname or global display name
         if not display_name and guild:
             bot_member = guild.me
@@ -236,7 +236,7 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
                 display_name = bot_member.nick
         if not display_name:
             display_name = bot.user.display_name
-        
+
         # Get local personality avatar file (server-specific)
         avatar_file = None
         avatar_attachment_name = None
@@ -245,45 +245,45 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
             if local_avatar_path and os.path.exists(local_avatar_path):
                 avatar_attachment_name = os.path.basename(local_avatar_path)
                 avatar_file = discord.File(local_avatar_path, filename=avatar_attachment_name)
-        
+
         # Fallback: global bot avatar URL if no local file
         fallback_avatar_url = None
         if not avatar_file:
             fallback_avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
-        
+
         # Create personality embed with greeting as description
         embed = discord.Embed(
             title=f"{display_name}",
             description=f"👋 {saludo}",
             color=discord.Color.blue()
         )
-        
+
         if avatar_file:
             embed.set_thumbnail(url=f"attachment://{avatar_attachment_name}")
         elif fallback_avatar_url:
             embed.set_thumbnail(url=fallback_avatar_url)
-        
+
         # Create the reply button view for this server
         view = ReplyButtonView(guild, server_id, timeout=300.0)
-        
+
         # Send unified message with embed, avatar (if local), and reply button
         if avatar_file:
             greeting_message = await user.send(embed=embed, file=avatar_file, view=view)
         else:
             greeting_message = await user.send(embed=embed, view=view)
         view.message = greeting_message
-        
+
         logger.info(f"🔄 Presence DM sent to {user_name} (server: {guild.name}) with reply button")
-        
+
         # Update tracking
         current_time = time.time()
         last_greeting_key = f"presence_greeting_{user_id}"
         _last_greetings[last_greeting_key] = current_time
         _last_greetings[f"{last_greeting_key}_recent"] = current_time
-        
+
         # Record greeting in memory so we don't spam the user until they reply
         record_pending_greeting(user_id, server_name)
-        
+
         # Register interaction
         try:
             db_instance = get_db_for_server(guild)
@@ -299,7 +299,7 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
             )
         except Exception as db_error:
             logger.warning(f"Could not register interaction in database: {db_error}")
-            
+
     except Exception as e:
         logger.error(f"Error sending greeting to {user_name}: {e}")
         # Send fallback with unified message (embed + greeting + button)
@@ -310,18 +310,18 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
                 presence_cfg = discord_cfg.get("member_presence", {})
                 fallback_msg = presence_cfg.get("fallback", "Welcome back!")
                 fallback_msg = fallback_msg.format(user_name=user_name)
-                
+
                 # Create unified message with personality embed + fallback + reply button
                 from discord_bot.discord_utils import get_server_personality_display_name, get_server_personality_avatar_path
                 import os
-                
+
                 # Get personality display name (server-specific priority)
                 display_name = None
                 if server_id:
                     personality_name = get_server_personality_display_name(server_id)
                     if personality_name:
                         display_name = personality_name
-                
+
                 # Fallback to guild nickname or global display name
                 if not display_name and guild:
                     bot_member = guild.me
@@ -329,7 +329,7 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
                         display_name = bot_member.nick
                 if not display_name:
                     display_name = bot.user.display_name
-                
+
                 # Get local personality avatar file (server-specific)
                 avatar_file = None
                 avatar_attachment_name = None
@@ -338,27 +338,27 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
                     if local_avatar_path and os.path.exists(local_avatar_path):
                         avatar_attachment_name = os.path.basename(local_avatar_path)
                         avatar_file = discord.File(local_avatar_path, filename=avatar_attachment_name)
-                
+
                 # Fallback: global bot avatar URL if no local file
                 fallback_avatar_url = None
                 if not avatar_file:
                     fallback_avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
-                
+
                 # Create personality embed with fallback as description
                 embed = discord.Embed(
                     title=f"{display_name}",
                     description=f"👋 {fallback_msg}",
                     color=discord.Color.blue()
                 )
-                
+
                 if avatar_file:
                     embed.set_thumbnail(url=f"attachment://{avatar_attachment_name}")
                 elif fallback_avatar_url:
                     embed.set_thumbnail(url=fallback_avatar_url)
-                
+
                 # Create the reply button view for this server
                 view = ReplyButtonView(guild, server_id, timeout=300.0)
-                
+
                 # Send unified message with embed, avatar (if local), and reply button
                 if avatar_file:
                     await user.send(embed=embed, file=avatar_file, view=view)
@@ -371,11 +371,11 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
 def _get_user_mutual_guilds(bot: discord.Client, user_id: int) -> list[discord.Guild]:
     """
     Get all guilds where both the bot and user are members.
-    
+
     Args:
         bot: Discord bot client
         user_id: User ID to check
-        
+
     Returns:
         List of mutual guilds
     """
@@ -389,10 +389,10 @@ def _get_user_mutual_guilds(bot: discord.Client, user_id: int) -> list[discord.G
 async def _has_unreplied_greeting_any_server(user_id: str) -> bool:
     """
     Check if user has an unreplied greeting in ANY server database.
-    
+
     Args:
         user_id: Discord user ID to check
-        
+
     Returns:
         True if user has unreplied greeting in any server, False otherwise
     """
@@ -409,12 +409,12 @@ async def _has_unreplied_greeting_any_server(user_id: str) -> bool:
 def build_greeting_prompt(user_display_name: str, user_id: str, guild) -> str:
     """
     Build a comprehensive contextual prompt for user greetings.
-    
+
     Args:
         user_display_name: Display name of the user being greeted
         user_id: Discord user ID
         guild: Discord guild object
-        
+
     Returns:
         Comprehensive contextual prompt with memory, relationship, and interaction history
     """
@@ -427,7 +427,7 @@ def build_greeting_prompt(user_display_name: str, user_id: str, guild) -> str:
     task_template = greetings_cfg.get("task", "Greet {username} that is already connected to the server.")
     golden_rules = greetings_cfg.get("golden_rules", [])
     response_title = greetings_cfg.get("response_title", "## WRITE ONLY THE GREET IN THE WORDS OF THE PERSONALITY:")
-    
+
     # Build individual blocks using specific functions
     memory_block = _build_prompt_memory_block(server=server_name)
     relationship_block = _build_prompt_relationship_block(
@@ -439,10 +439,10 @@ def build_greeting_prompt(user_display_name: str, user_id: str, guild) -> str:
         user_id=user_id,
         server=server_name
     )
-    
+
     # Format the task with username
     task = task_template.format(username=user_display_name)
-    
+
     # Build the complete prompt structure
     prompt_sections = [
         memory_block,
@@ -453,97 +453,97 @@ def build_greeting_prompt(user_display_name: str, user_id: str, guild) -> str:
         "\n".join(golden_rules),  # Golden rules from prompts.json
         response_title  # Response title from prompts.json
     ]
-    
+
     # Filter out empty sections
     non_empty_sections = [section for section in prompt_sections if section and section.strip()]
-    
+
     result = "\n\n".join(non_empty_sections)
-    
+
     # Validate result is not empty
     if not result or not result.strip():
         logger.warning(f"🧠 [GREET] build_greeting_prompt returning empty prompt (server={server_name}, user={user_display_name}, user_id={user_id})")
         # Fallback to minimal prompt
         result = f"{task}\n\n{response_title}"
-    
+
     return result
 
 async def handle_presence_update(before, after, discord_cfg, bot_display_name, bot=None):
     """
     Handle presence updates - greet users when they come online.
-    
+
     For users in multiple servers, shows a server selection interface
     to let them choose which server context to use for the greeting.
-    
+
     Args:
         before: discord.Member before state
-        after: discord.Member after state  
+        after: discord.Member after state
         discord_cfg: discord configuration from personality
         bot_display_name: bot's display name
         bot: Discord bot client instance (for personality embed and server selection)
     """
     global _last_greetings
-    
+
     if after.bot:
         return
-    
+
     # Skip if no bot instance provided (needed for multi-server handling)
     if not bot:
         logger.warning(f"No bot instance provided for presence greeting of {after.name}")
         return
-    
+
     if not get_greeting_enabled(after.guild):
         return
-    
+
     presence_cfg = discord_cfg.get("member_presence", {})
     if not presence_cfg.get("enabled", True):
         logger.info(f"Presence greetings disabled by config for guild={after.guild.name}")
         return
-    
+
     before_status = before.status if before.status else discord.Status.offline
     after_status = after.status if after.status else discord.Status.offline
-    
+
     # Only greet when going from offline to online
     if before_status != discord.Status.offline or after_status != discord.Status.online:
         return
-    
+
     # Rate limiting - 1 hour between greetings per user (across all servers)
     current_time = time.time()
     last_greeting_key = f"presence_greeting_{after.id}"
-    
+
     # Check both in-memory cache for recent greetings
     if current_time - _last_greetings.get(last_greeting_key, 0) < 3600:
         logger.info(f"Presence greeting skipped due to cooldown for user={after.name}")
         return
-    
+
     # Additional check: prevent multiple greetings within 10 seconds
     if current_time - _last_greetings.get(f"{last_greeting_key}_recent", 0) < 10:
         logger.info(f"Presence greeting skipped due to recent duplicate prevention for user={after.name}")
         return
-    
+
     # CRITICAL: Update tracking IMMEDIATELY before any async operations
     # This prevents duplicate greetings if Discord sends multiple presence updates rapidly
     _last_greetings[last_greeting_key] = current_time
     _last_greetings[f"{last_greeting_key}_recent"] = current_time
-    
+
     try:
         # Check if user has an unreplied greeting from ANY server
         if await _has_unreplied_greeting_any_server(after.id):
             logger.info(f"Presence greeting skipped for {after.name} - user has unreplied greeting")
             return
-        
+
         # Get all mutual guilds with the user
         mutual_guilds = _get_user_mutual_guilds(bot, after.id)
-        
+
         # Filter to only guilds where greetings are enabled
         eligible_guilds = [g for g in mutual_guilds if get_greeting_enabled(g)]
-        
+
         if not eligible_guilds:
             logger.info(f"No eligible guilds for greeting user {after.name}")
             return
-        
+
         # Send greetings from ALL eligible servers
         logger.info(f"User {after.name} is in {len(eligible_guilds)} servers - sending greetings from all")
-        
+
         for guild in eligible_guilds:
             try:
                 # Get user's display name for this specific server
@@ -553,7 +553,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
                 else:
                     # Fallback to global name if member not found in guild
                     user_display_name = after.global_name or after.name
-                
+
                 greeting_data = {
                     'discord_cfg': discord_cfg,
                     'presence_cfg': presence_cfg
@@ -562,7 +562,7 @@ async def handle_presence_update(before, after, discord_cfg, bot_display_name, b
             except Exception as e:
                 logger.error(f"Error sending greeting to {after.name} from server {guild.name}: {e}")
                 # Continue with other servers even if one fails
-            
+
     except Exception as e:
         logger.error(f"Error in presence greeting for {after.name}: {e}")
 

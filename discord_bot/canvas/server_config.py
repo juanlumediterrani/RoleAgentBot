@@ -39,7 +39,7 @@ DEFAULT_LANGUAGE = "en-US"
 
 def _get_server_config_path(server_id: str) -> Path:
     """Get the path to server_config.json for a specific server.
-    
+
     Uses the same location as the existing system: databases/{server_id}/server_config.json
     """
     base_dir = Path(__file__).parent.parent.parent
@@ -48,7 +48,7 @@ def _get_server_config_path(server_id: str) -> Path:
 
 def _get_shortcuts_path(server_id: str) -> Path:
     """Get the path to shortcuts.json for a specific server.
-    
+
     Stores in: databases/{server_id}/shortcuts.json
     """
     base_dir = Path(__file__).parent.parent.parent
@@ -57,21 +57,21 @@ def _get_shortcuts_path(server_id: str) -> Path:
 
 def _load_server_config(server_id: str) -> Dict[str, Any]:
     """Load configuration for a specific server from its server_config.json.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         Dict containing server config, or empty dict if not exists
     """
     if not server_id or server_id == "0":
         return {}
-    
+
     config_path = _get_server_config_path(server_id)
-    
+
     if not config_path.exists():
         return {}
-    
+
     try:
         with _lock:
             with open(config_path, 'r', encoding='utf-8') as f:
@@ -83,27 +83,27 @@ def _load_server_config(server_id: str) -> Dict[str, Any]:
 
 def _save_server_config(server_id: str, config: Dict[str, Any]) -> bool:
     """Save configuration for a specific server to its server_config.json.
-    
+
     Args:
         server_id: Discord server/guild ID
         config: Configuration dict to save
-        
+
     Returns:
         True if successful, False otherwise
     """
     if not server_id or server_id == "0":
         logger.warning("Cannot save config for invalid server_id")
         return False
-    
+
     config_path = _get_server_config_path(server_id)
-    
+
     # Ensure directory exists
     try:
         config_path.parent.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         logger.error(f"Error creating directory for server {server_id}: {e}")
         return False
-    
+
     try:
         with _lock:
             with open(config_path, 'w', encoding='utf-8') as f:
@@ -116,54 +116,54 @@ def _save_server_config(server_id: str, config: Dict[str, Any]) -> bool:
 
 def get_server_language(server_id: str) -> str:
     """Get the configured language for a server.
-    
+
     Reads from databases/{server_id}/server_config.json
     Falls back to DEFAULT_LANGUAGE if not set.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         Language code (e.g., 'es-ES', 'en-US', 'zh-CN')
     """
     config = _load_server_config(server_id)
     language = config.get("language", DEFAULT_LANGUAGE)
-    
+
     # Validate language is in available list
     if language not in AVAILABLE_LANGUAGES:
         logger.warning(f"Invalid language '{language}' for server {server_id}, using default")
         return DEFAULT_LANGUAGE
-    
+
     return language
 
 
 def set_server_language(server_id: str, language: str) -> bool:
     """Set the language for a server.
-    
+
     Saves to databases/{server_id}/server_config.json alongside existing data
     like active_personality.
-    
+
     Args:
         server_id: Discord server/guild ID
         language: Language code (must be in AVAILABLE_LANGUAGES)
-        
+
     Returns:
         True if successful, False otherwise
     """
     if language not in AVAILABLE_LANGUAGES:
         logger.error(f"Cannot set invalid language '{language}'")
         return False
-    
+
     if not server_id or server_id == "0":
         logger.warning("Cannot set language for invalid server_id")
         return False
-    
+
     # Load existing config (to preserve other fields like active_personality)
     config = _load_server_config(server_id)
-    
+
     # Update language
     config["language"] = language
-    
+
     # Save back
     success = _save_server_config(server_id, config)
     if success:
@@ -173,7 +173,7 @@ def set_server_language(server_id: str, language: str) -> bool:
 
 def get_available_languages() -> Dict[str, str]:
     """Get list of available languages.
-    
+
     Returns:
         Dict mapping language codes to display names
     """
@@ -182,25 +182,25 @@ def get_available_languages() -> Dict[str, str]:
 
 def detect_and_set_default_language(server_id: str, guild=None) -> str:
     """Detect server language from Discord and return it. Does NOT create server_config.json.
-    
+
     This function uses discord_utils.detect_server_language() to detect the
     server's preferred language. It only updates server_config.json if it already exists.
     The server_config.json creation with both active_personality and language is handled
     exclusively by copy_personality_to_server() during server initialization.
-    
+
     Args:
         server_id: Discord server/guild ID
         guild: Discord guild object (optional, for detection)
-        
+
     Returns:
         The detected language code (does not modify server_config.json if it doesn't exist)
     """
     from pathlib import Path
-    
+
     # Check if server_config.json exists
     config_path = _get_server_config_path(server_id)
     config_exists = config_path.exists()
-    
+
     # Get current language if config exists
     current_lang = DEFAULT_LANGUAGE
     if config_exists:
@@ -209,7 +209,7 @@ def detect_and_set_default_language(server_id: str, guild=None) -> str:
         if current_lang != DEFAULT_LANGUAGE:
             logger.debug(f"Server {server_id} already has language set to {current_lang}, preserving")
             return current_lang
-    
+
     # Try to detect from guild
     detected_language = None
     if guild is not None:
@@ -229,26 +229,26 @@ def detect_and_set_default_language(server_id: str, guild=None) -> str:
             else:
                 # Default to en-US for unsupported locales
                 detected_language = DEFAULT_LANGUAGE
-            
+
             logger.info(f"Detected language '{detected}' for server {server_id}, mapped to '{detected_language}'")
         except Exception as e:
             logger.warning(f"Error detecting server language: {e}")
-    
+
     # Only update server_config.json if it already exists AND detected language is different from default
     if detected_language and detected_language in AVAILABLE_LANGUAGES:
         if config_exists and detected_language != DEFAULT_LANGUAGE:
             set_server_language(server_id, detected_language)
         return detected_language
-    
+
     return DEFAULT_LANGUAGE
 
 
 def get_server_config(server_id: str) -> Dict[str, Any]:
     """Get full configuration for a server.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         Dict with all config values (includes active_personality if set)
     """
@@ -257,23 +257,23 @@ def get_server_config(server_id: str) -> Dict[str, Any]:
 
 def set_server_config_value(server_id: str, key: str, value: Any) -> bool:
     """Set a specific configuration value for a server.
-    
+
     Generic method to set any config value while preserving existing ones.
-    
+
     Args:
         server_id: Discord server/guild ID
         key: Configuration key
         value: Value to set
-        
+
     Returns:
         True if successful
     """
     if not server_id or server_id == "0":
         return False
-    
+
     config = _load_server_config(server_id)
     config[key] = value
-    
+
     success = _save_server_config(server_id, config)
     if success:
         logger.info(f"Updated server {server_id} config: {key} = {value}")
@@ -284,62 +284,62 @@ def set_server_config_value(server_id: str, key: str, value: Any) -> bool:
 
 def get_role_config(server_id: str, role_name: str, default_enabled: bool = True) -> Optional[Dict[str, Any]]:
     """Get configuration for a specific role.
-    
+
     Reads from server_config.json["roles"][role_name]
     Falls back to default if not found.
-    
+
     Args:
         server_id: Discord server/guild ID
         role_name: Name of the role
         default_enabled: Default enabled state if role not found
-        
+
     Returns:
         Dict with 'enabled' and 'config' (or 'config_data' for legacy), or None if error
     """
     if not server_id or server_id == "0":
         return None
-    
+
     config = _load_server_config(server_id)
     roles = config.get("roles", {})
-    
+
     if role_name in roles:
         return roles[role_name]
-    
+
     # Return default if role not found
     return {"enabled": default_enabled, "config": None}
 
 
 def set_role_config(server_id: str, role_name: str, enabled: bool, config_data: Optional[str] = None, role_config_dict: Optional[Dict] = None) -> bool:
     """Set configuration for a specific role.
-    
+
     Saves to server_config.json["roles"][role_name]
-    
+
     Args:
         server_id: Discord server/guild ID
         role_name: Name of the role
         enabled: Whether the role is enabled
         config_data: Optional JSON string with additional config (legacy, for backward compatibility)
         role_config_dict: Optional dict with additional config (preferred, NoSQL structure)
-        
+
     Returns:
         True if successful
     """
     if not server_id or server_id == "0":
         logger.warning("Cannot set role config for invalid server_id")
         return False
-    
+
     config = _load_server_config(server_id)
-    
+
     # Ensure roles section exists
     if "roles" not in config:
         config["roles"] = {}
-    
+
     # Set role configuration
     role_config = {
         "enabled": enabled,
         "updated_at": _get_timestamp()
     }
-    
+
     # Handle config_data (legacy JSON string) or role_config_dict (dict)
     if role_config_dict is not None:
         role_config["config"] = role_config_dict
@@ -350,9 +350,9 @@ def set_role_config(server_id: str, role_name: str, enabled: bool, config_data: 
         except json.JSONDecodeError:
             # If parsing fails, keep as string for backward compatibility
             role_config["config_data"] = config_data
-    
+
     config["roles"][role_name] = role_config
-    
+
     success = _save_server_config(server_id, config)
     if success:
         logger.info(f"Updated role {role_name} for server {server_id}: enabled={enabled}")
@@ -361,30 +361,30 @@ def set_role_config(server_id: str, role_name: str, enabled: bool, config_data: 
 
 def get_all_roles_config(server_id: str) -> Dict[str, Dict[str, Any]]:
     """Get configuration for all roles.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         Dict mapping role names to their config dicts
     """
     if not server_id or server_id == "0":
         return {}
-    
+
     config = _load_server_config(server_id)
     return config.get("roles", {})
 
 
 def is_role_enabled(server_id: str, role_name: str, default_enabled: bool = True) -> bool:
     """Check if a role is enabled.
-    
+
     Convenience function that returns just the enabled boolean.
-    
+
     Args:
         server_id: Discord server/guild ID
         role_name: Name of the role
         default_enabled: Default if role not found
-        
+
     Returns:
         True if role is enabled
     """
@@ -396,22 +396,22 @@ def is_role_enabled(server_id: str, role_name: str, default_enabled: bool = True
 
 def get_role_config_value(server_id: str, role_name: str, key: str, default: Any = None) -> Any:
     """Get a specific value from role config.
-    
+
     Convenience function for accessing nested config values.
-    
+
     Args:
         server_id: Discord server/guild ID
         role_name: Name of the role
         key: Config key to retrieve (supports dot notation for nested keys, e.g., "config.tae")
         default: Default value if key not found
-        
+
     Returns:
         The config value, or default if not found
     """
     role_config = get_role_config(server_id, role_name)
     if role_config is None:
         return default
-    
+
     # Handle dot notation for nested keys
     if "." in key:
         parts = key.split(".")
@@ -422,39 +422,39 @@ def get_role_config_value(server_id: str, role_name: str, key: str, default: Any
             else:
                 return default
         return value
-    
+
     # Simple key lookup
     return role_config.get(key, default)
 
 
 def set_role_config_value(server_id: str, role_name: str, key: str, value: Any) -> bool:
     """Set a specific value in role config.
-    
+
     Convenience function for updating nested config values.
-    
+
     Args:
         server_id: Discord server/guild ID
         role_name: Name of the role
         key: Config key to set (supports dot notation for nested keys, e.g., "config.tae")
         value: Value to set
-        
+
     Returns:
         True if successful
     """
     if not server_id or server_id == "0":
         logger.warning("Cannot set role config value for invalid server_id")
         return False
-    
+
     config = _load_server_config(server_id)
-    
+
     # Ensure roles section exists
     if "roles" not in config:
         config["roles"] = {}
-    
+
     # Ensure role exists
     if role_name not in config["roles"]:
         config["roles"][role_name] = {"enabled": True, "config": {}, "updated_at": _get_timestamp()}
-    
+
     # Handle dot notation for nested keys
     if "." in key:
         parts = key.split(".")
@@ -466,10 +466,10 @@ def set_role_config_value(server_id: str, role_name: str, key: str, value: Any) 
         target[parts[-1]] = value
     else:
         config["roles"][role_name][key] = value
-    
+
     # Update timestamp
     config["roles"][role_name]["updated_at"] = _get_timestamp()
-    
+
     success = _save_server_config(server_id, config)
     if success:
         logger.info(f"Updated role config {role_name}.{key} for server {server_id}")
@@ -480,14 +480,14 @@ def set_role_config_value(server_id: str, role_name: str, key: str, value: Any) 
 
 def get_news_watcher_frequency(server_id: str, default_hours: int = 1) -> int:
     """Get the configured frequency (in hours) for news watcher on a server.
-    
+
     Reads from server_config.json["roles"]["news_watcher"]["config"]["frequency_hours"]
     Falls back to default if not found.
-    
+
     Args:
         server_id: Discord server/guild ID
         default_hours: Default frequency in hours if not configured
-        
+
     Returns:
         Frequency in hours (integer)
     """
@@ -500,20 +500,20 @@ def get_news_watcher_frequency(server_id: str, default_hours: int = 1) -> int:
 
 def set_news_watcher_frequency(server_id: str, frequency_hours: int) -> bool:
     """Set the frequency (in hours) for news watcher on a server.
-    
+
     Saves to server_config.json["roles"]["news_watcher"]["config"]["frequency_hours"]
-    
+
     Args:
         server_id: Discord server/guild ID
         frequency_hours: Frequency in hours (must be positive integer)
-        
+
     Returns:
         True if successful
     """
     if not isinstance(frequency_hours, int) or frequency_hours < 1:
         logger.error(f"Invalid frequency_hours: {frequency_hours} (must be positive integer)")
         return False
-    
+
     return set_role_config_value(server_id, "news_watcher", "config.frequency_hours", frequency_hours)
 
 
@@ -521,56 +521,56 @@ def set_news_watcher_frequency(server_id: str, frequency_hours: int) -> bool:
 
 def get_behavior_config(server_id: str, behavior_name: str, default_enabled: bool = False) -> Optional[Dict[str, Any]]:
     """Get configuration for a specific behavior.
-    
+
     Reads from server_config.json["behaviors"][behavior_name]
     Falls back to default if not found.
-    
+
     Args:
         server_id: Discord server/guild ID
         behavior_name: Name of the behavior (e.g., 'greetings', 'welcome', 'memory')
         default_enabled: Default enabled state if behavior not found
-        
+
     Returns:
         Dict with 'enabled' and 'config', or None if error
     """
     if not server_id or server_id == "0":
         return None
-    
+
     config = _load_server_config(server_id)
     behaviors = config.get("behaviors", {})
-    
+
     if behavior_name in behaviors:
         return behaviors[behavior_name]
-    
+
     # Return default if behavior not found
     return {"enabled": default_enabled, "config": None}
 
 
 def set_behavior_config(server_id: str, behavior_name: str, enabled: bool, config: Optional[Dict] = None, updated_by: Optional[str] = None) -> bool:
     """Set configuration for a specific behavior.
-    
+
     Saves to server_config.json["behaviors"][behavior_name]
-    
+
     Args:
         server_id: Discord server/guild ID
         behavior_name: Name of the behavior
         enabled: Whether the behavior is enabled
         config: Optional dict with additional config
         updated_by: Optional identifier of who made the change
-        
+
     Returns:
         True if successful
     """
     if not server_id or server_id == "0":
         logger.warning("Cannot set behavior config for invalid server_id")
         return False
-    
+
     config_dict = _load_server_config(server_id)
-    
+
     # Ensure behaviors section exists
     if "behaviors" not in config_dict:
         config_dict["behaviors"] = {}
-    
+
     # Set behavior configuration
     config_dict["behaviors"][behavior_name] = {
         "enabled": enabled,
@@ -578,7 +578,7 @@ def set_behavior_config(server_id: str, behavior_name: str, enabled: bool, confi
         "updated_at": _get_timestamp(),
         "updated_by": updated_by
     }
-    
+
     success = _save_server_config(server_id, config_dict)
     if success:
         logger.info(f"Updated behavior {behavior_name} for server {server_id}: enabled={enabled}")
@@ -587,14 +587,14 @@ def set_behavior_config(server_id: str, behavior_name: str, enabled: bool, confi
 
 def is_behavior_enabled(server_id: str, behavior_name: str, default_enabled: bool = False) -> bool:
     """Check if a behavior is enabled.
-    
+
     Convenience function that returns just the enabled boolean.
-    
+
     Args:
         server_id: Discord server/guild ID
         behavior_name: Name of the behavior
         default_enabled: Default if behavior not found
-        
+
     Returns:
         True if behavior is enabled
     """
@@ -606,16 +606,16 @@ def is_behavior_enabled(server_id: str, behavior_name: str, default_enabled: boo
 
 def get_all_behaviors_config(server_id: str) -> Dict[str, Dict[str, Any]]:
     """Get configuration for all behaviors.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         Dict mapping behavior names to their config dicts
     """
     if not server_id or server_id == "0":
         return {}
-    
+
     config = _load_server_config(server_id)
     return config.get("behaviors", {})
 
@@ -624,10 +624,10 @@ def get_all_behaviors_config(server_id: str) -> Dict[str, Dict[str, Any]]:
 
 def get_welcome_enabled(server_id: str) -> bool:
     """Check if welcome is enabled.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         True if welcome is enabled
     """
@@ -636,12 +636,12 @@ def get_welcome_enabled(server_id: str) -> bool:
 
 def set_welcome_enabled(server_id: str, enabled: bool, updated_by: str = None) -> bool:
     """Set welcome enabled state.
-    
+
     Args:
         server_id: Discord server/guild ID
         enabled: Whether welcome is enabled
         updated_by: Optional identifier of who made the change
-        
+
     Returns:
         True if successful
     """
@@ -652,10 +652,10 @@ def set_welcome_enabled(server_id: str, enabled: bool, updated_by: str = None) -
 
 def get_welcome_channel(server_id: str) -> Optional[str]:
     """Get the stored welcome channel ID.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         Channel ID string, or None if not set
     """
@@ -667,12 +667,12 @@ def get_welcome_channel(server_id: str) -> Optional[str]:
 
 def set_welcome_channel(server_id: str, channel_id: str, updated_by: str = None) -> bool:
     """Set the welcome channel ID.
-    
+
     Args:
         server_id: Discord server/guild ID
         channel_id: Discord channel ID
         updated_by: Optional identifier of who made the change
-        
+
     Returns:
         True if successful
     """
@@ -687,51 +687,51 @@ def set_welcome_channel(server_id: str, channel_id: str, updated_by: str = None)
 
 def get_canvas_shortcuts(server_id: str) -> list[Dict[str, Any]]:
     """Get canvas shortcuts configuration for a server.
-    
+
     Reads from server_config.json["canvas"]["shortcuts"]
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
     """
     if not server_id or server_id == "0":
         return []
-    
+
     config = _load_server_config(server_id)
     canvas_config = config.get("canvas", {})
     shortcuts = canvas_config.get("shortcuts", [])
-    
+
     # Ensure shortcuts is a list
     if not isinstance(shortcuts, list):
         return []
-    
+
     return shortcuts
 
 
 def set_canvas_shortcuts(server_id: str, shortcuts: list[Dict[str, Any]]) -> bool:
     """Set canvas shortcuts configuration for a server.
-    
+
     Saves to server_config.json["canvas"]["shortcuts"]
-    
+
     Args:
         server_id: Discord server/guild ID
         shortcuts: List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
-        
+
     Returns:
         True if successful
     """
     if not server_id or server_id == "0":
         logger.warning("Cannot set canvas shortcuts for invalid server_id")
         return False
-    
+
     config = _load_server_config(server_id)
-    
+
     # Ensure canvas section exists
     if "canvas" not in config:
         config["canvas"] = {}
-    
+
     # Validate shortcuts structure
     validated_shortcuts = []
     for shortcut in shortcuts[:5]:  # Max 5 shortcuts
@@ -743,9 +743,9 @@ def set_canvas_shortcuts(server_id: str, shortcuts: list[Dict[str, Any]]) -> boo
                 "target_role": str(shortcut.get("target_role", "")),
                 "target_subrole": shortcut.get("target_subrole")  # Can be None or string
             })
-    
+
     config["canvas"]["shortcuts"] = validated_shortcuts
-    
+
     success = _save_server_config(server_id, config)
     if success:
         logger.info(f"Updated canvas shortcuts for server {server_id}: {len(validated_shortcuts)} shortcuts")
@@ -754,11 +754,11 @@ def set_canvas_shortcuts(server_id: str, shortcuts: list[Dict[str, Any]]) -> boo
 
 def get_canvas_shortcut(server_id: str, shortcut_id: int) -> Optional[Dict[str, Any]]:
     """Get a specific canvas shortcut by ID.
-    
+
     Args:
         server_id: Discord server/guild ID
         shortcut_id: Shortcut ID (1-5)
-        
+
     Returns:
         Shortcut dict or None if not found
     """
@@ -769,10 +769,10 @@ def get_canvas_shortcut(server_id: str, shortcut_id: int) -> Optional[Dict[str, 
     return None
 
 
-def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, label: str = "", 
+def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, label: str = "",
                        target_role: str = "", target_subrole: Optional[str] = None) -> bool:
     """Set a specific canvas shortcut.
-    
+
     Args:
         server_id: Discord server/guild ID
         shortcut_id: Shortcut ID (1-5)
@@ -780,12 +780,12 @@ def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, 
         label: Display label for the button
         target_role: Target role name
         target_subrole: Target subrole name (optional)
-        
+
     Returns:
         True if successful
     """
     shortcuts = get_canvas_shortcuts(server_id)
-    
+
     # Update existing shortcut or add new one
     updated = False
     for shortcut in shortcuts:
@@ -796,7 +796,7 @@ def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, 
             shortcut["target_subrole"] = target_subrole
             updated = True
             break
-    
+
     if not updated:
         # Add new shortcut if we have room
         if len(shortcuts) < 5:
@@ -807,7 +807,7 @@ def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, 
                 "target_role": target_role,
                 "target_subrole": target_subrole
             })
-    
+
     return set_canvas_shortcuts(server_id, shortcuts)
 
 
@@ -815,18 +815,18 @@ def set_canvas_shortcut(server_id: str, shortcut_id: int, enabled: bool = True, 
 
 def _load_user_shortcuts(server_id: str) -> Dict[str, Any]:
     """Load shortcuts configuration for all users from shortcuts.json.
-    
+
     Args:
         server_id: Discord server/guild ID
-        
+
     Returns:
         Dict mapping user_id to list of shortcuts
     """
     shortcuts_path = _get_shortcuts_path(server_id)
-    
+
     if not shortcuts_path.exists():
         return {}
-    
+
     try:
         with _lock:
             with open(shortcuts_path, 'r', encoding='utf-8') as f:
@@ -838,23 +838,23 @@ def _load_user_shortcuts(server_id: str) -> Dict[str, Any]:
 
 def _save_user_shortcuts(server_id: str, shortcuts_data: Dict[str, Any]) -> bool:
     """Save shortcuts configuration for all users to shortcuts.json.
-    
+
     Args:
         server_id: Discord server/guild ID
         shortcuts_data: Dict mapping user_id to list of shortcuts
-        
+
     Returns:
         True if successful
     """
     if not server_id or server_id == "0":
         logger.warning("Cannot save user shortcuts for invalid server_id")
         return False
-    
+
     shortcuts_path = _get_shortcuts_path(server_id)
-    
+
     # Ensure directory exists
     shortcuts_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     try:
         with _lock:
             with open(shortcuts_path, 'w', encoding='utf-8') as f:
@@ -867,48 +867,48 @@ def _save_user_shortcuts(server_id: str, shortcuts_data: Dict[str, Any]) -> bool
 
 def get_user_shortcuts(server_id: str, user_id: str) -> list[Dict[str, Any]]:
     """Get canvas shortcuts configuration for a specific user.
-    
+
     Reads from databases/{server_id}/shortcuts.json[user_id]
-    
+
     Args:
         server_id: Discord server/guild ID
         user_id: Discord user ID
-        
+
     Returns:
         List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
     """
     if not server_id or server_id == "0" or not user_id:
         return []
-    
+
     shortcuts_data = _load_user_shortcuts(server_id)
     user_shortcuts = shortcuts_data.get(user_id, [])
-    
+
     # Ensure shortcuts is a list
     if not isinstance(user_shortcuts, list):
         return []
-    
+
     return user_shortcuts
 
 
 def set_user_shortcuts(server_id: str, user_id: str, shortcuts: list[Dict[str, Any]]) -> bool:
     """Set canvas shortcuts configuration for a specific user.
-    
+
     Saves to databases/{server_id}/shortcuts.json[user_id]
-    
+
     Args:
         server_id: Discord server/guild ID
         user_id: Discord user ID
         shortcuts: List of shortcut dicts with keys: id, enabled, label, target_role, target_subrole
-        
+
     Returns:
         True if successful
     """
     if not server_id or server_id == "0" or not user_id:
         logger.warning("Cannot set user shortcuts for invalid server_id or user_id")
         return False
-    
+
     shortcuts_data = _load_user_shortcuts(server_id)
-    
+
     # Validate shortcuts structure
     validated_shortcuts = []
     for shortcut in shortcuts[:5]:  # Max 5 shortcuts
@@ -920,9 +920,9 @@ def set_user_shortcuts(server_id: str, user_id: str, shortcuts: list[Dict[str, A
                 "target_role": str(shortcut.get("target_role", "")),
                 "target_subrole": shortcut.get("target_subrole")  # Can be None or string
             })
-    
+
     shortcuts_data[user_id] = validated_shortcuts
-    
+
     success = _save_user_shortcuts(server_id, shortcuts_data)
     if success:
         logger.info(f"Updated canvas shortcuts for user {user_id} in server {server_id}: {len(validated_shortcuts)} shortcuts")
@@ -931,12 +931,12 @@ def set_user_shortcuts(server_id: str, user_id: str, shortcuts: list[Dict[str, A
 
 def get_user_shortcut(server_id: str, user_id: str, shortcut_id: int) -> Optional[Dict[str, Any]]:
     """Get a specific canvas shortcut by ID for a specific user.
-    
+
     Args:
         server_id: Discord server/guild ID
         user_id: Discord user ID
         shortcut_id: Shortcut ID (1-5)
-        
+
     Returns:
         Shortcut dict or None if not found
     """
@@ -949,7 +949,7 @@ def get_user_shortcut(server_id: str, user_id: str, shortcut_id: int) -> Optiona
 
 def update_user_shortcut(server_id: str, user_id: str, shortcut_id: int, enabled: bool, label: str, target_role: str, target_subrole: Optional[str] = None) -> bool:
     """Update or create a canvas shortcut for a specific user.
-    
+
     Args:
         server_id: Discord server/guild ID
         user_id: Discord user ID
@@ -958,12 +958,12 @@ def update_user_shortcut(server_id: str, user_id: str, shortcut_id: int, enabled
         label: Display label for the button
         target_role: Target role name
         target_subrole: Target subrole name (optional)
-        
+
     Returns:
         True if successful
     """
     shortcuts = get_user_shortcuts(server_id, user_id)
-    
+
     # Update existing shortcut or add new one
     updated = False
     for shortcut in shortcuts:
@@ -974,7 +974,7 @@ def update_user_shortcut(server_id: str, user_id: str, shortcut_id: int, enabled
             shortcut["target_subrole"] = target_subrole
             updated = True
             break
-    
+
     if not updated:
         # Add new shortcut if we have room
         if len(shortcuts) < 5:
@@ -985,7 +985,7 @@ def update_user_shortcut(server_id: str, user_id: str, shortcut_id: int, enabled
                 "target_role": target_role,
                 "target_subrole": target_subrole
             })
-    
+
     return set_user_shortcuts(server_id, user_id, shortcuts)
 
 
@@ -994,15 +994,15 @@ def update_user_shortcut(server_id: str, user_id: str, shortcut_id: int, enabled
 
 def migrate_behaviors_from_sqlite(server_id: str, behavior_db) -> bool:
     """Migrate behaviors configuration from SQLite to server_config.json.
-    
+
     LEGACY: behavior_states table no longer exists (removed).
     Behavior toggles are now managed by server_config.json directly.
     This function is kept for backward compatibility but does nothing.
-    
+
     Args:
         server_id: Discord server/guild ID
         behavior_db: BehaviorDB instance to read from
-        
+
     Returns:
         True (no-op, migration not needed)
     """

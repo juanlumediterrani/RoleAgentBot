@@ -37,6 +37,43 @@
                     "💸 **Not enough.** Accumulate more coins first.",
                     "💸 **Scarce treasure.** You need fortune to play."
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **You have won.** Luck smiles upon you today.",
+                    "🎉 **Victory.** Fortune accompanies you.",
+                    "🎉 **Triumph.** You have defeated chance.",
+                    "🎉 **Excellent.** The dice are on your side.",
+                    "🎉 **Impressive.** A masterful play."
+                ],
+                "youlose":[
+                    "😢 **You have lost.** The dice were cruel today.",
+                    "😢 **Bad luck.** Try again.",
+                    "😢 **Not this time.** Fate is capricious.",
+                    "😢 **Too bad.** The dice did not favor you.",
+                    "😢 **But do not give up.** The next one will be better."
+                ],
+                "high_pot":[
+                    "💰 **The Sake cup grows.** Fortune accumulates power.",
+                    "💰 **Sake cup on the rise.** The prize becomes legendary.",
+                    "💰 **Accumulating.** The cup shines with promise.",
+                    "💰 **Fortune in waiting.** The Sake cup claims its destiny.",
+                    "💰 **Magical Sake cup.** The coins await the fortunate one."
+                ],
+                "pot_winner":[
+                    "🎉 **Cup winner.** You have conquered the Sake cup.",
+                    "🎉 **Sake cup conquered.** You are the chosen one.",
+                    "🎉 **Jackpot.** The Sake cup is yours.",
+                    "🎉 **Legendary fortune.** You have won the grand prize.",
+                    "🎉 **Sake cup yours.** An epic victory."
+                ],
+                "not_gold":[
+                    "💸 **No coins.** You do not have sufficient funds.",
+                    "💸 **Insufficient funds.** You need more coins.",
+                    "💸 **Empty pockets.** Check your treasure.",
+                    "💸 **Not enough.** Accumulate more coins first.",
+                    "💸 **Scarce treasure.** You need fortune to play."
+                ]
             }
         },
         "banker":{

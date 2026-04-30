@@ -25,11 +25,11 @@ if not PREMIUM_GUILD_SKU_ID:
 
 class EntitlementManager:
     """Manages Discord entitlement checks for premium features"""
-    
+
     def __init__(self, bot: discord.Client):
         self.bot = bot
         self._entitlement_cache: Dict[str, Dict[str, bool]] = {}
-        
+
     async def check_user_entitlement(self, user_id: int, sku_id: str) -> bool:
         """
         Check if a user has a specific SKU entitlement.
@@ -82,50 +82,50 @@ class EntitlementManager:
         except Exception as e:
             logger.error(f"Error checking user entitlement: {e}")
             return False
-    
+
     async def check_guild_entitlement(self, guild_id: int, sku_id: str) -> bool:
         """
         Check if a guild has a specific SKU entitlement.
-        
+
         Args:
             guild_id: Discord guild ID
             sku_id: SKU ID to check
-            
+
         Returns:
             True if guild has the entitlement, False otherwise
         """
         if not sku_id:
             logger.warning("SKU ID not configured, cannot check entitlement")
             return False
-            
+
         try:
             # Check cache first
             cache_key = f"guild_{guild_id}_{sku_id}"
             if cache_key in self._entitlement_cache:
                 return self._entitlement_cache[cache_key]
-            
+
             # Use HTTP API to check entitlements
             entitlements = await self.bot.http.get_entitlements(
                 application_id=self.bot.application_id,
                 guild_id=str(guild_id)
             )
-            
+
             # Check if any entitlement matches the SKU ID and is active
             for entitlement in entitlements:
-                if (entitlement.get('sku_id') == sku_id and 
+                if (entitlement.get('sku_id') == sku_id and
                     entitlement.get('type') == 1 and  # 1 = Subscription
                     entitlement.get('ends_at') is None):  # Active subscription
                     self._entitlement_cache[cache_key] = True
                     logger.info(f"Guild {guild_id} has premium entitlement for SKU {sku_id}")
                     return True
-            
+
             self._entitlement_cache[cache_key] = False
             return False
-            
+
         except Exception as e:
             logger.error(f"Error checking guild entitlement: {e}")
             return False
-    
+
     async def has_fatigue_reset(self, user_id: int) -> bool:
         """Check if user has Fatigue Reset consumable"""
         return await self.check_user_entitlement(user_id, FATIGUE_RESET_SKU_ID)
@@ -163,11 +163,11 @@ class EntitlementManager:
         except Exception as e:
             logger.error(f"Error consuming Fatigue Reset entitlement: {e}")
             return False
-    
+
     async def has_premium_guild(self, guild_id: int) -> bool:
         """Check if guild has Premium Server subscription"""
         return await self.check_guild_entitlement(guild_id, PREMIUM_GUILD_SKU_ID)
-    
+
     async def has_any_premium(self, user_id: int, guild_id: Optional[int] = None) -> bool:
         """
         Check if user has Fatigue Reset OR guild has premium subscription.
@@ -186,13 +186,13 @@ class EntitlementManager:
             return has_fatigue_reset or has_guild_premium
 
         return has_fatigue_reset
-    
+
     def handle_entitlement_create(self, entitlement: discord.Entitlement):
         """Handle new entitlement creation - clear cache for affected user/guild"""
         user_id = entitlement.user_id
         guild_id = entitlement.guild_id
         sku_id = entitlement.sku_id
-        
+
         # Clear relevant cache entries
         keys_to_remove = []
         for key in self._entitlement_cache:
@@ -200,18 +200,18 @@ class EntitlementManager:
                 keys_to_remove.append(key)
             if guild_id and f"guild_{guild_id}" in key:
                 keys_to_remove.append(key)
-        
+
         for key in keys_to_remove:
             del self._entitlement_cache[key]
-        
+
         logger.info(f"Entitlement created: User={user_id}, Guild={guild_id}, SKU={sku_id}")
-    
+
     def handle_entitlement_update(self, entitlement: discord.Entitlement):
         """Handle entitlement update - clear cache for affected user/guild"""
         user_id = entitlement.user_id
         guild_id = entitlement.guild_id
         sku_id = entitlement.sku_id
-        
+
         # Clear relevant cache entries
         keys_to_remove = []
         for key in self._entitlement_cache:
@@ -219,18 +219,18 @@ class EntitlementManager:
                 keys_to_remove.append(key)
             if guild_id and f"guild_{guild_id}" in key:
                 keys_to_remove.append(key)
-        
+
         for key in keys_to_remove:
             del self._entitlement_cache[key]
-        
+
         logger.info(f"Entitlement updated: User={user_id}, Guild={guild_id}, SKU={sku_id}, Ends={entitlement.ends_at}")
-    
+
     def handle_entitlement_delete(self, entitlement: discord.Entitlement):
         """Handle entitlement deletion - clear cache for affected user/guild"""
         user_id = entitlement.user_id
         guild_id = entitlement.guild_id
         sku_id = entitlement.sku_id
-        
+
         # Clear relevant cache entries
         keys_to_remove = []
         for key in self._entitlement_cache:
@@ -238,12 +238,12 @@ class EntitlementManager:
                 keys_to_remove.append(key)
             if guild_id and f"guild_{guild_id}" in key:
                 keys_to_remove.append(key)
-        
+
         for key in keys_to_remove:
             del self._entitlement_cache[key]
-        
+
         logger.info(f"Entitlement deleted: User={user_id}, Guild={guild_id}, SKU={sku_id}")
-    
+
     def clear_cache(self):
         """Clear entire entitlement cache"""
         self._entitlement_cache.clear()

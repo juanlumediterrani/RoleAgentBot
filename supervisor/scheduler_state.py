@@ -21,7 +21,7 @@ class SchedulerState:
 
     def __init__(self, state_path: Optional[Path] = None):
         if state_path is None:
-            state_path = Path(__file__).parent.parent.parent / "databases" / "scheduler_state.json"
+            state_path = Path(__file__).parent.parent / "databases" / "scheduler_state.json"
             state_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             state_path = Path(state_path)

@@ -101,7 +101,7 @@ class DiscordHTTP:
                 payload["embeds"] = [embed]
             if components:
                 payload["components"] = components
-            
+
             if not payload:  # Nothing to send
                 return False
 
@@ -126,7 +126,7 @@ class DiscordHTTP:
                 payload["embeds"] = [embed]
             if components:
                 payload["components"] = components
-            
+
             if not payload:  # Nothing to send
                 return False
 
@@ -142,7 +142,7 @@ class DiscordHTTP:
 
     def create_button(self, custom_id: str, label: str, style: int = 1, emoji: str = None) -> dict:
         """Create a button component for Discord messages.
-        
+
         Styles: 1=Primary (blue), 2=Secondary (gray), 3=Success (green), 4=Danger (red)
         """
         button = {

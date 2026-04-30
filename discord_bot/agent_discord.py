@@ -16,7 +16,7 @@ from discord.ui import View, Button
 
 from agent_engine import PERSONALITY, get_discord_token, AGENT_CFG, _personality_descriptions
 from agent_mind import call_llm, call_llm_async, _build_conversation_user_prompt
-from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response
+from postprocessor import postprocess_response, is_readme_response, is_nothing_to_say_response, is_switch_response
 from agent_db import set_current_server, get_server_id, get_db_instance
 from agent_logging import get_logger, update_log_file_path, server_log_context
 from discord_bot.discord_utils import (
@@ -41,14 +41,14 @@ logger = get_logger('discord')
 
 def _build_readme_prompt(user_question: str, server_id: str = None) -> str:
     """Build enhanced prompt with README content for LLM.
-    
+
     Args:
         user_question: The original user question
         server_id: Discord server/guild ID used to resolve the server language
-        
+
     Returns:
         Enhanced prompt string with README documentation
-        
+
     Raises:
         Exception: If README file cannot be loaded
     """
@@ -88,7 +88,7 @@ def _build_readme_prompt(user_question: str, server_id: str = None) -> str:
 
     if readme_content is None:
         raise FileNotFoundError(f"README_USER.md not found in {readme_path}")
-    
+
     # Get README response rules
     try:
         from agent_engine import _get_readme_response_rules_lines
@@ -97,7 +97,7 @@ def _build_readme_prompt(user_question: str, server_id: str = None) -> str:
     except Exception as e:
         logger.warning(f"Could not load README response rules: {e}")
         readme_rules_text = ""
-    
+
     # Build enhanced prompt with README content
     readme_descriptions = _personality_descriptions.get("readme", {})
     label_user_question = readme_descriptions.get("label_user_question", "User Question:")
@@ -111,7 +111,7 @@ def _build_readme_prompt(user_question: str, server_id: str = None) -> str:
 {readme_rules_text}
 
 {task_readme}"""
-    
+
     return enhanced_prompt
 
 
@@ -165,27 +165,27 @@ def get_bot_instance():
 
 async def set_bot_presence_message(guild=None, bot_instance=None):
     """Set bot presence status message from server-specific configuration.
-    
+
     Args:
         guild: Optional Discord guild to get server_id from. If None, uses first available guild.
         bot_instance: Optional bot instance to use for changing presence. If None, uses global bot.
     """
     from agent_runtime import get_personality_message
     from discord_bot.discord_utils import get_server_key
-    
+
     try:
         # Use provided bot or global bot
         target_bot = bot_instance or bot
         if not target_bot:
             logger.warning("No bot instance available for setting presence")
             return
-        
+
         # Use provided guild or get first available
         target_guild = guild or (target_bot.guilds[0] if target_bot.guilds else None)
         if not target_guild:
             logger.warning("No guild available for setting bot presence")
             return
-        
+
         server_id = get_server_key(target_guild)
         discord_cfg = {}
         presence_message = discord_cfg.get("mc_messages", {}).get("presence_status", "Use !canvas to interact")
@@ -199,7 +199,7 @@ async def set_bot_presence_message(guild=None, bot_instance=None):
 
 async def set_mc_presence_if_enabled(guild=None):
     """Set bot presence status if MC role is active.
-    
+
     Args:
         guild: Optional Discord guild to get server_id from. If None, uses first available guild.
     """
@@ -239,23 +239,23 @@ async def _initialize_poe2_subrole_on_startup():
         if not treasure_hunter_config.get("enabled", False):
             logger.info("🎮 POE2 subrole: treasure_hunter not enabled in agent_config, skipping startup initialization")
             return
-        
+
         logger.info("🎮 POE2 subrole: treasure_hunter enabled, starting initialization...")
-        
+
         try:
             from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
             poe2_manager = get_poe2_manager()
-            
+
             # Initialize default league (Standard) with default items
             success = await poe2_manager.initialize_default_league_on_startup()
             if success:
                 logger.info("🎮 POE2 subrole: Default league (Standard) initialized successfully with default items")
             else:
                 logger.warning("⚠️ POE2 subrole: Failed to initialize default league on startup")
-                
+
         except Exception as e:
             logger.error(f"❌ POE2 subrole: Error during startup initialization: {e}")
-            
+
     except Exception as e:
         logger.error(f"❌ POE2 subrole: Error checking agent_config: {e}")
 
@@ -263,55 +263,55 @@ async def _initialize_poe2_subrole_on_startup():
 async def _create_banker_wallets_on_startup():
     """Create banker wallets for all members of all connected servers."""
     logger.info("💰 Creating banker wallets for all server members...")
-    
+
     try:
         from roles.banker.banker_db import get_banker_roles_db_instance
         from agent_roles_db import get_roles_db_instance
-        
+
         # Process all guilds the bot is connected to
         for guild in bot.guilds:
             guild_id = str(guild.id)
             guild_name = guild.name
-            
+
             logger.info(f"💰 Processing guild: {guild_name} ({guild_id})")
-            
+
             try:
                 # Get banker database for this server using server ID
                 db_banker = get_banker_roles_db_instance(guild_id)
-                
+
                 # Create system accounts first
                 db_banker.create_wallet("dice_game_pot", "Dice Game Pot", wallet_type='system')
                 db_banker.create_wallet("beggar_fund", "Beggar Fund", wallet_type='system')
-                
+
                 # Set default TAE if not configured
                 current_tae = db_banker.get_tae(guild_id)
                 if current_tae == 0:
                     db_banker.set_tae(guild_id, 10)  # Default 10 coins per day
                     logger.info(f"💰 Set default TAE to 10 coins per day for {guild_name}")
-                
+
                 created_count = 0
                 existing_count = 0
-                
+
                 # Create wallets for all members in this guild
                 for member in guild.members:
                     if member.bot:
                         continue  # Skip bot accounts
-                    
+
                     member_id = str(member.id)
                     member_name = member.display_name
-                    
+
                     # Create wallet with opening bonus (10x TAE)
                     was_created = db_banker.create_wallet(
                         member_id, member_name, wallet_type='user'
                     )
-                    
+
                     if was_created:
                         created_count += 1
                         initial_balance = db_banker.get_balance(member_id)
                         logger.info(f"💰 Created wallet for {member_name} with {initial_balance} coins")
                     else:
                         existing_count += 1
-                
+
                 # Initialize dice game accounts for all members
                 try:
                     roles_db = get_roles_db_instance(guild_id)
@@ -322,14 +322,14 @@ async def _create_banker_wallets_on_startup():
                         logger.info(f"🎲 Dice game accounts initialized for {guild_name}")
                 except Exception as dice_error:
                     logger.warning(f"Could not initialize dice game accounts for {guild_name}: {dice_error}")
-                
+
                 logger.info(f"💰 Guild {guild_name}: {created_count} new wallets, {existing_count} existing wallets")
-                
+
             except Exception as guild_error:
                 logger.error(f"Error processing guild {guild_name}: {guild_error}")
-        
+
         logger.info("✅ Banker wallet creation completed for all servers")
-        
+
     except Exception as e:
         logger.exception(f"💰 Error in banker wallet creation: {e}")
 
@@ -369,14 +369,14 @@ async def on_ready():
     # Initialize all servers on startup
     from discord_bot.db_init import initialize_server_complete
     from discord_bot.canvas.server_config import detect_and_set_default_language
-    
+
     if bot.guilds:
         logger.info(f"🚀 Initializing {len(bot.guilds)} servers on startup...")
-        
+
         for guild in bot.guilds:
             logger.info(f"🚀 Initializing server: '{guild.name}' ({guild.id})")
             server_id = str(guild.id)
-            
+
             # Step 1: Detect and set default language FIRST
             try:
                 detected_lang = detect_and_set_default_language(server_id, guild)
@@ -384,7 +384,7 @@ async def on_ready():
             except Exception as e:
                 logger.warning(f"⚠️ Could not detect server language for '{guild.name}': {e}")
                 detected_lang = "en-US"
-            
+
             # Step 2: Initialize with detected language
             logger.info(f"🚀 About to call initialize_server_complete for '{guild.name}' with language={detected_lang}")
             try:
@@ -395,12 +395,12 @@ async def on_ready():
                 import traceback
                 logger.error(traceback.format_exc())
                 init_success = False
-            
+
             if init_success:
                 logger.info(f"✅ Server initialization completed successfully for '{guild.name}'")
             else:
                 logger.warning(f"⚠️ Some initialization tasks failed for '{guild.name}'")
-                
+
         logger.info(f"🎯 All {len(bot.guilds)} servers initialization completed")
     else:
         logger.warning("⚠️ No guilds available for initialization")
@@ -435,15 +435,15 @@ async def on_ready():
             "Periodic Discord-bound tasks will NOT run this session.",
             exc_info=True,
         )
-    
+
     await set_mc_presence_if_enabled()
-    
+
     # Create banker wallets for all server members
     await _create_banker_wallets_on_startup()
-    
+
     # Initialize POE2 subrole if treasure_hunter is enabled in agent_config
     await _initialize_poe2_subrole_on_startup()
-    
+
     # Initialize entitlement manager for premium SKU support
     entitlement_mgr = EntitlementManager(bot)
     set_entitlement_manager(entitlement_mgr)
@@ -458,10 +458,10 @@ async def on_guild_join(guild):
     """Runs when the bot joins a new server."""
     from discord_bot.db_init import initialize_server_complete, copy_personality_to_server
     from discord_bot.canvas.server_config import detect_and_set_default_language
-    
+
     logger.info(f"🏰 Joining new guild: '{guild.name}'")
     server_id = str(guild.id)
-    
+
     # Step 1: Detect and set default language FIRST
     # This must happen before personality copy so the correct language version is used
     try:
@@ -470,14 +470,14 @@ async def on_guild_join(guild):
     except Exception as e:
         logger.warning(f"⚠️ Could not detect server language for '{guild.name}': {e}")
         detected_lang = "en-US"
-    
+
     # Step 2: Copy "rab" personality with detected language
     # This ensures the server gets the correct language version from the start
     try:
         logger.info(f"📁 Copying 'rab' personality with language '{detected_lang}' for '{guild.name}'")
         personality_success = copy_personality_to_server(
-            server_id, 
-            personality_name="rab", 
+            server_id,
+            personality_name="rab",
             language=detected_lang,
             update_config=True
         )
@@ -487,11 +487,11 @@ async def on_guild_join(guild):
             logger.warning(f"⚠️ Failed to copy 'rab' personality for '{guild.name}'")
     except Exception as e:
         logger.warning(f"⚠️ Error copying personality for '{guild.name}': {e}")
-    
+
     # Step 3: Continue with unified server initialization
     # This will use the already-copied personality and detected language
     init_success = await initialize_server_complete(guild, agent_config, is_startup=False)
-    
+
     if init_success:
         logger.info(f"🎉 New guild initialization completed successfully for '{guild.name}'")
     else:
@@ -506,7 +506,7 @@ async def on_member_join(member):
     from behavior.welcome import handle_member_join
     from agent_runtime import get_personality_message
     from discord_bot.discord_utils import get_server_key
-    
+
     server_id = get_server_key(member.guild)
     discord_cfg = {}
     await handle_member_join(member, discord_cfg)
@@ -518,7 +518,7 @@ async def on_presence_update(before, after):
     from behavior.greet import handle_presence_update
     from agent_runtime import get_personality_message
     from discord_bot.discord_utils import get_server_key
-    
+
     server_id = get_server_key(after.guild)
     discord_cfg = {}
     bot_display_name = PERSONALITY.get("bot_display_name", "Bot")
@@ -530,7 +530,7 @@ async def on_voice_state_update(member, before, after):
     """Disconnect the bot from voice if the channel is empty (MC feature). Also record system interactions for voice connections."""
     if member.bot:
         return
-    
+
     # Record system interaction when user connects to voice channel
     if before.channel is None and after.channel is not None:
         try:
@@ -538,15 +538,15 @@ async def on_voice_state_update(member, before, after):
             from agent_engine import _get_personality
             import json
             from datetime import datetime
-            
+
             guild = after.channel.guild
             server_id = get_server_key(guild)
-            
+
             # Load prompts.json for the server
             prompts_path = f"databases/{server_id}/rab/prompts.json"
             voice_connect_msg = "Put music in channel {channel_name}"  # English fallback
             voice_connect_event = "voice_connect"
-            
+
             try:
                 with open(prompts_path, 'r', encoding='utf-8') as f:
                     prompts = json.load(f)
@@ -555,7 +555,7 @@ async def on_voice_state_update(member, before, after):
                     voice_connect_event = general.get("voice_connect_event", voice_connect_event)
             except Exception as e:
                 logger.warning(f"Could not load prompts.json for voice connect message: {e}")
-            
+
             # Load MC title from descriptions
             mc_title = "MC"  # English fallback
             try:
@@ -567,15 +567,15 @@ async def on_voice_state_update(member, before, after):
                     mc_title = mc_title.replace("**", "").replace("*", "")
             except Exception as e:
                 logger.warning(f"Could not load MC description: {e}")
-            
+
             # Format the message with channel name
             channel_name = after.channel.name
             formatted_msg = voice_connect_msg.format(channel_name=channel_name)
-            
+
             # Build the interaction message in the specified format
             date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             interaction_message = f"[{date_str}] {mc_title} system {voice_connect_event} {member.display_name} //{formatted_msg}//"
-            
+
             # Record as system interaction
             db = get_db_for_server(guild)
             db.register_interaction(
@@ -587,11 +587,11 @@ async def on_voice_state_update(member, before, after):
                 server_id=server_id,
                 metadata={"event": "voice_connect", "channel_name": channel_name}
             )
-            
+
             logger.info(f"🎤 Recorded voice connection interaction for {member.display_name} in {channel_name}")
         except Exception as e:
             logger.exception(f"Error recording voice connection interaction: {e}")
-    
+
     # Original logic: disconnect bot from voice if channel is empty
     for vc in list(bot.voice_clients):
         if not vc.is_connected():
@@ -604,18 +604,18 @@ async def on_voice_state_update(member, before, after):
                 if len(current_users) == 0:
                     guild = vc.guild
                     await vc.disconnect()
-                    
+
                     # Try to get MC instance to send message through callback system
                     try:
                         from roles.mc.mc_discord import get_mc_commands_instance
                         from agent_runtime import get_personality_message
                         from discord_bot.discord_utils import get_server_key
-                        
+
                         mc_commands = get_mc_commands_instance()
                         server_id = get_server_key(guild)
                         mc_cfg = {}
                         msg = mc_cfg.get("voice_leave_empty", "👋 The voice channel is empty, leaving now.")
-                        
+
                         if mc_commands:
                             # Use MC message system to support Canvas callbacks
                             channel = next(
@@ -640,7 +640,7 @@ async def on_voice_state_update(member, before, after):
 async def on_entitlement_create(entitlement):
     """Handle new entitlement creation (user subscribed to premium)."""
     logger.info(f"💎 Entitlement created: User={entitlement.user_id}, Guild={entitlement.guild_id}, SKU={entitlement.sku_id}")
-    
+
     # Get entitlement manager and handle the event
     from discord_bot.entitlement_manager import get_entitlement_manager
     entitlement_mgr = get_entitlement_manager()
@@ -652,7 +652,7 @@ async def on_entitlement_create(entitlement):
 async def on_entitlement_update(entitlement):
     """Handle entitlement update (subscription status changed)."""
     logger.info(f"💎 Entitlement updated: User={entitlement.user_id}, Guild={entitlement.guild_id}, SKU={entitlement.sku_id}, Ends={entitlement.ends_at}")
-    
+
     # Get entitlement manager and handle the event
     from discord_bot.entitlement_manager import get_entitlement_manager
     entitlement_mgr = get_entitlement_manager()
@@ -664,7 +664,7 @@ async def on_entitlement_update(entitlement):
 async def on_entitlement_delete(entitlement):
     """Handle entitlement deletion (subscription cancelled/expired)."""
     logger.info(f"💎 Entitlement deleted: User={entitlement.user_id}, Guild={entitlement.guild_id}, SKU={entitlement.sku_id}")
-    
+
     # Get entitlement manager and handle the event
     from discord_bot.entitlement_manager import get_entitlement_manager
     entitlement_mgr = get_entitlement_manager()
@@ -779,16 +779,16 @@ async def _process_accuse_flag(message, llm_response: str, server_id: str, is_pu
     try:
         # Import the ring extraction function
         from roles.juggler.subroles.ring.ring import extract_accuse_flag
-        
+
         # Extract the username from ACCUSE flag
         accused_username = extract_accuse_flag(llm_response)
-        
+
         if not accused_username:
             logger.warning("ACCUSE flag found but could not extract username")
             return None
-            
+
         logger.info(f"🎯 ACCUSE flag detected: {accused_username} (from user {message.author.name})")
-        
+
         # Find a server where both the accuser and the target can be found
         guild = None
         if message.guild:
@@ -809,34 +809,34 @@ async def _process_accuse_flag(message, llm_response: str, server_id: str, is_pu
                     if is_role_enabled_check("trickster", guild=server):
                         guild = server
                         break
-        
+
         if not guild:
             logger.info("ACCUSE flag ignored - no suitable server found")
             return
-            
+
         # Get server ID for logging
         server_id = str(guild.id)
-            
+
         logger.info(f"🎯 Processing ACCUSE flag in server: {guild.name}")
-        
+
         # Validate the username against server members
         target_member = None
         for member in guild.members:
             if member.bot:
                 continue
             # Check display name and username
-            if (member.display_name.lower() == accused_username.lower() or 
+            if (member.display_name.lower() == accused_username.lower() or
                 member.name.lower() == accused_username.lower()):
                 target_member = member
                 break
-                
+
         if target_member:
             logger.info(f"✅ User '{accused_username}' found in server: {target_member.name}")
             return await _handle_valid_accusation(message, target_member, guild, server_id, is_public)
         else:
             logger.info(f"❌ User '{accused_username}' not found in server")
             return await _handle_false_accusation(message, accused_username, guild, server_id, is_public)
-            
+
     except Exception as e:
         logger.exception(f"Error processing ACCUSE flag: {e}")
         return None
@@ -846,45 +846,45 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
     """Handle accusation when the user exists in the server."""
     try:
         server_id = str(guild.id)
-        
+
         # Record accusation and update state (this will save the target info)
         from roles.juggler.subroles.ring.ring_discord import _record_accusation
         await _record_accusation(server_id, f"ACCUSE {target_member.display_name}", guild, str(target_member.id), target_member.display_name, message.author.display_name, str(message.author.id))
-        
+
         logger.info(f"🎯 Ring accusation target updated to: {target_member.display_name}")
-        
+
         # Build denial prompt for LLM
         from agent_engine import PERSONALITY, _get_personality
         from agent_mind import call_llm_async
-        
+
         # Get server-specific personality
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
-        
+
         # Get ring prompts from personality
         prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
         denial_config = prompts_config.get("denial", {})
-        
+
         task_template = denial_config.get("task", f"Task: The human {target_member.display_name} denies having the ring, warn them not to lie to you and leave them alone")
         # Replace placeholders with actual names
         task = task_template.replace("{target_name}", target_member.display_name)
         task = task.replace("{user_name}", message.author.display_name)
         rules = denial_config.get("golden_rules", [])
-        
+
         # Build the prompt with actual memory data using existing functions
         from agent_mind import _build_prompt_memory_block, _build_prompt_relationship_block
         from agent_db import get_global_db
-        
+
         # Get database instance for memory retrieval
         db_instance = get_global_db(server_id) if server_id else get_global_db()
-        
+
         # Build memory sections using existing functions (for the user who sent the message)
         memory_block = _build_prompt_memory_block(server=server_id)
         relationship_block = _build_prompt_relationship_block(
-            user_id=message.author.id, 
-            user_name=message.author.display_name, 
+            user_id=message.author.id,
+            user_name=message.author.display_name,
             server=server_id
         )
-        
+
         # Get recent interactions for context (for the user who sent the message)
         recent_interactions = []
         try:
@@ -892,7 +892,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
                 recent_interactions = db_instance.get_user_recent_interactions(message.author.id, limit=5)
         except Exception as e:
             logger.debug(f"Could not get recent interactions: {e}")
-        
+
         # Build recent dialogue section
         if recent_interactions:
             dialogue_lines = []
@@ -901,7 +901,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
             recent_dialogue = "\n".join(dialogue_lines)
         else:
             recent_dialogue = "No recent interactions recorded."
-        
+
         # Build the prompt
         prompt_parts = [
             memory_block,
@@ -909,25 +909,25 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
             recent_dialogue,
             "",
         ]
-        
+
         # Add rules
         for rule in rules:
             prompt_parts.append(rule)
-        
+
         prompt_parts.extend([
             "",
             task,
             "",
             server_personality.get("closing", "## Personality RESPONSE:"),
         ])
-        
+
         denial_prompt = "\n".join(prompt_parts)
-        
+
         # Generate the denial response
         from agent_engine import _build_system_prompt, _get_personality
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         system_instruction = _build_system_prompt(server_personality, server_id)
-        
+
         response = await call_llm_async(
             system_instruction=system_instruction,
             prompt=denial_prompt,
@@ -939,12 +939,12 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
             user_name=message.author.display_name,
             server_id=server_id
         )
-        
+
         if response and response.strip():
             return response
         else:
             return f"GRRR! {target_member.display_name}! Don't lie to me, I know you have the ring! Leave it alone or I'll rip your fingers off!"
-            
+
     except Exception as e:
         logger.exception(f"Error handling valid accusation: {e}")
         return f"GRAAAH! {target_member.display_name}! Don't lie to me, I know you have the ring! Leave it alone or I'll rip your fingers off!"
@@ -956,33 +956,33 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
         # Build false accusation prompt for LLM
         from agent_engine import PERSONALITY, _get_personality
         from agent_mind import call_llm_async
-        
+
         # Get server-specific personality
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
-        
+
         # Get ring prompts from personality
         prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
         false_accusation_config = prompts_config.get("false_accusation", {})
-        
+
         mission = false_accusation_config.get("mission", "MISSION ACTIVE - RING: The human falsely accused someone of having the ring.")
         task_template = false_accusation_config.get("task", f"Task: The human has accused '{accused_username}' who doesn't exist in the server, respond appropriately")
         # Replace placeholders with actual names
         task = task_template.replace("{target_name}", accused_username)
         task = task.replace("{user_name}", message.author.display_name)
         rules = false_accusation_config.get("golden_rules", [])
-        
+
         # Build memory sections using existing functions (using accuser's context)
         from agent_mind import _build_prompt_memory_block, _build_prompt_relationship_block, _build_prompt_last_interactions_block
         from agent_db import get_global_db
-        
+
         # Get database instance for memory retrieval
         db_instance = get_global_db(server_id) if server_id else get_global_db()
-        
+
         # Build memory sections using proper functions
         memory_block = _build_prompt_memory_block(server=server_id)
         relationship_block = _build_prompt_relationship_block(server=server_id, user_id=str(message.author.id))
         last_interactions_block = _build_prompt_last_interactions_block(server=server_id, user_id=str(message.author.id))
-        
+
         # Build prompt parts
         prompt_parts = [
             mission,
@@ -995,7 +995,7 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
             "",
             task,
         ]
-        
+
         # Add golden rules if available
         if rules:
             prompt_parts.append("")
@@ -1006,14 +1006,14 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
             "",
             server_personality.get("closing", "## Personality RESPONSE:"),
         ])
-        
+
         false_accusation_prompt = "\n".join(prompt_parts)
-        
+
         # Generate the false accusation response
         from agent_engine import _build_system_prompt, _get_personality
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         system_instruction = _build_system_prompt(server_personality, server_id)
-        
+
         response = await call_llm_async(
             system_instruction=system_instruction,
             prompt=false_accusation_prompt,
@@ -1025,7 +1025,7 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
             user_name=message.author.display_name,
             server_id=server_id
         )
-        
+
         if response and response.strip():
             return response
         else:
@@ -1114,6 +1114,118 @@ async def _process_mc_flag(message, llm_response: str, server_id: str, is_public
 
     except Exception as e:
         logger.exception(f"Error processing MC flag: {e}")
+        return None
+
+
+async def _process_switch_sentinel(message, response: str, server_id: str, is_public: bool) -> str | None:
+    """Process SWITCH_<personality> sentinel response from LLM for DM personality switching.
+
+    When the LLM emits "SWITCH_<personality>" in a DM, this function:
+    1. Extracts the personality name
+    2. Finds a server where the user and bot share membership that has that personality
+    3. Pins the DM session to that server
+    4. Sends a forced greeting from that personality
+
+    Args:
+        message: Discord message object
+        response: The LLM response that starts with "SWITCH_"
+        server_id: Current server ID (may be None for DMs)
+        is_public: Whether the message is from a public channel
+
+    Returns:
+        None if not a SWITCH response or processing failed, otherwise returns after sending greeting
+    """
+    # Only process in DMs
+    if is_public:
+        return None
+
+    try:
+        from postprocessor import is_switch_response, extract_switch_personality
+
+        if not is_switch_response(response):
+            return None
+
+        personality_name = extract_switch_personality(response)
+        if not personality_name:
+            logger.warning("SWITCH response detected but could not extract personality name")
+            return None
+
+        logger.info(f"👋 SWITCH response detected: user wants to switch to personality '{personality_name}'")
+
+        # Find servers where user and bot share membership
+        mutual_guilds = []
+        for guild in bot.guilds:
+            member = guild.get_member(message.author.id)
+            if member:
+                mutual_guilds.append(guild)
+
+        if not mutual_guilds:
+            logger.info(f"User {message.author.name} shares no servers with the bot")
+            await message.channel.send(f"No compartes ningún servidor conmigo donde pueda encontrar la personalidad '{personality_name}'.")
+            return None
+
+        # Find which mutual server has the requested personality
+        target_guild = None
+        target_server_id = None
+
+        for guild in mutual_guilds:
+            guild_id = str(guild.id)
+            try:
+                from agent_db import get_personality_name
+                guild_personality = get_personality_name(guild_id)
+                if guild_personality and guild_personality.lower() == personality_name:
+                    target_guild = guild
+                    target_server_id = guild_id
+                    logger.info(f"Found personality '{personality_name}' in server: {guild.name} ({guild_id})")
+                    break
+            except Exception as e:
+                logger.debug(f"Could not check personality for server {guild.name}: {e}")
+                continue
+
+        if not target_guild:
+            logger.info(f"Personality '{personality_name}' not found in any shared server")
+            available_personalities = set()
+            for guild in mutual_guilds:
+                try:
+                    from agent_db import get_personality_name
+                    guild_personality = get_personality_name(str(guild.id))
+                    if guild_personality:
+                        available_personalities.add(guild_personality.lower())
+                except Exception:
+                    pass
+
+            if available_personalities:
+                await message.channel.send(
+                    f"No encontré la personalidad '{personality_name}' en nuestros servidores compartidos. "
+                    f"Personalidades disponibles: {', '.join(sorted(available_personalities))}"
+                )
+            else:
+                await message.channel.send(f"No encontré la personalidad '{personality_name}' en nuestros servidores compartidos.")
+            return None
+
+        # Pin the DM session to the target server
+        from agent_db import pin_dm_session
+        pin_dm_session(message.author.id, target_server_id)
+        logger.info(f"Pinned DM session for user {message.author.name} to server {target_guild.name} ({target_server_id})")
+
+        # Send forced greeting from the target personality
+        from behavior.greet import _send_greeting_to_user
+        greeting_data = {
+            'discord_cfg': {},
+            'presence_cfg': {'enabled': True, 'fallback': 'Te saludo desde otro servidor.'}
+        }
+
+        # Get user's display name for this specific server
+        member = target_guild.get_member(message.author.id)
+        user_display_name = member.display_name if member else message.author.display_name
+
+        await _send_greeting_to_user(message.author.id, user_display_name, target_guild, greeting_data, bot)
+
+        logger.info(f"✅ Forced greeting sent from personality '{personality_name}' in server {target_guild.name}")
+        return True
+
+    except Exception as e:
+        logger.exception(f"Error processing SWITCH sentinel: {e}")
         return None
 
 
@@ -1234,13 +1346,13 @@ async def _process_chat_message(message):
         # Check if this is a README response
         if is_readme_response(response):
             logger.info(f"🔍 README response detected from {message.author.name}")
-            
+
             # Build enhanced prompt with README content
             try:
                 enhanced_prompt = _build_readme_prompt(clean_content, server_id=server_id)
-                
+
                 logger.info(f"📖 Making second LLM call with README documentation")
-                
+
                 # Make second LLM call with README content
                 async with _LLM_SEMAPHORE:
                     response = await call_llm_async(
@@ -1264,9 +1376,9 @@ async def _process_chat_message(message):
                         user_name=message.author.display_name,
                         server_id=server_id
                     )
-                
+
                 logger.info(f"✅ README enhanced response generated")
-                
+
             except Exception as e:
                 logger.error(f"❌ Error building README prompt: {e}")
                 # Continue with original README response if README file fails
@@ -1299,12 +1411,20 @@ async def _process_chat_message(message):
         if wiki_response is not None:
             response, wiki_url = wiki_response
 
+        # Check if this is a SWITCH response (personality switching in DMs)
+        if is_switch_response(response):
+            logger.info(f"👋 SWITCH response detected from {message.author.name}")
+            switch_result = await _process_switch_sentinel(message, response, server_id, is_public)
+            if switch_result is not None:
+                # SWITCH sentinel handled the response, skip normal processing
+                return
+
         # Check if this is a NADA_QUE_DECIR response (nothing to say)
         nothing_to_say_keyword = server_personality.get("behaviors", {}).get("nothing_to_say_keyword", "NOTHING_TO_SAY")
         nothing_to_say_description = server_personality.get("behaviors", {}).get("nothing_to_say_description", "(You didn't respond to their last message)")
         if is_nothing_to_say_response(response, keyword=nothing_to_say_keyword):
             logger.info(f"🔇 NADA_QUE_DECIR response detected from {message.author.name} - skipping response sending")
-            
+
             # Register interaction in database with description instead of literal keyword
             db_instance = get_db_for_server(message.guild) if message.guild else get_db_instance(server_id or get_server_id() or "0")
             interaction_type = "CHANNEL" if is_public else "DM"
@@ -1316,7 +1436,7 @@ async def _process_chat_message(message):
                 server_id,
                 {"response": nothing_to_say_description, "is_public": is_public, "is_mention": is_mention, "nothing_to_say": True}
             )
-            
+
             # Mark user as replied to greeting if they message the bot (in-memory tracker)
             from behavior.greet import mark_user_replied
             if message.guild:
@@ -1326,7 +1446,7 @@ async def _process_chat_message(message):
             else:
                 # DM: clear pending greetings across all servers for this user
                 mark_user_replied(message.author.id, None)
-            
+
             # Return early - don't send response
             return
 

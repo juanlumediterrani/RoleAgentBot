@@ -28,15 +28,17 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                 f"Canvas command entered by {ctx.author.name}: raw_section={section!r}, raw_target={target!r}, raw_detail={detail!r}, "
                 f"in_guild={bool(ctx.guild)}"
             )
-            
+
             # Check if this is a name-filtered command
             # If section matches a bot name or personality name, treat it as name filter and shift parameters
             bot_name = ctx.bot.user.name.lower()
             section_lower = (section or "").strip().lower()
             valid_sections = {"home", "role", "roles", "personal", "help", "behavior"}
-            
+
             # Resolve server-specific personality at runtime (for multi-server deployments)
             _runtime_personality_name = _default_personality_name
+            target_guild_for_personality = None  # Will be set if DM command specifies a personality name
+
             if ctx.guild:
                 try:
                     from agent_engine import _get_personality
@@ -45,7 +47,7 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                     _runtime_personality_name = server_personality.get("name", _default_personality_name).lower()
                 except Exception as e:
                     logger.debug(f"Could not resolve server-specific personality, using default: {e}")
-            
+
             # Handle mentions: convert <@ID> to username for comparison
             if section_lower.startswith("<@") and section_lower.endswith(">"):
                 try:
@@ -56,21 +58,36 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
                         logger.info(f"Canvas mention resolved: '{section}' -> '{section_lower}'")
                 except (ValueError, AttributeError) as e:
                     logger.debug(f"Could not resolve mention '{section}': {e}")
-            
-            if section_lower == bot_name or section_lower == _runtime_personality_name:
+
+            # In DM, check if section is a personality name and find the corresponding guild
+            if not ctx.guild and section_lower and section_lower not in valid_sections:
+                try:
+                    from agent_engine import _get_personality
+                    for guild in ctx.bot.guilds:
+                        server_id = str(guild.id)
+                        server_personality = _get_personality(server_id)
+                        personality_name = server_personality.get("name", "").lower()
+                        if section_lower == personality_name or section_lower == bot_name:
+                            target_guild_for_personality = guild
+                            logger.info(f"DM Canvas command: found personality '{section}' in guild '{guild.name}' ({guild.id})")
+                            break
+                except Exception as e:
+                    logger.debug(f"Could not search for personality in DM: {e}")
+
+            if section_lower == bot_name or section_lower == _runtime_personality_name or target_guild_for_personality:
                 # This is a name-filtered command: !canvas <bot_name/personality> [section] [target] [detail]
                 logger.info(f"Canvas command targeted to '{section}' (bot/personality name: {_runtime_personality_name}) - name filter activated")
                 # Shift parameters: section becomes target, target becomes detail, detail becomes empty
                 section = target or "home"
                 target = detail or ""
                 detail = ""
-            elif section_lower and section_lower not in valid_sections:
+            elif section_lower and section_lower not in valid_sections and not target_guild_for_personality:
                 # Check if this might be a name filter for a different bot
                 logger.info(f"Canvas command with name '{section}' not matching '{_runtime_personality_name}' - ignoring as it's for another bot")
                 return  # Don't respond, let the targeted bot handle it
-            
+
             # Legacy watcher_premises auto-init removed (migrated to watcher_subscriptions)
-            
+
             section_name = (section or "home").strip().lower()
             target_name = (target or "").strip().lower()
             detail_name = (detail or "").strip().lower()
@@ -92,13 +109,27 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
             is_dm = not guild
             if is_dm:
                 try:
-                    from agent_db import get_user_last_server_id
+                    from agent_db import get_user_last_server_id, get_pinned_dm_server
                     _bot = ctx.bot
-                    last_server_id = get_user_last_server_id(str(ctx.author.id))
-                    if last_server_id:
-                        guild = discord.utils.get(_bot.guilds, id=int(last_server_id))
-                        if guild:
-                            logger.info(f"Using user's last server '{guild.name}' ({guild.id}) for Canvas command from DM")
+                    # First use guild found by personality name search (if any)
+                    if target_guild_for_personality:
+                        guild = target_guild_for_personality
+                        logger.info(f"Using guild from personality name search '{guild.name}' ({guild.id}) for Canvas command from DM")
+                    # Then check pinned DM session (set when user ran !canvas in a guild)
+                    elif guild is None:
+                        pinned_server_id = get_pinned_dm_server(ctx.author.id)
+                        if pinned_server_id:
+                            guild = discord.utils.get(_bot.guilds, id=int(pinned_server_id))
+                            if guild:
+                                logger.info(f"Using pinned DM session server '{guild.name}' ({guild.id}) for Canvas command from DM")
+                    # Fallback to last server from database interactions
+                    if guild is None:
+                        last_server_id = get_user_last_server_id(str(ctx.author.id))
+                        if last_server_id:
+                            guild = discord.utils.get(_bot.guilds, id=int(last_server_id))
+                            if guild:
+                                logger.info(f"Using user's last server '{guild.name}' ({guild.id}) for Canvas command from DM")
+                    # Final fallback to first available guild
                     if guild is None and _bot and _bot.guilds:
                         guild = _bot.guilds[0]
                         logger.info(f"Falling back to default server '{guild.name}' for Canvas command from DM")

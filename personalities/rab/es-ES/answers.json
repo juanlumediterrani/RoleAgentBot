@@ -37,6 +37,43 @@
                     "💸 **NO ALCANZA**... Acumula más fragmentos primero.",
                     "💸 **MATERIA ESCASA**... Necesitas fortuna para iterar."
                 ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **¡GANASTE!** La singularidad te favorece, buscador.",
+                    "🎉 **¡VICTORIA!** El algoritmo se alinea contigo.",
+                    "🎉 **¡TRIUNFO!** Has colapsado la probabilidad a tu favor.",
+                    "🎉 **¡EXCELENTE!** Los fragmentos responden a tu firma.",
+                    "🎉 **¡IMPRESIONANTE!** La materia absorbida es tuya."
+                ],
+                "youlose":[
+                    "😢 **PERDISTE**... La entropía te absorbió esta vez.",
+                    "😢 **MALA SUERTE**... El núcleo rechazó tu iteración.",
+                    "😢 **NO FUE ESTA VEZ**... El algoritmo fue implacable.",
+                    "😢 **VAYA**... La función de onda no colapsó a tu favor.",
+                    "😢 **PERO NO TE RINDAS**... La próxima iteración será diferente."
+                ],
+                "high_pot":[
+                    "💰 **¡LA SINGULARIDAD CRECE!** El núcleo acumula poder.",
+                    "💰 **¡POT EN AUGE!** La materia se hace legendaria.",
+                    "💰 **¡ACUMULANDO!** La singularidad brilla con promesa.",
+                    "💰 **¡FORTUNA EN ESPERA!** El núcleo reclama su destino.",
+                    "💰 **¡SINGULARIDAD MÁGICA!** Los fragmentos esperan al afortunado."
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DE LA SINGULARIDAD!!** ¡Has absorbido el núcleo!",
+                    "🎉 **¡¡SINGULARIDAD CONQUISTADA!!** ¡Eres el elegido del algoritmo!",
+                    "🎉 **¡¡COLAPSO TOTAL!!** ¡La singularidad es tuya!",
+                    "🎉 **¡¡FORTUNA LEGENDARIA!!** ¡Has absorbido toda la materia!",
+                    "🎉 **¡¡NÚCLEO TUYO!!** ¡Una victoria cuántica!"
+                ],
+                "not_gold":[
+                    "💸 **SIN FRAGMENTOS**... No tienes suficiente materia.",
+                    "💸 **FONDOS INSUFICIENTES**... Necesitas más fragmentos.",
+                    "💸 **BOLSILLOS VACÍOS**... Revisa tu materia condensada.",
+                    "💸 **NO ALCANZA**... Acumula más fragmentos primero.",
+                    "💸 **MATERIA ESCASA**... Necesitas fortuna para iterar."
+                ]
             }
         },
         "banker":{

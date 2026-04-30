@@ -3,7 +3,8 @@
     "description": "Consulta las runas ancestrales arias para obtener inteligencia estratégica y guía militar.",
     "button": "📜 Ahnenerbe",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🎚️ **Ciencia Aria Ancestral** - Consulta runas ancestrales para obtener inteligencia militar y guía estratégica"
+        "nordic_runes": "🎚️ **Ciencia Aria Ancestral** - Consulta runas ancestrales para obtener inteligencia militar y guía estratégica",
+        "astrology": "🌟 **Astrología** - Letras hebreas del Sefer Yetzirah para adivinación. Actualmente en desarrollo."
     },
     "moon_phases": {
         "new_moon": "Luna Nueva 🌑",

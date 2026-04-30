@@ -41,15 +41,15 @@ def _get_canvas_ring_state(guild) -> dict:
 def build_canvas_role_juggler(agent_config: dict, admin_visible: bool, guild=None) -> str:
     """Build the Juggler role view."""
     from .content import _get_personality_descriptions
-    
+
     personality_descriptions = _get_personality_descriptions(str(guild.id) if guild else None)
     juggler_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {})
     general_messages = personality_descriptions.get("general", {})
-    
+
     description = juggler_messages.get("description", "Nexo que gesta múltiples flujos operativos para mantener la armonía de la red.")
 
     content = f"{description}\n"
-    
+
     # Add subrole descriptions if any
     subrole_descriptions = juggler_messages.get("canvas_juggler_subrole_descriptions", {})
     if subrole_descriptions:
@@ -57,21 +57,21 @@ def build_canvas_role_juggler(agent_config: dict, admin_visible: bool, guild=Non
         content += f"\n**{available_subroles_label}**\n"
         for subrole, description in subrole_descriptions.items():
             content += f"{description}\n"
-    
+
     return content
 
 
 def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guild=None) -> str:
     """Build the Juggler role detail view."""
     from .content import _get_personality_descriptions
-    
+
     personality_descriptions = _get_personality_descriptions(str(guild.id) if guild else None)
     juggler_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {})
     roles_messages = personality_descriptions.get("role_descriptions", {})
-    
+
     if detail_name == "overview":
         return build_canvas_role_juggler({}, admin_visible, guild)
-    
+
     if detail_name in {"ring"}:
         ring_state = _get_canvas_ring_state(guild)
         ring_messages = juggler_messages.get("ring", {})
@@ -91,7 +91,7 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
             description,
             "-" * 45,
         ]
-        
+
         if ring_state["enabled"]:
             parts.extend([
                 investigation_title,
@@ -111,9 +111,9 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
         status_label = general.get("status", "Status:")
         active_text = general.get("active", "✅ Active")
         inactive_text = general.get("inactive", "❌ Inactive")
-        
+
         parts.append(f"**{status_label}** { active_text if ring_state['enabled'] else  inactive_text}")
-        
+
         return "\n".join(parts)
 
     if detail_name in {"ring_admin"}:
@@ -122,7 +122,7 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
         # Use general descriptions for admin panel
         general = personality_descriptions.get("general", {})
         ring_descriptions = juggler_messages.get("ring", {})
-        
+
         admin_status = general.get("status", "Status:")
         active_text = general.get("active", "Active")
         inactive_text = general.get("inactive", "Inactive")
@@ -134,24 +134,24 @@ def build_canvas_role_juggler_detail(detail_name: str, admin_visible: bool, guil
 
         base_freq = ring_state.get('base_frequency_hours', ring_state['frequency_hours'])
         current_freq = ring_state.get('current_frequency_hours', ring_state['frequency_hours'])
-        
+
         parts = [
             description,
             f"**{admin_status}** {active_text if ring_state['enabled'] else inactive_text}",
             f"**{base_freq_label}** {freq_format.format(hours=base_freq)}",
             f"**{current_freq_label}** {freq_format.format(hours=current_freq)}",
         ]
-        
+
         # Add hot potato information if active
         if ring_state.get('frequency_iteration', 0) > 0:
             iteration = ring_state.get('frequency_iteration', 0)
             multiplier = 2 ** iteration
             parts.append(hot_potato_format.format(iteration=iteration, multiplier=multiplier))
-        
+
         controls = ring_descriptions.get("controls", "**System Controls**\n- Toggle sweep state\n- Temporal cycle parameter (affects load transfer)")
-        
+
         parts.extend([controls])
-        
+
         return "\n".join(parts)
 
     # Default fallback
@@ -212,7 +212,7 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
     # Defer immediately to prevent interaction timeout
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
-    
+
     server_key = None
     server_id = str(guild.id) if guild else None
     server_name = guild.name if guild else "Unknown"
@@ -295,7 +295,7 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             juggler_role = PERSONALITY.get("roles", {}).get("juggler", {})
             ring_subrole = juggler_role.get("subroles", {}).get("ring", {})
             target_change_msg = ring_subrole.get("target_change", "Changed ring target to")
-            
+
             from agent_db import get_db_instance
             db_instance = get_db_instance(server_id)
             await asyncio.to_thread(
@@ -320,15 +320,15 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
         from roles.juggler.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
 
         enabled = action_name == "ring_on"
-        
+
         # Use roles_config database for independent ring subrole management
         from agent_roles_db import get_roles_db_instance
         if get_roles_db_instance is None:
             await interaction.response.send_message("❌ Ring configuration system is not available.", ephemeral=True)
             return
-            
+
         roles_db = get_roles_db_instance(server_key)
-        
+
         # Save to server_config as subrole of juggler
         try:
             from .server_config import set_role_config_value
@@ -337,13 +337,13 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
         except Exception as e:
             logger.error(f"Failed to update ring config in server_config: {e}")
             ok = False
-        
+
         if ok:
             # Also update ring state for immediate effect
             state = _get_ring_state(server_id)
             state["enabled"] = enabled
             _save_ring_state(server_id, "canvas_admin")
-        
+
         # Refresh the view
         if view and hasattr(view, 'refresh'):
             await view.refresh()
@@ -352,7 +352,7 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
     if action_name == "ring_frequency":
         from roles.juggler.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
         from agent_roles_db import get_roles_db_instance
-        
+
         try:
             hours = int(raw_value)
             if hours < 1:
@@ -367,7 +367,7 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
         if get_roles_db_instance is None:
             await interaction.response.send_message("❌ Ring configuration system is not available.", ephemeral=True)
             return
-            
+
         # Update frequency in server_config as subrole of juggler
         try:
             from .server_config import set_role_config_value
@@ -379,7 +379,7 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
         except Exception as e:
             logger.error(f"Failed to update ring frequency in server_config: {e}")
             ok = False
-        
+
         if ok:
             # Also update ring state for immediate effect
             from roles.juggler.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
@@ -389,16 +389,16 @@ async def handle_canvas_juggler_modal_submit(interaction: discord.Interaction, a
             state["current_frequency_hours"] = hours
             state["frequency_iteration"] = 0
             _save_ring_state(server_id, "canvas_admin")
-            
+
             message = (
                 f"✅ Ring frequency updated to `{hours}` hours.\n"
                 f"🔥 Hot potato counter reset.\n"
             )
         else:
             message = "❌ Failed to update ring frequency."
-        
+
         await interaction.followup.send(message, ephemeral=True)
-        
+
         # Refresh the view
         if view and hasattr(view, 'refresh'):
             await view.refresh()

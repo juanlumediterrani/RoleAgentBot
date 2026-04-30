@@ -172,7 +172,7 @@ def _test_cookies_work(cookie_path: str) -> bool:
 
 
 def _load_mc_answers() -> dict:
-    return {}
+    return PERSONALITY.get("answers", {}).get("mc_messages", {})
 
 
 def _extract_info_sync(query: str, ydl_opts: dict) -> dict:

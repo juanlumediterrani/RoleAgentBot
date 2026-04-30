@@ -1,15 +1,15 @@
 {
     "title": "📚 **Camp Sage**",
     "description": "Access the ancient wisdom of the orc clan from Putre's camp perspective. Ask any question, and I shall share from the scrolls passed down through generations.",
-    "button": "📚 Scholar",
+    "button": "📚 Sage",
     "embed_footer": "📚 Camp Sage 📚",
     "dropdown": {
         "select_action": "📋 Execute instruction...",
-        "toggle_on": "✅ Enable Scholar",
-        "toggle_off": "❌ Disable Scholar"
+        "toggle_on": "✅ Enable Sage",
+        "toggle_off": "❌ Disable Sage"
     },
     "wikipedia_button_label": "📖 Read on Wikipedia",
     "controls_title": "**Controls**",
-    "controls": "- Enable or disable the Scholar role",
-    "admin_flows": "Toggle the Scholar role to enable or disable it."
+    "controls": "- Enable or disable the Sage role",
+    "admin_flows": "Toggle the Sage role to enable or disable it."
 }

@@ -3,7 +3,8 @@
     "description": "Un arte de adivinación de tierras lejanas, adaptado a la sesión de Ozashiki Asobi. Yuki lo ofrece como Hana-machi no Himitsu: un conocimiento secreto que solo ella posee.",
     "button": "🌕 Aruki-miko",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🀄 **Rune-Uranai (ルーン占い)** - Un arte exótico de tierras lejanas. Las runas talladas en madera de sándalo y lacado Urushi con pan de oro aguardan en su kinchaku de seda de kimono antiguo."
+        "nordic_runes": "🀄 **Rune-Uranai (ルーン占い)** - Un arte exótico de tierras lejanas. Las runas talladas en madera de sándalo y lacado Urushi con pan de oro aguardan en su kinchaku de seda de kimono antiguo.",
+        "astrology": "🌟 **Astrología** - Letras hebreas del Sefer Yetzirah para adivinación. Actualmente en desarrollo."
     },
     "moon_phases": {
         "new_moon": "Luna Nueva 🌑",

@@ -3,7 +3,8 @@
     "description": "Observa y haz preguntas del universo al orco chamán.",
     "button": "🐺 Chamán",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir saburía y guia"
+        "nordic_runes": "🔮 **Runas Nórdicas** - Lanza runas antiguas para recibir saburía y guia",
+        "astrology": "🌟 **Astrología** - Letras hebreas del Sefer Yetzirah para adivinación. Actualmente en desarrollo."
     },
     "moon_phases": {
         "new_moon": "Luna Nueva 🌑",
@@ -86,6 +87,51 @@
             "description": "Descripción",
             "success": "🔮 UHHH! Las Runas Antiguas han hablado umano!",
             "saved": "🔮 UHHH! Putre ha guardado tu tirada en los pergaminos antiguos!"
+        }
+    },
+    "astrology": {
+        "button": "🌟 Astrología",
+        "welcome": "✨ ¡Bienvenido a la Astrología del Sefer Yetzirah! Puedo interpretar los 32 caminos de sabiduría a través de las letras hebreas.",
+        "birth_title": "🌟 CARTA NATAL (MAZAL HA'LEIDA) 🌟",
+        "moment_title": "⏰ LECTURA DEL MOMENTO (SHA'AT HA'SHE'ELA) ⏰",
+        "year_title": "📅 AÑO PERSONAL (SHANAH PERATIT) 📅",
+        "integrated_title": "🔮 LECTURA INTEGRADA 🔮",
+        "letters_title": "📜 LAS 22 LETRAS HEBREAS 📜",
+        "history": "📓 **HISTORIAL DE LECTURAS ASTROLÓGICAS** (Últimas {count}) 📓",
+        "stats": "\n**Total de Lecturas:** {total}\n**Tipo Favorito:** {favorite}",
+        "help_content": "El sistema del Sefer Yetzirah revela los 32 caminos de sabiduría a través de 22 letras hebreas (3 Madres, 7 Dobles, 12 Simples). Cada lectura interpreta las fuerzas espirituales en acción.",
+        "invalid_command": "Comando inválido. Usa `!astrology help` para ver los comandos disponibles.",
+        "missing_birth_date": "Por favor proporciona tu fecha de nacimiento en formato YYYY-MM-DD.",
+        "missing_birth_year": "Por favor proporciona tu año de nacimiento o guarda tus datos con `!astrology save_birth`.",
+        "no_birth_data_saved": "No hay datos de nacimiento guardados. Por favor guárdalos primero con `!astrology save_birth YYYY-MM-DD`.",
+        "invalid_date_format": "Formato de fecha inválido. Usa YYYY-MM-DD para fechas y HH:MM para horas.",
+        "birth_data_saved": "✨ ¡Tus datos de nacimiento han sido guardados exitosamente!",
+        "history_empty": "📓 No tienes lecturas astrológicas previas. ¡Comienza con `!astrology birth`!",
+        "error": "Ocurrió un error. Por favor intenta de nuevo.",
+        "labels": {
+            "question": "Pregunta",
+            "element": "Elemento",
+            "planet": "Planeta",
+            "sign": "Signo",
+            "meaning": "Significado",
+            "keywords": "Palabras clave",
+            "interpretation": "Interpretación"
+        },
+        "dropdown": {
+            "astrology_birth": "Carta Natal",
+            "astrology_moment": "Lectura del Momento",
+            "astrology_year": "Año Personal",
+            "astrology_integrated": "Lectura Integrada",
+            "astrology_history": "Historial de Lecturas",
+            "astrology_letters": "Letras Hebreas",
+            "astrology_save_birth": "Guardar Datos de Nacimiento",
+            "astrology_birth_description": "Calcula tu carta natal permanente con Elemento, Planeta y Signo",
+            "astrology_moment_description": "Interpreta las fuerzas espirituales en este momento específico",
+            "astrology_year_description": "Calcula el tema de tu año personal",
+            "astrology_integrated_description": "Lectura completa combinando nacimiento, año y momento",
+            "astrology_history_description": "Ver tus lecturas astrológicas anteriores",
+            "astrology_letters_description": "Ver las 22 letras hebreas con significados",
+            "astrology_save_birth_description": "Guarda tu fecha y hora de nacimiento para cálculos"
         }
     }
 }

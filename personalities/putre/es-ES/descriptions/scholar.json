@@ -1,15 +1,15 @@
 {
     "title": "📚 **Sabio del Kampamento**",
     "description": "Akzesa la sabiduría antigua del klan orko desde la perspectiva del kampamento de Putre. Haz cualquier pregunta, y compartiré de los pergaminos pasados por generaciones.",
-    "button": "📚 Scholar",
+    "button": "📚 Sabio",
     "embed_footer": "📚 Sabio del Kampamento 📚",
     "dropdown": {
         "select_action": "📋 Ejecutar instruccion...",
-        "toggle_on": "✅ Habilitar Scholar",
-        "toggle_off": "❌ Deshabilitar Scholar"
+        "toggle_on": "✅ Habilitar Sabio",
+        "toggle_off": "❌ Deshabilitar Sabio"
     },
     "wikipedia_button_label": "📖 Leer en Wikipedia",
     "controls_title": "**Kontroles**",
-    "controls": "- Habilitar o deshabilitar el rol Scholar",
-    "admin_flows": "Alterna el rol Scholar para habilitar o deshabilitarlo."
+    "controls": "- Habilitar o deshabilitar el rol Sabio",
+    "admin_flows": "Alterna el rol Sabio para habilitar o deshabilitarlo."
 }

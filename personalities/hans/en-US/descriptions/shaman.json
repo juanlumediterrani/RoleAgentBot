@@ -3,7 +3,8 @@
     "description": "Consult ancient Aryan runes for strategic intelligence and military guidance.",
     "button": "📜 Ahnenerbe",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🎚️ **Ancient Aryan Science** - Consult ancient runes for military intelligence and strategic guidance"
+        "nordic_runes": "🎚️ **Ancient Aryan Science** - Consult ancient runes for military intelligence and strategic guidance",
+        "astrology": "🌟 **Astrology** - Sefer Yetzirah Hebrew letters for divination. Currently in development."
     },
     "moon_phases": {
         "new_moon": "New Moon 🌑",

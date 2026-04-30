@@ -136,7 +136,7 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
     # Handle beggar subrole views
     if detail_name in {"beggar"}:
         beggar_state = _get_canvas_beggar_state(guild)
-        
+
         # Get beggar messages from beggar_messages.py
         fund_title = get_canvas_message(server_db_path, "current_fund") if get_canvas_message else "Current found:"
         description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week. Maybe you won some gold."
@@ -145,7 +145,7 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
         title_instructions = get_canvas_message(server_db_path, "title_instructions") if get_canvas_message else "**Instructions**"
         instructions = get_canvas_message(server_db_path, "instructions") if get_canvas_message else " - Click donate in the dropdown menu below.\n - Wait for weekly results at the end of this week.\n - Participate with any amount and Putre will take it into account.\n"
         title_donations = get_canvas_message(server_db_path, "title_donations") if get_canvas_message else "📊 **Donations:**"
-    
+
         parts = [
             description,
             "-" * 45,
@@ -159,8 +159,8 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
             "-" * 45,
             "",
             title_donations,
-        ]   
-        
+        ]
+
         # Add recent donation history if available
         if beggar_state.get('recent_donations'):
             for donation in beggar_state['recent_donations'][:5]:
@@ -171,21 +171,21 @@ def build_canvas_role_banker_detail(detail_name: str, admin_visible: bool, guild
         else:
             no_donations = get_canvas_message(server_db_path, "no_donations") if get_canvas_message else "No donations yet. Be the first to contribute!"
             parts.append(no_donations)
-        
+
         return "\n".join(parts)
 
     if detail_name in {"beggar_admin"}:
         beggar_state = _get_canvas_beggar_state(guild)
         general = personality_descriptions.get("general", {})
-        
+
         # Get localized labels
         action_labels = general.get("action_labels", {})
         label_enabled = action_labels.get("enabled", "Enabled")
         label_disabled = action_labels.get("disabled", "Disabled")
-        
+
         # Get beggar messages from beggar_messages.py
         description = get_canvas_message(server_db_path, "description") if get_canvas_message else " Keep gold for for different reasons and give the result at the end of the week. Maybe you won some gold."
-        
+
         return "\n".join([
             description,
             "-" * 45,

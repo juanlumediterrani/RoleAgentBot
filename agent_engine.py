@@ -28,34 +28,34 @@ def _load_personality_descriptions(server_id: str = None) -> dict:
         from agent_runtime import get_personality_directory
         personality_dir = get_personality_directory(server_id)
         descriptions = {}
-        
+
         # Load main descriptions.json
         descriptions_path = os.path.join(personality_dir, "descriptions.json")
         if os.path.exists(descriptions_path):
             with open(descriptions_path, encoding="utf-8") as f:
                 descriptions = json.load(f).get("discord", {})
-        
+
         # Load news_watcher descriptions from separate file
         news_watcher_descriptions_path = os.path.join(personality_dir, "descriptions", "news_watcher.json")
         if os.path.exists(news_watcher_descriptions_path):
             with open(news_watcher_descriptions_path, encoding="utf-8") as f:
                 news_watcher_data = json.load(f)
                 descriptions["news_watcher"] = news_watcher_data
-        
+
         # Load treasure_hunter descriptions from separate file
         treasure_hunter_descriptions_path = os.path.join(personality_dir, "descriptions", "treasure_hunter.json")
         if os.path.exists(treasure_hunter_descriptions_path):
             with open(treasure_hunter_descriptions_path, encoding="utf-8") as f:
                 treasure_hunter_data = json.load(f)
                 descriptions["treasure_hunter"] = treasure_hunter_data
-        
+
         # Load trickster descriptions from separate file
         trickster_descriptions_path = os.path.join(personality_dir, "descriptions", "trickster.json")
         if os.path.exists(trickster_descriptions_path):
             with open(trickster_descriptions_path, encoding="utf-8") as f:
                 trickster_data = json.load(f)
                 descriptions["trickster"] = trickster_data
-        
+
         # Load banker descriptions from separate file
         banker_descriptions_path = os.path.join(personality_dir, "descriptions", "banker.json")
         if os.path.exists(banker_descriptions_path):
@@ -65,7 +65,7 @@ def _load_personality_descriptions(server_id: str = None) -> dict:
                 if "roles_view_messages" not in descriptions:
                     descriptions["roles_view_messages"] = {}
                 descriptions["roles_view_messages"]["banker"] = banker_descriptions
-        
+
         # Load mc descriptions from separate file
         mc_descriptions_path = os.path.join(personality_dir, "descriptions", "mc.json")
         if os.path.exists(mc_descriptions_path):
@@ -75,7 +75,7 @@ def _load_personality_descriptions(server_id: str = None) -> dict:
                 if "roles_view_messages" not in descriptions:
                     descriptions["roles_view_messages"] = {}
                 descriptions["roles_view_messages"]["mc"] = mc_descriptions
-        
+
         # Load juggler descriptions from separate file
         juggler_descriptions_path = os.path.join(personality_dir, "descriptions", "juggler.json")
         if os.path.exists(juggler_descriptions_path):
@@ -85,7 +85,7 @@ def _load_personality_descriptions(server_id: str = None) -> dict:
                 if "roles_view_messages" not in descriptions:
                     descriptions["roles_view_messages"] = {}
                 descriptions["roles_view_messages"]["juggler"] = juggler_descriptions
-        
+
         return descriptions
     except Exception as e:
         logger.warning(f"Could not load personality descriptions.json: {e}")
@@ -128,15 +128,15 @@ def _get_subrole_frequency_from_config(subrole_name: str) -> int:
         # Load agent_config.json
         with open(_AGENT_CONFIG_PATH, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        
+
         # Navigate to subrole frequency
         roles_cfg = config.get("roles", {})
         trickster_cfg = roles_cfg.get("trickster", {})
         subroles_cfg = trickster_cfg.get("subroles", {})
         subrole_cfg = subroles_cfg.get(subrole_name, {})
-        
+
         return subrole_cfg.get("frequency_hours", 12)  # Default to 12 hours
-        
+
     except Exception as e:
         logger.warning(f"Could not get frequency for {subrole_name} from config: {e}")
         return 12  # Default fallback
@@ -163,7 +163,7 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                     logger.debug(f"🧬 [PERSONALITY] Using server-specific personality: {active_personality} ({language})")
         except Exception as e:
             logger.debug(f"Could not load server config for personality: {e}")
-    
+
     # Fall back to global config if no server-specific config
     if not personality_rel:
         with open(_AGENT_CONFIG_PATH, encoding="utf-8") as f:
@@ -175,13 +175,13 @@ def _cargar_personalidad(server_id: str = None) -> dict:
         # Construct path with language subdirectory
         personality_rel = f"personalities/{default_personality}/{default_language}/personality.json"
         logger.debug(f"🧬 [PERSONALITY] Using default personality from agent_config.json: {default_personality} ({default_language})")
-    
+
     personality_path = os.path.join(_BASE_DIR, personality_rel)
-    
+
     # Base personality directory (legacy/template source)
     base_personality_dir = os.path.dirname(personality_path)
     personality_dir = base_personality_dir
-    
+
     # Check for server-specific personality directory: databases/<server_id>/<personality_name>/
     # NOTE: active_personality_name must be used here — NOT os.path.basename(base_personality_dir)
     # which would return the language code (e.g. "es-ES") instead of the personality name.
@@ -193,12 +193,12 @@ def _cargar_personalidad(server_id: str = None) -> dict:
             server_personality_json = os.path.join(server_personality_dir, 'personality.json')
             logger.debug(f"🧬 [PERSONALITY] server_personality_dir={server_personality_dir}")
             logger.debug(f"🧬 [PERSONALITY] server_personality_json exists={os.path.exists(server_personality_json)}")
-            
+
             # If server directory doesn't exist, create it
             if not os.path.exists(server_personality_dir):
                 os.makedirs(server_personality_dir, exist_ok=True)
                 logger.debug(f"🧬 [PERSONALITY] Created server personality directory: {server_personality_dir}")
-            
+
             # Copy missing JSON files from base personality to server directory
             import shutil
             files_to_copy = ['personality.json', 'prompts.json', 'descriptions.json', 'answers.json']
@@ -210,7 +210,7 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                     shutil.copy2(src_file, dst_file)
                     logger.debug(f"🧬 [PERSONALITY] Copied missing file: {json_file}")
                     files_copied = True
-            
+
             # Copy descriptions subdirectory if missing
             src_desc_dir = os.path.join(base_personality_dir, 'descriptions')
             dst_desc_dir = os.path.join(server_personality_dir, 'descriptions')
@@ -218,7 +218,7 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                 shutil.copytree(src_desc_dir, dst_desc_dir)
                 logger.debug(f"🧬 [PERSONALITY] Copied missing directory: descriptions/")
                 files_copied = True
-            
+
             # Now use server directory if files exist
             if os.path.exists(server_personality_json):
                 personality_dir = server_personality_dir
@@ -227,21 +227,21 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                 logger.warning(f"🧬 [PERSONALITY] Could not copy personality to server directory, using base: {base_personality_dir}")
         except Exception as e:
             logger.warning(f"Could not get server personality directory: {e}")
-    
+
     # Load personality from selected directory (server or base)
     merged_personality = {}
-    
+
     if os.path.exists(os.path.join(personality_dir, 'personality.json')) and \
        os.path.exists(os.path.join(personality_dir, 'prompts.json')):
         # Load split files
         personality_file = os.path.join(personality_dir, 'personality.json')
         with open(personality_file, encoding="utf-8") as f:
             merged_personality.update(json.load(f))
-        
+
         prompts_file = os.path.join(personality_dir, 'prompts.json')
         with open(prompts_file, encoding="utf-8") as f:
             merged_personality.update(json.load(f))
-        
+
         descriptions_file = os.path.join(personality_dir, 'descriptions.json')
         if os.path.exists(descriptions_file):
             with open(descriptions_file, encoding="utf-8") as f:
@@ -250,9 +250,9 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                     merged_personality['discord'] = {}
                 merged_personality['discord'].update(descriptions_data.get('discord', {}))
                 merged_personality['descriptions'] = descriptions_data.get('discord', {})
-        
+
         return merged_personality
-    
+
     else:
         # Load single file structure
         with open(personality_path, encoding="utf-8") as f:
@@ -266,25 +266,25 @@ _personality_cache = {}
 def _get_personality(server_id: str = None) -> dict:
     """
     Get personality with server-specific caching.
-    
+
     This function dynamically loads personality based on the active server,
     caching the result to avoid repeated file reads for the same server.
-    
+
     The cache is validated against server_config.json to detect personality
     changes made by other processes (e.g. Discord Canvas changing personality
     while the scheduler process still has the old personality cached).
-    
+
     Args:
         server_id: Optional server ID to load specific server personality
-        
+
     Returns:
         dict: Personality configuration
     """
     global _personality_cache
-    
+
     # Normalize server_id (None means global/default)
     cache_key = server_id or "global"
-    
+
     # Validate cached personality still matches server_config.json
     # This is critical because personality can change in a different process
     # (Discord bot subprocess) while this process (scheduler) keeps stale cache
@@ -305,25 +305,25 @@ def _get_personality(server_id: str = None) -> dict:
                     needs_reload = True
         except Exception as e:
             logger.debug(f"🎭 [PERSONALITY] Could not validate cache for server {server_id}: {e}")
-    
+
     if needs_reload:
         _personality_cache[cache_key] = _cargar_personalidad(server_id)
         if os.getenv('ROLE_AGENT_PROCESS') != '1':
             logger.debug(f"🎭 [PERSONALITY] Loaded: {_personality_cache[cache_key].get('name', 'Unknown')} (server: {server_id})")
-    
+
     return _personality_cache[cache_key]
 
 # Create dynamic PERSONALITY property
 class _PersonalityProxy:
     """
     Proxy for dynamic personality loading.
-    
+
     WARNING: This global proxy returns the DEFAULT personality from agent_config.json.
     In multi-server deployments, this may NOT be the correct personality for a specific server.
     Use _get_personality(server_id) instead to get the server-specific personality.
     """
     _warning_logged = False  # Class-level flag to warn only once
-    
+
     def _log_warning_once(self):
         """Log a warning about using global PERSONALITY in multi-server context."""
         if not _PersonalityProxy._warning_logged and os.getenv('ROLE_AGENT_PROCESS') != '1':
@@ -333,31 +333,31 @@ class _PersonalityProxy:
                 "Global proxy returns DEFAULT personality from agent_config.json, which may cause personality mixing."
             )
             _PersonalityProxy._warning_logged = True
-    
+
     def __getitem__(self, key):
         self._log_warning_once()
         return _get_personality().get(key)
-    
+
     def get(self, key, default=None):
         self._log_warning_once()
         return _get_personality().get(key, default)
-    
+
     def __contains__(self, key):
         self._log_warning_once()
         return key in _get_personality()
-    
+
     def keys(self):
         self._log_warning_once()
         return _get_personality().keys()
-    
+
     def values(self):
         self._log_warning_once()
         return _get_personality().values()
-    
+
     def items(self):
         self._log_warning_once()
         return _get_personality().items()
-    
+
     def __repr__(self):
         self._log_warning_once()
         return repr(_get_personality())
@@ -368,10 +368,10 @@ PERSONALITY = _PersonalityProxy()
 def reload_personality(server_id: str = None):
     """
     Force reload of personality cache.
-    
+
     Call this when the active server changes to ensure the correct
     server-specific personality is loaded.
-    
+
     Args:
         server_id: Optional specific server ID to reload, or None to clear all cache
     """
@@ -405,27 +405,27 @@ _personality_descriptions_cache = {}
 def _get_personality_descriptions(server_id: str = None) -> dict:
     """
     Get personality descriptions with server-specific caching.
-    
+
     This function dynamically loads descriptions based on the active server,
     caching the result to avoid repeated file reads for the same server.
-    
+
     Args:
         server_id: Optional server ID to load specific server descriptions
-        
+
     Returns:
         dict: Personality descriptions
     """
     global _personality_descriptions_cache
-    
+
     # Normalize server_id (None means global/default)
     cache_key = server_id or "global"
-    
+
     # Check if we need to reload (not in cache)
     if cache_key not in _personality_descriptions_cache:
         _personality_descriptions_cache[cache_key] = _load_personality_descriptions(server_id)
         if os.getenv('ROLE_AGENT_PROCESS') != '1':
             logger.debug(f"📝 [DESCRIPTIONS] Loaded for server: {server_id}")
-    
+
     return _personality_descriptions_cache[cache_key]
 
 
@@ -434,22 +434,22 @@ class _PersonalityDescriptionsProxy:
     """Proxy for dynamic personality descriptions loading."""
     def __getitem__(self, key):
         return _get_personality_descriptions().get(key)
-    
+
     def get(self, key, default=None):
         return _get_personality_descriptions().get(key, default)
-    
+
     def __contains__(self, key):
         return key in _get_personality_descriptions()
-    
+
     def keys(self):
         return _get_personality_descriptions().keys()
-    
+
     def values(self):
         return _get_personality_descriptions().values()
-    
+
     def items(self):
         return _get_personality_descriptions().items()
-    
+
     def __repr__(self):
         return repr(_get_personality_descriptions())
 
@@ -486,9 +486,9 @@ def _get_role_prompt_catalog() -> dict:
 def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str = None) -> str:
     if not isinstance(config, dict):
         return ""
-    
+
     duty_text = str(config.get("active_duty") or config.get("mission_active") or "").strip()
-    
+
     # Handle ring subrole special case: replace <accusated_user> placeholder
     if subrole_name == "ring" and server_id and "<accusated_user>" in duty_text:
         try:
@@ -501,7 +501,7 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
             logger.warning(f"🎭 [RING] Failed to replace <accusated_user> placeholder: {e}")
             # Fallback to a generic name if ring state is not available
             duty_text = duty_text.replace("<accusated_user>", "el usuario sospechoso")
-    
+
     # Handle beggar subrole special case: always append current reason regardless of format
     if subrole_name == "beggar" and server_id:
         try:
@@ -538,17 +538,17 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
                 logger.debug("🎭 [BEGGAR] Beggar not enabled, leaving base line unchanged")
         except Exception as e:
             logger.debug(f"🎭 [BEGGAR] Failed to inject current reason: {e}")
-    
+
     return duty_text
 
 
 def _get_role_display_name(role_name: str, server_id: str = None) -> str:
     """Get display name from role description files with fallback to technical name.
-    
+
     Args:
         role_name: Technical role name (e.g., "news_watcher")
         server_id: Optional server ID to load from server-specific directory (databases/<server_id>/<personality>/descriptions/)
-    
+
     Returns:
         Display title from descriptions file, or role_name if not found
     """
@@ -556,7 +556,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
         from pathlib import Path
         import json
         import os
-        
+
         def _get_personality_dir():
             """Get the personality directory, prioritizing server-specific copy."""
             try:
@@ -569,7 +569,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                             return Path(server_dir)
                     except:
                         pass
-                
+
                 # Try to get from agent_runtime (may also use server-specific)
                 try:
                     from agent_runtime import get_personality_directory
@@ -578,7 +578,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                         return Path(runtime_dir)
                 except:
                     pass
-                
+
                 # Fall back to global personality directory
                 default_personality = AGENT_CFG.get("default_personality", "rab")
                 default_language = AGENT_CFG.get("default_language", "en-US")
@@ -588,10 +588,10 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
             except:
                 # Fallback to putre if something goes wrong
                 return Path(__file__).parent / "personalities" / "putre"
-        
+
         personality_dir = _get_personality_dir()
         descriptions_dir = personality_dir / "descriptions"
-        
+
         # Map role names to their description file names
         role_file_map = {
             "news_watcher": "news_watcher.json",
@@ -603,7 +603,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
             "shaman": "shaman.json",
             "scholar": "scholar.json",
         }
-        
+
         # For main roles, load from individual description files
         if role_name in role_file_map:
             role_desc_path = descriptions_dir / role_file_map[role_name]
@@ -612,7 +612,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                 title = role_desc.get("title", "").replace("**", "").strip()
                 if title:
                     return title
-        
+
         # For trickster subroles, load from trickster.json
         trickster_subrole_names = {"dice_game"}
         if role_name in trickster_subrole_names:
@@ -636,7 +636,7 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                     title = desc_text.split("-")[0].replace("🙏", "").replace("🔮", "").replace("🎲", "").replace("👁️", "").strip()
                     if title:
                         return title
-        
+
         # For banker subroles, load from banker.json
         banker_subrole_names = {"beggar"}
         if role_name in banker_subrole_names:
@@ -679,14 +679,14 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
             shaman_path = descriptions_dir / "shaman.json"
             if shaman_path.exists():
                 shaman_desc = json.loads(shaman_path.read_text(encoding='utf-8'))
-                
+
                 # Try to get title from subrole-specific section first
                 subrole_section = shaman_desc.get(role_name, {})
                 if isinstance(subrole_section, dict):
                     title = subrole_section.get("title", "").replace("**", "").strip()
                     if title:
                         return title
-                
+
                 # Fallback to canvas_shaman_subrole_descriptions
                 subrole_descriptions = shaman_desc.get("canvas_shaman_subrole_descriptions", {})
                 if role_name in subrole_descriptions:
@@ -700,10 +700,10 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                     title = desc_text.split("-")[0].replace("🔮", "").strip()
                     if title:
                         return title
-                        
+
     except Exception:
         pass  # Silently fall back to technical name if anything fails
-    
+
     # Fallback to technical name
     return role_name
 
@@ -718,7 +718,7 @@ def _get_active_roles_section(server_id: str = None) -> str:
             personality = PERSONALITY
     else:
         personality = PERSONALITY
-    
+
     # Load roles from database instead of AGENT_CFG
     roles = {}
     if server_id:
@@ -749,16 +749,16 @@ def _get_active_roles_section(server_id: str = None) -> str:
 
     lines: list[str] = []
     logger.debug(f"[_get_active_roles_section] Processing {len(roles)} roles")
-    
+
     # Define known subroles to exclude from main roles list
     known_subroles = {"dice_game", "nordic_runes", "beggar", "ring"}
-    
+
     for role_name, role_cfg in roles.items():
         # Skip known subroles - they should not appear as independent roles in the list
         if role_name in known_subroles:
             logger.debug(f"[_get_active_roles_section] Skipping subrole: {role_name}")
             continue
-            
+
         logger.debug(f"[_get_active_roles_section] Checking role: {role_name}, enabled={role_cfg.get('enabled', False) if isinstance(role_cfg, dict) else 'N/A'}")
         if not isinstance(role_cfg, dict) or not role_cfg.get("enabled", False):
             continue
@@ -782,9 +782,9 @@ def _get_active_roles_section(server_id: str = None) -> str:
             if not isinstance(subrole_cfg, dict) or not subrole_cfg.get("enabled", False):
                 continue
             subrole_prompt_cfg = role_subroles_cfg.get(subrole_name, {})
-            
+
             subrole_duty = _get_active_duty_text(subrole_prompt_cfg, server_id, subrole_name)
-            
+
             # Special handling for beggar subrole: add fund and contributions
             logger.debug(f"[_get_active_roles_section] Checking beggar condition: role_name={role_name}, subrole_name={subrole_name}, server_id={server_id}")
             if role_name == "banker" and subrole_name == "beggar" and server_id:
@@ -792,31 +792,31 @@ def _get_active_roles_section(server_id: str = None) -> str:
                 try:
                     from roles.banker.subroles.beggar.beggar_db import get_beggar_db
                     import traceback
-                    
+
                     beggar_db = get_beggar_db(server_id)
                     fund_balance = beggar_db.get_fund_balance()
                     participants = beggar_db.get_donation_participants()
-                    
+
                     logger.debug(f"[BEGGAR DEBUG] Server {server_id}: fund={fund_balance}, participants={len(participants)}")
-                    
+
                     server_personality = _get_personality(server_id)
                     beggar_section = server_personality.get("roles", {}).get("banker", {}).get("subroles", {}).get("beggar", {})
-                    
+
                     logger.debug(
                         f"[BEGGAR DEBUG] Loaded beggar section from personality={server_personality.get('name', 'unknown')} "
                         f"subrole_keys={list(server_personality.get('roles', {}).get('banker', {}).get('subroles', {}).keys())}"
                     )
-                    
+
                     fund_label = beggar_section.get("current_fund", "Fondo actual:")
                     coin = beggar_section.get("coin", "🪙")
                     donnor_label = beggar_section.get("donnor", "Donadores:")
-                    
+
                     # Get current reason from config
                     current_reason = beggar_db.get_current_reason() if hasattr(beggar_db, 'get_current_reason') else "server projects"
-                    
+
                     # Build fund info string - Fondo actual primero, luego donadores
                     fund_info = f"\n  {fund_label} {fund_balance:,} {coin}"
-                    
+
                     # Add individual participants with donations
                     if participants:
                         fund_info += f"\n  {donnor_label}"
@@ -824,19 +824,19 @@ def _get_active_roles_section(server_id: str = None) -> str:
                             name = participant.get('user_name', 'Unknown')
                             amount = participant.get('total_donated', 0)
                             fund_info += f"\n    - {name}({amount})"
-                    
+
                     # Append to duty
                     if subrole_duty:
                         subrole_duty += fund_info
                     else:
                         subrole_duty = fund_info.lstrip()
-                    
+
                     logger.debug(f"[BEGGAR DEBUG] Successfully added beggar fund info to prompt")
-                        
+
                 except Exception as e:
                     logger.error(f"[BEGGAR DEBUG] Failed to load beggar fund info for server {server_id}: {e}")
                     logger.error(f"[BEGGAR DEBUG] Traceback: {traceback.format_exc()}")
-            
+
             if subrole_duty:
                 subrole_display = _get_role_display_name(subrole_name, server_id)
                 lines.append(subrole_template.format(scope=subrole_display, duty=subrole_duty))
@@ -847,16 +847,16 @@ def _get_active_roles_section(server_id: str = None) -> str:
 
 def _load_active_tasks_system_additions() -> list[str]:
     global _roles_verified, _active_tasks_cache
-    
+
     # If already verified, return cache
     if _roles_verified:
         return _active_tasks_cache
 
     is_role_process = os.getenv('ROLE_AGENT_PROCESS') == '1'
-    
+
     roles = (AGENT_CFG or {}).get("roles", {})
     additions: list[str] = []
-    
+
     if not is_role_process:
         logger.debug("🎭 [ROLES] Verifying configured roles...")
     enabled_roles = []
@@ -884,19 +884,19 @@ def _load_active_tasks_system_additions() -> list[str]:
             if not is_role_process:
                 logger.debug(f"   📋 [ROL] '{role_name}' - integrated mode (no script)")
             continue
-            
+
         role_script_path = os.path.join(_BASE_DIR, script_path)
         if not os.path.exists(role_script_path):
             if not is_role_process:
                 logger.warning(f"   ⚠️ [Role] Script not found: {role_script_path}")
                 logger.warning(f"   ⚠️ [ROL] Script not found: {role_script_path}")
             continue
-        
+
         try:
             # Read file and extract MISSION_CONFIG with regex to avoid importing
             with open(role_script_path, encoding="utf-8") as f:
                 content = f.read()
-            
+
             # Search for MISSION_CONFIG in code
             import re
             mission_match = re.search(r'MISSION_CONFIG\s*=\s*{([^}]+)}', content, re.DOTALL)
@@ -918,13 +918,13 @@ def _load_active_tasks_system_additions() -> list[str]:
                             if not is_role_process:
                                 logger.debug(f"   🔄 [ROL] '{role_name}' - contextual context (not global): {addition[:50]}...")
                         continue
-            
+
             if not is_role_process:
                 logger.warning(f"⚠️ No valid MISSION_CONFIG found in {role_name}")
         except Exception as e:
             if not is_role_process:
                 logger.warning(f"⚠️ Could not load MISSION_CONFIG from {role_name}: {e}")
-        
+
         # Process enabled subroles (except beggar and ring which are loaded from JSON)
         subroles = role_cfg.get("subroles", {})
         if isinstance(subroles, dict):
@@ -933,25 +933,25 @@ def _load_active_tasks_system_additions() -> list[str]:
                     continue
                 if not subrole_cfg.get("enabled", False):
                     continue
-                
+
                 # Skip beggar and ring - loaded from JSON
                 if subrole_name in ["beggar", "ring"]:
                     continue
-                
+
                 subrole_script_path = subrole_cfg.get("script", "")
                 if not subrole_script_path:
                     continue
-                
+
                 full_subrole_path = os.path.join(_BASE_DIR, subrole_script_path)
                 if not os.path.exists(full_subrole_path):
                     if not is_role_process:
                         logger.warning(f"   ⚠️ [Subrole] Script not found: {full_subrole_path}")
                     continue
-                
+
                 try:
                     with open(full_subrole_path, encoding="utf-8") as f:
                         subrole_content = f.read()
-                    
+
                     import re
                     subrole_mission_match = re.search(r'MISSION_CONFIG\s*=\s*{([^}]+)}', subrole_content, re.DOTALL)
                     if subrole_mission_match:
@@ -975,11 +975,11 @@ def _load_active_tasks_system_additions() -> list[str]:
             logger.debug(f"🎭 [ROLES] Total active: {len(enabled_roles)} - {', '.join(enabled_roles)}")
         else:
             logger.debug("🎭 [ROLES] No active roles configured")
-    
+
     # Mark as verified and save cache
     _roles_verified = True
     _active_tasks_cache = additions
-    
+
     return additions
 
 def increment_usage():
@@ -1094,13 +1094,13 @@ def get_active_subroles(server_id: str = None):
         else:
             # Use global personality
             subroles = PERSONALITY.get("roles", {}).get("trickster", {}).get("subroles", {})
-        
+
         active_subroles = {}
-        
+
         for subrole_name, subrole_config in subroles.items():
             if "internal_task" in subrole_config:
                 active_subroles[subrole_name] = subrole_config
-                
+
         return active_subroles
     except Exception as e:
         logger.error(f"Error loading subroles: {e}")
@@ -1143,28 +1143,28 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
     """Execute internal task for a subrole."""
     try:
         logger.debug(f"🎭 [SUBROLE] Executing internal task: {subrole_name} (server: {server_id})")
-        
+
         # Get bot instance if not provided (needed for Discord operations like channel selection)
         if bot_instance is None:
             from discord_bot.agent_discord import get_bot_instance
             bot_instance = get_bot_instance()
-        
+
         # Get system prompt and base mission prompt (server-specific personality)
         if server_id is None:
             from agent_db import get_server_id
             server_id = get_server_id()
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
         system_instruction = _build_system_prompt(server_personality, server_id)
-        
+
         # Get subrole_config from server-specific personality to ensure correct language
         subroles = server_personality.get("roles", {}).get("trickster", {}).get("subroles", {})
         server_subrole_config = subroles.get(subrole_name, subrole_config)
-        
+
         mission_prompt = _get_active_duty_text(server_subrole_config, server_id, subrole_name)
-        
+
         # Build the complete prompt with task and reasons at the end
         base_task_prompt = server_subrole_config.get("internal_task", {}).get("prompt", "")
-        
+
         # Add specific reasons/methods at the end
         task_details = ""
         if subrole_name == "beggar":
@@ -1310,11 +1310,11 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                                 target_user = guild.get_member(int(target_user_id))
                         except Exception:
                             pass
-                        
+
                         # Fallback to bot cache
                         if not target_user:
                             target_user = bot.get_user(int(target_user_id))
-                        
+
                         if target_user:
                             await target_user.send(f"👁️ **RING ACCUSATION**\n{accusation}")
                             logger.debug(f"🎭 [RING] Accusation sent via DM to {target_user_name}")
@@ -1351,10 +1351,10 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             except Exception as e:
                 logger.error(f"🎭 [RING] Error in ring execution: {e}")
             return
-        
+
         # Construct complete prompt: mission + task + details
         complete_prompt = f"{mission_prompt}\n\n{base_task_prompt}{task_details}\n\nRespond only with what the bot would say, without additional explanations."
-        
+
         # Call LLM (use server-specific personality)
         server_personality_for_call = _get_personality(server_id) if server_id else PERSONALITY
         response = call_llm(
@@ -1367,7 +1367,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             critical=False,
             metadata={"subrole": subrole_name, "server_id": server_id}
         )
-        
+
         if response and len(response) > 10:
             logger.debug(f"🎭 [{subrole_name.upper()}] Task executed successfully")
         else:

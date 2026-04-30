@@ -165,7 +165,7 @@ def build_canvas_behavior_detail(
     behavior_descriptions = _desc.get("behavior_messages", {})
     general_descriptions = _desc.get("general", {})
     title_status = general_descriptions.get("status", "**Current status**")
-    
+
     # Get personality directory name for prompts.json path
     personality_dir = get_server_personality_dir(server_id)
     personality_name = Path(personality_dir).name if personality_dir else _get_server_personality_name(server_id)
@@ -279,9 +279,9 @@ def build_canvas_behavior_detail(
         memory_content = ""
         try:
             from agent_db import get_db_instance
-            
+
             db = get_db_instance(server_id)
-            
+
             # Map memory types to database methods
             if selected_memory_type == "long":
                 record = db.get_daily_memory_record()
@@ -383,7 +383,7 @@ def build_canvas_behavior_detail(
             else:
                 # Unknown memory type - use English hardcoded fallback
                 memory_content = "Unrecognized memory type."
-                
+
         except Exception as e:
             logger.warning(f"Could not load memory content from database: {e}")
             memory_content = "Error loading memory content."
@@ -397,7 +397,7 @@ def build_canvas_behavior_detail(
         long_config = memory_config.get("long", {})
         recent_config = memory_config.get("recent", {})
         relationship_config = memory_config.get("relationship", {})
-        
+
         label_long = long_config.get("label", "Long Memory")
         label_recent = recent_config.get("label", "Recent Memory")
         label_relationship = relationship_config.get("label", "Relationship Memory")
@@ -428,19 +428,19 @@ def build_canvas_behavior_detail(
         # Reemplazar placeholders con el nombre del bot
         memory_title = memory_title
         memory_description = memory_description
-        
+
         # Build content with memory content based on selected type
         content_lines = [
             f"{selected_title}",
             "",
             memory_content
         ]
-        
+
         content_lines.extend([
             "",
             "─" * 45,
         ])
-        
+
         content = "\n".join(content_lines)
         return (memory_title, memory_description, content)
 
@@ -493,7 +493,7 @@ def build_canvas_behavior_detail(
         from .server_config import get_server_language, get_available_languages
 
         server_id = str(guild.id) if guild else "0"
-        
+
         # Get current server language
         current_language = get_server_language(server_id)
         available_langs = get_available_languages()

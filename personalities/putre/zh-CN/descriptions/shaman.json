@@ -3,7 +3,8 @@
     "description": "观察并向兽人先知问宇宙的问题。",
     "button": "🐺 先知",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🔮 **北欧符文** - 投古老符文获智慧和指引"
+        "nordic_runes": "🔮 **北欧符文** - 投古老符文获智慧和指引",
+        "astrology": "🌟 **占星术** - 创造之书希伯来字母用于占卜。目前正在开发中。"
     },
     "moon_phases": {
         "new_moon": "新月 🌑",

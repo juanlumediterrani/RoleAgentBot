@@ -1,0 +1,197 @@
+{
+    "positions": {
+        "Elemento Natal": "Natal Element",
+        "Planeta Rector": "Ruling Planet",
+        "Signo Zodiacal": "Zodiac Sign",
+        "Elemento del Momento": "Moment Element",
+        "Planeta del Día": "Day Planet",
+        "Signo del Mes": "Month Sign",
+        "Número Personal": "Personal Number",
+        "Letra del Año": "Year Letter",
+        "Año Colectivo": "Collective Year",
+        "Carta Natal (Permanente)": "Birth Chart (Permanent)",
+        "Año Personal (Cíclico)": "Personal Year (Cyclical)",
+        "Momento (Inmediato)": "Moment (Immediate)"
+    },
+    "translations": {
+        "alef": {
+            "meaning": "Air, Balance, Mediation",
+            "keywords": "balance, mediation, intellect, breathing, connection, air",
+            "interpretation": "The mediating soul that connects and balances. Substrate of the soul that allows broad intellectual understanding. Work in the chest and breathing."
+        },
+        "mem": {
+            "meaning": "Water, Depth, Receptivity",
+            "keywords": "depth, emotion, receptivity, interior, fluidity, water",
+            "interpretation": "The deep and receptive soul. Oriented toward the interior and emotions. Work in the belly and emotions. Descent, inner gestation."
+        },
+        "shin": {
+            "meaning": "Fire, Expansion, Mental Clarity",
+            "keywords": "expansion, mind, fire, transformation, clarity",
+            "interpretation": "The expansive and mental soul. Oriented toward the heights and intellectual clarity. Work in the head and mind. Great mental changes."
+        },
+        "bet": {
+            "meaning": "Saturn, Limits, Wisdom",
+            "keywords": "limits, time, wisdom, restriction, karma, discipline",
+            "interpretation": "Planet of limits and wisdom trials. Brings deep wisdom or stubborn foolishness depending on tikún. You harvest what you sow."
+        },
+        "gimel": {
+            "meaning": "Jupiter, Expansion, Abundance",
+            "keywords": "expansion, justice, abundance, spiritual journeys, teaching, learning",
+            "interpretation": "Planet of expansion and abundance. Possible wealth or poverty depending on how its duality is worked. Spiritual journeys."
+        },
+        "dalet": {
+            "meaning": "Mars, Action, Conflict",
+            "keywords": "action, conflict, energy, decision, surgery, competition",
+            "interpretation": "Planet of active energy and conflicts. Fertility or desolation depending on challenge resolution. Urgent decisions."
+        },
+        "kaf": {
+            "meaning": "Sun, Identity, Vitality",
+            "keywords": "identity, vitality, leadership, visibility, recognition, life",
+            "interpretation": "Planet of identity and full life. The self is exposed to the world. Life or death depending on soul vitality. Leadership."
+        },
+        "pe": {
+            "meaning": "Venus, Relationships, Harmony",
+            "keywords": "relationships, art, harmony, money, affection, power",
+            "interpretation": "Planet of relationships and art. Constructive dominance or servitude depending on affective and power choices. Harmony or rupture."
+        },
+        "resh": {
+            "meaning": "Mercury, Communication, Movement",
+            "keywords": "communication, contracts, studies, messages, movement, exchange",
+            "interpretation": "Planet of communication and movement. Peace or war depending on honest or deceptive language use. Studies and messages."
+        },
+        "tav": {
+            "meaning": "Moon, Cycles, Emotions",
+            "keywords": "cycles, emotions, domestic, changing, feminine, intuition",
+            "interpretation": "Planet of cycles and emotions. What flows and changes ceaselessly. Grace or ugliness depending on sensitivity. The domestic."
+        },
+        "he": {
+            "meaning": "Aries, Speech, Expression",
+            "keywords": "speech, expression, initiation, communication, word, beginning",
+            "interpretation": "The faculty of speech as soul instrument. What is said or not said defines the course of situations. Initiation and beginnings."
+        },
+        "vav": {
+            "meaning": "Taurus, Thought, Rooting",
+            "keywords": "thought, reflection, rooting, consolidation, slowness, stability",
+            "interpretation": "Thought as primary action mode. Year of slow reflection and mental consolidation. Rooting and stability."
+        },
+        "zayin": {
+            "meaning": "Gemini, Movement, Change",
+            "keywords": "movement, change, duality, displacement, versatility, adaptation",
+            "interpretation": "Movement dominates the soul. Year of displacements, changes, and active dualities. Versatility and adaptation."
+        },
+        "jet": {
+            "meaning": "Cancer, Vision, Perception",
+            "keywords": "vision, perception, illusion, revelation, intuition, clarity",
+            "interpretation": "Vision as key faculty. Year of perception, visual revelations or illusions. Clarity or visual confusion."
+        },
+        "tet": {
+            "meaning": "Leo, Hearing, Leadership",
+            "keywords": "hearing, listening, leadership, visibility, revelation, authority",
+            "interpretation": "Hearing leads the soul. Listening (or not) is the axis of the year and situations. Visibility and leadership."
+        },
+        "yod": {
+            "meaning": "Virgo, Action, Work",
+            "keywords": "action, work, detail, service, method, perfection",
+            "interpretation": "Concrete action defines the soul. Year of methodical work, service, and attention to detail. Perfection and method."
+        },
+        "lamed": {
+            "meaning": "Libra, Union, Relationships",
+            "keywords": "union, relationships, alliances, contracts, balance, partnership",
+            "interpretation": "Union is central to the soul. Relationships, alliances, and life contracts define the course. Balance and harmony."
+        },
+        "nun": {
+            "meaning": "Scorpio, Smell, Instinct",
+            "keywords": "smell, instinct, hidden, depth, transformation, mystery",
+            "interpretation": "Smell-instinct guides the soul. Year of deep perception where the hidden comes to light. Transformation and mystery."
+        },
+        "samej": {
+            "meaning": "Sagittarius, Dream, Vision",
+            "keywords": "dream, vision, direction, spirituality, travel, expansion",
+            "interpretation": "Dream orients the soul. Inner visions and sense of spiritual direction guide the year. Travels and expansion."
+        },
+        "ayin": {
+            "meaning": "Capricorn, Anger, Authority",
+            "keywords": "anger, authority, trial, discipline, mastery, structure",
+            "interpretation": "Anger or its mastery is the soul theme. Year of emotional trial and authority development. Discipline and structure."
+        },
+        "tzadi": {
+            "meaning": "Aquarius, Swallowing, Assimilation",
+            "keywords": "swallowing, assimilation, acceptance, rejection, processing, integration",
+            "interpretation": "Swallowing/asimilation defines the soul. What is accepted or rejected from life marks the path. Integration of experiences."
+        },
+        "kof": {
+            "meaning": "Pisces, Laughter, Dissolution",
+            "keywords": "laughter, humor, dissolution, detachment, grace, compassion",
+            "interpretation": "Laughter/cosmic humor guides the soul. Year of dissolution, detachment, and divine grace. Compassion and surrender."
+        }
+    },
+    "guidance": {
+        "love": {
+            "alef": "Alef invites cultivating shared balance as foundation of the loving bond. Love, like Air, requires conscious mediation and reciprocal openness; affective wealth must circulate between both parties.",
+            "mem": "The emotional depth of Mem claims authentic connection and receptivity in your love life. It is time to descend into the depths of feeling with courage toward true union.",
+            "shin": "Shin indicates that your relationship may be exposed to transformative mental forces. Protect the bond with clarity and face obstacles together.",
+            "bet": "Bet reminds that love requires patience and wisdom. Saturn's limits in relationships are not obstacles but the structure that allows lasting bonds to be built over time.",
+            "gimel": "Gimel announces expansion and abundance in your love life. Jupiter's energy brings opportunities for growth, but remember that true wealth in relationships comes from honest reciprocity.",
+            "dalet": "Dalet warns that conflicts may arise in your relationship. Mars' energy requires action and courage; face challenges together rather than avoiding them.",
+            "kaf": "Kaf illuminates your love life with solar energy of identity and visibility. It is a moment to express yourself authentically and let the relationship shine in its true light.",
+            "pe": "Pe indicates that harmony and balance are key in your relationship. Venus invites cultivating fair exchange and mutual appreciation as foundation of lasting bonds.",
+            "resh": "Resh makes honest communication the pillar of your relationship. Words expressed with truth and those heard with attention weave the most lasting bond.",
+            "tav": "Tav invites emotional flow and sensitivity in your love life. The Moon's cycles remind that relationships have their seasons; trust the natural rhythm.",
+            "he": "He makes speech the foundation of your relationship. Words expressed with truth create the most lasting bond; speak with intention and listen with attention.",
+            "vav": "Vav proposes that your love path advance with thoughtful reflection. It is not blind impulse, but movement aligned with deep understanding that strengthens the union.",
+            "zayin": "Zayin indicates that your relationship is in active movement and change. Adaptability and openness to new experiences will strengthen the bond.",
+            "jet": "Jet illuminates your love life with the clarity of perception. Deep understanding of the other is the basis of a relationship that transcends the superficial.",
+            "tet": "Tet calls you to listen deeply in your relationship. Hearing the other's truth is the key for the bond to emerge renewed.",
+            "yod": "Yod indicates that concrete actions define your love life. Small acts of service and attention build the most solid foundations.",
+            "lamed": "Lamed reminds that true love is sacred union: every bond creates responsibility that balances the relationship. Ensure that giving and receiving flow with equity.",
+            "nun": "Nun invites trusting instinct and deep perception to navigate heart matters. The hidden dimensions of love contain wisdom that reason cannot see.",
+            "samej": "Samej indicates that love is in a period of vision and direction. Inner insights about the relationship will guide you toward the right path.",
+            "ayin": "Ayin calls you to work on emotional mastery in your relationship. The discipline of love transforms challenges into opportunities for growth.",
+            "tzadi": "Tzadi indicates that assimilation and acceptance are key in your relationship. Accept what is and integrate the lessons that love brings.",
+            "kof": "Kof invites letting go with grace and humor in your love life. Detachment from expectations allows love to flow naturally.",
+            "default": "This letter bears the wisdom of the Sefer Yetzirah and manifests in your love life with a message that deserves deep contemplation."
+        },
+        "career": {
+            "alef": "Alef indicates that your career path requires balance and mediation. The intellectual clarity of Air will help you navigate professional challenges with wisdom.",
+            "mem": "Mem invites emotional depth and receptivity in your professional life. Intuition and the ability to connect deeply with others are your greatest assets now.",
+            "shin": "Shin calls you to expand your mental horizons in the work. Clarity of thought and the ability to see the big picture will lead to breakthroughs.",
+            "bet": "Bet reminds that career success requires discipline and patience. Saturn's energy rewards those who build solid foundations over time.",
+            "gimel": "Gimel announces expansion and abundance in your professional path. Jupiter's energy brings opportunities for growth and advancement.",
+            "dalet": "Dalet calls you to act with courage and determination in your career. Mars' energy is the fuel you need to overcome obstacles.",
+            "kaf": "Kaf illuminates your professional path with solar energy of leadership. It is a moment to take initiative and let your talents shine.",
+            "pe": "Pe indicates that harmony and cooperation are key in your professional life. Venus invites building alliances based on fair exchange.",
+            "resh": "Resh indicates that clear communication and precise transmission of knowledge are your greatest professional assets now.",
+            "tav": "Tav invites adaptability and emotional intelligence in your work. The Moon's cycles remind that professional life has its seasons.",
+            "default": "This letter bears the wisdom of the Sefer Yetzirah and manifests in your career with a message that deserves deep contemplation."
+        },
+        "health": {
+            "alef": "Alef links health with conscious management of breathing as resource. Physical well-being requires active care of breath and balance.",
+            "mem": "Mem calls to attend to emotional health and the fluid systems of the body. Water's healing power is available through rest and receptivity.",
+            "shin": "Shin calls you to build mental clarity and vitality. The energy of Fire in the head can be transformative for cognitive health.",
+            "bet": "Bet reminds that health requires discipline and patience. Saturn's energy supports those who build healthy habits over time.",
+            "gimel": "Gimel announces expansion of vitality and well-being. Jupiter's energy brings opportunities for healing and growth.",
+            "dalet": "Dalet calls you to act with courage in your health habits. Mars' energy is the fuel you need to overcome physical challenges.",
+            "kaf": "Kaf contributes solar energy to your healing process. Vital force is available; tune into it through light and movement.",
+            "pe": "Pe indicates that harmony and balance are key for health. Venus invites cultivating fair exchange between body, mind, and spirit.",
+            "resh": "Resh indicates that clear communication with your body —listening to its signals— is fundamental for healing.",
+            "tav": "Tav invites emotional healing and honoring natural cycles. The Moon's energy supports those who respect the rhythm of rest and activity.",
+            "default": "This letter bears the wisdom of the Sefer Yetzirah and manifests in your health with a message that deserves deep contemplation."
+        },
+        "path": {
+            "alef": "Alef indicates that your life path requires balance and mediation. The intellectual clarity of Air will help you navigate life's challenges with wisdom.",
+            "mem": "Mem invites emotional depth and receptivity on your path. Intuition and the ability to connect deeply with your purpose are your greatest guides.",
+            "shin": "Shin calls you to expand your mental horizons and seek clarity of vision. The transformative energy of Fire will illuminate your path.",
+            "bet": "Bet reminds that your path requires discipline and patience. Saturn's energy rewards those who build solid foundations over time.",
+            "gimel": "Gimel announces expansion and abundance on your path. Jupiter's energy brings opportunities for growth and spiritual advancement.",
+            "dalet": "Dalet calls you to act with courage and determination on your path. Mars' energy is the fuel you need to overcome obstacles.",
+            "kaf": "Kaf illuminates your path with solar energy of leadership and visibility. It is a moment to take initiative and shine your light.",
+            "pe": "Pe indicates that harmony and balance are key on your path. Venus invites cultivating fair exchanges and meaningful connections.",
+            "resh": "Resh indicates that clear communication and the transmission of wisdom are your greatest assets on your path.",
+            "tav": "Tav invites adaptability and honoring natural cycles on your path. The Moon's energy supports those who respect life's rhythms.",
+            "default": "This letter bears the wisdom of the Sefer Yetzirah and manifests on your path with a message that deserves deep contemplation."
+        },
+        "general": {
+            "default": "This letter bears the wisdom of the Sefer Yetzirah and manifests in your situation with a message that deserves deep contemplation."
+        }
+    }
+}

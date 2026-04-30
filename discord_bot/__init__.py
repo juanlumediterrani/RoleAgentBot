@@ -29,7 +29,7 @@ __all__ = [
     'register_core_commands',
     'register_all_role_commands',
     'register_single_role',
-    'get_db_for_server', 
+    'get_db_for_server',
     'send_dm_or_channel',
     'send_embed_dm_or_channel',
     'is_admin',

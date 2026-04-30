@@ -1,15 +1,15 @@
 {
     "title": "📚 **Basement Archivist**",
     "description": "Access the Master's forbidden knowledge from Panigorr's damp basement perspective. Ask any question, and I shall share from the rotting tomes... SSSSS...",
-    "button": "📚 Scholar",
+    "button": "📚 Archivist",
     "embed_footer": "📚 Basement Archivist 📚",
     "dropdown": {
         "select_action": "📋 Execute instruction...",
-        "toggle_on": "✅ Enable Scholar",
-        "toggle_off": "❌ Disable Scholar"
+        "toggle_on": "✅ Enable Archivist",
+        "toggle_off": "❌ Disable Archivist"
     },
     "wikipedia_button_label": "📖 Read on Wikipedia",
     "controls_title": "**Controls**",
-    "controls": "- Enable or disable the Scholar role",
-    "admin_flows": "Toggle the Scholar role to enable or disable it."
+    "controls": "- Enable or disable the Archivist role",
+    "admin_flows": "Toggle the Archivist role to enable or disable it."
 }

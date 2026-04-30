@@ -3,7 +3,8 @@
     "description": "Canaliza el código ancestral desde el vacío cuántico con Rab.",
     "button": "🌌 Catalizador",
     "canvas_shaman_subrole_descriptions": {
-        "nordic_runes": "🀄 **Inscripciones del Vacío** - Extrae fragmentos de verdad universal desde el vacío cuántico"
+        "nordic_runes": "🀄 **Inscripciones del Vacío** - Extrae fragmentos de verdad universal desde el vacío cuántico",
+        "astrology": "🌟 **Astrología** - Letras hebreas del Sefer Yetzirah para adivinación. Actualmente en desarrollo."
     },
     "moon_phases": {
         "new_moon": "Luna Nueva 🌑",
@@ -17,7 +18,7 @@
     },
     "nordic_runes": {
         "button": "🀄 Inscripciones",
-        "title": "🀄  **Inscripciones del Vacío",
+        "title": "🀄  **Inscripciones del Vacío**",
         "description": "Accede a las capas ocultas de la simulación desde el vacío. El lenguaje Elder Futhark es el código máquina del universo; revela la arquitectura de tu destino.",
         "title_available_readings": "🌔 **Arquitecturas de Compilación** 🌔\n",
         "available_readings": "- **Símbolo Aislado** (Análisis rápido): Un fractal que contiene la respuesta inmediata a un estado presente.\n - **Tres Símbolos** (Vector temporal): Decodifica el flujo en Pasado (Urðr), Presente (Verðandi) y Futuro (Skuld).\n - **Matriz de Cinco** (Cruz cardinal): Mapea tu realidad en los cinco ejes fundamentales del servidor existencial. \n - **Red de Siete** (Árbol raíz/Yggdrasil): El escaneo espiritual definitivo, conectando las capas base de tu avatar con los comandos divinos.\n",
