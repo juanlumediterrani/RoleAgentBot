@@ -12,11 +12,11 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 
 ![Main Characters](banners/maincharacters.png)
 
-- **Multiple Personalities**: Switch between different AI personalities (Rab, Putre, Kronk, Yuki, Hans, Panigorr, and more)
+- **Multiple Personalities**: Switch between different AI personalities (Rab, Putre, Kronk, Yuki, Hans, Panigorr, Igorrr, and more)
 - **Server-Specific Selection**: Configure different personalities per Discord server via Canvas UI or commands
 - **Character Voice**: Each personality has unique speech patterns, vocabulary, and behavioral traits
 - **Dynamic Responses**: AI maintains character consistency across all interactions
-- **Multi-Language Support**: Personalities available in multiple languages (English, Spanish, Chinese)
+- **Multi-Language Support**: Personalities available in multiple languages (English, Spanish, Chinese, Portuguese)
 - **Per-Server Personalily configuration**: Select preferred personality for each server independently
 
 ### 🔄 Personality Evolution
@@ -49,7 +49,7 @@ The bot's personality subtly evolves weekly based on server interactions:
 - **Treasure Hunter**: Path of Exile 2 item price tracking and market analysis with subrole **Ring** (interactive accusation game)
 - **Trickster**: Dice game minigame with shared Banker pot
 - **Banker**: Virtual wallet management with subrole **Beggar** (DM-based donation requests)
-- **Juggler**: Playful role with system-prompt missions
+- **Juggler**: Playful role with system-prompt missions and subrole **Poetry** (interactive poetry generation)
 - **Shaman**: Interpretive subrole **Nordic Runes** (personalized readings)
 - **Music Controller (MC)**: YouTube music playback in voice channels with queue management
 - **Scholar**: Wikipedia knowledge integration for encyclopedic questions
@@ -257,7 +257,7 @@ For detailed deployment options, troubleshooting, and advanced configurations, s
 
 Each personality is defined in `personalities/<name>/` with localized language support:
 
-- **Localized Directories**: `en-US/`, `es-ES/`, `zh-CH/` for different languages
+- **Localized Directories**: `en-US/`, `es-ES/`, `zh-CN/`, `pt-PT/` for different languages
 
 - **Language-Specific Files**:
   - `personality.json`: Core identity and traits
@@ -275,8 +275,8 @@ Each Discord server can have its own personality and language settings:
 
 1. Use `!canvas` to open the interactive interface
 1. Navigate to "Server Configuration" section
-1. Select personality from available options (Putre, Kronk, Rab, Yuki, etc.)
-1. Choose preferred language (English, Spanish, Chinese)
+1. Select personality from available options (Putre, Kronk, Rab, Yuki, Hans, Panigorr, Igorrr, etc.)
+1. Choose preferred language (English, Spanish, Chinese, Portuguese)
 1. Changes apply immediately to the current server
 
 **Via Commands:**
@@ -309,7 +309,7 @@ Each Discord server can have its own personality and language settings:
 - `!banker` - Virtual wallet operations
 - `!mc` - Music playback control
 - `!hunter` - Treasure hunter for Path of Exile 2
-- `!treasure_hunter` - Ring subrole management
+- `!treasure_hunter` - Ring subrole management (part of Treasure Hunter role)
 - `!shaman` - Nordic runes readings
 - `!canvas` - Interactive UI for all roles and configuration
 
@@ -465,7 +465,7 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 - [x] ~~Personality evolution~~ ✅ Implemented (weekly)
 - [ ] Personality EX customization inside Discord
 - [x] ~~More role modules~~ ✅ Shaman, Juggler, Scholar added (more roles: master dungeons, blacksmith...)
-- [ ] Expand roles with subroles (shaman, juggler, trickster)
+- [x] ~~Expand roles with subroles (shaman, juggler, trickster)~~ ✅ Implemented (Poetry for Juggler)
 - [ ] Other platforms (Telegram, WhatsApp, Minecraft?)
 - [ ] Fine-tuning LLM to improve social capabilities with race and role adaptors
 - [x] ~~Single-scheduler architecture~~ ✅ Implemented (v0.6.2)

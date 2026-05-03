@@ -144,17 +144,16 @@ Global, cross-server defaults. Relevant keys:
 Current canonical role set:
 
 - `news_watcher` (hourly) — Discord commands + scheduled subprocess.
-- `treasure_hunter` (hourly; PoE2) — Discord commands + scheduled subprocess.
+- `treasure_hunter` (hourly; PoE2) — Discord commands + scheduled subprocess; subrole: `ring` (24 h, in-bot ticker, accusation flow §9.4).
 - `trickster` — Discord commands; subrole: `dice_game` (UI-driven, no timer).
 - `shaman` — Discord commands; subrole: `nordic_runes` (interactive).
 - `mc` (integrated, no interval) — voice features; runs as a `Supervisor` actor (§20.3).
 - `banker` (24 h) — Discord commands + scheduled subprocess; subrole: `beggar` (12 h, in-bot ticker).
-- `treasure_hunter` (24 h) — POE2 price tracking; subrole: `ring` (24 h, in-bot ticker, accusation flow §9.4).
-- `juggler` — System-prompt-only role (no `*_discord.py`).
+- `juggler` — System-prompt-only role (no `*_discord.py`); subrole: `poetry` (interactive poetry generation).
 - `scholar` — System-prompt-only role (no `*_discord.py`); used in chat flow when the LLM emits a
   Wikipedia sentinel (§7.2). Performs Wikipedia fetch + second LLM call.
 
-> **Note vs. older docs:** `beggar` moved from `trickster` → `banker`; `ring` moved from `juggler` → `treasure_hunter`; `nordic_runes` moved into the new `shaman` role; `scholar` is the latest addition (Wikipedia knowledge).
+> **Note vs. older docs:** `beggar` moved from `trickster` → `banker`; `ring` moved from `juggler` → `treasure_hunter`; `nordic_runes` moved into the new `shaman` role; `poetry` added to `juggler`; `scholar` is the latest addition (Wikipedia knowledge).
 
 ### 4.2 Per-server configuration
 
@@ -174,7 +173,7 @@ Current canonical role set:
 - `descriptions.json` — Canvas UI titles/descriptions.
 - Optional assets: `avatar.png` / `avatar.webp`, banners.
 
-Available personalities in-tree: `hans`, `igorrr`, `kronk`, `putre`, `rab` (default), `yuki`.
+Available personalities in-tree: `hans`, `igorrr`, `kronk`, `panigorr`, `putre`, `rab` (default), `yuki`.
 
 On first contact with a guild, `discord_bot/db_init.py::copy_personality_to_server()` copies this template into `databases/<server_id>/<personality_name>/` so the guild can evolve an independent copy.
 
@@ -527,9 +526,10 @@ The jobs are registered in two waves:
 - Tracks user gold accounts, transactions, and configurable daily bonus / account-opening flow.
 - `beggar` (Trace 10): every `frequency_hours` the task picks an active user of the server, loads the current rotating daily reason, the banker fund balance, and the relationship memory, builds a prompt, calls the LLM, and sends a DM (or posts to a chosen channel with `BeggarDonationView` buttons).
 
-#### `juggler`
+#### `juggler` (subrole `poetry`)
 
 - System-prompt-only role with no Discord commands.
+- `poetry`: Interactive subrole where users request poems on any topic, generated via `call_llm()` with personality-specific prompts.
 
 #### `treasure_hunter` (subrole `ring`)
 
