@@ -151,7 +151,7 @@ async def generate_poem(
 class PoemConfirmationView(discord.ui.View):
     """View with confirm/cancel buttons for poem sending."""
 
-    def __init__(self, target_user_id: int, poem: str, sender_id: int, server_id: str, sender_name: str, target_name: str):
+    def __init__(self, target_user_id: int, poem: str, sender_id: int, server_id: str, sender_name: str, target_name: str, author_id: int):
         super().__init__(timeout=POETRY_CONFIRMATION_TIMEOUT)
         self.target_user_id = target_user_id
         self.poem = poem
@@ -282,7 +282,7 @@ async def send_poem_preview(
         poem_embed = format_poem_embed(poem, sender_name, target_name, personality_name)
 
         # Create confirmation view
-        view = PoemConfirmationView(target_user_id, poem, sender_id, server_id, sender_name, target_name)
+        view = PoemConfirmationView(target_user_id, poem, sender_id, server_id, sender_name, target_name, sender_id)
 
         # Try to send DM to sender
         sender = await bot.fetch_user(sender_id)
