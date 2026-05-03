@@ -30,6 +30,8 @@ The bot's personality subtly evolves weekly based on server interactions:
 
 ### 🧠 Advanced Memory Architecture
 
+![Memory](banners/memory.png)
+
 - **Five-Layer Memory System**:
 
   - **Recent Dialogue**: Last exchanges, injected raw into conversational prompts
