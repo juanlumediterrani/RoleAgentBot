@@ -1,6 +1,13 @@
 """Canvas content builders and render helpers."""
 
-from discord_bot import discord_core_commands as core
+import os
+import asyncio
+import discord
+from pathlib import Path
+from agent_db import AgentDatabase
+from agent_logging import get_logger
+from agent_engine import PERSONALITY, AGENT_CFG
+from agent_mind import call_llm
 from roles import news_watcher
 from .canvas_news_watcher import _get_nw_descriptions
 
@@ -65,15 +72,7 @@ def _get_server_personality_name(server_id: str = None) -> str:
     except Exception:
         return "bot"
 
-os = core.os
-asyncio = core.asyncio
-discord = core.discord
-Path = core.Path
-AgentDatabase = core.AgentDatabase
-logger = core.logger
-PERSONALITY = core.PERSONALITY
-from agent_mind import call_llm
-AGENT_CFG = core.AGENT_CFG
+logger = get_logger('canvas_content')
 
 from discord_bot.discord_utils import (
     get_db_for_server,
@@ -84,23 +83,56 @@ from discord_bot.discord_utils import (
     acquire_connection_lock, acquire_process_lock,
     get_server_key, set_role_enabled, is_role_enabled_check,
 )
-get_news_watcher_db_instance = core.get_news_watcher_db_instance if hasattr(core, 'get_news_watcher_db_instance') and core.get_news_watcher_db_instance is not None else None
 
 try:
     from agent_roles_db import get_roles_db_instance
 except ImportError:
     get_roles_db_instance = None
-get_poe2_manager = core.get_poe2_manager
+
+try:
+    from roles.news_watcher.db_role_news_watcher import get_news_watcher_db_instance
+except Exception:
+    get_news_watcher_db_instance = None
+
+try:
+    from roles.treasure_hunter.poe2.poe2_subrole_manager import get_poe2_manager
+except Exception:
+    get_poe2_manager = None
+
 get_banker_db_instance = None  # Now using roles_db directly
-_discord_cfg = core._discord_cfg
-_personality_name = core._personality_name
-_insult_cfg = core._insult_cfg
-_personality_answers = core._personality_answers
-_talk_state_by_guild_id = core._talk_state_by_guild_id
-_taboo_state_by_guild_id = core._taboo_state_by_guild_id
-get_taboo_state = core.get_taboo_state
-update_taboo_state = core.update_taboo_state
-is_taboo_triggered = core.is_taboo_triggered
+
+# Legacy compatibility variables from discord_core_commands
+_personality_name = PERSONALITY.get("name", "bot").lower()
+_insult_cfg = PERSONALITY.get("insult_command", {})
+_discord_cfg = PERSONALITY.get("discord", {})
+_personality_answers = {}
+
+_talk_state_by_guild_id: dict[int, dict] = {}
+_taboo_state_by_guild_id: dict[int, dict] = {}
+
+def get_taboo_state(guild_id: int) -> dict:
+    """Get taboo state from server_config.json, initializing from prompts.json if needed."""
+    state = _taboo_state_by_guild_id.get(guild_id)
+    if state is None:
+        server_key = str(guild_id)
+        try:
+            from discord_bot.canvas.server_config import get_behavior_config
+            taboo_config = get_behavior_config(server_key, "taboo", default_enabled=False)
+            state = {"enabled": taboo_config.get("enabled", False)}
+            _taboo_state_by_guild_id[guild_id] = state
+        except Exception:
+            state = {"enabled": False}
+            _taboo_state_by_guild_id[guild_id] = state
+    return state
+
+def update_taboo_state(guild_id: int, state: dict):
+    """Update taboo state in memory."""
+    _taboo_state_by_guild_id[guild_id] = state
+
+def is_taboo_triggered(guild_id: int) -> bool:
+    """Check if taboo is triggered for a guild."""
+    state = get_taboo_state(guild_id)
+    return state.get("enabled", False)
 
 from .state import (
     _get_canvas_watcher_method_label,
@@ -1943,7 +1975,7 @@ def _build_canvas_roles(agent_config: dict, admin_visible: bool, guild=None, pag
     # Note: Roles initialization happens once at server startup via server_config.json
 
     # Get roles view messages from personality with fallback
-    server_id = core.get_server_key(guild) if guild else None
+    server_id = get_server_key(guild) if guild else None
     _personality_descriptions = _get_personality_descriptions(server_id)
     roles_messages = _personality_descriptions.get("roles_view_messages", {})
 
@@ -2120,7 +2152,7 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
         queue_info = None
         try:
             from roles.mc.db_role_mc import get_mc_db_instance
-            server_id = core.get_server_key(guild) if guild else None
+            server_id = get_server_key(guild) if guild else None
             if server_id and guild:
                 db_mc = get_mc_db_instance(server_id)
                 queue_data = db_mc.get_queue(server_id, str(guild.id))
@@ -2168,7 +2200,7 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
         queue_info = None
         try:
             from roles.mc.db_role_mc import get_mc_db_instance
-            server_id = core.get_server_key(guild) if guild else None
+            server_id = get_server_key(guild) if guild else None
             if server_id and guild:
                 db_mc = get_mc_db_instance(server_id)
                 # Get the most recent channel_id from the queue for this server

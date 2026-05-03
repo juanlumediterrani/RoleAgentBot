@@ -55,7 +55,7 @@ def build_canvas_role_juggler_poetry_detail(admin_visible: bool, guild=None) -> 
 
     server_id = str(guild.id) if guild else None
     personality_descriptions = _get_personality_descriptions(server_id)
-    poetry_messages = personality_descriptions.get("poetry", {})
+    poetry_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {})
 
     title = poetry_messages.get("title", "📝 Poetry")
     description = poetry_messages.get("description", "Request a poem dedicated to another user.")
@@ -78,7 +78,7 @@ class PoetryActionModal(discord.ui.Modal):
         from .content import _get_personality_descriptions
         server_id = str(guild.id) if guild else None
         personality_descriptions = _get_personality_descriptions(server_id)
-        poetry_messages = personality_descriptions.get("poetry", {})
+        poetry_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {})
         
         title = poetry_messages.get("modal_title", "Compose Poem")
         super().__init__(title=title)
@@ -252,7 +252,7 @@ async def handle_canvas_juggler_action(interaction: discord.Interaction, action_
             ok = True
             server_id = str(eff_guild.id) if eff_guild else None
             personality_descriptions = _get_personality_descriptions(server_id)
-            poetry_messages = personality_descriptions.get("poetry", {})
+            poetry_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {})
             applied_text = poetry_messages.get("enabled", "Poetry enabled for this server.")
         elif action_name == "poetry_off":
             enabled = False
@@ -260,7 +260,7 @@ async def handle_canvas_juggler_action(interaction: discord.Interaction, action_
             ok = True
             server_id = str(eff_guild.id) if eff_guild else None
             personality_descriptions = _get_personality_descriptions(server_id)
-            poetry_messages = personality_descriptions.get("poetry", {})
+            poetry_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {})
             applied_text = poetry_messages.get("disabled", "Poetry disabled for this server.")
         elif action_name == "poetry_compose":
             if not eff_guild:
@@ -284,7 +284,7 @@ async def handle_canvas_juggler_action(interaction: discord.Interaction, action_
             if not poetry_enabled:
                 server_id = str(eff_guild.id) if eff_guild else None
                 personality_descriptions = _get_personality_descriptions(server_id)
-                poetry_messages = personality_descriptions.get("poetry", {})
+                poetry_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {})
                 error_msg = poetry_messages.get("error_subrole_disabled", "❌ The Poetry subrole is disabled on this server. Contact an administrator to enable it.")
                 await interaction.response.send_message(error_msg, ephemeral=True)
                 return
@@ -324,7 +324,7 @@ async def handle_canvas_juggler_action(interaction: discord.Interaction, action_
         else:
             server_id = str(eff_guild.id) if eff_guild else None
             personality_descriptions = _get_personality_descriptions(server_id)
-            poetry_messages = personality_descriptions.get("poetry", {})
+            poetry_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {})
             error_msg = poetry_messages.get("error_config_failed", "❌ Failed to update configuration.")
             await interaction.response.send_message(error_msg, ephemeral=True)
     

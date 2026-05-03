@@ -5,7 +5,7 @@ Personality-aware messages for the Poetry subrole.
 
 import discord
 from agent_logging import get_logger
-from agent_engine import _get_personality
+from agent_engine import _get_personality_descriptions
 
 logger = get_logger('juggler_poetry_messages')
 
@@ -23,9 +23,8 @@ def get_poetry_message(server_id: str, key: str, **kwargs) -> str:
         Message string with placeholders filled, or fallback if not found
     """
     try:
-        personality = _get_personality(server_id)
-        descriptions = personality.get("discord", {})
-        poetry_messages = descriptions.get("poetry", {})
+        descriptions = _get_personality_descriptions(server_id)
+        poetry_messages = descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {})
         
         message = poetry_messages.get(key, "")
         
