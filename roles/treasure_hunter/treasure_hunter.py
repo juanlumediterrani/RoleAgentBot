@@ -508,7 +508,7 @@ async def actualizar_precios_globales(poe2_manager, refresh_plan):
                 continue
 
             try:
-                history_entries = poe2_manager.client.get_item_history(item_name, league=league, days=30)
+                history_entries = await poe2_manager.client.get_item_history_async(item_name, league=league, days=30)
                 if not history_entries:
                     logger.warning(f"No POE2 history available for {item_name} in {league}")
                     continue
@@ -800,10 +800,10 @@ async def construir_mensaje_alerta(item_name, signal, price, server_id=None):
 async def procesar_item(poe2_manager, client, discord_http, server_id, item_name, league):
     """Process a single item for treasure hunting."""
     logger.info(f"🔍 Analyzing {item_name} on server {server_id}")
-    
+
     try:
-        # Get item history
-        historial = client.get_item_history(item_name, league=league, days=30)
+        # Get item history (non-blocking)
+        historial = await client.get_item_history_async(item_name, league=league, days=30)
         
         if not historial:
             logger.warning(f"No price history found for {item_name}")

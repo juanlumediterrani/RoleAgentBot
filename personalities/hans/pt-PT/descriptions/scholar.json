@@ -1,0 +1,15 @@
+{
+    "title": "📚 **Arquivista do Reich**",
+    "description": "¡ACHTUNG! Aceda aos arquivos classificados do Reich através da perspetiva de inteligência militar de Herr Hans. ¡Formule a tua pergunta, soldado, e partilharei dos registos oficiais!",
+    "button": "📚 Arquivista",
+    "embed_footer": "📚 Arquivista do Reich 📚",
+    "dropdown": {
+        "select_action": "📋 Executar instrução...",
+        "toggle_on": "✅ Habilitar Arquivista",
+        "toggle_off": "❌ Desabilitar Arquivista"
+    },
+    "wikipedia_button_label": "📖 Ler na Wikipedia",
+    "controls_title": "**Controlos**",
+    "controls": "- Habilitar ou desabilitar o rol Arquivista",
+    "admin_flows": "Alterna o rol Arquivista para habilitar ou desabilitá-lo."
+}

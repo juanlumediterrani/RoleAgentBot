@@ -892,7 +892,7 @@ from .canvas_mc import (
     CanvasMCVolumeModal,
     _handle_canvas_mc_action,
 )
-from .canvas_juggler import JugglerActionModal
+from .canvas_juggler import handle_canvas_juggler_action
 from .canvas_news_watcher import (
     build_canvas_role_news_watcher_detail as _build_canvas_role_news_watcher_detail,
     CanvasWatcherSubscriptionSelect as _CanvasWatcherSubscriptionSelect,
@@ -924,6 +924,7 @@ from .canvas_treasure_hunter import (
     Poe2ItemModal as _Poe2ItemModal,
     Poe2PurchaseLiquidateView as _Poe2PurchaseLiquidateView,
     Poe2PurchaseItemSelectView as _Poe2PurchaseItemSelectView,
+    TreasureHunterRingActionModal,
     handle_canvas_treasure_hunter_action as _HandleCanvasTreasureHunterAction,
 )
 from .canvas_banker import (
@@ -1338,23 +1339,36 @@ class CanvasRoleActionSelect(discord.ui.Select):
             guild = interaction.guild  # Will be None in DM
             await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
             return
-        if self.role_name == "treasure_hunter" and action_name in {"poe2_on", "poe2_off"}:
-            # Check if treasure_hunter is enabled globally in agent_config
-            th_global_enabled = (view.agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
-            if not th_global_enabled:
-                from .content import _get_personality_descriptions
-                server_id = str(interaction.guild.id) if interaction.guild else None
-                descriptions = _get_personality_descriptions(server_id)
-                treasure_translations = descriptions.get("treasure_hunter", {}).get("poe2", {})
-                error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
-                await interaction.response.send_message(error_message, ephemeral=True)
+        if self.role_name == "treasure_hunter":
+            # Handle POE2 toggle actions
+            if action_name in {"poe2_on", "poe2_off"}:
+                # Check if treasure_hunter is enabled globally in agent_config
+                th_global_enabled = (view.agent_config or {}).get("roles", {}).get("treasure_hunter", {}).get("enabled", False)
+                if not th_global_enabled:
+                    from .content import _get_personality_descriptions
+                    server_id = str(interaction.guild.id) if interaction.guild else None
+                    descriptions = _get_personality_descriptions(server_id)
+                    treasure_translations = descriptions.get("treasure_hunter", {}).get("poe2", {})
+                    error_message = treasure_translations.get("poe2_not_enabled_globally", "❌ Treasure Hunter is not enabled globally.")
+                    await interaction.response.send_message(error_message, ephemeral=True)
+                    return
+                # Keep admin restrictions for activation/deactivation
+                if not view.admin_visible:
+                    await interaction.response.send_message("❌ This option is admin-only and requires a server.", ephemeral=True)
+                    return
+                await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
                 return
-            # Keep admin restrictions for activation/deactivation
-            if not view.admin_visible:
-                await interaction.response.send_message("❌ This option is admin-only and requires a server.", ephemeral=True)
+            # Handle ring actions that need modal input
+            if action_name in {"ring_accuse", "ring_frequency"}:
+                await interaction.response.send_modal(TreasureHunterRingActionModal(action_name, view.author_id, eff_guild, view.admin_visible, view))
                 return
-            await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
-            return
+            # Handle ring toggle actions
+            if action_name in {"ring_on", "ring_off"}:
+                if not view.admin_visible:
+                    await interaction.response.send_message("❌ This ring option is admin-only.", ephemeral=True)
+                    return
+                await _handle_canvas_treasure_hunter_action(interaction, action_name, view)
+                return
         if self.role_name == "trickster" and action_name in {"dice_fixed_bet", "dice_pot_value", "cubilete_fixed_bet", "cubilete_pot_value"}:
             if not eff_guild:
                 await interaction.response.send_message("❌ This option is only available in a server.", ephemeral=True)
@@ -1372,17 +1386,12 @@ class CanvasRoleActionSelect(discord.ui.Select):
             await _HandleCanvasScholarAction(interaction, action_name, view)
             return
         if self.role_name == "juggler":
-            from .canvas_juggler import handle_canvas_juggler_modal_submit
-            # Handle ring actions that need modal input
-            if action_name in {"ring_accuse", "ring_frequency"}:
-                await interaction.response.send_modal(JugglerActionModal(action_name, view.author_id, eff_guild, view.admin_visible, view))
-                return
-            # Handle ring toggle actions
-            if action_name in {"ring_on", "ring_off"}:
-                if not view.admin_visible:
+            # Handle poetry actions
+            if action_name in {"poetry_on", "poetry_off", "poetry_compose"}:
+                if action_name in {"poetry_on", "poetry_off"} and not view.admin_visible:
                     await interaction.response.send_message("❌ This juggler option is admin-only.", ephemeral=True)
                     return
-                await handle_canvas_juggler_modal_submit(interaction, action_name, "", eff_guild, view.author_id, view.admin_visible, view)
+                await handle_canvas_juggler_action(interaction, action_name, view)
                 return
         if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now", "watcher_run_personal"}:
             if not view.admin_visible:
@@ -2496,11 +2505,22 @@ class CubileteRollButton(discord.ui.Button):
 class CubiletePayBetButton(discord.ui.Button):
     """Button to pay bet and start first roll in cubilete game."""
 
-    def __init__(self, bet: int, user_id: int):
+    def __init__(self, bet: int, user_id: int, guild=None):
         from discord_bot.discord_core_commands import get_server_key
         from roles.banker.banker_db import get_banker_roles_db_instance
+        from roles.banker.banker_messages import get_messages
         server_key = "default"  # Will be set in callback
-        label = f"Pay bet {bet:,} gold"
+        
+        # Get coin emoji from banker with fallback
+        coin_emoji = "::coin::"
+        if guild:
+            try:
+                server_db_path = f"databases/{guild.id}/{get_server_key(guild)}"
+                coin_emoji = get_messages(server_db_path, "coin")
+            except Exception:
+                pass
+        
+        label = f"Bet {bet:,} {coin_emoji}"
         style = discord.ButtonStyle.success
         super().__init__(label=label, style=style, custom_id=f"cubilete_pay_bet_{user_id}")
         self.bet = bet
@@ -4177,8 +4197,8 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
                 # Show game buttons
                 if active_game.waiting_for_bet:
                     # Show Pay bet button
-                    pay_bet_label = cubilete_descriptions.get("pay_bet_button_label", f"Pay bet {active_game.bet:,} gold")
-                    self.add_item(CubiletePayBetButton(active_game.bet, self.author_id))
+                    pay_bet_label = cubilete_descriptions.get("pay_bet_button_label", f"Bet {active_game.bet:,} ::coin::")
+                    self.add_item(CubiletePayBetButton(active_game.bet, self.author_id, guild))
                 else:
                     # Add keep die buttons first (5 dice in first row)
                     for i, die_value in enumerate(active_game.dice):
@@ -4199,8 +4219,8 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
                 cubilete_state = _get_canvas_cubilete_state(guild)
                 bet = cubilete_state.get('bet', 2)
                 game = create_game(self.author_id, guild.id if guild else None, bet)
-                pay_bet_label = cubilete_descriptions.get("pay_bet_button_label", f"Pay bet {game.bet:,} gold")
-                self.add_item(CubiletePayBetButton(game.bet, self.author_id))
+                pay_bet_label = cubilete_descriptions.get("pay_bet_button_label", f"Bet {game.bet:,} ::coin::")
+                self.add_item(CubiletePayBetButton(game.bet, self.author_id, guild))
 
         # Add dice_play button for trickster dice view
         if role_name == "trickster" and current_detail == "dice":

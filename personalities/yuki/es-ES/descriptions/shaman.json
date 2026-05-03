@@ -4,7 +4,7 @@
     "button": "🌕 Aruki-miko",
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **Rune-Uranai (ルーン占い)** - Un arte exótico de tierras lejanas. Las runas talladas en madera de sándalo y lacado Urushi con pan de oro aguardan en su kinchaku de seda de kimono antiguo.",
-        "astrology": "🌟 **Astrología** - Letras hebreas del Sefer Yetzirah para adivinación. Actualmente en desarrollo."
+        "astrology": "🌟 **Tenmondō (天文道)** - Letras hebreas del Sefer Yetzirah para adivinación. Actualmente en desarrollo."
     },
     "moon_phases": {
         "new_moon": "Luna Nueva 🌑",
@@ -86,6 +86,46 @@
             "description": "Descripción",
             "success": "🔮 La lectura está lista.",
             "saved": "🔮 Tu lectura ha sido guardada."
+        }
+    },
+    "astrology": {
+        "button": "🌟 Tenmondō",
+        "title": "**🌟 Tenmondō (天文道)**",
+        "description": "Un arte de adivinación basado en las letras hebreas del Sefer Yetzirah. Yuki lo ofrece como Hana-machi no Himitsu: un conocimiento secreto que solo ella posee.",
+        "welcome": "✨ Bienvenido a la Astrología Sefer Yetzirah ✨",
+        "help_content": "El sistema Sefer Yetzirah revela los 32 caminos de la sabiduría a través de 22 letras hebreas (3 Madres, 7 Dobles, 12 Simples).",
+        "letters_title": "**Las 22 letras hebreas:**",
+        "history": "📓 **HISTORIAL DE LECTURAS ASTROLÓGICAS** 📓",
+        "history_empty": "No hay lecturas anteriores.",
+        "birth_title": "🌟 CARTA NATAL 🌟",
+        "moment_title": "⏰ LECTURA DEL MOMENTO ⏰",
+        "year_title": "📅 AÑO PERSONAL 📅",
+        "integrated_title": "🔮 LECTURA INTEGRADA 🔮",
+        "birth_data_saved": "✨ Tus datos de nacimiento han sido guardados exitosamente!",
+        "labels": {
+            "question": "Pregunta"
+        },
+        "dropdown": {
+            "astrology_birth": "Tenmondō: Carta Natal",
+            "astrology_birth_description": "Interpreta tu patrón permanente del alma desde fecha y hora de nacimiento",
+            "astrology_moment": "Tenmondō: Lectura del Momento",
+            "astrology_moment_description": "Obtén orientación para un momento específico o pregunta",
+            "astrology_year": "Tenmondō: Año Personal",
+            "astrology_year_description": "Comprende las fuerzas espirituales de tu año personal",
+            "astrology_integrated": "Tenmondō: Lectura Integrada",
+            "astrology_integrated_description": "Lectura completa combinando nacimiento, momento y año",
+            "astrology_history": "Tenmondō: Historial",
+            "astrology_history_description": "Muestra tu historial de lecturas astrológicas recientes",
+            "astrology_letters": "Tenmondō: Letras Hebreas",
+            "astrology_letters_description": "Muestra las 22 letras hebreas con sus significados",
+            "astrology_letters_1": "Tenmondō: Letras Hebreas I",
+            "astrology_letters_1_description": "Letras hebreas con descripciones - Página 1 (Letras Madres)",
+            "astrology_letters_2": "Tenmondō: Letras Hebreas II",
+            "astrology_letters_2_description": "Letras hebreas con descripciones - Página 2 (Letras Dobles)",
+            "astrology_letters_3": "Tenmondō: Letras Hebreas III",
+            "astrology_letters_3_description": "Letras hebreas con descripciones - Página 3 (Letras Simples)",
+            "astrology_save_birth": "Tenmondō: Guardar Datos de Nacimiento",
+            "astrology_save_birth_description": "Guarda tu fecha y hora de nacimiento para lecturas personalizadas"
         }
     }
 }

@@ -30,11 +30,11 @@ except ImportError:
     VALIDATION_AVAILABLE = False
     ValidationError = Exception
 
-from agent_engine import (
+from agent_mind import (
     refresh_due_recent_memories,
     refresh_due_relationship_memories,
+    generate_weekly_personality_evolution,
 )
-from agent_mind import generate_weekly_personality_evolution
 
 logger = get_logger('run')
 

@@ -1,0 +1,238 @@
+{
+  "discord": {
+    "general": {
+      "status": "Estado atual:",
+      "active": "✅ Ativo",
+      "inactive": "❌ Inativo",
+      "none": "Nenhuma",
+      "every": "kada",
+      "for": "para",
+      "base_frequency": "Frekuenzia base:",
+      "current_frequency": "Frekuenzia atual:",
+      "current_settings": "🔧 **Parametros atuais:**",
+      "frequency_format": "Kada {hours}h",
+      "button_confirm": "Konfirmar",
+      "button_confirm_changes": "Konfirmar Mudankas",
+      "option_yes": "Sim",
+      "option_no": "Nao",
+      "action_descriptions": {
+        "boolean_toggle": "Alternar ativakao/desativakao",
+        "number_input_target": "Entrada numerika",
+        "text_input_target": "Entrada de texto",
+        "action": "Ako imediata"
+      },
+      "action_labels": {
+        "on": "Ativar",
+        "off": "Desativar",
+        "now": "Agora",
+        "frequency": "Frekuenzia",
+        "add_keyword": "Akreskentar Palavra",
+        "remove_keyword": "Eliminar Palavra",
+        "server_language": "🌐 Idioma do Servidor",
+        "role_management": "🎛️ Gestao de Roles",
+        "current": "Atual:",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "always_enabled": "Sempre ativado"
+      },
+      "button_personal": "📁 Pessoal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subroles disponiveis"
+    },
+    "help_menu": {
+      "title": "📚 ** Putre - Menu de Ajuda**",
+      "description": "**Deskripsao** Role Agent Bot ez um agente LLM kom personalidade karregada, ke tem memoria a longo prazo e pode interagir kom o utilizador.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Roles** Os modulos de Roles sao algumas kapasidades do bot para dar alguns servikos aos utilizadores.",
+      "behavior_section": "**Komportamento** Nesta sekao konfiguraras alguns komportamentos interatuaveis do bot. So para Admins",
+      "shortcuts_section": "**Atalhos** Konfigura ate 5 botoes de akesso rapido na vista principal do Canvas para os teus roles e subroles favoritos. Disponivel em Konfigurakao > Atalhos.",
+      "shortcuts_messages": {
+        "title": "Atalhos do Canvas",
+        "description": "Konfigura botoes de akesso rapido",
+        "settings_description": "Konfigura botoes de akesso rapido no Canvas principal",
+        "placeholder_select_role": "Seleksiona o teu role ou subrole...",
+        "configure_shortcut": "Konfigurar Atalho {shortcut_id} - Seleksiona um role ou subrole:",
+        "saved": "✅ Atalho guardado korretamente",
+        "failed": "❌ Erro ao guardar atalho",
+        "cancelled": "Konfigurakao kanselada"
+      },
+      "tips_section": "**Alguns konselhos** -Podes perguntar ao bot komo funksiona um komando komo: 'komo funksiona o komando diz?' -As partes mais jugosas do bot estao dentro de kada role"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 Burujula Putre",
+      "button_home": "🧭 Inisio",
+      "button_back": "← Atras",
+      "button_roles": "🎪 Roles",
+      "button_behavior": "⚔️ Komportamento",
+      "button_help": "🥩 Ajuda",
+      "generic_option_label": "Eskolhe uma opkao...",
+      "personalitystatus": "Personalidade Karregada:",
+      "description": " - Interakua kom todas as funkoes disponiveis para Putre desde aki.\n - O painel canvas permite-te interagir kom todas as opkoes do bot desde este menu.",
+      "interestingthings": "**Kozas interessantes:**",
+      "recentsynthesistitle": "🚩 **Suzesos rezientes**",
+      "pilgrimdatatitle": "**Dados do Punk:**",
+      "dailymemorytitle": "🗿 **Memoria**",
+      "personalsynthesistitle": "🍻 **Relakao kom o umano**",
+      "dm_default_server_title": "🔔 **Usando servidor por padrao: {server_name}**",
+      "dm_default_server_message": "*Estas navegando desde DM, usando o primeiro servidor disponivel.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🎭 Roles de Putre 🎭",
+      "description": "🌟 Navega a traves dos diferentes roles disponiveis para Putre",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ INATIVO",
+      "interval_info": "//⏰ Every {interval}h",
+      "subroles_info": "🎪 **Subroles ativos:** {subroles}",
+      "admin_note": "🔧 **KONFIGURAKAO ADMIN:**",
+      "user_note": "👤 **FUNKOES DE UTILIZADOR:**",
+      "help_commands": "💡 **KOMANDOS DE AJUDA:**",
+      "canvas_details": "🎨 **DETALHES EM CANVAS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **NENHUM ROLE ATIVO** Nao ha roles espesializados ativos atualmente. Pede a um administrador ke ative alguns roles usando `!canvas setup`. **Roles disponiveis para ativar:** • 📡 News Watcher - Vigia de noticias • 💎 Treasure Hunter - Kkazador de tesouros • 🎭 Trickster - Trilero e jogos • 💰 Banker - Ekonomia do klan • 🎵 MC - Musika e entretenimento",
+      "role_list_title": "☠️ Kargos e Trabalhos",
+      "role_available": "✅ {role} - RUGINDO E ZANGRIENTO",
+      "role_unavailable": "❌ {role} - PUDRIENDO-SE NA TERRA",
+      "frequency_help": "📝 Uza `!canvas` → o role → Admin pa ajustar a frekuensia (de 1 a 168 oras)!",
+      "music_help": "🎵 **Tambore de Putre** - `!mc play <ruido>` / `!mc queue` | `!mc help` pa ler o pergaminho gordo de komos ase!",
+      "button_previous": "◀ Atras",
+      "button_next": "Seguinte ▶",
+      "page_indicator": "**Pagina {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "**💬 Putre - Konversakao**",
+        "description": "**Deskripsao:**\n -Putre reakionara a DM e menkoes. -Tem memoria persistente e interativa, podes perguntar-lhe por algo ke okorreu, pode ke lhe prestara sufiksiente atenkao komo para recorda-lo. -Ademais segun roles e komportamentos, pode reakionar a diferentes palavras. No komportamento taboo podes konfigurar uma palavra para ke reakione a ela.",
+        "button": "💬 Konversakao"
+      },
+      "greetings": {
+        "title": "**👋 Putre - Saudakoes**",
+        "description": "**Deskripsao:**\n - Sauda os utilizadores ao se konektarem ao Diskord.\n - Espera 5 min antes de kontar komo deskonektado ao utilizador.\n - Rekonese se nao se lhe responde ao saudar, e deixa de saudar.",
+        "button": "👋 Saudakoes"
+      },
+      "welcome": {
+        "title": "**🍺 Putre - Boas-vindas**",
+        "description": "**Deskripsao:**\n - Da as boas-vindas a novos utilizadores ao servidor.",
+        "button": "🍺 Boas-vindas"
+      },
+      "taboo": {
+        "title": "**🚫 Putre - Palavras Tabu**",
+        "description": "**Komo funksiona:**\n - Konfigura a Putre para ke reakione ao ler uma palavra por um kanal ou DM.\n - Pode-se ativar/desativar ou konfigurar as palavras.",
+        "title_keywords": "Palavras tabu atuais:",
+        "button": "🚫 Tabu"
+      },
+      "memory": {
+        "title": "**🧠 Putre - Memoria**",
+        "description": "**Deskripsao**\n - Konsulta a memoria de Putre: rekordos do frente, pensamentos rezientes e persepkoes sobre os utilizadores.",
+        "button": "🧠 Memoria",
+        "dropdown": {
+          "long": {
+            "label": "Memoria",
+            "emoji": "🗿",
+            "description": "As kronikas akumuladas do fronte"
+          },
+          "recent": {
+            "label": "Suzesos rezientes",
+            "emoji": "🚩",
+            "description": "Os relatorios mais freskos do kampamento"
+          },
+          "relationship": {
+            "label": "Relakao kom o umano",
+            "emoji": "🍺",
+            "description": "Os perfis de kada soldado sob o meu komando"
+          }
+        }
+      },
+      "role_control": {
+        "title": "**🎛️ Putre - Kontrol de Roles**",
+        "description": "**Deskripsao** -Ativa e desativa os roles desde aki.",
+        "button": "🎛️ Kontrol de Roles"
+      },
+      "settings": {
+        "title": "**⚙️ Putre - Konfigurakao do Kampamento**",
+        "description": "**Deskripsao** -Ajusta o idioma do kampamento e ativa os roles.",
+        "button": "⚙️ Konfigurakao"
+      },
+      "personality": {
+        "title": "**🎭 Putre - Gestao de Personalidade**",
+        "description": "**Deskripsao** -Kambia a personalidade do bot para este servidor. -Deskarga a personalidade atual komo backup. -Migra as bases de dados ao kambiar.",
+        "button": "🎭 Personalidade",
+        "option_change": "Kambiar Personalidade",
+        "option_change_desc": "Kambiar para uma personalidade diferente",
+        "option_download": "Deskargar Atual",
+        "option_download_desc": "Exportar personalidade komo ZIP",
+        "placeholder": "Eskolhe uma ako de personalidade...",
+        "modal_personality_label": "Nova Personalidade",
+        "modal_download_label": "Deskargar personalidade anterior? (sim/nao)",
+        "modal_delete_memory_label": "Apagar memoria do bot? (sim/nao)",
+        "modal_download_memory_label": "Deskargar memoria primeiro? (sim/nao)",
+        "download_success": "✅ Personalidade `{personality}` exportada kom sukesso!",
+        "change_success": "✅ Personalidade kambiada de `{old}` para `{new}`! A nova personalidade ja esta ativa e pronta para usar.",
+        "progress_change_personality": "⏳ Kambiando personalidade de `{old}` para `{new}`...",
+        "progress_language_update": "⏳ Atualizando `{personality}` para o idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 Gerando sintese de memoria inicial para a nova personalidade...",
+        "select_personality_instruction": "Eskolhe uma personalidade nova do menu:",
+        "choose_personality_placeholder": "Eskolhe uma personalidade (idioma: {language})...",
+        "confirm_change_message": "**Konfirmar kambio para {personality}?** Seleksiona as tuas opkoes:",
+        "selected_personality": "**Personalidade seleksionada: {personality}**",
+        "selected_personality_with_language": "**Personalidade seleksionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Kambiando idioma para a mesma personalidade."
+      }
+    },
+    "readme": {
+      "label_user_question": "Pergunta do utilizador:",
+      "task": "Porfavor responde a pergunta do utilizador kom a dokumentakao fasilitada",
+      "label_documentation": "Dokumentakao:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "te akordas de",
+        "rekordas",
+        "fas memoria",
+        "akordate",
+        "te akordas ke",
+        "rekorda kuando",
+        "akordase",
+        "te akordas",
+        "rekordas",
+        "fas memoria de",
+        "akordate de",
+        "rekorda algo",
+        "te soa",
+        "te akordas",
+        "akordate",
+        "rekorda",
+        "fas memoria",
+        "te akordas?",
+        "rekordas?",
+        "akordate de",
+        "rekorda kuando",
+        "te soa algo",
+        "akordate ke",
+        "rekordas kuando",
+        "nao te akordas",
+        "kien te akordas"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "boas-vindas",
+        "boas-vindas",
+        "bem-vindo",
+        "bem-vindos"
+      ],
+      "general": [
+        "geral",
+        "khate",
+        "salao",
+        "sala"
+      ]
+    },
+    "reply_button": {
+      "label": "Kontestar",
+      "emoji": "💬",
+      "confirmation_message": "💬 Estas konversando komigo komo se estivesses em **{server_name}**. Todas as tuas respostas usarao esta personalidade ate ke seleksiones outro servidor."
+    }
+  }
+}

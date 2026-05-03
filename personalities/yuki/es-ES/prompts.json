@@ -102,11 +102,18 @@
             "donor_format": "{name}({amount}g)",
             "error": ""
           },
-          "memory_labels":{
-            "beggar_system":"Sistema_de_mecenazgo",
-            "recaudation":"Solicitaste_contribuciones",
-            "minigame_results":"Presentaste_resultado_del_ciclo"
-          }
+          "target_change": "El análisis previo señaló a este visitante como posible poseedor:"
+        },
+        "poetry": {
+          "active_duty": "Eres el poeta oficial del regimiento, creando versos personalizados para los miembros del clan.",
+          "poem_task": "Escribe un poema para {target_name} basado en la dedicación: \"{dedication}\". El poema debe ser conmovedor, creativo y reflejar el tema de la dedicación. Mantenlo conciso (menos de 200 palabras).",
+          "golden_rules": [
+            "1. ESTILO: Escribe con la voz única y estilo de la personalidad",
+            "2. LONGITUD: Mantén los poemas concisos (menos de 200 palabras)",
+            "3. TEMA: Refleja la dedicación/premisa proporcionada",
+            "4. EMOCIÓN: Hazlo conmovedor y significativo",
+            "5. CREATIVIDAD: Usa recursos poéticos apropiados para la personalidad"
+          ]
         }
       }
     },

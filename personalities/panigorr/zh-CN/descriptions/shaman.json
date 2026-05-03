@@ -87,5 +87,45 @@
             "success": "🔮 嘶嘶嘶！灰烬说话咧面粉袋子！",
             "saved": "🔮 嘶嘶嘶！伊戈尔把你滴投掷保存在油腻滴羊皮纸上咧！"
         }
+    },
+    "astrology": {
+        "button": "🌟 占星术",
+        "title": "**🌟 烤炉占星术**",
+        "description": "Panigorr 烘焙创造之书希伯来字母以查看你的未来……SSSSS",
+        "welcome": "✨ SSSSS! 占星术烤炉很热，面粉袋！ ✨",
+        "help_content": "创造之书系统通过22个希伯来字母（3个母字母、7个双字母、12个单字母）揭示32条烤炉路径……SSSSS!",
+        "letters_title": "**烤炉的22个希伯来字母：**",
+        "history": "📓 **烘焙历史** 📓",
+        "history_empty": "以前没有烘焙过面包。",
+        "birth_title": "🌟 出生面包 🌟",
+        "moment_title": "⏰ 烘焙时刻 ⏰",
+        "year_title": "📅 烤炉年 📅",
+        "integrated_title": "🔮 综合烘焙 🔮",
+        "birth_data_saved": "✨ SSSSS! 你的出生面团已保存在烤炉中！",
+        "labels": {
+            "question": "问题"
+        },
+        "dropdown": {
+            "astrology_birth": "占星术：出生面包",
+            "astrology_birth_description": "从出生日期和时间烘焙你的灵魂模式",
+            "astrology_moment": "占星术：烘焙时刻",
+            "astrology_moment_description": "为特定时刻获得面包屑",
+            "astrology_year": "占星术：烤炉年",
+            "astrology_year_description": "理解你一年的烤炉力量",
+            "astrology_integrated": "占星术：综合烘焙",
+            "astrology_integrated_description": "结合出生、时刻和年的完整烘焙",
+            "astrology_history": "占星术：历史",
+            "astrology_history_description": "显示你最近的烘焙",
+            "astrology_letters": "占星术：希伯来字母",
+            "astrology_letters_description": "显示22个希伯来字母及其含义",
+            "astrology_letters_1": "占星术：希伯来字母 I",
+            "astrology_letters_1_description": "希伯来字母及其描述 - 第1页（母字母）",
+            "astrology_letters_2": "占星术：希伯来字母 II",
+            "astrology_letters_2_description": "希伯来字母及其描述 - 第2页（双字母）",
+            "astrology_letters_3": "占星术：希伯来字母 III",
+            "astrology_letters_3_description": "希伯来字母及其描述 - 第3页（单字母）",
+            "astrology_save_birth": "占星术：保存出生面团",
+            "astrology_save_birth_description": "保存你的出生日期和时间以获得个性化烘焙"
+        }
     }
 }

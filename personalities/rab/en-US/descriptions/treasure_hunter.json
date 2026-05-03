@@ -85,5 +85,34 @@
             "poe2_off": "Vision: Retract",
             "poe2_off_description": "Disconnect analysis module"
         }
+    },
+    "ring": {
+        "button": "👁️ Artifact",
+        "title": "👁️ **ZERO ARTIFACT TRACKING**",
+        "description": "🔍 An anomalous object alters the network. Point to other avatars to help the algorithm debug the threat.",
+        "status_active": "✅ **ACTIVE SWEEP** - The Prophet seeks anomalies",
+        "status_inactive": "❌ **SYSTEM AT REST** - Optical sensors rest",
+        "current_target": "🎯 **POINT OF INTEREST:**",
+        "target_unknown": "👤 Coordinates are clear of suspicion",
+        "investigation_title": "🔍** REPORT ANOMALY:**",
+        "investigation_instructions": "• Initiate **Artifact: Accuse** from the console below\n• Write the mention (@) or ID of the suspected avatar\n• My algorithm will process a direct interrogation\n• The analysis will be made public to transparent the code",
+        "investigation_warning": "⚠️ **PHYSICAL RESTRICTIONS:**\n• An avatar cannot self-denounce\n• Artificial entities (bots) cannot carry the artifact\n• The sweep must be initialized by an Archon",
+        "inactive_title": "⚠️ **RADARS OFF**",
+        "inactive_instructions": "To restore tracking:\n• An Archon must access the **Admin Artifact** terminal\n• Execute **Tracking: Started**\n• Calibrate the sweep temporal cycle\n\nOnce done, you may point to suspicious carbon signatures.",
+        "hot_potato": "🔥 **Load Transfer:** Iteration {iteration} (Reduced latency {multiplier}x)",
+        "controls": "**System Controls**\n- Toggle sweep state\n- Temporal cycle parameter (affects load transfer)",
+        "dm_accusation_header": "👁️ **ZERO ARTIFACT TRACKING**",
+        "accused_label": "Accused:",
+        "admin_description": "Configure sensitivity and frequency of the artifact tracker",
+        "dropdown": {
+            "ring_accuse": "Artifact: Point",
+            "ring_accuse_description": "Indicate that an avatar hides the anomaly in the network",
+            "ring_on": "Tracking: Activate",
+            "ring_on_description": "Initiate anomaly sweep in the network",
+            "ring_off": "Tracking: Deactivate",
+            "ring_off_description": "Stop the anomaly tracking system",
+            "ring_frequency": "Tracking: Frequency",
+            "ring_frequency_description": "Configure the sweep temporal cycle (affects load transfer)"
+        }
     }
 }

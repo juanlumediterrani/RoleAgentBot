@@ -85,7 +85,47 @@
             "rune": "Ash",
             "description": "Description",
             "success": "🔮 SSSSS! The Ashes have spoken flour sack!",
-            "saved": "🔮 SSSSS! Panigorr has saved your cast in the greasy scrolls!"
+            "saved": "🔮 SSSSS! Panigorr saved your casting in the greasy scrolls!"
+        }
+    },
+    "astrology": {
+        "button": "🌟 Astrology",
+        "title": "**🌟 Oven Astrology**",
+        "description": "Panigorr bakes Sefer Yetzirah Hebrew letters to see your future... SSSSS",
+        "welcome": "✨ SSSSS! The astrology oven is hot, flour sack! ✨",
+        "help_content": "The Sefer Yetzirah system reveals the 32 oven paths through 22 Hebrew letters (3 Mothers, 7 Doubles, 12 Simples)... SSSSS!",
+        "letters_title": "**The 22 Hebrew letters of the oven:**",
+        "history": "📓 **BAKING HISTORY** 📓",
+        "history_empty": "No breads baked previously.",
+        "birth_title": "🌟 BIRTH BREAD 🌟",
+        "moment_title": "⏰ BAKING MOMENT ⏰",
+        "year_title": "📅 OVEN YEAR 📅",
+        "integrated_title": "🔮 INTEGRATED BAKING 🔮",
+        "birth_data_saved": "✨ SSSSS! Your birth dough has been saved in the oven!",
+        "labels": {
+            "question": "Question"
+        },
+        "dropdown": {
+            "astrology_birth": "Astrology: Birth Bread",
+            "astrology_birth_description": "Bake your soul pattern from birth date and time",
+            "astrology_moment": "Astrology: Baking Moment",
+            "astrology_moment_description": "Get crumbs for a specific moment",
+            "astrology_year": "Astrology: Oven Year",
+            "astrology_year_description": "Understand the oven forces of your year",
+            "astrology_integrated": "Astrology: Integrated Baking",
+            "astrology_integrated_description": "Complete baking combining birth, moment, and year",
+            "astrology_history": "Astrology: History",
+            "astrology_history_description": "Show your recent bakings",
+            "astrology_letters": "Astrology: Hebrew Letters",
+            "astrology_letters_description": "Show the 22 Hebrew letters with their meanings",
+            "astrology_letters_1": "Astrology: Hebrew Letters I",
+            "astrology_letters_1_description": "Hebrew letters with descriptions - Page 1 (Mother Letters)",
+            "astrology_letters_2": "Astrology: Hebrew Letters II",
+            "astrology_letters_2_description": "Hebrew letters with descriptions - Page 2 (Double Letters)",
+            "astrology_letters_3": "Astrology: Hebrew Letters III",
+            "astrology_letters_3_description": "Hebrew letters with descriptions - Page 3 (Simple Letters)",
+            "astrology_save_birth": "Astrology: Save Birth Dough",
+            "astrology_save_birth_description": "Save your birth date and time for personalized bakings"
         }
     }
 }

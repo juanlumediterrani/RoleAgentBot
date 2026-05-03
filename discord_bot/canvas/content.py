@@ -333,13 +333,29 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         try:
             # Try to get subrole title first if detail_key provided
             if detail_key:
+                # For runes pages, try page-specific title first (e.g., runes_page_1_title)
+                if role_key == "shaman" and detail_key == "nordic_runes" and surface_name and surface_name.startswith("runes_page"):
+                    page_title_key = f"{surface_name}_title"
+                    page_title = role_descriptions.get(role_key, {}).get(detail_key, {}).get(page_title_key, "")
+                    if page_title:
+                        logger.debug(f"Page-specific title found for {surface_name}: {page_title}")
+                        return page_title.strip()
+                    logger.debug(f"No page-specific title found for {surface_name}, trying general nordic_runes title")
                 subrole_title = role_descriptions.get(role_key, {}).get(detail_key, {}).get("title", "")
                 if subrole_title:
+                    logger.debug(f"Title found for {role_key}.{detail_key}: {subrole_title}")
                     return subrole_title.strip()
+                logger.debug(f"No title found for {role_key}.{detail_key}, trying main role title")
             # Fall back to main role title
             title = role_descriptions.get(role_key, {}).get("title", "")
-            return title.strip() if title else role_key
-        except Exception:
+            if title:
+                logger.debug(f"Main role title found for {role_key}: {title}")
+                return title.strip()
+            # Final fallback to role_key if no title found
+            logger.debug(f"No title found for {role_key}, using role_key as fallback")
+            return role_key
+        except Exception as e:
+            logger.error(f"Error getting title for {role_key}.{detail_key}: {e}")
             return role_key
 
     # Use surface_name as detail_key for subrole titles
@@ -352,6 +368,10 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "cubilete_admin": "cubilete",
         "runes": "nordic_runes",
         "runes_admin": "nordic_runes",
+        "runes_page": "nordic_runes",
+        "runes_page_1": "nordic_runes",
+        "runes_page_2": "nordic_runes",
+        "runes_page_3": "nordic_runes",
         "astrology": "astrology",
         "astrology_admin": "astrology",
         "league": "poe2",
@@ -395,7 +415,9 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
     description = ""
     blocks_to_process = blocks[:4]
     # Skip description extraction for shaman runes to prevent title duplication
-    if not (role_name == "shaman" and surface_name == "runes"):
+    # The title is now handled by _build_canvas_role_embed from descriptions JSON
+    # This applies to "runes" overview and all "runes_page" variants
+    if not (role_name == "shaman" and (surface_name == "runes" or surface_name.startswith("runes_page"))):
         if blocks_to_process and blocks_to_process[0][1]:
             # Use the first line of the first block's content as description
             first_block_lines = blocks_to_process[0][1]
@@ -645,7 +667,12 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         "news_watcher": [
             (button_personal, "overview"),
         ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
-        "treasure_hunter": [],  # POE2 button added separately with emoticon only if th_global_enabled
+        "treasure_hunter": (
+            [(button_personal, "ring")]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), "ring_admin")] if admin_visible else [])
+        ) if current_detail in {"ring", "ring_admin"} else [
+            (personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {}).get("ring", {}).get("button", "👁️ Ring"), "ring"),
+        ] if current_detail not in {"ring", "ring_admin"} else [],  # POE2 button added separately with emoticon only if th_global_enabled
         "trickster": (
             # Regular subrole views
             [(button_personal, trickster_personal_map.get(current_detail or "dice", "dice"))]
@@ -684,12 +711,12 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             (personality_descriptions.get("role_descriptions", {}).get("shaman", {}).get("astrology", {}).get("button", "🌟 Astrology"), "astrology"),
         ] if current_detail not in {"runes", "runes_admin", "astrology", "astrology_admin"} else [],
         "juggler": (
-            [(button_personal, "ring")]
-            + ([(_resolve_button_label(general.get("button_admin", "Admin")), "ring_admin")] if admin_visible else [])
-        ) if current_detail in {"ring", "ring_admin"} else [
-            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("overview", {}).get("button", "🤹 Vista"), "overview"),
-            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("ring", {}).get("button", "👁️ Ring"), "ring"),
-        ] if current_detail not in {"ring", "ring_admin"} else [],
+            [(button_personal, "poetry")]
+            + ([(_resolve_button_label(general.get("button_admin", "Admin")), "poetry_admin")] if admin_visible else [])
+        ) if current_detail in {"poetry", "poetry_admin"} else [
+            (button_personal, "overview"),
+            (personality_descriptions.get("role_descriptions", {}).get("juggler", {}).get("poetry", {}).get("button", "📝 Poetry"), "poetry"),
+        ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
         "scholar": (
             [(button_personal, "personal")]
             + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else [])
@@ -714,10 +741,17 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
             )
         return poe2_buttons
 
-    # Special handling for treasure_hunter overview - return empty list (POE2 button added separately with emoticon in ui.py)
+    # Special handling for treasure_hunter
     # Only if treasure_hunter is enabled globally
     if role_name == "treasure_hunter":
-        return []
+        if current_detail in {"ring", "ring_admin"}:
+            return [
+                (button_personal, "ring"),
+                (_resolve_button_label(general.get("button_admin", "Admin")), "ring_admin")
+            ] if admin_visible else [(button_personal, "ring")]
+        # For other views, use items_map (which includes ring button)
+        # POE2 button added separately with emoticon in ui.py
+        return items_map.get(role_name, [])
 
     # Special handling for banker beggar views - show Personal/Admin navigation
     if role_name == "banker":
@@ -814,6 +848,35 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
                 (_hunter_text("poe2_on", "POE2: On"), "poe2_on", _hunter_text("poe2_on_description", "Activate POE2 subrole"), "✅"),
                 (_hunter_text("poe2_off", "POE2: Off"), "poe2_off", _hunter_text("poe2_off_description", "Deactivate POE2 subrole"), "❌"),
             ]
+
+        # Handle ring subrole
+        ring_descriptions = treasure_hunter.get("ring", {}).get("dropdown", {})
+
+        def _ring_text(key: str, fallback: str) -> str:
+            value = ring_descriptions.get(key)
+            return str(value).strip() if value else fallback
+
+        if detail_name == "ring":
+            ring_enabled = True
+            if agent_config:
+                ring_enabled = (agent_config.get("roles", {})
+                                 .get("treasure_hunter", {})
+                                 .get("subroles", {})
+                                 .get("ring", {})
+                                 .get("enabled", False))
+            if not ring_enabled:
+                return []
+            return [
+                (_ring_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _ring_text("ring_accuse_description", "Accuse a user of carrying the One Ring"), "👁️"),
+            ]
+        if detail_name == "ring_admin" and admin_visible:
+            # Admin can always see ring controls regardless of enabled state
+            return [
+                (_ring_text("ring_on", "Hunt: On"), "ring_on", _ring_text("ring_on_description", "Start the One Ring hunt"), "✅"),
+                (_ring_text("ring_off", "Hunt: Off"), "ring_off", _ring_text("ring_off_description", "Stop the One Ring hunt"), "❌"),
+                (_ring_text("ring_frequency", "Hunt: Frequency"), "ring_frequency", _ring_text("ring_frequency_description", "Configure the round frequency"), "⏰"),
+            ]
+
         # If no specific detail matched, return empty list for treasure_hunter
         return []
 
@@ -1108,35 +1171,39 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
 
     if role_name == "juggler":
         _personality_descriptions = _get_personality_descriptions(server_id)
-        canvas_labels = (_personality_descriptions
-                         .get("role_descriptions", {})
-                         .get("juggler", {})
-                         .get("ring", {})
-                         .get("dropdown", {}))
-
-        def _ring_text(key: str, fallback: str) -> str:
-            value = canvas_labels.get(key)
-            return str(value).strip() if value else fallback
-
-        if detail_name == "ring":
-            ring_enabled = True
-            if agent_config:
-                ring_enabled = (agent_config.get("roles", {})
-                                 .get("juggler", {})
-                                 .get("subroles", {})
-                                 .get("ring", {})
-                                 .get("enabled", False))
-            if not ring_enabled:
-                return []
+        
+        # Handle poetry subrole
+        if detail_name == "poetry":
+            poetry_labels = (_personality_descriptions
+                            .get("role_descriptions", {})
+                            .get("juggler", {})
+                            .get("poetry", {})
+                            .get("dropdown", {}))
+            
+            def _poetry_text(key: str, fallback: str) -> str:
+                value = poetry_labels.get(key)
+                return str(value).strip() if value else fallback
+            
             return [
-                (_ring_text("ring_accuse", "Ring: Accuse"), "ring_accuse", _ring_text("ring_accuse_description", "Accuse a user of carrying the One Ring"), "👁️"),
+                (_poetry_text("poetry_compose", "Compose Poem"), "poetry_compose", _poetry_text("poetry_compose_description", "Write a poem for another user"), "✍️"),
             ]
-        if detail_name == "ring_admin" and admin_visible:
+        
+        if detail_name == "poetry_admin" and admin_visible:
+            poetry_labels = (_personality_descriptions
+                            .get("role_descriptions", {})
+                            .get("juggler", {})
+                            .get("poetry", {})
+                            .get("dropdown", {}))
+            
+            def _poetry_text(key: str, fallback: str) -> str:
+                value = poetry_labels.get(key)
+                return str(value).strip() if value else fallback
+            
             return [
-                (_ring_text("ring_on", "Hunt: On"), "ring_on", _ring_text("ring_on_description", "Start the One Ring hunt"), "✅"),
-                (_ring_text("ring_off", "Hunt: Off"), "ring_off", _ring_text("ring_off_description", "Stop the One Ring hunt"), "❌"),
-                (_ring_text("ring_frequency", "Hunt: Frequency"), "ring_frequency", _ring_text("ring_frequency_description", "Configure the round frequency"), "⏰"),
+                (_poetry_text("poetry_on", "Poetry: On"), "poetry_on", _poetry_text("poetry_on_description", "Enable poetry for this server"), "✅"),
+                (_poetry_text("poetry_off", "Poetry: Off"), "poetry_off", _poetry_text("poetry_off_description", "Disable poetry for this server"), "❌"),
             ]
+
         return []
 
     if role_name == "banker":
@@ -1579,15 +1646,15 @@ def _get_banker_wallet_info(server_id: str, author_id: int, coin_emoji: str = "�
 def _get_ring_accused_info(server_id: str, guild=None, ring_title: str = "⚖️ Ring") -> str:
     """Get current accused user in ring subrole."""
     try:
-        from roles.juggler.subroles.ring.ring_db import get_ring_db_instance
+        from roles.treasure_hunter.subroles.ring.ring_db import get_ring_db_instance
         ring_db = get_ring_db_instance(server_id)
         config = ring_db.get_config()
 
         # Get accused_label from personality descriptions
         from .content import _get_personality_descriptions
         personality_descriptions = _get_personality_descriptions(server_id)
-        juggler_messages = personality_descriptions.get("role_descriptions", {}).get("juggler", {})
-        ring_messages = juggler_messages.get("ring", {})
+        treasure_hunter_messages = personality_descriptions.get("role_descriptions", {}).get("treasure_hunter", {})
+        ring_messages = treasure_hunter_messages.get("ring", {})
         accused_label = ring_messages.get("accused_label", "Accused:")
 
         accused_user_id = config.get('accused_user_id')
@@ -1687,10 +1754,10 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
         if mc_desc and "title" in mc_desc:
             mc_title = mc_desc["title"]
 
-        # Get Ring title from juggler
-        juggler_desc = role_descriptions.get("juggler", {})
-        if juggler_desc and "ring" in juggler_desc:
-            ring_desc = juggler_desc["ring"]
+        # Get Ring title from treasure_hunter
+        treasure_hunter_desc = role_descriptions.get("treasure_hunter", {})
+        if treasure_hunter_desc and "ring" in treasure_hunter_desc:
+            ring_desc = treasure_hunter_desc["ring"]
             if isinstance(ring_desc, dict) and "title" in ring_desc:
                 ring_title = ring_desc["title"]
 
@@ -1761,7 +1828,7 @@ def _build_canvas_home(agent_config: dict, greet_name: str, nogreet_name: str, w
     # 5. Banker - User's wallet balance (moved to Pilgrim Data section)
 
     # 6. Ring - Current accused user
-    if roles_config.get('juggler', {}).get('subroles', {}).get('ring', {}).get('enabled'):
+    if roles_config.get('treasure_hunter', {}).get('subroles', {}).get('ring', {}).get('enabled'):
         ring_info = _get_ring_accused_info(server_id, guild, ring_title)
         if ring_info:
             status_lines.append(ring_info)

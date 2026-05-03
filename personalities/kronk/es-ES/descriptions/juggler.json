@@ -7,5 +7,51 @@
         "config_juggler": "Configurar Malabarista",
         "config_juggler_description": "Ajustar configuración del malabarista",
         "config_juggler_emoji": "🎪"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Juggling Verses**: Solicita versos de malabarismo personalizados dedicados a otros usuarios"
+    },
+    "poetry": {
+        "title": "📝 Versos de Malabarismo",
+        "description": "Solicita un poema dedicado a otro usuario, escrito en el estilo de la personalidad del servidor.",
+        "action_compose": "✍️ Componer Poema",
+        "action_compose_desc": "Escribe un poema para otro usuario",
+        "button": "📝 Versos",
+        "dropdown": {
+            "poetry_compose": "Componer Verso",
+            "poetry_compose_description": "Escribe un verso para otro usuario",
+            "poetry_on": "Versos: Aktivar",
+            "poetry_on_description": "Aktivar versos para este servidor",
+            "poetry_off": "Versos: Desaktivar",
+            "poetry_off_description": "Desaktivar versos para este servidor"
+        },
+        "modal_title": "Componer Verso",
+        "modal_target_label": "Usuario Destino",
+        "modal_target_placeholder": "@usuario o ID de usuario",
+        "modal_dedication_label": "Dedicación/Premisa",
+        "modal_dedication_placeholder": "Un tema o mensaje breve (máx. 150 caracteres)",
+        "error_target_invalid": "❌ Usuario destino inválido",
+        "error_dedication_too_long": "❌ Dedicación demasiado larga (máx. 150 caracteres)",
+        "error_fatigue_limit": "❌ Límite de fatiga alcanzado",
+        "error_banker_charge": "❌ Balance insuficiente (se requiere 1xTAE)",
+        "error_llm_failed": "❌ Error al generar el poema",
+        "preview_title": "📝 Vista Previa del Verso",
+        "preview_description": "Revisa el poema antes de enviarlo",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Cancelar",
+        "success_sent": "✅ Verso enviado a {target}",
+        "success_cancelled": "❌ Verso cancelado",
+        "dm_disabled_notice": "⚠️ El destino tiene los DMs desactivados. Aquí está el verso para enviarlo manualmente:",
+        "dm_disabled_offer": "Puedes kopiar y enviar el verso manualmente:",
+        "error_subrole_disabled": "❌ El subrol de Versos está desaktivado en este servidor. Kontakta kon un administrador para aktivarlo.",
+        "enabled": "✅ Versos aktivados para este servidor.",
+        "disabled": "❌ Versos desaktivados para este servidor.",
+        "error_config_failed": "❌ Error al aktualizar la konfigurazión.",
+        "error_modal_belongs_to_another": "❌ Este modal perteneze a otro usuario.",
+        "error_failed_preview_dm": "❌ Error al enviar vista previa por DM.",
+        "error_server_only": "❌ Esta opción solo está disponible en un servidor.",
+        "error_unknown_action": "❌ Aksión desconosida: {action}",
+        "error_generic": "❌ Error: {error}"
     }
 }

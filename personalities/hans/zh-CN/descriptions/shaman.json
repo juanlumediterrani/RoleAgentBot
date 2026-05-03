@@ -87,5 +87,45 @@
             "success": "🔮 呃！古代符文已说话士兵！",
             "saved": "🔮 呃！汉斯已将你的投掷保存在古代卷轴中！"
         }
+    },
+    "astrology": {
+        "button": "🌟 占星术",
+        "title": "**🌟 第三帝国占星术**",
+        "description": "研究创造之书希伯来字母以获得战略情报。汉斯将其作为指挥工具提供：专属军事秘密。",
+        "welcome": "✨ 阿赫通！欢迎来到第三帝国占星术！ ✨",
+        "help_content": "创造之书系统通过22个希伯来字母（3个母字母、7个双字母、12个单字母）为高级指挥使用揭示32条权力路径。",
+        "letters_title": "**帝国的22个希伯来字母：**",
+        "history": "📓 **占星情报历史** 📓",
+        "history_empty": "没有先前的情报记录。",
+        "birth_title": "🌟 士兵星盘 🌟",
+        "moment_title": "⏰ 战术时刻解读 ⏰",
+        "year_title": "📅 个人战役年 📅",
+        "integrated_title": "🔮 综合指挥解读 🔮",
+        "birth_data_saved": "✨ 你的出生数据已归档在帝国记录中！",
+        "labels": {
+            "question": "问题"
+        },
+        "dropdown": {
+            "astrology_birth": "占星术：星盘",
+            "astrology_birth_description": "从出生日期和时间解读你永恒的灵魂模式",
+            "astrology_moment": "占星术：战术解读",
+            "astrology_moment_description": "为特定时刻或任务获得指引",
+            "astrology_year": "占星术：战役年",
+            "astrology_year_description": "理解你战役年的精神力量",
+            "astrology_integrated": "占星术：指挥解读",
+            "astrology_integrated_description": "结合出生、时刻和年的综合解读",
+            "astrology_history": "占星术：历史",
+            "astrology_history_description": "显示你最近的占星情报历史",
+            "astrology_letters": "占星术：希伯来字母",
+            "astrology_letters_description": "显示22个希伯来字母及其含义",
+            "astrology_letters_1": "占星术：希伯来字母 I",
+            "astrology_letters_1_description": "希伯来字母及其描述 - 第1页（母字母）",
+            "astrology_letters_2": "占星术：希伯来字母 II",
+            "astrology_letters_2_description": "希伯来字母及其描述 - 第2页（双字母）",
+            "astrology_letters_3": "占星术：希伯来字母 III",
+            "astrology_letters_3_description": "希伯来字母及其描述 - 第3页（单字母）",
+            "astrology_save_birth": "占星术：归档出生数据",
+            "astrology_save_birth_description": "归档你的出生日期和时间以获得个性化解读"
+        }
     }
 }

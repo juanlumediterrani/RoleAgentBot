@@ -1,0 +1,57 @@
+{
+    "title": "**🤹 O Juglah Putre**",
+    "description": "O orko malabarista mantem multiplas tarefas em equilibrio e entretene o klan kom as suas habilidades.",
+    "button": "🤹 Juglah",
+    "dropdown": {
+        "select_juggler_action": "🤹 Seleksionar ako de malabarista...",
+        "config_juggler": "Konfigurar Malabarista",
+        "config_juggler_description": "Ajustar konfigurakao do malabarista",
+        "config_juggler_emoji": "🤹"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Versos do Klan**: Solisita versos do klan personalizados dedikados a outros utilizadores"
+    },
+    "poetry": {
+        "title": "📝 Versos do Klan",
+        "description": "Solisita um poema dedikado a outro utilizador, eskrito no estilo da personalidade do servidor.",
+        "action_compose": "✍️ Kompor Poema",
+        "action_compose_desc": "Eskeve um poema para outro utilizador",
+        "button": "📝 Versos do Klan",
+        "dropdown": {
+            "poetry_compose": "Kompor Verso do Klan",
+            "poetry_compose_description": "Eskeve um verso do klan para outro utilizador",
+            "poetry_on": "Versos do Klan: Ativar",
+            "poetry_on_description": "Ativar versos do klan para este servidor",
+            "poetry_off": "Versos do Klan: Desativar",
+            "poetry_off_description": "Desativar versos do klan para este servidor"
+        },
+        "modal_title": "Kompor Verso do Klan",
+        "modal_target_label": "Utilizador Destino",
+        "modal_target_placeholder": "@utilizador ou ID de utilizador",
+        "modal_dedication_label": "Dedikakao/Premisa",
+        "modal_dedication_placeholder": "Um tema ou mensagem kurto (max. 150 karateres)",
+        "error_target_invalid": "❌ Utilizador destino invalido",
+        "error_dedication_too_long": "❌ Dedikakao demasiado longa (max. 150 karateres)",
+        "error_fatigue_limit": "❌ Limite de fadiga alkankado",
+        "error_banker_charge": "❌ Balanke insufisiente (se rekere 1xTAE)",
+        "error_llm_failed": "❌ Erro ao gerar o poema",
+        "preview_title": "📝 Vista Previa do Verso do Klan",
+        "preview_description": "Revisa o poema antes de envia-lo",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Kanselar",
+        "success_sent": "✅ Verso do klan enviado a {target}",
+        "success_cancelled": "❌ Verso do klan kanselado",
+        "dm_disabled_notice": "⚠️ O destino tem os DMs desativados. Aki esta o verso do klan para envia-lo manualmente:",
+        "dm_disabled_offer": "Podes kopiar e enviar o verso do klan manualmente:",
+        "error_subrole_disabled": "❌ O subrol de Versos do Klan esta desativado neste servidor. Kontakta kom um administrador para ativa-lo.",
+        "enabled": "✅ Versos do klan ativados para este servidor.",
+        "disabled": "❌ Versos do klan desativados para este servidor.",
+        "error_config_failed": "❌ Erro ao atualizar a konfigurakao.",
+        "error_modal_belongs_to_another": "❌ Este modal pertense a outro utilizador.",
+        "error_failed_preview_dm": "❌ Fallo ao enviar vista previa por DM.",
+        "error_server_only": "❌ Esta opkao so esta disponivel no servidor.",
+        "error_unknown_action": "❌ Akao deskonhesida: {action}",
+        "error_generic": "❌ Erro: {error}"
+    }
+}

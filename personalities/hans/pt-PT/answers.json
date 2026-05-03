@@ -1,0 +1,183 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **¡SIEG!** ¡Vitória no campo de batalha, Zivilist!",
+                    "🎉 **¡TRIUNFO!** ¡Excelente estratégia militar, Soldado!",
+                    "🎉 **¡GANHASTE!** ¡A artilharia acertou o alvo!",
+                    "🎉 **¡EXCELENTE!** ¡Missão cumprida com sucesso!",
+                    "🎉 **¡BRILLANTE!** ¡És um oficial de primeira classe!"
+                ],
+                "youlose":[
+                    "😢 **DERROTA**... ¡O inimigo foi superior desta vez!",
+                    "😢 **FALHO TÁTICO**... ¡Revisa a tua estratégia, Zivilist!",
+                    "😢 **PERDESTE**... ¡A missão falhou!",
+                    "😢 **MÁ SORTE**... ¡Volta a treinar!",
+                    "😢 **NÃO FOI DESTA VEZ**... ¡Tenta de novo!"
+                ],
+                "high_pot":[
+                    "💰 **¡O BOTIM CRESCE!** ¡O tesouro de guerra acumula-se!",
+                    "💰 **¡BOTIM EM AUMENTO!** ¡As reservas crescem!",
+                    "💰 **¡ACUMULANDO RECURSOS!** ¡O botim torna-se lendário!",
+                    "💰 **¡FORTUNA MILITAR!** ¡O botim reclama o seu dono!",
+                    "💰 **¡RESERVAS MÁGICAS!** ¡Os marcos esperam pelo conquistador!"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DO BOTIM!!** ¡Conquistaste o tesouro imperial!",
+                    "🎉 **¡¡VITÓRIA TOTAL!!** ¡O botim é teu, Soldado!",
+                    "🎉 **¡¡JACKPOT MILITAR!!** ¡Ganhaste o grande prémio!",
+                    "🎉 **¡¡CONQUISTA LEGENDÁRIA!!** ¡És o dono do botim!",
+                    "🎉 **¡¡BOTIM CONQUISTADO!!** ¡Uma vitória épica!"
+                ],
+                "not_gold":[
+                    "💸 **SEM MARCOS**... ¡Não tens recursos suficientes!",
+                    "💸 **RESERVAS INSUFICIENTES**... ¡Precisas de mais marcos!",
+                    "💸 **BOLSOS VAZIOS**... ¡Revisa o teu tesouro militar!",
+                    "💸 **NÃO ALCANÇA**... ¡Acumula mais marcos primeiro!",
+                    "💸 **TESOURO ESCASSO**... ¡Precisas de fortuna para combater!"
+                ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **¡SIEG!** ¡Vitória táctica, Zivilist!",
+                    "🎉 **¡TRIUNFO!** ¡Excelente estratégia de dados, Soldado!",
+                    "🎉 **¡GANHASTE!** ¡Os dados acertaram o alvo!",
+                    "🎉 **¡EXCELENTE!** ¡Operação cumprida com sucesso!",
+                    "🎉 **¡BRILLANTE!** ¡És um oficial de primeira classe!"
+                ],
+                "youlose":[
+                    "😢 **DERROTA**... ¡Os dados foram adversos desta vez!",
+                    "😢 **FALHO TÁTICO**... ¡Revisa a tua estratégia, Zivilist!",
+                    "😢 **PERDESTE**... ¡A operação falhou!",
+                    "😢 **MÁ SORTE**... ¡Volta a treinar!",
+                    "😢 **NÃO FOI DESTA VEZ**... ¡Tenta de novo!"
+                ],
+                "high_pot":[
+                    "💰 **¡O BOTE CRESCE!** ¡O tesouro da Wehrmacht acumula-se!",
+                    "💰 **¡BOTE EM AUMENTO!** ¡As reservas crescem!",
+                    "💰 **¡ACUMULANDO RECURSOS!** ¡O bote torna-se lendário!",
+                    "💰 **¡FORTUNA MILITAR!** ¡O bote reclama o seu dono!",
+                    "💰 **¡RESERVAS MÁGICAS!** ¡Os marcos esperam pelo conquistador!"
+                ],
+                "pot_winner":[
+                    "🎉 **¡¡GANADOR DO BOTE!!** ¡Conquistaste o tesouro da Wehrmacht!",
+                    "🎉 **¡¡VITÓRIA TOTAL!!** ¡O bote é teu, Soldado!",
+                    "🎉 **¡¡JACKPOT TÁTICO!!** ¡Ganhaste o grande prémio!",
+                    "🎉 **¡¡CONQUISTA LEGENDÁRIA!!** ¡És o dono do bote!",
+                    "🎉 **¡¡BOTE CONQUISTADO!!** ¡Uma vitória épica!"
+                ],
+                "not_gold":[
+                    "💸 **SEM MARCOS**... ¡Não tens recursos suficientes!",
+                    "💸 **RESERVAS INSUFICIENTES**... ¡Precisas de mais marcos!",
+                    "💸 **BOLSOS VAZIOS**... ¡Revisa o teu tesouro militar!",
+                    "💸 **NÃO ALCANÇA**... ¡Acumula mais marcos primeiro!",
+                    "💸 **TESOURO ESCASSO**... ¡Precisas de fortuna para jogar!"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "para financiar a Konstrução do novo Quartel",
+                    "para pagar o Formulário 27-K de manutenção burocrático",
+                    "para adquirir tinta de qualidade para selar Documentos",
+                    "para comprar Bratwurst para a tropa disciplinada",
+                    "para pagar as multas a Zivilisten indisciplinados",
+                    "para renovar o stock de formulários em triplicado",
+                    "para financiar a inspeção militar do servidor",
+                    "para comprar cerveja quente para o pessoal de Escritório"
+                ]
+            }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "¡A escuridão primordial espera o teu comando soldado! ¡As sementes plantadas em escuridão crescerão em vitória para a Pátria!"
+                ],
+                "waxing_crescent": [
+                    "¡A luz cresce como o Reich! ¡Hora de plantar intenções para a glória da Pátria!"
+                ],
+                "first_quarter": [
+                    "¡Se requer ação soldado! ¡Enfrenta obstáculos com força e determinação germânica!"
+                ],
+                "waxing_gibbous": [
+                    "¡A energia acumula-se como a Wehrmacht! ¡Refina os teus planos para a vitória total!"
+                ],
+                "full_moon": [
+                    "¡O poder máximo manifesta-se! ¡O espírito ario brilha brilhante soldado! ¡Revelações e vitória completa!"
+                ],
+                "waning_gibbous": [
+                    "¡A colheita recolhe-se! ¡Gratidão pelos teus logros enquanto nos preparamos para a próxima batalha!"
+                ],
+                "last_quarter": [
+                    "¡Tempo de reflexão soldado! ¡Libera o que não serve à Pátria e prepara-te para a nova campanha!"
+                ],
+                "waning_crescent": [
+                    "¡Descanso sagrado! ¡Medita no teu dever soldado! ¡Descansa bem para a próxima missão!"
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ Ziel des Rings aktualisiert auf {target_name}",
+        "enabled": "✅ Ring in Konfiguration aktiviert.",
+        "disabled": "✅ Ring in Konfiguration deaktiviert."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ ¡ACHTUNG! A seleção de ação não está disponível, Zivilist! ✍️🚫",
+        "error_behavior_admin_only": "❌ ¡SÓ PARA OFICIAIS SUPERIORES! ¡SCHNELL! 🦅⚖️",
+        "error_settings_admin_only": "❌ ¡AÇÃO RESTRINGIDA! ¡Só oficiais podem modificar parâmetros! ✍️🚫",
+        "error_taboo_update_failed": "❌ ¡FALHO NA ATUALIZAÇÃO DE UMBRAIS! ¡Revisar protocolos! 📉💥",
+        "error_greetings_update_failed": "❌ ¡FALHO NO PROTOCOLO DE SAÚDO! ¡Revisar registos! 🦅⚖️",
+        "error_welcome_update_failed": "❌ ¡FALHO NO PROTOCOLO DE INDUÇÃO! ¡Revisar registos! 📉💥",
+        "error_commentary_update_failed": "❌ ¡FALHO NAS OBSERVAÇÕES! ¡Revisar relatórios! ✍️🚫",
+        "error_commentary_disabled": "❌ ¡MÓDULO DE OBSERVAÇÕES DESATIVADO! 📉💥",
+        "error_commentary_process_failed": "❌ ¡ERRO NO PROCESSAMENTO DE OBSERVAÇÕES! ¡Revisar registos! ✍️🚫",
+        "success_taboo_state": "Umbrais {enabled_disabled} para este quartel, Zivilist! 🦅⚖️",
+        "success_greetings_state": "Protocolo de saúdo {enabled_disabled} para este quartel! ✍️",
+        "success_welcome_state": "Cerimónia de indução {enabled_disabled} para este quartel! 🦅⚖️",
+        "success_commentary_state": "Observações tácticas {enabled_disabled} para este quartel! ✍️",
+        "state_enabled": "ATIVADO",
+        "state_disabled": "DESATIVADO",
+        "forget_me_label": "🧹 Esquece-me (apagar os meus dados)",
+        "forget_me_description": "Elimina os teus dados pessoais de todos os Quartes que este agente kontrola (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Konfirmar apagado de Dados",
+        "forget_me_confirm_prompt": "⚠️ **¡ACHTUNG! — Direito ao apagado (GDPR)**\n\nIsso eliminará irreversivelmente os teus dados pessoais de **TODOS os Quartes onde opera este agente**, Zivilist:\n• Registos de interações atribuídos a ti.\n• Memórias de relação que o Quartel konstruiu sobre ti.\n• Kontadores de fadiga vinculados ao teu id.\n• Menções do teu nome em relatórios diários serão redaktadas a ``[redaktado]``.\n\n¡Esta ação NÃO pode ser desfeita! ¿Desejas proceder, Schweinehund?",
+        "forget_me_btn_confirm": "¡JA! Apagar os meus dados",
+        "forget_me_btn_cancel": "Abbrechen",
+        "forget_me_result_header": "✅ ¡Os teus dados pessoais foram ELIMINADOS do Quartel! ¡SCHNELL! 🦅⚖️",
+        "forget_me_no_data": "ℹ️ Não se encontraram dados pessoais teus em nenhum Quartel. ¡Bom rekord, Zivilist! ✍️",
+        "forget_me_cancelled": "❎ Operação cancelada. ¡Nenhum Dado foi modificado! ✍️",
+        "forget_me_not_yours": "❌ ¡ALTO! ¡Esta konfirmação pertence a outro Zivilist! ✍️🚫",
+        "forget_me_timed_out": "⌛ ¡Tempo expirado! ¡Nenhum Dado foi modificado, Zivilist! ✍️",
+        "forget_me_dm_sent": "📬 ¡Konfirmação enviada por mensagem direta! ¡Revise o teu korreo, Zivilist! ✍️"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ ¡NÃO HÁ QUARTES DISPONÍVEIS! 📉💥 ¡Executar ações desde um servidor, Schweinehund! ✍️🚫",
+        "server_access_error": "❌ ¡NÃO SE PODE ACEDER AO QUARTEL! 📉💥 ¡Executar ações desde um servidor! ✍️🚫",
+        "reply_button_confirmation": "💬 ¡ATENÇÃO, Zivilist! Agora konversas desde o Quartel **{server_name}**. ¡As tuas respostas usarão esta personalidade até que seleciones outro! ✍️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ ¡ACHTUNG! ¡Não se pôde eliminar a última kanção! ¡Revisar protocolos! 📉💥",
+        "play_usage": "🎵 **Uso:** `!mc play <nome de kanção ou URL>`",
+        "not_in_voice": "🎤 ¡Deves estar num kanal de voz para usar este komando, Zivilist!",
+        "nothing_playing": "🎵 Não se está a reproduzir nada no Quartel.",
+        "same_voice_channel": "🎤 ¡Deves estar no mesmo kanal de voz que o bot, Zivilist!",
+        "not_connected": "🎤 Não estou konektado a nenhum kanal, Zivilist.",
+        "queue_empty": "📭 A kola do Quartel está vazia.",
+        "dj_permissions_required": "🚫 ¡Necesitas o rol de DJ ou permissões de administrador para usar este komando! ✍️🚫",
+        "playback_paused": "⏸️ Reprodução pausada no Quartel.",
+        "nothing_paused": "🎵 Não há nada pausado no Quartel.",
+        "playback_resumed": "▶️ Reprodução retomada no Quartel.",
+        "leaving_voice": "👋 Saindo do kanal de voz do Quartel. ¡SCHNELL!",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 O volume deve ser um número entre 0 e 100.",
+        "already_playing": "🎵 Já estou a reproduzir no Quartel.",
+        "queue_cleared": "🗑️ Kola do Quartel limpa. ¡SCHNELL!",
+        "volume_adjust_failed": "❌ Não pude ajustar o volume. ¡Revisar protocolos! 📉💥"
+    }
+
+
+
+}

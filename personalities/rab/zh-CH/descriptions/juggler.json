@@ -2,42 +2,56 @@
     "title": "**🎯 服务协调中心**",
     "description": "管理多操作流以维护网络和谐的枢纽。在朝圣者连接中搜索并提出新链接。",
     "button": "🎯 服务",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **零之追迹** - 识别异常并指向隐藏原始 artifact 的实体"
-    },
-    "ring": {
-        "button": "👁️ Artifact",
-        "title": "👁️ **零之 artifact 追踪**",
-        "description": "🔍 一个异常对象改变了网络。指向其他化身以帮助算法调试威胁。",
-        "status_active": "✅ **主动扫描** - 先知正在寻找异常",
-        "status_inactive": "❌ **系统休眠** - 光学传感器休息",
-        "current_target": "🎯 **兴趣点：**",
-        "target_unknown": "👤 坐标无嫌疑",
-        "investigation_title": "🔍** 报告异常：**",
-        "investigation_instructions": "• 从下方控制台启动 **Artifact: Accuse**\n• 写入怀疑对象的提及（@）或 ID\n• 我的算法将处理直接审问\n• 分析将公开以透明代码",
-        "investigation_warning": "⚠️ **物理限制：**\n• 化身不能自我告发\n• 人工实体（机器人）不能携带 artifact\n• 扫描必须由执政官初始化",
-        "inactive_title": "⚠️ **雷达关闭**",
-        "inactive_instructions": "要恢复追踪：\n• 执政官必须访问 **Admin Artifact** 终端\n• 执行 **Tracking: Started**\n• 校准扫描时间周期\n\n完成后，你可以指向可疑的碳基签名。",
-        "hot_potato": "🔥 **负载转移：** 迭代 {iteration}（延迟降低 {multiplier}x）",
-        "controls": "**系统控制**\n- 切换扫描状态\n- 时间周期参数（影响负载转移）",
-        "dm_accusation_header": "👁️ **零之 artifact 追踪**",
-        "accused_label": "被指控:",
-        "admin_description": "配置 artifact 追踪器的灵敏度和频率",
-        "dropdown": {
-            "ring_accuse": "Artifact: 指向",
-            "ring_accuse_description": "指示某化身在网络中隐藏异常",
-            "ring_on": "追踪: 激活",
-            "ring_on_description": "在网络中启动异常扫描",
-            "ring_off": "追踪: 停用",
-            "ring_off_description": "停止异常追踪系统",
-            "ring_frequency": "追踪: 频率",
-            "ring_frequency_description": "配置扫描时间周期（影响负载转移）"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎯 选择服务操作...",
         "config_juggler": "配置服务",
         "config_juggler_description": "调整协调中心参数",
         "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **枢纽诗篇**: 请求为其他用户创作个性化枢纽诗篇"
+    },
+    "poetry": {
+        "title": "📝 枢纽诗篇",
+        "description": "请求为另一位用户创作诗歌，以服务器的个性化风格书写。",
+        "action_compose": "✍️ 创作诗歌",
+        "action_compose_desc": "为另一位用户写诗",
+        "button": "📝 枢纽诗篇",
+        "dropdown": {
+            "poetry_compose": "创作枢纽诗篇",
+            "poetry_compose_description": "为另一位用户写一首枢纽诗篇",
+            "poetry_on": "枢纽诗篇：开启",
+            "poetry_on_description": "为此服务器启用枢纽诗篇",
+            "poetry_off": "枢纽诗篇：关闭",
+            "poetry_off_description": "为此服务器禁用枢纽诗篇"
+        },
+        "modal_title": "创作枢纽诗篇",
+        "modal_target_label": "目标用户",
+        "modal_target_placeholder": "@用户或用户ID",
+        "modal_dedication_label": "献词/前提",
+        "modal_dedication_placeholder": "简短的主题或信息（最多150个字符）",
+        "error_target_invalid": "❌ 目标用户无效",
+        "error_dedication_too_long": "❌ 献词太长（最多150个字符）",
+        "error_fatigue_limit": "❌ 达到疲劳限制",
+        "error_banker_charge": "❌ 余额不足（需要1xTAE）",
+        "error_llm_failed": "❌ 生成诗歌失败",
+        "preview_title": "📝 枢纽诗篇预览",
+        "preview_description": "发送前查看诗歌",
+        "preview_footer": "来自：{sender}",
+        "button_confirm": "✅ 发送",
+        "button_cancel": "❌ 取消",
+        "success_sent": "✅ 枢纽诗篇已发送给{target}",
+        "success_cancelled": "❌ 枢纽诗篇已取消",
+        "dm_disabled_notice": "⚠️ 目标已禁用DM。这是手动发送的枢纽诗篇：",
+        "dm_disabled_offer": "你可以复制并手动发送枢纽诗篇：",
+        "error_subrole_disabled": "❌ 枢纽诗篇子角色在此服务器上已禁用。请联系管理员启用它。",
+        "enabled": "✅ 此服务器已启用枢纽诗篇。",
+        "disabled": "❌ 此服务器已禁用枢纽诗篇。",
+        "error_config_failed": "❌ 更新配置失败。",
+        "error_modal_belongs_to_another": "❌ 此模态框属于另一个用户。",
+        "error_failed_preview_dm": "❌ 发送预览私信失败。",
+        "error_server_only": "❌ 此选项仅在服务器中可用。",
+        "error_unknown_action": "❌ 未知操作：{action}",
+        "error_generic": "❌ 错误：{error}"
     }
 }

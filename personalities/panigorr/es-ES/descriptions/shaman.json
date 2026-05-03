@@ -87,5 +87,45 @@
             "success": "🔮 ¡SSSSS! Las Cenizas han hablado saco de harina!",
             "saved": "🔮 ¡SSSSS! Panigorr ha guardado tu tirada en los pergaminos grasientos!"
         }
+    },
+    "astrology": {
+        "button": "🌟 Astrología",
+        "title": "**🌟 Astrología del Horno**",
+        "description": "Panigorr hornea letras hebreas del Sefer Yetzirah para ver tu futuro... SSSSS",
+        "welcome": "✨ ¡SSSSS! El horno de astrología está caliente, saco de harina! ✨",
+        "help_content": "El sistema Sefer Yetzirah revela los 32 caminos del horno a través de 22 letras hebreas (3 Madres, 7 Dobles, 12 Simples)... ¡SSSSS!",
+        "letters_title": "**Las 22 letras hebreas del horno:**",
+        "history": "📓 **HISTORIAL DE HORNEADAS** 📓",
+        "history_empty": "No hay panes horneados anteriormente.",
+        "birth_title": "🌟 PAN DE NACIMIENTO 🌟",
+        "moment_title": "⏰ MOMENTO DE HORNEADO ⏰",
+        "year_title": "📅 AÑO DEL HORNO 📅",
+        "integrated_title": "🔮 HORNEADO INTEGRADO 🔮",
+        "birth_data_saved": "✨ ¡SSSSS! Tu masa de nacimiento ha sido guardada en el horno!",
+        "labels": {
+            "question": "Pregunta"
+        },
+        "dropdown": {
+            "astrology_birth": "Astrología: Pan de Nacimiento",
+            "astrology_birth_description": "Hornea tu patrón de alma desde fecha y hora de nacimiento",
+            "astrology_moment": "Astrología: Momento de Horneado",
+            "astrology_moment_description": "Obtén migajas para un momento específico",
+            "astrology_year": "Astrología: Año del Horno",
+            "astrology_year_description": "Comprende las fuerzas del horno de tu año",
+            "astrology_integrated": "Astrología: Horneado Integrado",
+            "astrology_integrated_description": "Horneado completo combinando nacimiento, momento y año",
+            "astrology_history": "Astrología: Historial",
+            "astrology_history_description": "Muestra tus horneados recientes",
+            "astrology_letters": "Astrología: Letras Hebreas",
+            "astrology_letters_description": "Muestra las 22 letras hebreas con sus significados",
+            "astrology_letters_1": "Astrología: Letras Hebreas I",
+            "astrology_letters_1_description": "Letras hebreas con descripciones - Página 1 (Letras Madres)",
+            "astrology_letters_2": "Astrología: Letras Hebreas II",
+            "astrology_letters_2_description": "Letras hebreas con descripciones - Página 2 (Letras Dobles)",
+            "astrology_letters_3": "Astrología: Letras Hebreas III",
+            "astrology_letters_3_description": "Letras hebreas con descripciones - Página 3 (Letras Simples)",
+            "astrology_save_birth": "Astrología: Guardar Masa de Nacimiento",
+            "astrology_save_birth_description": "Guarda tu fecha y hora de nacimiento para horneados personalizados"
+        }
     }
 }

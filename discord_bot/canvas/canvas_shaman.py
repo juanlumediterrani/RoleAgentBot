@@ -229,7 +229,7 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
         return str(value).strip() if value else fallback
 
     if detail_name == "runes":
-        title = _runes_text("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
+        # Title is handled by _build_canvas_role_embed from descriptions JSON, not included in content
         description = _runes_text("description", "Ancient wisdom for modern guidance through Elder Futhark runes.")
 
         runes_enabled = False
@@ -246,7 +246,6 @@ def build_canvas_role_shaman_detail(detail_name: str, admin_visible: bool, guild
         label_disabled = action_labels.get("disabled", "Disabled")
 
         return "\n".join([
-            title,
             description,
             "-" * 45,
             how_to_use,
@@ -1137,8 +1136,7 @@ class RunesPageNavButton(discord.ui.Button):
             from .content import _build_canvas_role_embed
             from discord_bot.canvas.ui import CanvasRoleDetailView
 
-            role_embed = _build_canvas_role_embed("shaman", content, parent_view.admin_visible, "runes", None, f"Viewed runes page {self.target_page}")
-            role_embed.title = ""  # Force empty title since content already includes the page title
+            role_embed = _build_canvas_role_embed("shaman", content, parent_view.admin_visible, "runes_page", None, f"Viewed runes page {self.target_page}", server_id=server_id)
 
             # Create new base view with target page
             base_view = CanvasRoleDetailView(
@@ -1178,6 +1176,8 @@ class RunesPageBackButton(discord.ui.Button):
         from .ui import _build_canvas_role_detail_view
         from .content import _build_canvas_role_embed
 
+        server_id = get_server_key(parent_view.guild) if parent_view.guild else None
+
         try:
             content = _build_canvas_role_detail_view(
                 parent_view.role_name,
@@ -1193,10 +1193,9 @@ class RunesPageBackButton(discord.ui.Button):
                 parent_view.admin_visible,
                 "runes",
                 None,
-                "Viewed runes overview"
+                "Viewed runes overview",
+                server_id=server_id
             )
-            # Force empty title to avoid extra "shaman //" title
-            role_embed.title = ""
 
             # Create a new CanvasRoleDetailView for runes overview
             from .ui import CanvasRoleDetailView
@@ -1352,10 +1351,16 @@ async def _handle_canvas_runes_action(interaction: discord.Interaction, action_n
         else:
             runes_title = _runes_desc.get("title", "🔮 **Nordic Runes Ancient Wisdom** 🔮")
 
-        role_embed = _build_canvas_role_embed("shaman", content, view.admin_visible, "runes", None, f"Viewed {action_name.replace('runes_', '').title()}")
-        # For runes pages, force empty title since content already includes the page title
+        # Use page-specific surface_name for runes list pages to get page-specific title from descriptions
         if action_name in _PAGE_ACTIONS:
-            role_embed.title = ""
+            surface_name = f"runes_page_{page}"
+        else:
+            surface_name = "runes"
+        role_embed = _build_canvas_role_embed("shaman", content, view.admin_visible, surface_name, None, f"Viewed {action_name.replace('runes_', '').title()}", server_id=server_id)
+        # Set title for runes pages from descriptions
+        if action_name in _PAGE_ACTIONS:
+            # Title is already set by _build_canvas_role_embed from descriptions JSON
+            pass
         elif runes_title:
             role_embed.title = runes_title
         view.current_embed = role_embed

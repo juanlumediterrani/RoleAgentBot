@@ -86,5 +86,34 @@
             "poe2_off": "POE2: Deactivate",
             "poe2_off_description": "Deactivate POE2 subrole"
         }
+    },
+    "ring": {
+        "button": "🔍 Investigation",
+        "title": "👁️ **Herr Hans Gestapo Persecutor**",
+        "description": " Ze Gestapo officer vill persecute you to ze end of time, accuse other soldiers to avoid zat torment.",
+        "status_active": "✅ **ACTIVE PERSECUTION** - Her Hans is looking for traitors",
+        "status_inactive": "❌ **INACTIVE PERSECUTION** - Her Hans is resting",
+        "current_target": "🎯 **CURRENT TARGET:**",
+        "target_unknown": "👤 No suspect selected",
+        "investigation_title": "🔍** MAKE AN ACCUSATION:**",
+        "investigation_instructions": "• ACHTUNG! Use **Accuse** from ze operations menu, soldier\n• Enter suspect identification: @username or ID\n• Herr Hans vill generate interrogation to extract confession\n• Ze accusation vill be published in headquarters for all soldiers",
+        "investigation_warning": "⚠️ **REICH ORDERS:**\n• Cannot accuse yourself, traitor\n• Cannot accuse automated units (bots)\n• Persecution must be authorized by superior officer",
+        "inactive_title": "⚠️ **PERSECUTION IS INACTIVE**",
+        "inactive_instructions": "ACHTUNG! To authorize persecution operations:\n• A superior officer must access **Admin**\n• And authorize persecution\n• Set automatic interrogation frequency\n\nOnce authorized, you can accuse soldiers of treason to ze Reich!",
+        "hot_potato": "🔥 **Hot Potato:** Iteration {iteration} (frequency reduced by {multiplier}x)",
+        "controls": "**Controls**\n- Activate or deactivate persecution\n- Editable frequency box (sets base frequency and restarts hot potato)",
+        "dm_accusation_header": "👁️ **GESTAPO ACCUSATION**",
+        "accused_label": "Accused:",
+        "admin_description": "Configure persecution functionality and frequency",
+        "dropdown": {
+            "ring_accuse": "Persecution: Accuse",
+            "ring_accuse_description": "Accuse a soldier of being a traitor to ze Reich",
+            "ring_on": "Persecution: Activate",
+            "ring_on_description": "Start ze persecution of Reich traitors",
+            "ring_off": "Persecution: Deactivate",
+            "ring_off_description": "Stop ze persecution system",
+            "ring_frequency": "Persecution: Frequency",
+            "ring_frequency_description": "Configure interrogation frequency (affects hot potato)"
+        }
     }
 }

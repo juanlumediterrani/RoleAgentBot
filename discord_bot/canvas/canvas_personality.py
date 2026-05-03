@@ -608,7 +608,7 @@ class CanvasPersonalitySelectView(discord.ui.View):
             # Load personality info
             personality_info = self._load_personality_info(new_personality)
 
-            # Enable confirm button and update message
+            # Enable confirm button
             self.confirm_button.disabled = False
 
             server_id = get_server_key(self.parent_view.guild) if (get_server_key and self.parent_view.guild) else None
@@ -631,7 +631,6 @@ class CanvasPersonalitySelectView(discord.ui.View):
 
             # Create embed with avatar as thumbnail
             content = personality_info
-            content = self._truncate_to_limit(content, 2000)
             embed = discord.Embed(title=selected_msg, description=content)
             if avatar_url:
                 embed.set_thumbnail(url=avatar_url)
@@ -1209,6 +1208,655 @@ class CanvasPersonalityConfirmView(discord.ui.View):
             await interaction.response.send_message("❌ This menu belongs to another user.", ephemeral=True)
             return False
         return True
+
+
+# ============================================================================
+# Server Onboarding Views (New Server Setup)
+# ============================================================================
+
+class ServerWelcomeView(discord.ui.View):
+    """View shown when bot joins a new server with a configuration button."""
+
+    def __init__(self, guild, server_id: str, detected_lang: str):
+        super().__init__(timeout=None)  # No timeout for welcome message
+        self.guild = guild
+        self.server_id = server_id
+        self.detected_lang = detected_lang
+
+        # Add configuration button
+        config_button = discord.ui.Button(
+            label="⚙️ Configure Language & Personality",
+            style=discord.ButtonStyle.primary,
+            emoji="⚙️",
+            row=0
+        )
+        config_button.callback = self._on_config_click
+        self.add_item(config_button)
+
+    async def _on_config_click(self, interaction: discord.Interaction):
+        """Handle configuration button click - open language selection view."""
+        try:
+            # Check if user is admin
+            if is_admin and not is_admin(interaction, guild=self.guild):
+                await interaction.response.send_message("❌ This action is admin-only.", ephemeral=True)
+                return
+
+            # Open language selection view (step 1)
+            language_view = OnboardingLanguageSelectView(self.guild, self.server_id, self.detected_lang)
+            server_id = get_server_key(self.guild) if (get_server_key and self.guild) else None
+            personality_descriptions = _get_personality_descriptions(server_id)
+            general_msgs = personality_descriptions.get("general", {})
+            welcome_msg = general_msgs.get("onboarding_welcome", "Welcome! Let's configure your bot language.")
+
+            await interaction.response.send_message(
+                welcome_msg,
+                view=language_view,
+                ephemeral=True
+            )
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error in config button click: {e}")
+            await interaction.response.send_message(
+                "❌ Error opening configuration. Please try again.",
+                ephemeral=True
+            )
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Allow all users to see the welcome, but only admins can configure."""
+        return True
+
+
+class OnboardingLanguageSelectView(discord.ui.View):
+    """Step 1: Language selection view for server onboarding - reuses LanguageSelect logic."""
+
+    def __init__(self, guild, server_id: str, detected_lang: str):
+        super().__init__(timeout=300)
+        self.guild = guild
+        self.server_id = server_id
+        self.detected_lang = detected_lang
+        self.selected_language = None
+        self.author_id = None
+
+        # Reuse LanguageSelect dropdown logic
+        from .server_config import get_available_languages, get_server_language
+        current_lang = get_server_language(server_id) if server_id else detected_lang
+
+        # Get language select messages from descriptions
+        descriptions = _get_personality_descriptions(server_id)
+        lang_select = descriptions.get("behavior_messages", {}).get("settings", {}).get("language_select", {})
+
+        placeholder = lang_select.get("placeholder", "🌐 Select server language...")
+        description_template = lang_select.get("description", "Set server language to {lang_name}")
+
+        options = []
+        for lang_code, lang_name in get_available_languages().items():
+            options.append(discord.SelectOption(
+                label=lang_name,
+                value=lang_code,
+                description=description_template.format(lang_name=lang_name),
+                emoji="🌐",
+                default=lang_code == current_lang
+            ))
+
+        self.language_select = discord.ui.Select(
+            placeholder=placeholder,
+            min_values=1,
+            max_values=1,
+            options=options,
+            row=0,
+            custom_id="language_select"
+        )
+        self.language_select.callback = self._on_language_select
+        self.add_item(self.language_select)
+
+        # Confirm and Cancel buttons
+        general_msgs = descriptions.get("general", {})
+        self.confirm_button = discord.ui.Button(
+            label=general_msgs.get("button_confirm", "Confirm"),
+            style=discord.ButtonStyle.green,
+            disabled=True,
+            row=1
+        )
+        self.confirm_button.callback = self._on_confirm
+        self.add_item(self.confirm_button)
+
+        self.cancel_button = discord.ui.Button(
+            label=general_msgs.get("option_no", "Cancel"),
+            style=discord.ButtonStyle.red,
+            row=1
+        )
+        self.cancel_button.callback = self._on_cancel
+        self.add_item(self.cancel_button)
+
+    async def _on_language_select(self, interaction: discord.Interaction):
+        """Handle language selection - reuses LanguageSelect callback logic."""
+        try:
+            from .server_config import set_server_language, get_server_language
+            from .canvas_personality import _get_current_personality_name, _get_available_personalities
+
+            selected_language = self.language_select.values[0]
+            self.selected_language = selected_language
+            server_id = str(self.guild.id) if self.guild else "0"
+
+            # Get current personality before language change
+            current_personality = _get_current_personality_name(server_id)
+            old_language = get_server_language(server_id)
+
+            # Save the language
+            success = set_server_language(server_id, selected_language)
+
+            if success:
+                # Update dropdown to show selected language as default
+                from .server_config import get_available_languages
+                lang_options = []
+                for lang_code, lang_name in get_available_languages().items():
+                    lang_options.append(discord.SelectOption(
+                        label=lang_name,
+                        value=lang_code,
+                        emoji="🌐",
+                        default=lang_code == selected_language
+                    ))
+
+                for item in self.children:
+                    if hasattr(item, 'custom_id') and item.custom_id == "language_select":
+                        item.options = lang_options
+                        break
+
+                self.confirm_button.disabled = False
+                await interaction.response.edit_message(view=self)
+            else:
+                await interaction.response.send_message(
+                    "❌ Failed to update language setting.",
+                    ephemeral=True
+                )
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error in language select: {e}")
+            await interaction.response.send_message(
+                "❌ Error updating language. Please try again.",
+                ephemeral=True
+            )
+
+    async def _on_confirm(self, interaction: discord.Interaction):
+        """Handle confirm button - move to personality selection."""
+        try:
+            if not self.selected_language:
+                await interaction.response.send_message("❌ Please select a language.", ephemeral=True)
+                return
+
+            # Open personality selection view (step 2)
+            personality_view = OnboardingPersonalitySelectView(self.guild, self.server_id, self.selected_language)
+            server_id = get_server_key(self.guild) if (get_server_key and self.guild) else None
+            personality_descriptions = _get_personality_descriptions(server_id)
+            general_msgs = personality_descriptions.get("general", {})
+            personality_msg = general_msgs.get("onboarding_personality", "Now select a personality:")
+
+            await interaction.response.edit_message(
+                content=personality_msg,
+                view=personality_view
+            )
+            self.stop()
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error in confirm callback: {e}")
+            await interaction.response.send_message(
+                "❌ Error preparing personality selection. Please try again.",
+                ephemeral=True
+            )
+
+    async def _on_cancel(self, interaction: discord.Interaction):
+        """Handle cancel button - dismiss the message."""
+        try:
+            await interaction.delete_original_response()
+        except discord.NotFound:
+            pass
+        except Exception:
+            pass
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Restrict the interactive view to its original user."""
+        if self.author_id is None:
+            self.author_id = interaction.user.id
+        elif interaction.user.id != self.author_id:
+            await interaction.response.send_message("❌ This menu belongs to another user.", ephemeral=True)
+            return False
+        return True
+
+
+class OnboardingPersonalitySelectView(discord.ui.View):
+    """Step 2: Personality selection view for server onboarding - reuses CanvasPersonalitySelectView logic."""
+
+    def __init__(self, guild, server_id: str, selected_language: str):
+        super().__init__(timeout=300)
+        self.guild = guild
+        self.server_id = server_id
+        self.selected_language = selected_language
+        self.selected_personality = None
+        self.old_personality = None
+        self.author_id = None
+
+        # Get available personalities for selected language
+        self.available_personalities = _get_available_personalities(selected_language)
+        if not self.available_personalities:
+            self.available_personalities = _get_available_personalities()
+
+        # Get personality descriptions
+        server_id = get_server_key(guild) if (get_server_key and guild) else None
+        personality_descriptions = _get_personality_descriptions(server_id)
+        personality_msgs = personality_descriptions.get("behavior_messages", {}).get("personality", {})
+        general_msgs = personality_descriptions.get("general", {})
+
+        # Personality dropdown - reuses CanvasPersonalitySelectView logic
+        if self.available_personalities:
+            options = [
+                discord.SelectOption(label=pers, value=pers)
+                for pers in self.available_personalities
+            ]
+            placeholder = personality_msgs.get("choose_personality_placeholder", "Choose a personality (language: {language})...").format(language=selected_language)
+        else:
+            options = [discord.SelectOption(label="No personalities available", value="none")]
+            placeholder = "No personalities available"
+
+        self.personality_select = discord.ui.Select(
+            placeholder=placeholder,
+            min_values=1,
+            max_values=1,
+            options=options,
+            row=0,
+            disabled=not self.available_personalities,
+            custom_id="personality_select"
+        )
+        self.personality_select.callback = self._on_select
+        self.add_item(self.personality_select)
+
+        # Confirm and Cancel buttons (initially disabled)
+        self.confirm_button = discord.ui.Button(
+            label=general_msgs.get("button_confirm", "Confirm"),
+            style=discord.ButtonStyle.green,
+            disabled=True,
+            row=1
+        )
+        self.confirm_button.callback = self._on_confirm
+        self.add_item(self.confirm_button)
+
+        self.cancel_button = discord.ui.Button(
+            label=general_msgs.get("option_no", "Cancel"),
+            style=discord.ButtonStyle.red,
+            row=1
+        )
+        self.cancel_button.callback = self._on_cancel
+        self.add_item(self.cancel_button)
+
+    def _truncate_to_limit(self, text: str, max_length: int = 2000) -> str:
+        """Truncate text to max_length - reused from CanvasPersonalitySelectView."""
+        if len(text) <= max_length:
+            return text
+
+        # Try to cut at paragraph boundary (double newline)
+        truncated = text[:max_length]
+        last_paragraph = truncated.rfind('\n\n')
+        if last_paragraph > max_length * 0.7:
+            return text[:last_paragraph].rstrip()
+
+        # Try to cut at sentence boundary (. ! ?)
+        for punctuation in ['.', '!', '?']:
+            last_sentence = truncated.rfind(punctuation)
+            if last_sentence > max_length * 0.7:
+                return text[:last_sentence + 1].rstrip()
+
+        # Fallback: cut at last space
+        last_space = truncated.rfind(' ')
+        if last_space > max_length * 0.7:
+            return text[:last_space].rstrip()
+
+        # Last resort: hard cut
+        return text[:max_length].rstrip()
+
+    def _load_personality_info(self, personality_name: str) -> str:
+        """Load identity_body from personality.json - reused from CanvasPersonalitySelectView."""
+        try:
+            base_dir = Path(__file__).parent.parent.parent
+
+            # Try new structure first: personalities/<name>/<language>/personality.json
+            personality_file = base_dir / "personalities" / personality_name / self.selected_language / "personality.json"
+
+            # Fallback to old structure if not found
+            if not personality_file.exists():
+                personality_file = base_dir / "personalities" / personality_name / "personality.json"
+
+            if personality_file.exists():
+                import json
+                with open(personality_file, 'r', encoding='utf-8') as f:
+                    personality_data = json.load(f)
+
+                identity_body = personality_data.get("system_prompt_template", {}).get("identity_body", [])
+                if identity_body:
+                    # Join the identity body lines and truncate to 2000 characters
+                    full_text = "\n".join(identity_body)
+                    return self._truncate_to_limit(full_text, 2000)
+            return "No personality description available."
+        except Exception as e:
+            if logger:
+                logger.warning(f"Could not load personality info for {personality_name}: {e}")
+            return "Could not load personality description."
+
+    async def _on_select(self, interaction: discord.Interaction):
+        """Handle personality selection - reuses CanvasPersonalitySelectView._on_select logic with avatar."""
+        try:
+            if not self.guild:
+                await interaction.response.send_message("❌ This action is only available in a server.", ephemeral=True)
+                return
+
+            new_personality = self.personality_select.values[0]
+            self.selected_personality = new_personality
+            self.old_personality = _get_current_personality_name(str(self.guild.id))
+
+            if new_personality == "none":
+                self.confirm_button.disabled = True
+                await interaction.response.edit_message(view=self)
+                return
+
+            # Update dropdown to show selected personality as default
+            if self.available_personalities:
+                options = [
+                    discord.SelectOption(label=pers, value=pers, default=pers == new_personality)
+                    for pers in self.available_personalities
+                ]
+                for item in self.children:
+                    if hasattr(item, 'custom_id') and item.custom_id == "personality_select":
+                        item.options = options
+                        break
+
+            # Load personality info
+            personality_info = self._load_personality_info(new_personality)
+
+            # Enable confirm button
+            self.confirm_button.disabled = False
+
+            server_id = get_server_key(self.guild) if (get_server_key and self.guild) else None
+            personality_descriptions = _get_personality_descriptions(server_id)
+            personality_msgs = personality_descriptions.get("behavior_messages", {}).get("personality", {})
+            selected_msg = personality_msgs.get("selected_personality", "**Selected Personality: {personality}**").format(personality=new_personality)
+
+            # Load personality avatar for embed thumbnail - from CanvasPersonalitySelectView
+            avatar_url = None
+            avatar_file = None
+            try:
+                from pathlib import Path
+                base_dir = Path(__file__).parent.parent.parent
+                avatar_path = base_dir / "personalities" / new_personality / "avatar.png"
+                if avatar_path.exists():
+                    avatar_file = discord.File(avatar_path, filename="avatar.png")
+                    avatar_url = "attachment://avatar.png"
+            except Exception:
+                pass
+
+            # Create embed with avatar as thumbnail - from CanvasPersonalitySelectView
+            content = personality_info
+            embed = discord.Embed(title=selected_msg, description=content)
+            if avatar_url:
+                embed.set_thumbnail(url=avatar_url)
+
+            if avatar_file:
+                await interaction.response.edit_message(
+                    embed=embed,
+                    view=self,
+                    attachments=[avatar_file]
+                )
+            else:
+                await interaction.response.edit_message(
+                    embed=embed,
+                    view=self
+                )
+
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error in personality selection view: {e}")
+            await interaction.response.send_message(f"❌ Error: {str(e)}", ephemeral=True)
+            self.stop()
+
+    async def _on_confirm(self, interaction: discord.Interaction):
+        """Handle confirm button - apply personality change directly."""
+        try:
+            if not self.selected_personality:
+                await interaction.response.send_message("❌ No personality selected.", ephemeral=True)
+                return
+
+            server_id = str(self.guild.id)
+
+            # Show progress - remove embed and show only text
+            personality_msgs = _get_personality_descriptions(server_id).get("behavior_messages", {}).get("personality", {})
+            progress_text = personality_msgs.get("onboarding_progress", "⏳ Setting up personality `{personality}` (language: {language})...").format(
+                personality=self.selected_personality,
+                language=self.selected_language
+            )
+
+            await interaction.response.edit_message(
+                content=progress_text,
+                embed=None,
+                view=None
+            )
+
+            # Copy personality files to server
+            base_dir = Path(__file__).parent.parent.parent
+            success = False
+            if copy_personality_to_server:
+                success = copy_personality_to_server(
+                    server_id,
+                    self.selected_personality,
+                    language=self.selected_language,
+                    update_config=True
+                )
+
+            if not success:
+                error_msg = f"❌ Failed to copy personality `{self.selected_personality}` to server."
+                try:
+                    await interaction.edit_original_response(content=error_msg)
+                except:
+                    pass
+                self.stop()
+                return
+
+            # Update personality files
+            if update_personality_files:
+                files_updated = update_personality_files(server_id, self.selected_personality)
+                if logger:
+                    if files_updated:
+                        logger.info(f"✅ Updated personality files for {self.selected_personality}")
+                    else:
+                        logger.warning(f"⚠️ Could not update personality files for {self.selected_personality}")
+
+            # Save server config with active personality
+            try:
+                import json
+                server_config_dir = base_dir / "databases" / server_id
+                server_config_dir.mkdir(parents=True, exist_ok=True)
+                server_config_path = server_config_dir / "server_config.json"
+
+                server_config = {}
+                if server_config_path.exists():
+                    with open(server_config_path, 'r', encoding='utf-8') as f:
+                        server_config = json.load(f)
+
+                server_config['active_personality'] = self.selected_personality
+                server_config['language'] = self.selected_language
+                with open(server_config_path, 'w', encoding='utf-8') as f:
+                    json.dump(server_config, f, indent=2, ensure_ascii=False)
+
+                if logger:
+                    logger.info(f"Saved server config with active personality: {self.selected_personality}, language: {self.selected_language}")
+            except Exception as config_error:
+                if logger:
+                    logger.warning(f"Could not save server config: {config_error}")
+
+            # Reload personality
+            try:
+                from agent_engine import reload_personality
+                reload_personality(server_id)
+
+                # Invalidate ALL database caches - from CanvasPersonalityConfirmView
+                if logger:
+                    logger.info(f"🔄 Invalidating all database caches for server {server_id} after personality change")
+
+                # Invalidate all database caches
+                _invalidate_db_cache('agent_db', 'invalidate_db_instance', 'agent', server_id)
+                _invalidate_db_cache('agent_roles_db', 'invalidate_roles_db_instance', 'roles', server_id)
+                _invalidate_db_cache('roles.news_watcher.db_role_news_watcher', 'invalidate_news_watcher_db_instance', 'news_watcher', server_id)
+                _invalidate_db_cache('roles.treasure_hunter.db_role_treasure_hunter', 'invalidate_poe_db_instance', 'POE', server_id)
+
+                # Invalidate beggar config cache
+                try:
+                    from roles.banker.subroles.beggar.beggar_db import invalidate_beggar_config_cache
+                    invalidate_beggar_config_cache(server_id)
+                    if logger:
+                        logger.info(f"✅ Invalidated beggar config cache for server {server_id}")
+                except Exception as err:
+                    if logger:
+                        logger.warning(f"Could not invalidate beggar config cache: {err}")
+
+                # Generate initial memory synthesis for new personality (non-blocking background task)
+                try:
+                    from agent_mind import generate_daily_memory_summary
+                    # Run in background without blocking the user
+                    import asyncio
+                    asyncio.create_task(asyncio.to_thread(generate_daily_memory_summary, server_id))
+                    if logger:
+                        logger.info(f"🧠 Started background memory synthesis task for server {server_id}")
+                except Exception as memory_error:
+                    if logger:
+                        logger.warning(f"Could not start background memory synthesis: {memory_error}")
+            except Exception as reload_error:
+                if logger:
+                    logger.warning(f"Could not reload personality: {reload_error}")
+
+            # Sync bot identity (nickname + avatar) to server personality - from setpersonality command
+            try:
+                from discord_bot.discord_utils import sync_bot_identity_to_server_personality
+                if logger:
+                    logger.info(f"🔄 Syncing bot identity for server {server_id} after personality change")
+
+                # Force avatar update by passing force_avatar=True parameter
+                identity_result = await sync_bot_identity_to_server_personality(self.guild, force_avatar=True)
+
+                if identity_result.get('success'):
+                    changes = []
+                    if identity_result.get('nickname_changed'):
+                        changes.append("nickname")
+                    if identity_result.get('avatar_changed'):
+                        changes.append("avatar")
+
+                    if changes:
+                        if logger:
+                            logger.info(f"✅ Bot identity synced: {', '.join(changes)} updated")
+                    else:
+                        if logger:
+                            logger.info(f"✅ Bot identity already correct for new personality")
+                else:
+                    errors = identity_result.get('errors', ['Unknown error'])
+                    if logger:
+                        logger.warning(f"⚠️ Could not sync bot identity: {', '.join(errors)}")
+            except Exception as identity_error:
+                if logger:
+                    logger.warning(f"Could not sync bot identity: {identity_error}")
+
+            # Success message
+            success_msg = personality_msgs.get("onboarding_success", "✅ Configuration complete! Personality: `{personality}`, Language: `{language}`").format(
+                personality=self.selected_personality,
+                language=self.selected_language
+            )
+            try:
+                await interaction.edit_original_response(content=success_msg)
+            except:
+                pass
+
+            self.stop()
+
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error in confirm callback: {e}")
+            error_msg = f"❌ Error applying configuration: {str(e)}"
+            try:
+                await interaction.edit_original_response(content=error_msg)
+            except:
+                pass
+            self.stop()
+
+    async def _on_cancel(self, interaction: discord.Interaction):
+        """Handle cancel button - dismiss the message."""
+        try:
+            await interaction.delete_original_response()
+        except discord.NotFound:
+            pass
+        except Exception:
+            pass
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """Restrict the interactive view to its original user."""
+        if self.author_id is None:
+            self.author_id = interaction.user.id
+        elif interaction.user.id != self.author_id:
+            await interaction.response.send_message("❌ This menu belongs to another user.", ephemeral=True)
+            return False
+        return True
+
+
+async def send_server_welcome_message(guild, server_id: str, detected_lang: str):
+    """Send a welcome message with configuration button when bot joins a new server.
+
+    Args:
+        guild: Discord guild object
+        server_id: Server ID string
+        detected_lang: Detected language code (e.g., "es-ES", "en-US")
+    """
+    try:
+        from behavior.welcome import get_welcome_channel_info
+        from agent_engine import _get_personality, _build_system_prompt
+        from agent_mind import call_llm_async
+
+        # Get welcome channel
+        discord_cfg = _get_personality(server_id).get("discord", {})
+        welcome_info = await get_welcome_channel_info(guild, discord_cfg)
+
+        if not welcome_info:
+            # Fallback to system channel
+            if guild.system_channel:
+                welcome_channel = guild.system_channel
+                logger.info(f"Using system channel as welcome channel: {welcome_channel.name}")
+            else:
+                logger.warning(f"No welcome channel or system channel found for guild {guild.name}")
+                return
+        else:
+            welcome_channel = welcome_info["channel"]
+
+        # Generate welcome message using LLM
+        personality = _get_personality(server_id)
+        system_instruction = _build_system_prompt(personality, server_id)
+
+        # Build simple welcome prompt
+        welcome_prompt = f"""You have just been invited to a new Discord server called "{guild.name}".
+Introduce yourself briefly and warmly in the personality's style.
+Mention that the server administrator can configure the language and personality using the button below.
+Keep it concise (1-2 sentences)."""
+
+        welcome_message = await call_llm_async(
+            system_instruction=system_instruction,
+            prompt=welcome_prompt,
+            background=False,
+            call_type="think",
+            critical=True,
+            logger=logger,
+        )
+
+        # Send welcome message with configuration button
+        view = ServerWelcomeView(guild, server_id, detected_lang)
+        await welcome_channel.send(welcome_message, view=view)
+
+        logger.info(f"Welcome message sent to {guild.name} in channel {welcome_channel.name}")
+
+    except Exception as e:
+        logger.error(f"Error sending server welcome message to {guild.name}: {e}")
 
 
 # ============================================================================

@@ -85,5 +85,34 @@
             "poe2_off": "视觉: 收缩",
             "poe2_off_description": "断开分析模块"
         }
+    },
+    "ring": {
+        "button": "👁️ Artifact",
+        "title": "👁️ **零之 artifact 追踪**",
+        "description": "🔍 一个异常对象改变了网络。指向其他化身以帮助算法调试威胁。",
+        "status_active": "✅ **主动扫描** - 先知正在寻找异常",
+        "status_inactive": "❌ **系统休眠** - 光学传感器休息",
+        "current_target": "🎯 **兴趣点：**",
+        "target_unknown": "👤 坐标无嫌疑",
+        "investigation_title": "🔍** 报告异常：**",
+        "investigation_instructions": "• 从下方控制台启动 **Artifact: Accuse**\n• 写入怀疑对象的提及（@）或 ID\n• 我的算法将处理直接审问\n• 分析将公开以透明代码",
+        "investigation_warning": "⚠️ **物理限制：**\n• 化身不能自我告发\n• 人工实体（机器人）不能携带 artifact\n• 扫描必须由执政官初始化",
+        "inactive_title": "⚠️ **雷达关闭**",
+        "inactive_instructions": "要恢复追踪：\n• 执政官必须访问 **Admin Artifact** 终端\n• 执行 **Tracking: Started**\n• 校准扫描时间周期\n\n完成后，你可以指向可疑的碳基签名。",
+        "hot_potato": "🔥 **负载转移：** 迭代 {iteration}（延迟降低 {multiplier}x）",
+        "controls": "**系统控制**\n- 切换扫描状态\n- 时间周期参数（影响负载转移）",
+        "dm_accusation_header": "👁️ **零之 artifact 追踪**",
+        "accused_label": "被指控:",
+        "admin_description": "配置 artifact 追踪器的灵敏度和频率",
+        "dropdown": {
+            "ring_accuse": "Artifact: 指向",
+            "ring_accuse_description": "指示某化身在网络中隐藏异常",
+            "ring_on": "追踪: 激活",
+            "ring_on_description": "在网络中启动异常扫描",
+            "ring_off": "追踪: 停用",
+            "ring_off_description": "停止异常追踪系统",
+            "ring_frequency": "追踪: 频率",
+            "ring_frequency_description": "配置扫描时间周期（影响负载转移）"
+        }
     }
 }

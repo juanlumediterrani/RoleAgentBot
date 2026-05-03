@@ -46,10 +46,10 @@ The bot's personality subtly evolves weekly based on server interactions:
 ![Roles](banners/roles.png)
 
 - **News Watcher**: RSS feed monitoring with AI-powered content filtering
-- **Treasure Hunter**: Path of Exile 2 item price tracking and market analysis
+- **Treasure Hunter**: Path of Exile 2 item price tracking and market analysis with subrole **Ring** (interactive accusation game)
 - **Trickster**: Dice game minigame with shared Banker pot
 - **Banker**: Virtual wallet management with subrole **Beggar** (DM-based donation requests)
-- **Juggler**: Playful role with subrole **Ring** (interactive accusation game)
+- **Juggler**: Playful role with system-prompt missions
 - **Shaman**: Interpretive subrole **Nordic Runes** (personalized readings)
 - **Music Controller (MC)**: YouTube music playback in voice channels with queue management
 - **Scholar**: Wikipedia knowledge integration for encyclopedic questions
@@ -309,7 +309,7 @@ Each Discord server can have its own personality and language settings:
 - `!banker` - Virtual wallet operations
 - `!mc` - Music playback control
 - `!hunter` - Treasure hunter for Path of Exile 2
-- `!juggler` - Ring subrole management
+- `!treasure_hunter` - Ring subrole management
 - `!shaman` - Nordic runes readings
 - `!canvas` - Interactive UI for all roles and configuration
 

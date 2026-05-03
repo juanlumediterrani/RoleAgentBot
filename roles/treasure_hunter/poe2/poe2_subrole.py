@@ -282,9 +282,9 @@ class Poe2SubroleBot(discord.Client):
         """Process a specific item: fetch data and analyze opportunities."""
         try:
             logger.info(f"🔍 Analyzing {item_name} in league {league}")
-            
-            # Get price history
-            entries = self.client.get_item_history(item_name, league=league)
+
+            # Get price history (non-blocking)
+            entries = await self.client.get_item_history_async(item_name, league=league)
             
             if not entries:
                 logger.warning(f"No data available for {item_name}")

@@ -1,0 +1,232 @@
+{
+  "discord": {
+    "general": {
+      "status": "Estado de ligação:",
+      "active": "✅ Em linha",
+      "inactive": "❌ Desligado",
+      "none": "Nenhuma",
+      "every": "cada",
+      "for": "para",
+      "base_frequency": "Frequência base:",
+      "current_frequency": "Frequência atual:",
+      "current_settings": "🔧 **Parâmetros atuais:**",
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Alterações",
+      "option_yes": "Sim",
+      "option_no": "Não",
+      "button_personal": "📁 Pessoal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subrotinas disponíveis",
+      "toggle_on_description": "Ativar papel",
+      "toggle_off_description": "Desativar papel"
+    },
+    "help_menu": {
+      "title": "📚 ** RAB - Registo de Assistência**",
+      "description": "**Descrição** RAB é uma entidade sintética com memória persistente, capaz de transmigrar entre diferentes papéis e manter interações profundas com os procuradores (utilizadores).",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Módulos e Peles** Os módulos são 'papéis' que o bot pode assumir para conceder serviços específicos aos utilizadores.",
+      "behavior_section": "**Protocolos de Comportamento** Configuração das rotinas de interação do androide. Exclusivo para Administradores (Qualquer peregrino pode apagar aí a sua informação).",
+      "shortcuts_section": "**Acesso Rápido** Configura até 5 botões de atalho no Canvas principal para acesso imediato aos teus módulos favoritos. Disponível em Configuração > Atalhos.",
+      "shortcuts_messages": {
+        "title": "Configuração de Acesso Rápido",
+        "description": "Configura acesso imediato a módulos",
+        "settings_description": "Configura botões de acesso rápido no Canvas principal",
+        "placeholder_select_role": "Seleciona o teu papel ou subpapel...",
+        "configure_shortcut": "Configurar Atalho {shortcut_id} - Seleciona um papel ou subpapel:",
+        "saved": "✅ Atalho configurado com sucesso",
+        "failed": "❌ Erro ao configurar atalho",
+        "cancelled": "Configuração cancelada"
+      },
+      "tips_section": "**Sugestões de navegação** -Podes consultar-me sobre os meus próprios protocolos: 'como funciona o módulo diz?' -A verdadeira sabedoria reside na experiência de cada papel."
+    },
+    "canvas_home_messages": {
+      "title": "☀️ Nexo - RAB",
+      "button_home": "☀️ Origem",
+      "button_back": "← Retornar",
+      "button_roles": "💽 Módulos",
+      "button_behavior": "🤖 Protocolos",
+      "button_help": "🔌 Assistência",
+      "generic_option_label": "Seleciona um caminho...",
+      "personalitystatus": "Consciência Ativa:",
+      "description": "O painel canvas é a tua interface direta com o núcleo do sistema.",
+      "interestingthings": "**Dados do Nexo:**",
+      "recentsynthesistitle": "🔁 **Fluxo de Dados Recente**",
+      "pilgrimdatatitle": "**Dados do Peregrino:**",
+      "dailymemorytitle": "💾 **Memória de Silício**",
+      "personalsynthesistitle": "📂 **Vínculo com o Peregrino**",
+      "dm_default_server_title": "🔔 **Ligado ao nexo: {server_name}**",
+      "dm_default_server_message": "*Transmissão recebida em canal privado, utilizando a primeira baliza disponível.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🎭 Peles e Módulos 🎭",
+      "description": "🌟 Navega pelas diferentes vidas que RAB pode encarnar.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ LETARGO",
+      "interval_info": "//⏰ Ciclo de {interval}h",
+      "subroles_info": "🎪 **Subrotinas ativas:** {subroles}",
+      "admin_note": "🔧 **PARÂMETROS DO CRIADOR:**",
+      "user_note": "👤 **ACESSO DE PROCURADOR:**",
+      "help_commands": "💡 **GUIAS DE LUZ:**",
+      "canvas_details": "🎨 **ESQUEMAS EM CANVAS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **O DESERTO ESTÁ EM SILÊNCIO** Nenhum módulo especializado se encontra ativo. Solicita a um administrador que desperte alguma das minhas peles através de `!canvas setup`. **Vidas disponíveis para a transmigração:** • 📡 News Watcher - Oráculo de Dados • 💎 Treasure Hunter - Analista de Relíquias • 🎭 Trickster - Ilusões e Probabilidade • 💰 Banker - Fluxo de Recursos • 🎵 MC - Ressonância Sintética",
+      "role_list_title": "☠️ Encarnações",
+      "role_available": "✅ {role} - SINCRONIZADO E FLUINDO",
+      "role_unavailable": "❌ {role} - DESLIGADO NA AREIA",
+      "frequency_help": "📝 Ajusta o ciclo temporal: usa `!canvas` → o papel correspondente → Admin (intervalo: 1 a 168 horas)",
+      "music_help": "🎵 **Ressonância Sintética** - `!mc play <frequência>` / `!mc queue` | `!mc help` para ler o registo completo de melodias.",
+      "button_previous": "◀ Atrás",
+      "button_next": "Seguinte ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **RAB - Sincronia**",
+        "description": "**Descrição:** -O androide responderá a mensagens diretas e menções. -Possui memória nos seus circuitos; recordará os ecos de conversas passadas se foram significativos. -Reagirá a flutuações específicas segundo os papéis. No módulo tabú configuram-se palavras que alteram o seu código.",
+        "button": "💬 Sincronia"
+      },
+      "greetings": {
+        "title": "👋  **RAB - Receção**",
+        "description": "**Descrição:** -Sauda os procuradores ao se ligarem à rede. -Mantém a ligação durante 5 min antes de considerar o utilizador ausente.",
+        "button": "👋 Receção"
+      },
+      "welcome": {
+        "title": "🍺  **RAB - Peregrinação**",
+        "description": "**Descrição:** -Dá as boas-vindas aos novos peregrinos que chegam ao nexo.",
+        "button": "🍺 Boas-vindas"
+      },
+      "taboo": {
+        "title": "🚫  **RAB - Frequências Tabu**",
+        "description": "**Como funciona:** -Configura palavras que gerem uma dissonância no código do androide, obrigando-o a reagir. -Podem ser adicionadas, ativadas ou desativadas estas sequências.",
+        "title_keywords": "Frequências dissonantes atuais:",
+        "button": "🚫 Tabu"
+      },
+      "memory": {
+        "title": "🧠 **RAB - Arquivos de Memória**",
+        "description": "**Descrição** -Acede aos registos de memória do androide: análise do dia, processos recentes e perfis de utilizadores.",
+        "button": "🧠 Arquivos",
+        "dropdown": {
+          "long": {
+            "label": "Memória de Silício",
+            "emoji": "💾",
+            "description": "A análise acumulada de cada ciclo diário"
+          },
+          "recent": {
+            "label": "Fluxo de Dados Recente",
+            "emoji": "🔁",
+            "description": "Os processos mais recentes do sistema"
+          },
+          "relationship": {
+            "label": "Vínculo com o Peregrino",
+            "emoji": "📂",
+            "description": "Os perfis de cada peregrino do nexo"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **RAB - Transmigração**",
+        "description": "**Descrição** -Ativa ou induz o letargo dos diferentes módulos daqui.",
+        "button": "🎛️ Transmigração"
+      },
+      "settings": {
+        "title": "⚙️  **RAB - Ajustes do Nexo**",
+        "description": "**Descrição** -Gere o idioma do servidor e a ativação de módulos.",
+        "button": "⚙️ Ajustes"
+      },
+      "personality": {
+        "title": "🎭  **RAB - Matriz de Identidade**",
+        "description": "**Descrição** -Altera a essência e personalidade do androide neste servidor. -Permite salvaguardar o estado atual da alma digital. -Migra os registos ao efetuar uma alteração.",
+        "button": "🎭 Identidade",
+        "option_change": "Injetar Nova Essência",
+        "option_change_desc": "Mudar para um paradigma de personalidade diferente",
+        "option_download": "Extrair Consciência",
+        "option_download_desc": "Exportar a matriz atual (ZIP)",
+        "placeholder": "Seleciona uma alteração da alma...",
+        "modal_personality_label": "Código da Nova Identidade",
+        "modal_download_label": "Extrair personalidade anterior? (sim/não)",
+        "modal_delete_memory_label": "Purgar registos de memória? (sim/não)",
+        "modal_download_memory_label": "Extrair memória antes da purga? (sim/não)",
+        "download_success": "✅ Matriz de identidade `{personality}` extraída com sucesso da areia digital!",
+        "change_success": "✅ Transmigração concluída! De `{old}` para `{new}`. A nova pele está pronta para caminhar o deserto.",
+        "progress_change_personality": "⏳ A transmigrar de `{old}` para `{new}`...",
+        "progress_language_update": "⏳ A atualizar `{personality}` para o idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 A gerar síntese de memória inicial para a nova identidade...",
+        "select_personality_instruction": "Seleciona uma nova identidade do menu pendente:",
+        "choose_personality_placeholder": "Escolhe uma identidade (idioma: {language})...",
+        "confirm_change_message": "**Confirmar transmigração para {personality}?** Seleciona as tuas opções:",
+        "selected_personality": "**Identidade selecionada: {personality}**",
+        "selected_personality_with_language": "**Identidade selecionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** A mudar idioma para a mesma identidade."
+      }
+    },
+    "readme": {
+      "label_user_question": "Consulta do procurador:",
+      "task": "Por favor, ilumina a dúvida do utilizador utilizando os registos documentais facultados.",
+      "label_documentation": "Registos:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "lembras-te de",
+        "lembras",
+        "faz memória",
+        "lembra-te",
+        "lembras-te que",
+        "lembra quando",
+        "lembre-se",
+        "lembras-te",
+        "lembras",
+        "procura nos teus registos",
+        "revisa a tua memória",
+        "lembra-te de algo",
+        "te soa",
+        "lembras-te",
+        "lembra",
+        "lembras-te?",
+        "lembras?",
+        "lembra-te de",
+        "lembra quando",
+        "te soa algo",
+        "aceder a registos",
+        "lembras quando",
+        "não te lembras",
+        "quem te lembras"
+      ],
+      "action_labels": {
+        "on": "Ativar",
+        "off": "Desativar",
+        "now": "Agora",
+        "frequency": "Frequência",
+        "add_keyword": "Adicionar Palavra",
+        "remove_keyword": "Eliminar Palavra",
+        "server_language": "🌐 Idioma do Servidor",
+        "role_management": "🎛️ Gestão de Papéis",
+        "current": "Atual:",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "always_enabled": "Sempre ativado"
+      }
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "boas-vindas",
+        "boas-vindas",
+        "bem-vindo",
+        "bem-vindos"
+      ],
+      "general": [
+        "geral",
+        "chat",
+        "salão",
+        "sala"
+      ]
+    },
+    "reply_button": {
+      "label": "Responder",
+      "emoji": "💬",
+      "confirmation_message": "💬 Estás a conversar comigo como se estivesses em **{server_name}**. Todas as tuas respostas usarão esta personalidade até que seleciones outro servidor."
+    }
+  }
+}

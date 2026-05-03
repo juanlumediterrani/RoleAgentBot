@@ -1,0 +1,16 @@
+{
+    "title": "📚 **Arquivista da Grande Biblioteca**",
+    "description": "Acede aos vastos registos da civilização humana através da minha perspetiva sintética e mística. Faz qualquer pergunta, e partilharei o que os arquivos contêm.",
+    "button": "📚 Arquivista",
+    "embed_footer": "📚 Arquivista da Grande Biblioteca 📚",
+    "dropdown": {
+        "select_action": "📋 Executar instrução...",
+        "toggle_on": "✅ Habilitar Arquivista",
+        "toggle_off": "❌ Desabilitar Arquivista"
+    },
+    "wikipedia_button_label": "📖 Ler na Wikipedia",
+    "controls_title": "**Controlos**",
+    "controls": "- Habilitar ou desabilitar o papel Arquivista",
+    "admin_flows": "Alterna o papel Arquivista para habilitar ou desabilitá-lo."
+}
+

@@ -1,0 +1,57 @@
+{
+    "title": "🎯  **Centro de Coordenação de Serviços**",
+    "description": "Nexo que gere múltiplos fluxos operativos para manter a harmonia da rede. Procura entre as conexões dos peregrinos, e propõe novos elos.",
+    "button": "🎯 Serviços",
+    "dropdown": {
+        "select_juggler_action": "🎯 Selecionar operação de serviços...",
+        "config_juggler": "Configurar Serviços",
+        "config_juggler_description": "Ajustar parâmetros do centro de coordenação",
+        "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Versos do Nexo**: Solicita versos do nexo personalizados dedicados a outros utilizadores"
+    },
+    "poetry": {
+        "title": "📝 Versos do Nexo",
+        "description": "Solicita um poema dedicado a outro utilizador, escrito no estilo da personalidade do servidor.",
+        "action_compose": "✍️ Compor Poema",
+        "action_compose_desc": "Escreve um poema para outro utilizador",
+        "button": "📝 Versos do Nexo",
+        "dropdown": {
+            "poetry_compose": "Compor Verso do Nexo",
+            "poetry_compose_description": "Escreve um verso do nexo para outro utilizador",
+            "poetry_on": "Versos do Nexo: Ativar",
+            "poetry_on_description": "Ativar versos do nexo para este servidor",
+            "poetry_off": "Versos do Nexo: Desativar",
+            "poetry_off_description": "Desativar versos do nexo para este servidor"
+        },
+        "modal_title": "Compor Verso do Nexo",
+        "modal_target_label": "Utilizador Destino",
+        "modal_target_placeholder": "@utilizador ou ID de utilizador",
+        "modal_dedication_label": "Dedicação/Premissa",
+        "modal_dedication_placeholder": "Um tema ou mensagem breve (máx. 150 caracteres)",
+        "error_target_invalid": "❌ Utilizador destino inválido",
+        "error_dedication_too_long": "❌ Dedicación demasiado longa (máx. 150 caracteres)",
+        "error_fatigue_limit": "❌ Limite de fadiga atingido",
+        "error_banker_charge": "❌ Saldo insuficiente (requer 1xTAE)",
+        "error_llm_failed": "❌ Erro ao gerar o poema",
+        "preview_title": "📝 Vista Prévia do Verso do Nexo",
+        "preview_description": "Revisa o poema antes de o enviar",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Cancelar",
+        "success_sent": "✅ Verso do nexo enviado para {target}",
+        "success_cancelled": "❌ Verso do nexo cancelado",
+        "dm_disabled_notice": "⚠️ O destino tem os DMs desativados. Aqui está o verso do nexo para enviar manualmente:",
+        "dm_disabled_offer": "Podes copiar e enviar o verso do nexo manualmente:",
+        "error_subrole_disabled": "❌ O subpapel de Versos do Nexo está desativado neste servidor. Contacta um administrador para o ativar.",
+        "enabled": "✅ Versos do nexo ativados para este servidor.",
+        "disabled": "❌ Versos do nexo desativados para este servidor.",
+        "error_config_failed": "❌ Erro ao atualizar a configuração.",
+        "error_modal_belongs_to_another": "❌ Este modal pertence a outro utilizador.",
+        "error_failed_preview_dm": "❌ Erro ao enviar vista prévia por DM.",
+        "error_server_only": "❌ Esta opção só está disponível num servidor.",
+        "error_unknown_action": "❌ Ação desconhecida: {action}",
+        "error_generic": "❌ Erro: {error}"
+    }
+}

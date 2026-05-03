@@ -2,42 +2,56 @@
     "title": "🎎 **Okami-san** 🎎",
     "description": "A geisha expert in multiple traditional arts, entertains the visitors of the tea house with grace and elegance.",
     "button": "🎎 Okami-san",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **Me-tsuke (目付)** - The circle of surveillance that maintains order in the district"
-    },
-    "ring": {
-        "button": "👁️ Me-tsuke",
-        "title": "👁️ **ME-TSUKE (目付)**",
-        "description": "🔍 The surveillance circle. As district inspector, Yuki maintains a network of contacts that allows interrogation and pursuit without breaking the tea house's discretion.",
-        "status_active": "✅ **ACTIVE SURVEILLANCE** - Yuki is exercising her inspector function",
-        "status_inactive": "❌ **AT REST** - Surveillance is not active",
-        "current_target": "🎯 **CURRENT SUSPECT:**",
-        "target_unknown": "👤 No suspects identified yet",
-        "investigation_title": "🔍 **POINT TO A VISITOR:**",
-        "investigation_instructions": "• Use **Me-tsuke: Point** from the menu below\n• Write the mention (@) or ID of the suspected visitor\n• Yuki will initiate a direct inquiry\n• The result will be visible to all in the channel",
-        "investigation_warning": "⚠️ **RESTRICTIONS:**\n• A visitor cannot point to themselves\n• Bots are not subjects of investigation\n• Surveillance must be activated by an administrator",
-        "inactive_title": "⚠️ **INACTIVE SURVEILLANCE**",
-        "inactive_instructions": "To activate surveillance:\n• An administrator must access the **Admin Me-tsuke** panel\n• Execute **Surveillance: Activate**\n• Configure the frequency of rounds\n\nOnce active, you can point to suspected visitors.",
-        "hot_potato": "🔥 **Suspicion shifts:** Round {iteration} (speed x{multiplier})",
-        "controls": "**Controls**\n- Activate or deactivate surveillance\n- Round frequency",
-        "dm_accusation_header": "👁️ **ME-TSUKE INVESTIGATION**",
-        "accused_label": "Accused:",
-        "admin_description": "Configure sensitivity and frequency of the Me-tsuke surveillance",
-        "dropdown": {
-            "ring_accuse": "Me-tsuke: Point",
-            "ring_accuse_description": "Indicate that a visitor is suspect for investigation",
-            "ring_on": "Surveillance: Activate",
-            "ring_on_description": "Initiate district surveillance",
-            "ring_off": "Surveillance: Deactivate",
-            "ring_off_description": "Stop district surveillance",
-            "ring_frequency": "Surveillance: Frequency",
-            "ring_frequency_description": "Configure round frequency (affects suspicion speed)"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎎 Select entertainment action...",
         "config_juggler": "Configure Entertainment",
         "config_juggler_description": "Adjust geisha entertainment configuration",
         "config_juggler_emoji": "🎎"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Haiku**: Request personalized haiku dedicated to other users"
+    },
+    "poetry": {
+        "title": "📝 Haiku",
+        "description": "Request a poem dedicated to another user, written in the server's personality style.",
+        "action_compose": "✍️ Compose Poem",
+        "action_compose_desc": "Write a poem for another user",
+        "button": "📝 Haiku",
+        "dropdown": {
+            "poetry_compose": "Compose Haiku",
+            "poetry_compose_description": "Write a haiku for another user",
+            "poetry_on": "Haiku: On",
+            "poetry_on_description": "Enable haiku for this server",
+            "poetry_off": "Haiku: Off",
+            "poetry_off_description": "Disable haiku for this server"
+        },
+        "modal_title": "Compose Haiku",
+        "modal_target_label": "Target User",
+        "modal_target_placeholder": "@user or user ID",
+        "modal_dedication_label": "Dedication/Premise",
+        "modal_dedication_placeholder": "A short theme or message (max 150 chars)",
+        "error_target_invalid": "❌ Invalid target user",
+        "error_dedication_too_long": "❌ Dedication too long (max 150 chars)",
+        "error_fatigue_limit": "❌ Fatigue limit reached",
+        "error_banker_charge": "❌ Insufficient balance (1xTAE required)",
+        "error_llm_failed": "❌ Failed to generate poem",
+        "preview_title": "📝 Haiku Preview",
+        "preview_description": "Review the poem before sending",
+        "preview_footer": "From: {sender}",
+        "button_confirm": "✅ Send",
+        "button_cancel": "❌ Cancel",
+        "success_sent": "✅ Haiku sent to {target}",
+        "success_cancelled": "❌ Haiku cancelled",
+        "dm_disabled_notice": "⚠️ Target has DMs disabled. Here is the haiku to send manually:",
+        "dm_disabled_offer": "You can copy and send the haiku manually:",
+        "error_subrole_disabled": "❌ The Haiku subrole is disabled on this server. Contact an administrator to enable it.",
+        "enabled": "✅ Haiku enabled for this server.",
+        "disabled": "❌ Haiku disabled for this server.",
+        "error_config_failed": "❌ Failed to update configuration.",
+        "error_modal_belongs_to_another": "❌ This modal belongs to another user.",
+        "error_failed_preview_dm": "❌ Failed to send preview DM.",
+        "error_server_only": "❌ This option is only available in a server.",
+        "error_unknown_action": "❌ Unknown action: {action}",
+        "error_generic": "❌ Error: {error}"
     }
 }

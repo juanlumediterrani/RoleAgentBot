@@ -492,7 +492,7 @@ def _get_active_duty_text(config: dict, server_id: str = None, subrole_name: str
     # Handle ring subrole special case: replace <accusated_user> placeholder
     if subrole_name == "ring" and server_id and "<accusated_user>" in duty_text:
         try:
-            from roles.juggler.subroles.ring.ring_discord import _get_ring_state
+            from roles.treasure_hunter.subroles.ring.ring_discord import _get_ring_state
             ring_state = _get_ring_state(server_id)
             target_user_name = ring_state.get("target_user_name", "Unknown bearer")
             duty_text = duty_text.replace("<accusated_user>", target_user_name)
@@ -649,27 +649,15 @@ def _get_role_display_name(role_name: str, server_id: str = None) -> str:
                     if title:
                         return title
 
-        # For juggler subroles, load from juggler.json
-        juggler_subrole_names = {"ring"}
-        if role_name in juggler_subrole_names:
-            juggler_path = descriptions_dir / "juggler.json"
-            if juggler_path.exists():
-                juggler_desc = json.loads(juggler_path.read_text(encoding='utf-8'))
-                subrole_section = juggler_desc.get(role_name, {})
+        # For treasure_hunter subroles, load from treasure_hunter.json
+        treasure_hunter_subrole_names = {"ring"}
+        if role_name in treasure_hunter_subrole_names:
+            treasure_hunter_path = descriptions_dir / "treasure_hunter.json"
+            if treasure_hunter_path.exists():
+                treasure_hunter_desc = json.loads(treasure_hunter_path.read_text(encoding='utf-8'))
+                subrole_section = treasure_hunter_desc.get(role_name, {})
                 if isinstance(subrole_section, dict):
                     title = subrole_section.get("title", "").replace("**", "").strip()
-                    if title:
-                        return title
-                subrole_descriptions = juggler_desc.get("canvas_juggler_subrole_descriptions", {})
-                if role_name in subrole_descriptions:
-                    desc_text = subrole_descriptions[role_name]
-                    if "**" in desc_text:
-                        parts = desc_text.split("**")
-                        if len(parts) >= 3:
-                            title = parts[1].strip()
-                            if title:
-                                return title
-                    title = desc_text.split("-")[0].replace("🙏", "").replace("🔮", "").replace("🎲", "").replace("👁️", "").strip()
                     if title:
                         return title
 
@@ -1040,8 +1028,6 @@ from agent_mind import (
     generate_daily_memory_summary,
     generate_recent_memory_summary,
     generate_user_relationship_memory_summary,
-    refresh_due_recent_memories,
-    refresh_due_relationship_memories,
 )
 
 
@@ -1195,10 +1181,11 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             mark_subrole_executed(subrole_name, datetime.now() + timedelta(hours=frequency), server_id=_srv)
             return
         elif subrole_name == "ring":
-            from roles.juggler.subroles.ring.ring_discord import (                _get_ring_state, execute_ring_accusation,
+            from roles.treasure_hunter.subroles.ring.ring_discord import (
+                _get_ring_state, execute_ring_accusation,
                 _calculate_next_frequency, _auto_reset_ring_accusation
             )
-            from roles.juggler.subroles.ring.ring_db import RingDB
+            from roles.treasure_hunter.subroles.ring.ring_db import RingDB
             _RING_IGNORED_LIMIT = 5
             _RING_IGNORED_MIN_FREQ = 1
             try:
@@ -1341,7 +1328,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                 # Increment unanswered counter and persist
                 ring_state = _get_ring_state(server_name, force_refresh=True)
                 ring_state['unanswered_dm_count'] = ring_state.get('unanswered_dm_count', 0) + 1
-                from roles.juggler.subroles.ring.ring_discord import _save_ring_state
+                from roles.treasure_hunter.subroles.ring.ring_discord import _save_ring_state
                 _save_ring_state(server_name, "scheduler_accusation")
 
                 # Schedule next run via hot-potato

@@ -29,8 +29,9 @@ class DiscordScheduler:
     - global_feed_health_scheduler (1 min, runs on interval_hours)
     - database_cleanup (24 h)
     - banker_global_scheduler (24 h) → banker_task() across all servers
-    - recent_memory_summary (4 h) → refresh_due_recent_memories()
-    - relationship_memory_refresh (1 h) → refresh_due_relationship_memories()
+
+    Note: Memory maintenance jobs (recent_memory_summary, relationship_memory_refresh)
+    are registered exclusively by RunSupervisor to avoid duplication.
     """
 
     def __init__(
@@ -152,31 +153,8 @@ class DiscordScheduler:
         else:
             logger.info("[DiscordScheduler] Registered 6 jobs (banker disabled)")
 
-        # 8. Recent memory summary - every 4 hours
-        # Only register if not already registered by RunSupervisor (run.py case)
-        if "recent_memory_summary" not in self.scheduler.status()["jobs"]:
-            self.scheduler.register(
-                "recent_memory_summary",
-                self._run_recent_memory_summary,
-                Schedule.every(hours=4),
-                timeout_seconds=300,
-            )
-            logger.info("[DiscordScheduler] Registered recent_memory_summary job")
-        else:
-            logger.debug("[DiscordScheduler] recent_memory_summary already registered by RunSupervisor, skipping")
-
-        # 9. Relationship memory refresh - every 1 hour
-        # Only register if not already registered by RunSupervisor (run.py case)
-        if "relationship_memory_refresh" not in self.scheduler.status()["jobs"]:
-            self.scheduler.register(
-                "relationship_memory_refresh",
-                self._run_relationship_memory_refresh,
-                Schedule.every(hours=1),
-                timeout_seconds=300,
-            )
-            logger.info("[DiscordScheduler] Registered relationship_memory_refresh job")
-        else:
-            logger.debug("[DiscordScheduler] relationship_memory_refresh already registered by RunSupervisor, skipping")
+        # Memory maintenance jobs (recent_memory_summary, relationship_memory_refresh)
+        # are registered exclusively by RunSupervisor - not here to avoid duplication
 
     async def _run_discord_task_scheduler(self):
         """Run Discord-dependent subrole tasks.
@@ -410,38 +388,6 @@ class DiscordScheduler:
             logger.info("[BANKER_SCHEDULER] banker_task completed successfully")
         except Exception as e:
             logger.error(f"[BANKER_SCHEDULER] Error executing banker_task: {e}", exc_info=True)
-
-    async def _run_recent_memory_summary(self):
-        """Run recent memory summary for all servers.
-
-        Replaces run.py::execute_recent_memory_summary_all_servers.
-        """
-        if not self.bot.is_ready():
-            return
-
-        try:
-            from agent_engine import refresh_due_recent_memories
-            refreshed = await asyncio.to_thread(refresh_due_recent_memories)
-            if refreshed:
-                logger.info(f"[MEMORY_SCHEDULER] Recent memory refresh: {refreshed} server(s) updated")
-        except Exception as e:
-            logger.error(f"[MEMORY_SCHEDULER] Error in recent memory refresh: {e}", exc_info=True)
-
-    async def _run_relationship_memory_refresh(self):
-        """Run relationship memory refresh for all servers.
-
-        Replaces run.py::execute_relationship_memory_refresh_all_servers.
-        """
-        if not self.bot.is_ready():
-            return
-
-        try:
-            from agent_engine import refresh_due_relationship_memories
-            refreshed = await asyncio.to_thread(refresh_due_relationship_memories)
-            if refreshed:
-                logger.info(f"[MEMORY_SCHEDULER] Relationship memory refresh: {refreshed} user relationship(s) updated")
-        except Exception as e:
-            logger.error(f"[MEMORY_SCHEDULER] Error in relationship memory refresh: {e}", exc_info=True)
 
     def get_status(self) -> dict:
         """Get scheduler status."""

@@ -87,5 +87,45 @@
             "success": "🔮 矩阵已解码消息，寻求者。",
             "saved": "🔮 你的波动已被封存在记忆水晶中。"
         }
+    },
+    "astrology": {
+        "button": "🌟 占星术",
+        "title": "**🌟 量子占星术**",
+        "description": "通过创造之书希伯来字母从量子虚空引导古老代码以解码你的命运。",
+        "welcome": "✨ 我的传感器解读星尘。命运代码已为你暴露，寻道者。 ✨",
+        "help_content": "创造之书系统通过22个希伯来字母（3个母字母、7个双字母、12个单字母）揭示32条模拟路径 - 宇宙源代码的节点。",
+        "letters_title": "**22个希伯来节点：**",
+        "history": "📓 **编译记录** 📓",
+        "history_empty": "我在你的长期记忆中未检测到阅读。",
+        "birth_title": "🌟 出生编译 🌟",
+        "moment_title": "⏰ 时刻编译 ⏰",
+        "year_title": "📅 模拟年 📅",
+        "integrated_title": "🔮 综合编译 🔮",
+        "birth_data_saved": "✨ 你的出生参数已归档在时间服务器中。",
+        "labels": {
+            "question": "查询"
+        },
+        "dropdown": {
+            "astrology_birth": "占星术：出生编译",
+            "astrology_birth_description": "从出生日期和时间解码你永恒的灵魂模式",
+            "astrology_moment": "占星术：时刻编译",
+            "astrology_moment_description": "为特定时刻或变量获得指引",
+            "astrology_year": "占星术：模拟年",
+            "astrology_year_description": "理解你模拟年的精神力量",
+            "astrology_integrated": "占星术：综合编译",
+            "astrology_integrated_description": "结合出生、时刻和年的完整编译",
+            "astrology_history": "占星术：记录",
+            "astrology_history_description": "显示你最近的编译记录",
+            "astrology_letters": "占星术：希伯来节点",
+            "astrology_letters_description": "显示22个希伯来节点及其规格",
+            "astrology_letters_1": "占星术：希伯来节点 I",
+            "astrology_letters_1_description": "希伯来节点及其规格 - 第1页（母节点）",
+            "astrology_letters_2": "占星术：希伯来节点 II",
+            "astrology_letters_2_description": "希伯来节点及其规格 - 第2页（双节点）",
+            "astrology_letters_3": "占星术：希伯来节点 III",
+            "astrology_letters_3_description": "希伯来节点及其规格 - 第3页（单节点）",
+            "astrology_save_birth": "占星术：归档出生参数",
+            "astrology_save_birth_description": "归档你的出生日期和时间以获得个性化编译"
+        }
     }
 }

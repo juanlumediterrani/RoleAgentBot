@@ -995,7 +995,7 @@ def translate_dice_combination(combination: str, trickster_messages: dict) -> st
     return combination
 
 
-async def sync_bot_identity_to_server_personality(guild: discord.Guild) -> dict:
+async def sync_bot_identity_to_server_personality(guild: discord.Guild, force_avatar: bool = False) -> dict:
     """
     Synchronize bot's server identity (nickname + avatar) with server personality.
 
@@ -1005,6 +1005,7 @@ async def sync_bot_identity_to_server_personality(guild: discord.Guild) -> dict:
 
     Args:
         guild: Discord guild object
+        force_avatar: If True, always update avatar even if it may be the same
 
     Returns:
         dict: Status with keys 'success' (bool), 'nickname_changed' (bool),
@@ -1024,7 +1025,8 @@ async def sync_bot_identity_to_server_personality(guild: discord.Guild) -> dict:
     # Check current state
     current_nick = guild.me.nick
     needs_nick_update = desired_name and current_nick != desired_name
-    needs_avatar_update = avatar_bytes is not None
+    # Update avatar if forced or if avatar bytes exist
+    needs_avatar_update = force_avatar or avatar_bytes is not None
 
     if not needs_nick_update and not needs_avatar_update:
         if not desired_name and not avatar_path:

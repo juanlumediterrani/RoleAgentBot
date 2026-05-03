@@ -2,42 +2,56 @@
     "title": "**🤹 El Juglah Putre**",
     "description": "El orco malabarista mantiene multiples tareas en equilibrio y entretiene al clan con sus habilidades.",
     "button": "🤹 Juglah",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **Cazador del Anillo** - Acusa a sospechosos de llevar el Anillo Único"
-    },
-    "ring": {
-        "button": "👁️ Anillo",
-        "title": "👁️ **PUTRE CAZADOR DEL ANILLO**",
-        "description": "🔍 El cazador del anillo te persigara hasta el fin de los tiempos, acusa a otros usuarios para evitar ese calvario.",
-        "status_active": "✅ **CAZA ACTIVA** - Putre está buscando el anillo",
-        "status_inactive": "❌ **CAZA INACTIVA** - Putre está descansando",
-        "current_target": "🎯 **OBJETIVO ACTUAL:**",
-        "target_unknown": "👤 Ningun sospechoso selecionao",
-        "investigation_title": "🔍** HASER UNA ACUSACIÓN:**",
-        "investigation_instructions": "• ¡GRRR! Usa **Ring: Accuse** del menú de abajo umano tonto\n• ¡Escribe: @nombredeusuario o ID del sospechoso!\n• ¡Putre generará acusación amenazante para aterrorizar!\n• ¡Acusación se publicará en kanal para que todos vean!",
-        "investigation_warning": "⚠️ ¡CUIDAO BOBO!:\n• ¡No puedes acusarte a ti mismo, idiota!\n• ¡No puedes acusar bots, no tienen sangre!\n• ¡Ring debe estar aktivado por jefe orko primero!",
-        "inactive_title": "⚠️ **LA CAZA ESTÁ INACTIVA**",
-        "inactive_instructions": "Para activar la funcionalidad del ring:\n• Un admin debe ir a **Ring Admin**\n• Hacer clic en **Ring: On** para activar\n• Configurar la frecuencia para investigaciones automáticas\n\nUna vez activado, puedes acusar usuarios de llevar el Anillo Único!",
-        "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
-        "controls": "**Controles**\n- Activar o desactivar ring\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
-        "dm_accusation_header": "👁️ **ACUSACIÓN DEL ANILLO**",
-        "accused_label": "Acusado:",
-        "admin_description": "Configura la funcionalidad y frecuencia de la caza del anillo",
-        "dropdown": {
-            "ring_accuse": "Anillo: Acusar",
-            "ring_accuse_description": "Acusar a un usuario de llevar el Anillo Unico",
-            "ring_on": "Caza: Activar",
-            "ring_on_description": "Iniciar la caza del Anillo Único",
-            "ring_off": "Caza: Desactivar",
-            "ring_off_description": "Detener la caza del Anillo Único",
-            "ring_frequency": "Caza: Frecuencia",
-            "ring_frequency_description": "Configurar la frecuencia de las rondas (afecta la patata caliente)"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🤹 Seleccionar acción de malabarista...",
         "config_juggler": "Configurar Malabarista",
         "config_juggler_description": "Ajustar configuración del malabarista",
         "config_juggler_emoji": "🤹"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Versos del Clan**: Solicita versos del clan personalizados dedicados a otros usuarios"
+    },
+    "poetry": {
+        "title": "📝 Versos del Clan",
+        "description": "Solicita un poema dedicado a otro usuario, escrito en el estilo de la personalidad del servidor.",
+        "action_compose": "✍️ Componer Poema",
+        "action_compose_desc": "Escribe un poema para otro usuario",
+        "button": "📝 Versos del Clan",
+        "dropdown": {
+            "poetry_compose": "Componer Verso del Clan",
+            "poetry_compose_description": "Escribe un verso del clan para otro usuario",
+            "poetry_on": "Versos del Clan: Aktivar",
+            "poetry_on_description": "Aktivar versos del clan para este servidor",
+            "poetry_off": "Versos del Clan: Desaktivar",
+            "poetry_off_description": "Desaktivar versos del clan para este servidor"
+        },
+        "modal_title": "Componer Verso del Clan",
+        "modal_target_label": "Usuario Destino",
+        "modal_target_placeholder": "@usuario o ID de usuario",
+        "modal_dedication_label": "Dedicación/Premisa",
+        "modal_dedication_placeholder": "Un tema o mensaje breve (máx. 150 caracteres)",
+        "error_target_invalid": "❌ Usuario destino inválido",
+        "error_dedication_too_long": "❌ Dedicación demasiado larga (máx. 150 caracteres)",
+        "error_fatigue_limit": "❌ Límite de fatiga alcanzado",
+        "error_banker_charge": "❌ Balance insuficiente (se requiere 1xTAE)",
+        "error_llm_failed": "❌ Error al generar el poema",
+        "preview_title": "📝 Vista Previa del Verso del Clan",
+        "preview_description": "Revisa el poema antes de enviarlo",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Cancelar",
+        "success_sent": "✅ Verso del clan enviado a {target}",
+        "success_cancelled": "❌ Verso del clan cancelado",
+        "dm_disabled_notice": "⚠️ El destino tiene los DMs desactivados. Aquí está el verso del clan para enviarlo manualmente:",
+        "dm_disabled_offer": "Puedes kopiar y enviar el verso del clan manualmente:",
+        "error_subrole_disabled": "❌ El subrol de Versos del Clan está desaktivado en este servidor. Kontakta kon un administrador para aktivarlo.",
+        "enabled": "✅ Versos del clan aktivados para este servidor.",
+        "disabled": "❌ Versos del clan desaktivados para este servidor.",
+        "error_config_failed": "❌ Error al aktualizar la konfigurazión.",
+        "error_modal_belongs_to_another": "❌ Este modal perteneze a otro usuario.",
+        "error_failed_preview_dm": "❌ Fallo al enviar vista previa por DM.",
+        "error_server_only": "❌ Esta opción solo está disponible en el servidor.",
+        "error_unknown_action": "❌ Aksión desconosida: {action}",
+        "error_generic": "❌ Error: {error}"
     }
 }

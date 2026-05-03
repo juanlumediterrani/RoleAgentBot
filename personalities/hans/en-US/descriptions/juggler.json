@@ -2,42 +2,55 @@
     "title": "🎯  **Special Services Division**",
     "description": "Regiment logistics and entertainment unit, coordinates multiple operations to maintain troop morale.",
     "button": "🎯 Services",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **Gestapo Investigator** - Interrogate suspects of treason to ze Reich"
-    },
-    "ring": {
-        "button": "🔍 Investigation",
-        "title": "👁️ **Herr Hans Gestapo Persecutor**",
-        "description": " Ze Gestapo officer vill persecute you to ze end of time, accuse other soldiers to avoid zat torment.",
-        "status_active": "✅ **ACTIVE PERSECUTION** - Her Hans is looking for traitors",
-        "status_inactive": "❌ **INACTIVE PERSECUTION** - Her Hans is resting",
-        "current_target": "🎯 **CURRENT TARGET:**",
-        "target_unknown": "👤 No suspect selected",
-        "investigation_title": "🔍** MAKE AN ACCUSATION:**",
-        "investigation_instructions": "• ACHTUNG! Use **Accuse** from ze operations menu, soldier\n• Enter suspect identification: @username or ID\n• Herr Hans vill generate interrogation to extract confession\n• Ze accusation vill be published in headquarters for all soldiers",
-        "investigation_warning": "⚠️ **REICH ORDERS:**\n• Cannot accuse yourself, traitor\n• Cannot accuse automated units (bots)\n• Persecution must be authorized by superior officer",
-        "inactive_title": "⚠️ **PERSECUTION IS INACTIVE**",
-        "inactive_instructions": "ACHTUNG! To authorize persecution operations:\n• A superior officer must access **Admin**\n• And authorize persecution\n• Set automatic interrogation frequency\n\nOnce authorized, you can accuse soldiers of treason to ze Reich!",
-        "hot_potato": "🔥 **Hot Potato:** Iteration {iteration} (frequency reduced by {multiplier}x)",
-        "controls": "**Controls**\n- Activate or deactivate persecution\n- Editable frequency box (sets base frequency and restarts hot potato)",
-        "dm_accusation_header": "👁️ **GESTAPO ACCUSATION**",
-        "accused_label": "Accused:",
-        "admin_description": "Configure persecution functionality and frequency",
-        "dropdown": {
-            "ring_accuse": "Persecution: Accuse",
-            "ring_accuse_description": "Accuse a soldier of being a traitor to ze Reich",
-            "ring_on": "Persecution: Activate",
-            "ring_on_description": "Start ze persecution of Reich traitors",
-            "ring_off": "Persecution: Deactivate",
-            "ring_off_description": "Stop ze persecution system",
-            "ring_frequency": "Persecution: Frequency",
-            "ring_frequency_description": "Configure interrogation frequency (affects hot potato)"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎯 Select services action...",
         "config_juggler": "Configure Services",
         "config_juggler_description": "Adjust services division configuration",
         "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Verses**: Request personalized verses dedicated to other users"
+    },
+    "poetry": {
+      "title": "📝 Verses",
+      "description": "Request a poem dedicated to another user.",
+      "action_compose": "✍️ Compose Poem",
+      "action_compose_desc": "Write a poem for another user",
+      "button": "📝 Verses",
+      "dropdown": {
+        "poetry_compose": "Compose Verse",
+        "poetry_compose_description": "Write a verse for another user",
+        "poetry_on": "Verses: On",
+        "poetry_on_description": "Enable verses for this server",
+        "poetry_off": "Verses: Off",
+        "poetry_off_description": "Disable verses for this server"
+      },
+      "modal_title": "Compose Verse",
+      "modal_target_label": "Target User",
+      "modal_target_placeholder": "@user or user ID",
+      "modal_dedication_label": "Dedication/Premise",
+      "modal_dedication_placeholder": "A short theme or message (max 150 chars)",
+      "error_target_invalid": "❌ User not found. Use @mention or a valid ID.",
+      "error_dedication_too_long": "❌ Dedication is too long (max 150 characters).",
+      "error_cost_failed": "❌ Error processing cost.",
+      "error_llm_failed": "❌ Failed to generate poem",
+      "preview_title": "📝 Verse Preview",
+      "preview_description": "Review the poem before sending",
+      "preview_footer": "From: {sender}",
+      "button_confirm": "✅ Send",
+      "button_cancel": "❌ Cancel",
+      "success_sent": "✅ Verse sent to {target}",
+      "success_cancelled": "❌ Verse cancelled",
+      "dm_disabled_notice": "⚠️ Target has DMs disabled. Here is the verse to send manually:",
+      "dm_disabled_offer": "You can copy and send the verse manually:",
+      "error_subrole_disabled": "❌ The Verses subrole is disabled on this server. Contact an administrator to enable it.",
+      "enabled": "✅ Verses enabled for this server.",
+      "disabled": "❌ Verses disabled for this server.",
+      "error_config_failed": "❌ Failed to update configuration.",
+      "error_modal_belongs_to_another": "❌ This modal belongs to another user.",
+      "error_failed_preview_dm": "❌ Failed to send preview DM.",
+      "error_server_only": "❌ This option is only available in a server.",
+      "error_unknown_action": "❌ Unknown action: {action}",
+      "error_generic": "❌ Error: {error}"
     }
 }

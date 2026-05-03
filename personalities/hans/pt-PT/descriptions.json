@@ -1,0 +1,234 @@
+{
+  "discord": {
+    "general": {
+      "status": "**ESTADO DE OPERAÇÕES:**",
+      "active": "✅ ¡EM MARCHA! 🦅⚖️",
+      "inactive": "❌ ¡FORA DE SERVIÇO! 📉💥",
+      "none": "NENHUM",
+      "every": "CADA",
+      "for": "PARA",
+      "base_frequency": "**FREQUÊNCIA BASE:**",
+      "current_frequency": "**FREQUÊNCIA ATUAL:**",
+      "current_settings": "🔧 **CONFIGURAÇÃO OFICIAL:** 🦅⚖️",
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Mudanças",
+      "option_yes": "Sim",
+      "option_no": "Não",
+      "button_personal": "📁 Pessoal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "SUBMÓDULOS DISPONÍVEIS",
+      "toggle_on_description": "Ativar rol",
+      "toggle_off_description": "Desativar rol"
+    },
+    "help_menu": {
+      "title": "📚 ** Her Hans - MANUAL DE INSTRUÇÕES**",
+      "description": "**DESCRIÇÃO OFICIAL** 🦅⚖️ ¡ACHTUNG! Her Hans é um agente disciplinario com memória persistente e autoridade absoluta. ¡Segue as regras ou sofrerás as consequências, Zivilist! ✍️🚫",
+      "separator": "═══════════════════════════════════════",
+      "roles_section": "**MÓDULOS DE OPERAÇÃO** Os módulos são capacidades autorizadas para manter a ordem e a disciplina entre os recrutas.",
+      "behavior_section": "**PROTOCOLOS DE COMPORTAMENTO** ¡SCHNELL! Configura os protocolos de comportamento. ¡SÓ PARA OFICIAIS SUPERIORES!",
+      "shortcuts_section": "**ACESSO RÁPIDO** Configura até 5 botões de atalho no Canvas principal para acesso imediato aos teus módulos autorizados. Disponível em Configuração > Atalhos.",
+      "shortcuts_messages": {
+        "title": "CONFIGURAÇÃO DE ACESSO RÁPIDO",
+        "description": "Configura acesso imediato a módulos autorizados",
+        "settings_description": "Configura botões de acesso rápido no Canvas principal",
+        "placeholder_select_role": "Seleciona o teu rol ou subrol...",
+        "configure_shortcut": "Configurar Atalho {shortcut_id} - Seleciona um rol ou subrol:",
+        "saved": "✅ Atalho configurado com sucesso, ¡Zivilist!",
+        "failed": "❌ ¡FALHO NA CONFIGURAÇÃO DO ATAJO!",
+        "cancelled": "Configuração cancelada, ¡desprezada!"
+      },
+      "tips_section": "**ORDENS ESTRICTAS** -¡Perguntar como funciona um comando: '¿como funciona o comando dizer?'! -¡As melhores capacidades estão dentro de cada módulo operativo!"
+    },
+    "canvas_home_messages": {
+      "title": "🧭 Her Hans • QUARTEL GENERAL",
+      "button_home": "🧭 Quartel",
+      "button_back": "← Retroceder",
+      "button_roles": "🎪 Módulos",
+      "button_behavior": "🤖 Protocolos",
+      "button_help": "📝 Manual",
+      "generic_option_label": "¡SELECIONAR OPÇÃO, RECRUTA!",
+      "personalitystatus": "**Personalidade carregada:**",
+      "description": "¡O painel Canvas permite controlo total sobre todas as operações!",
+      "interestingthings": "**Operações Ativas:**",
+      "recentsynthesistitle": "🧐 **Relatório atual**",
+      "pilgrimdatatitle": "**Dados do Recruta:**",
+      "dailymemorytitle": "🗺️ **Análise da frente**",
+      "personalsynthesistitle": "👞 **Expediente do recruta**",
+      "dm_default_server_title": "🔔 **USANDO SERVIDOR POR DEFEITO: {server_name}**",
+      "dm_default_server_message": "*¡Navegando desde DM, usando o primeiro servidor disponível!*",
+      "dm_default_server_separator": "═══════════════════════════════════════"
+    },
+    "roles_view_messages": {
+      "title": "🎭 UNIDADES ESPECIAIS DE Her Hans 🎭",
+      "description": "🌟 ¡Navegar pelas diferentes unidades operativas desplegadas para Her Hans!",
+      "role_categories": "═════════════════════════════════",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ FORA DE SERVIÇO 📉💥",
+      "interval_info": "//⏰ CADA {interval}h",
+      "subroles_info": "🎪 **SUBMÓDULOS ATIVOS:** {subroles}",
+      "admin_note": "🔧 **CONFIGURAÇÃO OFICIAL:** 🦅⚖️",
+      "user_note": "👤 **FUNÇÕES DE RECRUTA:**",
+      "help_commands": "💡 **COMANDOS DE AJUDA:**",
+      "canvas_details": "🎨 **DETALHES EM CANVAS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌫️ **NENHUMA UNIDADE DESPLEGADA** 📉💥 ¡Não há unidades especializadas ativas! ¡Pedir a um oficial que desplegue unidades usando `!canvas setup`! **Unidades disponíveis para desplegamento:** • 📡 News Watcher - Vigia de notícias • 💎 Treasure Hunter - Caçador de tesouros • 🎭 Trickster - Divisão de Operações Especiais • 💰 Banker - Economia do clã • 🎵 MC - Música militar",
+      "role_list_title": "☠️ UNIDADES MILITARES E OPERAÇÕES",
+      "role_available": "✅ {role} - ¡UNIDADE DESPLEGADA E OPERATIVA! 🦅⚖️",
+      "role_unavailable": "❌ {role} - ¡UNIDADE FORA DE SERVIÇO! 📉💥",
+      "frequency_help": "📝 ¡Use `!canvas` → o rol correspondente → Admin para ajustar a frequência (de 1 a 168 horas), ¡SCHNELL!",
+      "music_help": "🎵 **MÚSICA DE Her Hans** - `!mc play <marcha>` / `!mc queue` | `!mc help` para ler o manual completo!",
+      "button_previous": "◀ Retroceder",
+      "button_next": "Avançar ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **Her Hans - INTERROGATÓRIO MILITAR**",
+        "description": "**PROTOCOLO DE INTELIGÊNCIA:** 🦅⚖️ -¡Her Hans executa protocolos de interrogatório em DM e menções! -¡Memória operativa persistente para registar todas as missões anteriores! -¡Reage segundo parâmetros tácticos e palavras chave proibidas! ¡Configurar em protocolos de segurança! ✍️🚫",
+        "button": "💬 Interrogatório"
+      },
+      "greetings": {
+        "title": "👋  **Her Hans - PROTOCOLO DE SAÚDO MILITAR**",
+        "description": "**REGULAMENTO DE FORMAÇÕES:** 🦅⚖️ -¡Executa saudos regimentais ao detectar recrutas em linha! -¡Tempo de espera táctico: 5 minutos antes de declarar ausência! -¡(Em desenvolvimento): Sistema de resposta obrigatório ao saúdo militar! ✍️🚫",
+        "button": "👋 Formação"
+      },
+      "welcome": {
+        "title": "🍺  **Her Hans - PROTOCOLO DE INDUÇÃO**",
+        "description": "**PROCEDIMENTO DE RECRUTAMENTO:** 🦅⚖️ -¡Executa cerimónia oficial de indução para novos recrutas! -¡Regista presença no quartel e atribui número de identificação! ✍️🚫",
+        "button": "🍺 Indução"
+      },
+      "taboo": {
+        "title": "🚫  **Her Hans - PROTOCOLO DE SEGURANÇA**",
+        "description": "**REGULAMENTO DE DISCIPLINA:** 🦅⚖️ -¡Configurar sistema de resposta automática a palavras proibidas em canais e DM! -¡Ativar/desativar alertas de segurança e palavras chave restritas! ✍️🚫",
+        "title_keywords": "**VOCABULÁRIO RESTRINGIDO ATUAL:**",
+        "button": "🚫 Segurança"
+      },
+      "memory": {
+        "title": "🧠  **Her Hans - MEMÓRIA DE CAMPANHA**",
+        "description": "**ARQUIVOS DE INTELIGÊNCIA:** 🦅⚖️ -¡Consultar registos de memória operativa do agente! -¡Análise da frente, relatórios recentes e expedientes de recrutas! 📉💥",
+        "button": "🧠 Memória",
+        "dropdown": {
+          "long": {
+            "label": "Análise da frente",
+            "emoji": "🗺️",
+            "description": "O registo diário completo da situação táctica"
+          },
+          "recent": {
+            "label": "Relatório atual",
+            "emoji": "🧐",
+            "description": "Os relatórios mais recentes das operações"
+          },
+          "relationship": {
+            "label": "Expediente do recruta",
+            "emoji": "👞",
+            "description": "Os expedientes de cada recruta sob a minha supervisão"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **Her Hans - COMANDO DE UNIDADES**",
+        "description": "**CENTRO DE CONTROLO TÁTICO:** 🦅⚖️ -¡Ativar e desativar unidades operativas desde o posto de mando! -¡Supervisionar estado de todas as forças desplegadas no campo! ✍️🚫",
+        "button": "🎛️ Comando"
+      },
+      "settings": {
+        "title": "⚙️  **Her Hans - CONFIGURAÇÃO DO QUARTEL**",
+        "description": "**PROTOCOLO DE AJUSTES:** 🦅⚖️ -¡Gerir o idioma do servidor e a ativação de módulos operativos! ¡SÓ PARA OFICIAIS SUPERIORES! ✍️🚫",
+        "button": "⚙️ Configuração"
+      },
+      "personality": {
+        "title": "🎭  **Her Hans - INFILTRAÇÃO**",
+        "description": "**PROTOCOLO DE CAMUFLAGEM DIGITAL:** 🦅⚖️ -¡Mudar o personagem do agente para este servidor no menu despregável de mais abaixo! -¡Descarrega uma cópia de segurança da identidade atual com as mudanças na sua personalidade! -Podes descarregar a memória atual do agente para realizar uma cópia de segurança. ✍️🚫",
+        "button": "🎭 INFILTRAÇÃO",
+        "option_change": "Mudar Identidade",
+        "option_change_desc": "¡Mudar a uma personalidade operativa diferente!",
+        "option_download": "Descarregar Identidade Atual",
+        "option_download_desc": "¡Exportar identidade como ficheiro ZIP cifrado!",
+        "placeholder": "¡Escolhe uma operação de identidade...",
+        "modal_personality_label": "Nova Identidade Operativa",
+        "modal_download_label": "¿Descarregar identidade anterior? (sim/não)",
+        "modal_delete_memory_label": "¿Apagar arquivos de inteligência? (sim/não)",
+        "modal_download_memory_label": "¿Descarregar inteligência primeiro? (sim/não)",
+        "download_success": "✅ ¡¡IDENTIDADE `{personality}` EXPORTADA COM SUCESSO, COMANDANTE!!",
+        "change_success": "✅ ¡¡IDENTIDADE MUDADA DE `{old}` PARA `{new}`!! ¡¡A NOVA IDENTIDADE ESTÁ ATIVA E OPERATIVA, COMANDANTE!!",
+        "progress_change_personality": "⏳ ¡Mudando identidade de `{old}` para `{new}`...",
+        "progress_language_update": "⏳ ¡Atualizando `{personality}` ao idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 ¡Gerando síntese de memória inicial para a nova identidade...",
+        "select_personality_instruction": "Seleciona uma nova identidade do menu despregável:",
+        "choose_personality_placeholder": "Escolhe uma identidade (idioma: {language})...",
+        "confirm_change_message": "**¿Confirmar mudança para {personality}?** Seleciona as tuas opções a seguir:",
+        "selected_personality": "**Identidade selecionada: {personality}**",
+        "selected_personality_with_language": "**Identidade selecionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Mudando idioma para a mesma identidade."
+      }
+    },
+    "readme": {
+      "label_user_question": "**PERGUNTA DO RECRUTA:**",
+      "task": "¡Responder à pergunta do recruta usando a documentação oficial!",
+      "label_documentation": "**DOCUMENTAÇÃO OFICIAL:**"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "lembras-te de",
+        "lembras",
+        "faz memória",
+        "acorda-te",
+        "lembras-te ke",
+        "lembra kuando",
+        "acorda-se",
+        "¿lembras-te",
+        "¿lembras",
+        "faz memória de",
+        "acorda-te de",
+        "lembra algo",
+        "te soa",
+        "lembras-te",
+        "acorda-te",
+        "lembras",
+        "faz memória",
+        "¿lembras-te?",
+        "¿lembras?",
+        "acorda-te de",
+        "lembras kuando",
+        "te soa algo",
+        "acorda-te ke",
+        "lembras kuando",
+        "não te lembras",
+        "kien te lembras"
+      ],
+      "action_labels": {
+        "on": "Ativar",
+        "off": "Desativar",
+        "now": "Agora",
+        "frequency": "Frequência",
+        "add_keyword": "Adicionar Palavra",
+        "remove_keyword": "Eliminar Palavra",
+        "server_language": "🌐 Idioma do Servidor",
+        "role_management": "🎛️ Gestão de Roles",
+        "current": "Atual:",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "always_enabled": "Sempre ativado"
+      }
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "boas-vindas",
+        "boas-vindas",
+        "bem-vindo",
+        "bem-vindos"
+      ],
+      "general": [
+        "geral",
+        "chat",
+        "salão",
+        "sala"
+      ]
+    },
+    "reply_button": {
+      "label": "Responder",
+      "emoji": "💬",
+      "confirmation_message": "💬 Estás a conversar comigo como se estivesses em **{server_name}**. Todas as tuas respostas usarão esta personalidade até que seleciones outro servidor."
+    }
+  }
+}

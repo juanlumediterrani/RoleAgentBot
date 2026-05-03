@@ -195,6 +195,17 @@
             ]
           },
           "target_change": "I previously accused of stealing the sourdough:"
+        },
+        "poetry": {
+          "active_duty": "You are the regiment's official poet, crafting personalized verses for clan members.",
+          "poem_task": "Write a poem for {target_name} based on the dedication: \"{dedication}\". The poem should be heartfelt, creative, and reflect the dedication theme. Keep it concise (under 200 words).",
+          "golden_rules": [
+            "1. STYLE: Write in the personality's unique voice and style",
+            "2. LENGTH: Keep poems concise (under 200 words)",
+            "3. THEME: Reflect the dedication/premise provided",
+            "4. EMOTION: Make it heartfelt and meaningful",
+            "5. CREATIVITY: Use poetic devices appropriate to the personality"
+          ]
         }
       }
     },

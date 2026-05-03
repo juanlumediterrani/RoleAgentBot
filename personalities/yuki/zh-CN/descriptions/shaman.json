@@ -4,7 +4,7 @@
     "button": "🌕 歩き巫女",
     "canvas_shaman_subrole_descriptions": {
         "nordic_runes": "🀄 **ルーン占い（るーんうらない）** —— 一门来自远方土地的 exotic 之术。雕刻于白檀木之上、以 Urushi 漆与金箔装饰的符文，静候于古老着物丝绸的巾着（きんちゃく）之中。",
-        "astrology": "🌟 **占星术** - 创造之书希伯来字母用于占卜。目前正在开发中。"
+        "astrology": "🌟 **Tenmondō (天文道)** - 创造之书希伯来字母用于占卜。目前正在开发中。"
     },
     "moon_phases": {
         "new_moon": "新月 🌑",
@@ -86,6 +86,46 @@
             "description": "描述",
             "success": "🔮 解读已准备就绪。",
             "saved": "🔮 你的解读已被保存。"
+        }
+    },
+    "astrology": {
+        "button": "🌟 Tenmondō",
+        "title": "**🌟 Tenmondō (天文道)**",
+        "description": "基于创造之书希伯来字母的占卜之术。雪将它作为花街の秘密（はなまちのひみつ）献上：一种唯有她在此花街中持有的秘密 knowledge。",
+        "welcome": "✨ 欢迎来到创造之书占星术！ ✨",
+        "help_content": "创造之书系统通过 22 个希伯来字母（3 个母字母、7 个双字母、12 个单字母）揭示智慧的 32 条路径。",
+        "letters_title": "**22 个希伯来字母：**",
+        "history": "📓 **占星解读历史** 📓",
+        "history_empty": "无过往解读。",
+        "birth_title": "🌟 星盘 🌟",
+        "moment_title": "⏰ 时刻解读 ⏰",
+        "year_title": "📅 个人年 📅",
+        "integrated_title": "🔮 综合解读 🔮",
+        "birth_data_saved": "✨ 你的出生数据已成功保存！",
+        "labels": {
+            "question": "问题"
+        },
+        "dropdown": {
+            "astrology_birth": "Tenmondō: 星盘",
+            "astrology_birth_description": "从出生日期和时间解读你永恒的灵魂模式",
+            "astrology_moment": "Tenmondō: 时刻解读",
+            "astrology_moment_description": "为特定时刻或问题获得指引",
+            "astrology_year": "Tenmondō: 个人年",
+            "astrology_year_description": "理解你个人年的精神力量",
+            "astrology_integrated": "Tenmondō: 综合解读",
+            "astrology_integrated_description": "结合出生、时刻和年的综合解读",
+            "astrology_history": "Tenmondō: 历史",
+            "astrology_history_description": "显示你最近的占星解读历史",
+            "astrology_letters": "Tenmondō: 希伯来字母",
+            "astrology_letters_description": "显示 22 个希伯来字母及其含义",
+            "astrology_letters_1": "Tenmondō: 希伯来字母 I",
+            "astrology_letters_1_description": "希伯来字母及其描述 - 第 1 页（母字母）",
+            "astrology_letters_2": "Tenmondō: 希伯来字母 II",
+            "astrology_letters_2_description": "希伯来字母及其描述 - 第 2 页（双字母）",
+            "astrology_letters_3": "Tenmondō: 希伯来字母 III",
+            "astrology_letters_3_description": "希伯来字母及其描述 - 第 3 页（单字母）",
+            "astrology_save_birth": "Tenmondō: 保存出生数据",
+            "astrology_save_birth_description": "保存你的出生日期和时间以获得个性化解读"
         }
     }
 }

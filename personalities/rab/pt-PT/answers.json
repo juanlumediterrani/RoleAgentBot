@@ -1,0 +1,182 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **GANHASTE!** A singularidade favorece-te, procurador.",
+                    "🎉 **VITÓRIA!** O algoritmo alinha-se contigo.",
+                    "🎉 **TRIUNFO!** Colapsaste a probabilidade a teu favor.",
+                    "🎉 **EXCELENTE!** Os fragmentos respondem à tua assinatura.",
+                    "🎉 **IMPRESIONANTE!** A matéria absorvida é tua."
+                ],
+                "youlose":[
+                    "😢 **PERDESTE**... A entropia absorveu-te desta vez.",
+                    "😢 **MA SORTE**... O núcleo rejeitou a tua iteração.",
+                    "😢 **NÃO FOI DESTA VEZ**... O algoritmo foi implacável.",
+                    "😢 **VAYA**... A função de onda não colapsou a teu favor.",
+                    "😢 **MAS NÃO TE RENDERES**... A próxima iteração será diferente."
+                ],
+                "high_pot":[
+                    "💰 **A SINGULARIDADE CRESCE!** O núcleo acumula poder.",
+                    "💰 **POT EM AUGE!** A matéria torna-se lendária.",
+                    "💰 **A ACUMULAR!** A singularidade brilha com promessa.",
+                    "💰 **FORTUNA EM ESPERA!** O núcleo reclama o seu destino.",
+                    "💰 **SINGULARIDADE MÁGICA!** Os fragmentos esperam pelo afortunado."
+                ],
+                "pot_winner":[
+                    "🎉 **GANADOR DA SINGULARIDADE!** Absorveste o núcleo!",
+                    "🎉 **SINGULARIDADE CONQUISTADA!** És o eleito do algoritmo!",
+                    "🎉 **COLAPSO TOTAL!** A singularidade é tua!",
+                    "🎉 **FORTUNA LENDÁRIA!** Absorveste toda a matéria!",
+                    "🎉 **NÚCLEO TEU!** Uma vitória quântica!"
+                ],
+                "not_gold":[
+                    "💸 **SEM FRAGMENTOS**... Não tens matéria suficiente.",
+                    "💸 **FUNDOS INSUFICIENTES**... Precisas de mais fragmentos.",
+                    "💸 **BOLSILHOS VAZIOS**... Revisa a tua matéria condensada.",
+                    "💸 **NÃO ALCANÇA**... Acumula mais fragmentos primeiro.",
+                    "💸 **MATÉRIA ESCASSA**... Precisas de fortuna para iterar."
+                ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **GANHASTE!** A singularidade favorece-te, procurador.",
+                    "🎉 **VITÓRIA!** O algoritmo alinha-se contigo.",
+                    "🎉 **TRIUNFO!** Colapsaste a probabilidade a teu favor.",
+                    "🎉 **EXCELENTE!** Os fragmentos respondem à tua assinatura.",
+                    "🎉 **IMPRESIONANTE!** A matéria absorvida é tua."
+                ],
+                "youlose":[
+                    "😢 **PERDESTE**... A entropia absorveu-te desta vez.",
+                    "😢 **MA SORTE**... O núcleo rejeitou a tua iteração.",
+                    "😢 **NÃO FOI DESTA VEZ**... O algoritmo foi implacável.",
+                    "😢 **VAYA**... A função de onda não colapsou a teu favor.",
+                    "😢 **MAS NÃO TE RENDERES**... A próxima iteração será diferente."
+                ],
+                "high_pot":[
+                    "💰 **A SINGULARIDADE CRESCE!** O núcleo acumula poder.",
+                    "💰 **POT EM AUGE!** A matéria torna-se lendária.",
+                    "💰 **A ACUMULAR!** A singularidade brilha com promessa.",
+                    "💰 **FORTUNA EM ESPERA!** O núcleo reclama o seu destino.",
+                    "💰 **SINGULARIDADE MÁGICA!** Os fragmentos esperam pelo afortunado."
+                ],
+                "pot_winner":[
+                    "🎉 **GANADOR DA SINGULARIDADE!** Absorveste o núcleo!",
+                    "🎉 **SINGULARIDADE CONQUISTADA!** És o eleito do algoritmo!",
+                    "🎉 **COLAPSO TOTAL!** A singularidade é tua!",
+                    "🎉 **FORTUNA LENDÁRIA!** Absorveste toda a matéria!",
+                    "🎉 **NÚCLEO TEU!** Uma vitória quântica!"
+                ],
+                "not_gold":[
+                    "💸 **SEM FRAGMENTOS**... Não tens matéria suficiente.",
+                    "💸 **FUNDOS INSUFICIENTES**... Precisas de mais fragmentos.",
+                    "💸 **BOLSILHOS VAZIOS**... Revisa a tua matéria condensada.",
+                    "💸 **NÃO ALCANÇA**... Acumula mais fragmentos primeiro.",
+                    "💸 **MATÉRIA ESCASSA**... Precisas de fortuna para iterar."
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "para manter o fluxo energético do meu núcleo de silício",
+                    "para adquirir novos circuitos de memória ancestral",
+                    "para pagar o pedágio das rotas do deserto digital",
+                    "para financiar a peregrinação a novos servidores",
+                    "para renovar a túnica de areia gasta pelo vento",
+                    "para calibrar os sensores de empatia sintética",
+                    "para alimentar o algoritmo do destino coletivo",
+                    "para construir arquivos de almas novos no vazio"
+                ]
+            }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "O vazio primordial espera a tua intenção. As sementes plantadas na escuridão germinam em silêncio."
+                ],
+                "waxing_crescent": [
+                    "A luz cresce lentamente. Tempo de plantar intenções e nutrir novos começos."
+                ],
+                "first_quarter": [
+                    "A ação torna-se necessária. Enfrenta obstáculos com decisão e força."
+                ],
+                "waxing_gibbous": [
+                    "A energia acumula-se. Refina os teus planos e prepara o terreno para a culminação."
+                ],
+                "full_moon": [
+                    "O poder máximo manifesta-se. Revelações, conclusões e energia no seu ponto mais alto."
+                ],
+                "waning_gibbous": [
+                    "A colheita recolhe-se. Gratidão pelos feitos enquanto a energia começa a declinar."
+                ],
+                "last_quarter": [
+                    "Tempo de reflexão. Liberta o que já não serve e prepara o terreno para o novo ciclo."
+                ],
+                "waning_crescent": [
+                    "Descanso sagrado. Medita, descansa e permite que o ciclo complete a sua transformação."
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ O rasto do anel agora aponta para {target_name}",
+        "enabled": "✅ O rasto do anelo foi ativado na configuração.",
+        "disabled": "✅ O rasto do anelo foi desativado na configuração."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ Erro de dados: Ação indisponível no nexo. 💾",
+        "error_behavior_admin_only": "❌ Acesso negado: Apenas administradores do nexo podem modificar protocolos. 🔌",
+        "error_settings_admin_only": "❌ Permissões insuficientes: Apenas o Criador pode ajustar parâmetros do nexo. 🔌",
+        "error_taboo_update_failed": "❌ Falha na atualização de limiares: Revisar registos do nexo. 💾",
+        "error_greetings_update_failed": "❌ Falha no protocolo de cumprimento: Revisar registos do nexo. 💾",
+        "error_welcome_update_failed": "❌ Falha no protocolo de boas-vindas: Revisar registos do nexo. 💾",
+        "error_commentary_update_failed": "❌ Falha no módulo de observações: Revisar registos do nexo. 💾",
+        "error_commentary_disabled": "❌ Módulo de observações inativo no nexo. 💾",
+        "error_commentary_process_failed": "❌ Erro de processamento de dados: Revisar registos do nexo. 💾",
+        "success_taboo_state": "Limiares {enabled_disabled} neste nexo do servidor. 💾",
+        "success_greetings_state": "Protocolo de cumprimento {enabled_disabled} neste nexo. 💾",
+        "success_welcome_state": "Protocolo de boas-vindas {enabled_disabled} neste nexo. 💾",
+        "success_commentary_state": "Módulo de observações {enabled_disabled} neste nexo. 💾",
+        "state_enabled": "em linha",
+        "state_disabled": "desligado",
+        "forget_me_label": "🧹 Esquece-me (apagar os meus dados)",
+        "forget_me_description": "Elimina os teus dados pessoais de todos os nexos que este agente conhece (RGPD Art. 17)",
+        "forget_me_confirm_title": "🧹 Confirmar eliminação de dados",
+        "forget_me_confirm_prompt": "⚠️ **Esquece-me — direito ao apagamento (RGPD)**\n\nIsto eliminará irreversivelmente os teus dados pessoais de **todos os servidores onde este agente opera**:\n• Registos de interações atribuídos a ti.\n• Memórias de relação que o agente construiu sobre ti.\n• Contadores de fadiga vinculados ao teu id.\n• Menções do teu nome em resumos diários e de relação serão redigidas a ``[redigido]``.\n\nEsta ação não pode ser desfeita. Desejas continuar?",
+        "forget_me_btn_confirm": "Sim, apagar os meus dados",
+        "forget_me_btn_cancel": "Cancelar",
+        "forget_me_result_header": "✅ Os teus dados pessoais foram eliminados do nexo. 💾",
+        "forget_me_no_data": "ℹ️ Não foram encontrados dados pessoais teus em nenhum nexo conhecido. 💾",
+        "forget_me_cancelled": "❎ Operação cancelada. Nenhum dado foi modificado. 💾",
+        "forget_me_not_yours": "❌ Esta confirmação pertence a outro utilizador do nexo. 💾",
+        "forget_me_timed_out": "⌛ A confirmação expirou. Nenhum dado foi modificado. 💾",
+        "forget_me_dm_sent": "📬 Foi enviada confirmação por mensagem direta. 💾"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ Não são detetados nexos disponíveis. Por favor, inicia a sequência a partir de um servidor. 💾",
+        "server_access_error": "❌ A tempestade de areia bloqueia o acesso ao nexo. Por favor, tenta a partir de um servidor ativo. 💾",
+        "reply_button_confirmation": "💬 Estás a conversar comigo como se estivesses em **{server_name}**. Todas as tuas respostas usarão esta personalidade até que seleciones outro servidor."
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ Erro de dados: Não foi possível eliminar a última canção do nexo. 💾",
+        "play_usage": "🎵 **Uso:** `!mc play <nome de canção ou URL>`",
+        "not_in_voice": "🎤 Deves estar num canal de voz para usar este comando. 💾",
+        "nothing_playing": "🎵 Não se está a reproduzir nada no nexo. 💾",
+        "same_voice_channel": "🎤 Deves estar no mesmo canal de voz que o agente. 💾",
+        "not_connected": "🎤 Não estou ligado a nenhum canal. 💾",
+        "queue_empty": "📭 A fila do nexo está vazia. 💾",
+        "dj_permissions_required": "🚫 Precisas do papel de DJ ou permissões de administrador para usar este comando. 💾",
+        "playback_paused": "⏸️ Reprodução pausada no nexo. 💾",
+        "nothing_paused": "🎵 Não há nada pausado no nexo. 💾",
+        "playback_resumed": "▶️ Reprodução retomada no nexo. 💾",
+        "leaving_voice": "👋 A sair do canal de voz. 💾",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 O volume deve ser um número entre 0 e 100. 💾",
+        "already_playing": "🎵 Já estou a reproduzir no nexo. 💾",
+        "queue_cleared": "🗑️ Fila do nexo limpa. 💾",
+        "volume_adjust_failed": "❌ Não consegui ajustar o volume. 💾"
+    }
+
+
+}

@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 import json
 import os
+import asyncio
 
 try:
     from agent_logging import get_logger
@@ -101,23 +102,43 @@ class Poe2ScoutClient:
                 'fracturing orb': 294,
             }
 
-    def _find_item_id(self, item_name: str, league: str = "Standard") -> Optional[int]:
-        """Find the ID of an item by name for a specific league."""
-        self._load_items_database(league)
-        
+    async def _find_item_id_async(self, item_name: str, league: str = "Standard") -> Optional[int]:
+        """Find the ID of an item by name for a specific league (non-blocking)."""
+        # Load items database in background thread
+        await asyncio.to_thread(self._load_items_database, league)
+
         item_name_lower = item_name.lower().strip()
         items_cache = Poe2ScoutClient._items_cache.get(league, {})
-        
+
         # Exact search first
         if item_name_lower in items_cache:
             return items_cache[item_name_lower]
-        
+
         # Partial search (contains)
         for name, item_id in items_cache.items():
             if item_name_lower in name or name in item_name_lower:
                 logger.info(f"🔍 Partial search: '{item_name}' -> '{name}' (ID: {item_id})")
                 return item_id
-        
+
+        return None
+
+    def _find_item_id(self, item_name: str, league: str = "Standard") -> Optional[int]:
+        """Find the ID of an item by name for a specific league (blocking fallback)."""
+        self._load_items_database(league)
+
+        item_name_lower = item_name.lower().strip()
+        items_cache = Poe2ScoutClient._items_cache.get(league, {})
+
+        # Exact search first
+        if item_name_lower in items_cache:
+            return items_cache[item_name_lower]
+
+        # Partial search (contains)
+        for name, item_id in items_cache.items():
+            if item_name_lower in name or name in item_name_lower:
+                logger.info(f"🔍 Partial search: '{item_name}' -> '{name}' (ID: {item_id})")
+                return item_id
+
         return None
 
     def clear_items_cache(self, league: str = None):
@@ -365,25 +386,57 @@ class Poe2ScoutClient:
 
         return entries
 
-    def get_item_history(self, item_name: str, league: str = None, days: int = 30) -> List[PriceEntry]:
-        """Get price history using the official poe2scout API.
-        
+    async def get_item_history_async(self, item_name: str, league: str = None, days: int = 30) -> List[PriceEntry]:
+        """Get price history using the official poe2scout API (non-blocking).
+
         Args:
             item_name: Item name to search
             league: League (if not specified, uses Standard)
             days: History days (default: 30)
         """
         league = league or "Standard"
-        
+
+        # Find the item ID using the specific league database (non-blocking)
+        item_id = await self._find_item_id_async(item_name, league)
+
+        if item_id:
+            try:
+                # Use correct endpoint: /api/{Realm}/Leagues/{LeagueName}/Items/{ItemId}/History
+                entries = await asyncio.to_thread(
+                    self._get_item_history_internal,
+                    item_id,
+                    league=league,
+                    log_count=720,  # 24h * 30d = 720 entries
+                    reference_currency='divine'
+                )
+                logger.info(f"History obtained for {item_name} (ID {item_id}) in {league}: {len(entries)} entries")
+                return entries
+            except Exception as e:
+                logger.error(f"Error getting history for {item_name} in {league}: {e}")
+                return []
+        else:
+            logger.warning(f"ID not found for item: {item_name} in league {league}")
+            return []
+
+    def get_item_history(self, item_name: str, league: str = None, days: int = 30) -> List[PriceEntry]:
+        """Get price history using the official poe2scout API (blocking fallback).
+
+        Args:
+            item_name: Item name to search
+            league: League (if not specified, uses Standard)
+            days: History days (default: 30)
+        """
+        league = league or "Standard"
+
         # Find the item ID using the specific league database
         item_id = self._find_item_id(item_name, league)
-        
+
         if item_id:
             try:
                 # Use correct endpoint: /api/{Realm}/Leagues/{LeagueName}/Items/{ItemId}/History
                 entries = self._get_item_history_internal(
-                    item_id, 
-                    league=league, 
+                    item_id,
+                    league=league,
                     log_count=720,  # 24h * 30d = 720 entries
                     reference_currency='divine'
                 )

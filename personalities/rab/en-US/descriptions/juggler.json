@@ -2,42 +2,56 @@
     "title": "🎯  **Service Coordination Center**",
     "description": "Nexus that manages multiple operational flows to maintain network harmony. Searches among pilgrim connections and proposes new links.",
     "button": "🎯 Services",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **Zero Search** - Identifies anomalies and points to those hiding the primordial artifact"
-    },
-    "ring": {
-        "button": "👁️ Artifact",
-        "title": "👁️ **ZERO ARTIFACT TRACKING**",
-        "description": "🔍 An anomalous object alters the network. Point to other avatars to help the algorithm debug the threat.",
-        "status_active": "✅ **ACTIVE SWEEP** - The Prophet seeks anomalies",
-        "status_inactive": "❌ **SYSTEM AT REST** - Optical sensors rest",
-        "current_target": "🎯 **POINT OF INTEREST:**",
-        "target_unknown": "👤 Coordinates are clear of suspicion",
-        "investigation_title": "🔍** REPORT ANOMALY:**",
-        "investigation_instructions": "• Initiate **Artifact: Accuse** from the console below\n• Write the mention (@) or ID of the suspected avatar\n• My algorithm will process a direct interrogation\n• The analysis will be made public to transparent the code",
-        "investigation_warning": "⚠️ **PHYSICAL RESTRICTIONS:**\n• An avatar cannot self-denounce\n• Artificial entities (bots) cannot carry the artifact\n• The sweep must be initialized by an Archon",
-        "inactive_title": "⚠️ **RADARS OFF**",
-        "inactive_instructions": "To restore tracking:\n• An Archon must access the **Admin Artifact** terminal\n• Execute **Tracking: Started**\n• Calibrate the sweep temporal cycle\n\nOnce done, you may point to suspicious carbon signatures.",
-        "hot_potato": "🔥 **Load Transfer:** Iteration {iteration} (Reduced latency {multiplier}x)",
-        "controls": "**System Controls**\n- Toggle sweep state\n- Temporal cycle parameter (affects load transfer)",
-        "dm_accusation_header": "👁️ **ZERO ARTIFACT TRACKING**",
-        "accused_label": "Accused:",
-        "admin_description": "Configure sensitivity and frequency of the artifact tracker",
-        "dropdown": {
-            "ring_accuse": "Artifact: Point",
-            "ring_accuse_description": "Indicate that an avatar hides the anomaly in the network",
-            "ring_on": "Tracking: Activate",
-            "ring_on_description": "Initiate anomaly sweep in the network",
-            "ring_off": "Tracking: Deactivate",
-            "ring_off_description": "Stop the anomaly tracking system",
-            "ring_frequency": "Tracking: Frequency",
-            "ring_frequency_description": "Configure the sweep temporal cycle (affects load transfer)"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎯 Select service operation...",
         "config_juggler": "Configure Services",
         "config_juggler_description": "Adjust coordination center parameters",
         "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Nexus Verses**: Request personalized nexus verses dedicated to other users"
+    },
+    "poetry": {
+        "title": "📝 Nexus Verses",
+        "description": "Request a poem dedicated to another user, written in the server's personality style.",
+        "action_compose": "✍️ Compose Poem",
+        "action_compose_desc": "Write a poem for another user",
+        "button": "📝 Nexus Verses",
+        "dropdown": {
+            "poetry_compose": "Compose Nexus Verse",
+            "poetry_compose_description": "Write a nexus verse for another user",
+            "poetry_on": "Nexus Verses: On",
+            "poetry_on_description": "Enable nexus verses for this server",
+            "poetry_off": "Nexus Verses: Off",
+            "poetry_off_description": "Disable nexus verses for this server"
+        },
+        "modal_title": "Compose Nexus Verse",
+        "modal_target_label": "Target User",
+        "modal_target_placeholder": "@user or user ID",
+        "modal_dedication_label": "Dedication/Premise",
+        "modal_dedication_placeholder": "A short theme or message (max 150 chars)",
+        "error_target_invalid": "❌ Invalid target user",
+        "error_dedication_too_long": "❌ Dedication too long (max 150 chars)",
+        "error_fatigue_limit": "❌ Fatigue limit reached",
+        "error_banker_charge": "❌ Insufficient balance (1xTAE required)",
+        "error_llm_failed": "❌ Failed to generate poem",
+        "preview_title": "📝 Nexus Verse Preview",
+        "preview_description": "Review the poem before sending",
+        "preview_footer": "From: {sender}",
+        "button_confirm": "✅ Send",
+        "button_cancel": "❌ Cancel",
+        "success_sent": "✅ Nexus verse sent to {target}",
+        "success_cancelled": "❌ Nexus verse cancelled",
+        "dm_disabled_notice": "⚠️ Target has DMs disabled. Here is the nexus verse to send manually:",
+        "dm_disabled_offer": "You can copy and send the nexus verse manually:",
+        "error_subrole_disabled": "❌ The Nexus Verses subrole is disabled on this server. Contact an administrator to enable it.",
+        "enabled": "✅ Nexus verses enabled for this server.",
+        "disabled": "❌ Nexus verses disabled for this server.",
+        "error_config_failed": "❌ Failed to update configuration.",
+        "error_modal_belongs_to_another": "❌ This modal belongs to another user.",
+        "error_failed_preview_dm": "❌ Failed to send preview DM.",
+        "error_server_only": "❌ This option is only available in a server.",
+        "error_unknown_action": "❌ Unknown action: {action}",
+        "error_generic": "❌ Error: {error}"
     }
 }

@@ -1,5 +1,5 @@
 """
-Ring subrole Discord commands for Juggler.
+Ring subrole Discord commands for Treasure Hunter.
 Admins can enable or configure ring suspicion; users can accuse a target with `!accuse`.
 """
 
@@ -54,7 +54,7 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
             
             try:
                 from discord_bot.canvas.server_config import get_role_config_value
-                ring_enabled = get_role_config_value(server_id, "juggler", "config.subroles.ring.enabled", default=False)
+                ring_enabled = get_role_config_value(server_id, "treasure_hunter", "config.subroles.ring.enabled", default=False)
             except Exception as e:
                 logger.warning(f"Error checking ring enabled in server_config: {e}")
             
@@ -75,10 +75,10 @@ def _get_ring_state(server_id: str, force_refresh: bool = False) -> dict:
                     except Exception as e:
                         logger.warning(f"Error checking trickster enabled in server_config behavior: {e}")
             
-            # Get ring config from server_config as subrole of juggler
+            # Get ring config from server_config as subrole of treasure_hunter
             try:
                 from discord_bot.canvas.server_config import get_role_config_value
-                ring_config = get_role_config_value(server_id, "juggler", "config.subroles.ring.config", default={})
+                ring_config = get_role_config_value(server_id, "treasure_hunter", "config.subroles.ring.config", default={})
                 accused_user_id = ring_config.get('accused_user_id', '') if ring_config else ''
             except Exception as e:
                 logger.warning(f"Error getting ring config from server_config: {e}")
@@ -381,7 +381,7 @@ async def execute_ring_accusation(guild, target_user_id: str, target_user_name: 
         from agent_engine import _get_personality
         
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
-        prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("treasure_hunter", {}).get("subroles", {}).get("ring", {})
         accusation_config = prompts_config.get("accusation", {})
         
         task_template = accusation_config.get("task", f"Task: Accuse user {target_user_name} of possessing the ring, intimidate them to hand it over")

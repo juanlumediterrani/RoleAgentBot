@@ -86,5 +86,34 @@
             "poe2_off": "POE2: Desactivar",
             "poe2_off_description": "Desactivar subrol POE2"
         }
+    },
+    "ring": {
+        "button": "🔍 Investigación",
+        "title": "👁️ **Herr Hans Oficial de la Gestapo**",
+        "description": " El oficial de la Gestapo le perseguirá hasta el fin de los tiempos, acuse a otros soldados para evitar ese calvario.",
+        "status_active": "✅ **PERSECUCIÓN ACTIVA** - Her Hans está buscando traidores",
+        "status_inactive": "❌ **PERSECUCIÓN INACTIVA** - Her Hans está descansando",
+        "current_target": "🎯 **OBJETIVO ACTUAL:**",
+        "target_unknown": "👤 Ningún sospechoso seleccionado",
+        "investigation_title": "🔍** HACER UNA ACUSACIÓN:**",
+        "investigation_instructions": "• ¡ACHTUNG! Use **Acusar** del menú de operaciones, soldado\n• Ingrese identificación del sospechoso: @nombredeusuario o ID\n• Herr Hans generará interrogatorio para extraer confesión\n• La acusación será publicada en el cuartel general para todos los soldados",
+        "investigation_warning": "⚠️ **ORDENES DEL REICH:**\n• No puede acusarse a sí mismo, traidor\n• No puede acusar unidades automatizadas (bots)\n• La persecución debe estar autorizada por oficial superior",
+        "inactive_title": "⚠️ **LA PERSECUCIÓN ESTÁ INACTIVA**",
+        "inactive_instructions": "¡ACHTUNG! Para autorizar operaciones de persecución:\n• Un oficial superior debe acceder a **Admin**\n• Y autorizar la persecución\n• Establecer frecuencia de interrogatorios automáticos\n\n¡Una vez autorizado, podrá acusar soldados de traición al Reich!",
+        "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
+        "controls": "**Controles**\n- Activar o desactivar persecución\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
+        "dm_accusation_header": "👁️ **ACUSACIÓN DE LA GESTAPO**",
+        "accused_label": "Acusado:",
+        "admin_description": "Configura la funcionalidad y frecuencia de la persecución nazi",
+        "dropdown": {
+            "ring_accuse": "Persecución: Acusar",
+            "ring_accuse_description": "Acusar a un soldado de ser traidor al Reich",
+            "ring_on": "Persecución: Activar",
+            "ring_on_description": "Iniciar la persecución de traidores al Reich",
+            "ring_off": "Persecución: Desactivar",
+            "ring_off_description": "Detener el sistema de persecución",
+            "ring_frequency": "Persecución: Frecuencia",
+            "ring_frequency_description": "Configurar la frecuencia de los interrogatorios (afecta la patata caliente)"
+        }
     }
 }

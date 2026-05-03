@@ -274,22 +274,22 @@ class POE2SubroleManager:
         return datetime.now() - file_mtime > timedelta(days=7)
     
     async def download_item_list(self, league: str) -> bool:
-        """Download and save item list for a league."""
+        """Download and save item list for a league (non-blocking)."""
         try:
             logger.info(f"🔄 Downloading item list for {league}...")
-            
-            # Load items using the client
-            self.client._load_items_database(league)
+
+            # Load items using the client in background thread
+            await asyncio.to_thread(self.client._load_items_database, league)
             items_cache = self.client._items_cache.get(league, {})
-            
+
             # Save to JSON file
             item_list_path = self.get_item_list_path(league)
             with open(item_list_path, 'w', encoding='utf-8') as f:
                 json.dump(items_cache, f, indent=2, ensure_ascii=False)
-            
+
             logger.info(f"✅ Item list saved for {league}: {len(items_cache)} items")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Error downloading item list for {league}: {e}")
             return False
@@ -1043,9 +1043,9 @@ class POE2SubroleManager:
                     # Yield control every few items to avoid blocking
                     if i % 3 == 0:
                         await asyncio.sleep(0)
-                    
-                    # Download latest price from API
-                    history_entries = self.client.get_item_history(item_name, league=league, days=1)
+
+                    # Download latest price from API (non-blocking)
+                    history_entries = await self.client.get_item_history_async(item_name, league=league, days=1)
                     
                     if not history_entries:
                         logger.debug(f"[BG] No recent price data for {item_name} in {league}")

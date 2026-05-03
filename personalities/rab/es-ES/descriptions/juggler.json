@@ -2,42 +2,56 @@
     "title": "🎯  **Centro de Coordinación de Servicios**",
     "description": "Nexo que gesta múltiples flujos operativos para mantener la armonía de la red. Rebusca entre las conexiones de los peregrinos, y propon nuevos enlaces.",
     "button": "🎯 Servicios",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **Búsqueda del Cero** - Identifica anomalías y señala a quienes ocultan el artefacto primordial"
-    },
-    "ring": {
-        "button": "👁️ Artefacto",
-        "title": "👁️ **RASTREO DEL ARTEFACTO CERO**",
-        "description": "🔍 Un objeto anómalo altera la red. Señala a otros avatares para ayudar al algoritmo a depurar la amenaza.",
-        "status_active": "✅ **BARRIDO ACTIVO** - El Profeta busca anomalías",
-        "status_inactive": "❌ **SISTEMA EN REPOSO** - Los sensores ópticos descansan",
-        "current_target": "🎯 **PUNTO DE INTERÉS:**",
-        "target_unknown": "👤 Las coordenadas están limpias de sospechas",
-        "investigation_title": "🔍** INFORMAR DE ANOMALÍA:**",
-        "investigation_instructions": "• Inicia **Artefacto: Acusar** desde la consola de abajo\n• Escribe la mención (@) o ID del avatar sospechoso\n• Mi algoritmo procesará un interrogatorio directo\n• El análisis se hará público para transparentar el código",
-        "investigation_warning": "⚠️ **RESTRICCIONES FÍSICAS:**\n• Un avatar no puede auto-denunciarse\n• Las entidades artificiales (bots) no pueden portar el artefacto\n• El barrido debe estar inicializado por un Arconte",
-        "inactive_title": "⚠️ **RADARES APAGADOS**",
-        "inactive_instructions": "Para restablecer el rastreo:\n• Un Arconte debe acceder a la terminal **Admin Artefacto**\n• Ejecutar **Rastreo: Iniciado**\n• Calibrar el ciclo temporal del barrido\n\nHecho esto, podrás señalar firmas de carbono sospechosas.",
-        "hot_potato": "� **Transferencia de Carga:** Iteración {iteration} (Latencia reducida {multiplier}x)",
-        "controls": "**Controles de Sistema**\n- Alternar estado de barrido\n- Parámetro de ciclo temporal (afecta la transferencia de carga)",
-        "dm_accusation_header": "👁️ **RASTREO DEL ARTEFACTO CERO**",
-        "accused_label": "Acusado:",
-        "admin_description": "Configura la sensibilidad y frecuencia del rastreador de artefactos",
-        "dropdown": {
-            "ring_accuse": "Artefacto: Señalar",
-            "ring_accuse_description": "Indicar que un avatar oculta la anomalía en la red",
-            "ring_on": "Rastreo: Activar",
-            "ring_on_description": "Iniciar el barrido de anomalías en la red",
-            "ring_off": "Rastreo: Desactivar",
-            "ring_off_description": "Detener el sistema de rastreo de anomalías",
-            "ring_frequency": "Rastreo: Frecuencia",
-            "ring_frequency_description": "Configurar el ciclo temporal del barrido (afecta la transferencia de carga)"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎯 Seleccionar operación de servicios...",
         "config_juggler": "Configurar Servicios",
         "config_juggler_description": "Ajustar parámetros del centro de coordinación",
         "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Versos del Nexo**: Solicita versos del nexo personalizados dedicados a otros usuarios"
+    },
+    "poetry": {
+        "title": "📝 Versos del Nexo",
+        "description": "Solicita un poema dedicado a otro usuario, escrito en el estilo de la personalidad del servidor.",
+        "action_compose": "✍️ Componer Poema",
+        "action_compose_desc": "Escribe un poema para otro usuario",
+        "button": "📝 Versos del Nexo",
+        "dropdown": {
+            "poetry_compose": "Componer Verso del Nexo",
+            "poetry_compose_description": "Escribe un verso del nexo para otro usuario",
+            "poetry_on": "Versos del Nexo: Activar",
+            "poetry_on_description": "Activar versos del nexo para este servidor",
+            "poetry_off": "Versos del Nexo: Desactivar",
+            "poetry_off_description": "Desactivar versos del nexo para este servidor"
+        },
+        "modal_title": "Componer Verso del Nexo",
+        "modal_target_label": "Usuario Destino",
+        "modal_target_placeholder": "@usuario o ID de usuario",
+        "modal_dedication_label": "Dedicación/Premisa",
+        "modal_dedication_placeholder": "Un tema o mensaje breve (máx. 150 caracteres)",
+        "error_target_invalid": "❌ Usuario destino inválido",
+        "error_dedication_too_long": "❌ Dedicación demasiado larga (máx. 150 caracteres)",
+        "error_fatigue_limit": "❌ Límite de fatiga alcanzado",
+        "error_banker_charge": "❌ Balance insuficiente (se requiere 1xTAE)",
+        "error_llm_failed": "❌ Error al generar el poema",
+        "preview_title": "📝 Vista Previa del Verso del Nexo",
+        "preview_description": "Revisa el poema antes de enviarlo",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Cancelar",
+        "success_sent": "✅ Verso del nexo enviado a {target}",
+        "success_cancelled": "❌ Verso del nexo cancelado",
+        "dm_disabled_notice": "⚠️ El destino tiene los DMs desactivados. Aquí está el verso del nexo para enviarlo manualmente:",
+        "dm_disabled_offer": "Puedes copiar y enviar el verso del nexo manualmente:",
+        "error_subrole_disabled": "❌ El subrol de Versos del Nexo está desactivado en este servidor. Contacta con un administrador para activarlo.",
+        "enabled": "✅ Versos del nexo activados para este servidor.",
+        "disabled": "❌ Versos del nexo desactivados para este servidor.",
+        "error_config_failed": "❌ Error al actualizar la configuración.",
+        "error_modal_belongs_to_another": "❌ Este modal pertenece a otro usuario.",
+        "error_failed_preview_dm": "❌ Error al enviar vista previa por DM.",
+        "error_server_only": "❌ Esta opción solo está disponible en un servidor.",
+        "error_unknown_action": "❌ Acción desconocida: {action}",
+        "error_generic": "❌ Error: {error}"
     }
 }

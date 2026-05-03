@@ -36,7 +36,7 @@ run.py                                 ← orchestrator (asyncio.gather)
 │
 └── scheduler() loop                   ← periodic background work
     ├── role subprocesses              ← news_watcher, treasure_hunter, trickster, shaman, banker, juggler
-    ├── internal subrole tasks         ← beggar (banker), ring (juggler)
+    ├── internal subrole tasks         ← beggar (banker), ring (treasure_hunter)
     └── memory maintenance
         ├── daily_memory (24 h)
         └── weekly_personality_evolution (7 d)
@@ -149,11 +149,12 @@ Current canonical role set:
 - `shaman` — Discord commands; subrole: `nordic_runes` (interactive).
 - `mc` (integrated, no interval) — voice features; runs as a `Supervisor` actor (§20.3).
 - `banker` (24 h) — Discord commands + scheduled subprocess; subrole: `beggar` (12 h, in-bot ticker).
-- `juggler` — System-prompt-only role (no `*_discord.py`); subrole: `ring` (24 h, in-bot ticker, accusation flow §9.4).
+- `treasure_hunter` (24 h) — POE2 price tracking; subrole: `ring` (24 h, in-bot ticker, accusation flow §9.4).
+- `juggler` — System-prompt-only role (no `*_discord.py`).
 - `scholar` — System-prompt-only role (no `*_discord.py`); used in chat flow when the LLM emits a
   Wikipedia sentinel (§7.2). Performs Wikipedia fetch + second LLM call.
 
-> **Note vs. older docs:** `beggar` moved from `trickster` → `banker`; `ring` moved from `trickster` → `juggler`; `nordic_runes` moved into the new `shaman` role; `scholar` is the latest addition (Wikipedia knowledge).
+> **Note vs. older docs:** `beggar` moved from `trickster` → `banker`; `ring` moved from `juggler` → `treasure_hunter`; `nordic_runes` moved into the new `shaman` role; `scholar` is the latest addition (Wikipedia knowledge).
 
 ### 4.2 Per-server configuration
 
@@ -444,7 +445,7 @@ Two distinct registration paths exist depending on whether a role exposes Discor
 
 **System-prompt-only roles** (no `*_discord.py`):
 
-- `juggler` — provides ring sentinel handling and prompt missions; never registers commands.
+- `juggler` — provides prompt missions; never registers commands.
 - `scholar` — provides Wikipedia/README handling and prompt missions; invoked by `agent_discord.py`
   when the LLM response starts with the `WIKIPEDIA <topic>` sentinel (§7.2).
 
@@ -526,9 +527,13 @@ The jobs are registered in two waves:
 - Tracks user gold accounts, transactions, and configurable daily bonus / account-opening flow.
 - `beggar` (Trace 10): every `frequency_hours` the task picks an active user of the server, loads the current rotating daily reason, the banker fund balance, and the relationship memory, builds a prompt, calls the LLM, and sends a DM (or posts to a chosen channel with `BeggarDonationView` buttons).
 
-#### `juggler` (subrole `ring`)
+#### `juggler`
 
-- Playful role where the bot looks for the "One Ring" by questioning users.
+- System-prompt-only role with no Discord commands.
+
+#### `treasure_hunter` (subrole `ring`)
+
+- Playful subrole where the bot looks for the "One Ring" by questioning users.
 - **Accusation flow**: the LLM can emit the sentinel `ACCUSE <username>` in its reply. The bot catches this flag and:
   - If `<username>` matches a member of the guild → the accusation pointer in the ring DB moves to that user.
   - If it does not match → a follow-up prompt (memory + relationship + last interactions + "false accusation" task) is issued to the LLM so the bot replies accordingly.
@@ -664,7 +669,7 @@ help/
 └── admin
 ```
 
-> The historical layout placed `beggar` and `ring` under `trickster`; they now live under `banker` and `juggler` respectively. If any Canvas module still references the old location it should be migrated.
+> The historical layout placed `beggar` and `ring` under `trickster`; they now live under `banker` and `treasure_hunter` respectively. If any Canvas module still references the old location it should be migrated.
 
 ### 12.3 Multi-bot name filtering
 
@@ -972,11 +977,11 @@ RoleAgentBot/
 │       └── canvas_<role>.py …
 ├── roles/
 │   ├── news_watcher/
-│   ├── treasure_hunter/
+│   ├── treasure_hunter/ (subroles/ring)
 │   ├── trickster/ (subroles/dice_game)
 │   ├── shaman/    (subroles/nordic_runes)
 │   ├── banker/    (subroles/beggar)
-│   ├── juggler/   (subroles/ring)
+│   ├── juggler/
 │   └── mc/
 ├── personalities/
 │   ├── rab/ (default), hans/, igorrr/, kronk/, putre/, yuki/
@@ -1069,7 +1074,7 @@ The `!agenthelp` command includes `!forget_me` in the **ESSENTIAL COMMANDS** sec
 
 The following items exist in the codebase but warrant deeper documentation in future passes:
 
-- **Ring accusation flow**: the `ACCUSE <username>` sentinel contract between LLM output and `juggler/ring` parser is specified in §9.4 but the exact regex and edge-cases (partial matches, nicknames vs. usernames) are not centralized — worth locking down in code comments and here.
+- **Ring accusation flow**: the `ACCUSE <username>` sentinel contract between LLM output and `treasure_hunter/ring` parser is specified in §9.4 but the exact regex and edge-cases (partial matches, nicknames vs. usernames) are not centralized — worth locking down in code comments and here.
 - **Entitlement manager** (`discord_bot/entitlement_manager.py`): handles Discord entitlements (premium features); not yet described here.
 - **Juggler role missions** injected into the system prompt: confirm `_get_active_roles_section` reads from `prompts.json` sections for `shaman` and `juggler` consistently with the older roles.
 - **Per-server Canvas state** persistence rules between views (`canvas/state.py`) — timeout/cleanup semantics.

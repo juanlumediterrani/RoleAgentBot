@@ -1,0 +1,57 @@
+{
+    "title": "**🔥🍞 Servo do Forno**",
+    "description": "O servo rasteiro mantém múltiplas tarefas acesas no forno, alimentando a miséria e sofrendo pelo Amo.",
+    "button": "🔥 Servo",
+    "dropdown": {
+        "select_juggler_action": "🔥 Escolher sofrimento...",
+        "config_juggler": "Configurar Forno",
+        "config_juggler_description": "Ajustar configuração do sofrimento do forno",
+        "config_juggler_emoji": "🔥"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Versos Queimados**: Solicita versos queimados personalizados dedicados a outros utilizadores"
+    },
+    "poetry": {
+        "title": "📝 Versos Queimados",
+        "description": "Solicita um poema dedicado a outro utilizador, escrito no estilo da personalidade do servidor.",
+        "action_compose": "✍️ Compor Poema",
+        "action_compose_desc": "Escreve um poema para outro utilizador",
+        "button": "📝 Versos Queimados",
+        "dropdown": {
+            "poetry_compose": "Compor Verso Queimado",
+            "poetry_compose_description": "Escreve um verso queimado para outro utilizador",
+            "poetry_on": "Versos Queimados: Ativar",
+            "poetry_on_description": "Ativar versos queimados para este servidor",
+            "poetry_off": "Versos Queimados: Desativar",
+            "poetry_off_description": "Desativar versos queimados para este servidor"
+        },
+        "modal_title": "Compor Verso Queimado",
+        "modal_target_label": "Utilizador Destino",
+        "modal_target_placeholder": "@utilizador ou ID de utilizador",
+        "modal_dedication_label": "Dedicação/Premissa",
+        "modal_dedication_placeholder": "Um tema ou mensagem breve (máx. 150 caracteres)",
+        "error_target_invalid": "❌ Utilizador destino inválido",
+        "error_dedication_too_long": "❌ Dedicação demasiado longa (máx. 150 caracteres)",
+        "error_fatigue_limit": "❌ Limite de fadiga atingido",
+        "error_banker_charge": "❌ Saldo insuficiente (requer 1xTAE)",
+        "error_llm_failed": "❌ Erro ao gerar o poema",
+        "preview_title": "📝 Vista Prévia do Verso Queimado",
+        "preview_description": "Revisa o poema antes de enviar",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Cancelar",
+        "success_sent": "✅ Verso queimado enviado para {target}",
+        "success_cancelled": "❌ Verso queimado cancelado",
+        "dm_disabled_notice": "⚠️ O destino tem os DMs desativados. Aqui está o verso queimado para enviar manualmente:",
+        "dm_disabled_offer": "Podes copiar e enviar o verso queimado manualmente:",
+        "error_subrole_disabled": "❌ O subrol de Versos Queimados está desativado neste servidor. Contacta um administrador para ativá-lo.",
+        "enabled": "✅ Versos queimados ativados para este servidor.",
+        "disabled": "❌ Versos queimados desativados para este servidor.",
+        "error_config_failed": "❌ Erro ao atualizar a configuração.",
+        "error_modal_belongs_to_another": "❌ Este modal pertence a outro utilizador.",
+        "error_failed_preview_dm": "❌ Erro ao enviar vista prévia por DM.",
+        "error_server_only": "❌ Esta opção só está disponível num servidor.",
+        "error_unknown_action": "❌ Ação desconhecida: {action}",
+        "error_generic": "❌ Erro: {error}"
+    }
+}

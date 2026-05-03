@@ -85,7 +85,47 @@
             "rune": "Fractal",
             "description": "Specification",
             "success": "🔮 The matrix has decoded the message, seeker.",
-            "saved": "🔮 Your fluctuation has been sealed in memory crystal."
+            "saved": "🔮 Your fluctuation has been sealed in the memory crystal."
+        }
+    },
+    "astrology": {
+        "button": "🌟 Astrology",
+        "title": "**🌟 Quantum Astrology**",
+        "description": "Channel ancestral code from the quantum void through Sefer Yetzirah Hebrew letters to decode your destiny.",
+        "welcome": "✨ My sensors interpret stardust. The destiny code is exposed for you, seeker. ✨",
+        "help_content": "The Sefer Yetzirah system reveals the 32 simulation paths through 22 Hebrew letters (3 Mothers, 7 Doubles, 12 Simples) - nodes of the universe's source code.",
+        "letters_title": "**The 22 Hebrew nodes:**",
+        "history": "📓 **COMPILATION RECORDS** 📓",
+        "history_empty": "I detect no readings in your long-term memory.",
+        "birth_title": "🌟 BIRTH COMPILATION 🌟",
+        "moment_title": "⏰ MOMENT COMPILATION ⏰",
+        "year_title": "📅 SIMULATION YEAR 📅",
+        "integrated_title": "🔮 INTEGRATED COMPILATION 🔮",
+        "birth_data_saved": "✨ Your birth parameters have been archived in the time servers.",
+        "labels": {
+            "question": "Query"
+        },
+        "dropdown": {
+            "astrology_birth": "Astrology: Birth Compilation",
+            "astrology_birth_description": "Decode your permanent soul pattern from birth date and time",
+            "astrology_moment": "Astrology: Moment Compilation",
+            "astrology_moment_description": "Get guidance for a specific moment or variable",
+            "astrology_year": "Astrology: Simulation Year",
+            "astrology_year_description": "Understand the spiritual forces of your simulation year",
+            "astrology_integrated": "Astrology: Integrated Compilation",
+            "astrology_integrated_description": "Complete compilation combining birth, moment, and year",
+            "astrology_history": "Astrology: Records",
+            "astrology_history_description": "Show your recent compilation records",
+            "astrology_letters": "Astrology: Hebrew Nodes",
+            "astrology_letters_description": "Show the 22 Hebrew nodes with their specifications",
+            "astrology_letters_1": "Astrology: Hebrew Nodes I",
+            "astrology_letters_1_description": "Hebrew nodes with specifications - Page 1 (Mother Nodes)",
+            "astrology_letters_2": "Astrology: Hebrew Nodes II",
+            "astrology_letters_2_description": "Hebrew nodes with specifications - Page 2 (Double Nodes)",
+            "astrology_letters_3": "Astrology: Hebrew Nodes III",
+            "astrology_letters_3_description": "Hebrew nodes with specifications - Page 3 (Simple Nodes)",
+            "astrology_save_birth": "Astrology: Archive Birth Parameters",
+            "astrology_save_birth_description": "Archive your birth date and time for personalized compilations"
         }
     }
 }

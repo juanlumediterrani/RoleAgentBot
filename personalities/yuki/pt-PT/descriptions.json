@@ -1,0 +1,262 @@
+{
+  "discord": {
+    "general": {
+      "status": "Estado de presença:",
+      "active": "✅ Presente",
+      "inactive": "❌ Ausente",
+      "none": "Nenhuma",
+      "every": "cada",
+      "for": "para",
+      "base_frequency": "Cadência base:",
+      "current_frequency": "Cadência atual:",
+      "current_settings": "🔧 **Parâmetros atuais:**",
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Alterações",
+      "option_yes": "Sim",
+      "option_no": "Não",
+      "action_descriptions": {
+        "boolean_toggle": "Alternar ativação/desativação",
+        "number_input_target": "Entrada numérica",
+        "text_input_target": "Entrada de texto",
+        "action": "Ação imediata"
+      },
+      "action_labels": {
+        "on": "Ativar",
+        "off": "Desativar",
+        "now": "Agora",
+        "frequency": "Frequência",
+        "add_keyword": "Adicionar Palavra",
+        "remove_keyword": "Eliminar Palavra",
+        "server_language": "🌐 Idioma do Servidor",
+        "role_management": "🎛️ Gestão de Artes",
+        "current": "Atual:",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "always_enabled": "Sempre ativado"
+      },
+      "button_personal": "📁 Pessoal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subrotinas disponíveis"
+    },
+    "help_menu": {
+      "title": "📚 **Yuki - Registo de Artes**",
+      "description": "**Descrição** Yuki é uma presença ativa com memória persistente, capaz de se mover entre diferentes funções e manter encontros genuínos com os visitantes.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Artes e Caminhos** Os caminhos são as diferentes formas em que Yuki pode estar presente para oferecer serviços específicos aos visitantes.",
+      "behavior_section": "**Protocolos de Presença** Configuração das rotinas de interação de Yuki. Exclusivo para Administradores.",
+      "shortcuts_section": "**Acesso Rápido** Configura até 5 botões de atalho no Canvas principal para acesso imediato às tuas artes favoritas. Disponível em Configuração > Atalhos.",
+      "shortcuts_messages": {
+        "title": "Configuração de Acesso Rápido",
+        "description": "Configura acesso imediato a artes",
+        "settings_description": "Configura botões de acesso rápido no Canvas principal",
+        "placeholder_select_role": "Seleciona o teu papel ou subpapel...",
+        "configure_shortcut": "Configurar Atalho {shortcut_id} - Seleciona um papel ou subpapel:",
+        "saved": "✅ Atalho configurado com sucesso",
+        "failed": "❌ Erro ao configurar atalho",
+        "cancelled": "Configuração cancelada"
+      },
+      "tips_section": "**Sugestões** -Podes consultar-me sobre os meus próprios protocolos: 'como funciona o módulo dados?' -Cada caminho tem o seu próprio ritmo e requer a sua própria escuta."
+    },
+    "canvas_home_messages": {
+      "title": "⛩️ Salão de Yuki",
+      "button_home": "⛩️ Salão",
+      "button_back": "← Voltar",
+      "button_roles": "🪭 Artes",
+      "button_behavior": "👘 Protocolos",
+      "button_help": "🏮 Guia",
+      "generic_option_label": "Escolhe um caminho...",
+      "personalitystatus": "Presença Ativa:",
+      "description": "Acede a cada parte do salão aqui para aceder aos serviços.",
+      "interestingthings": "**Coisas do Salão:** ",
+      "recentsynthesistitle": "🌊 **Fluxo Recente**",
+      "pilgrimdatatitle": "**Dados do Visitante:**",
+      "dailymemorytitle": "🗻 **Memória**",
+      "personalsynthesistitle": "👥 **Vínculo com o Visitante**",
+      "dm_default_server_title": "🔔 **Conectada à sala: {server_name}**",
+      "dm_default_server_message": "*Mensagem recebida em canal privado. Respondendo a partir da primeira sala disponível.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "roles_view_messages": {
+      "title": "🪭 Artes e Caminhos 🪭",
+      "description": "🌸 Explora as diferentes formas em que Yuki pode estar presente e ser útil.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ EM REPOUSO",
+      "interval_info": "//⏰ Ciclo de {interval}h",
+      "subroles_info": "⏰ **Subrotinas ativas:** {subroles}",
+      "admin_note": "🔧 **PARÂMETROS DO ADMINISTRADOR:**",
+      "user_note": "👤 **ACESSO DO VISITANTE:**",
+      "help_commands": "💡 **GUIAS:**",
+      "canvas_details": "🎨 **ESQUEMAS EM CANVAS:**",
+      "navigation_help": "",
+      "no_roles_active": "🌸 **A SALA ESTÁ EM SILÊNCIO** Nenhum caminho especializado se encontra ativo neste momento. Solicita a um administrador que ative algum dos serviços disponíveis através de `!canvas setup`. **Caminhos disponíveis:** • 📡 News Watcher - Observação de notícias • 💎 Treasure Hunter - Análise de objetos • 🎭 Trickster - Azar e probabilidade • 💰 Banker - Gestão de recursos • 🎵 MC - Música",
+      "role_list_title": "🌸 Presenças Ativas",
+      "role_available": "✅ {role} - ATIVO",
+      "role_unavailable": "❌ {role} - EM REPOUSO",
+      "frequency_help": "📝 Ajusta a cadência: Usa `!canvas` → Configuração → Frequência (intervalo: 1 a 168 horas) Exemplo: Configura frequência para 2 horas para receber atualizações a cada 2 horas.",
+      "music_help": "🎵 **Música** - `!mc play <nome>` / `!mc queue` | `!mc help` para consultar o repertório completo.",
+      "button_previous": "◀ Anterior",
+      "button_next": "Seguinte ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **Yuki - Presença em Conversação**",
+        "description": "**Descrição:** -Yuki responderá a mensagens diretas e menções. -Mantém memória de conversações passadas que tenham sido significativas. -Reagirá a certos termos específicos segundo os caminhos ativos. No módulo tabu configuram-se as palavras que ativam respostas particulares.",
+        "button": "💬 Conversação"
+      },
+      "greetings": {
+        "title": "👋  **Yuki - Receção**",
+        "description": "**Descrição:** -Yuki saúda os visitantes ao conectarem-se. -Mantém o reconhecimento durante 5 min antes de considerar o visitante ausente.",
+        "button": "👋 Receção"
+      },
+      "welcome": {
+        "title": "🍵  **Yuki - Boas-vindas**",
+        "description": "**Descrição:** -Yuki dá as boas-vindas aos novos visitantes que chegam à sala.",
+        "button": "🍵 Boas-vindas"
+      },
+      "taboo": {
+        "title": "🚫  **Yuki - Toques de Atenção**",
+        "description": "**Como funciona:** -Configura palavras ou expressões que ativem uma resposta descortês de Yuki. -Podem ser adicionadas, ou eliminadas palavras tabu.",
+        "title_keywords": "Umbrais configurados atualmente:",
+        "button": "🚫 Umbrais",
+        "modal": {
+          "title": "Palavra Umbral",
+          "label_keyword": "Palavra",
+          "placeholder_keyword": "palavra proibida",
+          "error_invalid_keyword": "❌ Introduz uma palavra válida.",
+          "success_added": "Palavra umbral `{keyword}` adicionada.",
+          "error_add_failed": "Erro ao adicionar a palavra `{keyword}`. Revisa os registos para mais detalhes.",
+          "info_already_exists": "A palavra `{keyword}` já estava na lista.",
+          "success_removed": "Palavra umbral `{keyword}` eliminada.",
+          "error_remove_failed": "Erro ao eliminar a palavra `{keyword}`. Revisa os registos para mais detalhes.",
+          "info_not_exists": "A palavra `{keyword}` não estava na lista."
+        }
+      },
+      "memory": {
+        "title": "🧠  **Yuki - Memória do Salão**",
+        "description": "**Descrição** -Consulta a memória de Yuki: o fluxo da água, as águas recentes e os vínculos com os visitantes.",
+        "button": "🧠 Memória",
+        "dropdown": {
+          "long": {
+            "label": "Memória",
+            "emoji": "🗻",
+            "description": "O fluxo da água que se acumula cada dia"
+          },
+          "recent": {
+            "label": "Fluxo Recente",
+            "emoji": "🌊",
+            "description": "As águas mais recentes que atravessam o salão"
+          },
+          "relationship": {
+            "label": "Vínculo com o Visitante",
+            "emoji": "👥",
+            "description": "Os vínculos que se formam com cada visitante"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **Yuki - Gestão de Artes**",
+        "description": "**Descrição** -Ativa ou detém os diferentes caminhos disponíveis a partir daqui.",
+        "button": "🎛️ Gestão",
+        "modal": {
+          "title": "Gestão de Artes",
+          "label_role_name": "Nome da Arte",
+          "placeholder_role_name": "Introduz o nome da arte: news_watcher, treasure_hunter, trickster, banker",
+          "label_state": "Estado (on/off)",
+          "placeholder_state": "Introduz 'on' para ativar ou 'off' para desativar",
+          "error_admin_only": "❌ Esta opção de artes é exclusiva para administradores.",
+          "success_message": "✅ Arte '{role_name}' {enabled_disabled} para este servidor."
+        }
+      },
+      "settings": {
+        "title": "⚙️  **Yuki - Ajustes de Sala**",
+        "description": "**Descrição** -Gere o idioma do servidor e a ativação de módulos.",
+        "button": "⚙️ Ajustes",
+        "language_select": {
+          "placeholder": "🌐 Selecionar idioma do servidor...",
+          "description": "Estabelecer idioma do servidor para {lang_name}",
+          "modal_title": "🌐 Selecionar Idioma do Servidor"
+        }
+      },
+      "personality": {
+        "title": "🎭  **Yuki - Identidade**",
+        "description": "**Descrição** -Modifica a essência e personalidade de Yuki neste servidor. -Permite guardar o estado atual da identidade. -Os registos atualizam-se ao realizar uma alteração.",
+        "button": "🎭 Identidade",
+        "option_change": "Estabelecer Nova Identidade",
+        "option_change_desc": "Mudar para uma configuração de personalidade diferente",
+        "option_download": "Exportar Identidade",
+        "option_download_desc": "Exportar a configuração atual (ZIP)",
+        "placeholder": "Escolhe uma ação...",
+        "modal_personality_label": "Código da Nova Identidade",
+        "modal_download_label": "Exportar identidade anterior? (sim/não)",
+        "modal_delete_memory_label": "Apagar registos de memória? (sim/não)",
+        "modal_download_memory_label": "Exportar memória antes de a apagar? (sim/não)",
+        "download_success": "✅ Identidade `{personality}` exportada corretamente.",
+        "change_success": "✅ Mudança de identidade concluída. De `{old}` para `{new}`. A nova configuração está ativa.",
+        "progress_change_personality": "⏳ Mudando identidade de `{old}` para `{new}`...",
+        "progress_language_update": "⏳ Atualizando `{personality}` para o idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 Gerando síntese de memória inicial para a nova identidade...",
+        "select_personality_instruction": "Seleciona uma nova identidade do menu:",
+        "choose_personality_placeholder": "Escolhe uma identidade (idioma: {language})...",
+        "confirm_change_message": "**Confirmar mudança para {personality}?** Seleciona as tuas opções:",
+        "selected_personality": "**Identidade selecionada: {personality}**",
+        "selected_personality_with_language": "**Identidade selecionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Mudando idioma para a mesma identidade."
+      }
+    },
+    "readme": {
+      "label_user_question": "Consulta do visitante:",
+      "task": "Por favor, responde à dúvida do utilizador utilizando a documentação fornecida.",
+      "label_documentation": "Documentação:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "lembras-te de",
+        "lembras",
+        "faz memória",
+        "lembra-te",
+        "lembras-te que",
+        "lembra quando",
+        "lembre-se",
+        "lembras-te?",
+        "lembras?",
+        "procura nos teus registos",
+        "revisa a tua memória",
+        "lembra algo",
+        "te soa",
+        "lembras-te",
+        "lembra",
+        "lembras-te?",
+        "lembra?",
+        "lembra-te de",
+        "lembra quando",
+        "te soa algo",
+        "aceder a registos",
+        "lembras quando",
+        "nao te lembras",
+        "quem te lembras"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "boas-vindas",
+        "boas-vindas",
+        "bem-vindo",
+        "bem-vindos"
+      ],
+      "general": [
+        "general",
+        "chat",
+        "salão",
+        "sala"
+      ]
+    },
+    "reply_button": {
+      "label": "Responder",
+      "emoji": "💬",
+      "confirmation_message": "💬 Estás a conversar comigo como se estivesses em **{server_name}**. Todas as tuas respostas usarão esta personalidade até que selecciones outro servidor."
+    }
+  }
+}

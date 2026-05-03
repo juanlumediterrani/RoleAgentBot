@@ -85,5 +85,47 @@
             "poe2_off": "POE2: Deactivate",
             "poe2_off_description": "Deactivate POE2 subrole"
         }
+    },
+    "ring": {
+        "button": "🫓 Dough",
+        "title": "👁️ **Dough Hunter**",
+        "description": "Panigorr searches for who stole the Master's sourdough... Was it you? Don't lie!",
+        "current_target": "🎯 **Current suspect:** None... for now",
+        "investigation_status": "🔍 **Status:** Searching in dark corners",
+        "accusation_count": "⚖️ **Accusations:** {count} flour sacks interrogated",
+        "last_accusation": "🕐 **Last interrogation:** {time}",
+        "success_rate": "📊 **Success rate:** {rate}% (nobody confesses)",
+        "accuse_button": "👁️ Accuse",
+        "accuse_description": "Accuse someone of stealing the sourdough",
+        "view_investigation": "🔍 View Interrogation",
+        "investigation_description": "See the search progress",
+        "help_text": "👁️ **Hunter Help**\n\nPanigorr searches for who stole the Master's sourdough. Use `!accuse @user` to accuse someone.\n\nBe careful... false accusations have consequences.",
+        "accusation_made": "✅ SSSSS! You accused {user} of stealing the sourdough",
+        "accusation_failed": "❌ HUH! I couldn't accuse. The oven distracted me",
+        "target_found": "🎯 HEHEJE! {user} stole the sourdough... I smell it!",
+        "target_innocent": "😞 {user} didn't steal the sourdough... I'll keep searching",
+        "investigation_complete": "✅ The search ended. The sourdough was found by {user}",
+        "investigation_failed": "❌ The search failed. The sourdough remains lost",
+        "new_investigation": "🔄 New search started. Panigorr is watching...",
+        "false_accusation_penalty": "⚖️ **Penalty:** You accused an innocent. The Master will punish you.",
+        "dm_accusation_header": "👁️ **OVEN INTERROGATION**",
+        "accused_label": "Accused:",
+        "correct_accusation_reward": "You found the sourdough! The Master will reward you.",
+        "accusation_cooldown": "⏰ **Wait:** You must wait {time} before accusing again",
+        "no_suspects": "🌫️ No suspects... everyone seems innocent",
+        "evidence_found": "🔍 **Evidence:** {evidence}",
+        "witness_statement": "🗣️ **Witness:** {statement}",
+        "alibi_confirmed": "✅ **Alibi:** {alibi}",
+        "motive_detected": "💭 **Motive:** {motive}",
+        "dropdown": {
+            "ring_accuse": "Dough: Accuse",
+            "ring_accuse_description": "Accuse a user of stealing the sourdough",
+            "ring_on": "Dough: Activate",
+            "ring_on_description": "Start the search for the stolen sourdough",
+            "ring_off": "Dough: Deactivate",
+            "ring_off_description": "Stop the search for the stolen sourdough",
+            "ring_frequency": "Dough: Frequency",
+            "ring_frequency_description": "Configure interrogation frequency (affects hot potato)"
+        }
     }
 }

@@ -2,42 +2,55 @@
     "title": "🎯  **División de Servicios Especiales**",
     "description": "Unidad de logística y entretenimiento del regimiento, coordina múltiples operaciones para mantener la moral de las tropas.",
     "button": "🎯 Servicios",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **Investigador de la Gestapo** - Interroga sospechosos de traición al Reich"
-    },
-    "ring": {
-        "button": "🔍 Investigación",
-        "title": "👁️ **Herr Hans Oficial de la Gestapo**",
-        "description": " El oficial de la Gestapo le perseguirá hasta el fin de los tiempos, acuse a otros soldados para evitar ese calvario.",
-        "status_active": "✅ **PERSECUCIÓN ACTIVA** - Her Hans está buscando traidores",
-        "status_inactive": "❌ **PERSECUCIÓN INACTIVA** - Her Hans está descansando",
-        "current_target": "🎯 **OBJETIVO ACTUAL:**",
-        "target_unknown": "👤 Ningún sospechoso seleccionado",
-        "investigation_title": "🔍** HACER UNA ACUSACIÓN:**",
-        "investigation_instructions": "• ¡ACHTUNG! Use **Acusar** del menú de operaciones, soldado\n• Ingrese identificación del sospechoso: @nombredeusuario o ID\n• Herr Hans generará interrogatorio para extraer confesión\n• La acusación será publicada en el cuartel general para todos los soldados",
-        "investigation_warning": "⚠️ **ORDENES DEL REICH:**\n• No puede acusarse a sí mismo, traidor\n• No puede acusar unidades automatizadas (bots)\n• La persecución debe estar autorizada por oficial superior",
-        "inactive_title": "⚠️ **LA PERSECUCIÓN ESTÁ INACTIVA**",
-        "inactive_instructions": "¡ACHTUNG! Para autorizar operaciones de persecución:\n• Un oficial superior debe acceder a **Admin**\n• Y autorizar la persecución\n• Establecer frecuencia de interrogatorios automáticos\n\n¡Una vez autorizado, podrá acusar soldados de traición al Reich!",
-        "hot_potato": "🔥 **Patata Caliente:** Iteración {iteration} (frecuencia reducida por {multiplier}x)",
-        "controls": "**Controles**\n- Activar o desactivar persecución\n- Caja de frecuencia editable (establece frecuencia base y reinicia patata caliente)",
-        "dm_accusation_header": "👁️ **ACUSACIÓN DE LA GESTAPO**",
-        "accused_label": "Acusado:",
-        "admin_description": "Configura la funcionalidad y frecuencia de la persecución nazi",
-        "dropdown": {
-            "ring_accuse": "Persecución: Acusar",
-            "ring_accuse_description": "Acusar a un soldado de ser traidor al Reich",
-            "ring_on": "Persecución: Activar",
-            "ring_on_description": "Iniciar la persecución de traidores al Reich",
-            "ring_off": "Persecución: Desactivar",
-            "ring_off_description": "Detener el sistema de persecución",
-            "ring_frequency": "Persecución: Frecuencia",
-            "ring_frequency_description": "Configurar la frecuencia de los interrogatorios (afecta la patata caliente)"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎯 Seleccionar acción de servicios...",
         "config_juggler": "Configurar Servicios",
         "config_juggler_description": "Ajustar configuración de la división de servicios",
         "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Versos**: Solicita versos personalizados dedicados a otros usuarios"
+    },
+    "poetry": {
+      "title": "📝 Versos",
+      "description": "Solicita un poema dedicado a otro usuario.",
+      "action_compose": "✍️ Componer Poema",
+      "action_compose_desc": "Escribe un poema para otro usuario",
+      "button": "📝 Versos",
+      "dropdown": {
+        "poetry_compose": "Componer Verso",
+        "poetry_compose_description": "Escribe un verso para otro usuario",
+        "poetry_on": "Versos: Activar",
+        "poetry_on_description": "Activar versos para este servidor",
+        "poetry_off": "Versos: Desactivar",
+        "poetry_off_description": "Desactivar versos para este servidor"
+      },
+      "modal_title": "Componer Verso",
+      "modal_target_label": "Usuario Destino",
+      "modal_target_placeholder": "@usuario o ID de usuario",
+      "modal_dedication_label": "Dedicatoria/Premisa",
+      "modal_dedication_placeholder": "Un tema breve o mensaje (máx. 150 caracteres)",
+      "error_target_invalid": "❌ Usuario no encontrado. Usa @mención o un ID válido.",
+      "error_dedication_too_long": "❌ La dedicatoria es demasiado larga (máx. 150 caracteres).",
+      "error_cost_failed": "❌ Error al procesar el costo.",
+      "error_llm_failed": "❌ Error al generar el poema",
+      "preview_title": "📝 Vista Previa del Verso",
+      "preview_description": "Revisa el poema antes de enviarlo",
+      "preview_footer": "De: {sender}",
+      "button_confirm": "✅ Enviar",
+      "button_cancel": "❌ Cancelar",
+      "success_sent": "✅ Verso enviado a {target}",
+      "success_cancelled": "❌ Verso cancelado",
+      "dm_disabled_notice": "⚠️ El destino tiene los DMs desactivados. Aquí está el verso para enviarlo manualmente:",
+      "dm_disabled_offer": "Puedes copiar y enviar el verso manualmente:",
+      "error_subrole_disabled": "❌ El subrol de Versos está desactivado en este servidor. Contacta con un administrador para activarlo.",
+      "enabled": "✅ Versos activados para este servidor.",
+      "disabled": "❌ Versos desactivados para este servidor.",
+      "error_config_failed": "❌ Error al actualizar la configuración.",
+      "error_modal_belongs_to_another": "❌ Este modal pertenece a otro usuario.",
+      "error_failed_preview_dm": "❌ Error al enviar vista previa por DM.",
+      "error_server_only": "❌ Esta opción solo está disponible en un servidor.",
+      "error_unknown_action": "❌ Acción desconocida: {action}",
+      "error_generic": "❌ Error: {error}"
     }
 }

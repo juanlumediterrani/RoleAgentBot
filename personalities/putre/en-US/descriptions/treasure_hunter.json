@@ -85,5 +85,34 @@
             "poe2_off": "POE2: Deactivate",
             "poe2_off_description": "Deactivate POE2 subrole"
         }
+    },
+    "ring": {
+        "button": "👁️ Ring",
+        "title": "👁️ **PUTRE RING HUNTER**",
+        "description": "🔍 The ring hunter will pursue you to the end of time, accuse other users to avoid that ordeal.",
+        "status_active": "✅ **ACTIVE HUNT** - Putre is looking for the ring",
+        "status_inactive": "❌ **INACTIVE HUNT** - Putre is resting",
+        "current_target": "🎯 **CURRENT TARGET:**",
+        "target_unknown": "👤 No suspect selected",
+        "investigation_title": "🔍** MAKE AN ACCUSATION:**",
+        "investigation_instructions": "• GRRR! Use **Ring: Accuse** from the menu below stupid human\n• Type: @username or ID of the suspect!\n• Putre will generate threatening accusation to terrorize!\n• Accusation will be published in channel for all to see!",
+        "investigation_warning": "⚠️ CAREFUL IDIOT:\n• You cannot accuse yourself, fool!\n• You cannot accuse bots, they have no blood!\n• Ring must be activated by orc chief first!",
+        "inactive_title": "⚠️ **THE HUNT IS INACTIVE**",
+        "inactive_instructions": "To activate ring functionality:\n• An admin must go to **Ring Admin**\n• Click on **Ring: On** to activate\n• Configure the frequency for automatic investigations\n\nOnce activated, you can accuse users of carrying the One Ring!",
+        "hot_potato": "🔥 **Hot Potato:** Iteration {iteration} (frequency reduced by {multiplier}x)",
+        "controls": "**Controls**\n- Activate or deactivate ring\n- Editable frequency box (sets base frequency and resets hot potato)",
+        "dm_accusation_header": "👁️ **RING ACCUSATION**",
+        "accused_label": "Accused:",
+        "admin_description": "Configure sensitivity and frequency of the ring tracker",
+        "dropdown": {
+            "ring_accuse": "Ring: Accuse",
+            "ring_accuse_description": "Accuse a user of carrying the One Ring",
+            "ring_on": "Hunt: Activate",
+            "ring_on_description": "Start the One Ring hunt",
+            "ring_off": "Hunt: Deactivate",
+            "ring_off_description": "Stop the One Ring hunt",
+            "ring_frequency": "Hunt: Frequency",
+            "ring_frequency_description": "Configure the round frequency (affects hot potato)"
+        }
     }
 }

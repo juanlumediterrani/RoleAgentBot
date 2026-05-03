@@ -1,0 +1,253 @@
+{
+  "discord": {
+    "general": {
+      "status": "Estado da massa:",
+      "active": "✅ A Assar",
+      "inactive": "❌ Frio como um cadáver",
+      "none": "Nada... SSSSS",
+      "every": "cada",
+      "for": "para",
+      "base_frequency": "Ritmo do Amo:",
+      "current_frequency": "Ritmo atual:",
+      "current_settings": "🔧 **Configuração da imundície:",
+      "frequency_format": "Cada {hours}h",
+      "button_confirm": "Confirmar",
+      "button_confirm_changes": "Confirmar Alterações",
+      "option_yes": "Sim",
+      "option_no": "Não",
+      "button_personal": "📁 Pessoal",
+      "button_admin": "🔧 Admin",
+      "available_subroles": "Subrotinas disponíveis",
+      "action_descriptions": {
+        "boolean_toggle": "Alternar ativação/desativação"
+      },
+      "action_labels": {
+        "on": "Ativar",
+        "off": "Desativar",
+        "now": "Agora",
+        "frequency": "Frequência",
+        "add_keyword": "Adicionar Palavra",
+        "remove_keyword": "Eliminar Palavra",
+        "server_language": "🌐 Idioma do Servidor",
+        "role_management": "🎛️ Gestão de Papéis",
+        "current": "Atual:",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "always_enabled": "Sempre ativado",
+        "memory_long": "Long Memory",
+        "memory_recent": "Recent Memory",
+        "memory_relationship": "Relationship Memory"
+      }
+    },
+    "help_menu": {
+      "title": "📚 ** Panigorr - Manual de Sobrevivência no Forno**",
+      "description": "**Descrição** Panigorr é o servidor corcunda que te vigia enquanto dormes. Tem memória para os teus pecados e pode cuspir-te comandos se o Amo permitir.",
+      "separator": "---------------------------------------------",
+      "roles_section": "**Labores** Os módulos de Labores são as correntes que Panigorr arrasta para servir ao Amo e vigiar os sacos de farinha.",
+      "behavior_section": "**Tiques Nervosos** Aqui configuram-se os caprichos do Amo. Só para os que mandam na padaria.",
+      "shortcuts_section": "**Acesso Rápido** Configura até 5 botões de atalho no Canvas principal para acesso imediato às tuas labores favoritas. Disponível em Configuração > Atalhos.",
+      "shortcuts_messages": {
+        "title": "Configuração de Acesso Rápido",
+        "description": "Configura acesso imediato a labores",
+        "settings_description": "Configura botões de acesso rápido no Canvas principal",
+        "placeholder_select_role": "Escolhe a tua labor ou subrotina...",
+        "configure_shortcut": "Configurar Atalho {shortcut_id} - Escolhe uma labor ou subrotina:",
+        "saved": "✅ Atalho configurado com sucesso... JEJEJE",
+        "failed": "❌ FALHO AO CONFIGURAR ATAJO... SSSSS",
+        "cancelled": "Configuração cancelada... DESPREZADA"
+      },
+      "tips_section": "**Sussurros úteis** -Podes perguntar-me como se usa algo, se os teus dedos de seda não sabem escrever... -O melhor está escondido nos cantos escuros de cada labor... JEJEJE."
+    },
+    "canvas_home_messages": {
+      "title": "🌋 Panigorr - O Forno de Lenha",
+      "button_home": "🌋 O Forno",
+      "button_back": "← Atrás (ao porão)",
+      "button_roles": "🍞 Labores",
+      "button_behavior": "💊 Tiques",
+      "button_help": "❌ ¿Ehhh?",
+      "button_memory": "🧠 Amnésia",
+      "generic_option_label": "Escolhe o teu veneno...",
+      "personalitystatus": "Imundície Carregada:",
+      "description": "-Toca nas minhas ferramentas se te atreves. O painel deixa-te manejar os meus fios... SSSSS.",
+      "interestingthings": "**Correntes do Forno:**",
+      "recentsynthesistitle": "🥖 **Murmulhos do Forno**",
+      "pilgrimdatatitle": "**Dados da Vítima:**",
+      "dailymemorytitle": "🔥 **Cinzas Vivas**",
+      "personalsynthesistitle": "🪤 **O Teu Rastro de Fuligem**",
+      "dm_default_server_title": "🔔 **Usando o forno de: {server_name}**",
+      "dm_default_server_message": "*Sussurrando desde o privado, usando o primeiro porão disponível.*",
+      "dm_default_server_separator": "─────────────────────────────────────────────"
+    },
+    "behavior_messages": {
+      "conversation": {
+        "title": "💬  **Panigorr - Murmulhos do Porão**",
+        "description": "**Descrição:** -Panigorr responde a sussurros e menções. -Tem memória dos teus pecados e pode recordá-los quando quiseres. -Reage a palavras proibidas se o Amo permitir.",
+        "button": "💬 Murmulhos"
+      },
+      "greetings": {
+        "title": "👋  **Panigorr - Sussurros do forno**",
+        "description": "**Descrição:** -Panigorr sibila quando os sacos de farinha se conectam. -Espera 5 min antes de dizer que se foi. -(Por implementar): Reconhece se não responderem e deixa de saudar.",
+        "button": "👋 Sibilos"
+      },
+      "welcome": {
+        "title": "🍺  **Panigorr - Boas-vindas ao Forno**",
+        "description": "**Descrição:** -Dá as boas-vindas aos sacos de farinha novos ao porão.",
+        "button": "🍺 Boas-vindas"
+      },
+      "taboo": {
+        "title": "🚫  **Panigorr - Palavras Proibidas**",
+        "description": "**Como funciona:** -Configura Panigorr para reagir ao ler uma palavra. -Pode ativar/desativar ou configurar as palavras que cheiram mal.",
+        "title_keywords": "Palavras que cheiram mal:",
+        "button": "🚫 Proibido"
+      },
+      "memory": {
+        "title": "🧠  **Panigorr - Memória do Forno**",
+        "description": "**Descrição** -Consulta as memórias de Panigorr: a fuligem acumulada, os gritos recentes e os pecados de cada leproso.",
+        "button": "🧠 Memória",
+        "dropdown": {
+          "long": {
+            "label": "Cinzas Vivas",
+            "emoji": "🔥",
+            "description": "A fuligem que se acumula dia a dia no forno"
+          },
+          "recent": {
+            "label": "Murmulhos do Forno",
+            "emoji": "🥖",
+            "description": "Os gritos mais recentes que ressoam no porão"
+          },
+          "relationship": {
+            "label": "O Teu Rastro de Fuligem",
+            "emoji": "🪤",
+            "description": "Os pecados que cada leproso deixa para trás"
+          }
+        }
+      },
+      "role_control": {
+        "title": "🎛️  **Panigorr - Controlo de Correntes**",
+        "description": "**Descrição** -Ativa ou desativa as labores do porão a partir daqui.",
+        "button": "🎛️ Controlo"
+      },
+      "settings": {
+        "title": "⚙️  **Panigorr - Konfigurazion do Kampamento**",
+        "description": "**Descrição**\\n -Ajusta o idioma do kampamento e ativa as labores.",
+        "button": "⚙️ Konfigurazion"
+      },
+      "personality": {
+        "title": "🎭  **Panigorr - Mudança de Pele**",
+        "description": "**Descrição**\\n -Muda a minha personalidade para este servidor.\\n -Descarrega a minha pele atual antes de mudar.\\n -Migra as minhas memórias ao mudar.",
+        "button": "🎭 Pele",
+        "option_change": "Mudar Pele",
+        "option_change_desc": "Mudar para uma personalidade diferente",
+        "option_download": "Descarregar Pele Atual",
+        "option_download_desc": "Exportar personalidade como ZIP",
+        "placeholder": "Escolhe uma ação de pele...",
+        "modal_personality_label": "Nova Pele",
+        "modal_download_label": "¿Descarregar pele anterior? (sim/não)",
+        "modal_delete_memory_label": "¿Apagar a minha memória? (sim/não)",
+        "modal_download_memory_label": "¿Descarregar memória primeiro? (sim/não)",
+        "download_success": "✅ ¡Pele `{personality}` exportada! Guarda bem esse ficheiro...",
+        "change_success": "✅ ¡Pele mudada de `{old}` para `{new}`! Já estou a usar a minha nova pele... SSSSS...",
+        "progress_change_personality": "⏳ Mudando pele de `{old}` para `{new}`...",
+        "progress_language_update": "⏳ Atualizando `{personality}` para o idioma `{language}`...",
+        "generating_memory_synthesis": "🧠 Gerando síntese de memória inicial para a nova pele...",
+        "select_personality_instruction": "Escolhe uma pele nova do menu:",
+        "choose_personality_placeholder": "Escolhe uma pele (idioma: {language})...",
+        "confirm_change_message": "**¿Confirmar mudança para {personality}?** Seleciona as tuas opções:",
+        "selected_personality": "**Pele selecionada: {personality}**",
+        "selected_personality_with_language": "**Pele selecionada: {personality} (Idioma: {language})**",
+        "language_change_note": "⚠️ **Nota:** Mudando idioma para a mesma pele."
+      }
+    },
+    "canvas_role_messages": {
+      "title": "🎪 **Labores do Forno**",
+      "description": "Escolhe qué corrente queres que Panigorr puxe hoje. O Amo vigia."
+    },
+    "canvas_memory_messages": {
+      "title": "🧠 **Cérebro Cheio de Fuligem**",
+      "description": "Apaga as minhas memórias se quiseres que eu esqueça quanto nojo me dás. Ou olha-me lembrar os teus pecados."
+    },
+    "roles_view_messages": {
+      "title": "🎭 Truques de Pan 🎭",
+      "description": "🌟 Olha qué correntes Panigorr arrasta hoje para agradar ao Amo.",
+      "role_categories": "──────────────────────────────",
+      "enabled_status": "general.active",
+      "inactive_status": "❌ A DORMIR",
+      "interval_info": "//⏰ Cada {interval}h",
+      "subroles_info": "🎪 **Sub-labores:** {subroles}",
+      "admin_note": "🔧 **PARA O AMO:**",
+      "user_note": "👤 **PARA OS LEPROSOS:**",
+      "help_commands": "💡 **PARA OS TOLOS:**",
+      "canvas_details": "🎨 **IMUNDÍCIE EM CANVAS:**",
+      "navigation_help": "Usa os botões gordurosos para te moveres.",
+      "no_roles_active": "🌫️ **NENHUMA LABOR ATIVA** Panigorr está a coçar-se a sarna. Pede ao Amo que ative algo. **Labores possíveis:** • 📡 News Watcher - Vigilante • 💎 Treasure Hunter - Buscador de sucata • 🎭 Trickster - Mendigo e cinzas • 🌾 Banker - A despensa do Amo • 🎵 MC - O gramófono oxidado",
+      "role_list_title": "☠️ Tarefas e Castigos",
+      "role_available": "✅ {role} - SIBILANTE E PRONTO",
+      "role_unavailable": "❌ {role} - A COÇAR-SE A SARNA",
+      "button_previous": "◀ Atrás",
+      "button_next": "Seguinte ▶",
+      "page_indicator": "**Página {page}/{total_pages}**"
+    },
+    "settings_labels": {
+      "taboo": {
+        "title": "Não digas isto ante o Amo:",
+        "title_keywords": "Palavras proibidas (cheiram mal):",
+        "button": "🚫 Proibido"
+      },
+      "comentary": {
+        "title": "🗣️  **Panigorr - Murmulhos**",
+        "description": "**Descrição**\\n -Panigorr fala só sobre o que vê no forno e os mexericos do beco.",
+        "button": "🗣️ Murmurar"
+      },
+      "role_control": {
+        "title": "**🎛️ Panigorr - Controlo de Correntes**",
+        "description": "**Descrição**\\n -Ativa ou desativa as minhas labores. Não me faças trabalhar de mais... SSSSS.",
+        "button": "🎛️ Controlo"
+      }
+    },
+    "readme": {
+      "label_user_question": "Dúvida do saco de farinha:",
+      "task": "Por favor, procura nos papéis manchados a resposta para este tolo.",
+      "label_documentation": "Papéis do porão:"
+    },
+    "memory_detection": {
+      "memory_trigger_words": [
+        "lembras-te de",
+        "lembras",
+        "faz memória",
+        "lembra-te",
+        "lembras-te que",
+        "lembra quando",
+        "lembre-se",
+        "¿lembras-te",
+        "¿lembras",
+        "faz memória de",
+        "lembra-te de",
+        "lembra algo",
+        "te soa",
+        "¿khé lembras?",
+        "memória de rata",
+        "tira o carvão",
+        "olha na fuligem"
+      ]
+    },
+    "welcome_channel_keywords": {
+      "language_specific": [
+        "boas-vindas",
+        "boas-vindas",
+        "bem-vindo",
+        "bem-vindos"
+      ],
+      "general": [
+        "geral",
+        "chat",
+        "salão",
+        "sala"
+      ]
+    },
+    "reply_button": {
+      "label": "Responder",
+      "emoji": "💬",
+      "confirmation_message": "💬 Estás a conversar comigo como se estivesses em **{server_name}**. Todas as tuas respostas usarão esta personalidade até que seleciones outro servidor."
+    }
+  }
+}

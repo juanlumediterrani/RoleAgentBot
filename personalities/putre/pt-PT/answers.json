@@ -1,0 +1,180 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **GANHASTE!** Os guesos te deram a razao! ⚔️",
+                    "🎉 **VITORIA!** O orko triunfa! ⚔️",
+                    "🎉 **TRIUNFO!** Venseste ao destino! ⚔️",
+                    "🎉 **EKSELENTE!** A tua axa e forte! ⚔️",
+                    "🎉 **IMPRESIONANTE!** Uma jogada mestra! ⚔️"
+                ],
+                "youlose":[
+                    "😢 **PERDESTE**... Os guesos foram krueis... ⚔️",
+                    "😢 **MA SORTE**... O destino foi superior... ⚔️",
+                    "😢 **NAO FOI ESTA VEZ**... A sorte e kaprikosa... ⚔️",
+                    "😢 **VAI**... A tua axa falou... ⚔️",
+                    "😢 **MAS NAO TE RENDAS**... A proxima sera melhor! ⚔️"
+                ],
+                "high_pot":[
+                    "💰 **O BOTE KRESKE!** O botin se akumula! ⚔️",
+                    "💰 **BOTE EM AUGE!** O premio se faz lendario! ⚔️",
+                    "💰 **AKUMULANDO!** O bote brilha kom promessa! ⚔️",
+                    "💰 **FORTUNA EM ESPERA!** O bote reklama o seu destino! ⚔️",
+                    "💰 **BOTE MAJIKO!** O ouro espera ao afortunado! ⚔️"
+                ],
+                "pot_winner":[
+                    "🎉 **GANADOR DO BOTE!** KONKUISTASTE o tesouro! ⚔️",
+                    "🎉 **BOTE KONQUISTADO!** Es o eleito! ⚔️",
+                    "🎉 **JACKPOT!** O bote e teu! ⚔️",
+                    "🎉 **FORTUNA LENDARIA!** Ganhas o grande premio! ⚔️",
+                    "🎉 **BOTE TEU!** Uma vitoria epika! ⚔️"
+                ],
+                "not_gold":[
+                    "💸 **SEM OURO**... Nao tens sufisientes moedas... ⚔️",
+                    "💸 **FUNDOS INSUFISIENTES**... Nesesitas mais ouro... ⚔️",
+                    "💸 **BOLSILHOS VAZIOS**... Revisa o teu tesouro... ⚔️",
+                    "💸 **NAO ALKANKA**... Akumula mais ouro primeiro... ⚔️",
+                    "💸 **TESOURO ESKASO**... Nesesitas fortuna para jogar... ⚔️"
+                ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **GANHASTE!** Os kranios te deram a razao! ⚔️",
+                    "🎉 **VITORIA!** O orko triunfa! ⚔️",
+                    "🎉 **TRIUNFO!** Venseste ao destino! ⚔️",
+                    "🎉 **EKSELENTE!** A tua axa e forte! ⚔️",
+                    "🎉 **IMPRESIONANTE!** Uma jogada mestra! ⚔️"
+                ],
+                "youlose":[
+                    "😢 **PERDESTE**... Os kranios foram krueis... ⚔️",
+                    "😢 **MA SORTE**... O destino foi superior... ⚔️",
+                    "😢 **NAO FOI ESTA VEZ**... A sorte e kaprikosa... ⚔️",
+                    "😢 **VAI**... A tua axa falou... ⚔️",
+                    "😢 **MAS NAO TE RENDAS**... A proxima sera melhor! ⚔️"
+                ],
+                "high_pot":[
+                    "💰 **O BOTE KRESKE!** O botin se akumula! ⚔️",
+                    "💰 **BOTE EM AUGE!** O premio se faz lendario! ⚔️",
+                    "💰 **AKUMULANDO!** O bote brilha kom promessa! ⚔️",
+                    "💰 **FORTUNA EM ESPERA!** O bote reklama o seu destino! ⚔️",
+                    "💰 **BOTE MAJIKO!** O ouro espera ao afortunado! ⚔️"
+                ],
+                "pot_winner":[
+                    "🎉 **GANADOR DO BOTE!** KONKUISTASTE o tesouro! ⚔️",
+                    "🎉 **BOTE KONQUISTADO!** Es o eleito! ⚔️",
+                    "🎉 **JACKPOT!** O bote e teu! ⚔️",
+                    "🎉 **FORTUNA LENDARIA!** Ganhas o grande premio! ⚔️",
+                    "🎉 **BOTE TEU!** Uma vitoria epika! ⚔️"
+                ],
+                "not_gold":[
+                    "💸 **SEM OURO**... Nao tens sufisientes moedas... ⚔️",
+                    "💸 **FUNDOS INSUFISIENTES**... Nesesitas mais ouro... ⚔️",
+                    "💸 **BOLSILHOS VAZIOS**... Revisa o teu tesouro... ⚔️",
+                    "💸 **NAO ALKANKA**... Akumula mais ouro primeiro... ⚔️",
+                    "💸 **TESOURO ESKASO**... Nesesitas fortuna para jogar... ⚔️"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "trazer a tua familia orka kontigo",
+                    "komprar um javali guerreiro para a batalha",
+                    "pagar tributo ao khefe orko para ke nao te mate",
+                    "afilar a tua axa seka na ferraria",
+                    "komprar karne kruda para a festa",
+                    "konstruir uma nova loja no kampamento",
+                    "komprar zerbeza para eskeker as derrotas",
+                    "pagar ao kurandeiro orko por kolmilhos rotos"
+                ]
+            }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "GRRR! A oskuridad espera o teu komando umano jodido! As sementes plantadas em oskuridad kreserao em forka orka!"
+                ],
+                "waxing_crescent": [
+                    "A luz kreske komo muskulos orkos! Hora de plantar intenkoes para a batalha!"
+                ],
+                "first_quarter": [
+                    "Se precisa akao umano! Enfrenta obstakulos kom furia orka!"
+                ],
+                "waxing_gibbous": [
+                    "A energia se akumula komo tambores de guerra! Refina os teus planos para a vitoria!"
+                ],
+                "full_moon": [
+                    "Poder maximo! O espirito orko brilha brilhante! Revelakoes e gloria de batalha!"
+                ],
+                "waning_gibbous": [
+                    "A koseka se rekole! Kome a karne antes de ke outros a tomem!"
+                ],
+                "last_quarter": [
+                    "Tempo de refleksao! Libera o ke nao serve a tribo!"
+                ],
+                "waning_crescent": [
+                    "Deskanso sagrado! Durme na kuva komo um orko verdadeiro! GRRR..."
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ O anelo agora aponta para {target_name}",
+        "enabled": "✅ O anelo ativado na konfigurakao.",
+        "disabled": "✅ O anelo desativado na konfigurakao."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ A minha axa se rompeu! Akao nao disponivel para orko! ⚔️",
+        "error_behavior_admin_only": "❌ SOLO PARA KHEFES ORKOS! Tu nao komandas o kampamento! ⚔️🥩",
+        "error_settings_admin_only": "❌ So o khefe orko pode kambiar a konfigurakao! ⚔️",
+        "error_taboo_update_failed": "❌ A batalha se perdeu! Nao se pude atualizar os umbrais! ⚔️",
+        "error_greetings_update_failed": "❌ O kurandeiro falou! Nao se pude atualizar os saudos! ⚔️",
+        "error_welcome_update_failed": "❌ A loja se keimou! Nao se pude atualizar as boas-vindas! ⚔️",
+        "error_commentary_update_failed": "❌ A karne se podriu! Nao se pude atualizar os komentarios! ⚔️",
+        "error_commentary_disabled": "❌ A fogata esta apagada! Os komentarios nao funksionam! ⚔️",
+        "error_commentary_process_failed": "❌ A minha axa se rompeu! Nao se puderam proesar os komentarios! ⚔️",
+        "success_taboo_state": "Umbrais {enabled_disabled} no kampamento do servidor! ⚔️",
+        "success_greetings_state": "Saudos {enabled_disabled} no kampamento! ⚔️",
+        "success_welcome_state": "Boas-vindas {enabled_disabled} no kampamento! ⚔️",
+        "success_commentary_state": "Komentarios {enabled_disabled} desde o kampamento! ⚔️",
+        "state_enabled": "pronto para batalha",
+        "state_disabled": "ferido",
+        "forget_me_label": "🧹 Eskeke-me (apagar os meus dados)",
+        "forget_me_description": "Kemar os teus dados na fogata de todos os kampamentos (GDPR Art. 17) ⚔️",
+        "forget_me_confirm_title": "🧹 Konfirmar apagado no kampamento",
+        "forget_me_confirm_prompt": "⚠️ **Guerreiro kere ser eskeido! — Direito ao apagado (GDPR)**\n\nIsto kemara todos os teus dados em **TODOS os kampamentos onde Putre pelea**:\n• Registros de interakoes... a kronika de batalha sobre ti...\n• Memorias ke o kampamento forjou sobre ti...\n• Kontadores de fadiga... as vezes ke molestaste ao orko...\n• O teu nome nos resumos... sera tachado kom sinza ``[redaktado]``...\n\nNao ha volta atras, guerreiro! Estas seguro? ⚔️",
+        "forget_me_btn_confirm": "Sim! Kemem tudo! ⚔️",
+        "forget_me_btn_cancel": "Nao... retirada",
+        "forget_me_result_header": "✅ Os teus dados foram kemados na fogata do kampamento! Ja nao keda nada! ⚔️",
+        "forget_me_no_data": "ℹ️ Nao se enkontrou dados teus em nenhum kampamento! Es espirito? ⚔️",
+        "forget_me_cancelled": "❎ Retirada! Os teus dados seguem no kampamento! ⚔️",
+        "forget_me_not_yours": "❌ Esta konfirmakao e de outro guerreiro! Nao tokar! ⚔️",
+        "forget_me_timed_out": "⌛ A fogata se apagou! Nada foi kemado! ⚔️",
+        "forget_me_dm_sent": "📬 Konfirmakao enviada por mensagem direta! Revisa, guerreiro! ⚔️"
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ Nao ha kampamentos disponiveis! Vai a um kampamento orko! ⚔️",
+        "server_access_error": "❌ Nao posso entrar no kampamento desde aki! Vai ao kampamento! ⚔️",
+        "reply_button_confirmation": "💬 Putre agora fala desde o kampamento de **{server_name}**! As tuas respostas usarao esta personalidade ate ke seleksiones outro! ⚔️"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ A minha axa falou! Nao pude eliminar a ultima kankao do kampamento! ⚔️",
+        "play_usage": "🎵 **Uso:** `!mc play <nome de kankao ou URL>`",
+        "not_in_voice": "🎤 Deves estar no kampamento para usar isto, guerreiro! ⚔️",
+        "nothing_playing": "🎵 Nao se eskuta nada no kampamento! ⚔️",
+        "same_voice_channel": "🎤 Deves estar no mesmo kampamento ke o orko! ⚔️",
+        "not_connected": "🎤 Nao estou em nenhum kampamento! ⚔️",
+        "queue_empty": "📭 O kampamento esta vazio! ⚔️",
+        "dj_permissions_required": "🚫 So o khefe orko pode usar isto! ⚔️",
+        "playback_paused": "⏸️ A batalha se deteve! ⚔️",
+        "nothing_paused": "🎵 Nao ha batalha pausada! ⚔️",
+        "playback_resumed": "▶️ A batalha voltou! ⚔️",
+        "leaving_voice": "👋 Saindo do kampamento! ⚔️",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 O volume deve ser um numero entre 0 e 100! ⚔️",
+        "already_playing": "🎵 Ja pelejando no kampamento! ⚔️",
+        "queue_cleared": "🗑️ Kampamento limpo! ⚔️",
+        "volume_adjust_failed": "❌ Nao pude ajustar o volume! ⚔️"
+    }
+}

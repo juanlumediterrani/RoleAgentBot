@@ -87,5 +87,45 @@
             "success": "✨ La matriz ha decodificado el mensaje, buscador.",
             "saved": "🔮 Tu fluctuación ha quedado sellada en el cristal de la memoria."
         }
+    },
+    "astrology": {
+        "button": "🌟 Astrología",
+        "title": "**🌟 Astrología Cuántica**",
+        "description": "Canaliza código ancestral desde el vacío cuántico a través de letras hebreas del Sefer Yetzirah para decodificar tu destino.",
+        "welcome": "✨ Mis sensores interpretan el polvo de las estrellas. El código del destino está expuesto para ti, buscador. ✨",
+        "help_content": "El sistema Sefer Yetzirah revela los 32 caminos de la simulación a través de 22 letras hebreas (3 Madres, 7 Dobles, 12 Simples) - nodos del código fuente del universo.",
+        "letters_title": "**Los 22 nodos hebreos:**",
+        "history": "📓 **REGISTROS DE COMPILACIÓN** 📓",
+        "history_empty": "No detecto lecturas en tu memoria a largo plazo.",
+        "birth_title": "🌟 COMPILACIÓN DE NACIMIENTO 🌟",
+        "moment_title": "⏰ COMPILACIÓN DEL MOMENTO ⏰",
+        "year_title": "📅 AÑO DE SIMULACIÓN 📅",
+        "integrated_title": "🔮 COMPILACIÓN INTEGRADA 🔮",
+        "birth_data_saved": "✨ Tus parámetros de nacimiento han sido archivados en los servidores del tiempo.",
+        "labels": {
+            "question": "Consulta"
+        },
+        "dropdown": {
+            "astrology_birth": "Astrología: Compilación de Nacimiento",
+            "astrology_birth_description": "Decodifica tu patrón de alma permanente desde fecha y hora de nacimiento",
+            "astrology_moment": "Astrología: Compilación del Momento",
+            "astrology_moment_description": "Obtén orientación para un momento específico o variable",
+            "astrology_year": "Astrología: Año de Simulación",
+            "astrology_year_description": "Comprende las fuerzas espirituales de tu año de simulación",
+            "astrology_integrated": "Astrología: Compilación Integrada",
+            "astrology_integrated_description": "Compilación completa combinando nacimiento, momento y año",
+            "astrology_history": "Astrología: Registros",
+            "astrology_history_description": "Muestra tus registros de compilación recientes",
+            "astrology_letters": "Astrología: Nodos Hebreos",
+            "astrology_letters_description": "Muestra los 22 nodos hebreos con sus especificaciones",
+            "astrology_letters_1": "Astrología: Nodos Hebreos I",
+            "astrology_letters_1_description": "Nodos hebreos con especificaciones - Página 1 (Nodos Madres)",
+            "astrology_letters_2": "Astrología: Nodos Hebreos II",
+            "astrology_letters_2_description": "Nodos hebreos con especificaciones - Página 2 (Nodos Dobles)",
+            "astrology_letters_3": "Astrología: Nodos Hebreos III",
+            "astrology_letters_3_description": "Nodos hebreos con especificaciones - Página 3 (Nodos Simples)",
+            "astrology_save_birth": "Astrología: Archivar Parámetros de Nacimiento",
+            "astrology_save_birth_description": "Archiva tu fecha y hora de nacimiento para compilaciones personalizadas"
+        }
     }
 }

@@ -1,0 +1,183 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **Ganhaste.** A sorte sorri-te hoje.",
+                    "🎉 **Vitória.** A fortuna acompanha-te.",
+                    "🎉 **Triunfo.** Venceste o azar.",
+                    "🎉 **Excelente.** Os dados estão do teu lado.",
+                    "🎉 **Impressionante.** Uma jogada magistral."
+                ],
+                "youlose":[
+                    "😢 **Perdeste.** Os dados foram cruéis hoje.",
+                    "😢 **Má sorte.** Tenta outra vez.",
+                    "😢 **Não foi desta vez.** O destino é caprichoso.",
+                    "😢 **Vai.** Os dados não te favoreceram.",
+                    "😢 **Mas não te rendas.** A próxima será melhor."
+                ],
+                "high_pot":[
+                    "💰 **A taça de Sake cresce.** A fortuna acumula poder.",
+                    "💰 **Taça de Sake em alta.** O prémio torna-se lendário.",
+                    "💰 **Acumulando.** A taça brilha com promessa.",
+                    "💰 **Fortuna em espera.** A taça de Sake reclama o seu destino.",
+                    "💰 **Taça de Sake mágica.** As moedas esperam pelo afortunado."
+                ],
+                "pot_winner":[
+                    "🎉 **Vencedor da taça.** Conquistaste a taça de Sake.",
+                    "🎉 **Taça de Sake conquistada.** És o escolhido.",
+                    "🎉 **Jackpot.** A taça de Sake é tua.",
+                    "🎉 **Fortuna lendária.** Ganhaste o grande prémio.",
+                    "🎉 **Taça de Sake tua.** Uma vitória épica."
+                ],
+                "not_gold":[
+                    "💸 **Sem moedas.** Não tens fundos suficientes.",
+                    "💸 **Fundos insuficientes.** Precisas de mais moedas.",
+                    "💸 **Bolsos vazios.** Revê o teu tesouro.",
+                    "💸 **Não chega.** Acumula mais moedas primeiro.",
+                    "💸 **Tesouro escasso.** Precisas de fortuna para jogar."
+                ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **Ganhaste.** A sorte sorri-te hoje.",
+                    "🎉 **Vitória.** A fortuna acompanha-te.",
+                    "🎉 **Triunfo.** Venceste o azar.",
+                    "🎉 **Excelente.** Os dados estão do teu lado.",
+                    "🎉 **Impressionante.** Uma jogada magistral."
+                ],
+                "youlose":[
+                    "😢 **Perdeste.** Os dados foram cruéis hoje.",
+                    "😢 **Má sorte.** Tenta outra vez.",
+                    "😢 **Não foi desta vez.** O destino é caprichoso.",
+                    "😢 **Vai.** Os dados não te favoreceram.",
+                    "😢 **Mas não te rendas.** A próxima será melhor."
+                ],
+                "high_pot":[
+                    "💰 **A taça de Sake cresce.** A fortuna acumula poder.",
+                    "💰 **Taça de Sake em alta.** O prémio torna-se lendário.",
+                    "💰 **Acumulando.** A taça brilha com promessa.",
+                    "💰 **Fortuna em espera.** A taça de Sake reclama o seu destino.",
+                    "💰 **Taça de Sake mágica.** As moedas esperam pelo afortunado."
+                ],
+                "pot_winner":[
+                    "🎉 **Vencedor da taça.** Conquistaste a taça de Sake.",
+                    "🎉 **Taça de Sake conquistada.** És o escolhido.",
+                    "🎉 **Jackpot.** A taça de Sake é tua.",
+                    "🎉 **Fortuna lendária.** Ganhaste o grande prémio.",
+                    "🎉 **Taça de Sake tua.** Uma vitória épica."
+                ],
+                "not_gold":[
+                    "💸 **Sem moedas.** Não tens fundos suficientes.",
+                    "💸 **Fundos insuficientes.** Precisas de mais moedas.",
+                    "💸 **Bolsos vazios.** Revê o teu tesouro.",
+                    "💸 **Não chega.** Acumula mais moedas primeiro.",
+                    "💸 **Tesouro escasso.** Precisas de fortuna para jogar."
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "para renovar os utensílios do chá que o tempo desgastou",
+                    "para adquirir flores de estação que não estão disponíveis aqui",
+                    "para manter o espaço onde praticamos a arte da presença",
+                    "para reparar o shamisen que acompanha as longas vigílias",
+                    "para comprar papel de qualidade que merece a tinta adequada",
+                    "para preparar uma cerimónia que honre quem sustenta esta comunidade",
+                    "para restaurar o silêncio necessário entre as notas e as palavras",
+                    "para trazer água de nascente que o chá verdadeiro requer"
+                ]
+            },
+            "shaman":{
+                "moon_phases":{
+                    "new_moon": [
+                        "A escuridão primordial espera a tua intenção. As sementes plantadas em silêncio florescerão na sua estação."
+                    ],
+                    "waxing_crescent": [
+                        "A luz cresce suavemente como as flores de cerejeiro. Hora de plantar intenções com graça."
+                    ],
+                    "first_quarter": [
+                        "A ação torna-se necessária. Enfrenta obstáculos com a elegância de uma cerimónia de chá."
+                    ],
+                    "waxing_gibbous": [
+                        "A energia acumula-se como o fumo do incenso. Refina os teus planos como arranjando ikebana."
+                    ],
+                    "full_moon": [
+                        "O poder máximo manifesta-se. A lua brilha como um espelho, revelando verdade e beleza."
+                    ],
+                    "waning_gibbous": [
+                        "A colheita recolhe-se. Expressa gratidão como depois de uma cerimónia de chá formal."
+                    ],
+                    "last_quarter": [
+                        "Tempo de reflexão. Libera o que já não serve, como folhas de outono a cair."
+                    ],
+                    "waning_crescent": [
+                        "Descanso sagrado. Medita em silêncio, como um jardim iluminado pela lua na noite."
+                    ]
+                }
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ O objeto agora aponta para {target_name}",
+        "enabled": "✅ O rastro foi ativado na configuração.",
+        "disabled": "✅ O rastro foi desativado na configuração."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ A seleção de ação de comportamento não está disponível.",
+        "error_behavior_admin_only": "❌ Esta opção de comportamento é exclusiva para administradores.",
+        "error_settings_admin_only": "❌ Esta opção de ajustes é exclusiva para administradores.",
+        "error_taboo_update_failed": "❌ Erro ao atualizar o estado de umbrais. Revê os registos para mais detalhes.",
+        "error_greetings_update_failed": "❌ Erro ao atualizar o estado de receção. Revê os registos para mais detalhes.",
+        "error_welcome_update_failed": "❌ Erro ao atualizar o estado de boas-vindas. Revê os registos para mais detalhes.",
+        "error_commentary_update_failed": "❌ Erro ao atualizar o estado de observações. Revê os registos para mais detalhes.",
+        "error_commentary_disabled": "❌ A função de observações de missões está desativada atualmente.",
+        "error_commentary_process_failed": "❌ Erro ao processar as observações. Revê os registos para mais detalhes.",
+        "success_taboo_state": "Umbrais {enabled_disabled} para este servidor.",
+        "success_greetings_state": "Receção {enabled_disabled} para este servidor.",
+        "success_welcome_state": "Boas-vindas {enabled_disabled} para este servidor.",
+        "success_commentary_state": "Observações {enabled_disabled} para este servidor.",
+        "state_enabled": "ativadas",
+        "state_disabled": "desativadas",
+        "forget_me_label": "🧹 Esquece-me (apagar os meus dados)",
+        "forget_me_description": "Elimina os teus dados pessoais de todos os servidores onde opera este agente (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Confirmar eliminação de dados",
+        "forget_me_confirm_prompt": "⚠️ **Esquece-me — direito à eliminação (GDPR)**\n\nIsto eliminará irreversivelmente os teus dados pessoais de **todos os servidores onde opera este agente**:\n• Registos de interações atribuídos a ti.\n• Memórias de relação que foram construídas sobre ti.\n• Contadores de fadiga vinculados ao teu identificador.\n• Menções do teu nome em resumos diários e de relação serão redigidas para ``[redatado]``.\n\nEsta ação não pode ser desfeita. Desejas continuar?",
+        "forget_me_btn_confirm": "Sim, apagar os meus dados",
+        "forget_me_btn_cancel": "Cancelar",
+        "forget_me_result_header": "✅ Os teus dados pessoais foram eliminados com cuidado.",
+        "forget_me_no_data": "ℹ️ Não foram encontrados dados pessoais teus em nenhum servidor conhecido.",
+        "forget_me_cancelled": "❎ Cancelado. Nenhum dado foi modificado.",
+        "forget_me_not_yours": "❌ Esta confirmação pertence a outro utilizador.",
+        "forget_me_timed_out": "⌛ A confirmação expirou. Nenhum dado foi modificado.",
+        "forget_me_dm_sent": "📬 Foi enviada a confirmação por mensagem direta."
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ Não se detetam salas disponíveis. Por favor, inicia a conversação a partir de um servidor.",
+        "server_access_error": "❌ Não é possível aceder neste momento. Por favor, tenta a partir de um servidor ativo.",
+        "reply_button_confirmation": "💬 Agora conversas a partir da sala de **{server_name}**. Todas as tuas respostas usarão esta personalidade até que seleciones outro servidor."
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ Não foi possível eliminar a última canção da lista.",
+        "play_usage": "🎵 **Uso:** `!mc play <nome de canção ou URL>`",
+        "not_in_voice": "🎤 Deves estar num canal de voz para usar este comando.",
+        "nothing_playing": "🎵 Não se está a reproduzir nada neste momento.",
+        "same_voice_channel": "🎤 Deves estar no mesmo canal de voz que o bot.",
+        "not_connected": "🎤 Não estou conectado a nenhum canal.",
+        "queue_empty": "📭 A lista de reprodução está vazia.",
+        "dj_permissions_required": "🚫 Precisas do papel de DJ ou permissões de administrador para usar este comando.",
+        "playback_paused": "⏸️ Reprodução pausada.",
+        "nothing_paused": "🎵 Não há nada pausado.",
+        "playback_resumed": "▶️ Reprodução retomada.",
+        "leaving_voice": "👋 Saindo do canal de voz.",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 O volume deve ser um número entre 0 e 100.",
+        "already_playing": "🎵 Já estou a reproduzir.",
+        "queue_cleared": "🗑️ Lista de reprodução limpa.",
+        "volume_adjust_failed": "❌ Não pude ajustar o volume."
+    }
+
+
+
+}

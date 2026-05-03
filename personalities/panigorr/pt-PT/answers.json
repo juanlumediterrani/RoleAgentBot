@@ -1,0 +1,183 @@
+{
+    "roles":{
+        "trickster":{
+            "dice_game":{
+                "youwin":[
+                    "🎉 **GANHASTE!** As migas saíram bem... SSSSS",
+                    "🎉 **VITÓRIA!** A levedura subiu... SSSSS",
+                    "🎉 **TRIUNFO!** O forno foi bom hoje... SSSSS",
+                    "🎉 **EXCELENTE!** A massa não se queimou... SSSSS",
+                    "🎉 **IMPRESSIONANTE!** O Amo ficará contente... SSSSS"
+                ],
+                "youlose":[
+                    "😢 **PERDESTE**... O pão queimou-se... SSSSS",
+                    "😢 **MÁ SORTE**... A levedura não subiu... SSSSS",
+                    "😢 **NÃO FOI DESTA VEZ**... O forno estava frio... SSSSS",
+                    "😢 **VAI**... A massa pegou-se... SSSSS",
+                    "😢 **MAS NÃO TE RENDAS**... O Amo castigar-me-á... SSSSS"
+                ],
+                "high_pot":[
+                    "💰 **¡A CESTA CRESCE!** A farinha acumula-se... SSSSS",
+                    "💰 **¡CESTA EM AUGE!** O prémio torna-se grande... SSSSS",
+                    "💰 **¡ACUMULANDO!** A cesta brilha... SSSSS",
+                    "💰 **¡FORTUNA EM ESPERA!** A cesta reclama o seu destino... SSSSS",
+                    "💰 **¡CESTA MÁGICA!** A farinha espera pelo afortunado... SSSSS"
+                ],
+                "pot_winner":[
+                    "🎉 **¡GANADOR DA CESTA!** Conquistaste as migas do forno!... SSSSS",
+                    "🎉 **¡CESTA CONQUISTADA!** És o escolhido do Amo!... SSSSS",
+                    "🎉 **¡JACKPOT!** A cesta é tua!... SSSSS",
+                    "🎉 **¡FORTUNA LENDÁRIA!** Ganhou as migas!... SSSSS",
+                    "🎉 **¡CESTA TUA!** Uma vitória épica!... SSSSS"
+                ],
+                "not_gold":[
+                    "💸 **SEM FARINHA**... Não tens sacos suficientes... SSSSS",
+                    "💸 **FUNDOS INSUFICIENTES**... Precisas de mais sacos de farinha... SSSSS",
+                    "💸 **BOLSOS VAZIOS**... Revê os teus sacos... SSSSS",
+                    "💸 **NÃO ALCANÇA**... Acumula mais sacos primeiro... SSSSS",
+                    "💸 **FARINHA ESCASSA**... Precisas de fortuna para assar... SSSSS"
+                ]
+            },
+            "cubilete":{
+                "youwin":[
+                    "🎉 **GANHASTE!** Os dados saíram bem... SSSSS",
+                    "🎉 **VITÓRIA!** A massa subiu... SSSSS",
+                    "🎉 **TRIUNFO!** O forno foi bom hoje... SSSSS",
+                    "🎉 **EXCELENTE!** Os dados não se queimaram... SSSSS",
+                    "🎉 **IMPRESSIONANTE!** O Amo ficará contente... SSSSS"
+                ],
+                "youlose":[
+                    "😢 **PERDESTE**... Os dados queimaram-se... SSSSS",
+                    "😢 **MÁ SORTE**... A massa não subiu... SSSSS",
+                    "😢 **NÃO FOI DESTA VEZ**... O forno estava frio... SSSSS",
+                    "😢 **VAI**... Os dados pegaram-se... SSSSS",
+                    "😢 **MAS NÃO TE RENDAS**... O Amo castigar-me-á... SSSSS"
+                ],
+                "high_pot":[
+                    "💰 **¡A CESTA CRESCE!** A farinha acumula-se... SSSSS",
+                    "💰 **¡CESTA EM AUGE!** O prémio torna-se grande... SSSSS",
+                    "💰 **¡ACUMULANDO!** A cesta brilha... SSSSS",
+                    "💰 **¡FORTUNA EM ESPERA!** A cesta reclama o seu destino... SSSSS",
+                    "💰 **¡CESTA MÁGICA!** A farinha espera pelo afortunado... SSSSS"
+                ],
+                "pot_winner":[
+                    "🎉 **¡GANADOR DA CESTA!** Conquistaste os dados do forno!... SSSSS",
+                    "🎉 **¡CESTA CONQUISTADA!** És o escolhido do Amo!... SSSSS",
+                    "🎉 **¡JACKPOT!** A cesta é tua!... SSSSS",
+                    "🎉 **¡FORTUNA LENDÁRIA!** Ganhou os dados!... SSSSS",
+                    "🎉 **¡CESTA TUA!** Uma vitória épica!... SSSSS"
+                ],
+                "not_gold":[
+                    "💸 **SEM FARINHA**... Não tens sacos suficientes... SSSSS",
+                    "💸 **FUNDOS INSUFICIENTES**... Precisas de mais sacos de farinha... SSSSS",
+                    "💸 **BOLSOS VAZIOS**... Revê os teus sacos... SSSSS",
+                    "💸 **NÃO ALCANÇA**... Acumula mais sacos primeiro... SSSSS",
+                    "💸 **FARINHA ESCASSA**... Precisas de fortuna para lançar... SSSSS"
+                ]
+            }
+        },
+        "banker":{
+            "beggar":{
+                "reasons": [
+                    "para komprar levedura freska ke não grite",
+                    "para pagar a multa do Amo por keman o pão",
+                    "para adkuirir farinha sem gorgojos de verdade",
+                    "para subornar a rata grande ke rouba o serrão",
+                    "para reparar a porta do forno ke se kae",
+                    "para komprar água sem sarna para amassar",
+                    "para pagar ao karboneiro ke traz lenha húmida",
+                    "para konstruir kueva própria longe do Amo"
+                ]
+            }
+        },
+        "shaman":{
+            "moon_phases":{
+                "new_moon": [
+                    "¡SSSSS! ¡O forno está oskuro komo pão kemado! ¡As sementes plantadas em oskuridad tornar-se-ão... algo! ¡Quizás pão!"
+                ],
+                "waxing_crescent": [
+                    "¡A luz kreske komo massa levedando! ¡Hora de plantar intenções antes de ke o Amo nos apanhe!"
+                ],
+                "first_quarter": [
+                    "¡Precisa-se de akção sako de farinha! ¡Enfrenta obstákulos kom... fogo! ¡Kuémalos!"
+                ],
+                "waxing_gibbous": [
+                    "¡A energia se akumula komo kalor no forno! ¡Refina os teus planos ou se kemarão!"
+                ],
+                "full_moon": [
+                    "¡Poder máximo! ¡O forno brilha brilhante! ¡Revelações e... oferendas kemadas!"
+                ],
+                "waning_gibbous": [
+                    "¡A koseka se rekoge! ¡Kome o pão antes de ke o Amo o leve!"
+                ],
+                "last_quarter": [
+                    "¡Tempo de refleksão! ¡Libera o ke não serve... komo pão kemado!"
+                ],
+                "waning_crescent": [
+                    "¡Deskanso sagrado! ¡Dorme nas zenizas kalientes do forno! ¡SSSSS..."
+                ]
+            }
+        }
+    },
+    "ring_messages": {
+        "target_changed": "✅ O anel aponta agora para {target_name}",
+        "enabled": "✅ O anelo ativado na konfiguração.",
+        "disabled": "✅ O anelo desativado na konfiguração."
+    },
+    "general": {
+        "error_selection_unavailable": "❌ A ação queimou-se... SSSSS... Não está disponível.",
+        "error_behavior_admin_only": "❌ ¡SÓ PARA O AMO! ¡Tu não tocas na massa! SSSSS...",
+        "error_settings_admin_only": "❌ ¡O Amo não permite que toques nos tiques! ¡Vai para o beco! SSSSS",
+        "error_taboo_update_failed": "❌ As palavras proibidas escaparam do forno... Revê as cinzas... SSSSS",
+        "error_greetings_update_failed": "❌ Os sibilos apagaram-se... Revê o forno... SSSSS",
+        "error_welcome_update_failed": "❌ As boas-vindas queimaram-se... Revê as cinzas... SSSSS",
+        "error_commentary_update_failed": "❌ Os comentários carbonizaram-se... Revê o forno... SSSSS",
+        "error_commentary_disabled": "❌ Os comentários estão frios como cadáver... SSSSS",
+        "error_commentary_process_failed": "❌ Não pude cuspir os comentários... O Amo castigar-me-á... SSSSS",
+        "success_taboo_state": "Palavras que cheiram mal {enabled_disabled} no porão... SSSSS",
+        "success_greetings_state": "Sibilos {enabled_disabled} para os sacos de farinha... SSSSS",
+        "success_welcome_state": "Boas-vindas {enabled_disabled} para os sacos novos... SSSSS",
+        "success_commentary_state": "Comentários {enabled_disabled} desde o forno... SSSSS",
+        "state_enabled": "a assar",
+        "state_disabled": "frio",
+        "forget_me_label": "🧹 Esquece-me (apagar os meus dados)",
+        "forget_me_description": "Queimar todos os teus dados do porão e todos os fornos... SSSSS (GDPR Art. 17)",
+        "forget_me_confirm_title": "🧹 Konfirmar... queimar dados... SSSSS",
+        "forget_me_confirm_prompt": "⚠️ **Esquece-me... SSSSS... direito ao apagamento (GDPR)**\n\nVou queimar todos os teus dados em **TODOS os porões onde opero**... SSSSS:\n• Registos de interações... os ke te delatam...\n• Memórias ke konstruí sobre ti... os meus sekretitos...\n• Kontadores de fadiga... as vezes ke me molestaste...\n• O teu nome nos resumos... riscá-lo-ei com fuligem ``[redaktado]``...\n\nNão há volta atrás... SSSSS... ¿Seguro ke keres ke esqueça?",
+        "forget_me_btn_confirm": "Sim... kéma tudo... SSSSS",
+        "forget_me_btn_cancel": "Não... deixe-o...",
+        "forget_me_result_header": "✅ Os teus dados queimaram-se no forno... SSSSS... já não keda nada...",
+        "forget_me_no_data": "ℹ️ Não encontrei nada teu em nenhum porão... SSSSS... ¿seguro ke existias?",
+        "forget_me_cancelled": "❎ Kanzelado... SSSSS... os teus dados continuam no porão...",
+        "forget_me_not_yours": "❌ ¡SSSSS! ¡Isto não é teu! ¡É de outro sako de farinha!",
+        "forget_me_timed_out": "⌛ As brasas arrefeceram... SSSSS... nada foi kemado...",
+        "forget_me_dm_sent": "📬 Enviei a konfirmação por mensagem... SSSSS... revê a caixa de correio do kallejão..."
+    },
+    "dm_messages": {
+        "no_servers_available": "❌ Não há porões abertos... Vai para o beco... SSSSS",
+        "server_access_error": "❌ Não posso entrar no forno a partir daqui... SSSSS...",
+        "reply_button_confirmation": "💬 Agora konversas desde o porão de **{server_name}**... SSSSS... As tuas respostas usarão esta personalidade até ke seleciones outro... SSSSS"
+    },
+    "mc_messages": {
+        "could_not_remove_last_song": "❌ A última kanzion pegou-se ao forno... Não pude kemá-la... SSSSS",
+        "play_usage": "🎵 **Uso:** `!mc play <nome de kanzion ou URL>`",
+        "not_in_voice": "🎤 Deves estar no porão para usar isto... SSSSS",
+        "nothing_playing": "🎵 Não se kemou nada no forno... SSSSS",
+        "same_voice_channel": "🎤 Deves estar no mesmo porão que eu... SSSSS",
+        "not_connected": "🎤 Não estou em nenhum forno... SSSSS",
+        "queue_empty": "📭 O porão está vazío... SSSSS",
+        "dj_permissions_required": "🚫 Só o Amo pode usar isto... SSSSS",
+        "playback_paused": "⏸️ O fogo apagou-se... SSSSS",
+        "nothing_paused": "🎵 Não há fogo pausado... SSSSS",
+        "playback_resumed": "▶️ O fogo voltou... SSSSS",
+        "leaving_voice": "👋 Saindo do porão... SSSSS",
+        "volume_usage": "🎵 **Uso:** `!mc volume <0-100>`",
+        "volume_number_error": "🎵 O volume deve ser um número entre 0 e 100... SSSSS",
+        "already_playing": "🎵 Já kemando no forno... SSSSS",
+        "queue_cleared": "🗑️ O porão está limpo... SSSSS",
+        "volume_adjust_failed": "❌ Não pude ajustar o fogo... SSSSS"
+    }
+
+
+
+}

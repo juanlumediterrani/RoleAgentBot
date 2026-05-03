@@ -1,15 +1,15 @@
 {
-    "title": "📚 **Hall Librarian**",
-    "description": "Access the ancient texts and accumulated wisdom of the tea house from Yuki's serene perspective. Ask any question, and I shall share from the library with presence.",
-    "button": "📚 Librarian",
-    "embed_footer": "📚 Hall Librarian 📚",
+    "title": "📚 **Kikigaki (聞き書き)**",
+    "description": "The art of recording what is heard. Yuki accesses the ancient texts and accumulated wisdom of the tea house to preserve and share knowledge with serene presence.",
+    "button": "📚 Kikigaki",
+    "embed_footer": "📚 Kikigaki (聞き書き) 📚",
     "dropdown": {
         "select_action": "📋 Execute instruction...",
-        "toggle_on": "✅ Enable Librarian",
-        "toggle_off": "❌ Disable Librarian"
+        "toggle_on": "✅ Enable Kikigaki",
+        "toggle_off": "❌ Disable Kikigaki"
     },
     "wikipedia_button_label": "📖 Read on Wikipedia",
     "controls_title": "**Controls**",
-    "controls": "- Enable or disable the Librarian role",
-    "admin_flows": "Toggle the Librarian role to enable or disable it."
+    "controls": "- Enable or disable the Kikigaki role",
+    "admin_flows": "Toggle the Kikigaki role to enable or disable it."
 }

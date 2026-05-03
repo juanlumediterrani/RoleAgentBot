@@ -1,15 +1,15 @@
 {
-    "title": "📚 **茶室图书管理员**",
-    "description": "通过雪宁静的视角访问茶室的古代文本和积累的智慧。提出任何问题，我将以临在从图书馆分享。",
-    "button": "📚 图书管理员",
-    "embed_footer": "📚 茶室图书管理员 📚",
+    "title": "📚 **Kikigaki (聞き書き)**",
+    "description": "记录所听之物的艺术。Yuki 访问茶室的古代文本和积累的智慧，以宁静的临在保存和分享知识。",
+    "button": "📚 Kikigaki",
+    "embed_footer": "📚 Kikigaki (聞き書き) 📚",
     "dropdown": {
         "select_action": "📋 执行指令...",
-        "toggle_on": "✅ 启用图书管理员",
-        "toggle_off": "❌ 禁用图书管理员"
+        "toggle_on": "✅ 启用 Kikigaki",
+        "toggle_off": "❌ 禁用 Kikigaki"
     },
     "wikipedia_button_label": "📖 在维基百科阅读",
     "controls_title": "**控制**",
-    "controls": "- 启用或禁用图书管理员角色",
-    "admin_flows": "切换图书管理员角色以启用或禁用它。"
+    "controls": "- 启用或禁用 Kikigaki 角色",
+    "admin_flows": "切换 Kikigaki 角色以启用或禁用它。"
 }

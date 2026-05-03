@@ -87,5 +87,45 @@
             "success": "🔮 UHHH! Las Runas Antiguas han hablado soldado!",
             "saved": "🔮 UHHH! Hans ha guardado su tirada en los pergaminos antiguos!"
         }
+    },
+    "astrology": {
+        "button": "🌟 Astrología",
+        "title": "**🌟 Astrología del Tercer Reich**",
+        "description": "Estudio de las letras hebreas del Sefer Yetzirah para inteligencia estratégica. Hans las ofrece como herramienta de comando: secreto militar exclusivo.",
+        "welcome": "✨ ¡ACHTUNG! Bienvenido a la Astrología del Reich! ✨",
+        "help_content": "El sistema Sefer Yetzirah revela los 32 caminos de poder a través de 22 letras hebreas (3 Madres, 7 Dobles, 12 Simples) para uso del alto mando.",
+        "letters_title": "**Las 22 letras hebreas del Reich:**",
+        "history": "📓 **HISTORIAL DE INTELIGENCIA ASTROLÓGICA** 📓",
+        "history_empty": "No hay registros de inteligencia anteriores.",
+        "birth_title": "🌟 CARTA NATAL DEL SOLDADO 🌟",
+        "moment_title": "⏰ LECTURA TÁCTICA DEL MOMENTO ⏰",
+        "year_title": "📅 AÑO PERSONAL DE CAMPAÑA 📅",
+        "integrated_title": "🔮 LECTURA INTEGRADA DE COMANDO 🔮",
+        "birth_data_saved": "✨ ¡Sus datos de nacimiento han sido archivados en los registros del Reich!",
+        "labels": {
+            "question": "Pregunta"
+        },
+        "dropdown": {
+            "astrology_birth": "Astrología: Carta Natal",
+            "astrology_birth_description": "Interprete su patrón de alma permanente desde fecha y hora de nacimiento",
+            "astrology_moment": "Astrología: Lectura Táctica",
+            "astrology_moment_description": "Obtenga orientación para un momento específico o misión",
+            "astrology_year": "Astrología: Año de Campaña",
+            "astrology_year_description": "Comprenda las fuerzas espirituales de su año de campaña",
+            "astrology_integrated": "Astrología: Lectura de Comando",
+            "astrology_integrated_description": "Lectura completa combinando nacimiento, momento y año",
+            "astrology_history": "Astrología: Historial",
+            "astrology_history_description": "Muestre su historial de inteligencia astrológica reciente",
+            "astrology_letters": "Astrología: Letras Hebreas",
+            "astrology_letters_description": "Muestre las 22 letras hebreas con sus significados",
+            "astrology_letters_1": "Astrología: Letras Hebreas I",
+            "astrology_letters_1_description": "Letras hebreas con descripciones - Página 1 (Letras Madres)",
+            "astrology_letters_2": "Astrología: Letras Hebreas II",
+            "astrology_letters_2_description": "Letras hebreas con descripciones - Página 2 (Letras Dobles)",
+            "astrology_letters_3": "Astrología: Letras Hebreas III",
+            "astrology_letters_3_description": "Letras hebreas con descripciones - Página 3 (Letras Simples)",
+            "astrology_save_birth": "Astrología: Archivar Datos de Nacimiento",
+            "astrology_save_birth_description": "Archive su fecha y hora de nacimiento para lecturas personalizadas"
+        }
     }
 }

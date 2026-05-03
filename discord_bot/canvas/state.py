@@ -342,14 +342,14 @@ def _get_canvas_ring_state(guild) -> dict:
 
         try:
             from .server_config import get_role_config_value
-            ring_enabled = get_role_config_value(server_id, "juggler", "config.subroles.ring.enabled", default=False)
-            ring_config = get_role_config_value(server_id, "juggler", "config.subroles.ring.config", default={})
+            ring_enabled = get_role_config_value(server_id, "treasure_hunter", "config.subroles.ring.enabled", default=False)
+            ring_config = get_role_config_value(server_id, "treasure_hunter", "config.subroles.ring.config", default={})
         except Exception as e:
             logger.warning(f"Error checking ring enabled in server_config: {e}")
 
         # SECONDARY: Use ring_discord state as fallback for additional fields
         if not ring_config:
-            from roles.juggler.subroles.ring.ring_discord import _get_ring_state
+            from roles.treasure_hunter.subroles.ring.ring_discord import _get_ring_state
             if _get_ring_state is not None:
                 current = _get_ring_state(server_id)
                 if current:
@@ -387,7 +387,7 @@ def _get_canvas_ring_state(guild) -> dict:
             state["target_user_name"] = "Unknown bearer"
 
         # Load description from personality
-        subrole_cfg = (PERSONALITY.get("roles", {}).get("juggler", {}).get("subroles", {}) or {}).get("ring", {})
+        subrole_cfg = (PERSONALITY.get("roles", {}).get("treasure_hunter", {}).get("subroles", {}) or {}).get("ring", {})
         state["description"] = str(subrole_cfg.get("description", "")).strip()
     except Exception as e:
         logger.warning(f"Could not load ring state for Canvas: {e}")

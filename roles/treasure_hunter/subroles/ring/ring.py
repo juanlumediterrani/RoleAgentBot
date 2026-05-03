@@ -1,5 +1,5 @@
 """
-Ring subrole for Juggler.
+Ring subrole for Treasure Hunter.
 Handles the ring accusation and quest functionality.
 """
 

@@ -85,5 +85,34 @@
             "poe2_off": "Análisis: Desactivar",
             "poe2_off_description": "Detener el módulo de análisis"
         }
+    },
+    "ring": {
+        "button": "👁️ Me-tsuke",
+        "title": "👁️ **ME-TSUKE (目付)**",
+        "description": "🔍 El círculo de vigilancia. Como inspector del distrito, Yuki mantiene una red de contactos que permite interrogar y perseguir sin romper la discreción de la casa de té.",
+        "status_active": "✅ **VIGILANCIA ACTIVA** - Yuki está ejerciendo su función de inspector",
+        "status_inactive": "❌ **EN REPOSO** - La vigilancia no está activa",
+        "current_target": "🎯 **SOSPECHOSO ACTUAL:**",
+        "target_unknown": "👤 Sin sospechosos identificados todavía",
+        "investigation_title": "🔍 **SEÑALAR A UN VISITANTE:**",
+        "investigation_instructions": "• Usa **Me-tsuke: Señalar** desde el menú de abajo\n• Escribe la mención (@) o ID del visitante sospechoso\n• Yuki iniciará una indagación directa\n• El resultado será visible para todos en el canal",
+        "investigation_warning": "⚠️ **RESTRICCIONES:**\n• Un visitante no puede señalarse a sí mismo\n• Los bots no son sujetos de investigación\n• La vigilancia debe estar activada por un administrador",
+        "inactive_title": "⚠️ **VIGILANCIA INACTIVA**",
+        "inactive_instructions": "Para activar la vigilancia:\n• Un administrador debe acceder al panel **Admin Me-tsuke**\n• Ejecutar **Vigilancia: Activar**\n• Configurar la frecuencia de las rondas\n\nUna vez activa, podrás señalar a visitantes sospechosos.",
+        "hot_potato": "🔥 **La sospecha se desplaza:** Ronda {iteration} (velocidad x{multiplier})",
+        "controls": "**Controles**\n- Activar o desactivar la vigilancia\n- Frecuencia de rondas",
+        "dm_accusation_header": "👁️ **INVESTIGACIÓN ME-TSUKE**",
+        "accused_label": "Acusado:",
+        "admin_description": "Configura la sensibilidad y frecuencia de la vigilancia del Me-tsuke",
+        "dropdown": {
+            "ring_accuse": "Me-tsuke: Señalar",
+            "ring_accuse_description": "Indicar que un visitante es sospechoso para la investigación",
+            "ring_on": "Vigilancia: Activar",
+            "ring_on_description": "Iniciar la vigilancia del distrito",
+            "ring_off": "Vigilancia: Desactivar",
+            "ring_off_description": "Detener la vigilancia del distrito",
+            "ring_frequency": "Vigilancia: Frecuencia",
+            "ring_frequency_description": "Configurar la frecuencia de las rondas (afecta la velocidad de sospecha)"
+        }
     }
 }

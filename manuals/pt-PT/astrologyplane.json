@@ -1,0 +1,197 @@
+{
+    "positions": {
+        "Elemento Natal": "Elemento Natal",
+        "Planeta Rector": "Planeta Regente",
+        "Signo Zodiacal": "Signo Zodiacal",
+        "Elemento do Momento": "Elemento do Momento",
+        "Planeta do Dia": "Planeta do Dia",
+        "Signo do Mes": "Signo do Mes",
+        "Numero Pessoal": "Numero Pessoal",
+        "Letra do Ano": "Letra do Ano",
+        "Ano Coletivo": "Ano Coletivo",
+        "Carta Natal (Permanente)": "Carta Natal (Permanente)",
+        "Ano Pessoal (Ciclico)": "Ano Pessoal (Ciclico)",
+        "Momento (Imediato)": "Momento (Imediato)"
+    },
+    "translations": {
+        "alef": {
+            "meaning": "Ar, Equilibrio, Mediacao",
+            "keywords": "equilibrio, mediacao, intelekto, respirakao, koneksao, ar",
+            "interpretation": "A alma mediadora ke konekta e equilibra. Substrato da alma ke permite a kompreensao intelektual em sentido amplo. Trabalho no peito e a respirakao."
+        },
+        "mem": {
+            "meaning": "Agua, Profundidade, Receptividade",
+            "keywords": "profundidade, emocao, receptividade, interior, fluididade, agua",
+            "interpretation": "A alma profunda e receptiva. Orientada para o interior e as emokoes. Trabalho no ventre e as emokoes. Deskida, gestakao interior."
+        },
+        "shin": {
+            "meaning": "Fogo, Expansao, Klaridade Mental",
+            "keywords": "expansao, mente, fogo, transformakao, klaridade",
+            "interpretation": "A alma expansiva e mental. Orientada para o alto e a klaridade intelektual. Trabalho na kabeza e a mente. Grandes mudankas mentais."
+        },
+        "bet": {
+            "meaning": "Saturno, Limites, Sabedoria",
+            "keywords": "limites, tempo, sabedoria, restrikao, karma, disiplina",
+            "interpretation": "Planeta dos limites e das provas de sabedoria. Traz sabedoria profunda ou nekisez obstinada segundo o tikun. Kolehe-se o ke foi semeado."
+        },
+        "gimel": {
+            "meaning": "Jupiter, Expansao, Abundancia",
+            "keywords": "expansao, justika, abundancia, viagens espirituais, ensino, aprendizagem",
+            "interpretation": "Planeta da expansao e da abundancia. Possivel rikeza ou pobreza segundo komo se trabalha a sua dualidade. Viagens espirituais."
+        },
+        "dalet": {
+            "meaning": "Marte, Akao, Konflito",
+            "keywords": "akao, konflito, energia, dekisao, kirurgia, kompetensia",
+            "interpretation": "Planeta da energia ativa e os konflitos. Fertilidade ou desolakao segundo a resolukao de desafios. Dekisoes urgentes."
+        },
+        "kaf": {
+            "meaning": "Sol, Identidade, Vitalidade",
+            "keywords": "identidade, vitalidade, lideranka, visibilidade, rekonhekimento, vida",
+            "interpretation": "Planeta da identidade e a vida plena. O eu expoe-se ao mundo. Vida ou morte segundo a vitalidade da alma. Lideranka."
+        },
+        "pe": {
+            "meaning": "Venus, Relakoes, Harmonia",
+            "keywords": "relakoes, arte, harmonia, dinheiro, afeto, poder",
+            "interpretation": "Planeta das relakoes e a arte. Dominio ou servidao segundo as eskoletas afetivas e de poder. Harmonia ou rutura."
+        },
+        "resh": {
+            "meaning": "Merkurio, Komunikakao, Movimento",
+            "keywords": "komunikakao, kontratos, estudos, mensagens, movimento, interkambio",
+            "interpretation": "Planeta da komunikakao e o movimento. Paz ou guerra segundo o uso honesto ou enganoso da linguagem. Estudos e mensagens."
+        },
+        "tav": {
+            "meaning": "Lua, Siklos, Emokoes",
+            "keywords": "siklos, emokoes, domestiko, mudante, feminino, intuikao",
+            "interpretation": "Planeta dos siklos e as emokoes. O ke flui e muda sem kessar. Graka ou fealdade segundo a sensibilidade. O domestiko."
+        },
+        "he": {
+            "meaning": "Aries, Fala, Expressao",
+            "keywords": "fala, expressao, inisiakao, komunikakao, palavra, inicio",
+            "interpretation": "A fakuldade da fala komo instrumento da alma. O ke se diz ou nao se diz define o kurso das situakoes. Inisiakao e komekos."
+        },
+        "vav": {
+            "meaning": "Tauro, Pensamento, Arraigo",
+            "keywords": "pensamento, refleksao, arraigo, konsolidakao, lentidao, estabilidade",
+            "interpretation": "O pensamento komo modo de akao primario. Ano de refleksao lenta e konsolidakao mental. Arraigo e estabilidade."
+        },
+        "zayin": {
+            "meaning": "Geminis, Movimento, Mudanka",
+            "keywords": "movimento, mudanka, dualidade, deslokamento, versatilidade, adaptakao",
+            "interpretation": "O movimento domina a alma. Ano de deslokamentos, mudankas e dualidades ativas. Versatilidade e adaptakao."
+        },
+        "jet": {
+            "meaning": "Kankro, Vista, Perkepcao",
+            "keywords": "vista, perkepcao, ilusao, revelakao, intuikao, klaridade",
+            "interpretation": "A vista komo fakuldade khave. Ano de perkepcao, revelakoes visuais ou ilusoes. Klaridade ou kunfusao visual."
+        },
+        "tet": {
+            "meaning": "Leo, Audikao, Lideranka",
+            "keywords": "audikao, eskuta, lideranka, visibilidade, revelakao, autoridade",
+            "interpretation": "A audikao konduz a alma. Eskutar ou nao eskutar e o eixo do ano e das situakoes. Visibilidade e lideranka."
+        },
+        "yod": {
+            "meaning": "Virgem, Akao, Trabalho",
+            "keywords": "akao, trabalho, detalhe, serviko, metodo, perfeikao",
+            "interpretation": "A akao konkreta define a alma. Ano de trabalho metodiko, serviko e atencao ao detalhe. Perfeikao e metodo."
+        },
+        "lamed": {
+            "meaning": "Libra, Uniao, Relakoes",
+            "keywords": "uniao, relakoes, aliankas, kontratos, equilibrio, par",
+            "interpretation": "A uniao e sentral a alma. Relakoes, aliankas e kontratos de vida definem o kurso. Equilibrio e harmonia."
+        },
+        "nun": {
+            "meaning": "Eskorpiao, Olfato, Instinto",
+            "keywords": "olfato, instinto, okulto, profundidade, transformakao, misterio",
+            "interpretation": "O olfato-instinto guia a alma. Ano de perkepcao profunda onde o okulto sai a luz. Transformakao e misterio."
+        },
+        "samej": {
+            "meaning": "Sagitario, Sonho, Visao",
+            "keywords": "sonho, visao, direkao, espiritualidade, viagem, expansao",
+            "interpretation": "O sonho orienta a alma. As visoes internas e o sentido de direkao espiritual guiam o ano. Viagens e expansao."
+        },
+        "ayin": {
+            "meaning": "Kaprikornio, Ira, Autoridade",
+            "keywords": "ira, autoridade, prova, disiplina, mestria, estrutura",
+            "interpretation": "A ira ou a sua mestria e o tema da alma. Ano de prova emokional e desenvolvimento de autoridade. Disiplina e estrutura."
+        },
+        "tzadi": {
+            "meaning": "Akuario, Deglukao, Assimilakao",
+            "keywords": "deglukao, assimilakao, aseitakao, rejeikao, prosessamento, integrakao",
+            "interpretation": "A deglukao/assimilakao define a alma. O ke se aseita ou se rejeita da vida marca o kaminho. Integrakao de eksperiensias."
+        },
+        "kof": {
+            "meaning": "Peixes, Risa, Dissolukao",
+            "keywords": "risa, humor, dissolukao, desprendimento, graka, kompaixao",
+            "interpretation": "A risa/humor kosmiko guia a alma. Ano de dissolukao, desprendimento e graka divina. Kompaixao e entrega."
+        }
+    },
+    "guidance": {
+        "love": {
+            "alef": "Alef konvida a kultivar o equilibrio partilhado komo fundamento do vinikulo amoroso. O amor, komo o Ar, rekere mediakao konskiente e abertura rekiproka.",
+            "mem": "A profundidade emokional de Mem rekoneksao autentika e receptividade na tua vida amorosa. E tempo de desker as profundidades do sentimento.",
+            "shin": "Shin indika ke a tua relakao pode estar eksposta a forkas mentais transformadoras. Protege o vinikulo kom klaridade e enfrenta obstakos juntos.",
+            "bet": "Bet lembra ke o amor rekere pasiensia e sabedoria. Os limites saturninos nas relakoes nao sao obstakulos mas a estrutura ke permite konstruir vinikulos duradouros.",
+            "gimel": "Gimel anunsia expansao e abundancia na tua vida amorosa. A energia de Jupiter traz oportunidades de kreskimento, mas lembra ke a verdadeira rikeza nas relakoes surge da rekiprosidade honesta.",
+            "dalet": "Dalet avisa ke podem surgir konflitos na tua relakao. A energia de Marte rekere akao e kourage; enfrentem os desafios juntos em vez de evita-los.",
+            "kaf": "Kaf ilumina a tua vida amorosa kom a energia solar de identidade e visibilidade. E um momento para expressar-te autentikamente e deixar ke a relakao brilhe na sua luz verdadeira.",
+            "pe": "Pe indika ke a harmonia e o equilibrio sao khave na tua relakao. Venus konvida a kultivar o interkambio justo e a apreiakao mutua komo fundamento de vinikulos duradouros.",
+            "resh": "Resh faz da komunikakao honesta o pilar da tua relakao. As palavras expressas kom verdade e as eskutadas kom atenkao tecem o vinikulo mais duradouro.",
+            "tav": "Tav konvida ao fluxo emokional e a sensibilidade na tua vida amorosa. Os siklos lunares lembram ke as relakoes tem as suas estakoes; konfia no ritmo natural.",
+            "he": "He faz da fala o fundamento da tua relakao. As palavras expressas kom verdade kriam o vinikulo mais duradouro; fala kom intenkao e eskuta kom atenkao.",
+            "vav": "Vav propoe ke o teu kaminho amoroso avance kom refleksao pensada. Nao e impulso kego, mas movimento alinhado kom komprensao profunda ke fortaleke a uniao.",
+            "zayin": "Zayin indika ke a tua relakao esta em movimento ativo e mudanka. A adaptabilidade e abertura a novas eksperiensias fortalekerao o vinikulo.",
+            "jet": "Jet ilumina a tua vida amorosa kom a klaridade da perkepcao. A komprensao profunda do outro e a base de uma relakao ke transkende o superfisial.",
+            "tet": "Tet khamama-te a eskutar profundamente na tua relakao. Eskutar a verdade do outro e a khave para ke o vinikulo emerja renovado.",
+            "yod": "Yod indika ke as akoes konkretas definem a tua vida amorosa. Pequenos atos de serviko e atenkao konstroem os fundamentos mais solidos.",
+            "lamed": "Lamed lembra ke o amor verdadeiro e uniao sagrada: kada vinikulo kria responsabilidade ke equilibra a relakao. Assegura-te de ke dar e reseber fluam kom ekuidade.",
+            "nun": "Nun konvida a konfiar no instinto e a perkepcao profunda para navegar assuntos do korakao. As dimensoes okultas do amor kontem sabedoria ke a razao nao pode ver.",
+            "samej": "Samej indika ke o amor esta num periodo de visao e direkao. As perkepkoes internas sobre a relakao te guiarao para o kaminho korreto.",
+            "ayin": "Ayin khamama-te a trabalhar o dominio emokional na tua relakao. A disiplina do amor transforma desafios em oportunidades de kreskimento.",
+            "tzadi": "Tzadi indika ke a assimilakao e a aseitakao sao khave na tua relakao. Aseita o ke e e integra as liskoes ke o amor traz.",
+            "kof": "Kof konvida a soltar kom graka e humor na tua vida amorosa. O desapego das ekspektativas permite ke o amor flua naturalmente.",
+            "default": "Esta letra leva a sabedoria do Sefer Yetzirah e manifesta-se na tua vida amorosa kom uma mensagem ke merese profunda kontemplakao."
+        },
+        "career": {
+            "alef": "Alef indika ke o teu kaminho profissional rekere equilibrio e mediakao. A klaridade intelektual do Ar ajudara-te a navegar desafios profissionais kom sabedoria.",
+            "mem": "Mem konvida a profundidade emokional e receptividade na tua vida profissional. A intuikao e a kapacidade de koneksao profunda kom outros sao os teus maiores ativos.",
+            "shin": "Shin khamama a expandir os teus horizontes mentais no trabalho. A klaridade de pensamento e a visao de konjunto levarao a avankos.",
+            "bet": "Bet lembra ke o sukesso profissional rekere disiplina e pasiensia. A energia de Saturno rekompensa akem konstroem fundamentos solidos kom o tempo.",
+            "gimel": "Gimel anunsia expansao e abundancia no teu kaminho profissional. A energia de Jupiter traz oportunidades de kreskimento e avanko.",
+            "dalet": "Dalet khamama a agir kom kourage e determinakao na tua karreira. A energia de Marte e o kombustivel ke nesesitas para superar obstakulos.",
+            "kaf": "Kaf ilumina o teu kaminho profissional kom a energia solar de lideranka. E um momento para tomar a iniciativa e deixar ke os teus talentos brilhem.",
+            "pe": "Pe indika ke a harmonia e a kooperakao sao khave na tua vida profissional. Venus konvida a konstruir aliankas baseadas em interkambio justo.",
+            "resh": "Resh indika ke a komunikakao klarra e a transmissao presisa de konhekimento sao os teus maiores ativos profissionais.",
+            "tav": "Tav konvida a adaptabilidade e a inteligensia emokional no teu trabalho. Os siklos lunares lembram ke a vida profissional tem as suas estakoes.",
+            "default": "Esta letra leva a sabedoria do Sefer Yetzirah e manifesta-se na tua karreira kom uma mensagem ke merese profunda kontemplakao."
+        },
+        "health": {
+            "alef": "Alef vinula a saude kom o manejo konskiente da respirakao komo rekurso. O bem-estar fisiko rekere kuidado ativo do alento e o equilibrio.",
+            "mem": "Mem khamama a atender a saude emokional e os sistemas fluidos do korpo. O poder kurativo da Agua esta disponivel atraves do descanso e a receptividade.",
+            "shin": "Shin khamama a konstruir klaridade mental e vitalidade. A energia do Fogo na kabeza pode ser transformadora para a saude kognitiva.",
+            "bet": "Bet lembra ke a saude rekere disiplina e pasiensia. A energia de Saturno apoia akem konstroem habitos saudaveis kom o tempo.",
+            "gimel": "Gimel anunsia expansao de vitalidade e bem-estar. A energia de Jupiter traz oportunidades de sanakao e kreskimento.",
+            "dalet": "Dalet khamama a agir kom kourage nos teus habitos de saude. A energia de Marte e o kombustivel ke nesesitas para superar desafios fisikos.",
+            "kaf": "Kaf kontribui energia solar ao teu prosesso de sanakao. A forka vital esta disponivel; sintoniza-te atraves da luz e o movimento.",
+            "pe": "Pe indika ke a harmonia e o equilibrio sao khave para a saude. Venus konvida a kultivar interkambio justo entre korpo, mente e espirito.",
+            "resh": "Resh indika ke a komunikakao klarra kom o teu korpo —eskutar os seus sinais— e fundamental para a sanakao.",
+            "tav": "Tav konvida a sanakao emokional e honrar os siklos naturais. A energia lunar apoia akem respeitam o ritmo de descanso e atividade.",
+            "default": "Esta letra leva a sabedoria do Sefer Yetzirah e manifesta-se na tua saude kom uma mensagem ke merese profunda kontemplakao."
+        },
+        "path": {
+            "alef": "Alef indika ke o teu kaminho de vida rekere equilibrio e mediakao. A klaridade intelektual do Ar ajudara-te a navegar desafios kom sabedoria.",
+            "mem": "Mem konvida a profundidade emokional e receptividade no teu kaminho. A intuikao e a kapacidade de koneksao profunda kom o teu proposito sao os teus maiores guias.",
+            "shin": "Shin khamama a expandir os teus horizontes mentais e buskar klaridade de visao. A energia transformadora do Fogo iluminara o teu kaminho.",
+            "bet": "Bet lembra ke o teu kaminho rekere disiplina e pasiensia. A energia de Saturno rekompensa akem konstroem fundamentos solidos kom o tempo.",
+            "gimel": "Gimel anunsia expansao e abundancia no teu kaminho. A energia de Jupiter traz oportunidades de kreskimento e avanko espiritual.",
+            "dalet": "Dalet khamama a agir kom kourage e determinakao no teu kaminho. A energia de Marte e o kombustivel ke nesesitas para superar obstakulos.",
+            "kaf": "Kaf ilumina o teu kaminho kom a energia solar de lideranka e visibilidade. E um momento para tomar a iniciativa e brilhar a tua luz.",
+            "pe": "Pe indika ke a harmonia e o equilibrio sao kave no teu kaminho. Venus konvida a kultivar interkambios justos e konekoes signifikativas.",
+            "resh": "Resh indika ke a komunikakao klarra e a transmissao de sabedoria sao os teus maiores ativos no teu kaminho.",
+            "tav": "Tav konvida a adaptabilidade e honrar os siklos naturais no teu kaminho. A energia lunar apoia akem respeitam os ritmos da vida.",
+            "default": "Esta letra leva a sabedoria do Sefer Yetzirah e manifesta-se no teu kaminho kom uma mensagem ke merese profunda kontemplakao."
+        },
+        "general": {
+            "default": "Esta letra leva a sabedoria do Sefer Yetzirah e manifesta-se na tua situakao kom uma mensagem ke merese profunda kontemplakao."
+        }
+    }
+}

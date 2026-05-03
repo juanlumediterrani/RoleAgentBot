@@ -2,42 +2,55 @@
     "title": "🎯  **特种服务部**",
     "description": "团部的后勤和娱乐单位，协调多项行动以维持部队士气。",
     "button": "🎯 服务",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **盖世太保调查员** - 审讯莱希叛徒嫌疑人"
-    },
-    "ring": {
-        "button": "🔍 调查",
-        "title": "👁️ **赫尔汉斯盖世太保官员**",
-        "description": " 盖世太保官员将追捕你直到世界末日，告发其他士兵以避免这种苦难。",
-        "status_active": "✅ **追捕活跃** - 赫尔汉斯正在寻找叛徒",
-        "status_inactive": "❌ **追捕关闭** - 赫尔汉斯正在休息",
-        "current_target": "🎯 **当前目标：**",
-        "target_unknown": "👤 没有选择嫌疑人",
-        "investigation_title": "🔍** 提出指控：**",
-        "investigation_instructions": "• 阿赫通！从操作菜单使用**指控**，士兵\n• 输入嫌疑人识别码：@用户名 或 ID\n• 赫尔汉斯将生成审讯以提取供词\n• 指控将在总营房发布给所有士兵",
-        "investigation_warning": "⚠️ **莱希命令：**\n• 不能指控自己，叛徒\n• 不能指控自动化单位（机器人）\n• 追捕必须由高级军官授权",
-        "inactive_title": "⚠️ **追捕已关闭**",
-        "inactive_instructions": "阿赫通！授权追捕行动：\n• 高级军官必须访问**管理**\n• 并授权追捕\n• 设定审讯频率\n\n一旦授权，你可以指控士兵为莱希叛徒！",
-        "hot_potato": "🔥 **烫手山芋：** 第 {iteration} 次迭代（频率降低 {multiplier}x）",
-        "controls": "**控制**\n- 激活或关闭追捕\n- 可编辑频率框（设定基础频率并重置烫手山芋）",
-        "dm_accusation_header": "👁️ **盖世太保指控**",
-        "accused_label": "被告：",
-        "admin_description": "配置纳粹追捕功能和频率",
-        "dropdown": {
-            "ring_accuse": "追捕：指控",
-            "ring_accuse_description": "指控士兵为莱希叛徒",
-            "ring_on": "追捕：激活",
-            "ring_on_description": "开始追捕莱希叛徒",
-            "ring_off": "追捕：关闭",
-            "ring_off_description": "停止追捕系统",
-            "ring_frequency": "追捕：频率",
-            "ring_frequency_description": "配置审讯频率（影响烫手山芋）"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎯 选择服务行动...",
         "config_juggler": "配置服务",
         "config_juggler_description": "调整服务部门配置",
         "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **诗篇**: 请求为其他用户创作个性化诗篇"
+    },
+    "poetry": {
+      "title": "📝 诗篇",
+      "description": "请求为另一个用户创作一首诗。",
+      "action_compose": "✍️ 创作诗歌",
+      "action_compose_desc": "为另一个用户写一首诗",
+      "button": "📝 诗篇",
+      "dropdown": {
+        "poetry_compose": "创作诗篇",
+        "poetry_compose_description": "为另一个用户写一首诗篇",
+        "poetry_on": "诗篇：开启",
+        "poetry_on_description": "为此服务器启用诗篇",
+        "poetry_off": "诗篇：关闭",
+        "poetry_off_description": "为此服务器禁用诗篇"
+      },
+      "modal_title": "创作诗篇",
+      "modal_target_label": "目标用户",
+      "modal_target_placeholder": "@用户或用户ID",
+      "modal_dedication_label": "献词/前提",
+      "modal_dedication_placeholder": "简短的主题或消息（最多150字符）",
+      "error_target_invalid": "❌ 未找到用户。使用@提及或有效的ID。",
+      "error_dedication_too_long": "❌ 献词太长（最多150字符）。",
+      "error_cost_failed": "❌ 处理成本时出错。",
+      "error_llm_failed": "❌ 生成诗歌失败",
+      "preview_title": "📝 诗篇预览",
+      "preview_description": "发送前查看诗歌",
+      "preview_footer": "来自：{sender}",
+      "button_confirm": "✅ 发送",
+      "button_cancel": "❌ 取消",
+      "success_sent": "✅ 诗篇已发送给{target}",
+      "success_cancelled": "❌ 诗篇已取消",
+      "dm_disabled_notice": "⚠️ 目标已禁用DM。这是手动发送的诗篇：",
+      "dm_disabled_offer": "你可以复制并手动发送诗篇：",
+      "error_subrole_disabled": "❌ 诗篇子角色在此服务器上已禁用。请联系管理员启用它。",
+      "enabled": "✅ 此服务器已启用诗篇。",
+      "disabled": "❌ 此服务器已禁用诗篇。",
+      "error_config_failed": "❌ 更新配置失败。",
+      "error_modal_belongs_to_another": "❌ 此模态框属于另一个用户。",
+      "error_failed_preview_dm": "❌ 发送预览私信失败。",
+      "error_server_only": "❌ 此选项仅在服务器中可用。",
+      "error_unknown_action": "❌ 未知操作：{action}",
+      "error_generic": "❌ 错误：{error}"
     }
 }

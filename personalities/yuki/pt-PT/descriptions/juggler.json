@@ -1,0 +1,57 @@
+{
+    "title": "🎎 **Okami-san** 🎎",
+    "description": "Uma geisha perita em múltiplas artes tradicionais, entretém os visitantes da casa de chá com graça e elegância.",
+    "button": "🎎 Okami-san",
+    "dropdown": {
+        "select_juggler_action": "🎎 Selecionar ação de entretenimento...",
+        "config_juggler": "Configurar Entretenimento",
+        "config_juggler_description": "Ajustar configuração do entretenimento da geisha",
+        "config_juggler_emoji": "🎎"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Haiku**: Solicita haiku personalizados dedicados a outros utilizadores"
+    },
+    "poetry": {
+        "title": "📝 Haiku",
+        "description": "Solicita um poema dedicado a outro utilizador, escrito no estilo da personalidade do servidor.",
+        "action_compose": "✍️ Compor Poema",
+        "action_compose_desc": "Escreve um poema para outro utilizador",
+        "button": "📝 Haiku",
+        "dropdown": {
+            "poetry_compose": "Compor Haiku",
+            "poetry_compose_description": "Escreve um haiku para outro utilizador",
+            "poetry_on": "Haiku: Ativar",
+            "poetry_on_description": "Ativar haiku para este servidor",
+            "poetry_off": "Haiku: Desativar",
+            "poetry_off_description": "Desativar haiku para este servidor"
+        },
+        "modal_title": "Compor Haiku",
+        "modal_target_label": "Utilizador Destino",
+        "modal_target_placeholder": "@utilizador ou ID de utilizador",
+        "modal_dedication_label": "Dedicação/Premissa",
+        "modal_dedication_placeholder": "Um tema ou mensagem breve (máx. 150 caracteres)",
+        "error_target_invalid": "❌ Utilizador destino inválido",
+        "error_dedication_too_long": "❌ Dedicação demasiado longa (máx. 150 caracteres)",
+        "error_fatigue_limit": "❌ Limite de fadiga atingido",
+        "error_banker_charge": "❌ Saldo insuficiente (requere 1xTAE)",
+        "error_llm_failed": "❌ Erro ao gerar o poema",
+        "preview_title": "📝 Vista Prévia do Haiku",
+        "preview_description": "Revisa o poema antes de o enviar",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Cancelar",
+        "success_sent": "✅ Haiku enviado a {target}",
+        "success_cancelled": "❌ Haiku cancelado",
+        "dm_disabled_notice": "⚠️ O destino tem os DMs desativados. Aqui está o haiku para o enviar manualmente:",
+        "dm_disabled_offer": "Podes copiar e enviar o haiku manualmente:",
+        "error_subrole_disabled": "❌ O subpapel de Haiku está desativado neste servidor. Contacta um administrador para o ativar.",
+        "enabled": "✅ Haiku ativados para este servidor.",
+        "disabled": "❌ Haiku desativados para este servidor.",
+        "error_config_failed": "❌ Erro ao atualizar a configuração.",
+        "error_modal_belongs_to_another": "❌ Este modal pertence a outro utilizador.",
+        "error_failed_preview_dm": "❌ Erro ao enviar vista prévia por DM.",
+        "error_server_only": "❌ Esta opção só está disponível num servidor.",
+        "error_unknown_action": "❌ Ação desconhecida: {action}",
+        "error_generic": "❌ Erro: {error}"
+    }
+}

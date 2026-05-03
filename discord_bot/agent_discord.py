@@ -458,6 +458,7 @@ async def on_guild_join(guild):
     """Runs when the bot joins a new server."""
     from discord_bot.db_init import initialize_server_complete, copy_personality_to_server
     from discord_bot.canvas.server_config import detect_and_set_default_language
+    from discord_bot.canvas.canvas_personality import send_server_welcome_message
 
     logger.info(f"🏰 Joining new guild: '{guild.name}'")
     server_id = str(guild.id)
@@ -466,7 +467,7 @@ async def on_guild_join(guild):
     # This must happen before personality copy so the correct language version is used
     try:
         detected_lang = detect_and_set_default_language(server_id, guild)
-        logger.info(f"� Server language detected/set to: {detected_lang} for '{guild.name}'")
+        logger.info(f"🌐 Server language detected/set to: {detected_lang} for '{guild.name}'")
     except Exception as e:
         logger.warning(f"⚠️ Could not detect server language for '{guild.name}': {e}")
         detected_lang = "en-US"
@@ -497,7 +498,11 @@ async def on_guild_join(guild):
     else:
         logger.warning(f"⚠️ Some initialization tasks failed for '{guild.name}'")
 
-    # MC welcome message removed - no longer sends message when joining new servers
+    # Step 4: Send welcome message with configuration button
+    try:
+        await send_server_welcome_message(guild, server_id, detected_lang)
+    except Exception as e:
+        logger.warning(f"⚠️ Could not send welcome message to '{guild.name}': {e}")
 
 
 @bot.event
@@ -778,7 +783,7 @@ async def _process_accuse_flag(message, llm_response: str, server_id: str, is_pu
     """Process ACCUSE <USERNAME> flag from LLM response."""
     try:
         # Import the ring extraction function
-        from roles.juggler.subroles.ring.ring import extract_accuse_flag
+        from roles.treasure_hunter.subroles.ring.ring import extract_accuse_flag
 
         # Extract the username from ACCUSE flag
         accused_username = extract_accuse_flag(llm_response)
@@ -861,7 +866,7 @@ async def _handle_valid_accusation(message, target_member, guild, server_id: str
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
 
         # Get ring prompts from personality
-        prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("treasure_hunter", {}).get("subroles", {}).get("ring", {})
         denial_config = prompts_config.get("denial", {})
 
         task_template = denial_config.get("task", f"Task: The human {target_member.display_name} denies having the ring, warn them not to lie to you and leave them alone")
@@ -961,7 +966,7 @@ async def _handle_false_accusation(message, accused_username: str, guild, server
         server_personality = _get_personality(server_id) if server_id else PERSONALITY
 
         # Get ring prompts from personality
-        prompts_config = server_personality.get("roles", {}).get("juggler", {}).get("subroles", {}).get("ring", {})
+        prompts_config = server_personality.get("roles", {}).get("treasure_hunter", {}).get("subroles", {}).get("ring", {})
         false_accusation_config = prompts_config.get("false_accusation", {})
 
         mission = false_accusation_config.get("mission", "MISSION ACTIVE - RING: The human falsely accused someone of having the ring.")
@@ -1476,7 +1481,7 @@ async def _process_chat_message(message):
         # If a DM was received, reset ring unanswered counter for this user across all servers
         if message.guild is None:
             try:
-                from roles.juggler.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
+                from roles.treasure_hunter.subroles.ring.ring_discord import _get_ring_state, _save_ring_state
                 for guild in bot.guilds:
                     _srv = str(guild.id)
                     rstate = _get_ring_state(_srv, force_refresh=True)

@@ -85,5 +85,34 @@
             "poe2_off": "Analysis: Deactivate",
             "poe2_off_description": "Stop the market analysis module"
         }
+    },
+    "ring": {
+        "button": "👁️ Me-tsuke",
+        "title": "👁️ **ME-TSUKE (目付)**",
+        "description": "🔍 The surveillance circle. As district inspector, Yuki maintains a network of contacts that allows interrogation and pursuit without breaking the tea house's discretion.",
+        "status_active": "✅ **ACTIVE SURVEILLANCE** - Yuki is exercising her inspector function",
+        "status_inactive": "❌ **AT REST** - Surveillance is not active",
+        "current_target": "🎯 **CURRENT SUSPECT:**",
+        "target_unknown": "👤 No suspects identified yet",
+        "investigation_title": "🔍 **POINT TO A VISITOR:**",
+        "investigation_instructions": "• Use **Me-tsuke: Point** from the menu below\n• Write the mention (@) or ID of the suspected visitor\n• Yuki will initiate a direct inquiry\n• The result will be visible to all in the channel",
+        "investigation_warning": "⚠️ **RESTRICTIONS:**\n• A visitor cannot point to themselves\n• Bots are not subjects of investigation\n• Surveillance must be activated by an administrator",
+        "inactive_title": "⚠️ **INACTIVE SURVEILLANCE**",
+        "inactive_instructions": "To activate surveillance:\n• An administrator must access the **Admin Me-tsuke** panel\n• Execute **Surveillance: Activate**\n• Configure the frequency of rounds\n\nOnce active, you can point to suspected visitors.",
+        "hot_potato": "🔥 **Suspicion shifts:** Round {iteration} (speed x{multiplier})",
+        "controls": "**Controls**\n- Activate or deactivate surveillance\n- Round frequency",
+        "dm_accusation_header": "👁️ **ME-TSUKE INVESTIGATION**",
+        "accused_label": "Accused:",
+        "admin_description": "Configure sensitivity and frequency of the Me-tsuke surveillance",
+        "dropdown": {
+            "ring_accuse": "Me-tsuke: Point",
+            "ring_accuse_description": "Indicate that a visitor is suspect for investigation",
+            "ring_on": "Surveillance: Activate",
+            "ring_on_description": "Initiate district surveillance",
+            "ring_off": "Surveillance: Deactivate",
+            "ring_off_description": "Stop district surveillance",
+            "ring_frequency": "Surveillance: Frequency",
+            "ring_frequency_description": "Configure round frequency (affects suspicion speed)"
+        }
     }
 }

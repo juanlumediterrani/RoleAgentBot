@@ -31,6 +31,7 @@ AVAILABLE_LANGUAGES = {
     "es-ES": "Español (España)",
     "en-US": "English (United States)",
     "zh-CN": "中文 (简体)",
+    "pt-PT": "Português (Portugal)",
 }
 
 # Default language
@@ -224,6 +225,8 @@ def detect_and_set_default_language(server_id: str, guild=None) -> str:
                 detected_language = "es-ES"
             elif "zh" in detected_lower or "cn" in detected_lower:
                 detected_language = "zh-CN"
+            elif "pt" in detected_lower:
+                detected_language = "pt-PT"
             elif "en" in detected_lower:
                 detected_language = "en-US"
             else:

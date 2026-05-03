@@ -1,0 +1,247 @@
+{
+    "positions": {
+        "Center (Core Issue)": "Centro (Assunto Central)",
+        "North (Higher Power)": "Norte (Poder Superior)",
+        "South (Foundation)": "Sul (Fundamentos)",
+        "East (Challenges)": "Este (Desafios)",
+        "West (Past Influences)": "Oeste (Influencias Passadas)",
+        "Center (Present Situation)": "Centro (Situacao Presente)",
+        "North (Goals & Aspirations)": "Norte (Metas e Aspiracoes)",
+        "South (Past Influences)": "Sul (Influencias Passadas)",
+        "East (Future Possibilities)": "Este (Possibilidades Futuras)",
+        "West (External Influences)": "Oeste (Influencias Externas)",
+        "Above (Spiritual Guidance)": "Acima (Guia Espiritual)",
+        "Below (Foundation & Inner Self)": "Abaixo (Fundamentos e Eu Interior)"
+    },
+    "translations": {
+        "fehu": {
+            "meaning": "Gado, Riqueza Movel, Abundancia Gerida",
+            "keywords": "riqueza dinamica, gado, abundancia, gestao de recursos, transmissao de energia vital",
+            "interpretation": "Encarna a riqueza como bem movel e vivo —o gado como medida primordial de valor nordiko—. Sinaliza prosperidade material ativa, a capacidade de gerar, gerir e transmitir recursos com responsabilidade. A abundancia que Fehu traz exige administracao consciente, pois o que nao se cuida se perde."
+        },
+        "uruz": {
+            "meaning": "Uro, Forca Primordial, Poder Selvagem",
+            "keywords": "forca bruta, vitalidade indomavel, potencia selvagem, vontade, superacao",
+            "interpretation": "Evoca o uro —o boi selvagem ja extinto—, simbolo da forca primordial que nao pode ser domesticada. Indica energia vital intensa, coragem ante o desconhecido e a capacidade de moldar a propria realidade atraves do esforco e a vontade inquebrantavel. Convida a canalizar o poder bruto com proposito."
+        },
+        "thurisaz": {
+            "meaning": "Gigante, Espinho, Forca Reativa",
+            "keywords": "thurses, protecao, espinho, Mjolnir, limiar, forca disruptiva",
+            "interpretation": "Associada com os thurses (gigantes do caos) e o poder de Mjolnir. Representa a forca reativa: pode proteger ou destruir segundo a direcao em que se aplique. Sinaliza a necessidade de enfrentar forcas adversas com contundencia, mas tambem avisa sobre o risco de agir impulsivamente ante o caos."
+        },
+        "ansuz": {
+            "meaning": "Ase, Halito Divino, Palavra Sagrada",
+            "keywords": "Odin, halito divino, revelacao, runas, sabedoria, mensagens sagradas",
+            "interpretation": "Runa dos Ase, vinculada especialmente a Odin como dador do halito, a consciencia e as runas. Evoca a palavra sagrada, a revelacao e a transmissao de sabedoria desde o divino para o humano. Sinaliza um momento de inspiracao genuina, mensagens que devem ser ouvidas e a abertura ao conhecimento que transforma."
+        },
+        "raidho": {
+            "meaning": "Carro, Viagem Cosmica, Ritmo Ordenado",
+            "keywords": "carro, viagem com proposito, ritmo cosmico, ordem, caminho reto",
+            "interpretation": "Representa o carro e a viagem ordenada conforme o ritmo cosmico. Nao e a viagem errante, mas o movimento com direcao clara e alinhado com a ordem natural. Sinaliza progresso guiado pela razao e o ritmo justo, e convida a avancar com determinacao pelo caminho que foi escolhido conscientemente."
+        },
+        "kenaz": {
+            "meaning": "Tocha, Conhecimento Artesanal, Fogo Controlado",
+            "keywords": "tocha, iluminacao, mestria, criatividade forjada, visao tecnica",
+            "interpretation": "A tocha que ilumina a escuridao e permite o trabalho artesanal. Evoca o conhecimento tecnico adquirido atraves da pratica e o dominio de uma arte; a criatividade que nasce do esforco disciplinado, nao da inspiracao fortuita. Sinaliza que a clareza chegara atraves da mestria e do estudo."
+        },
+        "gebo": {
+            "meaning": "Dom, Intercambio Sagrado, Alianca",
+            "keywords": "dom, reciprocidade, alianca, honra, equilibrio, oferenda sagrada",
+            "interpretation": "Na tradicao nordica o dom nao e gratuito: cria vinculos de obrigacao e honra entre as partes. Representa o intercambio sagrado e a alianca que surge da reciprocidade consciente. Sinaliza relacoes que se equilibram atraves do dar e receber honesto, e a responsabilidade que conlleva todo vinculo profundo."
+        },
+        "wunjo": {
+            "meaning": "Alegria, Harmonia do Cla, Bem-Estar",
+            "keywords": "alegria, harmonia, bem-estar do cla, satisfacao, pertenca",
+            "interpretation": "A alegria que brota da harmonia dentro do cla e da comunidade. Nao e o prazer efimero, mas o bem-estar profundo que surge de estar no lugar correto, com as pessoas corretas. Sinaliza um estado de satisfacao genuina, de proposito cumprido e do gozo de pertencer a algo maior que si mesmo."
+        },
+        "hagalaz": {
+            "meaning": "Granizo, Forca Disruptiva, Semente Cosmica",
+            "keywords": "granizo, caos inevitavel, transformacao, disrupcao, semente de cristal",
+            "interpretation": "O granizo como forca destruidora incontrolavel da natureza, mas tambem como semente cristalina que contem em si mesma um padrao ordenado. Sinaliza mudancas bruscas e inevitaveis que nao podem ser evitadas, so atravessadas. Anuncia transformacao profunda nascida da disrupcao: a tempestade que prepara o terreno para o novo."
+        },
+        "nauthiz": {
+            "meaning": "Necessidade, Fogo por Friccao, Restricao",
+            "keywords": "necessidade, restricao, fogo de necessidade, pressao, crescimento por adversidade",
+            "interpretation": "A necessidade que gera o fogo por friccao —o fogo de emergencia produzido pelo esforco fisico e a resistencia—. Indica as limitacoes que obrigam ao crescimento interior e a forca que surge precisamente da adversidade. Convida a nao fugir da restricao, mas a encontrar nela a energia transformadora."
+        },
+        "isa": {
+            "meaning": "Gelo, Quietude Primordial, Detencao",
+            "keywords": "gelo, Niflheim, imobilidade, quietude, pausa necessaria, concentracao",
+            "interpretation": "O gelo primordial de Niflheim, principio imovel do cosmos desde o qual surgiu a criacao. Sinaliza um periodo de quietude necessaria, de consolidacao interior antes do movimento. Convida a paciencia ativa: a imobilidade consciente que permite que as forcas se ordenem por si so, sem forcar os processos."
+        },
+        "jera": {
+            "meaning": "Ano, Colheita, Ciclo Natural",
+            "keywords": "ciclo anual, colheita, recompensa justa, tempo correto, ordem estacional",
+            "interpretation": "O ciclo do ano agricola e a colheita como recompensa inevitavel ao esforco sustentado. Sinaliza que todo processo tem o seu tempo proprio e que os frutos nao podem ser precipitados: emergem quando o ciclo natural permite. Convida a confiar no trabalho realizado e na justica intrinseca da ordem ciclica."
+        },
+        "eiwaz": {
+            "meaning": "Teixo, Eixo do Mundo, Morte e Renascimento",
+            "keywords": "teixo, Yggdrasil, eixo cosmico, permanencia, iniciacao, morte ritual",
+            "interpretation": "O teixo, arvore sagrada de vida longuissima associada com Yggdrasil e o eixo que conecta os nove mundos. Representa a permanencia ante a morte, a conexao entre o visivel e o invisivel e a transformacao que surge do enfrentamento consciente com a escuridao. E a runa do iniciado que cruzou o limiar."
+        },
+        "perthro": {
+            "meaning": "Copo dos Dados, Wyrd, Misterio do Destino",
+            "keywords": "wyrd, acaso, destino, o oculto, forcas invisiveis, tecido do destino",
+            "interpretation": "O copo desde o qual se lancam os dados do destino —simbolo do Wyrd, o tecido do destino que as Nornas tecem sem cessar—. Evoca os misterios velados, as forcas que operam alem da vontade individual e a aceitacao do que nao pode ser conhecido de antemao. Convida a confiar no processo embora nao se veja o padrao completo."
+        },
+        "algiz": {
+            "meaning": "Alce, Protecao Divina, Conexao com o Sagrado",
+            "keywords": "alce, junco de alce, protecao sagrada, conexao divina, vigilia, escudo",
+            "interpretation": "A runa do junco de alce —planta que fere a quem a toca sem cuidado—. Representa a protecao sagrada que se ativa atraves da conexao com os poderes divinos e a vigilancia espiritual. Sinaliza um periodo de resguardo; convida a manter-se em estado de alerta consciente e a buscar a guia de forcas superiores."
+        },
+        "sowilo": {
+            "meaning": "Sol, Roda Solar, Vitoria da Luz",
+            "keywords": "sol, roda solar, vitoria, forca vital, clareza, impulso luminoso",
+            "interpretation": "A roda solar no seu poder vitorioso e regenerativo. Evoca a forca vital do sol que dissolve a escuridao, o sucesso alcançado atraves da vontade clara e a energia que avanca sem parar. Sinaliza um momento de impulso luminoso e poder para alcançar os propositos com determinacao."
+        },
+        "tiwaz": {
+            "meaning": "Tyr, Justica Sagrada, Sacrificio Honroso",
+            "keywords": "Tyr, justica, honra, sacrificio, dever, vitoria justa",
+            "interpretation": "A runa do deus Tyr, quem sacrificou a sua mao para prender Fenrir em beneficio dos mundos. Representa a justica que exige sacrificio pessoal, a honra como valor supremo que nao pode ser negociada e o coragem de agir conforme ao dever embora implique perda. Sinaliza que a vitoria justa requer integridade absoluta."
+        },
+        "berkano": {
+            "meaning": "Bétula, Deusa Mae, Renovacao Ciclica",
+            "keywords": "betula, deusa, fertilidade, nascimento, renovacao, nutricao, gestacao",
+            "interpretation": "A betula como arvore da deusa e simbolo de renovacao ciclica. Evoca a fertilidade, o nascimento —tanto fisico como de projetos e ideias— e a nutricao paciente que permite o crescimento. Sinaliza que o momento e propicio para novos começos, sempre que se cuide o processo com dedicacao e ternura."
+        },
+        "ehwaz": {
+            "meaning": "Cavalo, Associacao Sagrada, Movimento Conjunto",
+            "keywords": "cavalo, cavaleiro, cooperacao, confianca mutua, os deuses gemeos, viagem",
+            "interpretation": "A runa do cavalo e o seu cavaleiro como par inseparavel —reflexo dos deuses gemeos Alcis—. Representa a cooperacao baseada na confianca mutua, o movimento progressivo para um objetivo partilhado e a harmonia que nasce quando duas vontades distintas atuam em perfeita coordenacao."
+        },
+        "mannaz": {
+            "meaning": "Ser Humano, Consciencia Divina, Destino Partilhado",
+            "keywords": "humanidade, consciencia, espirito divino, comunidade, destino coletivo, cooperacao",
+            "interpretation": "A runa do ser humano como portador da faísca divina e como ser essencialmente comunitario. Evoca a responsabilidade para com a comunidade, o destino que se tece junto a outros e a consciencia expandida que surge do reconhecer-se no semelhante. Sinaliza a importancia do entendimento e da colaboracao."
+        },
+        "laguz": {
+            "meaning": "Agua, Lago Primordial, Intuicao Profunda",
+            "keywords": "agua, inconsciente, intuicao, fluxo, misterio feminino, cura emocional",
+            "interpretation": "As aguas primordiais que precedem a criacao e que nutrem todas as formas de vida. Representa a intuicao profunda, o fluxo do inconsciente, a capacidade de adaptar-se como a agua e os poderes ocultos do feminino e do lunar. Convida a confiar nas percepcoes internas alem da razao."
+        },
+        "ingwaz": {
+            "meaning": "Ing/Freyr, Potencial Latente, Gestacao Fertil",
+            "keywords": "Freyr, Ing, fertilidade, potencial, gestacao, energia armazenada, ciclo completado",
+            "interpretation": "A runa de Ing —Freyr—, deus da fertilidade, a abundancia e a paz. Sinaliza energia em processo de maturacao silenciosa, um ciclo que se completa interiormente antes de se manifestar no mundo. Convida a paciencia: o potencial fertil esta presente e aguarda o momento justo para eclosao."
+        },
+        "dagaz": {
+            "meaning": "Dia, Limiar Crepuscular, Amanhecer do Ciclo",
+            "keywords": "amanhecer, limiar, transformacao radical, novo ciclo, paradoxo do tempo, clareza",
+            "interpretation": "O instante liminal do amanhecer e o crepusculo como limites entre mundos, entre o escuro e o luminoso. Representa a transformacao radical no ponto de inflexao, o momento em que um ciclo se completa e outro começa. Sinaliza uma abertura para uma nova etapa de consciencia e possibilidade."
+        },
+        "othala": {
+            "meaning": "Patrimonio Ancestral, Terra do Cla, Herenca Inalienavel",
+            "keywords": "herenca, terra ancestral, cla, legado, sabedoria dos antepassados, identidade, raizes",
+            "interpretation": "A terra inalienavel do cla, o patrimonio que nao pode ser comprado nem vendido porque pertence ao linhagem. Evoca as raizes ancestrais, a sabedoria herdada dos antepassados e a identidade forjada pelo linhagem. Sinaliza a importancia de honrar a origem e construir sobre fundamentos solidos para que o legado perviva."
+        }
+    },
+    "guidance": {
+        "love": {
+            "fehu": "Fehu convida a cultivar a abundancia partilhada como fundamento do vinculo amoroso. O amor, como o gado, requer gestao consciente e generosidade reciproca; a riqueza afetiva deve circular entre ambas as partes para nao estagnar.",
+            "uruz": "A energia primordial de Uruz reclama paixao autentica e conexao instintiva na tua vida amorosa. E tempo de nao domar a intensidade do sentimento, mas de canaliza-la com valentia para a uniao verdadeira.",
+            "thurisaz": "Thurisaz sinaliza que a tua relacao pode estar exposta a forcas perturbadoras. Protege o vinculo com firmeza e enfrente juntos os obstaculos; a forca reativa desta runa pode converter-se em escudo se se direcionar com consciencia.",
+            "ansuz": "Ansuz faz da comunicacao honesta o pilar da tua relacao. As palavras que se expressam com verdade e as que se escutam com atencao tecem o vinculo mais duradouro; busca a revelacao no dialogo.",
+            "raidho": "Raidho propoe que o teu caminho amoroso avance com ritmo ordenado e proposito partilhado. Nao e o impulso cego, mas o movimento alinhado com um destino escolhido o que fortalece a uniao.",
+            "kenaz": "Kenaz ilumina a tua vida amorosa com a tocha do conhecimento mutuo. A compreensao profunda do outro —as suas luzes e as suas sombras— e a base de uma relacao que transcede o superficial.",
+            "gebo": "Gebo lembra que o amor verdadeiro e intercambio sagrado: cada dom cria uma divida de honra que equilibra a relacao. Assegura-te de que o dar e o receber fluam com equidade entre vos.",
+            "wunjo": "Wunjo sinaliza um periodo de harmonia e bem-estar genuino na tua vida amorosa. A alegria que experimentas nao e fortuita: e o fruto do alinhamento entre o teu ser e o teu vinculo.",
+            "hagalaz": "Hagalaz anuncia que as mudancas disruptivas podem abalar a tua relacao. Nao as esquives: sao a tempestade que limpa o terreno e permite que nasca algo mais solido e autentico.",
+            "nauthiz": "Nauthiz revela que as dificuldades na relacao sao o fogo por friccao que forja os vinculos verdadeiros. A necessidade partilhada e a superacao conjunta da adversidade criam laços que o conforto nunca poderia.",
+            "isa": "Isa convida a um periodo de quietude e consolidacao na tua vida amorosa. Nao forces os processos afetivos: deixa que o gelo se assente e que as emocoes se clarifiquem na calma.",
+            "jera": "Jera assegura que os esforcos investidos na tua relacao darao frutos a seu tempo. O ciclo natural do amor tem as suas estacoes; confia no processo e honra o trabalho realizado.",
+            "eiwaz": "Eiwaz sinaliza que a relacao pode estar atravessando um limiar de transformacao profunda. A resistencia ante o que ameaca e a disposiçao para a mudanca interior sao as chaves para que o vinculo emerja renovado.",
+            "perthro": "Perthro lembra que o amor contem misterios que escapam ao controle racional. Aceita a incerteza do Wyrd afetivo e confia nas forcas do destino que tecem o encontro das almas.",
+            "algiz": "Algiz te chama a proteger a tua relacao com vigilancia espiritual e clareza de limites. Busca a guia do sagrado para discernir quais influencias nutrem o vinculo e quais o erosionam.",
+            "sowilo": "Sowilo ilumina a tua vida amorosa com energia solar e poder de vitoria. E um momento de impulso claro: avanca com confiança, que a forca da luz acompanha as tuas intencoes afetivas.",
+            "tiwaz": "Tiwaz exige agir no amor com honra e justica irredutiveis. O sacrificio pessoal em beneficio do vinculo —como o de Tyr— e o que distingue o amor verdadeiro do mero desejo.",
+            "berkano": "Berkano propicia o crescimento e a renovacao nas relacoes. Como a betula que brota na primavera, o amor floresce quando se nutre com paciencia, cuidado e abertura para os novos começos.",
+            "ehwaz": "Ehwaz lembra que o par ideal funciona como o cavalo e o seu cavaleiro: duas vontades distintas movendo-se em perfeita coordenacao. A confianca mutua e a cooperacao sao o fundamento do progresso partilhado.",
+            "mannaz": "Mannaz poe em relevo a dimensao humana e comunitaria do amor. Busca reconhecer-te na tua par como igual; o entendimento profundo do outro como ser humano completo e a base de toda uniao duradoura.",
+            "laguz": "Laguz convida a confiar na intuicao e no fluxo emocional para navegar os assuntos do coracao. As aguas do inconsciente conhecem o que a mente racional ainda nao pode ver.",
+            "ingwaz": "Ingwaz sinaliza que o amor se encontra num periodo de gestacao fertil. Nao apresses a sua manifestacao: o potencial esta presente e amadurecera no momento justo se lhe for dado o espaco adequado.",
+            "dagaz": "Dagaz anuncia um limiar transformador na tua vida amorosa. Estas no ponto liminal entre um ciclo que conclui e um que começa; acolhe a abertura com valentia.",
+            "othala": "Othala lembra-te que as raizes familiares e ancestrais moldam profundamente os teus vinculos afetivos. Honrar o legado —e reconhecer quais padroes herdados nutrem ou limitam o amor— e chave para construir relacoes autenticas."
+        },
+        "career": {
+            "fehu": "Fehu anuncia prosperidade e abundancia no teu caminho profissional. A riqueza dinamica esta disponivel, mas lembra que o gado que nao e gerido se perde; administra os teus recursos e talentos com responsabilidade.",
+            "uruz": "Uruz te chama a reclamar a tua forca primordial no ambito laboral. Age com audacia e determinacao selvagem; a energia do uro nao espera permissao para avançar.",
+            "thurisaz": "Thurisaz te avisa de forcas adversas no teu ambiente profissional. Protege os teus interesses com firmeza e enfrente os obstaculos de frente; a reacao contundente e, as vezes, a melhor estrategia.",
+            "ansuz": "Ansuz sinaliza que a comunicacao clara e a transmissao precisa do conhecimento sao os teus maiores ativos profissionais agora. Escuta tambem as mensagens que chegam de fontes inesperadas.",
+            "raidho": "Raidho indica que a tua carreira esta em movimento ordenado para um destino claro. Mantem o ritmo, nao te desvies do caminho tracado e confia que o progresso sustentado leva a meta.",
+            "kenaz": "Kenaz ilumina o teu caminho profissional com a clareza do artesao que domina o seu oficio. As solucoes criativas nascerao do conhecimento tecnico profundo, nao da improvisacao.",
+            "gebo": "Gebo sinaliza que as alianças e associacoes profissionais baseadas na reciprocidade honesta serao determinantes para o teu sucesso. O intercambio justo de habilidades e recursos abre portas que o esforco solitario fecha.",
+            "wunjo": "Wunjo anuncia satisfacao e harmonia no teu trabalho. O alinhamento entre as tuas capacidades e o teu labor produz o bem-estar profundo que se converte no melhor combustivel para o desempenho.",
+            "hagalaz": "Hagalaz sinaliza que disrupcoes no teu ambiente profissional podem parecer adversidades, mas contem em si a semente de novas oportunidades. Atravessa a tempestade sem perder de vista o padrao que emerge.",
+            "nauthiz": "Nauthiz revela que as pressoes e limitacoes laborais sao o fogo que forja solucoes que o conforto nunca teria produzido. A restricao e, aqui, um motor de inovacao.",
+            "isa": "Isa recomenda uma pausa estrategica na tua carreira. Para, observa e consolida antes de agir; a quietude do gelo precede sempre o degelo e o movimento.",
+            "jera": "Jera assegura que o esforço profissional sustentado produzira os seus frutos no momento justo. O ciclo da colheita nao pode ser apressado, mas tambem nao falha quando o trabalho foi honesto.",
+            "eiwaz": "Eiwaz sinaliza que a resistencia e a adaptabilidade sao as tuas principais ferramentas profissionais neste momento. Como o teixo que sobrevive seculos, a permanencia no proposito vence os obstaculos.",
+            "perthro": "Perthro avisa de oportunidades que emergem desde o inesperado na tua vida profissional. O Wyrd laboral opera alem dos teus planos; mantem a abertura para o que nao podes prever.",
+            "algiz": "Algiz aconselha-te a proteger a tua posicao profissional com sabedoria estrategica e estabelecer limites claros. A vigilancia consciente e o melhor escudo ante quem busca aproveitar-se dos teus recursos.",
+            "sowilo": "Sowilo impulsiona a tua carreira com energia solar de vitoria. O sucesso esta perto; avanca com decisao e deixa que a clareza do teu proposito dissolva os obstaculos que ainda restam.",
+            "tiwaz": "Tiwaz exige agir no trabalho com honra e justica inquebrantaveis. A tua integridade profissional —mesmo quando implica sacrificio— e a base de uma reputacao que perdurara.",
+            "berkano": "Berkano anuncia crescimento e novos começos na tua carreira. Como a betula na primavera, os projetos semeados com cuidado e nutricao paciente estao proximos a florescer.",
+            "ehwaz": "Ehwaz sinaliza que o trabalho em equipa e a cooperacao baseada na confianca mutua sao o motor do teu sucesso profissional. Busca o companheiro com quem te moveres em perfeita coordenacao.",
+            "mannaz": "Mannaz lembra que as relacoes profissionais e a cooperacao comunitaria sao fundamentos da tua carreira. Reconhece o outro como igual e constroi redes de apoio baseadas no respeito mutuo.",
+            "laguz": "Laguz convida a confiar na intuicao para tomar decisoes laborais quando os dados racionais nao forem suficientes. O fluxo criativo do inconsciente pode revelar caminhos que a analise nao alcanca.",
+            "ingwaz": "Ingwaz sinaliza que o teu potencial profissional esta em fase de gestacao. Nao forces a manifestacao prematura: o desenvolvimento silencioso que ocorre agora e a base de um logro solido e duradouro.",
+            "dagaz": "Dagaz anuncia um limiar de transformacao na tua carreira: estas no ponto de inflexao entre um ciclo que se fecha e novas possibilidades que emergem. Acolhe a mudanca com abertura.",
+            "othala": "Othala sinaliza que a tua herenca de habilidades, conhecimentos e tradicao profissional e um ativo valioso. Constroi sobre os fundamentos que os que vieram antes deixaram; o legado e uma fortaleza."
+        },
+        "health": {
+            "fehu": "Fehu vincula a saude com a gestao consciente da vitalidade como recurso. O bem-estar fisico requer, como o gado, cuidado ativo: nao basta possui-lo, ha que administra-lo.",
+            "uruz": "Uruz te chama a construir forca fisica e vitalidade primordial. E momento de trabalhar o corpo com a intensidade do uro: exercicio, resistencia e vontade aplicada ao bem-estar.",
+            "thurisaz": "Thurisaz te avisa de ameacas a tua saude que requerem uma resposta contundente. Enfrente os desafios medicos com a mesma energia reativa que o espinho: sem demora e sem evasao.",
+            "ansuz": "Ansuz sinaliza que a comunicacao clara com o teu corpo —escutar os seus sinais— e com os profissionais da saude e fundamental para a cura. O diagnostico preciso começa pela escuta atenta.",
+            "raidho": "Raidho propoe que o caminho para a saude requer um movimento ordenado e constante. O ritmo correto de exercicio, descanso e habitos sustentados e mais poderoso que qualquer remedio pontual.",
+            "kenaz": "Kenaz ilumina o caminho para a cura atraves do conhecimento profundo do proprio corpo. Busca informacao rigorosa e aplica a clareza intelectual para compreender e abordar a tua situacao de saude.",
+            "gebo": "Gebo lembra que a saude e o equilibrio sagrado entre corpo, mente e espirito. O dom do bem-estar mantem-se quando cada dimensao recebe a atencao que lhe corresponde.",
+            "wunjo": "Wunjo sinaliza que o gozo e a harmonia interior tem um impacto direto e poderoso sobre a saude fisica. O bem-estar emocional nao e secundario: e um pilar fundamental da vitalidade.",
+            "hagalaz": "Hagalaz avisa que algumas crises de saude sao disrupcoes inevitaveis que o corpo precisa atravessar para se reorganizar. A tempestade passa; o que emerge pode ser mais robusto.",
+            "nauthiz": "Nauthiz sinaliza areas da tua saude que foram negligenciadas e reclamam atencao urgente. A necessidade nao atendida agrava-se; age ante os sinais do corpo antes que a restricao seja maior.",
+            "isa": "Isa recomenda repouso e quietude como medicina essencial. Parar o movimento, conservar a energia e deixar que o corpo se consolide e, as vezes, o ato terapeutico mais poderoso.",
+            "jera": "Jera assegura que os ciclos de cura natural seguem o seu proprio ritmo. A recuperacao gradual e sustentada —como a colheita— nao pode ser forçada, mas chega quando o processo foi respeitado.",
+            "eiwaz": "Eiwaz convida a resistencia e a adaptacao ante os desafios de saude. Como o teixo que sobrevive seculos, a capacidade de permanecer firme ante a adversidade fisica e uma fortaleza interior.",
+            "perthro": "Perthro reconhece que alguns aspetos da tua saude operam no terreno do misterio e imprevisivel. Aceita a incerteza e confia nos processos de cura que nem sempre sao compreendidos racionalmente.",
+            "algiz": "Algiz te convida a proteger a tua saude com vigilancia e a buscar apoio em fontes de energia curadoras. Estabelece limites claros ante o que te esgota e conecta com o que te restaura.",
+            "sowilo": "Sowilo aporta energia solar regeneradora ao teu processo de cura. A forca vital esta disponivel; sintoniza com ela atraves da luz, o movimento e a vontade de recuperar o pleno bem-estar.",
+            "tiwaz": "Tiwaz te chama a agir com coragem e disciplina nos teus habitos de saude. O sacrificio dos prazeres que danam em beneficio do bem-estar a longo prazo e o ato de honra que o teu corpo precisa.",
+            "berkano": "Berkano propicia processos de renovacao e cura natural. Como a betula que renasce na primavera, o teu corpo tem uma capacidade regenerativa profunda; da-lhe as condicoes para exerce-la.",
+            "ehwaz": "Ehwaz sinaliza que o movimento armonico e o fluxo natural sao essenciais para a tua saude. O corpo e a mente devem mover-se juntos, como o cavalo e o seu cavaleiro, em perfeita coordenacao.",
+            "mannaz": "Mannaz lembra que a cooperacao com os profissionais de saude e o apoio comunitario sao recursos fundamentais para o bem-estar. Nao atravesse os desafios sozinho.",
+            "laguz": "Laguz convida a cura emocional e a limpeza do que se acumulou no inconsciente. As emocoes nao processadas manifestam-se no corpo; atende o fluxo interior.",
+            "ingwaz": "Ingwaz sinaliza que a restauracao da tua saude e um processo de gestacao silenciosa. A energia vital esta a reconstituir-se; da-lhe tempo e condicoes para completar o seu ciclo.",
+            "dagaz": "Dagaz anuncia um ponto de inflexao na tua saude: o limiar entre o deterioro e a recuperacao. Estas no momento liminal; acolhe o amanhecer de um novo ciclo de bem-estar.",
+            "othala": "Othala sinaliza que a tua herenca genetica e os padroes de saude familiares merecem atencao consciente. Compreender o legado biologico e ancestral e parte do caminho para um bem-estar autentico."
+        },
+        "path": {
+            "fehu": "Fehu sinaliza que o teu caminho de vida esta fluindo para a abundancia e a prosperidade. Geri com responsabilidade os recursos que se apresentam; a riqueza que nao e cuidada se dispersa.",
+            "uruz": "Uruz te convoca a reclamar o teu poder primordial para superar os obstaculos no teu caminho. Age com a energia do uro: sem titubeos, com uma forca que nasce do mais profundo.",
+            "thurisaz": "Thurisaz avisa de forkas caoticas que podem perturbar o teu caminho. Protege-o com determinacao e reage com contundencia ante o que ameaça a tua direcao.",
+            "ansuz": "Ansuz sinaliza que as mensagens divinas e a sabedoria revelada sao a tua guia neste momento do caminho. Presta atencao aos sinais, os sonhos e as palavras que chegam de forma inesperada.",
+            "raidho": "Raidho confirma que estas no caminho correto, avançando com ritmo ordenado. Mantem a direcao e o ritmo; o carro que segue o seu curso chega ao destino.",
+            "kenaz": "Kenaz ilumina o teu caminho com a tocha do conhecimento e a mestria. A clareza que buscas chegara atraves do estudo, a pratica e o dominio progressivo da tua arte ou disciplina.",
+            "gebo": "Gebo sinaliza que as alianças e os intercambios honestos definem e enriquecem o teu caminho. As relacoes que se constroem sobre a reciprocidade sagrada sao as que abrem os melhores horizontes.",
+            "wunjo": "Wunjo confirma que o teu caminho esta alinhado com a alegria e o bem-estar profundo. A satisfacao que experimentas e sinal de que vais na direcao correta.",
+            "hagalaz": "Hagalaz avisa de disrupcoes inevitaveis no teu caminho. Nao as vejas como fracassos: sao as tempestades que limpam o terreno e revelam a rota mais autentica.",
+            "nauthiz": "Nauthiz sinaliza que as restricoes e necessidades atuais nao sao obstakos mas sinais que apontam para a verdadeira direcao do teu caminho. A restricao revela a essencia.",
+            "isa": "Isa convida a uma pausa no teu caminho. A imobilidade consciente nao e inakao: e o momento de consolidar o ganho e deixar que a direcao se clarifique antes de avançar.",
+            "jera": "Jera assegura que o teu caminho produzira os seus frutos no momento justo do ciclo. Continua a trabalhar com constancia; a colheita dos teus esforcos esta garantida pela ordem natural.",
+            "eiwaz": "Eiwaz lembra que o teu caminho passa por limites de transformacao profunda. A resistencia ante os siklos de morte e renascimento e o que permite atravessar os passos iniciaticos.",
+            "perthro": "Perthro sinaliza que o misterio e o Wyrd estao a operar no teu caminho de maneiras que nao podes prever. Confia no tecido do destino; ha mais sabedoria na abertura que no kontrol.",
+            "algiz": "Algiz pede-te para proteger o teu caminho com vigilancia espiritual e conexao com as forkas sagradas. A guia divina esta disponivel; busca os sinais com atencao.",
+            "sowilo": "Sowilo ilumina o teu caminho com a energia solar da vitoria. Avança com confiança e determinacao; a forca da luz acompanha o teu proposito.",
+            "tiwaz": "Tiwaz lembra que o caminho honroso exige as vezes sacrificar o menor em beneficio do maior. Age com justica e mantem a integridade como bussola em cada encruzilhada.",
+            "berkano": "Berkano anuncia que o teu caminho esta a entrar numa fase de renovacao e novos começos. Nutre com paciencia o que esta a nascer; os brotes fragis precisam de cuidado antes de se tornarem robustos.",
+            "ehwaz": "Ehwaz sinaliza que o teu caminho avanca melhor em cooperacao que sozinho. Busca o companheiro de viagem com quem te moveres em perfeita coordenacao e confianca mutua.",
+            "mannaz": "Mannaz lembra que o teu caminho individual esta entrelaçado com o destino da tua comunidade. O isolamento empobrece; a cooperacao e o sentido de pertenka enriquecem o trajeto.",
+            "laguz": "Laguz convida a deixar-se guiar pela intuicao e o fluxo emocional profundo. Como a agua, o melhor caminho e o que encontra o seu leito natural em vez de forçar a rota.",
+            "ingwaz": "Ingwaz sinaliza que o teu caminho esta num periodo de gestacao silenciosa. O potencial acumula-se no interior; quando for o momento, a manifestacao sera plena e poderosa.",
+            "dagaz": "Dagaz anuncia que estas no limiar de um novo amanhecer no teu caminho de vida. O siklo que se fecha e kondiçao do que começa; acolhe a transformacao com abertura radical.",
+            "othala": "Othala lembra que o teu caminho esta enraizado na sabedoria dos antepassados. Honra o legado que recebeste, constroi sobre esses fundamentos e transforma a herenca num legado proprio."
+        },
+        "general": {
+            "default": "Esta runa porta a sabedoria dos antigos e manifesta-se na tua situacao com uma mensagem que merece contemplacao profunda. Medita sobre o seu significado no contexto do teu momento presente."
+        }
+    }
+}

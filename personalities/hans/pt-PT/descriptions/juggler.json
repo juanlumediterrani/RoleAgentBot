@@ -1,0 +1,56 @@
+{
+    "title": "🎯  **Divisão de Serviços Especiais**",
+    "description": "Unidade de logística e entretenimento do regimento, coordena múltiplas operações para manter a moral das tropas.",
+    "button": "🎯 Serviços",
+    "dropdown": {
+        "select_juggler_action": "🎯 Selecionar ação de serviços...",
+        "config_juggler": "Configurar Serviços",
+        "config_juggler_description": "Ajustar configuração da divisão de serviços",
+        "config_juggler_emoji": "🎯"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Versos**: Solicita versos personalizados dedicados a outros utilizadores"
+    },
+    "poetry": {
+      "title": "📝 Versos",
+      "description": "Solicita um poema dedicado a outro utilizador.",
+      "action_compose": "✍️ Compor Poema",
+      "action_compose_desc": "Escreve um poema para outro utilizador",
+      "button": "📝 Versos",
+      "dropdown": {
+        "poetry_compose": "Compor Verso",
+        "poetry_compose_description": "Escreve um verso para outro utilizador",
+        "poetry_on": "Versos: Ativar",
+        "poetry_on_description": "Ativar versos para este servidor",
+        "poetry_off": "Versos: Desativar",
+        "poetry_off_description": "Desativar versos para este servidor"
+      },
+      "modal_title": "Compor Verso",
+      "modal_target_label": "Utilizador Destino",
+      "modal_target_placeholder": "@utilizador ou ID de utilizador",
+      "modal_dedication_label": "Dedicação/Premissa",
+      "modal_dedication_placeholder": "Um tema breve ou mensagem (máx. 150 caracteres)",
+      "error_target_invalid": "❌ Utilizador não encontrado. Usa @menção ou um ID válido.",
+      "error_dedication_too_long": "❌ A dedicação é demasiado longa (máx. 150 caracteres).",
+      "error_cost_failed": "❌ Erro ao processar o custo.",
+      "error_llm_failed": "❌ Erro ao gerar o poema",
+      "preview_title": "📝 Vista Prévia do Verso",
+      "preview_description": "Revisa o poema antes de enviar",
+      "preview_footer": "De: {sender}",
+      "button_confirm": "✅ Enviar",
+      "button_cancel": "❌ Cancelar",
+      "success_sent": "✅ Verso enviado para {target}",
+      "success_cancelled": "❌ Verso cancelado",
+      "dm_disabled_notice": "⚠️ O destino tem os DMs desativados. Aqui está o verso para enviar manualmente:",
+      "dm_disabled_offer": "Podes copiar e enviar o verso manualmente:",
+      "error_subrole_disabled": "❌ O subrol de Versos está desativado neste servidor. Contacta com um administrador para ativá-lo.",
+      "enabled": "✅ Versos ativados para este servidor.",
+      "disabled": "❌ Versos desativados para este servidor.",
+      "error_config_failed": "❌ Erro ao atualizar a configuração.",
+      "error_modal_belongs_to_another": "❌ Este modal pertence a outro utilizador.",
+      "error_failed_preview_dm": "❌ Erro ao enviar vista prévia por DM.",
+      "error_server_only": "❌ Esta opção só está disponível num servidor.",
+      "error_unknown_action": "❌ Ação desconhecida: {action}",
+      "error_generic": "❌ Erro: {error}"
+    }
+}

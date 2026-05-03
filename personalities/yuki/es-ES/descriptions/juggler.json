@@ -2,42 +2,56 @@
     "title": "🎎 **Okami-san** 🎎",
     "description": "Una geisha experta en múltiples artes tradicionales, entretiene a los visitantes de la casa de té con gracia y elegancia.",
     "button": "🎎 Okami-san",
-    "canvas_juggler_subrole_descriptions": {
-        "ring": "👁️ **Me-tsuke (目付)** - El círculo de vigilancia que mantiene el orden en el distrito"
-    },
-    "ring": {
-        "button": "👁️ Me-tsuke",
-        "title": "👁️ **ME-TSUKE (目付)**",
-        "description": "🔍 El círculo de vigilancia. Como inspector del distrito, Yuki mantiene una red de contactos que permite interrogar y perseguir sin romper la discreción de la casa de té.",
-        "status_active": "✅ **VIGILANCIA ACTIVA** - Yuki está ejerciendo su función de inspector",
-        "status_inactive": "❌ **EN REPOSO** - La vigilancia no está activa",
-        "current_target": "🎯 **SOSPECHOSO ACTUAL:**",
-        "target_unknown": "👤 Sin sospechosos identificados todavía",
-        "investigation_title": "🔍 **SEÑALAR A UN VISITANTE:**",
-        "investigation_instructions": "• Usa **Me-tsuke: Señalar** desde el menú de abajo\n• Escribe la mención (@) o ID del visitante sospechoso\n• Yuki iniciará una indagación directa\n• El resultado será visible para todos en el canal",
-        "investigation_warning": "⚠️ **RESTRICCIONES:**\n• Un visitante no puede señalarse a sí mismo\n• Los bots no son sujetos de investigación\n• La vigilancia debe estar activada por un administrador",
-        "inactive_title": "⚠️ **VIGILANCIA INACTIVA**",
-        "inactive_instructions": "Para activar la vigilancia:\n• Un administrador debe acceder al panel **Admin Me-tsuke**\n• Ejecutar **Vigilancia: Activar**\n• Configurar la frecuencia de las rondas\n\nUna vez activa, podrás señalar a visitantes sospechosos.",
-        "hot_potato": "🔥 **La sospecha se desplaza:** Ronda {iteration} (velocidad x{multiplier})",
-        "controls": "**Controles**\n- Activar o desactivar la vigilancia\n- Frecuencia de rondas",
-        "dm_accusation_header": "👁️ **INVESTIGACIÓN ME-TSUKE**",
-        "accused_label": "Acusado:",
-        "admin_description": "Configura la sensibilidad y frecuencia de la vigilancia del Me-tsuke",
-        "dropdown": {
-            "ring_accuse": "Me-tsuke: Señalar",
-            "ring_accuse_description": "Indicar que un visitante es sospechoso para la investigación",
-            "ring_on": "Vigilancia: Activar",
-            "ring_on_description": "Iniciar la vigilancia del distrito",
-            "ring_off": "Vigilancia: Desactivar",
-            "ring_off_description": "Detener la vigilancia del distrito",
-            "ring_frequency": "Vigilancia: Frecuencia",
-            "ring_frequency_description": "Configurar la frecuencia de las rondas (afecta la velocidad de sospecha)"
-        }
-    },
     "dropdown": {
         "select_juggler_action": "🎎 Seleccionar acción de entretenimiento...",
         "config_juggler": "Configurar Entretenimiento",
         "config_juggler_description": "Ajustar configuración del entretenimiento de la geisha",
         "config_juggler_emoji": "🎎"
+    },
+    "canvas_juggler_subrole_descriptions": {
+        "poetry": "📝 **Haiku**: Solicita haiku personalizados dedicados a otros usuarios"
+    },
+    "poetry": {
+        "title": "📝 Haiku",
+        "description": "Solicita un poema dedicado a otro usuario, escrito en el estilo de la personalidad del servidor.",
+        "action_compose": "✍️ Componer Poema",
+        "action_compose_desc": "Escribe un poema para otro usuario",
+        "button": "📝 Haiku",
+        "dropdown": {
+            "poetry_compose": "Componer Haiku",
+            "poetry_compose_description": "Escribe un haiku para otro usuario",
+            "poetry_on": "Haiku: Activar",
+            "poetry_on_description": "Activar haiku para este servidor",
+            "poetry_off": "Haiku: Desactivar",
+            "poetry_off_description": "Desactivar haiku para este servidor"
+        },
+        "modal_title": "Componer Haiku",
+        "modal_target_label": "Usuario Destino",
+        "modal_target_placeholder": "@usuario o ID de usuario",
+        "modal_dedication_label": "Dedicación/Premisa",
+        "modal_dedication_placeholder": "Un tema o mensaje breve (máx. 150 caracteres)",
+        "error_target_invalid": "❌ Usuario destino inválido",
+        "error_dedication_too_long": "❌ Dedicación demasiado larga (máx. 150 caracteres)",
+        "error_fatigue_limit": "❌ Límite de fatiga alcanzado",
+        "error_banker_charge": "❌ Balance insuficiente (se requiere 1xTAE)",
+        "error_llm_failed": "❌ Error al generar el poema",
+        "preview_title": "📝 Vista Previa del Haiku",
+        "preview_description": "Revisa el poema antes de enviarlo",
+        "preview_footer": "De: {sender}",
+        "button_confirm": "✅ Enviar",
+        "button_cancel": "❌ Cancelar",
+        "success_sent": "✅ Haiku enviado a {target}",
+        "success_cancelled": "❌ Haiku cancelado",
+        "dm_disabled_notice": "⚠️ El destino tiene los DMs desactivados. Aquí está el haiku para enviarlo manualmente:",
+        "dm_disabled_offer": "Puedes copiar y enviar el haiku manualmente:",
+        "error_subrole_disabled": "❌ El subrol de Haiku está desactivado en este servidor. Contacta con un administrador para activarlo.",
+        "enabled": "✅ Haiku activados para este servidor.",
+        "disabled": "❌ Haiku desactivados para este servidor.",
+        "error_config_failed": "❌ Error al actualizar la configuración.",
+        "error_modal_belongs_to_another": "❌ Este modal pertenece a otro usuario.",
+        "error_failed_preview_dm": "❌ Error al enviar vista previa por DM.",
+        "error_server_only": "❌ Esta opción solo está disponible en un servidor.",
+        "error_unknown_action": "❌ Acción desconocida: {action}",
+        "error_generic": "❌ Error: {error}"
     }
 }
