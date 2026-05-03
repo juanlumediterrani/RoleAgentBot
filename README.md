@@ -12,7 +12,7 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 
 ![Main Characters](banners/maincharacters.png)
 
-- **Multiple Personalities**: Switch between different AI personalities (Rab, Putre, Kronk, Yuki, Hans, Panigorr, Igorrr, and more)
+- **Multiple Personalities**: Switch between different AI personalities (Rab, Putre, Yuki, Hans, Panigorr, and more)
 - **Server-Specific Selection**: Configure different personalities per Discord server via Canvas UI or commands
 - **Character Voice**: Each personality has unique speech patterns, vocabulary, and behavioral traits
 - **Dynamic Responses**: AI maintains character consistency across all interactions
