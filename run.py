@@ -138,21 +138,27 @@ async def execute_daily_memory_summary_all_servers():
 async def execute_recent_memory_summary_all_servers():
     """Execute recent memory summary for all servers."""
     try:
+        logger.info("[run] 🧠 Starting recent memory refresh for all servers")
         refreshed = await asyncio.to_thread(refresh_due_recent_memories)
         if refreshed:
             logger.info(f"[run] 🧠 Recent memory refresh: {refreshed} server(s) updated")
+        else:
+            logger.info("[run] 🧠 Recent memory refresh: no servers had pending updates")
     except Exception as e:
-        logger.error(f"[run] ❌ Error in recent memory refresh: {e}")
+        logger.error(f"[run] ❌ Error in recent memory refresh: {e}", exc_info=True)
 
 
 async def execute_relationship_memory_refresh_all_servers():
     """Execute relationship memory refresh for all servers."""
     try:
+        logger.info("[run] 🧠 Starting relationship memory refresh for all servers")
         refreshed = await asyncio.to_thread(refresh_due_relationship_memories)
         if refreshed:
             logger.info(f"[run] 🧠 Relationship memory refresh: {refreshed} user relationship(s) updated")
+        else:
+            logger.info("[run] 🧠 Relationship memory refresh: no users had pending updates")
     except Exception as e:
-        logger.error(f"[run] ❌ Error in relationship memory refresh: {e}")
+        logger.error(f"[run] ❌ Error in relationship memory refresh: {e}", exc_info=True)
 
 
 async def execute_weekly_personality_evolution_all_servers():

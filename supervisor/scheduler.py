@@ -160,11 +160,23 @@ class JobScheduler:
         # Load persisted next_run if available
         if self._scheduler_state:
             persisted_next_run = self._scheduler_state.get_job_next_run(name)
-            if persisted_next_run is not None:
+            now_mono = time.monotonic()
+            if persisted_next_run is not None and persisted_next_run <= now_mono:
+                # Value is in the past → honour it (job fires immediately).
                 job.next_run_monotonic = persisted_next_run
-                self._logger.debug(f"[Scheduler] Restored next_run for '{name}': {persisted_next_run}")
+                self._logger.debug(f"[Scheduler] Restored next_run for '{name}': {persisted_next_run:.0f} (due now)")
+            elif persisted_next_run is not None:
+                # Value is in the future but time.monotonic() resets across
+                # process restarts — the persisted value is from a previous
+                # session and cannot be trusted. Schedule with normal delay.
+                job.next_run_monotonic = job.schedule.first_run_at(now_mono)
+                self._logger.info(
+                    f"[Scheduler] Persisted next_run for '{name}' ({persisted_next_run:.0f}) "
+                    f"is ahead of current monotonic ({now_mono:.0f}); "
+                    f"resetting to {job.next_run_monotonic:.0f}"
+                )
             else:
-                job.next_run_monotonic = job.schedule.first_run_at(time.monotonic())
+                job.next_run_monotonic = job.schedule.first_run_at(now_mono)
         else:
             job.next_run_monotonic = job.schedule.first_run_at(time.monotonic())
 
@@ -238,9 +250,12 @@ class JobScheduler:
     async def run_forever(self) -> None:
         self._stop_event = asyncio.Event()
         running_tasks: Dict[str, asyncio.Task] = {}
+        self._logger.info(f"[scheduler] run_forever started (tick={self._tick}s, jobs={len(self._jobs)})")
+        _tick_count = 0
         try:
             while not self._stop_event.is_set():
                 now = time.monotonic()
+                _tick_count += 1
                 async with self._lock:
                     triggered = set(self._trigger_now)
                     self._trigger_now.clear()
@@ -251,6 +266,7 @@ class JobScheduler:
                     is_running = name in running_tasks and not running_tasks[name].done()
                     due = now >= job.next_run_monotonic or name in triggered
                     if due and not is_running:
+                        self._logger.info(f"[scheduler] firing job '{name}' (tick #{_tick_count}, now={now:.0f}, next_run={job.next_run_monotonic:.0f})")
                         running_tasks[name] = asyncio.create_task(
                             self._execute_job(job), name=f"job:{name}"
                         )

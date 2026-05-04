@@ -1418,7 +1418,7 @@ async def _process_chat_message(message):
 
         # Check if this is a SWITCH response (personality switching in DMs)
         if is_switch_response(response):
-            logger.info(f"👋 SWITCH response detected from {message.author.name}")
+            logger.info(f"👋 SWITCH response detected from {message.author.name} - skipping interaction registration")
             switch_result = await _process_switch_sentinel(message, response, server_id, is_public)
             if switch_result is not None:
                 # SWITCH sentinel handled the response, skip normal processing

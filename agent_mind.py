@@ -623,9 +623,10 @@ def refresh_due_recent_memories(server_id: str | None = None) -> int:
         # Process specific server
         db_instance = get_global_db(server_id=server_id)
         due_refreshes = db_instance.get_due_pending_recent_memory_refreshes()
+        logger.info(f"🧠 [RECENT_MEMORY] Server {server_id}: {len(due_refreshes)} due refreshes found")
         if not due_refreshes:
             return 0
-        
+
         # Get last synthesis to check for new interactions
         existing_record = db_instance.get_recent_memory_record(memory_date=date.today().isoformat())
         last_interaction_at = (existing_record or {}).get("last_interaction_at")
@@ -634,12 +635,12 @@ def refresh_due_recent_memories(server_id: str | None = None) -> int:
             limit=100,
             target_date=date.today().isoformat(),
         )
-        
+
         if not new_interactions:
             logger.debug(f"🧠 [RECENT_MEMORY] No new interactions since last synthesis for {server_id}")
             db_instance.mark_recent_memory_refresh_completed()
             return 0
-        
+
         # Execute synthesis only if there are new interactions
         logger.debug(f"🧠 [RECENT_MEMORY] Processing {len(new_interactions)} new interactions for {server_id}")
         generate_recent_memory_summary(server_id=server_id)
@@ -649,12 +650,14 @@ def refresh_due_recent_memories(server_id: str | None = None) -> int:
         import time
         from agent_db import get_all_server_ids
         server_ids = get_all_server_ids()
+        logger.info(f"🧠 [RECENT_MEMORY] Processing {len(server_ids)} servers for recent memory refresh")
         total_processed = 0
         for idx, sid in enumerate(server_ids):
             # Small delay between servers to avoid Vertex AI rate limiting
             if idx > 0:
                 time.sleep(2)
             total_processed += refresh_due_recent_memories(sid)
+        logger.info(f"🧠 [RECENT_MEMORY] Total processed: {total_processed} servers")
         return total_processed
 
 
@@ -1045,6 +1048,7 @@ def refresh_due_relationship_memories(server_id: str | None = None) -> int:
         # Process specific server
         db_instance = get_global_db(server_id=server_id)
         due_refreshes = db_instance.get_due_pending_relationship_refreshes()
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Server {server_id}: {len(due_refreshes)} due relationship refreshes found")
         processed = 0
         for item in due_refreshes:
             user_id = item.get("usuario_id")
@@ -1079,12 +1083,14 @@ def refresh_due_relationship_memories(server_id: str | None = None) -> int:
         import time
         from agent_db import get_all_server_ids
         server_ids = get_all_server_ids()
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Processing {len(server_ids)} servers for relationship refresh")
         total_processed = 0
         for idx, sid in enumerate(server_ids):
             # Small delay between servers to avoid Vertex AI rate limiting
             if idx > 0:
                 time.sleep(2)
             total_processed += refresh_due_relationship_memories(sid)
+        logger.info(f"🧠 [RELATIONSHIP_MEMORY] Total relationship refreshes processed: {total_processed}")
         return total_processed
 
 

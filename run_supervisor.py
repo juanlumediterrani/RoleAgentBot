@@ -25,8 +25,9 @@ class RunSupervisor:
 
     def __init__(self):
         self.supervisor = Supervisor(logger=logger)
-        self.job_scheduler = JobScheduler(tick_seconds=60.0, logger=logger)
+        self.job_scheduler = JobScheduler(tick_seconds=10.0, logger=logger)
         self._running = False
+        self._scheduler_task = None  # prevent GC of background task
 
     async def start(self):
         """Start both supervisor and job scheduler."""
@@ -37,8 +38,9 @@ class RunSupervisor:
         self._running = True
         logger.info("[RunSupervisor] Starting supervisor and job scheduler")
 
-        # Start job scheduler in background
-        asyncio.create_task(self.job_scheduler.run_forever())
+        # Start job scheduler in background (store reference to prevent GC)
+        self._scheduler_task = asyncio.create_task(self.job_scheduler.run_forever())
+        logger.info("[RunSupervisor] Job scheduler task created")
 
         logger.info("[RunSupervisor] Started successfully")
 
@@ -110,21 +112,21 @@ class RunSupervisor:
             timeout_seconds=300,
         )
 
-        # Recent memory summary (every 4 hours)
+        # Recent memory summary (every 4 hours) — reduced to 5min for testing
         from run import execute_recent_memory_summary_all_servers
         self.job_scheduler.register(
             "recent_memory_summary",
             execute_recent_memory_summary_all_servers,
-            Schedule.every(hours=4),
+            Schedule.every(minutes=5),
             timeout_seconds=300,
         )
 
-        # Relationship memory refresh (every 1 hour)
+        # Relationship memory refresh (every 1 hour) — reduced to 5min for testing
         from run import execute_relationship_memory_refresh_all_servers
         self.job_scheduler.register(
             "relationship_memory_refresh",
             execute_relationship_memory_refresh_all_servers,
-            Schedule.every(hours=1),
+            Schedule.every(minutes=5),
             timeout_seconds=300,
         )
 

@@ -147,7 +147,7 @@ class AgentMemoryNoSQL:
             # Only schedule if no pending tasks exist (anti-clogging logic)
             pending_recent = self.get_due_pending_recent_memory_refreshes()
             if not pending_recent:
-                scheduled_for = self.schedule_recent_memory_update(delay_minutes=60)
+                scheduled_for = self.schedule_recent_memory_update(delay_minutes=10)
                 logger.debug(f"🧠 [NoSQL] Scheduled recent memory update: {scheduled_for}")
             else:
                 logger.debug(f"🧠 [NoSQL] Recent memory update already pending, skipping new task")
@@ -155,7 +155,7 @@ class AgentMemoryNoSQL:
             # Schedule relationship update with 5-minute delay to avoid overlap
             # Recent memory has priority, relationship runs 5 minutes after
             relationship_scheduled_for = self.schedule_relationship_update(
-                str(user_id), delay_minutes=65  # 60 + 5 delay
+                str(user_id), delay_minutes=15  # 10 + 5 delay
             )
             if relationship_scheduled_for:
                 logger.debug(f"🧠 [NoSQL] Scheduled relationship update for user {user_id}: {relationship_scheduled_for} (5min delay)")

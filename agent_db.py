@@ -54,8 +54,10 @@ def get_all_server_ids() -> list[str]:
         server_ids = []
         for server_dir in db_dir.iterdir():
             if server_dir.is_dir() and server_dir.name.isdigit():
-                # Check if this server has an agent database (any personality)
-                if any(server_dir.glob("agent_*.db")):
+                # Check if this server has data (NoSQL state.json or legacy SQLite agent_*.db)
+                has_nosql = (server_dir / "state.json").exists()
+                has_sqlite = any(server_dir.glob("agent_*.db"))
+                if has_nosql or has_sqlite:
                     server_ids.append(server_dir.name)
         
         return sorted(server_ids)
