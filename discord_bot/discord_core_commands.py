@@ -944,5 +944,105 @@ def register_core_commands(bot, agent_config):
     else:
         logger.info("Command setpersonality already registered, skipping...")
 
+    # --- UPLOAD PERSONALITY COMMAND ---
+
+    if bot.get_command("uploadpersonality") is None:
+        @bot.command(name="uploadpersonality")
+        async def cmd_upload_personality(ctx, attachment: discord.Attachment = None):
+            """Upload a custom personality ZIP file (admin only)."""
+            if not is_admin(ctx):
+                await ctx.send("❌ Only administrators can upload custom personalities.")
+                return
+
+            if not ctx.guild:
+                await ctx.send("❌ This command only works in servers.")
+                return
+
+            server_key = get_server_key(ctx.guild)
+
+            # Check if attachment was provided via reply or direct upload
+            if not attachment:
+                # Check if this is a reply to a message with an attachment
+                if ctx.message.reference and ctx.message.reference.resolved:
+                    referenced_msg = ctx.message.reference.resolved
+                    if referenced_msg.attachments:
+                        attachment = referenced_msg.attachments[0]
+
+            if not attachment:
+                await ctx.send(
+                    "❌ Please attach a ZIP file.\n"
+                    "Usage: `!uploadpersonality` (with ZIP attached or as reply to message with ZIP)"
+                )
+                return
+
+            # Check file extension
+            if not attachment.filename.endswith('.zip'):
+                await ctx.send("❌ Only ZIP files are accepted.")
+                return
+
+            logger.info(f"Upload personality command by {ctx.author.name} for server {ctx.guild.name}")
+
+            try:
+                # Show processing message
+                processing_msg = await ctx.send("🔄 Processing personality upload...")
+
+                # Download the file
+                temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "temp")
+                os.makedirs(temp_dir, exist_ok=True)
+                zip_path = os.path.join(temp_dir, f"upload_{server_key}_{attachment.filename}")
+                await attachment.save(zip_path)
+
+                # Process the upload
+                from discord_bot.personality_upload import (
+                    process_upload_async,
+                    format_upload_result,
+                )
+
+                result = await process_upload_async(zip_path, server_key, str(ctx.author.id))
+
+                # Format and send result (with server_id for personality descriptions)
+                result_message = format_upload_result(result, server_key)
+
+                # Delete processing message and send result
+                await processing_msg.delete()
+                result_msg = await ctx.send(result_message)
+
+                # Schedule auto-deletion after 2 minutes
+                async def delete_after_delay(msg, delay_seconds=120):
+                    await asyncio.sleep(delay_seconds)
+                    try:
+                        await msg.delete()
+                    except Exception:
+                        pass  # Message may already be deleted
+
+                asyncio.create_task(delete_after_delay(result_msg))
+
+                # Cleanup temp file (run in background thread)
+                async def cleanup_temp_file():
+                    try:
+                        await asyncio.to_thread(os.remove, zip_path)
+                    except OSError:
+                        pass
+                asyncio.create_task(cleanup_temp_file())
+
+                # If successful, reload personality (run in background thread)
+                if result["success"]:
+                    async def reload_and_sync():
+                        from agent_engine import reload_personality
+                        await asyncio.to_thread(reload_personality, server_key)
+
+                        # Sync identity
+                        from discord_bot.discord_utils import sync_bot_identity_to_server_personality
+                        await sync_bot_identity_to_server_personality(ctx.guild)
+
+                    # Run reload in background to avoid blocking command response
+                    asyncio.create_task(reload_and_sync())
+
+            except Exception as e:
+                logger.exception(f"Error in uploadpersonality command: {e}")
+                await ctx.send(f"❌ Error uploading personality: {e}")
+    else:
+        logger.info("Command uploadpersonality already registered, skipping...")
+
     # --- Log registered commands ---
-    logger.info(f"Core commands registered: agenthelp, canvas, {role_cmd_name}, readme, testpersonalityevolution, testdailymemory, testrecentmemory, testrelationshipmemory, setnickname, identity, setpersonality")
+    logger.info(f"Core commands registered: agenthelp, canvas, {role_cmd_name}, readme, testpersonalityevolution, testdailymemory, testrecentmemory, testrelationshipmemory, setnickname, identity, setpersonality, uploadpersonality")

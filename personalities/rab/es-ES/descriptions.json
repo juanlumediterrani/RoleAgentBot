@@ -159,7 +159,24 @@
         "confirm_change_message": "**¿Confirmar transmigración a {personality}?** Selecciona tus opciones:",
         "selected_personality": "**Identidad seleccionada: {personality}**",
         "selected_personality_with_language": "**Identidad seleccionada: {personality} (Idioma: {language})**",
-        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad."
+        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad.",
+        "upload_success": "✅ Personalidad personalizada cargada y activada como 'custom'.",
+        "missing_files_title": "\n⚠️ Archivos faltantes usando fallback:",
+        "backup_saved": "📦 Backup guardado: {backup_path}",
+        "analysis_cached": "\n📋 Análisis: Usando resultado cacheado",
+        "cooldown_message": "\n⏱️ Próxima subida disponible en: 30 minutos",
+        "error_title": "❌ Error al cargar personalidad:",
+        "upload_title": "📤 **Subir Personalidad Personalizada**",
+        "upload_command_instruction": "Para subir tu personalidad, usa el comando `!uploadpersonality` con un archivo ZIP adjunto.",
+        "upload_requirements_title": "📋 **Requisitos del ZIP:**",
+        "upload_max_size": "• Tamaño máximo: 10MB",
+        "upload_allowed_files": "• Archivos permitidos: .json, .png, .jpg, .webp, .md, .txt",
+        "upload_optional_files": "• Archivos opcionales: personality.json, prompts.json, answers.json, descriptions.json, avatar.png (o .jpg, .webp)",
+        "upload_cooldown": "⏱️ **Cooldown:** 30 minutos entre subidas",
+        "upload_analysis": "🔍 **Análisis:** El contenido será analizado automáticamente",
+        "upload_template_hint": "💡 **¿Necesitas una plantilla?** Usa el botón de abajo para descargar la personalidad RAB en **{language}** como referencia.",
+        "upload_example": "**Ejemplo:** `!uploadpersonality` (con ZIP adjunto)",
+        "upload_template_button": "📥 Descargar plantilla RAB ({language})"
       }
     },
     "readme": {

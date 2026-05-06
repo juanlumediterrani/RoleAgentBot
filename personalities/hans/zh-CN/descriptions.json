@@ -159,7 +159,24 @@
         "confirm_change_message": "**确认改变为 {personality}？** 在下面选择你的选项：",
         "selected_personality": "**选择身份：{personality}**",
         "selected_personality_with_language": "**选择身份：{personality}（语言：{language}）**",
-        "language_change_note": "⚠️ **注意：** 为同一身份改变语言。"
+        "language_change_note": "⚠️ **注意：** 为同一身份改变语言。",
+        "upload_success": "✅ 自定义身份已加载并激活为 'custom'，指挥官！！",
+        "missing_files_title": "\n⚠️ 缺失文件使用回退：",
+        "backup_saved": "📦 备份已保存：{backup_path}",
+        "analysis_cached": "\n📋 分析：使用缓存结果",
+        "cooldown_message": "\n⏱️ 下次上传可在30分钟后",
+        "error_title": "❌ 加载身份错误：",
+        "upload_title": "📤 **上传自定义身份**",
+        "upload_command_instruction": "要上传你的身份，请使用 `!uploadpersonality` 命令并附加 ZIP 文件，新兵！",
+        "upload_requirements_title": "📋 **ZIP 要求：**",
+        "upload_max_size": "• 最大大小：10MB",
+        "upload_allowed_files": "• 允许的文件：.json, .png, .jpg, .webp, .md, .txt",
+        "upload_optional_files": "• 可选文件：personality.json, prompts.json, answers.json, descriptions.json, avatar.png（或 .jpg, .webp）",
+        "upload_cooldown": "⏱️ **冷却时间：** 上传之间间隔30分钟",
+        "upload_analysis": "🔍 **分析：** 内容将自动分析",
+        "upload_template_hint": "💡 **需要模板吗？** 使用下面的按钮下载 **{language}** 语言的 RAB 身份作为参考，新兵！",
+        "upload_example": "**示例：** `!uploadpersonality`（附带 ZIP）",
+        "upload_template_button": "📥 下载 RAB 模板 ({language})"
       }
     },
     "readme": {

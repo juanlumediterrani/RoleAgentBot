@@ -905,6 +905,9 @@ def get_server_personality_avatar_path(server_id: str) -> str | None:
     during personality initialisation and updates.
     Falls back to personalities/<name>/avatar.<ext> if the copy is missing.
 
+    For custom personalities (uploaded via ZIP), the avatar is stored in
+    databases/<server_id>/custom/avatar.png and does not have a fallback.
+
     Args:
         server_id: Discord guild ID
 
@@ -918,6 +921,16 @@ def get_server_personality_avatar_path(server_id: str) -> str | None:
     personality_dir, personality_name = result
     base_dir = os.path.dirname(os.path.dirname(__file__))
     avatar_extensions = ['.png', '.webp', '.jpg', '.jpeg']
+
+    # Special case for custom personality: only look in databases/<server_id>/custom/
+    if personality_name == "custom":
+        for ext in avatar_extensions:
+            avatar_path = os.path.join(personality_dir, f'avatar{ext}')
+            if os.path.exists(avatar_path):
+                logger.debug(f"Found avatar in databases/ for server {server_id} (custom): {avatar_path}")
+                return avatar_path
+        logger.debug(f"No avatar found for custom personality in server {server_id}")
+        return None
 
     # 1. Server-specific copy (databases/<server_id>/<personality>/)
     for ext in avatar_extensions:

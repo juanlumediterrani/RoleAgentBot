@@ -302,6 +302,8 @@ class CanvasPersonalitySelect(discord.ui.Select):
         change_desc = personality_msgs.get("option_change_desc", "Switch to a different bot personality")
         download_label = personality_msgs.get("option_download", "Download Current")
         download_desc = personality_msgs.get("option_download_desc", "Export current personality as ZIP")
+        upload_label = personality_msgs.get("option_upload", "Upload Custom Personality")
+        upload_desc = personality_msgs.get("option_upload_desc", "Upload your own personality ZIP file")
 
         options = [
             discord.SelectOption(
@@ -317,6 +319,17 @@ class CanvasPersonalitySelect(discord.ui.Select):
                 emoji="📦"
             ),
         ]
+
+        # Only show upload option to admins
+        if admin_visible:
+            options.append(
+                discord.SelectOption(
+                    label=upload_label,
+                    value="upload_personality",
+                    description=upload_desc,
+                    emoji="📤"
+                )
+            )
 
         placeholder = personality_msgs.get("placeholder", "Choose a personality action...")
         super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options, row=1)
@@ -355,6 +368,9 @@ class CanvasPersonalitySelect(discord.ui.Select):
 
         elif selected == "download_personality":
             await self._handle_download(interaction)
+
+        elif selected == "upload_personality":
+            await self._handle_upload(interaction)
 
     async def _handle_download(self, interaction: discord.Interaction):
         """Handle downloading current personality as ZIP."""
@@ -408,6 +424,136 @@ class CanvasPersonalitySelect(discord.ui.Select):
             if logger:
                 logger.exception(f"Error downloading personality: {e}")
             await interaction.followup.send(f"❌ Error downloading personality: {str(e)}", ephemeral=True)
+
+    async def _handle_upload(self, interaction: discord.Interaction):
+        """Handle uploading custom personality as ZIP."""
+        try:
+            from discord_bot.personality_upload import (
+                check_upload_cooldown,
+                format_cooldown_time,
+                MAX_ZIP_SIZE_BYTES,
+                get_personality_descriptions,
+            )
+
+            server_id = get_server_key(self.view.guild) if (get_server_key and self.view.guild) else None
+            if not server_id:
+                await interaction.response.send_message("❌ Server ID not available.", ephemeral=True)
+                return
+
+            # Check rate limiting
+            can_upload, cooldown_remaining = check_upload_cooldown(server_id)
+            if not can_upload:
+                await interaction.response.send_message(
+                    f"⏱️ Debes esperar {format_cooldown_time(cooldown_remaining)} antes de subir otra personalidad.",
+                    ephemeral=True
+                )
+                return
+
+            # Get server language for template
+            try:
+                from .server_config import get_server_language
+                server_language = get_server_language(server_id)
+            except Exception:
+                server_language = "en-US"
+
+            # Load personality descriptions for localized messages
+            personality_msgs = get_personality_descriptions(server_id)
+
+            # Fallback to English messages
+            upload_title = personality_msgs.get("upload_title", "📤 **Upload Custom Personality**")
+            upload_command_instruction = personality_msgs.get("upload_command_instruction", "To upload your personality, use the `!uploadpersonality` command with a ZIP file attached.")
+            upload_requirements_title = personality_msgs.get("upload_requirements_title", "📋 **ZIP Requirements:**")
+            upload_max_size = personality_msgs.get("upload_max_size", f"• Max size: {MAX_ZIP_SIZE_BYTES / (1024*1024):.0f}MB")
+            upload_allowed_files = personality_msgs.get("upload_allowed_files", "• Allowed files: .json, .png, .jpg, .webp, .md, .txt")
+            upload_optional_files = personality_msgs.get("upload_optional_files", "• Optional files: personality.json, prompts.json, answers.json, descriptions.json")
+            upload_cooldown = personality_msgs.get("upload_cooldown", "⏱️ **Cooldown:** 30 minutes between uploads")
+            upload_analysis = personality_msgs.get("upload_analysis", "🔍 **Analysis:** Content will be analyzed automatically")
+            upload_template_hint = personality_msgs.get("upload_template_hint", f"💡 **Need a template?** Use the button below to download the RAB personality in **{server_language}** as reference.")
+            upload_example = personality_msgs.get("upload_example", "**Example:** `!uploadpersonality` (with ZIP attached)")
+            upload_template_button = personality_msgs.get("upload_template_button", f"📥 Download RAB template ({server_language})")
+
+            # Send ephemeral message with instructions and template button
+            instructions = (
+                f"{upload_title}\n\n"
+                f"{upload_command_instruction}\n\n"
+                f"{upload_requirements_title}\n"
+                f"{upload_max_size}\n"
+                f"{upload_allowed_files}\n"
+                f"{upload_optional_files}\n\n"
+                f"{upload_cooldown}\n"
+                f"{upload_analysis}\n\n"
+                f"{upload_template_hint}\n\n"
+                f"{upload_example}"
+            )
+
+            # Create view with template download button
+            view = discord.ui.View(timeout=300)
+            template_button = discord.ui.Button(
+                label=upload_template_button,
+                style=discord.ButtonStyle.secondary,
+                custom_id="download_rab_template"
+            )
+
+            async def template_callback(template_interaction: discord.Interaction):
+                await template_interaction.response.defer(thinking=True, ephemeral=True)
+                await self._send_rab_template(template_interaction, server_id, server_language)
+
+            template_button.callback = template_callback
+            view.add_item(template_button)
+
+            await interaction.response.send_message(instructions, view=view, ephemeral=True)
+
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error initiating upload: {e}")
+            await interaction.response.send_message(f"❌ Error initiating upload: {str(e)}", ephemeral=True)
+
+    async def _send_rab_template(self, interaction: discord.Interaction, server_id: str, language: str):
+        """Send RAB personality as template ZIP."""
+        try:
+            base_dir = Path(__file__).parent.parent.parent
+
+            # Try language-specific path first
+            rab_dir = base_dir / "personalities" / "rab" / language
+            if not rab_dir.exists():
+                # Fallback to default structure without language
+                rab_dir = base_dir / "personalities" / "rab"
+                if not rab_dir.exists():
+                    await interaction.followup.send("❌ Template personality (RAB) not found.", ephemeral=True)
+                    return
+
+            if not (rab_dir / "personality.json").exists():
+                await interaction.followup.send("❌ Template personality files not found.", ephemeral=True)
+                return
+
+            # Create ZIP
+            zip_path = await _zip_personality(f"rab_template_{language}", rab_dir)
+
+            if not zip_path or not zip_path.exists():
+                await interaction.followup.send("❌ Failed to create template ZIP.", ephemeral=True)
+                return
+
+            # Send file
+            file = discord.File(zip_path, filename=f"rab_template_{language}.zip")
+
+            await interaction.followup.send(
+                content=f"📥 **Plantilla RAB ({language})**\n\n"
+                        f"Usa esta plantilla como referencia para crear tu personalidad personalizada.\n"
+                        f"Incluye todos los archivos necesarios con la estructura correcta.",
+                file=file,
+                ephemeral=True
+            )
+
+            # Clean up temp file
+            try:
+                zip_path.unlink()
+            except:
+                pass
+
+        except Exception as e:
+            if logger:
+                logger.exception(f"Error sending RAB template: {e}")
+            await interaction.followup.send(f"❌ Error creating template: {str(e)}", ephemeral=True)
 
 
 class CanvasPersonalitySelectView(discord.ui.View):

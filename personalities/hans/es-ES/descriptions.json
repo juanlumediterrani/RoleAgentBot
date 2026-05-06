@@ -159,7 +159,24 @@
         "confirm_change_message": "**¿Confirmar cambio a {personality}?** Selecciona tus opciones a continuación:",
         "selected_personality": "**Identidad seleccionada: {personality}**",
         "selected_personality_with_language": "**Identidad seleccionada: {personality} (Idioma: {language})**",
-        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad."
+        "language_change_note": "⚠️ **Nota:** Cambiando idioma para la misma identidad.",
+        "upload_success": "✅ ¡¡IDENTIDAD PERSONALIZADA CARGADA Y ACTIVA COMO 'CUSTOM', COMANDANTE!!",
+        "missing_files_title": "\n⚠️ Archivos faltantes usando fallback:",
+        "backup_saved": "📦 Backup guardado: {backup_path}",
+        "analysis_cached": "\n📋 Análisis: Usando resultado cacheado",
+        "cooldown_message": "\n⏱️ Próxima subida disponible en: 30 minutos",
+        "error_title": "❌ Error al cargar identidad:",
+        "upload_title": "📤 **SUBIR IDENTIDAD PERSONALIZADA**",
+        "upload_command_instruction": "¡Para subir tu identidad, usa el comando `!uploadpersonality` con un archivo ZIP adjunto, RECLUTA!",
+        "upload_requirements_title": "📋 **REQUISITOS DEL ZIP:**",
+        "upload_max_size": "• Tamaño máximo: 10MB",
+        "upload_allowed_files": "• Archivos permitidos: .json, .png, .jpg, .webp, .md, .txt",
+        "upload_optional_files": "• Archivos opcionales: personality.json, prompts.json, answers.json, descriptions.json, avatar.png (or .jpg, .webp)",
+        "upload_cooldown": "⏱️ **COOLDOWN:** 30 minutos entre subidas",
+        "upload_analysis": "🔍 **ANÁLISIS:** El contenido será analizado automáticamente",
+        "upload_template_hint": "💡 **¿NECESITAS UNA PLANTILLA?** ¡Usa el botón de abajo para descargar la identidad RAB en **{language}** como referencia, RECLUTA!",
+        "upload_example": "**EJEMPLO:** `!uploadpersonality` (con ZIP adjunto)",
+        "upload_template_button": "📥 Descargar plantilla RAB ({language})"
       }
     },
     "readme": {

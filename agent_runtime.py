@@ -64,8 +64,9 @@ def get_personality_directory(server_id: str = None) -> str:
     Get the personality directory for a specific server.
 
     Priority order:
-    1. Server-specific directory from server_config.json: databases/<server_id>/<active_personality>/
-    2. Server-specific directory from db_init: databases/<server_id>/<personality>/
+    1. Custom personality directory: databases/<server_id>/custom/ (if active_personality is "custom")
+    2. Server-specific directory from server_config.json: databases/<server_id>/<active_personality>/
+    3. Server-specific directory from db_init: databases/<server_id>/<personality>/
 
     ⚠️ IMPORTANT: NO FALLBACKS to personalities/ directory or _PERSONALITY_DIR
     This is intentional - all personality files MUST be in databases/<server_id>/<personality>/
@@ -92,7 +93,17 @@ def get_personality_directory(server_id: str = None) -> str:
                     server_cfg = json.load(f)
                 active_personality = server_cfg.get("active_personality")
                 language = server_cfg.get("language", "en-US")
-                if active_personality:
+
+                # Handle custom personality specially
+                if active_personality == "custom":
+                    custom_dir = os.path.join(_BASE_DIR, "databases", server_id, "custom")
+                    if os.path.exists(os.path.join(custom_dir, "personality.json")):
+                        logger.debug(f"Using custom personality directory: {custom_dir}")
+                        return custom_dir
+                    else:
+                        logger.warning(f"Custom personality selected but files not found in {custom_dir}")
+
+                if active_personality and active_personality != "custom":
                     server_personality_dir = os.path.join(_BASE_DIR, "databases", server_id, active_personality)
                     if os.path.exists(os.path.join(server_personality_dir, "personality.json")):
                         logger.debug(f"Using server-specific personality directory: {server_personality_dir}")

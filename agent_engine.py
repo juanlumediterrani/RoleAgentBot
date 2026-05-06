@@ -147,6 +147,9 @@ def _cargar_personalidad(server_id: str = None) -> dict:
     personality_rel = None
     language = "en-US"  # Default language
     active_personality_name = None  # Track the personality name for server-dir lookup
+
+    # Check for custom personality first
+    custom_personality_dir = None
     if server_id:
         try:
             server_config_path = os.path.join(_BASE_DIR, "databases", server_id, "server_config.json")
@@ -154,7 +157,18 @@ def _cargar_personalidad(server_id: str = None) -> dict:
                 with open(server_config_path, encoding="utf-8") as f:
                     server_cfg = json.load(f)
                 active_personality = server_cfg.get("active_personality")
-                if active_personality:
+
+                # Handle custom personality specially
+                if active_personality == "custom":
+                    custom_dir = os.path.join(_BASE_DIR, "databases", server_id, "custom")
+                    if os.path.exists(os.path.join(custom_dir, "personality.json")):
+                        custom_personality_dir = custom_dir
+                        active_personality_name = "custom"
+                        logger.debug(f"🧬 [PERSONALITY] Using custom personality from: {custom_dir}")
+                    else:
+                        logger.warning(f"🧬 [PERSONALITY] Custom personality selected but files not found in {custom_dir}")
+
+                if active_personality and active_personality != "custom":
                     # Get language from server config, default to en-US
                     language = server_cfg.get("language", "en-US")
                     active_personality_name = active_personality
@@ -182,12 +196,18 @@ def _cargar_personalidad(server_id: str = None) -> dict:
     base_personality_dir = os.path.dirname(personality_path)
     personality_dir = base_personality_dir
 
+    # If using custom personality, use that directory directly
+    if custom_personality_dir:
+        personality_dir = custom_personality_dir
+        logger.debug(f"🧬 [PERSONALITY] Using custom personality directory: {personality_dir}")
+
     # Check for server-specific personality directory: databases/<server_id>/<personality_name>/
     # NOTE: active_personality_name must be used here — NOT os.path.basename(base_personality_dir)
     # which would return the language code (e.g. "es-ES") instead of the personality name.
     logger.debug(f"🧬 [PERSONALITY] server_id={server_id}, active_personality_name={active_personality_name}")
     logger.debug(f"🧬 [PERSONALITY] base_personality_dir={base_personality_dir}")
-    if server_id and active_personality_name:
+    # Skip server-specific directory logic for custom personalities
+    if server_id and active_personality_name and active_personality_name != "custom":
         try:
             server_personality_dir = os.path.join(_BASE_DIR, "databases", server_id, active_personality_name)
             server_personality_json = os.path.join(server_personality_dir, 'personality.json')

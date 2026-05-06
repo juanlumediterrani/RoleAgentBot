@@ -177,7 +177,24 @@
         "confirm_change_message": "**Konfirmar kambio para {personality}?** Seleksiona as tuas opkoes:",
         "selected_personality": "**Personalidade seleksionada: {personality}**",
         "selected_personality_with_language": "**Personalidade seleksionada: {personality} (Idioma: {language})**",
-        "language_change_note": "⚠️ **Nota:** Kambiando idioma para a mesma personalidade."
+        "language_change_note": "⚠️ **Nota:** Kambiando idioma para a mesma personalidade.",
+        "upload_success": "✅ Personalidade personalizada karregada e ativa komo 'custom'.",
+        "missing_files_title": "\n⚠️ Arquivos faltantes usando fallback:",
+        "backup_saved": "📦 Backup guardado: {backup_path}",
+        "analysis_cached": "\n📋 Análise: Usando resultado kakeado",
+        "cooldown_message": "\n⏱️ Próxima subida disponível em: 30 minutos",
+        "error_title": "❌ Erro ao karregar personalidade:",
+        "upload_title": "📤 **Karregar Personalidade Personalizada**",
+        "upload_command_instruction": "Para karregar a tua personalidade, usa o komando `!uploadpersonality` kom um ficheiro ZIP anexado.",
+        "upload_requirements_title": "📋 **Requisitos do ZIP:**",
+        "upload_max_size": "• Tamanho máximo: 10MB",
+        "upload_allowed_files": "• Ficheiros permitidos: .json, .png, .jpg, .webp, .md, .txt",
+        "upload_optional_files": "• Ficheiros opcionais: personality.json, prompts.json, answers.json, descriptions.json, avatar.png (ou .jpg, .webp)",
+        "upload_cooldown": "⏱️ **Cooldown:** 30 minutos entre karregamentos",
+        "upload_analysis": "🔍 **Análise:** O konteúdo será analisado automaticamente",
+        "upload_template_hint": "💡 **Preshisas de um modelo?** Usa o botão abaixo para deskarregar a personalidade RAB em **{language}** komo referência.",
+        "upload_example": "**Exemplo:** `!uploadpersonality` (kom ZIP anexado)",
+        "upload_template_button": "📥 Deskarregar modelo RAB ({language})"
       }
     },
     "readme": {
