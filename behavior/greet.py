@@ -284,6 +284,15 @@ async def _send_greeting_to_user(user_id: int, user_name: str, guild, greeting_d
         # Record greeting in memory so we don't spam the user until they reply
         record_pending_greeting(user_id, server_name)
 
+        # Auto-pin DM session to this server when greeting is sent
+        # This ensures replies use the correct server by default, but ReplyButton allows manual override
+        try:
+            from agent_db import pin_dm_session
+            pin_dm_session(user_id, server_id)
+            logger.info(f"Auto-pinned DM session for user {user_id} to server {guild.name} ({server_id}) after greeting")
+        except Exception as e:
+            logger.debug(f"Could not auto-pin DM session after greeting: {e}")
+
         # Register interaction
         try:
             db_instance = get_db_for_server(guild)
