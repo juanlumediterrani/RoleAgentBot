@@ -233,7 +233,53 @@ Every 7 days, `execute_weekly_personality_evolution_all_servers` runs per guild:
 
 If the LLM or parsing fails, nothing is written (safe rollback). If the server personality has not been migrated yet, the task fails gracefully with a clear error.
 
-### 5.5 Personality development tools
+### 5.5 Custom personality upload
+
+Users can upload custom personalities via `!uploadpersonality` with a ZIP file. The upload system (`discord_bot/personality_upload/`) provides:
+
+- **ZIP validation**: Security checks for path traversal, file type limits, and size limits (10 MB max)
+- **Content analysis**: AI-powered analysis to detect malicious or inappropriate content
+- **Rate limiting**: 30-minute cooldown between uploads per server
+- **Avatar extraction**: Automatically extracts avatar files (`.png`, `.jpg`, `.jpeg`, `.webp`) from ZIP and converts to PNG
+- **Subdirectory preservation**: Maintains structure like `descriptions/` subdirectory for role-specific files
+- **Automatic cleanup**: Removes previous personality directory after successful custom upload
+- **Backup system**: Creates timestamped backups of existing custom personalities
+
+**Upload flow** (Trace 12):
+
+```text
+!uploadpersonality (with ZIP attachment)
+├── Rate limit check (30 min cooldown)
+├── ZIP validation (security + size)
+├── Content analysis (AI safety check)
+├── Backup existing custom personality
+├── Extract to databases/<server_id>/custom/
+│   ├── Preserve subdirectory structure (descriptions/, etc.)
+│   └── Extract avatar → convert to PNG → move to root as avatar.png
+├── Update server_config.json (active_personality: "custom")
+├── Remove previous personality directory (databases/<server_id>/<old_personality>/)
+└── Reload personality + sync bot identity
+```
+
+**Allowed files in ZIP**:
+- `personality.json` (optional)
+- `prompts.json` (optional)
+- `answers.json` (optional)
+- `descriptions.json` (optional)
+- `descriptions/*.json` (optional, subdirectory structure preserved)
+- `avatar.png/.jpg/.jpeg/.webp` (optional, extracted to root)
+- Markdown/text files
+
+**Custom personality storage**:
+- Path: `databases/<server_id>/custom/`
+- Avatar: `databases/<server_id>/custom/avatar.png`
+- Backup: `databases/<server_id>/custom_backup/`
+- Config: `server_config.json` stores `active_personality: "custom"` and `previous_personality`
+
+**Avatar loading exception**:
+When `active_personality` is "custom", `get_server_personality_avatar_path()` only looks in `databases/<server_id>/custom/` for the avatar, skipping the global personalities directory.
+
+### 5.6 Personality development tools
 
 `tools/compare_personality.py` helps when creating or translating personalities:
 

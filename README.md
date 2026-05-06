@@ -18,6 +18,12 @@ A sophisticated Discord bot that integrates Large Language Models (LLMs) with mu
 - **Dynamic Responses**: AI maintains character consistency across all interactions
 - **Multi-Language Support**: Personalities available in multiple languages (English, Spanish, Chinese, Portuguese)
 - **Per-Server Personalily configuration**: Select preferred personality for each server independently
+- **Custom Personality Upload**: Upload your own custom personalities via ZIP file with `!uploadpersonality` command
+  - Includes avatar support (PNG, JPG, WEBP formats)
+  - Preserves subdirectory structure (e.g., `descriptions/` for role-specific files)
+  - Automatic content analysis for safety
+  - Rate-limited (30-minute cooldown per server)
+  - Automatic backup of existing custom personalities
 
 ### 🔄 Personality Evolution
 
