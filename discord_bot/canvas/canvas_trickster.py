@@ -274,8 +274,11 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                     if '🎲' in dice:
                         dice_display = dice
                     else:
-                        # Convert numbers to emojis
-                        dice_values = dice.split('-')
+                        # Convert numbers to emojis - handle both space and dash separators
+                        if '-' in dice:
+                            dice_values = dice.split('-')
+                        else:
+                            dice_values = dice.split()
                         dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
                 else:
                     dice_display = "???"
@@ -357,8 +360,11 @@ def build_canvas_role_trickster_detail(detail_name: str, admin_visible: bool, gu
                     if '🎲' in dice:
                         dice_display = dice
                     else:
-                        # Convert numbers to emojis
-                        dice_values = dice.split('-')
+                        # Convert numbers to emojis - handle both space and dash separators
+                        if '-' in dice:
+                            dice_values = dice.split('-')
+                        else:
+                            dice_values = dice.split()
                         dice_display = " ".join([DICE_VALUES.get(int(d), d) for d in dice_values])
                 else:
                     dice_display = "???"

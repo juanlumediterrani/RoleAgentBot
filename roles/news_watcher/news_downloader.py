@@ -283,3 +283,94 @@ async def download_all_feeds_global(feeds: list) -> dict:
     except Exception as e:
         logger.exception(f"Error in download_all_feeds_global: {e}")
         return {}
+
+
+# ===== PATHNOTES SCRAPING SUPPORT =====
+
+async def fetch_and_store_pathnotes(global_db, max_per_platform: int = 10) -> list:
+    """Fetch patch notes from all platforms and store in global database.
+
+    This function uses PathnotesScraper to get patch notes from various
+    gaming platforms (Blizzard, POE, Valorant, etc.) and stores them
+    in the global news database with feed_category="pathnotes".
+
+    Args:
+        global_db: Global news database instance
+        max_per_platform: Maximum patches to fetch per platform
+
+    Returns:
+        List of new patch note items stored
+    """
+    try:
+        from .pathnotes_scraper import PathnotesScraper
+
+        scraper = PathnotesScraper()
+        patches = await scraper.scrape_all(max_per_platform)
+
+        new_items = []
+        for patch in patches:
+            try:
+                title = patch.get('title', 'No title')
+                source_url = patch.get('source_url', '')
+                content = patch.get('content', '')
+                summary = patch.get('summary', content[:500] if content else title)
+                published_date = patch.get('published_date')
+                game_name = patch.get('game_name', 'Unknown Game')
+
+                # Skip if already in database
+                if global_db.is_news_globally_processed(title):
+                    logger.debug(f"Patch note already in global DB: {title[:50]}...")
+                    continue
+
+                # Store with enriched metadata
+                global_db.store_news_content(
+                    title=title,
+                    source_url=source_url,
+                    feed_category='pathnotes',
+                    feed_url=f"scraper://{patch.get('platform', 'unknown')}",
+                    summary=summary,
+                    published_date=published_date,
+                    extra_data={
+                        'game_name': game_name,
+                        'patch_version': patch.get('patch_version', 'unknown'),
+                        'platform': patch.get('platform', 'unknown'),
+                        'content': content,
+                    }
+                )
+
+                new_items.append({
+                    'title': title,
+                    'game_name': game_name,
+                    'source_url': source_url,
+                    'platform': patch.get('platform', 'unknown'),
+                })
+
+                # Yield control between items
+                await asyncio.sleep(0)
+
+            except Exception as e:
+                logger.warning(f"Error storing patch note: {e}")
+                continue
+
+        logger.info(f"📥 Downloaded {len(new_items)} new pathnotes from all platforms")
+        return new_items
+
+    except Exception as e:
+        logger.exception(f"Error fetching pathnotes: {e}")
+        return []
+
+
+async def download_pathnotes_for_category(global_db, max_per_platform: int = 10) -> list:
+    """Download patch notes for the pathnotes category.
+
+    This is a convenience wrapper that matches the pattern of other
+    category downloaders.
+
+    Args:
+        global_db: Global news database instance
+        max_per_platform: Maximum patches per platform
+
+    Returns:
+        List of new pathnote items
+    """
+    return await fetch_and_store_pathnotes(global_db, max_per_platform)

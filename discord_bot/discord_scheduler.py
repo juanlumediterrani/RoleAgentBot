@@ -291,8 +291,8 @@ class DiscordScheduler:
                 logger.info(f"[NW_SUBSCRIPTION_PROCESSOR] Running subscription processor (interval: {interval_hours}h)")
 
                 try:
-                    from roles.news_watcher.news_watcher import process_subscriptions_for_all_servers
-                    await process_subscriptions_for_all_servers(self.agent_config)
+                    from roles.news_watcher.subscription_processor import process_all_server_subscriptions
+                    await process_all_server_subscriptions(self.bot, self.agent_config)
                     logger.info("[NW_SUBSCRIPTION_PROCESSOR] Subscription processing completed")
                 except Exception as e:
                     logger.error(f"[NW_SUBSCRIPTION_PROCESSOR] Error processing subscriptions: {e}")

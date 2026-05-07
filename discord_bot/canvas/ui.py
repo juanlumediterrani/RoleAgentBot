@@ -2674,15 +2674,26 @@ async def _refresh_cubilete_game_view(interaction: discord.Interaction, view, ga
     if custom_content:
         content = custom_content
     elif game:
+        # Get player name for placeholder replacement
+        player_name = interaction.user.display_name if interaction else "Player"
+        
         if game.waiting_for_bet:
-            content = f"{cubilete_descriptions.get('game_title', '**🎲 CUBILETE GAME**')}\n\n{cubilete_descriptions.get('waiting_for_bet', 'Tapete ready. Pay bet to start rolling!')}\n{cubilete_descriptions.get('bet_amount', 'Bet:')} {game.bet:,} gold coins"
+            game_title_template = cubilete_descriptions.get('game_title', '**🎲 CUBILETE GAME**')
+            game_title = game_title_template.format(player=player_name)
+            content = f"{game_title}\n\n{cubilete_descriptions.get('waiting_for_bet', 'Tapete ready. Pay bet to start rolling!')}\n{cubilete_descriptions.get('bet_amount', 'Bet:')} {game.bet:,} gold coins"
         else:
             from roles.trickster.subroles.cubilete.cubilete import DICE_VALUES
             dice_display = " ".join([DICE_VALUES.get(d, str(d)) for d in game.dice])
             kept_display = " ".join(["🔒" if kept else "🎲" for kept in game.kept_dice])
-            content = f"{cubilete_descriptions.get('game_title', '**🎲 CUBILETE GAME**')}\n\n{cubilete_descriptions.get('roll_title', '🎲 Your roll:')} {dice_display}\n{cubilete_descriptions.get('kept_dice', 'Kept:')} {kept_display}\n{cubilete_descriptions.get('roll_count', '🎲 Roll:')} {game.roll_count}/{game.max_rolls}"
+            game_title_template = cubilete_descriptions.get('game_title', '**🎲 CUBILETE GAME**')
+            game_title = game_title_template.format(player=player_name)
+            content = f"{game_title}\n\n{cubilete_descriptions.get('roll_title', '🎲 Your roll:')} {dice_display}\n{cubilete_descriptions.get('kept_dice', 'Kept:')} {kept_display}\n{cubilete_descriptions.get('roll_count', '🎲 Roll:')} {game.roll_count}/{game.max_rolls}"
     else:
-        content = f"{cubilete_descriptions.get('game_title', '**🎲 CUBILETE GAME**')}\n\n{cubilete_descriptions.get('no_active_game', 'No active game. Use Play to start.')}"
+        # Get player name for placeholder replacement
+        player_name = interaction.user.display_name if interaction else "Player"
+        game_title_template = cubilete_descriptions.get('game_title', '**🎲 CUBILETE GAME**')
+        game_title = game_title_template.format(player=player_name)
+        content = f"{game_title}\n\n{cubilete_descriptions.get('no_active_game', 'No active game. Use Play to start.')}"
 
     role_embed = _build_canvas_role_embed(
         "trickster",
@@ -4206,7 +4217,8 @@ class CanvasRoleDetailView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMi
 
                     # Add roll button if can roll (second row)
                     if active_game.can_roll():
-                        roll_label = cubilete_descriptions.get("roll_button_label", f"🎲 Roll ({active_game.roll_count}/{active_game.max_rolls})")
+                        roll_label_template = cubilete_descriptions.get("roll_button_label", f"🎲 Roll ({active_game.roll_count}/{active_game.max_rolls})")
+                        roll_label = roll_label_template.format(roll_count=active_game.roll_count, max_rolls=active_game.max_rolls)
                         self.add_item(CubileteRollButton(active_game.roll_count, active_game.max_rolls, roll_label))
                     elif active_game.roll_count >= active_game.max_rolls:
                         # Last iteration - show Play button instead

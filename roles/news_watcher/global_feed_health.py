@@ -22,10 +22,15 @@ _DEFAULT_FEEDS = [
     # Crypto - Español
     ("Economía Digital", "https://www.economia3.com/feed/", "crypto", "es"),
     ("Investing.com ES", "https://es.investing.com/rss/news.rss", "crypto", "es"),
+    ("Bitcoin.com ES", "https://news.bitcoin.com/feed/?lang=es", "crypto", "es"),
     # Crypto - Inglés
     ("Cointelegraph", "https://cointelegraph.com/rss", "crypto", "en"),
     ("Decrypt", "https://decrypt.co/feed", "crypto", "en"),
     ("The Block", "https://www.theblock.co/rss.xml", "crypto", "en"),
+    # Crypto - Chino
+    ("BlockTempo", "https://www.blocktempo.com/feed/", "crypto", "zh"),
+    ("PANews", "https://www.panewslab.com/rss/", "crypto", "zh"),
+    ("Wu Blockchain", "https://www.wublockchain.com/rss/", "crypto", "zh"),
 
     # Economy - Español
     ("El País Economía", "https://elpais.com/rss/feed.html?section=economia", "economy", "es"),
@@ -37,6 +42,8 @@ _DEFAULT_FEEDS = [
     ("MarketWatch", "https://feeds.marketwatch.com/marketwatch/topstories/", "economy", "en"),
     # Economy - Chino
     ("36Kr Economy", "https://36kr.com/feed", "economy", "zh"),
+    ("Caixin", "https://www.caixin.com/rss/", "economy", "zh"),
+    ("FT Chinese", "https://www.ftchinese.com/rss/news", "economy", "zh"),
 
     # General - Español
     ("El País", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", "general", "es"),
@@ -49,10 +56,12 @@ _DEFAULT_FEEDS = [
     # General - Chino
     ("China Daily", "http://www.chinadaily.com.cn/rss/china_rss.xml", "general", "zh"),
     ("Xinhua News", "http://www.xinhuanet.com/english/rss/chinarss.xml", "general", "zh"),
+    ("RFA Chinese", "https://www.rfa.org/mandarin/rss2.xml", "general", "zh"),
 
     # International - Español
     ("ABC Internacional", "https://www.abc.es/rss/feeds/abc_internacional.xml", "international", "es"),
     ("El Mundo Internacional", "https://e00-elmundo.uecdn.es/elmundo/rss/internacional.xml", "international", "es"),
+    ("La Vanguardia Internacional", "https://www.lavanguardia.com/rss/internacional.xml", "international", "es"),
     # International - Inglés
     ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml", "international", "en"),
     ("Al Jazeera English", "https://www.aljazeera.com/xml/rss/all.xml", "international", "en"),
@@ -60,6 +69,7 @@ _DEFAULT_FEEDS = [
     # International - Chino
     ("China Daily World", "http://www.chinadaily.com.cn/rss/world_rss.xml", "international", "zh"),
     ("Xinhua World", "http://www.xinhuanet.com/english/rss/worldrss.xml", "international", "zh"),
+    ("SCMP China", "https://www.scmp.com/rss/91/feed", "international", "zh"),
 
     # Technology - Español
     ("Hipertextual", "https://hipertextual.com/feed", "technology", "es"),
@@ -71,6 +81,31 @@ _DEFAULT_FEEDS = [
     ("The Verge", "https://www.theverge.com/rss/index.xml", "technology", "en"),
     # Technology - Chino
     ("TechNode", "https://technode.com/feed/", "technology", "zh"),
+    ("Solidot", "https://www.solidot.org/index.rss", "technology", "zh"),
+    ("IThome", "https://www.ithome.com/rss/", "technology", "zh"),
+
+    # Pathnotes (Video Game Patch Notes) - Scraped sources (no RSS)
+    ("Blizzard Patch Notes", "scraper://blizzard", "pathnotes", "en"),
+    ("Path of Exile Patch Notes", "scraper://pathofexile", "pathnotes", "en"),
+    ("Path of Exile 2 Patch Notes", "scraper://poe2", "pathnotes", "en"),
+    ("Valorant Patch Notes", "scraper://valorant", "pathnotes", "en"),
+    ("Apex Legends Patch Notes", "scraper://apex", "pathnotes", "en"),
+    ("Genshin Impact Patch Notes", "scraper://genshin", "pathnotes", "en"),
+    ("Lost Ark Patch Notes", "scraper://lostark", "pathnotes", "en"),
+    ("Fortnite Patch Notes", "scraper://fortnite", "pathnotes", "en"),
+
+    # Gaming - Español
+    ("Eurogamer ES", "https://www.eurogamer.es/feed/", "gaming", "es"),
+    ("HobbyConsolas", "https://www.hobbyconsolas.com/rss/", "gaming", "es"),
+    ("Vandal", "https://vandal.elespanol.com/rss/", "gaming", "es"),
+    # Gaming - Inglés
+    ("Kotaku", "https://kotaku.com/rss", "gaming", "en"),
+    ("Eurogamer", "https://www.eurogamer.net/feed", "gaming", "en"),
+    ("PC Gamer", "https://www.pcgamer.com/rss/", "gaming", "en"),
+    # Gaming - Chino
+    ("Gamecores", "https://www.gcores.com/rss", "gaming", "zh"),
+    ("IGN China", "https://www.ign.com.cn/rss", "gaming", "zh"),
+    ("Yystv", "https://www.yystv.cn/rss/", "gaming", "zh"),
 ]
 
 
@@ -123,10 +158,18 @@ def initialize_global_feeds_db():
 
 
 def probe_feed_url(url: str, timeout: int = 10) -> Tuple[bool, str]:
-    """Probe a feed URL and return (is_working, error_message)."""
+    """Probe a feed URL and return (is_working, error_message).
+
+    For scraper:// URLs (pathnotes), always returns healthy since they
+    are handled by the PathnotesScraper, not traditional HTTP probes.
+    """
+    # Scraper URLs are always "healthy" - they use custom scraping logic
+    if url.startswith('scraper://'):
+        return True, None
+
     try:
         from urllib import request as urllib_request, error as urllib_error
-        
+
         request = urllib_request.Request(url, headers={"User-Agent": "RoleAgentBot/1.0"})
         with urllib_request.urlopen(request, timeout=timeout) as response:
             status = getattr(response, 'status', None) or response.getcode()

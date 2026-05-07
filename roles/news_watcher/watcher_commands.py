@@ -1367,7 +1367,8 @@ class WatcherCommands:
             'politics': '🏛️',
             'sports': '⚽',
             'culture': '🎭',
-            'science': '🔬'
+            'science': '🔬',
+            'pathnotes': '📜'
         }
         return category_icons.get(category, '📰')
     

@@ -275,8 +275,19 @@ async def process_server_subscriptions(bot, server_id: str, agent_config: dict):
                 
                 # Get news since frequency window
                 news_items = []
-                
-                if feed_url:
+
+                # Special handling for pathnotes category - use scraper
+                if feed_category == 'pathnotes':
+                    logger.info(f"[SUBSCRIPTION_PROCESSOR] Processing pathnotes subscription")
+                    try:
+                        from roles.news_watcher.news_downloader import download_pathnotes_for_category
+                        # Download fresh pathnotes
+                        await download_pathnotes_for_category(global_db, max_per_platform=10)
+                        # Get pathnotes from database
+                        news_items = global_db.get_news_by_category('pathnotes', since_date=since_date, limit=100)
+                    except Exception as e:
+                        logger.error(f"[SUBSCRIPTION_PROCESSOR] Error downloading pathnotes: {e}")
+                elif feed_url:
                     news_items = global_db.get_news_by_feed(feed_url, since_date=since_date, limit=100)
                 else:
                     news_items = global_db.get_news_by_category(feed_category, since_date=since_date, limit=100)

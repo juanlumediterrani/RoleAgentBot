@@ -474,6 +474,8 @@ class MCCommands:
             if server_id in self.voice_clients and self.voice_clients[server_id].is_playing():
                 logger.info(f"MC: Stop song in the server {server_id}")
                 self.voice_clients[server_id].stop()
+                # Small delay to ensure the stop is processed
+                await asyncio.sleep(0.1)
             
             if server_id in self.voice_clients:
                 vc = self.voice_clients[server_id]
