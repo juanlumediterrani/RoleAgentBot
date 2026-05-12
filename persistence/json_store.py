@@ -200,7 +200,11 @@ class JsonStore:
                 os.fsync(f.fileno())
             os.replace(tmp_path, self.path)
         except Exception:
-            # Best-effort cleanup
+            # Best-effort cleanup - close fd first if still open
+            try:
+                os.close(fd)
+            except OSError:
+                pass
             try:
                 tmp_path.unlink(missing_ok=True)  # type: ignore[arg-type]
             except TypeError:

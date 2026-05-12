@@ -160,6 +160,11 @@ class JsonlKVStore:
                     os.fsync(out.fileno())
                 os.replace(tmp_path, self.path)
             except Exception:
+                # Close fd first if still open
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
                 if tmp_path.exists():
                     try:
                         tmp_path.unlink()
@@ -212,6 +217,11 @@ class JsonlKVStore:
                     os.fsync(out.fileno())
                 os.replace(tmp_path, self.path)
             except Exception:
+                # Close fd first if still open
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
                 if tmp_path.exists():
                     try:
                         tmp_path.unlink()
