@@ -178,6 +178,12 @@ class JsonlRingBuffer:
                 n += 1
         return n
 
+    def clear(self) -> None:
+        """Empty the buffer by truncating the file."""
+        with self._lock:
+            with self.path.open("w", encoding="utf-8") as f:
+                f.truncate()
+
     def rotate(self) -> None:
         """Truncate the file to keep only the last `keep_lines` entries."""
         with self._lock:

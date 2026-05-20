@@ -1,0 +1,103 @@
+{
+  "title": "Arena de Combate do Hans",
+  "description": "A frente de batalha onde os soldados provam o seu valor! Lute pela Pátria!",
+  "button": "🎖️ Arena",
+  "canvas_arena_overview_title": "Arena - Zona de Combate do Hans",
+  "canvas_arena_overview_description": "Aqui é onde os soldados demonstram a sua proeza militar. Cada operação traz glória para a Wehrmacht!",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Uma operação de combate singular. Dois soldados a testar as suas habilidades. O resultado é registado nos arquivos militares.",
+    "coliseo": "Múltiplos soldados em caos organizado. Mínimo quatro. O último de pé ganha reconhecimento.",
+    "torneo": "Torneio militar estruturado. Mínimo oito. Brackets como as estratégias dos grandes generais."
+  },
+  "duelo": {
+    "button": "🎖️ Duelo",
+    "title": "O Combate Singular",
+    "description": "Desafie outro soldado para uma partida de habilidade. O resultado é escrito nos registos de combate.",
+    "select_opponent": "Selecione o soldado que deseja desafiar:",
+    "select_weapon": "Escolha a sua arma, soldado:",
+    "challenge_sent": "O desafio foi enviado. Aguardando a resposta do seu oponente.",
+    "challenge_received_title": "🎖️ RECEBEU UM DESAFIO",
+    "challenge_received_desc": "desafiou-o para combate na Arena.",
+    "button_accept": "🎖️ Aceitar",
+    "button_decline": "🏅 Recuar",
+    "accepted": "Desafio aceito. A operação começa...",
+    "declined": "O desafio foi recusado. Nem todos os caminhos levam ao combate.",
+    "no_weapons": "Não tem armas ainda, recruta! Participe em operações para as adquirir."
+  },
+  "coliseo": {
+    "button": "🎖️ Koliseu",
+    "title": "O Koliseu - Combate Multi-Soldado",
+    "description": "Mínimo quatro participantes. O último de pé ganha um ponto de experiência.",
+    "register": "⚔️ Juntar à Operação",
+    "registered": "Registado. Escolha a sua arma:",
+    "not_enough": "Soldados insuficientes. Quatro são necessários para a operação.",
+    "scheduled": "Koliseu agendado. Registo aberto.",
+    "timer": "Tempo restante: ",
+    "participants": "Soldados registados: ",
+    "executing": "Iniciando a operação...",
+    "cancelled": "A operação foi cancelada. Nem todos os soldados encontraram o seu caminho."
+  },
+  "torneo": {
+    "button": "🎖️ Torneio",
+    "title": "O Torneio - Kammino dos Kampioes",
+    "description": "Mínimo oito participantes. Brackets de eliminação. Um ponto de experiência para o soldado final.",
+    "register": "⚔️ Juntar ao Torneio",
+    "registered": "Registado. Escolha a sua arma:",
+    "not_enough": "Soldados insuficientes. Oito são necessários para os brackets.",
+    "scheduled": "Torneio agendado. Registo aberto.",
+    "timer": "Tempo restante: ",
+    "participants": "Soldados registados: ",
+    "bracket_title": "Brackets do Torneio",
+    "round": "Ronda ",
+    "executing": "Iniciando o torneio...",
+    "cancelled": "O torneio foi cancelado. Algumas operações não encontram o seu início."
+  },
+  "ranking": {
+    "button": "🏅 Klassifikacao",
+    "title": "Quadro de Honra dos Soldados",
+    "no_fighters": "Sem soldados registados ainda. A frente de batalha aguarda a sua primeira operação.",
+    "wins": "Vitórias",
+    "participated": "Operações",
+    "xp": "Experiência",
+    "weapon": "Arma ativa",
+    "personality": "Estilo de combate"
+  },
+  "weapons": {
+    "button": "🎯 Armas",
+    "title": "Arsenal",
+    "description": "Armas desbloqueadas através da sua jornada em combate.",
+    "unlocked": "Desbloqueadas",
+    "locked": "Ainda não - Requer experiência",
+    "select_active": "Equipar Arma",
+    "equipped": "Arma equipada: ",
+    "none": "Sem armas disponíveis ainda, recruta!"
+  },
+  "battle_result": {
+    "title": "🎖️ Resultado da Operação",
+    "winner": "Soldado vitorioso: ",
+    "justification": "O raciocínio: ",
+    "xp_gained": "Experiência ganha: ",
+    "new_weapon": "Nova arma desbloqueada: ",
+    "dm_title": "O resultado da sua operação na arena"
+  },
+  "admin": {
+    "button": "⚙️ Konfiguracao",
+    "title": "Konfiguracao da Arena",
+    "description": "Definições de combate (apenas para oficiais).",
+    "min_coliseo": "Mínimo para o Koliseu",
+    "min_tournament": "Mínimo para o Torneio",
+    "registration_timeout": "Tempo de registo (horas)",
+    "xp_coliseo": "Experiência por Koliseu",
+    "xp_tournament": "Experiência por Torneio",
+    "xp_duel": "Experiência por Duelo"
+  },
+  "errors": {
+    "no_channel": "Não foi possível criar o canal da Arena. Por favor verifique as permissões.",
+    "role_disabled": "O módulo Arena não está ativo neste quartel.",
+    "already_registered": "Já está registado nesta operação.",
+    "not_registered": "Não está registado nesta operação.",
+    "event_in_progress": "Uma operação está em progresso. Por favor aguarde que conclua.",
+    "self_challenge": "Não se pode desafiar a si mesmo, soldado! O combate requer outro oponente."
+  }
+}

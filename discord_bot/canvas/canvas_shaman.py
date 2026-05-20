@@ -13,7 +13,6 @@ from .server_config import get_role_config_value
 get_server_key = core.get_server_key
 
 logger = core.logger
-AgentDatabase = core.AgentDatabase
 is_admin = core.is_admin
 set_role_enabled = core.set_role_enabled
 _personality_answers = core._personality_answers

@@ -1,0 +1,103 @@
+{
+  "title": "Yuki's Dojo Arena",
+  "description": "A refined space for honorable combat. Prove your skill in the art of battle.",
+  "button": "🎎 Arena",
+  "canvas_arena_overview_title": "Arena - The Honorable Dojo",
+  "canvas_arena_overview_description": "In this hall, warriors demonstrate their skill and honor through combat. Each match brings wisdom.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "A single duel. Two warriors testing their skills. The result is recorded in the dojo scrolls.",
+    "coliseo": "Multiple warriors in honorable chaos. Minimum four. The last standing earns recognition.",
+    "torneo": "Structured tournament. Minimum eight. Brackets like the paths of ancient masters."
+  },
+  "duelo": {
+    "button": "🎎 Duel",
+    "title": "The Single Duel",
+    "description": "Invite another warrior to a match of skill. The result is written in the dojo records.",
+    "select_opponent": "Select the warrior you wish to challenge:",
+    "select_weapon": "Choose your weapon with care:",
+    "challenge_sent": "The invitation has been sent. Awaiting your opponent's response.",
+    "challenge_received_title": "🎎 YOU HAVE RECEIVED A CHALLENGE",
+    "challenge_received_desc": "has challenged you to a duel in the Arena.",
+    "button_accept": "🎎 Accept",
+    "button_decline": "🎎 Decline",
+    "accepted": "Challenge accepted. The match begins...",
+    "declined": "The challenge has been declined. Not all paths lead to combat.",
+    "no_weapons": "You have no weapons yet. Participate in matches to acquire them."
+  },
+  "coliseo": {
+    "button": "🏯 Coliseum",
+    "title": "The Coliseum - Multi-Warrior Combat",
+    "description": "Minimum four participants. The last standing earns one experience point.",
+    "register": "⛩️ Enter the Coliseum",
+    "registered": "Registered. Choose your weapon:",
+    "not_enough": "Insufficient warriors. Four are required for the match.",
+    "scheduled": "Coliseum scheduled. Registration open.",
+    "timer": "Time remaining: ",
+    "participants": "Warriors registered: ",
+    "executing": "Commencing the coliseum...",
+    "cancelled": "The coliseum has been cancelled. Not all warriors found their path."
+  },
+  "torneo": {
+    "button": "🏯 Tournament",
+    "title": "The Tournament - Path of Champions",
+    "description": "Minimum eight participants. Elimination brackets. One experience point for the final warrior.",
+    "register": "⛩️ Enter the Tournament",
+    "registered": "Registered. Choose your weapon:",
+    "not_enough": "Insufficient warriors. Eight are necessary for the brackets.",
+    "scheduled": "Tournament scheduled. Registration open.",
+    "timer": "Time remaining: ",
+    "participants": "Warriors registered: ",
+    "bracket_title": "Tournament Brackets",
+    "round": "Round ",
+    "executing": "Commencing the tournament...",
+    "cancelled": "The tournament has been cancelled. Some matches do not find their beginning."
+  },
+  "ranking": {
+    "button": "🍶 Leaderboard",
+    "title": "Warrior Honor Roll",
+    "no_fighters": "No warriors registered yet. The dojo awaits its first match.",
+    "wins": "Victories",
+    "participated": "Matches",
+    "xp": "Experience",
+    "weapon": "Active weapon",
+    "personality": "Fighting style"
+  },
+  "weapons": {
+    "button": "🗡️ Weapons",
+    "title": "Armory",
+    "description": "Weapons unlocked through your journey in combat.",
+    "unlocked": "Unlocked",
+    "locked": "Not yet - Requires experience",
+    "select_active": "Equip Weapon",
+    "equipped": "Equipped weapon: ",
+    "none": "No weapons available yet."
+  },
+  "battle_result": {
+    "title": "🎎 Match Result",
+    "winner": "Victorious warrior: ",
+    "justification": "The reasoning: ",
+    "xp_gained": "Experience earned: ",
+    "new_weapon": "New weapon unlocked: ",
+    "dm_title": "Your arena match result"
+  },
+  "admin": {
+    "button": "⚙️ Configuration",
+    "title": "Dojo Configuration",
+    "description": "Arena settings (for dojo masters only).",
+    "min_coliseo": "Minimum for Coliseum",
+    "min_tournament": "Minimum for Tournament",
+    "registration_timeout": "Registration time (hours)",
+    "xp_coliseo": "Experience per Coliseum",
+    "xp_tournament": "Experience per Tournament",
+    "xp_duel": "Experience per Duel"
+  },
+  "errors": {
+    "no_channel": "Could not create the Arena channel. Please verify permissions.",
+    "role_disabled": "The Arena module is not active in this hall.",
+    "already_registered": "You are already registered for this event.",
+    "not_registered": "You are not registered for this event.",
+    "event_in_progress": "A match is in progress. Please wait for it to conclude.",
+    "self_challenge": "You cannot challenge yourself. The path of combat requires another."
+  }
+}

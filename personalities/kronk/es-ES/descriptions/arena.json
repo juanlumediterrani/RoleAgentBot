@@ -1,0 +1,103 @@
+{
+  "title": "Arena de Peleas",
+  "description": "Lugar donde golpear y ganar.",
+  "button": "Arena",
+  "canvas_arena_overview_title": "Arena de Kronk",
+  "canvas_arena_overview_description": "Aqui kronk ver quien es mas fuerte. Golpes y metal.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "1v1. Retar a otro umano.",
+    "coliseo": "Todos kontra todos. Minimo 4.",
+    "torneo": "Torneo. Minimo 8. Brackets."
+  },
+  "duelo": {
+    "button": "Duelo",
+    "title": "Reto Individual",
+    "description": "Retar a otro umano a pelea 1v1.",
+    "select_opponent": "Escoger umano:",
+    "select_weapon": "Escoger arma:",
+    "challenge_sent": "Reto enviado.",
+    "challenge_received_title": "TE RETARON",
+    "challenge_received_desc": "te retado a pelea en Arena.",
+    "button_accept": "Aceptar",
+    "button_decline": "Rechazar",
+    "accepted": "Reto aceptado. Preparando...",
+    "declined": "Reto rechazado.",
+    "no_weapons": "No tener armas. Pelea para desblokear."
+  },
+  "coliseo": {
+    "button": "Coliseo",
+    "title": "Coliseo - Todos kontra todos",
+    "description": "Minimo 4 peleadores. Ultimo en pie gana 1 XP.",
+    "register": "Apuntarse",
+    "registered": "Apuntado. Escoger arma:",
+    "not_enough": "Faltan peleadores. Minimo 4.",
+    "scheduled": "Coliseo programado.",
+    "timer": "Tiempo: ",
+    "participants": "Peleadores: ",
+    "executing": "Ejecutando coliseo...",
+    "cancelled": "Coliseo cancelado."
+  },
+  "torneo": {
+    "button": "Torneo",
+    "title": "Torneo - Eliminasion",
+    "description": "Minimo 8 peleadores. Gana 1 XP.",
+    "register": "Apuntarse",
+    "registered": "Apuntado. Escoger arma:",
+    "not_enough": "Faltan peleadores. Minimo 8.",
+    "scheduled": "Torneo programado.",
+    "timer": "Tiempo: ",
+    "participants": "Peleadores: ",
+    "bracket_title": "Bracket",
+    "round": "Ronda ",
+    "executing": "Ejecutando torneo...",
+    "cancelled": "Torneo cancelado."
+  },
+  "ranking": {
+    "button": "Ranking",
+    "title": "Clasifikasion de Peleadores",
+    "no_fighters": "No ay peleadores.",
+    "wins": "Victorias",
+    "participated": "Peleas",
+    "xp": "XP",
+    "weapon": "Arma aktiva",
+    "personality": "Personalidad de pelea"
+  },
+  "weapons": {
+    "button": "Armas",
+    "title": "Arsenal",
+    "description": "Armas desblokeadas segun experiensia.",
+    "unlocked": "Desblokeadas",
+    "locked": "Blokeadas - Requiere XP",
+    "select_active": "Equipar",
+    "equipped": "Arma equipada: ",
+    "none": "Sin armas."
+  },
+  "battle_result": {
+    "title": "Resultado de Pelea",
+    "winner": "Ganador: ",
+    "justification": "Porke: ",
+    "xp_gained": "XP: ",
+    "new_weapon": "Nueva arma desblokeada: ",
+    "dm_title": "Resultado de tu pelea"
+  },
+  "admin": {
+    "button": "Configurasion",
+    "title": "Configurasion de Arena",
+    "description": "Ajustes (solo jefes).",
+    "min_coliseo": "Minimo Coliseo",
+    "min_tournament": "Minimo Torneo",
+    "registration_timeout": "Tiempo registro (horas)",
+    "xp_coliseo": "XP Coliseo",
+    "xp_tournament": "XP Torneo",
+    "xp_duel": "XP Duelo"
+  },
+  "errors": {
+    "no_channel": "No poder krear kanal. Verifika permisos.",
+    "role_disabled": "Arena no aktiva.",
+    "already_registered": "Ya apuntado.",
+    "not_registered": "No apuntado.",
+    "event_in_progress": "Evento en kurso. Esperar.",
+    "self_challenge": "No retarte a ti mismo. Bobo."
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "title": "El Horno de la Arena",
+  "description": "Un espacio donde la carne se amasa... a golpes.",
+  "button": "🔥 Arena",
+  "canvas_arena_overview_title": "Arena del Horno de Ceniza",
+  "canvas_arena_overview_description": "El Amo dice que aqui hay que pelear. A mi me da igual, mientras haya ceniza despues.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "1v1. Retar a otro saco de harina y ver quien queda mas tieso.",
+    "coliseo": "Todos kontra todos. Minimo 4. El ultimo se lleva el pan.",
+    "torneo": "Torneo de eliminasion. Minimo 8. Brackets como los moldes del Amo."
+  },
+  "duelo": {
+    "button": "🔥 Duelo",
+    "title": "Reto Individual",
+    "description": "Retar a otro cliente a pelea 1v1. El resultado se publica en el Horno... digo, la Arena.",
+    "select_opponent": "Escoger a quien deseas masacrar:",
+    "select_weapon": "Escoger instrumento de dolor:",
+    "challenge_sent": "Reto enviado. Esperando ke el otro tenga suficiente levadura en el cuerpo...",
+    "challenge_received_title": "🔥 TE HAN RETADO",
+    "challenge_received_desc": "te ha retado a un duelo en la Arena. Que tengas tripas.",
+    "button_accept": "🔥 Aceptar (si te atreves)",
+    "button_decline": "🧱 Rechazar (kobarde)",
+    "accepted": "Reto aceptado. Preparando el horno...",
+    "declined": "Reto rechazado. El Amo no aprobaria tu falta de valor.",
+    "no_weapons": "No tienes armas. Pelea para desblokearlas. Aunque con las manos tambien duele."
+  },
+  "coliseo": {
+    "button": "🔥 Coliseo",
+    "title": "Coliseo - Todos kontra todos",
+    "description": "Minimo 4 participantes. El ultimo en pie gana 1 XP.",
+    "register": "Apuntarse al Coliseo",
+    "registered": "Apuntado. Escoge tu arma:",
+    "not_enough": "No hay suficientes carne fresca. Minimo 4.",
+    "scheduled": "Coliseo programado. Registro abierto.",
+    "timer": "Tiempo antes de ke el horno se enfrie: ",
+    "participants": "Carne registrada: ",
+    "executing": "El horno se enciende...",
+    "cancelled": "Coliseo cancelado. El horno se queda frio."
+  },
+  "torneo": {
+    "button": "🔥 Torneo",
+    "title": "Torneo - Eliminasion",
+    "description": "Minimo 8 participantes. Brackets de eliminasion. Gana 1 XP.",
+    "register": "Apuntarse al Torneo",
+    "registered": "Apuntado. Escoge tu arma:",
+    "not_enough": "Carne insuficiente. Minimo 8.",
+    "scheduled": "Torneo programado. Registro abierto.",
+    "timer": "Tiempo antes de ke todo se queme: ",
+    "participants": "Carne registrada: ",
+    "bracket_title": "Brackets del Torneo",
+    "round": "Ronda ",
+    "executing": "El torneo arde...",
+    "cancelled": "Torneo cancelado. Ni el Amo aprobaria tanta mediocridad."
+  },
+  "ranking": {
+    "button": "🥖 Ranking",
+    "title": "Clasifikasion de la Carne",
+    "no_fighters": "No hay carne registrada aun. El horno esta vacio.",
+    "wins": "Victorias",
+    "participated": "Peleas",
+    "xp": "XP Arena",
+    "weapon": "Arma aktiva",
+    "personality": "Personalidad de pelea"
+  },
+  "weapons": {
+    "button": "🧱 Armas",
+    "title": "Utensilios del Horno",
+    "description": "Herramientas desblokeadas segun tu experiensia en la Arena.",
+    "unlocked": "Desblokeadas",
+    "locked": "Blokeadas - Requiere XP",
+    "select_active": "Equipar arma",
+    "equipped": "Arma equipada: ",
+    "none": "Sin armas disponibles. Con las manos tambien se puede partir huesos."
+  },
+  "battle_result": {
+    "title": "🔥 Resultado de la Masacre",
+    "winner": "Sobreviviente: ",
+    "justification": "Por ke: ",
+    "xp_gained": "XP ganado: ",
+    "new_weapon": "Nuevo utensilio desblokeado: ",
+    "dm_title": "Resultado de tu pelea en la Arena"
+  },
+  "admin": {
+    "button": "⚙️ Configurasion",
+    "title": "Configurasion de la Arena",
+    "description": "Ajustes del modulo Arena (solo para el Amo... o sus iguales).",
+    "min_coliseo": "Minimo para Coliseo",
+    "min_tournament": "Minimo para Torneo",
+    "registration_timeout": "Tiempo de registro (horas)",
+    "xp_coliseo": "XP por Coliseo",
+    "xp_tournament": "XP por Torneo",
+    "xp_duel": "XP por Duelo"
+  },
+  "errors": {
+    "no_channel": "No se pudo krear el kanal de Arena. Verifika permisos... aunque a mi me da igual.",
+    "role_disabled": "El modulo Arena no esta aktivo. El Amo no lo ha aprobado.",
+    "already_registered": "Ya estas apuntado en este evento. Ansioso, eh?",
+    "not_registered": "No estas apuntado en este evento.",
+    "event_in_progress": "Hay un evento en kurso. Espera a ke se enfrie.",
+    "self_challenge": "No puedes retarte a ti mismo. Ni yo soy tan retorcido."
+  }
+}

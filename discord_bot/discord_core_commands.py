@@ -18,7 +18,6 @@ import asyncio
 import discord
 from pathlib import Path
 
-from agent_db import AgentDatabase
 from agent_logging import get_logger
 from agent_engine import PERSONALITY, AGENT_CFG
 from discord_bot.discord_utils import (

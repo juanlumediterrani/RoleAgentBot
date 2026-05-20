@@ -1,0 +1,25 @@
+{
+  "weapons": [
+    {"id": "pala_lena", "name": "Pala de Leña", "subtitle": "", "desc": "Simple, contundente. Arma inicial.", "unlock_xp": 0.0},
+    {"id": "rodillo_clavos", "name": "Rodillo con Clavos", "subtitle": "", "desc": "Aplasta y perfora. Desbloqueo: 2 XP.", "unlock_xp": 2.0},
+    {"id": "horno_movil", "name": "Horno Movil", "subtitle": "Brasero portatil", "desc": "Quema al contacto. Desbloqueo: 5 XP.", "unlock_xp": 5.0},
+    {"id": "cuchillo_amasar", "name": "Cuchillo de Amasar", "subtitle": "Hoja larga y curva", "desc": "Corta masas y carne. Desbloqueo: 9 XP.", "unlock_xp": 9.0},
+    {"id": "soga_tripa", "name": "Soga de Tripa", "subtitle": "Latigo organico", "desc": "Atrapa y estrangula. Desbloqueo: 14 XP.", "unlock_xp": 14.0},
+    {"id": "piedra_molino", "name": "Piedra de Molino", "subtitle": "Maza redonda gigante", "desc": "Aplasta con peso ancestral. Desbloqueo: 20 XP.", "unlock_xp": 20.0}
+  ],
+  "advantage_matrix": {
+    "pala_lena":       {"pala_lena": "=", "rodillo_clavos": "-", "horno_movil": "+", "cuchillo_amasar": "--", "soga_tripa": "++", "piedra_molino": "-"},
+    "rodillo_clavos":  {"pala_lena": "+", "rodillo_clavos": "=", "horno_movil": "--", "cuchillo_amasar": "++", "soga_tripa": "-", "piedra_molino": "+"},
+    "horno_movil":     {"pala_lena": "-", "rodillo_clavos": "++", "horno_movil": "=", "cuchillo_amasar": "+", "soga_tripa": "--", "piedra_molino": "+"},
+    "cuchillo_amasar": {"pala_lena": "++", "rodillo_clavos": "--", "horno_movil": "-", "cuchillo_amasar": "=", "soga_tripa": "+", "piedra_molino": "--"},
+    "soga_tripa":      {"pala_lena": "--", "rodillo_clavos": "+", "horno_movil": "++", "cuchillo_amasar": "-", "soga_tripa": "=", "piedra_molino": "+"},
+    "piedra_molino":   {"pala_lena": "+", "rodillo_clavos": "-", "horno_movil": "-", "cuchillo_amasar": "++", "soga_tripa": "-", "piedra_molino": "="}
+  },
+  "fighter_personalities": [
+    {"id": "hollinero", "name": "HOLLINERO", "desc": "Usa ceniza y humo para cegar. Ataca desde la oscuridad. El horno es su aliado. No ves lo que te golpea."},
+    {"id": "masa_viva", "name": "MASA VIVA", "desc": "Resiliente como la levadura. Se reconstruye. Agotador. No puedes matar lo que no deja de crecer."},
+    {"id": "horno_andante", "name": "HORNO ANDANTE", "desc": "Quema todo a su alrededor. Autodestructivo pero letal. Preferiria morir quemando a todos a perder limpio."},
+    {"id": "rata_panaderia", "name": "RATA DE PANADERIA", "desc": "Rapido, escurridizo. Atrapa y muerde. No pelea limpio. El tamano no importa cuando eres veneno."},
+    {"id": "amasador", "name": "AMASADOR", "desc": "Aplasta lentamente. Estrangula. No deja escapar. Una vez que te tiene, no hay escapatoria."}
+  ]
+}

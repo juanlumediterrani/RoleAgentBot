@@ -1,0 +1,25 @@
+{
+  "weapons": [
+    {"id": "martillo_herrero", "name": "Martillo de Herrero", "subtitle": "", "desc": "Confiado, versatil. Arma inicial.", "unlock_xp": 0.0},
+    {"id": "cincel_guerra", "name": "Cincel de Guerra", "subtitle": "Punta afilada, pesada", "desc": "Perfora armaduras. Desbloqueo: 2 XP.", "unlock_xp": 2.0},
+    {"id": "tenazas_gigantes", "name": "Tenazas Gigantes", "subtitle": "Pinzas de forja", "desc": "Atrapa y rompe. Desbloqueo: 5 XP.", "unlock_xp": 5.0},
+    {"id": "yunque_portatil", "name": "Yunque Portatil", "subtitle": "Maza colosal", "desc": "Destruye todo. Desbloqueo: 9 XP.", "unlock_xp": 9.0},
+    {"id": "sierra_forja", "name": "Sierra de Forja", "subtitle": "Hoja dentada grande", "desc": "Corta metales y huesos. Desbloqueo: 14 XP.", "unlock_xp": 14.0},
+    {"id": "cadena_forja", "name": "Cadena de Forja", "subtitle": "Cadena incandescente", "desc": "Arde al contacto. Desbloqueo: 20 XP.", "unlock_xp": 20.0}
+  ],
+  "advantage_matrix": {
+    "martillo_herrero":  {"martillo_herrero": "=", "cincel_guerra": "-", "tenazas_gigantes": "+", "yunque_portatil": "--", "sierra_forja": "++", "cadena_forja": "-"},
+    "cincel_guerra":     {"martillo_herrero": "+", "cincel_guerra": "=", "tenazas_gigantes": "--", "yunque_portatil": "++", "sierra_forja": "-", "cadena_forja": "+"},
+    "tenazas_gigantes":  {"martillo_herrero": "-", "cincel_guerra": "++", "tenazas_gigantes": "=", "yunque_portatil": "+", "sierra_forja": "--", "cadena_forja": "+"},
+    "yunque_portatil":   {"martillo_herrero": "++", "cincel_guerra": "--", "tenazas_gigantes": "-", "yunque_portatil": "=", "sierra_forja": "+", "cadena_forja": "--"},
+    "sierra_forja":      {"martillo_herrero": "--", "cincel_guerra": "+", "tenazas_gigantes": "++", "yunque_portatil": "-", "sierra_forja": "=", "cadena_forja": "+"},
+    "cadena_forja":      {"martillo_herrero": "+", "cincel_guerra": "-", "tenazas_gigantes": "-", "yunque_portatil": "++", "sierra_forja": "-", "cadena_forja": "="}
+  },
+  "fighter_personalities": [
+    {"id": "triturador", "name": "TRITURADOR", "desc": "Golpea hasta que no queda nada. Fuerza bruta pura. No conoce la palabra rendicion. El metal se dobla ante el."},
+    {"id": "forjalope", "name": "FORJALOPE", "desc": "Usa el fuego y el calor como arma. Quema al contacto. El horno sigue vivo dentro de el."},
+    {"id": "yunquero", "name": "YUNQUERO", "desc": "Inmovil como el metal. Espera y destruye con un solo golpe. La paciencia es su mayor arma."},
+    {"id": "soldador", "name": "SOLDADOR", "desc": "Une y rompe. Atrapa armas enemigas y las desarma. Convierte la ofensiva del rival en su debilidad."},
+    {"id": "minero", "name": "MINERO", "desc": "Conoce los puntos debiles. Golpea donde duele. Eficiente. Cada golpe cuenta. No desperdicia energia."}
+  ]
+}

@@ -820,6 +820,167 @@ class AgentMemoryNoSQL:
             logger.exception(f"⚠️ [NoSQL] Error clearing all memory: {e}")
             return False
 
+    # --- GDPR and Retention ---
+
+    def forget_user(self, user_id: str, user_name: str = None, extra_names: list = None) -> dict:
+        """GDPR — right to erasure (Art. 17).
+
+        Two-phase wipe:
+        1. Drop every row directly keyed by this user_id (interactions, relationships, etc.)
+        2. When user_name (and optional aliases) is provided, redact mentions in memory tables.
+
+        Returns a per-section report of rows deleted / rewritten.
+        """
+        uid = str(user_id)
+        deleted: dict = {}
+
+        try:
+            # Phase 1 — delete interactions keyed by uid
+            before_count = len(list(self._interactions.iter_records()))
+            # Filter and rewrite interactions.jsonl excluding this user
+            filtered_records = [
+                r for r in self._interactions.iter_records()
+                if r.get("usuario_id") != uid
+            ]
+            # Rewrite the file with filtered records
+            self._interactions.clear()
+            for r in filtered_records:
+                self._interactions.append(r)
+            after_count = len(list(self._interactions.iter_records()))
+            deleted["interacciones"] = before_count - after_count
+
+            # Phase 2 — delete relationships keyed by uid
+            def remove_user_relationships(state: Dict[str, Any]) -> Dict[str, Any]:
+                relationships = state.get("relationships", {})
+                removed_count = 0
+                if uid in relationships:
+                    removed_count = 1
+                    del relationships[uid]
+                state["relationships"] = relationships
+
+                # Also remove relationship_daily entries
+                relationship_daily = state.get("relationship_daily", {})
+                if uid in relationship_daily:
+                    removed_count += len(relationship_daily[uid])
+                    del relationship_daily[uid]
+                state["relationship_daily"] = relationship_daily
+
+                # Remove pending relationship updates
+                pending_updates = state.get("pending_relationship_updates", {})
+                if uid in pending_updates:
+                    del pending_updates[uid]
+                state["pending_relationship_updates"] = pending_updates
+
+                deleted["relationships"] = removed_count
+                return state
+
+            self._state.update(remove_user_relationships)
+
+            # Phase 3 — redact names in memory tables (daily_memory, recent_memory)
+            names = []
+            for n in [user_name] + list(extra_names or []):
+                if n and n.strip() and n.strip() not in names:
+                    names.append(n.strip())
+            names.sort(key=len, reverse=True)  # Longest first to avoid partial matches
+
+            if names:
+                import re
+                pattern = re.compile(
+                    r'\b(' + '|'.join(re.escape(n) for n in names) + r')\b',
+                    flags=re.IGNORECASE,
+                )
+
+                def redact_names_in_state(state: Dict[str, Any]) -> Dict[str, Any]:
+                    rewrites = 0
+
+                    # Redact in daily_memory
+                    daily_memory = state.get("daily_memory", [])
+                    for entry in daily_memory:
+                        summary = entry.get("summary", "")
+                        if summary:
+                            new_summary = pattern.sub('[redacted]', summary)
+                            if new_summary != summary:
+                                entry["summary"] = new_summary
+                                rewrites += 1
+                    state["daily_memory"] = daily_memory
+
+                    # Redact in recent_memory
+                    recent_memory = state.get("recent_memory")
+                    if recent_memory and isinstance(recent_memory, dict):
+                        summary = recent_memory.get("summary", "")
+                        if summary:
+                            new_summary = pattern.sub('[redacted]', summary)
+                            if new_summary != summary:
+                                recent_memory["summary"] = new_summary
+                                rewrites += 1
+                    state["recent_memory"] = recent_memory
+
+                    deleted["memory.redacted"] = rewrites
+                    return state
+
+                self._state.update(redact_names_in_state)
+
+            total = sum(deleted.values())
+            logger.info(f"🧹 [GDPR] forget_user({uid}) on server {self.server_id}: {deleted} (total_ops={total})")
+            return deleted
+
+        except Exception as e:
+            logger.exception(f"⚠️ [NoSQL] Error in forget_user: {e}")
+            return deleted
+
+    def apply_retention(self, interactions_days: int = 90) -> dict:
+        """Purge data older than the retention thresholds.
+
+        Args:
+            interactions_days: Hard limit for raw interactions rows (default 90 days).
+
+        Returns a per-section count of what was deleted.
+        """
+        deleted: dict = {}
+        try:
+            now = datetime.now()
+            interactions_deadline = (now - timedelta(days=interactions_days)).isoformat()
+
+            # Phase 1 — filter interactions.jsonl by date
+            before_count = len(list(self._interactions.iter_records()))
+            filtered_records = [
+                r for r in self._interactions.iter_records()
+                if r.get("fecha", "") >= interactions_deadline
+            ]
+            # Rewrite the file with filtered records
+            self._interactions.clear()
+            for r in filtered_records:
+                self._interactions.append(r)
+            after_count = len(list(self._interactions.iter_records()))
+            deleted["interacciones"] = before_count - after_count
+
+            # Phase 2 — clean old relationship_daily entries (keep last 14 days per user)
+            def clean_old_relationship_daily(state: Dict[str, Any]) -> Dict[str, Any]:
+                relationship_daily = state.get("relationship_daily", {})
+                removed_count = 0
+                today = now.date().isoformat()
+                for user_id, dates_dict in relationship_daily.items():
+                    if isinstance(dates_dict, dict):
+                        dates_to_keep = {
+                            date: entry for date, entry in dates_dict.items()
+                            if date >= (now - timedelta(days=14)).date().isoformat()
+                        }
+                        removed_count += len(dates_dict) - len(dates_to_keep)
+                        relationship_daily[user_id] = dates_to_keep
+                state["relationship_daily"] = relationship_daily
+                deleted["relationship_daily"] = removed_count
+                return state
+
+            self._state.update(clean_old_relationship_daily)
+
+            total = sum(deleted.values())
+            logger.info(f"🗑️ [Retention] apply_retention on server {self.server_id}: {deleted} (total_ops={total})")
+            return deleted
+
+        except Exception as e:
+            logger.exception(f"⚠️ [NoSQL] Error in apply_retention: {e}")
+            return deleted
+
     # --- Notable Recollections ---
 
     def add_recollection(

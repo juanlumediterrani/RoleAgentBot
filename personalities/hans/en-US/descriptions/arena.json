@@ -1,0 +1,103 @@
+{
+  "title": "Hans's Combat Arena",
+  "description": "Ze battlefield vhere soldiers prove zeir valor! Fight for ze Fatherland!",
+  "button": "🎖️ Arena",
+  "canvas_arena_overview_title": "Arena - Hans's Combat Zone",
+  "canvas_arena_overview_description": "Zis is ze front vhere soldiers demonstrate zeir military prowess. Each operation brings glory to ze Wehrmacht!",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "A single combat operation. Two soldiers testing zeir skills. Ze result is recorded in ze military files.",
+    "coliseo": "Multiple soldiers in organized chaos. Minimum four. Ze last standing earns recognition.",
+    "torneo": "Structured military tournament. Minimum eight. Brackets like ze strategies of great generals."
+  },
+  "duelo": {
+    "button": "🎖️ Duel",
+    "title": "Ze Single Combat",
+    "description": "Challenge anozer soldier to a match of skill. Ze result is written in ze combat records.",
+    "select_opponent": "Select ze soldier you vish to challenge:",
+    "select_weapon": "Choose your veapon, soldier:",
+    "challenge_sent": "Ze challenge has been sent. Awaiting your opponent's response.",
+    "challenge_received_title": "🎖️ YOU HAVE RECEIVED A CHALLENGE",
+    "challenge_received_desc": "has challenged you to combat in ze Arena.",
+    "button_accept": "🎖️ Accept",
+    "button_decline": "🏅 Retreat",
+    "accepted": "Challenge accepted. Ze operation begins...",
+    "declined": "Ze challenge has been declined. Not all paths lead to combat.",
+    "no_weapons": "You have no veapons yet, recruit! Participate in operations to acquire zem."
+  },
+  "coliseo": {
+    "button": "🎖️ Coliseum",
+    "title": "Ze Coliseum - Multi-Soldier Combat",
+    "description": "Minimum four participants. Ze last standing earns one experience point.",
+    "register": "⚔️ Join ze Operation",
+    "registered": "Registered. Choose your veapon:",
+    "not_enough": "Insufficient soldiers. Four are required for ze operation.",
+    "scheduled": "Coliseum scheduled. Registration open.",
+    "timer": "Time remaining: ",
+    "participants": "Soldiers registered: ",
+    "executing": "Commencing ze operation...",
+    "cancelled": "Ze operation has been cancelled. Not all soldiers found zeir path."
+  },
+  "torneo": {
+    "button": "🎖️ Tournament",
+    "title": "Ze Tournament - Path of Champions",
+    "description": "Minimum eight participants. Elimination brackets. One experience point for ze final soldier.",
+    "register": "⚔️ Join ze Tournament",
+    "registered": "Registered. Choose your veapon:",
+    "not_enough": "Insufficient soldiers. Eight are necessary for ze brackets.",
+    "scheduled": "Tournament scheduled. Registration open.",
+    "timer": "Time remaining: ",
+    "participants": "Soldiers registered: ",
+    "bracket_title": "Tournament Brackets",
+    "round": "Round ",
+    "executing": "Commencing ze tournament...",
+    "cancelled": "Ze tournament has been cancelled. Some operations do not find zeir beginning."
+  },
+  "ranking": {
+    "button": "🏅 Leaderboard",
+    "title": "Soldier Honor Roll",
+    "no_fighters": "No soldiers registered yet. Ze battlefield awaits its first operation.",
+    "wins": "Victories",
+    "participated": "Operations",
+    "xp": "Experience",
+    "weapon": "Active veapon",
+    "personality": "Combat style"
+  },
+  "weapons": {
+    "button": "🎯 Veapons",
+    "title": "Armory",
+    "description": "Veapons unlocked through your journey in combat.",
+    "unlocked": "Unlocked",
+    "locked": "Not yet - Requires experience",
+    "select_active": "Equip Veapon",
+    "equipped": "Equipped veapon: ",
+    "none": "No veapons available yet, recruit!"
+  },
+  "battle_result": {
+    "title": "🎖️ Operation Result",
+    "winner": "Victorious soldier: ",
+    "justification": "Ze reasoning: ",
+    "xp_gained": "Experience earned: ",
+    "new_weapon": "New veapon unlocked: ",
+    "dm_title": "Your arena operation result"
+  },
+  "admin": {
+    "button": "⚙️ Configuration",
+    "title": "Arena Configuration",
+    "description": "Combat settings (for officers only).",
+    "min_coliseo": "Minimum for Coliseum",
+    "min_tournament": "Minimum for Tournament",
+    "registration_timeout": "Registration time (hours)",
+    "xp_coliseo": "Experience per Coliseum",
+    "xp_tournament": "Experience per Tournament",
+    "xp_duel": "Experience per Duel"
+  },
+  "errors": {
+    "no_channel": "Could not create ze Arena channel. Please verify permissions.",
+    "role_disabled": "Ze Arena module is not active in zis barracks.",
+    "already_registered": "You are already registered for zis operation.",
+    "not_registered": "You are not registered for zis operation.",
+    "event_in_progress": "An operation is in progress. Please vait for it to conclude.",
+    "self_challenge": "You cannot challenge yourself, soldier! Combat requires anozer opponent."
+  }
+}

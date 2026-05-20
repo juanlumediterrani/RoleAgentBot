@@ -233,19 +233,17 @@ async def execute_gdpr_retention_all_servers():
         return
 
     interactions_days = int(gdpr_cfg.get("interactions_days", 90))
-    derived_memory_days = int(gdpr_cfg.get("derived_memory_days", 365))
 
     try:
-        from agent_db import apply_retention_across_servers
+        from persistence.agent_state import apply_retention_across_servers
         report = await asyncio.to_thread(
             apply_retention_across_servers,
             interactions_days,
-            derived_memory_days,
         )
         if report:
             logger.info(
                 f"[run] 🧹 GDPR retention sweep purged data on {len(report)} server(s) "
-                f"(interactions≥{interactions_days}d, derived≥{derived_memory_days}d)"
+                f"(interactions≥{interactions_days}d)"
             )
     except Exception as e:
         logger.error(f"[run] 🧹 GDPR retention sweep failed: {e}")

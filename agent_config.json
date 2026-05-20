@@ -125,6 +125,28 @@
       "enabled": true,
       "mode": "interactive",
       "script": "roles/scholar/scholar.py"
+    },
+    "arena": {
+      "enabled": true,
+      "script": "roles/arena/arena.py",
+      "config": {
+        "channel_name": "arena",
+        "min_coliseo_participants": 4,
+        "min_tournament_participants": 8,
+        "registration_timeout_hours": 24,
+        "max_retries": 3,
+        "xp_per_coliseo": 1.0,
+        "xp_per_tournament": 1.0,
+        "xp_per_duel": 0.2,
+        "weapon_unlocks": {
+          "weapon_1": 0,
+          "weapon_2": 2.0,
+          "weapon_3": 5.0,
+          "weapon_4": 9.0,
+          "weapon_5": 14.0,
+          "weapon_6": 20.0
+        }
+      }
     }
   }
 }

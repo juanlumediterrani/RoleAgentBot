@@ -109,7 +109,7 @@ def register_canvas_command(bot, agent_config, canvas_cmd_name_unused, greet_nam
             is_dm = not guild
             if is_dm:
                 try:
-                    from agent_db import get_user_last_server_id, get_pinned_dm_server
+                    from persistence.agent_state import get_user_last_server_id, get_pinned_dm_server
                     _bot = ctx.bot
                     # First use guild found by personality name search (if any)
                     if target_guild_for_personality:

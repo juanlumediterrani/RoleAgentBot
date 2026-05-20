@@ -1025,6 +1025,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
             "scholar": ("Scholar", "Knowledge and archives"),
+            "arena": ("Arena", "Duels, coliseums and tournaments"),
         }
         options = []
         for role_name in _get_enabled_roles(agent_config):
@@ -1080,7 +1081,7 @@ class CanvasRoleSelect(discord.ui.Select):
         # Also filter out subroles (beggar is a subrole of banker)
         roles_cfg = (view.agent_config or {}).get("roles", {})
         all_roles = [
-            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc", "scholar"]
+            role for role in ["news_watcher", "treasure_hunter", "trickster", "banker", "shaman", "mc", "scholar", "arena"]
             if roles_cfg.get(role, {}).get("enabled", False)
         ]
         enabled_roles = _get_enabled_roles(view.agent_config, interaction.guild)
@@ -1093,6 +1094,7 @@ class CanvasRoleSelect(discord.ui.Select):
             "shaman": ("Shaman", "Nordic runes and mystical guidance"),
             "mc": ("MC", "Music and queue controls"),
             "scholar": ("Scholar", "Knowledge and archives"),
+            "arena": ("Arena", "Duels, coliseums and tournaments"),
         }
 
         embed = discord.Embed(
@@ -1393,6 +1395,9 @@ class CanvasRoleActionSelect(discord.ui.Select):
                     return
                 await handle_canvas_juggler_action(interaction, action_name, view)
                 return
+        if self.role_name == "arena":
+            await _handle_canvas_arena_action(interaction, action_name, view)
+            return
         if self.role_name == "news_watcher" and action_name in {"method_flat", "method_keyword", "method_general", "watcher_run_now", "watcher_run_personal"}:
             if not view.admin_visible:
                 await interaction.response.send_message("❌ This watcher option is admin-only.", ephemeral=True)
@@ -2075,6 +2080,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
         button_mc = _roles_desc.get("mc", {}).get("button", "MC")
         button_juggler = _roles_desc.get("juggler", {}).get("button", "Juggler")
         button_scholar = _roles_desc.get("scholar", {}).get("button", "Scholar")
+        button_arena = _roles_desc.get("arena", {}).get("button", "Arena")
 
         role_labels = {
             "news_watcher": button_watcher,
@@ -2085,6 +2091,7 @@ class CanvasRolesView(TimeoutResetMixin, SmartBackButtonMixin, HomeButtonMixin, 
             "mc": button_mc,
             "juggler": button_juggler,
             "scholar": button_scholar,
+            "arena": button_arena,
         }
 
         # Get all enabled roles
@@ -3548,6 +3555,111 @@ async def _handle_canvas_trickster_action(interaction: discord.Interaction, acti
     return await _HandleCanvasTricksterAction(interaction, action_name, view)
 
 
+async def _handle_canvas_arena_action(interaction: discord.Interaction, action_name: str, view: "CanvasRoleDetailView") -> None:
+    """Handle Arena role actions from Canvas dropdown with real interactive flows."""
+    server_id = get_server_key(interaction.guild) if interaction.guild else None
+    from .content import _get_personality_descriptions
+    msgs = _get_personality_descriptions(server_id).get("role_descriptions", {}).get("arena", {})
+
+    def _t(key: str, fallback: str = "") -> str:
+        if "." in key:
+            keys = key.split(".")
+            value = msgs
+            for k in keys:
+                if isinstance(value, dict):
+                    value = value.get(k)
+                else:
+                    value = None
+                    break
+            return str(value).strip() if value else fallback
+        return str(msgs.get(key, fallback)).strip() if msgs.get(key) else fallback
+
+    if action_name == "duelo_challenge":
+        # Send a UserSelect to pick opponent
+        from roles.arena.arena_discord import DuelOpponentSelectView
+        arena_view = DuelOpponentSelectView(
+            server_id, interaction.user.id, interaction.user.display_name
+        )
+        await interaction.response.send_message(
+            _t("duelo.select_opponent", "Selecciona a quien deseas retar:"),
+            view=arena_view,
+            ephemeral=True,
+        )
+        return
+
+    if action_name in {"coliseo_register", "torneo_register"}:
+        event_type = "coliseo" if action_name == "coliseo_register" else "torneo"
+        from roles.arena.arena_discord import EventRegistrationView
+        reg_view = EventRegistrationView(
+            server_id, event_type, label=_t(f"{event_type}.register", "Apuntarse")
+        )
+        await interaction.response.send_message(
+            _t(f"{event_type}.registered", f"Registro para el {event_type}:"),
+            view=reg_view,
+            ephemeral=True,
+        )
+        return
+
+    if action_name == "arena_ranking":
+        # Build and send ranking embed
+        from roles.arena.arena_db import ArenaDatabase
+        from roles.arena.arena_discord import build_leaderboard_embed
+        db = ArenaDatabase(server_id)
+        leaderboard = db.stats.get_leaderboard(limit=10)
+        bot_name = interaction.guild.me.display_name if interaction.guild else "Bot"
+        embed = build_leaderboard_embed(leaderboard, bot_name)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    if action_name == "arena_equip_weapon":
+        from roles.arena.arena_db import ArenaDatabase
+        from roles.arena.arena_catalogs import get_unlocked_weapons
+        from roles.arena.arena_discord import WeaponSelectView
+        db = ArenaDatabase(server_id)
+        fighter = db.stats.get_fighter(str(interaction.user.id))
+        xp = fighter.get("xp", 0.0)
+        unlocked = get_unlocked_weapons(server_id, xp)
+        if not unlocked:
+            await interaction.response.send_message(
+                _t("duelo.no_weapons", "You have no available weapons. Participate in battles to unlock them."),
+                ephemeral=True,
+            )
+            return
+        ws_view = WeaponSelectView(server_id, str(interaction.user.id), unlocked)
+        await interaction.response.send_message(
+            _t("weapons.select_active", "Escoge tu arma activa:"),
+            view=ws_view,
+            ephemeral=True,
+        )
+        return
+
+    if action_name in {"coliseo_propose", "torneo_propose"}:
+        if not view.admin_visible:
+            await interaction.response.send_message("❌ Admins only.", ephemeral=True)
+            return
+        from roles.arena.arena_discord import AdminEventProposalModal
+        bot_name = interaction.guild.me.display_name if interaction.guild else "Bot"
+        # Pre-fill the event type in the modal
+        event_type = "coliseo" if action_name == "coliseo_propose" else "torneo"
+        modal = AdminEventProposalModal(server_id, bot_name)
+        modal.event_type.default = event_type
+        modal.min_participants.default = "4" if event_type == "coliseo" else "8"
+        await interaction.response.send_modal(modal)
+        return
+
+    if action_name == "arena_config":
+        if not view.admin_visible:
+            await interaction.response.send_message("❌ Admins only.", ephemeral=True)
+            return
+        from roles.arena.arena_discord import AdminEventProposalModal
+        bot_name = interaction.guild.me.display_name if interaction.guild else "Bot"
+        await interaction.response.send_modal(AdminEventProposalModal(server_id, bot_name))
+        return
+
+    await interaction.response.send_message(
+        f"Arena action: {action_name} (in development)", ephemeral=True
+    )
+
 
 async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_source: dict = None) -> tuple[discord.Guild | None, list[str]]:
     """Get default guild for DM interactions with error handling.
@@ -3577,7 +3689,7 @@ async def _get_default_guild_for_dm(interaction: discord.Interaction, messages_s
 
         # Get the user's last server or first available as default
         try:
-            from agent_db import get_user_last_server_id
+            from persistence.agent_state import get_user_last_server_id
             bot = interaction.client
 
             # Try to get user's last server first

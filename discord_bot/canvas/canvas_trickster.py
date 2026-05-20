@@ -20,7 +20,6 @@ get_server_key = core.get_server_key
 
 
 logger = core.logger
-AgentDatabase = core.AgentDatabase
 is_admin = core.is_admin
 set_role_enabled = core.set_role_enabled
 

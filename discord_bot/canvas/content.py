@@ -4,7 +4,6 @@ import os
 import asyncio
 import discord
 from pathlib import Path
-from agent_db import AgentDatabase
 from agent_logging import get_logger
 from agent_engine import PERSONALITY, AGENT_CFG
 from agent_mind import call_llm
@@ -174,6 +173,10 @@ from .canvas_juggler import (
 from .canvas_scholar import (
     build_canvas_role_scholar,
     build_canvas_role_scholar_detail,
+)
+from .canvas_arena import (
+    build_canvas_role_arena,
+    build_canvas_role_arena_detail,
 )
 from .canvas_behavior import (
     build_canvas_behavior,
@@ -429,6 +432,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "shaman": _get_embed_role_title("shaman", detail_key),
         "juggler": _get_embed_role_title("juggler", detail_key),
         "scholar": _get_embed_role_title("scholar", detail_key),
+        "arena": _get_embed_role_title("arena", detail_key),
     }
     title = role_titles.get(role_name, "Canvas")
     blocks = _split_canvas_blocks(content)
@@ -441,6 +445,7 @@ def _build_canvas_role_embed(role_name: str, content: str, admin_visible: bool, 
         "shaman": discord.Color.dark_purple(),
         "juggler": discord.Color.orange(),
         "scholar": discord.Color.teal(),
+        "arena": discord.Color.red(),
     }
 
     # Extract first block's content as description to avoid extra space between title and fields
@@ -664,6 +669,39 @@ def _build_canvas_behavior_embed(content: str, admin_visible: bool, auto_respons
     embed.set_footer(text=f"General Behavior • {'admin' if admin_visible else 'user'} view")
     return embed
 
+def _get_arena_detail_items(
+    personality_descriptions: dict, general: dict, admin_visible: bool, current_detail: str | None
+) -> list[tuple[str, str]]:
+    """Return detail navigation buttons for the Arena role - following Behaviors pattern."""
+    arena_desc = personality_descriptions.get("role_descriptions", {}).get("arena", {})
+    button_personal = general.get("button_personal", "👤 Personal")
+    button_admin = general.get("button_admin", "🔧 Admin")
+
+    # All available subrole buttons (like Behaviors shows all admin buttons)
+    all_subroles = [
+        (arena_desc.get("duelo", {}).get("button", "⚔️ Duelo"), "duelo"),
+        (arena_desc.get("coliseo", {}).get("button", "🏟️ Coliseo"), "coliseo"),
+        (arena_desc.get("torneo", {}).get("button", "🏆 Torneo"), "torneo"),
+        (arena_desc.get("ranking", {}).get("button", "📊 Ranking"), "ranking"),
+        (arena_desc.get("weapons", {}).get("button", "🗡️ Armas"), "armas"),
+    ]
+
+    items = []
+    
+    # Always show main Arena button unless we're already in overview (like Behaviors always shows Conversation)
+    if current_detail != "overview":
+        items.append((arena_desc.get("arena", {}).get("button", "🏛️ Arena"), "overview"))
+    
+    # Show all subrole buttons except the current one (like Behaviors shows all admin buttons except current)
+    items.extend([item for item in all_subroles if item[1] != current_detail])
+    
+    # Add admin button if admin is visible and not already in admin view
+    if admin_visible and current_detail != "admin":
+        items.append((button_admin, "admin"))
+    
+    return items
+
+
 def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, admin_visible: bool, label: str, server_id: str = None, agent_config: dict = None) -> list[tuple[str, str]]:
     trickster_personal_map = {
         "dice": "dice",
@@ -755,6 +793,9 @@ def _get_canvas_role_detail_items(role_name: str, current_detail: str | None, ad
         ) if current_detail in {"personal", "admin"} else [
             (button_personal, "personal"),
         ] + ([(_resolve_button_label(general.get("button_admin", "Admin")), "admin")] if admin_visible else []),
+        "arena": _get_arena_detail_items(
+            personality_descriptions, general, admin_visible, current_detail
+        ),
     }
 
     # Special handling for treasure_hunter POE2 views
@@ -1379,6 +1420,67 @@ def _get_canvas_role_action_items_for_detail(role_name: str, detail_name: str, a
         # Personal view has no actions
         return []
 
+    if role_name == "arena":
+        _personality_descriptions = _get_personality_descriptions(server_id)
+        arena_desc = _personality_descriptions.get("role_descriptions", {}).get("arena", {})
+        general = _personality_descriptions.get("general", {})
+        generic_option_label = general.get("generic_option_label", "Seleccionar opcion...")
+
+        def _arena_text(key: str, fallback: str = "") -> str:
+            keys = key.split(".") if "." in key else [key]
+            value = arena_desc
+            for k in keys:
+                if isinstance(value, dict):
+                    value = value.get(k)
+                else:
+                    value = None
+                    break
+            return str(value).strip() if value else fallback
+
+        if detail_name == "duelo":
+            return [
+                (_arena_text("duelo.select_opponent", "Select opponent"), "duelo_challenge", _arena_text("duelo.select_weapon", "Challenge a user"), "⚔️"),
+            ]
+        if detail_name == "coliseo":
+            actions = [
+                (_arena_text("coliseo.register", "Register"), "coliseo_register", _arena_text("coliseo.registered", "Register for the coliseum"), "📝"),
+            ]
+            if admin_visible:
+                actions.append(("Propose Coliseum", "coliseo_propose", "Schedule a new coliseum with date and time", "📅"))
+            return actions
+        if detail_name == "torneo":
+            actions = [
+                (_arena_text("torneo.register", "Register"), "torneo_register", _arena_text("torneo.registered", "Register for the tournament"), "📝"),
+            ]
+            if admin_visible:
+                actions.append(("Propose Tournament", "torneo_propose", "Schedule a new tournament with date and time", "📅"))
+            return actions
+        if detail_name == "ranking":
+            return [
+                (_arena_text("ranking.button", "Ver Ranking"), "arena_ranking", _arena_text("ranking.title", "Mostrar clasificacion"), "📊"),
+            ]
+        if detail_name == "armas":
+            return [
+                (_arena_text("weapons.select_active", "Equip weapon"), "arena_equip_weapon", _arena_text("weapons.description", "Change active weapon"), "🗡️"),
+            ]
+        if detail_name == "duelo_admin" and admin_visible:
+            return [
+                ("Configure Arena", "arena_config", "Arena module settings", "🔧"),
+            ]
+        if detail_name == "ranking_admin" and admin_visible:
+            return [
+                ("Configure Arena", "arena_config", "Arena module settings", "🔧"),
+            ]
+        if detail_name == "armas_admin" and admin_visible:
+            return [
+                ("Configure Arena", "arena_config", "Arena module settings", "🔧"),
+            ]
+        if detail_name == "admin" and admin_visible:
+            return [
+                ("Configure Arena", "arena_config", "Arena module settings", "🔧"),
+            ]
+        return []
+
     return []
 
 
@@ -1426,59 +1528,37 @@ def _build_canvas_behavior_action_view(action_name: str, admin_visible: bool) ->
 
 def _get_last_saved_memory_fallback(database, memory_type: str, author_id: int = None, user_name: str = None, server_id: str = None) -> str:
     """Try to get the last saved memory paragraph as fallback before using defaults."""
-    import sqlite3
-
     try:
-        with database._lock:
-            conn = sqlite3.connect(database.db_path)
-            cursor = conn.cursor()
+        from persistence.agent_state import get_agent_state
 
-            if memory_type == "daily":
-                # Get the most recent daily memory (excluding today's empty record and errors)
-                cursor.execute("""
-                    SELECT summary, updated_at FROM daily_memory
-                    WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
-                    ORDER BY updated_at DESC LIMIT 5
-                """)
-                records = cursor.fetchall()
-                if records:
-                    for summary, updated_at in records:
-                        summary = summary.strip()
-                        if summary and len(summary) > 20:  # Valid content
-                            conn.close()
-                            return summary
+        if not server_id:
+            return None
 
-            elif memory_type == "recent":
-                # Get the most recent recent memory (excluding today's empty record and errors)
-                cursor.execute("""
-                    SELECT summary, updated_at FROM recent_memory
-                    WHERE summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
-                    ORDER BY updated_at DESC LIMIT 5
-                """)
-                records = cursor.fetchall()
-                if records:
-                    for summary, updated_at in records:
-                        summary = summary.strip()
-                        if summary and len(summary) > 20:  # Valid content
-                            conn.close()
-                            return summary
+        agent_state = get_agent_state(server_id)
 
-            elif memory_type == "relationship" and author_id:
-                # Get the most recent relationship memory for this user
-                cursor.execute("""
-                    SELECT summary, memory_date FROM user_relationship_daily_memory
-                    WHERE usuario_id = ? AND summary IS NOT NULL AND summary != '' AND summary != '[Error in internal task]'
-                    ORDER BY memory_date DESC LIMIT 5
-                """, (author_id,))
-                records = cursor.fetchall()
-                if records:
-                    for summary, memory_date in records:
-                        summary = summary.strip()
-                        if summary and len(summary) > 20:  # Valid content
-                            conn.close()
-                            return summary
+        if memory_type == "daily":
+            # Get the most recent daily memory
+            record = agent_state.get_most_recent_daily_memory_record()
+            if record:
+                summary = record.get("summary", "").strip()
+                if summary and len(summary) > 20 and summary != "[Error in internal task]":
+                    return summary
 
-            conn.close()
+        elif memory_type == "recent":
+            # Get the most recent recent memory
+            record = agent_state.get_most_recent_memory_record()
+            if record:
+                summary = record.get("summary", "").strip()
+                if summary and len(summary) > 20 and summary != "[Error in internal task]":
+                    return summary
+
+        elif memory_type == "relationship" and author_id:
+            # Get the most recent relationship memory for this user
+            record = agent_state.get_latest_user_relationship_daily_memory(str(author_id))
+            if record:
+                summary = record.get("summary", "").strip()
+                if summary and len(summary) > 20 and summary != "[Error in internal task]":
+                    return summary
     except Exception as e:
         logger.debug(f"Could not retrieve saved memory fallback for {memory_type}: {e}")
 
@@ -2162,6 +2242,8 @@ def _build_canvas_role_view(role_name: str, agent_config: dict, admin_visible: b
         return build_canvas_role_mc(queue_info=queue_info, guild=guild)
     if role_name == "scholar" and is_role_enabled_check("scholar", agent_config, guild):
         return build_canvas_role_scholar(agent_config, admin_visible, guild)
+    if role_name == "arena" and is_role_enabled_check("arena", agent_config, guild):
+        return build_canvas_role_arena(agent_config, admin_visible, guild)
     return None
 
 
@@ -2213,4 +2295,6 @@ def _build_canvas_role_detail_view(role_name: str, detail_name: str, agent_confi
         except Exception as e:
             logger.warning(f"Failed to load MC queue for detail view: {e}")
         return build_canvas_role_mc(queue_info=queue_info, guild=guild)
+    if role_name == "arena" and is_role_enabled_check("arena", agent_config, guild):
+        return build_canvas_role_arena_detail(detail_name, admin_visible, guild, author_id, agent_config)
     return None

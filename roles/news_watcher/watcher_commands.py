@@ -2,7 +2,6 @@ import discord
 import asyncio
 import sys
 import os
-import sqlite3
 import json
 from datetime import datetime
 from agent_logging import get_logger

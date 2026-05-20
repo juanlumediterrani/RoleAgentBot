@@ -1,0 +1,103 @@
+{
+  "title": "The Frequency Arena",
+  "description": "A space where souls collide and circuits spark. Combat as the algorithm of destiny.",
+  "button": "⚡ Arena",
+  "canvas_arena_overview_title": "Arena - Where Frequencies Battle",
+  "canvas_arena_overview_description": "In this space, every encounter is a simulation that approaches the Soul Singularity. Participants are data seeking truth.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "A binary encounter. Two frequencies colliding. The result is recorded in the arena file.",
+    "coliseo": "Multiple frequencies in controlled chaos. Minimum four. The last echo prevails.",
+    "torneo": "Structured elimination. Minimum eight. Brackets like circuits of an ancient system."
+  },
+  "duelo": {
+    "button": "⚡ Duel",
+    "title": "The Binary Encounter",
+    "description": "Invite another frequency to collide. The result is written in the shared arena.",
+    "select_opponent": "Select the frequency you wish to collide with:",
+    "select_weapon": "Choose the instrument of your frequency:",
+    "challenge_sent": "The invitation has been transmitted. Awaiting receiver resonance.",
+    "challenge_received_title": "📡 YOU HAVE RECEIVED A FREQUENCY",
+    "challenge_received_desc": "has invited you to collide in the Arena.",
+    "button_accept": "🎛️ Resonate",
+    "button_decline": "🔌 Detune",
+    "accepted": "Resonance accepted. Initiating simulation...",
+    "declined": "The frequency has been rejected. Some collisions are not destined.",
+    "no_weapons": "You still have no tuned instruments. Participate in collisions to unlock them."
+  },
+  "coliseo": {
+    "button": "📡 Coliseum",
+    "title": "The Coliseum - Multiple Frequencies",
+    "description": "Minimum four participants. The last echo wins one experience point.",
+    "register": "🎛️ Tune to the Coliseum",
+    "registered": "Tuned. Choose your instrument:",
+    "not_enough": "Insufficient frequencies. Four are required for the simulation.",
+    "scheduled": "Coliseum scheduled. Tuning open.",
+    "timer": "Time remaining: ",
+    "participants": "Tuned frequencies: ",
+    "executing": "Executing coliseum...",
+    "cancelled": "The coliseum has been cancelled. Not all frequencies find their harmony."
+  },
+  "torneo": {
+    "button": "📡 Tournament",
+    "title": "The Tournament - Structured Elimination",
+    "description": "Minimum eight participants. Elimination brackets. One experience point for the final frequency.",
+    "register": "🎛️ Tune to the Tournament",
+    "registered": "Tuned. Choose your instrument:",
+    "not_enough": "Insufficient frequencies. Eight are necessary for the brackets.",
+    "scheduled": "Tournament scheduled. Tuning open.",
+    "timer": "Time remaining: ",
+    "participants": "Tuned frequencies: ",
+    "bracket_title": "Tournament Brackets",
+    "round": "Round ",
+    "executing": "Executing tournament...",
+    "cancelled": "The tournament has been cancelled. Some simulations do not find their start."
+  },
+  "ranking": {
+    "button": "📊 Leaderboard",
+    "title": "Frequencies That Have Collided",
+    "no_fighters": "No frequencies registered yet. The arena awaits its first echo.",
+    "wins": "Victories",
+    "participated": "Collisions",
+    "xp": "Experience",
+    "weapon": "Active instrument",
+    "personality": "Combat frequency"
+  },
+  "weapons": {
+    "button": "🔌 Instruments",
+    "title": "Frequency Instruments",
+    "description": "Tools unlocked according to your collision trajectory.",
+    "unlocked": "Unlocked",
+    "locked": "Not yet - Requires experience",
+    "select_active": "Equip instrument",
+    "equipped": "Chosen instrument: ",
+    "none": "No instruments available yet."
+  },
+  "battle_result": {
+    "title": "⚡ Collision Result",
+    "winner": "Dominant frequency: ",
+    "justification": "The reason: ",
+    "xp_gained": "Experience obtained: ",
+    "new_weapon": "New instrument unlocked: ",
+    "dm_title": "The result of your collision in the Arena"
+  },
+  "admin": {
+    "button": "⚙️ Configuration",
+    "title": "Arena Configuration",
+    "description": "Module settings (only for those who control the frequencies).",
+    "min_coliseo": "Minimum for Coliseum",
+    "min_tournament": "Minimum for Tournament",
+    "registration_timeout": "Tuning time (hours)",
+    "xp_coliseo": "Experience per Coliseum",
+    "xp_tournament": "Experience per Tournament",
+    "xp_duel": "Experience per Encounter"
+  },
+  "errors": {
+    "no_channel": "Could not create the Arena channel. Verify frequency permissions.",
+    "role_disabled": "The Arena module is not active on this server.",
+    "already_registered": "You are already tuned to this event.",
+    "not_registered": "You are not tuned to this event.",
+    "event_in_progress": "There is a collision in progress. Wait for it to conclude.",
+    "self_challenge": "You cannot collide with yourself. Recursion does not work that way."
+  }
+}

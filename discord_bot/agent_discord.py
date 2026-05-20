@@ -1266,7 +1266,7 @@ async def _process_chat_message(message):
                 set_current_server(server_id)
         else:
             # DM message - resolve server: pin (set by reply button) > last interaction in DB
-            from agent_db import get_pinned_dm_server, get_user_last_server_id
+            from persistence.agent_state import get_pinned_dm_server, get_user_last_server_id
             pinned = get_pinned_dm_server(message.author.id)
             if pinned:
                 server_id = pinned

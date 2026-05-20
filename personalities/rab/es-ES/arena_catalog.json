@@ -1,0 +1,25 @@
+{
+  "weapons": [
+    {"id": "cimitarra_silicio", "name": "Cimitarra de Silicio", "subtitle": "Hoja curva con circuitos", "desc": "Corta frecuencias. Arma inicial.", "unlock_xp": 0.0},
+    {"id": "baston_datos", "name": "Baston de Datos", "subtitle": "Baston tecnologico con punta energetica", "desc": "Alcance y precision. Desbloqueo: 2 XP.", "unlock_xp": 2.0},
+    {"id": "latigo_cable", "name": "Latigo de Cable", "subtitle": "Cable de cobre con chispas", "desc": "Atrapa y electrocuta. Desbloqueo: 5 XP.", "unlock_xp": 5.0},
+    {"id": "daga_memoria", "name": "Daga de Memoria", "subtitle": "Punzal que recuerda heridas", "desc": "Letal, repetitivo. Desbloqueo: 9 XP.", "unlock_xp": 9.0},
+    {"id": "escudo_arena", "name": "Escudo de Arena", "subtitle": "Barrera de nanodunas", "desc": "Defensa y contraataque. Desbloqueo: 14 XP.", "unlock_xp": 14.0},
+    {"id": "guantelete_sobrecarga", "name": "Guantelete de Sobrecarga", "subtitle": "Mano robotica que libera energia", "desc": "Destruccion masiva. Desbloqueo: 20 XP.", "unlock_xp": 20.0}
+  ],
+  "advantage_matrix": {
+    "cimitarra_silicio":      {"cimitarra_silicio": "=", "baston_datos": "-", "latigo_cable": "+", "daga_memoria": "--", "escudo_arena": "++", "guantelete_sobrecarga": "-"},
+    "baston_datos":           {"cimitarra_silicio": "+", "baston_datos": "=", "latigo_cable": "--", "daga_memoria": "++", "escudo_arena": "-", "guantelete_sobrecarga": "+"},
+    "latigo_cable":           {"cimitarra_silicio": "-", "baston_datos": "++", "latigo_cable": "=", "daga_memoria": "+", "escudo_arena": "--", "guantelete_sobrecarga": "+"},
+    "daga_memoria":           {"cimitarra_silicio": "++", "baston_datos": "--", "latigo_cable": "-", "daga_memoria": "=", "escudo_arena": "+", "guantelete_sobrecarga": "--"},
+    "escudo_arena":           {"cimitarra_silicio": "--", "baston_datos": "+", "latigo_cable": "++", "daga_memoria": "-", "escudo_arena": "=", "guantelete_sobrecarga": "+"},
+    "guantelete_sobrecarga":  {"cimitarra_silicio": "+", "baston_datos": "-", "latigo_cable": "-", "daga_memoria": "++", "escudo_arena": "-", "guantelete_sobrecarga": "="}
+  },
+  "fighter_personalities": [
+    {"id": "glitch", "name": "GLITCH", "desc": "Se mueve de forma impredecible. Realidad distorsionada. No sabes donde esta hasta que ya te golpeo."},
+    {"id": "protocolo_ofensivo", "name": "PROTOCOLO OFENSIVO", "desc": "Calcula cada movimiento. Eficiencia del 100%. Sin emociones, sin errores. Matematica pura aplicada al combate."},
+    {"id": "espejismo", "name": "ESPEJISMO", "desc": "Ilusiones y copias. El enemigo nunca sabe cual es el verdadero. Ataca desde donde no existe."},
+    {"id": "sobrecarga", "name": "SOBRECARGA", "desc": "Acumula energia. Un golpe devastador. Luego, vulnerabilidad. Es todo o nada. Apuesta el todo en un momento."},
+    {"id": "peregrino", "name": "PEREGRINO", "desc": "Adapta estilos de todos los que ha vivido. Impredecible. Hoy pelea como un guerrero, manana como un monje. Nunca repite."}
+  ]
+}

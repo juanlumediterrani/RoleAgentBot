@@ -1,0 +1,25 @@
+{
+  "weapons": [
+    {"id": "espada_larga", "name": "Espada Larga", "subtitle": "Degen", "desc": "Versatil, equilibrada. Arma inicial.", "unlock_xp": 0.0},
+    {"id": "hacha_guerra", "name": "Hacha de Guerra", "subtitle": "Streitaxt", "desc": "Brutal, cortante. Desbloqueo: 2 XP.", "unlock_xp": 2.0},
+    {"id": "lanza_caballeria", "name": "Lanza de Caballeria", "subtitle": "Lanze", "desc": "Alcance, precision. Desbloqueo: 5 XP.", "unlock_xp": 5.0},
+    {"id": "maza_acero", "name": "Maza de Acero", "subtitle": "Streitkolben", "desc": "Contundente, rompe escudos. Desbloqueo: 9 XP.", "unlock_xp": 9.0},
+    {"id": "espadon_dos_manos", "name": "Espadon a Dos Manos", "subtitle": "Zweihander", "desc": "Masivo, destruye formaciones. Desbloqueo: 14 XP.", "unlock_xp": 14.0},
+    {"id": "alabarda_ceremonial", "name": "Alabarda Ceremonial", "subtitle": "Hellebarde", "desc": "Versatil de guardia, elegante. Desbloqueo: 20 XP.", "unlock_xp": 20.0}
+  ],
+  "advantage_matrix": {
+    "espada_larga":      {"espada_larga": "=", "hacha_guerra": "-", "lanza_caballeria": "+", "maza_acero": "--", "espadon_dos_manos": "++", "alabarda_ceremonial": "-"},
+    "hacha_guerra":      {"espada_larga": "+", "hacha_guerra": "=", "lanza_caballeria": "--", "maza_acero": "++", "espadon_dos_manos": "-", "alabarda_ceremonial": "+"},
+    "lanza_caballeria":  {"espada_larga": "-", "hacha_guerra": "++", "lanza_caballeria": "=", "maza_acero": "+", "espadon_dos_manos": "--", "alabarda_ceremonial": "+"},
+    "maza_acero":        {"espada_larga": "++", "hacha_guerra": "--", "lanza_caballeria": "-", "maza_acero": "=", "espadon_dos_manos": "+", "alabarda_ceremonial": "-"},
+    "espadon_dos_manos": {"espada_larga": "--", "hacha_guerra": "+", "lanza_caballeria": "++", "maza_acero": "-", "espadon_dos_manos": "=", "alabarda_ceremonial": "--"},
+    "alabarda_ceremonial":{"espada_larga": "+", "hacha_guerra": "-", "lanza_caballeria": "-", "maza_acero": "+", "espadon_dos_manos": "++", "alabarda_ceremonial": "="}
+  },
+  "fighter_personalities": [
+    {"id": "berserker", "name": "BERSERKER", "desc": "Ataca sin pensar, furia descontrolada. Cuanto mas herido, mas peligroso. No respeta tacticas, solo avanza."},
+    {"id": "duelista", "name": "DUELISTA", "desc": "Preciso, calculador, busca el golpe perfecto. Evita riesgos innecesarios. Prefiere la elegancia sobre la fuerza bruta."},
+    {"id": "estratega", "name": "ESTRATEGA", "desc": "Manipula el entorno, usa trampas y enganos. Nunca ataca frontalmente. Gana antes de que empiece la batalla."},
+    {"id": "gladiador", "name": "GLADIADOR", "desc": "Espectaculo y dominio. Busca impresionar a la multitud. Resiliente, aguanta golpes que otros no resistirian."},
+    {"id": "vanguardia", "name": "VANGUARDIA", "desc": "Protege posiciones y aliados. Cuerpo a cuerpo implacable. Sacrificio controlado por el grupo."}
+  ]
+}

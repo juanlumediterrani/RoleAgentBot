@@ -1,0 +1,103 @@
+{
+  "title": "普特雷战斗竞技场",
+  "description": "进入战斗坑！证明你的力量，粉碎你的敌人！",
+  "button": "⚔️ 竞技场",
+  "canvas_arena_overview_title": "竞技场 - 普特雷战斗坑",
+  "canvas_arena_overview_description": "这是战士证明价值的地方！战斗，胜利，在竞技场赢得荣耀！",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "1v1战斗！挑战另一个战士进行单挑，证明谁更强！",
+    "coliseo": "全员混战！多个战士一起战斗。最后站立者获胜！",
+    "torneo": "冠军锦标赛！通过战斗晋级，成为终极冠军！"
+  },
+  "duelo": {
+    "button": "⚔️ 决斗",
+    "title": "单挑",
+    "description": "挑战另一个战士进行1v1决斗。证明你的力量！",
+    "select_opponent": "选择你的对手，弱者：",
+    "select_weapon": "选择你的武器，战士：",
+    "challenge_sent": "挑战已发送！等待懦夫回应！",
+    "challenge_received_title": "🪓 你收到了挑战",
+    "challenge_received_desc": "在竞技场向你发起了决斗挑战！",
+    "button_accept": "🪓 接受",
+    "button_decline": "⛡️ 逃跑",
+    "accepted": "挑战已接受！战斗开始！",
+    "declined": "挑战者像懦夫一样逃跑了！哈哈！",
+    "no_weapons": "你还没有武器，弱者！通过战斗来解锁它们！"
+  },
+  "coliseo": {
+    "button": "⚔️ 斗兽场",
+    "title": "斗兽场 - 全员混战",
+    "description": "最少四个战士。最后站立者获得经验值！",
+    "register": "⚔️ 加入混战",
+    "registered": "你已加入！选择你的武器：",
+    "not_enough": "战士不足！我们需要至少四个战士才能进行真正的战斗！",
+    "scheduled": "斗兽场已安排！战士现在可以加入！",
+    "timer": "剩余时间：",
+    "participants": "准备就绪的战士：",
+    "executing": "开始战斗...",
+    "cancelled": "战斗已取消！没有足够的勇敢战士出现！"
+  },
+  "torneo": {
+    "button": "⚔️ 锦标赛",
+    "title": "锦标赛 - 冠军之路",
+    "description": "最少八个战士。通过淘汰赛战斗。获胜者获得经验值！",
+    "register": "⚔️ 加入锦标赛",
+    "registered": "你已加入！选择你的武器：",
+    "not_enough": "战士不足！我们需要至少八个战士才能进行锦标赛！",
+    "scheduled": "锦标赛已安排！战士现在可以加入！",
+    "timer": "剩余时间：",
+    "participants": "准备就绪的战士：",
+    "bracket_title": "锦标赛对阵表",
+    "round": "轮次 ",
+    "executing": "开始锦标赛...",
+    "cancelled": "锦标赛已取消！没有足够的勇敢战士！"
+  },
+  "ranking": {
+    "button": "🏆 排行榜",
+    "title": "竞技场战士排行榜",
+    "no_fighters": "还没有战士！成为第一个战斗并赢得荣耀的人！",
+    "wins": "胜利",
+    "participated": "战斗",
+    "xp": "经验",
+    "weapon": "当前武器",
+    "personality": "战斗风格"
+  },
+  "weapons": {
+    "button": "🦴 武器",
+    "title": "战士武器库",
+    "description": "通过你的战斗和胜利解锁的武器！",
+    "unlocked": "已解锁",
+    "locked": "锁定 - 需要更多经验",
+    "select_active": "装备武器",
+    "equipped": "已装备武器：",
+    "none": "还没有武器，弱者！"
+  },
+  "battle_result": {
+    "title": "战斗结果",
+    "winner": "胜利者：",
+    "justification": "原因：",
+    "xp_gained": "获得经验：",
+    "new_weapon": "新武器解锁：",
+    "dm_title": "你的竞技场战斗结果"
+  },
+  "admin": {
+    "button": "⚙️ 配置",
+    "title": "竞技场配置",
+    "description": "竞技场设置（仅限普特雷信任的指挥官）。",
+    "min_coliseo": "斗兽场最少人数",
+    "min_tournament": "锦标赛最少人数",
+    "registration_timeout": "注册时间（小时）",
+    "xp_coliseo": "斗兽场经验值",
+    "xp_tournament": "锦标赛经验值",
+    "xp_duel": "决斗经验值"
+  },
+  "errors": {
+    "no_channel": "无法创建竞技场频道！检查权限，两脚兽！",
+    "role_disabled": "竞技场模块在此服务器未激活！",
+    "already_registered": "你已经注册了这个活动，战士！",
+    "not_registered": "你没有注册这个活动！",
+    "event_in_progress": "战斗正在进行中！等待它结束！",
+    "self_challenge": "你不能挑战自己，愚蠢的两脚兽！那样行不通！"
+  }
+}

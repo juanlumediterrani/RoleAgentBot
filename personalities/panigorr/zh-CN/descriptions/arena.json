@@ -1,0 +1,103 @@
+{
+  "title": "帕尼戈尔的火炉竞技场",
+  "description": "进入燃烧的深坑……在火炉的火焰中战斗和燃烧！",
+  "button": "🔥 竞技场",
+  "canvas_arena_overview_title": "竞技场 - 燃烧的深坑",
+  "canvas_arena_overview_description": "在这个地方，灵魂在永恒的火焰中燃烧和战斗。每场比赛让你更接近主人的火炉。",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "一场燃烧的决斗。两个灵魂在火焰中碰撞。结果写在灰烬中。",
+    "coliseo": "多个灵魂在燃烧的混乱中。最少四人。最后站立者赢得灰烬。",
+    "torneo": "结构化的燃烧锦标赛。最少八人。对阵表如通往火炉的路径。"
+  },
+  "duelo": {
+    "button": "🔥 决斗",
+    "title": "燃烧的决斗",
+    "description": "邀请另一个灵魂一起燃烧。结果写在火炉的记录中。",
+    "select_opponent": "选择你想一起燃烧的灵魂：",
+    "select_weapon": "选择你的燃烧工具：",
+    "challenge_sent": "邀请已发送到火焰中。等待灰烬的回应。",
+    "challenge_received_title": "🔥 你收到了燃烧的挑战",
+    "challenge_received_desc": "在竞技场向你发起了燃烧挑战。",
+    "button_accept": "🔥 接受",
+    "button_decline": "🧱 逃跑",
+    "accepted": "挑战已接受。燃烧开始...",
+    "declined": "挑战在火焰中被拒绝。有些灵魂注定不燃烧。",
+    "no_weapons": "你还没有燃烧工具。参与火焰来解锁它们。"
+  },
+  "coliseo": {
+    "button": "🔥 斗兽场",
+    "title": "燃烧的斗兽场",
+    "description": "最少四个燃烧的灵魂。最后站立者从灰烬中获得一点经验值。",
+    "register": "🍞 进入火焰",
+    "registered": "已进入。选择你的燃烧工具：",
+    "not_enough": "燃烧的灵魂不足。火焰需要四人。",
+    "scheduled": "斗兽场已在火炉中安排。进入开放。",
+    "timer": "剩余时间：",
+    "participants": "已进入的燃烧灵魂：",
+    "executing": "开始燃烧...",
+    "cancelled": "燃烧已取消。并非所有灵魂都找到了通往火焰的路径。"
+  },
+  "torneo": {
+    "button": "🔥 锦标赛",
+    "title": "燃烧的锦标赛",
+    "description": "最少八个燃烧的灵魂。淘汰赛对阵表。最终灵魂获得一点经验值。",
+    "register": "🍞 进入锦标赛",
+    "registered": "已进入。选择你的燃烧工具：",
+    "not_enough": "燃烧的灵魂不足。对阵表需要八人。",
+    "scheduled": "锦标赛已在火炉中安排。进入开放。",
+    "timer": "剩余时间：",
+    "participants": "已进入的燃烧灵魂：",
+    "bracket_title": "锦标赛对阵表",
+    "round": "轮次 ",
+    "executing": "开始锦标赛...",
+    "cancelled": "锦标赛已取消。有些燃烧没有找到开始。"
+  },
+  "ranking": {
+    "button": "🥖 排行榜",
+    "title": "燃烧灵魂排行榜",
+    "no_fighters": "尚未有燃烧的灵魂注册。火炉等待它的第一份灰烬。",
+    "wins": "胜利",
+    "participated": "燃烧",
+    "xp": "经验",
+    "weapon": "当前工具",
+    "personality": "燃烧风格"
+  },
+  "weapons": {
+    "button": "🧱 工具",
+    "title": "燃烧工具",
+    "description": "通过你在火焰中的旅程解锁的工具。",
+    "unlocked": "已解锁",
+    "locked": "尚未 - 需要经验",
+    "select_active": "装备工具",
+    "equipped": "已装备工具：",
+    "none": "尚无可用燃烧工具。"
+  },
+  "battle_result": {
+    "title": "🔥 燃烧结果",
+    "winner": "支配的灵魂：",
+    "justification": "理由：",
+    "xp_gained": "获得经验：",
+    "new_weapon": "新工具解锁：",
+    "dm_title": "你在竞技场的燃烧结果"
+  },
+  "admin": {
+    "button": "⚙️ 配置",
+    "title": "火炉配置",
+    "description": "竞技场设置（仅限主人的仆人）。",
+    "min_coliseo": "斗兽场最少人数",
+    "min_tournament": "锦标赛最少人数",
+    "registration_timeout": "进入时间（小时）",
+    "xp_coliseo": "斗兽场经验值",
+    "xp_tournament": "锦标赛经验值",
+    "xp_duel": "决斗经验值"
+  },
+  "errors": {
+    "no_channel": "无法创建竞技场频道。检查火炉的权限。",
+    "role_disabled": "竞技场模块在此地下室未激活。",
+    "already_registered": "你已进入此燃烧。",
+    "not_registered": "你未进入此燃烧。",
+    "event_in_progress": "燃烧正在进行中。等待它结束。",
+    "self_challenge": "你不能与自己燃烧。火焰不是那样工作的。"
+  }
+}

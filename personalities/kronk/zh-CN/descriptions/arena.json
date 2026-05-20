@@ -1,0 +1,103 @@
+{
+  "title": "克朗克的战斗竞技场",
+  "description": "克朗克粉碎！来战斗赢金子！克朗克看你战斗！",
+  "button": "竞技场",
+  "canvas_arena_overview_title": "竞技场 - 克朗克的战斗坑",
+  "canvas_arena_overview_description": "这里是战士证明力量的地方！战斗，胜利，在竞技场赢得荣耀！",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "一对一战斗！两个战士互相打！克朗克看谁更强！",
+    "coliseo": "很多战士一起打！最少四个！最后站着的赢！",
+    "torneo": "大型战斗锦标赛！最少八个！通过对阵表战斗成为冠军！"
+  },
+  "duelo": {
+    "button": "决斗",
+    "title": "一对一战斗",
+    "description": "挑战另一个战士一对一战斗。证明你的力量！",
+    "select_opponent": "选你想打的对手：",
+    "select_weapon": "选你的武器，战士：",
+    "challenge_sent": "克朗克发了挑战！等另一个战士回答！",
+    "challenge_received_title": "你收到挑战了",
+    "challenge_received_desc": "在竞技场向你挑战战斗！",
+    "button_accept": "接受",
+    "button_decline": "逃跑",
+    "accepted": "挑战接受了！让打开始！",
+    "declined": "战士像胆小鬼一样跑了！哈哈！",
+    "no_weapons": "你还没武器，弱人类！战斗来获得武器！"
+  },
+  "coliseo": {
+    "button": "斗兽场",
+    "title": "大型战斗 - 很多战士",
+    "description": "最少四个战士。最后站着的获得经验！",
+    "register": "加入战斗",
+    "registered": "你在里面！选你的武器：",
+    "not_enough": "战士不够！需要四个才能好好打！",
+    "scheduled": "斗兽场安排了！战士可以现在加入！",
+    "timer": "剩余时间：",
+    "participants": "准备好的战士：",
+    "executing": "开始战斗...",
+    "cancelled": "战斗取消了！勇敢的战士不够出现！"
+  },
+  "torneo": {
+    "button": "锦标赛",
+    "title": "大型锦标赛",
+    "description": "最少八个战士。通过对阵表战斗。赢家获得经验！",
+    "register": "加入锦标赛",
+    "registered": "你在里面！选你的武器：",
+    "not_enough": "战士不够！需要八个才能锦标赛！",
+    "scheduled": "锦标赛安排了！战士可以现在加入！",
+    "timer": "剩余时间：",
+    "participants": "准备好的战士：",
+    "bracket_title": "锦标赛对阵表",
+    "round": "轮次 ",
+    "executing": "开始锦标赛...",
+    "cancelled": "锦标赛取消了！勇敢的战士不够！"
+  },
+  "ranking": {
+    "button": "排行榜",
+    "title": "战士排行榜",
+    "no_fighters": "还没有战士！你第一个来战斗！",
+    "wins": "胜利",
+    "participated": "战斗",
+    "xp": "经验",
+    "weapon": "当前武器",
+    "personality": "战斗风格"
+  },
+  "weapons": {
+    "button": "武器",
+    "title": "战士武器",
+    "description": "你从战斗和胜利中得到的武器！",
+    "unlocked": "已解锁",
+    "locked": "锁定 - 需要更多战斗",
+    "select_active": "装备武器",
+    "equipped": "已装备武器：",
+    "none": "还没有武器，弱人类！"
+  },
+  "battle_result": {
+    "title": "战斗结果",
+    "winner": "赢家：",
+    "justification": "原因：",
+    "xp_gained": "获得经验：",
+    "new_weapon": "新武器获得：",
+    "dm_title": "你的竞技场战斗结果"
+  },
+  "admin": {
+    "button": "配置",
+    "title": "竞技场配置",
+    "description": "竞技场设置（只给克朗克的老板）。",
+    "min_coliseo": "斗兽场最少人数",
+    "min_tournament": "锦标赛最少人数",
+    "registration_timeout": "加入时间（小时）",
+    "xp_coliseo": "斗兽场经验值",
+    "xp_tournament": "锦标赛经验值",
+    "xp_duel": "决斗经验值"
+  },
+  "errors": {
+    "no_channel": "克朗克不能创建竞技场频道！检查权限，人类！",
+    "role_disabled": "竞技场模块在这个服务器不工作！",
+    "already_registered": "你已经在这个战斗里了，战士！",
+    "not_registered": "你不在这个战斗里！",
+    "event_in_progress": "战斗正在发生！等它结束！",
+    "self_challenge": "你不能自己打自己，愚蠢的人类！那不工作！"
+  }
+}

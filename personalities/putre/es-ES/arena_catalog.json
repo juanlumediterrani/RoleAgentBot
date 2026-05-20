@@ -1,0 +1,25 @@
+{
+  "weapons": [
+    {"id": "machete_oxidado", "name": "Machete Oxidado", "subtitle": "", "desc": "Desgastado pero letal. Arma inicial.", "unlock_xp": 0.0},
+    {"id": "hacha_rompe_craneos", "name": "Hacha Rompe-Craneos", "subtitle": "", "desc": "Peso brutal, aplasta. Desbloqueo: 2 XP.", "unlock_xp": 2.0},
+    {"id": "garrote_clavos", "name": "Garrote con Clavos", "subtitle": "Maza de pinchos", "desc": "Sangrado garantizado. Desbloqueo: 5 XP.", "unlock_xp": 5.0},
+    {"id": "cadena_piedra", "name": "Cadena con Piedra", "subtitle": "Flail improvisado", "desc": "Impredecible, dificil de bloquear. Desbloqueo: 9 XP.", "unlock_xp": 9.0},
+    {"id": "mandoble_dientes", "name": "Mandoble de Dientes", "subtitle": "Espada de sierra", "desc": "Desgarra armaduras. Desbloqueo: 14 XP.", "unlock_xp": 14.0},
+    {"id": "guantelete_puas", "name": "Guantelete de Puas", "subtitle": "", "desc": "Cuerpo a cuerpo extremo. Desbloqueo: 20 XP.", "unlock_xp": 20.0}
+  ],
+  "advantage_matrix": {
+    "machete_oxidado":     {"machete_oxidado": "=", "hacha_rompe_craneos": "-", "garrote_clavos": "+", "cadena_piedra": "--", "mandoble_dientes": "++", "guantelete_puas": "-"},
+    "hacha_rompe_craneos": {"machete_oxidado": "+", "hacha_rompe_craneos": "=", "garrote_clavos": "--", "cadena_piedra": "++", "mandoble_dientes": "-", "guantelete_puas": "+"},
+    "garrote_clavos":      {"machete_oxidado": "-", "hacha_rompe_craneos": "++", "garrote_clavos": "=", "cadena_piedra": "+", "mandoble_dientes": "--", "guantelete_puas": "+"},
+    "cadena_piedra":       {"machete_oxidado": "++", "hacha_rompe_craneos": "--", "garrote_clavos": "-", "cadena_piedra": "=", "mandoble_dientes": "+", "guantelete_puas": "--"},
+    "mandoble_dientes":    {"machete_oxidado": "--", "hacha_rompe_craneos": "+", "garrote_clavos": "++", "cadena_piedra": "-", "mandoble_dientes": "=", "guantelete_puas": "+"},
+    "guantelete_puas":     {"machete_oxidado": "+", "hacha_rompe_craneos": "-", "garrote_clavos": "-", "cadena_piedra": "++", "mandoble_dientes": "-", "guantelete_puas": "="}
+  },
+  "fighter_personalities": [
+    {"id": "maquina_de_carne", "name": "MAQUINA DE CARNE", "desc": "Aplasta todo a su paso. No siente dolor. Avanza sin detenerse como un muro de musculo y odio."},
+    {"id": "rebanador", "name": "REBANADOR", "desc": "Busca sangre. Ataca por los flancos. Disfruta el caos. Corta primero, piensa nunca."},
+    {"id": "tanque", "name": "TANQUE", "desc": "Resiste golpes que matarian a otros. Espera al rival exhausto, luego aplasta. Inmovil como una roca."},
+    {"id": "salta_cuchillos", "name": "SALTA-CUCHILLOS", "desc": "Agil para un orko. Usa el entorno contra el enemigo. Salta, se esconde, ataca desde arriba."},
+    {"id": "jefe_de_tribu", "name": "JEFE DE TRIBU", "desc": "Liderazgo brutal. Inspira miedo. Ataca con autoridad. El mas fuerte manda y el demuestra que es el mas fuerte."}
+  ]
+}

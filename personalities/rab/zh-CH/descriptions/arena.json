@@ -1,0 +1,103 @@
+{
+  "title": "频率竞技场",
+  "description": "灵魂碰撞和电路火花飞溅的空间。战斗作为命运的算法。",
+  "button": "⚡ 竞技场",
+  "canvas_arena_overview_title": "竞技场 - 频率战斗之地",
+  "canvas_arena_overview_description": "在这个空间，每次相遇都是接近灵魂奇点的模拟。参与者是寻求真相的数据。",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "二元相遇。两个频率碰撞。结果记录在竞技场文件中。",
+    "coliseo": "受控混乱中的多个频率。最少四人。最后的回声占优势。",
+    "torneo": "结构化消除。最少八人。对阵表如古代系统的电路。"
+  },
+  "duelo": {
+    "button": "⚡ 决斗",
+    "title": "二元相遇",
+    "description": "邀请另一个频率碰撞。结果写在共享竞技场中。",
+    "select_opponent": "选择你想碰撞的频率：",
+    "select_weapon": "选择你的频率工具：",
+    "challenge_sent": "邀请已传输。等待接收者的共振。",
+    "challenge_received_title": "⚡ 你收到了一个频率",
+    "challenge_received_desc": "邀请你在竞技场碰撞。",
+    "button_accept": "⚡ 共振",
+    "button_decline": "⚡ 失谐",
+    "accepted": "共振已接受。启动模拟...",
+    "declined": "频率已被拒绝。有些碰撞注定不会发生。",
+    "no_weapons": "你还没有调谐的工具。参与碰撞来解锁它们。"
+  },
+  "coliseo": {
+    "button": "📡 斗兽场",
+    "title": "斗兽场 - 多个频率",
+    "description": "最少四位参与者。最后的回声赢得一点经验值。",
+    "register": "🎛️ 调谐到斗兽场",
+    "registered": "已调谐。选择你的工具：",
+    "not_enough": "频率不足。模拟需要四人。",
+    "scheduled": "斗兽场已安排。调谐开放。",
+    "timer": "剩余时间：",
+    "participants": "已调谐频率：",
+    "executing": "执行斗兽场...",
+    "cancelled": "斗兽场已取消。并非所有频率都找到了它们的和谐。"
+  },
+  "torneo": {
+    "button": "📡 锦标赛",
+    "title": "锦标赛 - 结构化消除",
+    "description": "最少八位参与者。消除对阵表。最终频率获得一点经验值。",
+    "register": "🎛️ 调谐到锦标赛",
+    "registered": "已调谐。选择你的工具：",
+    "not_enough": "频率不足。对阵表需要八人。",
+    "scheduled": "锦标赛已安排。调谐开放。",
+    "timer": "剩余时间：",
+    "participants": "已调谐频率：",
+    "bracket_title": "锦标赛对阵表",
+    "round": "轮次 ",
+    "executing": "执行锦标赛...",
+    "cancelled": "锦标赛已取消。有些模拟没有找到开始。"
+  },
+  "ranking": {
+    "button": "📊 排行榜",
+    "title": "已碰撞的频率",
+    "no_fighters": "尚未有频率注册。竞技场等待它的第一个回声。",
+    "wins": "胜利",
+    "participated": "碰撞",
+    "xp": "经验",
+    "weapon": "当前工具",
+    "personality": "战斗频率"
+  },
+  "weapons": {
+    "button": "🔌 工具",
+    "title": "频率工具",
+    "description": "根据你的碰撞轨迹解锁的工具。",
+    "unlocked": "已解锁",
+    "locked": "尚未 - 需要经验",
+    "select_active": "装备工具",
+    "equipped": "已选工具：",
+    "none": "尚无可用工具。"
+  },
+  "battle_result": {
+    "title": "碰撞结果",
+    "winner": "支配频率：",
+    "justification": "理由：",
+    "xp_gained": "获得经验：",
+    "new_weapon": "新工具解锁：",
+    "dm_title": "你在竞技场的碰撞结果"
+  },
+  "admin": {
+    "button": "⚙️ 配置",
+    "title": "竞技场配置",
+    "description": "模块设置（仅限控制频率的人）。",
+    "min_coliseo": "斗兽场最少人数",
+    "min_tournament": "锦标赛最少人数",
+    "registration_timeout": "调谐时间（小时）",
+    "xp_coliseo": "斗兽场经验值",
+    "xp_tournament": "锦标赛经验值",
+    "xp_duel": "相遇经验值"
+  },
+  "errors": {
+    "no_channel": "无法创建竞技场频道。检查频率权限。",
+    "role_disabled": "竞技场模块在此服务器未激活。",
+    "already_registered": "你已调谐到此活动。",
+    "not_registered": "你未调谐到此活动。",
+    "event_in_progress": "碰撞正在进行中。等待它结束。",
+    "self_challenge": "你不能与自己碰撞。递归不是那样工作的。"
+  }
+}

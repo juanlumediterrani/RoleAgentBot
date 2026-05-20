@@ -507,6 +507,7 @@ def _get_enabled_roles(agent_config: dict, guild=None) -> list[str]:
         "juggler",
         "shaman",
         "scholar",
+        "arena",
     ]
 
     # Get all roles from server_config.json
@@ -561,6 +562,10 @@ def _load_role_mission_prompts(role_names: list[str]) -> list[str]:
             if role_name == "trickster":
                 from roles.trickster.trickster import get_trickster_system_prompt
                 prompts.append(get_trickster_system_prompt())
+                continue
+            if role_name == "arena":
+                from roles.arena.arena import get_arena_system_prompt
+                prompts.append(get_arena_system_prompt())
                 continue
 
             prompt = role_prompts_cfg.get(role_name)

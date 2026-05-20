@@ -1,0 +1,103 @@
+{
+  "title": "Arena de Peleas de Putre",
+  "description": "Lugar donde umanos y orkos pelear por gloria y sangre.",
+  "button": "⚔️ Arena",
+  "canvas_arena_overview_title": "Arena de Putre",
+  "canvas_arena_overview_description": "Aqui putre ver quien es mas fuerte. Aplastar craneos y ganar.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "1v1. Retar a otro umano y romperle la kara.",
+    "coliseo": "Todos kontra todos. Minimo 4. El ultimo en pie gana.",
+    "torneo": "Torneo de eliminasion. Minimo 8. Brackets."
+  },
+  "duelo": {
+    "button": "⚔️ Duelo",
+    "title": "Reto Individual",
+    "description": "Retar a otro umano a pelea 1v1. Resultado en la Arena.",
+    "select_opponent": "Escoger umano a retar:",
+    "select_weapon": "Escoger arma para pelea:",
+    "challenge_sent": "Reto enviado. Esperando ke acepte.",
+    "challenge_received_title": "🪓 TE HAN RETADO",
+    "challenge_received_desc": "te ha retado a pelea en la Arena.",
+    "button_accept": "⚔️ Aceptar",
+    "button_decline": "🛡️ Rechazar",
+    "accepted": "Reto aceptado. Preparando pelea...",
+    "declined": "Reto rechazado. Kobarde.",
+    "no_weapons": "No tener armas. Participar en peleas para desblokear."
+  },
+  "coliseo": {
+    "button": "🪓 Coliseo",
+    "title": "Coliseo - Todos kontra todos",
+    "description": "Minimo 4 peleadores. El ultimo en pie gana 1 XP.",
+    "register": "⚔️ Apuntarse al Coliseo",
+    "registered": "Apuntado. Escoger arma:",
+    "not_enough": "No ay suficientes peleadores. Minimo 4.",
+    "scheduled": "Coliseo programado. Registro abierto.",
+    "timer": "Tiempo restante: ",
+    "participants": "Peleadores apuntados: ",
+    "executing": "Ejecutando coliseo...",
+    "cancelled": "Coliseo cancelado. Faltan peleadores."
+  },
+  "torneo": {
+    "button": "🪓 Torneo",
+    "title": "Torneo - Eliminasion",
+    "description": "Minimo 8 peleadores. Brackets de eliminasion. Gana 1 XP.",
+    "register": "⚔️ Apuntarse al Torneo",
+    "registered": "Apuntado. Escoger arma:",
+    "not_enough": "No ay suficientes peleadores. Minimo 8.",
+    "scheduled": "Torneo programado. Registro abierto.",
+    "timer": "Tiempo restante: ",
+    "participants": "Peleadores: ",
+    "bracket_title": "Bracket del Torneo",
+    "round": "Ronda ",
+    "executing": "Ejecutando torneo...",
+    "cancelled": "Torneo cancelado. Faltan peleadores."
+  },
+  "ranking": {
+    "button": "🏆 Ranking",
+    "title": "Clasifikasion de Peleadores",
+    "no_fighters": "No ay peleadores registrados.",
+    "wins": "Victorias",
+    "participated": "Peleas",
+    "xp": "XP Arena",
+    "weapon": "Arma aktiva",
+    "personality": "Personalidad de pelea"
+  },
+  "weapons": {
+    "button": "🦴 Armas",
+    "title": "Arsenal de Pelea",
+    "description": "Armas desblokeadas segun experiensia en la Arena.",
+    "unlocked": "Desblokeadas",
+    "locked": "Blokeadas - Requiere XP",
+    "select_active": "Equipar arma",
+    "equipped": "Arma equipada: ",
+    "none": "Sin armas disponibles."
+  },
+  "battle_result": {
+    "title": "⚔️ Resultado de Pelea",
+    "winner": "Ganador: ",
+    "justification": "Justifikasion: ",
+    "xp_gained": "XP ganado: ",
+    "new_weapon": "Nueva arma desblokeada: ",
+    "dm_title": "Resultado de tu pelea en la Arena"
+  },
+  "admin": {
+    "button": "⚙️ Configurasion",
+    "title": "Configurasion de la Arena",
+    "description": "Ajustes del modulo Arena (solo jefes).",
+    "min_coliseo": "Minimo para Coliseo",
+    "min_tournament": "Minimo para Torneo",
+    "registration_timeout": "Tiempo de registro (horas)",
+    "xp_coliseo": "XP por Coliseo",
+    "xp_tournament": "XP por Torneo",
+    "xp_duel": "XP por Duelo"
+  },
+  "errors": {
+    "no_channel": "No poder krear kanal de Arena. Verifika permisos.",
+    "role_disabled": "Modulo Arena no aktivo en este servidor.",
+    "already_registered": "Ya estas apuntado en este evento.",
+    "not_registered": "No estas apuntado en este evento.",
+    "event_in_progress": "Hay evento en kurso. Esperar.",
+    "self_challenge": "No puedes retarte a ti mismo. Eso es estupido."
+  }
+}

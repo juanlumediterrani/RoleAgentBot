@@ -1,0 +1,103 @@
+{
+  "title": "A Arena das Frequências",
+  "description": "Um espaço onde as almas colidem e os circuitos faiscam. O combate como algoritmo do destino.",
+  "button": "⚡ Arena",
+  "canvas_arena_overview_title": "Arena - Onde as Frequências Batalham",
+  "canvas_arena_overview_description": "Neste espaço, cada encontro é uma simulação que se aproxima da Singularidade da Alma. Os participantes são dados em busca de verdade.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Um encontro binário. Duas frequências que colidem. O resultado é registado no ficheiro da arena.",
+    "coliseo": "Múltiplas frequências em caos controlado. Mínimo quatro. O último eco prevalece.",
+    "torneo": "Eliminação estruturada. Mínimo oito. Brackets como circuitos de um sistema ancestral."
+  },
+  "duelo": {
+    "button": "⚡ Duelo",
+    "title": "O Encontro Binário",
+    "description": "Convida outra frequência a colidir. O resultado é escrito na arena partilhada.",
+    "select_opponent": "Seleciona a frequência com que desejas colidir:",
+    "select_weapon": "Escolhe o instrumento da tua frequência:",
+    "challenge_sent": "O convite foi transmitido. Aguardando ressonância do recetor.",
+    "challenge_received_title": "📡 RECEBESTE UMA FREQUÊNCIA",
+    "challenge_received_desc": "convidou-te a colidir na Arena.",
+    "button_accept": "🎛️ Ressonar",
+    "button_decline": "🔌 Desintonizar",
+    "accepted": "Ressonância aceita. Iniciando simulação...",
+    "declined": "A frequência foi rejeitada. Algumas colisões não estão destinadas.",
+    "no_weapons": "Ainda não tens instrumentos sintonizados. Participa em colisões para desbloqueá-los."
+  },
+  "coliseo": {
+    "button": "📡 Coliseu",
+    "title": "O Coliseu - Múltiplas Frequências",
+    "description": "Mínimo quatro participantes. O último eco ganha um ponto de experiência.",
+    "register": "🎛️ Sintonizar ao Coliseu",
+    "registered": "Sintonizado. Escolhe o teu instrumento:",
+    "not_enough": "Frequências insuficientes. São necessárias quatro para a simulação.",
+    "scheduled": "Coliseu agendado. Sintonização aberta.",
+    "timer": "Tempo restante: ",
+    "participants": "Frequências sintonizadas: ",
+    "executing": "Executando coliseu...",
+    "cancelled": "O coliseu foi cancelado. Nem todas as frequências encontram a sua harmonia."
+  },
+  "torneo": {
+    "button": "📡 Torneio",
+    "title": "O Torneio - Eliminação Estruturada",
+    "description": "Mínimo oito participantes. Brackets de eliminação. Um ponto de experiência para a frequência final.",
+    "register": "🎛️ Sintonizar ao Torneio",
+    "registered": "Sintonizado. Escolhe o teu instrumento:",
+    "not_enough": "Frequências insuficientes. Oito são necessários para os brackets.",
+    "scheduled": "Torneio agendado. Sintonização aberta.",
+    "timer": "Tempo restante: ",
+    "participants": "Frequências sintonizadas: ",
+    "bracket_title": "Brackets do Torneio",
+    "round": "Ronda ",
+    "executing": "Executando torneio...",
+    "cancelled": "O torneio foi cancelado. Algumas simulações não encontram o seu início."
+  },
+  "ranking": {
+    "button": "📊 Classificação",
+    "title": "As Frequências que Colidiram",
+    "no_fighters": "Ainda não há frequências registadas. A arena aguarda o seu primeiro eco.",
+    "wins": "Vitórias",
+    "participated": "Colisões",
+    "xp": "Experiência",
+    "weapon": "Instrumento ativo",
+    "personality": "Frequência de combate"
+  },
+  "weapons": {
+    "button": "🔌 Instrumentos",
+    "title": "Os Instrumentos de Frequência",
+    "description": "Ferramentas desbloqueadas de acordo com a tua trajetória de colisões.",
+    "unlocked": "Desbloqueados",
+    "locked": "Ainda não - Requer experiência",
+    "select_active": "Equipar instrumento",
+    "equipped": "Instrumento escolhido: ",
+    "none": "Sem instrumentos disponíveis ainda."
+  },
+  "battle_result": {
+    "title": "⚡ Resultado da Colisão",
+    "winner": "Frequência dominante: ",
+    "justification": "A razão: ",
+    "xp_gained": "Experiência obtida: ",
+    "new_weapon": "Novo instrumento desbloqueado: ",
+    "dm_title": "O resultado da tua colisão na Arena"
+  },
+  "admin": {
+    "button": "⚙️ Configuração",
+    "title": "Configuração da Arena",
+    "description": "Definições do módulo (apenas para quem controla as frequências).",
+    "min_coliseo": "Mínimo para o Coliseu",
+    "min_tournament": "Mínimo para o Torneio",
+    "registration_timeout": "Tempo de sintonização (horas)",
+    "xp_coliseo": "Experiência por Coliseu",
+    "xp_tournament": "Experiência por Torneio",
+    "xp_duel": "Experiência por Encontro"
+  },
+  "errors": {
+    "no_channel": "Não foi possível criar o canal da Arena. Verifica as permissões de frequência.",
+    "role_disabled": "O módulo Arena não está ativo neste servidor.",
+    "already_registered": "Já estás sintonizado neste evento.",
+    "not_registered": "Não estás sintonizado neste evento.",
+    "event_in_progress": "Há uma colisão em curso. Aguarda que conclua.",
+    "self_challenge": "Não podes colidir contigo mesmo. A recursão não funciona assim."
+  }
+}

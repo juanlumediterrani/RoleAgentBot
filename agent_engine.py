@@ -1209,7 +1209,6 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
             _RING_IGNORED_LIMIT = 5
             _RING_IGNORED_MIN_FREQ = 1
             try:
-                from agent_db import AgentDatabase
                 server_name = server_id
                 if not server_name:
                     logger.warning(f"🎭 [RING] No active server found")
@@ -1237,21 +1236,23 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                 current_freq = ring_state.get('current_frequency_hours', 24)
                 if current_freq <= _RING_IGNORED_MIN_FREQ and unanswered >= _RING_IGNORED_LIMIT:
                     logger.debug(f"🔄 [RING] {target_user_name} ignored {unanswered} messages at {current_freq}h freq — auto-resetting")
-                    db_agent = AgentDatabase(server_name)
-                    import sqlite3
-                    conn = sqlite3.connect(db_agent.db_path)
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        SELECT DISTINCT usuario_id, usuario_nombre
-                        FROM interacciones
-                        WHERE servidor_id IS NOT NULL
-                        AND usuario_id != ?
-                        AND fecha > datetime('now', '-48 hours')
-                        ORDER BY fecha DESC
-                        LIMIT 10
-                    ''', (target_user_id,))
-                    candidates = [(r[0], r[1]) for r in cursor.fetchall()]
-                    conn.close()
+                    from persistence.agent_state import get_agent_state
+                    from datetime import datetime, timedelta
+                    agent_state = get_agent_state(server_name)
+                    # Get interactions from last 48 hours
+                    cutoff = (datetime.now() - timedelta(hours=48)).isoformat()
+                    interactions = agent_state.get_daily_interactions_since(since_iso=cutoff, limit=100)
+                    # Filter distinct users excluding target_user_id
+                    candidates = []
+                    seen_ids = set()
+                    for interaction in interactions:
+                        user_id = interaction.get('usuario_id', '')
+                        user_name = interaction.get('usuario_nombre', '')
+                        if user_id and user_id != str(target_user_id) and user_id not in seen_ids:
+                            seen_ids.add(user_id)
+                            candidates.append((user_id, user_name))
+                            if len(candidates) >= 10:
+                                break
                     new_target = _auto_reset_ring_accusation(server_name, candidates)
                     if new_target:
                         ring_state = _get_ring_state(server_name, force_refresh=True)
@@ -1265,10 +1266,7 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                         return
 
                 # --- Build accusation and send ---
-                db_agent = AgentDatabase(server_name)
-                import sqlite3
-                conn = sqlite3.connect(db_agent.db_path)
-                cursor = conn.cursor()
+                agent_state = get_agent_state(server_name)
 
                 accuser_name = "a user"
                 try:
@@ -1277,13 +1275,15 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                     if accusations:
                         accuser_id = accusations[0].get('accuser_id')
                         if accuser_id:
-                            cursor.execute('''
-                                SELECT usuario_nombre FROM interacciones
-                                WHERE usuario_id = ? ORDER BY fecha DESC LIMIT 1
-                            ''', (accuser_id,))
-                            result = cursor.fetchone()
-                            if result:
-                                accuser_name = result[0]
+                            # Get user name from interactions
+                            user_history = agent_state.get_user_history(str(accuser_id), limit=1)
+                            if user_history:
+                                # Extract username from the first interaction's metadata
+                                # The get_user_history returns {"humano": "...", "bot": "..."}
+                                # We need to get the actual user name from the interaction
+                                interactions = agent_state.get_user_interactions_since(str(accuser_id), limit=1)
+                                if interactions:
+                                    accuser_name = interactions[0].get('usuario_nombre', 'a user')
                             elif isinstance(accuser_id, str) and not accuser_id.isdigit():
                                 accuser_name = accuser_id
                 except Exception as e:
@@ -1293,16 +1293,19 @@ async def execute_subrole_internal_task(subrole_name, subrole_config, bot_instan
                 logger.debug(f"🎭 [RING] Accusation generated for {target_user_name}: {accusation[:100]}...")
 
                 # Find most active channel in last 24h
-                cursor.execute('''
-                    SELECT canal_id, COUNT(*) as cnt
-                    FROM interacciones
-                    WHERE servidor_id IS NOT NULL
-                    AND fecha > datetime('now', '-24 hours')
-                    AND canal_id IS NOT NULL
-                    GROUP BY canal_id ORDER BY cnt DESC LIMIT 1
-                ''')
-                channel_result = cursor.fetchone()
-                conn.close()
+                from datetime import datetime, timedelta
+                cutoff_24h = (datetime.now() - timedelta(hours=24)).isoformat()
+                interactions_24h = agent_state.get_daily_interactions_since(since_iso=cutoff_24h, limit=1000)
+                channel_counts = {}
+                for interaction in interactions_24h:
+                    channel_id = interaction.get('canal_id')
+                    if channel_id:
+                        channel_counts[channel_id] = channel_counts.get(channel_id, 0) + 1
+                if channel_counts:
+                    most_active_channel = max(channel_counts.items(), key=lambda x: x[1])[0]
+                    channel_result = (most_active_channel, channel_counts[most_active_channel])
+                else:
+                    channel_result = None
 
                 dm_sent = False
                 try:

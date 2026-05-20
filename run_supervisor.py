@@ -130,7 +130,16 @@ class RunSupervisor:
             timeout_seconds=300,
         )
 
-        logger.info("[RunSupervisor] Registered 5 memory maintenance jobs")
+        # Arena event scheduler (checks for expired registration timers)
+        from roles.arena.arena_scheduler import check_arena_events_all_servers
+        self.job_scheduler.register(
+            "arena_event_scheduler",
+            check_arena_events_all_servers,
+            Schedule.every(minutes=5),
+            timeout_seconds=120,
+        )
+
+        logger.info("[RunSupervisor] Registered 6 memory maintenance jobs (including Arena)")
 
     async def register_persistent_actor(
         self,

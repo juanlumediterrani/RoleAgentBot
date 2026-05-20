@@ -21,6 +21,24 @@ DB_DIR = Path(__file__).parent / 'databases'
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# ============================================================================
+# MIGRATION NOTICE: This file is legacy
+# ============================================================================
+# The AgentDatabase class below is deprecated. All agent state management
+# has been migrated to NoSQL (AgentState in persistence/agent_state.py).
+#
+# Only the following global utility functions are still maintained here:
+# - get_server_id(), get_all_server_ids()
+# - DB_DIR, get_data_dir(), get_shared_data_path()
+# - get_db_instance(), get_db_for_server(), set_current_server()
+# - get_fatigue_stats(), init_fatigue_db(), reset_user_fatigue(), increment_fatigue_count()
+#
+# All other functionality has been moved to:
+# - persistence.agent_state (AgentState, get_agent_state, etc.)
+# - agent_memory_nosql (AgentMemoryNoSQL)
+# ============================================================================
+
+
 def get_server_id() -> str | None:
     """Get the current server ID from databases directory.
     
@@ -67,64 +85,14 @@ def get_all_server_ids() -> list[str]:
 
 
 def get_user_last_server_id(user_id: str) -> str | None:
-    """Get the last server ID where the user had interactions."""
-    try:
-        import sqlite3
-        from pathlib import Path
-        
-        # Try to find the user's last server from any available database
-        db_dir = Path(__file__).parent / "databases"
-        if not db_dir.exists():
-            return None
-            
-        # Track the most recent interaction across all servers
-        most_recent_server = None
-        most_recent_time = None
-        
-        # Look through all server databases to find the most recent interaction
-        for server_dir in db_dir.iterdir():
-            if not server_dir.is_dir():
-                continue
+    """Get the last server ID where the user had interactions.
 
-            server_id = server_dir.name
-            # Find agent database without resolving personality name
-            agent_db_matches = list(server_dir.glob("agent_*.db"))
-            if not agent_db_matches:
-                continue
-            agent_db_path = agent_db_matches[0]
-                
-            try:
-                # Connect to this server's database
-                conn = sqlite3.connect(str(agent_db_path))
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                
-                # Look for the most recent interaction from this user
-                cursor.execute('''
-                    SELECT servidor_id, fecha 
-                    FROM interacciones 
-                    WHERE usuario_id = ? 
-                    ORDER BY fecha DESC 
-                    LIMIT 1
-                ''', (str(user_id),))
-                
-                row = cursor.fetchone()
-                conn.close()
-                
-                if row:
-                    interaction_time = row['fecha']
-                    if most_recent_time is None or interaction_time > most_recent_time:
-                        most_recent_time = interaction_time
-                        most_recent_server = str(row['servidor_id']) if row['servidor_id'] else server_id
-                        
-            except Exception as e:
-                logger.debug(f"Could not check server {server_id} for user {user_id}: {e}")
-                continue
-        
-        return most_recent_server
-    except Exception as e:
-        logger.warning(f"Could not get user's last server: {e}")
-        return None
+    DEPRECATED: This function has been migrated to persistence.agent_state.
+    Import from persistence.agent_state instead.
+    """
+    from persistence.agent_state import get_user_last_server_id as _nosql_version
+    logger.warning("agent_db.get_user_last_server_id is deprecated, use persistence.agent_state.get_user_last_server_id")
+    return _nosql_version(user_id)
 
 
 _DM_SESSIONS_FILE = DB_DIR / "dm_sessions.json"
@@ -150,16 +118,25 @@ def _save_dm_sessions(sessions: dict) -> None:
 
 
 def pin_dm_session(user_id: int, server_id: str) -> None:
-    """Pin a DM conversation to a specific server. Persisted in databases/dm_sessions.json."""
-    sessions = _load_dm_sessions()
-    sessions[str(user_id)] = str(server_id)
-    _save_dm_sessions(sessions)
-    logger.debug(f"DM session pinned: user={user_id} → server={server_id}")
+    """Pin a user's DM to a specific server for consistent routing.
+
+    DEPRECATED: This function has been migrated to persistence.agent_state.
+    Import from persistence.agent_state instead.
+    """
+    from persistence.agent_state import pin_dm_session as _nosql_version
+    logger.warning("agent_db.pin_dm_session is deprecated, use persistence.agent_state.pin_dm_session")
+    return _nosql_version(user_id, server_id)
 
 
 def get_pinned_dm_server(user_id: int) -> str | None:
-    """Return the pinned server_id for a user's DM, or None if not set."""
-    return _load_dm_sessions().get(str(user_id))
+    """Return the pinned server_id for a user's DM, or None if not set.
+
+    DEPRECATED: This function has been migrated to persistence.agent_state.
+    Import from persistence.agent_state instead.
+    """
+    from persistence.agent_state import get_pinned_dm_server as _nosql_version
+    logger.warning("agent_db.get_pinned_dm_server is deprecated, use persistence.agent_state.get_pinned_dm_server")
+    return _nosql_version(user_id)
 
 
 def clear_dm_session(user_id: int) -> None:
@@ -411,23 +388,23 @@ class AgentDatabase:
     def get_user_history(self, user_id, limite=HISTORIAL_LIMITE):
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT contexto, metadata FROM interacciones
-                    WHERE usuario_id = ? ORDER BY fecha DESC LIMIT ?
-                ''', (str(user_id), limite))
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT contexto, metadata FROM interacciones
+                        WHERE usuario_id = ? ORDER BY fecha DESC LIMIT ?
+                    ''', (str(user_id), limite))
 
-                res = cursor.fetchall()
-                historial = []
-                for row in res:
-                    meta = json.loads(row['metadata']) if row['metadata'] else {}
-                    historial.append({
-                        "humano": row['contexto'],
-                        "bot": meta.get('response', '') or meta.get('greeting', '') or meta.get('respuesta', '') or meta.get('saludo', '')
-                    })
-                return list(reversed(historial))
+                    res = cursor.fetchall()
+                    historial = []
+                    for row in res:
+                        meta = json.loads(row['metadata']) if row['metadata'] else {}
+                        historial.append({
+                            "humano": row['contexto'],
+                            "bot": meta.get('response', '') or meta.get('greeting', '') or meta.get('respuesta', '') or meta.get('saludo', '')
+                        })
+                    return list(reversed(historial))
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving history: {e}")
             return []
@@ -437,23 +414,23 @@ class AgentDatabase:
         fecha_limite = (datetime.datetime.now() - datetime.timedelta(minutes=minutes)).isoformat()
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT contexto, metadata FROM interacciones
-                    WHERE usuario_id = ? AND fecha >= ? ORDER BY fecha DESC
-                ''', (str(user_id), fecha_limite))
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT contexto, metadata FROM interacciones
+                        WHERE usuario_id = ? AND fecha >= ? ORDER BY fecha DESC
+                    ''', (str(user_id), fecha_limite))
 
-                res = cursor.fetchall()
-                historial = []
-                for row in res:
-                    meta = json.loads(row['metadata']) if row['metadata'] else {}
-                    historial.append({
-                        "humano": row['contexto'],
-                        "bot": meta.get('response', '') or meta.get('greeting', '') or meta.get('respuesta', '') or meta.get('saludo', '')
-                    })
-                return list(reversed(historial))
+                    res = cursor.fetchall()
+                    historial = []
+                    for row in res:
+                        meta = json.loads(row['metadata']) if row['metadata'] else {}
+                        historial.append({
+                            "humano": row['contexto'],
+                            "bot": meta.get('response', '') or meta.get('greeting', '') or meta.get('respuesta', '') or meta.get('saludo', '')
+                        })
+                    return list(reversed(historial))
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error al recuperar historial reciente: {e}")
             return []
@@ -463,24 +440,24 @@ class AgentDatabase:
         """Return last 10 human/bot dialogue pairs for prompt injection regardless of time window."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT contexto, metadata, fecha FROM interacciones
-                    WHERE usuario_id = ? ORDER BY fecha DESC LIMIT ?
-                ''', (str(user_id), max_messages * 2))
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT contexto, metadata, fecha FROM interacciones
+                        WHERE usuario_id = ? ORDER BY fecha DESC LIMIT ?
+                    ''', (str(user_id), max_messages * 2))
 
-                rows = cursor.fetchall()
-                dialogue = []
-                for row in reversed(rows):
-                    meta = json.loads(row['metadata']) if row['metadata'] else {}
-                    dialogue.append({
-                        "humano": row['contexto'] or "",
-                        "bot": meta.get('response', '') or "",
-                        "fecha": row['fecha'],
-                    })
-                return dialogue
+                    rows = cursor.fetchall()
+                    dialogue = []
+                    for row in reversed(rows):
+                        meta = json.loads(row['metadata']) if row['metadata'] else {}
+                        dialogue.append({
+                            "humano": row['contexto'] or "",
+                            "bot": meta.get('response', '') or "",
+                            "fecha": row['fecha'],
+                        })
+                    return dialogue
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving last dialogue window: {e}")
             return []
@@ -489,33 +466,32 @@ class AgentDatabase:
         """Return recent messages from a specific channel for prompt injection."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
-                    FROM interacciones
-                    WHERE canal_id = ? AND fecha >= datetime('now', '-{} minutes')
-                    ORDER BY fecha DESC
-                    LIMIT ?
-                '''.format(within_minutes), (str(channel_id), max_interactions))
-                
-                rows = cursor.fetchall()
-                logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
-                conn.close()
-                
-                messages = []
-                for row in rows:
-                    meta = json.loads(row['metadata']) if row['metadata'] else {}
-                    messages.append({
-                        "user_id": row['usuario_id'],
-                        "user_name": row['usuario_nombre'],
-                        "content": row['contexto'] or "",
-                        "response": meta.get('response', '') or "",
-                        "timestamp": row['fecha'],
-                        "type": row['tipo_interaccion']
-                    })
-                return messages
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                        FROM interacciones
+                        WHERE canal_id = ? AND fecha >= datetime('now', '-{} minutes')
+                        ORDER BY fecha DESC
+                        LIMIT ?
+                    '''.format(within_minutes), (str(channel_id), max_interactions))
+
+                    rows = cursor.fetchall()
+                    logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
+
+                    messages = []
+                    for row in rows:
+                        meta = json.loads(row['metadata']) if row['metadata'] else {}
+                        messages.append({
+                            "user_id": row['usuario_id'],
+                            "user_name": row['usuario_nombre'],
+                            "content": row['contexto'] or "",
+                            "response": meta.get('response', '') or "",
+                            "timestamp": row['fecha'],
+                            "type": row['tipo_interaccion']
+                        })
+                    return messages
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving recent channel messages: {e}")
             return []
@@ -524,33 +500,32 @@ class AgentDatabase:
         """Return last 10 messages from a specific channel for prompt injection regardless of time window."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
-                    FROM interacciones
-                    WHERE canal_id = ?
-                    ORDER BY fecha DESC
-                    LIMIT ?
-                ''', (str(channel_id), max_messages))
-                
-                rows = cursor.fetchall()
-                logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
-                conn.close()
-                
-                messages = []
-                for row in rows:
-                    meta = json.loads(row['metadata']) if row['metadata'] else {}
-                    messages.append({
-                        "user_id": row['usuario_id'],
-                        "user_name": row['usuario_nombre'],
-                        "content": row['contexto'] or "",
-                        "response": meta.get('response', '') or "",
-                        "timestamp": row['fecha'],
-                        "type": row['tipo_interaccion']
-                    })
-                return messages
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT usuario_id, usuario_nombre, contexto, metadata, fecha, tipo_interaccion
+                        FROM interacciones
+                        WHERE canal_id = ?
+                        ORDER BY fecha DESC
+                        LIMIT ?
+                    ''', (str(channel_id), max_messages))
+
+                    rows = cursor.fetchall()
+                    logger.info(f"🧠 [DB] Found {len(rows)} rows in database")
+
+                    messages = []
+                    for row in rows:
+                        meta = json.loads(row['metadata']) if row['metadata'] else {}
+                        messages.append({
+                            "user_id": row['usuario_id'],
+                            "user_name": row['usuario_nombre'],
+                            "content": row['contexto'] or "",
+                            "response": meta.get('response', '') or "",
+                            "timestamp": row['fecha'],
+                            "type": row['tipo_interaccion']
+                        })
+                    return messages
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving last channel messages: {e}")
             return []
@@ -559,29 +534,28 @@ class AgentDatabase:
         """Get the last interaction for a user to check if bot or human spoke last."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT contexto, metadata, fecha, tipo_interaccion
-                    FROM interacciones
-                    WHERE usuario_id = ?
-                    ORDER BY fecha DESC
-                    LIMIT 1
-                ''', (str(user_id),))
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT contexto, metadata, fecha, tipo_interaccion
+                        FROM interacciones
+                        WHERE usuario_id = ?
+                        ORDER BY fecha DESC
+                        LIMIT 1
+                    ''', (str(user_id),))
 
-                row = cursor.fetchone()
-                conn.close()
-                
-                if row:
-                    meta = json.loads(row['metadata']) if row['metadata'] else {}
-                    return {
-                        "context": row['contexto'] or "",
-                        "bot_response": meta.get('response', '') or meta.get('greeting', '') or meta.get('respuesta', '') or meta.get('saludo', ''),
-                        "type": row['tipo_interaccion'],
-                        "date": row['fecha']
-                    }
-                return None
+                    row = cursor.fetchone()
+
+                    if row:
+                        meta = json.loads(row['metadata']) if row['metadata'] else {}
+                        return {
+                            "context": row['contexto'] or "",
+                            "bot_response": meta.get('response', '') or meta.get('greeting', '') or meta.get('respuesta', '') or meta.get('saludo', ''),
+                            "type": row['tipo_interaccion'],
+                            "date": row['fecha']
+                        }
+                    return None
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving last interaction: {e}")
             return None
@@ -591,30 +565,29 @@ class AgentDatabase:
         day_value = target_date or date.today().isoformat()
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT usuario_id, usuario_nombre, tipo_interaccion, contexto, metadata, fecha
-                    FROM interacciones
-                    WHERE date(fecha) = ?
-                    ORDER BY fecha DESC
-                    LIMIT ?
-                ''', (day_value, limit))
-                rows = cursor.fetchall()
-                conn.close()
-                interactions = []
-                for row in reversed(rows):
-                    metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                    interactions.append({
-                        "usuario_id": row["usuario_id"],
-                        "usuario_nombre": row["usuario_nombre"] or "",
-                        "tipo_interaccion": row["tipo_interaccion"] or "",
-                        "contexto": row["contexto"] or "",
-                        "respuesta": metadata.get("response", "") or metadata.get("respuesta", "") or metadata.get("greeting", "") or metadata.get("saludo", ""),
-                        "fecha": row["fecha"],
-                    })
-                return interactions
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT usuario_id, usuario_nombre, tipo_interaccion, contexto, metadata, fecha
+                        FROM interacciones
+                        WHERE date(fecha) = ?
+                        ORDER BY fecha DESC
+                        LIMIT ?
+                    ''', (day_value, limit))
+                    rows = cursor.fetchall()
+                    interactions = []
+                    for row in reversed(rows):
+                        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+                        interactions.append({
+                            "usuario_id": row["usuario_id"],
+                            "usuario_nombre": row["usuario_nombre"] or "",
+                            "tipo_interaccion": row["tipo_interaccion"] or "",
+                            "contexto": row["contexto"] or "",
+                            "respuesta": metadata.get("response", "") or metadata.get("respuesta", "") or metadata.get("greeting", "") or metadata.get("saludo", ""),
+                            "fecha": row["fecha"],
+                        })
+                    return interactions
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving daily interactions: {e}")
             return []
@@ -624,40 +597,39 @@ class AgentDatabase:
         day_value = target_date or date.today().isoformat()
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                if since_iso:
-                    cursor.execute('''
-                        SELECT usuario_id, usuario_nombre, tipo_interaccion, contexto, metadata, fecha
-                        FROM interacciones
-                        WHERE date(fecha) = ? AND fecha > ?
-                        ORDER BY fecha ASC
-                        LIMIT ?
-                    ''', (day_value, since_iso, limit))
-                else:
-                    cursor.execute('''
-                        SELECT usuario_id, usuario_nombre, tipo_interaccion, contexto, metadata, fecha
-                        FROM interacciones
-                        WHERE date(fecha) = ?
-                        ORDER BY fecha DESC
-                        LIMIT ?
-                    ''', (day_value, limit))
-                rows = cursor.fetchall()
-                conn.close()
-                interactions = []
-                ordered_rows = rows if since_iso else list(reversed(rows))
-                for row in ordered_rows:
-                    metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                    interactions.append({
-                        "usuario_id": row["usuario_id"],
-                        "usuario_nombre": row["usuario_nombre"] or "",
-                        "tipo_interaccion": row["tipo_interaccion"] or "",
-                        "contexto": row["contexto"] or "",
-                        "respuesta": metadata.get("response", "") or metadata.get("respuesta", "") or metadata.get("greeting", "") or metadata.get("saludo", ""),
-                        "fecha": row["fecha"],
-                    })
-                return interactions
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    if since_iso:
+                        cursor.execute('''
+                            SELECT usuario_id, usuario_nombre, tipo_interaccion, contexto, metadata, fecha
+                            FROM interacciones
+                            WHERE date(fecha) = ? AND fecha > ?
+                            ORDER BY fecha ASC
+                            LIMIT ?
+                        ''', (day_value, since_iso, limit))
+                    else:
+                        cursor.execute('''
+                            SELECT usuario_id, usuario_nombre, tipo_interaccion, contexto, metadata, fecha
+                            FROM interacciones
+                            WHERE date(fecha) = ?
+                            ORDER BY fecha DESC
+                            LIMIT ?
+                        ''', (day_value, limit))
+                    rows = cursor.fetchall()
+                    interactions = []
+                    ordered_rows = rows if since_iso else list(reversed(rows))
+                    for row in ordered_rows:
+                        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+                        interactions.append({
+                            "usuario_id": row["usuario_id"],
+                            "usuario_nombre": row["usuario_nombre"] or "",
+                            "tipo_interaccion": row["tipo_interaccion"] or "",
+                            "contexto": row["contexto"] or "",
+                            "respuesta": metadata.get("response", "") or metadata.get("respuesta", "") or metadata.get("greeting", "") or metadata.get("saludo", ""),
+                            "fecha": row["fecha"],
+                        })
+                    return interactions
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving daily interactions since: {e}")
             return []
@@ -666,25 +638,24 @@ class AgentDatabase:
         """Get the last server ID where the user had interactions."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                
-                # Look for the most recent interaction from this user
-                cursor.execute('''
-                    SELECT servidor_id 
-                    FROM interacciones 
-                    WHERE usuario_id = ? 
-                    ORDER BY fecha DESC 
-                    LIMIT 1
-                ''', (str(user_id),))
-                
-                row = cursor.fetchone()
-                conn.close()
-                
-                if row and row['servidor_id']:
-                    return str(row['servidor_id'])
-                return None
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+
+                    # Look for the most recent interaction from this user
+                    cursor.execute('''
+                        SELECT servidor_id
+                        FROM interacciones
+                        WHERE usuario_id = ?
+                        ORDER BY fecha DESC
+                        LIMIT 1
+                    ''', (str(user_id),))
+
+                    row = cursor.fetchone()
+
+                    if row and row['servidor_id']:
+                        return str(row['servidor_id'])
+                    return None
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error getting user's last server: {e}")
             return None
@@ -693,39 +664,38 @@ class AgentDatabase:
         """Return user interactions after a given timestamp."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                if since_iso:
-                    cursor.execute('''
-                        SELECT contexto, metadata, fecha, tipo_interaccion, usuario_nombre
-                        FROM interacciones
-                        WHERE usuario_id = ? AND fecha > ?
-                        ORDER BY fecha ASC
-                        LIMIT ?
-                    ''', (str(user_id), since_iso, limit))
-                else:
-                    cursor.execute('''
-                        SELECT contexto, metadata, fecha, tipo_interaccion, usuario_nombre
-                        FROM interacciones
-                        WHERE usuario_id = ?
-                        ORDER BY fecha DESC
-                        LIMIT ?
-                    ''', (str(user_id), limit))
-                rows = cursor.fetchall()
-                conn.close()
-                interactions = []
-                ordered_rows = rows if since_iso else list(reversed(rows))
-                for row in ordered_rows:
-                    metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                    interactions.append({
-                        "humano": row["contexto"] or "",
-                        "bot": metadata.get("response", "") or metadata.get("greeting", "") or metadata.get("respuesta", "") or metadata.get("saludo", "") or "",
-                        "fecha": row["fecha"],
-                        "tipo_interaccion": row["tipo_interaccion"] or "",
-                        "usuario_nombre": row["usuario_nombre"] or "",
-                    })
-                return interactions
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cursor = conn.cursor()
+                    if since_iso:
+                        cursor.execute('''
+                            SELECT contexto, metadata, fecha, tipo_interaccion, usuario_nombre
+                            FROM interacciones
+                            WHERE usuario_id = ? AND fecha > ?
+                            ORDER BY fecha ASC
+                            LIMIT ?
+                        ''', (str(user_id), since_iso, limit))
+                    else:
+                        cursor.execute('''
+                            SELECT contexto, metadata, fecha, tipo_interaccion, usuario_nombre
+                            FROM interacciones
+                            WHERE usuario_id = ?
+                            ORDER BY fecha DESC
+                            LIMIT ?
+                        ''', (str(user_id), limit))
+                    rows = cursor.fetchall()
+                    interactions = []
+                    ordered_rows = rows if since_iso else list(reversed(rows))
+                    for row in ordered_rows:
+                        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+                        interactions.append({
+                            "humano": row["contexto"] or "",
+                            "bot": metadata.get("response", "") or metadata.get("greeting", "") or metadata.get("respuesta", "") or metadata.get("saludo", "") or "",
+                            "fecha": row["fecha"],
+                            "tipo_interaccion": row["tipo_interaccion"] or "",
+                            "usuario_nombre": row["usuario_nombre"] or "",
+                        })
+                    return interactions
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error retrieving user interactions since: {e}")
             return []
@@ -735,13 +705,13 @@ class AgentDatabase:
         fecha_limite = (datetime.datetime.now() - datetime.timedelta(hours=horas)).isoformat()
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT COUNT(*) FROM interacciones
-                    WHERE usuario_id = ? AND tipo_interaccion LIKE ? AND fecha > ?
-                ''', (str(user_id), f'%{tipo_like}%', fecha_limite))
-                return cursor.fetchone()[0] > 0
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM interacciones
+                        WHERE usuario_id = ? AND tipo_interaccion LIKE ? AND fecha > ?
+                    ''', (str(user_id), f'%{tipo_like}%', fecha_limite))
+                    return cursor.fetchone()[0] > 0
         except Exception:
             logger.exception("⚠️ [DB] Error comprobando interacciones recientes por tipo")
             return False
@@ -879,19 +849,19 @@ class AgentDatabase:
         """Count how many interactions of `interaction_type` occurred today."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                if server_id is not None:
-                    cursor.execute('''
-                        SELECT COUNT(*) FROM interacciones
-                        WHERE tipo_interaccion = ? AND servidor_id = ? AND date(fecha) = date('now','localtime')
-                    ''', (interaction_type, str(server_id)))
-                else:
-                    cursor.execute('''
-                        SELECT COUNT(*) FROM interacciones
-                        WHERE tipo_interaccion = ? AND date(fecha) = date('now','localtime')
-                    ''', (interaction_type,))
-                return cursor.fetchone()[0]
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    if server_id is not None:
+                        cursor.execute('''
+                            SELECT COUNT(*) FROM interacciones
+                            WHERE tipo_interaccion = ? AND servidor_id = ? AND date(fecha) = date('now','localtime')
+                        ''', (interaction_type, str(server_id)))
+                    else:
+                        cursor.execute('''
+                            SELECT COUNT(*) FROM interacciones
+                            WHERE tipo_interaccion = ? AND date(fecha) = date('now','localtime')
+                        ''', (interaction_type,))
+                    return cursor.fetchone()[0]
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error counting interactions (type={interaction_type}): {e}")
             return 0
@@ -900,25 +870,24 @@ class AgentDatabase:
         """Check if a user has had recent interactions."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
 
-                if types:
-                    placeholders = ','.join(['?' for _ in types])
-                    cursor.execute(f'''
-                        SELECT COUNT(*) FROM interacciones
-                        WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{hours} hours')
-                        AND tipo_interaccion IN ({placeholders})
-                    ''', [user_id] + types)
-                else:
-                    cursor.execute(f'''
-                        SELECT COUNT(*) FROM interacciones
-                        WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{hours} hours')
-                    ''', (user_id,))
+                    if types:
+                        placeholders = ','.join(['?' for _ in types])
+                        cursor.execute(f'''
+                            SELECT COUNT(*) FROM interacciones
+                            WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{hours} hours')
+                            AND tipo_interaccion IN ({placeholders})
+                        ''', [user_id] + types)
+                    else:
+                        cursor.execute(f'''
+                            SELECT COUNT(*) FROM interacciones
+                            WHERE usuario_id = ? AND datetime(fecha) > datetime('now', '-{hours} hours')
+                        ''', (user_id,))
 
-                count = cursor.fetchone()[0]
-                conn.close()
-                return count > 0
+                    count = cursor.fetchone()[0]
+                    return count > 0
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error checking recent interactions: {e}")
             return False
@@ -927,25 +896,24 @@ class AgentDatabase:
         """Get list of all active servers."""
         try:
             with self._lock:
-                conn = sqlite3.connect(self.db_path)
-                cursor = conn.cursor()
-                
-                # Get unique servers from interactions
-                cursor.execute('''
-                    SELECT DISTINCT servidor_id 
-                    FROM interacciones 
-                    WHERE servidor_id IS NOT NULL 
-                    ORDER BY servidor_id
-                ''')
-                
-                servers = [row[0] for row in cursor.fetchall()]
-                conn.close()
-                
-                # If no servers in interactions, return current server
-                if not servers:
-                    return [self.server_id]
-                
-                return servers
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+
+                    # Get unique servers from interactions
+                    cursor.execute('''
+                        SELECT DISTINCT servidor_id
+                        FROM interacciones
+                        WHERE servidor_id IS NOT NULL
+                        ORDER BY servidor_id
+                    ''')
+
+                    servers = [row[0] for row in cursor.fetchall()]
+
+                    # If no servers in interactions, return current server
+                    if not servers:
+                        return [self.server_id]
+
+                    return servers
         except Exception as e:
             logger.exception(f"⚠️ [DB] Error getting active servers: {e}")
             return [self.server_id]  # Fallback to current server
@@ -1097,470 +1065,118 @@ def get_database_path(server_id: str, db_type: str) -> str:
     db_name = db_filenames.get(db_type, f'{db_type}_{personality_name}')
     return str(get_server_db_path(server_id, db_name))
 
-# --- FATIGUE DATABASE SYSTEM ---
+# --- FATIGUE DATABASE SYSTEM (NoSQL-backed) ---
 
 def get_fatigue_db_path(server_id: str) -> Optional[str]:
     """
-    Get path for fatigue database.
+    Get path for fatigue store JSON file.
 
     Args:
         server_id: Server ID
 
     Returns:
-        str: Full path to fatigue database, or None if personality cannot be determined
+        str: Full path to fatigue.json, or None if personality cannot be determined.
     """
     personality_name = get_personality_name(server_id)
-    
-    # Don't create database if personality cannot be determined
     if not personality_name:
-        logger.warning(f"[get_fatigue_db_path] Cannot determine personality for server {server_id}, skipping database creation")
+        logger.warning(f"[get_fatigue_db_path] Cannot determine personality for server {server_id}, skipping store creation")
         return None
-    
-    db_name = f"fatigue_{personality_name}"
-    return str(get_server_db_path(server_id, db_name))
+    base_dir = Path(__file__).parent / "databases" / str(server_id)
+    return str(base_dir / "fatigue.json")
 
-def init_fatigue_db(server_id: str) -> sqlite3.Connection:
+
+def init_fatigue_db(server_id: str):
+    """Initialize/return the FatigueStore for a server (NoSQL-backed).
+
+    Kept for backward compatibility. Returns the FatigueStore instance instead
+    of a sqlite3.Connection. Callers should not assume SQL semantics.
     """
-    Initialize fatigue database for a server.
-    
-    Args:
-        server_id: Server ID
-        
-    Returns:
-        sqlite3.Connection: Database connection
-    """
-    db_path = get_fatigue_db_path(server_id)
-    db = sqlite3.connect(db_path, timeout=30.0)
-    
-    # Check if table exists and needs migration
-    cursor = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='fatigue'")
-    table_exists = cursor.fetchone() is not None
-    
-    if table_exists:
-        # Check if new columns exist
-        cursor = db.execute("PRAGMA table_info(fatigue)")
-        columns = [col[1] for col in cursor.fetchall()]
-        
-        # Add new columns if they don't exist
-        if 'hourly_requests' not in columns:
-            db.execute('ALTER TABLE fatigue ADD COLUMN hourly_requests INTEGER DEFAULT 0')
-        if 'last_hour_timestamp' not in columns:
-            db.execute('ALTER TABLE fatigue ADD COLUMN last_hour_timestamp TEXT')
-        if 'burst_requests' not in columns:
-            db.execute('ALTER TABLE fatigue ADD COLUMN burst_requests INTEGER DEFAULT 0')
-        if 'last_burst_timestamp' not in columns:
-            db.execute('ALTER TABLE fatigue ADD COLUMN last_burst_timestamp TEXT')
-        if 'created_at' not in columns:
-            db.execute('ALTER TABLE fatigue ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP')
-        if 'updated_at' not in columns:
-            db.execute('ALTER TABLE fatigue ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP')
-    else:
-        # Create fatigue table if it doesn't exist
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS fatigue (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                user_name TEXT,
-                daily_requests INTEGER DEFAULT 0,
-                total_requests INTEGER DEFAULT 0,
-                last_request_date TEXT,
-                hourly_requests INTEGER DEFAULT 0,
-                last_hour_timestamp TEXT,
-                burst_requests INTEGER DEFAULT 0,
-                last_burst_timestamp TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(user_id)
-            )
-        ''')
-    
-    # Create server row if it doesn't exist
-    server_row_id = f"server_{server_id}"
-    today = str(date.today())
-    
-    db.execute('''
-        INSERT OR IGNORE INTO fatigue 
-        (user_id, user_name, daily_requests, total_requests, last_request_date, hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
-        VALUES (?, ?, 0, 0, ?, 0, ?, 0, ?)
-    ''', (server_row_id, f"Server_{server_id}", today, today, today))
-    
-    db.commit()
-    return db
+    from persistence.fatigue_store import get_fatigue_store
+    return get_fatigue_store(str(server_id))
+
 
 def increment_fatigue_count(server_id: str, user_id: str, user_name: str = None) -> tuple[int, int]:
-    """
-    Increment fatigue count for a user and server.
-    
-    Args:
-        server_id: Server ID
-        user_id: User ID (or "server_{server_id}" for server total)
-        user_name: User name (optional)
-        
+    """Increment fatigue count for a user (NoSQL-backed).
+
     Returns:
-        tuple[int, int]: (daily_requests, total_requests) after increment
+        tuple[int, int]: (daily_requests, total_requests) after increment.
     """
-    db = init_fatigue_db(server_id)
-    today = str(date.today())
-    
     try:
-        # Get current stats
-        cursor = db.execute('''
-            SELECT daily_requests, total_requests, last_request_date,
-                   hourly_requests, last_hour_timestamp,
-                   burst_requests, last_burst_timestamp
-            FROM fatigue WHERE user_id = ?
-        ''', (user_id,))
-        
-        row = cursor.fetchone()
-        
-        # Get current timestamps for tracking
-        now = datetime.datetime.now()
-        current_hour = now.replace(minute=0, second=0, microsecond=0).isoformat()
-        five_min_ago = (now - datetime.timedelta(minutes=5)).isoformat()
-        
-        if row:
-            current_daily, current_total, last_date, current_hourly, last_hour_ts, current_burst, last_burst_ts = row
-            
-            # Reset daily count if date changed
-            if last_date != today:
-                new_daily = 1
-            else:
-                new_daily = current_daily + 1
-                
-            # Reset hourly count if hour changed
-            if last_hour_ts != current_hour:
-                new_hourly = 1
-            else:
-                new_hourly = current_hourly + 1
-                
-            # Reset burst count if more than 5 minutes since last burst
-            if last_burst_ts and last_burst_ts > five_min_ago:
-                new_burst = current_burst + 1
-            else:
-                new_burst = 1
-                
-            new_total = current_total + 1
-            
-            # Update user record
-            db.execute('''
-                UPDATE fatigue 
-                SET daily_requests = ?, total_requests = ?, 
-                    last_request_date = ?, updated_at = CURRENT_TIMESTAMP,
-                    hourly_requests = ?, last_hour_timestamp = ?,
-                    burst_requests = ?, last_burst_timestamp = ?,
-                    user_name = COALESCE(?, user_name)
-                WHERE user_id = ?
-            ''', (new_daily, new_total, today, new_hourly, current_hour, 
-                  new_burst, now.isoformat(), user_name, user_id))
-        else:
-            # Insert new user record
-            new_daily = 1
-            new_total = 1
-            new_hourly = 1
-            new_burst = 1
-            
-            db.execute('''
-                INSERT INTO fatigue 
-                (user_id, user_name, daily_requests, total_requests, last_request_date,
-                 hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id) DO UPDATE SET
-                    daily_requests = excluded.daily_requests,
-                    total_requests = excluded.total_requests,
-                    last_request_date = excluded.last_request_date,
-                    hourly_requests = excluded.hourly_requests,
-                    last_hour_timestamp = excluded.last_hour_timestamp,
-                    burst_requests = excluded.burst_requests,
-                    last_burst_timestamp = excluded.last_burst_timestamp
-            ''', (user_id, user_name or f"User_{user_id}", new_daily, new_total, today,
-                  new_hourly, current_hour, new_burst, now.isoformat()))
-        
-        # Also increment server total if this is a user request (avoid recursion)
-        if not user_id.startswith("server_"):
-            server_row_id = f"server_{server_id}"
-            # Direct server increment without recursion
-            cursor = db.execute('''
-                SELECT daily_requests, total_requests, last_request_date,
-                       hourly_requests, last_hour_timestamp,
-                       burst_requests, last_burst_timestamp
-                FROM fatigue WHERE user_id = ?
-            ''', (server_row_id,))
-            
-            server_row = cursor.fetchone()
-            if server_row:
-                srv_daily, srv_total, srv_last_date, srv_hourly, srv_last_hour, srv_burst, srv_last_burst = server_row
-                
-                # Reset server daily if date changed
-                if srv_last_date != today:
-                    new_srv_daily = 1
-                else:
-                    new_srv_daily = srv_daily + 1
-                    
-                # Reset server hourly if hour changed
-                if srv_last_hour != current_hour:
-                    new_srv_hourly = 1
-                else:
-                    new_srv_hourly = srv_hourly + 1
-                    
-                # Reset server burst if more than 5 minutes
-                if srv_last_burst and srv_last_burst > five_min_ago:
-                    new_srv_burst = srv_burst + 1
-                else:
-                    new_srv_burst = 1
-                    
-                new_srv_total = srv_total + 1
-                
-                db.execute('''
-                    UPDATE fatigue 
-                    SET daily_requests = ?, total_requests = ?, 
-                        last_request_date = ?, updated_at = CURRENT_TIMESTAMP,
-                        hourly_requests = ?, last_hour_timestamp = ?,
-                        burst_requests = ?, last_burst_timestamp = ?
-                    WHERE user_id = ?
-                ''', (new_srv_daily, new_srv_total, today, new_srv_hourly, current_hour,
-                      new_srv_burst, now.isoformat(), server_id))
-            else:
-                # Insert server record if it doesn't exist (idempotent)
-                db.execute('''
-                    INSERT INTO fatigue 
-                    (user_id, user_name, daily_requests, total_requests, last_request_date,
-                     hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp)
-                    VALUES (?, ?, 1, 1, ?, 1, ?, 1, ?)
-                    ON CONFLICT(user_id) DO UPDATE SET
-                        daily_requests = excluded.daily_requests,
-                        total_requests = excluded.total_requests,
-                        last_request_date = excluded.last_request_date,
-                        hourly_requests = excluded.hourly_requests,
-                        last_hour_timestamp = excluded.last_hour_timestamp,
-                        burst_requests = excluded.burst_requests,
-                        last_burst_timestamp = excluded.last_burst_timestamp
-                ''', (server_row_id, f"Server_{server_id}", today, current_hour, now.isoformat()))
-            
-            db.commit()
-        return new_daily, new_total
-        
+        from persistence.fatigue_store import get_fatigue_store
+        store = get_fatigue_store(str(server_id))
+        return store.increment(str(user_id), user_name)
     except Exception as e:
         logger.error(f"Error incrementing fatigue count: {e}")
         return 0, 0
-    finally:
-        db.close()
+
 
 def get_fatigue_stats(server_id: str, user_id: str = None) -> dict:
-    """
-    Get fatigue statistics.
-    
-    Args:
-        server_id: Server ID
-        user_id: User ID (optional, if None gets all users)
-        
-    Returns:
-        dict: Fatigue statistics
-    """
-    db = init_fatigue_db(server_id)
-    
+    """Get fatigue stats (NoSQL-backed)."""
     try:
-        if user_id:
-            # Get specific user stats
-            cursor = db.execute('''
-                SELECT user_id, user_name, daily_requests, total_requests, last_request_date,
-                       hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp
-                FROM fatigue WHERE user_id = ?
-            ''', (user_id,))
-            
-            row = cursor.fetchone()
-            if row:
-                return {
-                    'user_id': row[0],
-                    'user_name': row[1],
-                    'daily_requests': row[2],
-                    'total_requests': row[3],
-                    'last_request_date': row[4],
-                    'hourly_requests': row[5],
-                    'last_hour_timestamp': row[6],
-                    'burst_requests': row[7],
-                    'last_burst_timestamp': row[8]
-                }
-            else:
-                return {}
-        else:
-            # Get all users stats
-            cursor = db.execute('''
-                SELECT user_id, user_name, daily_requests, total_requests, last_request_date,
-                       hourly_requests, last_hour_timestamp, burst_requests, last_burst_timestamp
-                FROM fatigue ORDER BY total_requests DESC
-            ''')
-            
-            stats = []
-            for row in cursor.fetchall():
-                stats.append({
-                    'user_id': row[0],
-                    'user_name': row[1],
-                    'daily_requests': row[2],
-                    'total_requests': row[3],
-                    'last_request_date': row[4],
-                    'hourly_requests': row[5],
-                    'last_hour_timestamp': row[6],
-                    'burst_requests': row[7],
-                    'last_burst_timestamp': row[8]
-                })
-            
-            return {'users': stats}
-            
-    finally:
-        db.close()
+        from persistence.fatigue_store import get_fatigue_store
+        store = get_fatigue_store(str(server_id))
+        return store.get_stats(str(user_id) if user_id else None)
+    except Exception as e:
+        logger.error(f"Error getting fatigue stats: {e}")
+        return {} if user_id else {"users": []}
+
 
 def reset_daily_fatigue(server_id: str) -> int:
-    """
-    Reset daily fatigue counts for all users in a server.
-    This should be called when the date changes.
-    
-    Args:
-        server_id: Server ID
-        
-    Returns:
-        int: Number of users whose daily count was reset
-    """
-    db = init_fatigue_db(server_id)
-    
+    """Reset daily fatigue counters for all users (NoSQL-backed)."""
     try:
-        cursor = db.execute('''
-            UPDATE fatigue 
-            SET daily_requests = 0, updated_at = CURRENT_TIMESTAMP
-            WHERE daily_requests > 0
-        ''')
-        
-        db.commit()
-        return cursor.rowcount
-        
-    finally:
-        db.close()
+        from persistence.fatigue_store import get_fatigue_store
+        store = get_fatigue_store(str(server_id))
+        return store.reset_daily()
+    except Exception as e:
+        logger.error(f"Error resetting daily fatigue: {e}")
+        return 0
+
+
+def cleanup_old_fatigue_data(server_id: str, days_to_keep: int = 30) -> int:
+    """Remove inactive users from fatigue store (NoSQL-backed)."""
+    try:
+        from persistence.fatigue_store import get_fatigue_store
+        store = get_fatigue_store(str(server_id))
+        return store.cleanup_old(days_to_keep)
+    except Exception as e:
+        logger.error(f"Error cleaning up fatigue data: {e}")
+        return 0
+
 
 def forget_user_across_servers(user_id, user_name: str = None, extra_names=None, server_ids=None) -> dict:
     """GDPR — sweep a user out of every per-server database we know about.
 
+    DEPRECATED: This function has been migrated to persistence.agent_state.
+    Import from persistence.agent_state instead.
+
     Args:
         user_id: The Discord user id (str/int).
         user_name: Best-known display/user name. When provided, occurrences
-            are also redacted from LLM-synthesised summaries (see
-            :meth:`AgentDatabase.forget_user`).
+            are also redacted from LLM-synthesised summaries.
         extra_names: Optional additional aliases to redact.
-        server_ids: Optional iterable of server ids to limit the sweep. When
-            omitted, every subdirectory under ``databases/`` that looks like a
-            server id is processed.
+        server_ids: Optional iterable of server ids to limit the sweep (ignored in NoSQL version).
 
     Returns:
         Mapping ``{server_id: {table: deleted_rows}}`` with one entry per
-        server successfully processed. Fatigue rows keyed by user_id are also
-        purged.
+        server successfully processed.
     """
-    report: dict = {}
-    db_root = DB_DIR
-    if server_ids is None:
-        try:
-            server_ids = [p.name for p in db_root.iterdir() if p.is_dir() and p.name.isdigit()]
-        except OSError:
-            server_ids = []
-
-    uid = str(user_id)
-    for sid in server_ids:
-        server_report: dict = {}
-        # Main agent DB
-        try:
-            db = get_db_instance(sid)
-            if db is not None:
-                server_report.update(db.forget_user(uid, user_name=user_name, extra_names=extra_names))
-        except Exception as e:
-            logger.warning(f"[GDPR] forget_user failed on agent DB for server {sid}: {e}")
-
-        # Fatigue table lives in its own DB per server
-        try:
-            fat_db = init_fatigue_db(sid)
-            try:
-                cursor = fat_db.execute('DELETE FROM fatigue WHERE user_id = ?', (uid,))
-                server_report['fatigue'] = cursor.rowcount
-                fat_db.commit()
-            finally:
-                fat_db.close()
-        except Exception as e:
-            logger.warning(f"[GDPR] forget_user failed on fatigue DB for server {sid}: {e}")
-
-        # Nordic Runes readings (NoSQL-backed)
-        try:
-            from agent_roles_db import get_roles_db_instance
-            roles_db = get_roles_db_instance(sid)
-            if roles_db is not None:
-                deleted_runes = roles_db.delete_nordic_runes_readings(uid)
-                if deleted_runes > 0:
-                    server_report['nordic_runes'] = deleted_runes
-        except Exception as e:
-            logger.warning(f"[GDPR] forget_user failed on nordic runes for server {sid}: {e}")
-
-        if server_report:
-            report[sid] = server_report
-
-    logger.info(f"🧹 [GDPR] forget_user_across_servers({uid}): touched {len(report)} servers")
-    return report
+    from persistence.agent_state import forget_user_across_servers as _nosql_version
+    logger.warning("agent_db.forget_user_across_servers is deprecated, use persistence.agent_state.forget_user_across_servers")
+    return _nosql_version(user_id, user_name, extra_names)
 
 
 def apply_retention_across_servers(interactions_days: int = 90, derived_memory_days: int = 365,
                                    server_ids=None) -> dict:
     """Run :meth:`AgentDatabase.apply_retention` on every server database.
 
+    DEPRECATED: This function has been migrated to persistence.agent_state.
+    Import from persistence.agent_state instead.
+
     Returns a mapping ``{server_id: {table: deleted_rows}}`` with only the
     servers where at least one row was deleted.
     """
-    report: dict = {}
-    db_root = DB_DIR
-    if server_ids is None:
-        try:
-            server_ids = [p.name for p in db_root.iterdir() if p.is_dir() and p.name.isdigit()]
-        except OSError:
-            server_ids = []
-
-    for sid in server_ids:
-        try:
-            db = get_db_instance(sid)
-            if db is None:
-                continue
-            server_report = db.apply_retention(
-                interactions_days=interactions_days,
-                derived_memory_days=derived_memory_days,
-            )
-            if any(server_report.values()):
-                report[sid] = server_report
-        except Exception as e:
-            logger.warning(f"[GDPR] apply_retention failed for server {sid}: {e}")
-
-    if report:
-        logger.info(f"🧹 [GDPR] apply_retention_across_servers: purged on {len(report)} servers")
-    return report
+    from persistence.agent_state import apply_retention_across_servers as _nosql_version
+    logger.warning("agent_db.apply_retention_across_servers is deprecated, use persistence.agent_state.apply_retention_across_servers")
+    return _nosql_version(interactions_days)
 
 
-def cleanup_old_fatigue_data(server_id: str, days_to_keep: int = 30) -> int:
-    """
-    Clean up old fatigue data (users with no activity for specified days).
-    
-    Args:
-        server_id: Server ID
-        days_to_keep: Number of days to keep inactive users
-        
-    Returns:
-        int: Number of users removed
-    """
-    db = init_fatigue_db(server_id)
-    
-    try:
-        cutoff_date = (date.today() - datetime.timedelta(days=days_to_keep)).isoformat()
-        
-        cursor = db.execute('''
-            DELETE FROM fatigue 
-            WHERE user_id NOT LIKE 'server_%' 
-            AND last_request_date < ?
-            AND total_requests < 10
-        ''', (cutoff_date,))
-        
-        db.commit()
-        return cursor.rowcount
-        
-    finally:
-        db.close()

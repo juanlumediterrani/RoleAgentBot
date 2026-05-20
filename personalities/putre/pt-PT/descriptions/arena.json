@@ -1,0 +1,103 @@
+{
+  "title": "Arena de Batalha do Putre",
+  "description": "Entra na fossa de combate! Prova a tua forka e kraka os teus inimigos!",
+  "button": "⚔️ Arena",
+  "canvas_arena_overview_title": "Arena - Fossa de Combate do Putre",
+  "canvas_arena_overview_description": "Aki é onde os guerreiros provam o seu valor! Luta, vence e ganha glória na arena!",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Uma luta 1v1! Desafia outro guerreiro para combate singular e prova quem é mais forte!",
+    "coliseo": "Luta geral! Múltiplos guerreiros lutam juntos. O último a pé ganha!",
+    "torneo": "Torneio de kampioes! Luta atraves dos brackets e torna-te o kampiao supremo!"
+  },
+  "duelo": {
+    "button": "⚔️ Duelo",
+    "title": "Combate Singular",
+    "description": "Desafia outro guerreiro para um duelo 1v1. Prova a tua forka!",
+    "select_opponent": "Escolhe o teu oponente, fraco:",
+    "select_weapon": "Escolhe a tua arma, guerreiro:",
+    "challenge_sent": "Desafio enviado! A esperando que o kovarde responda!",
+    "challenge_received_title": "🪓 FOSTE DESAFIADO",
+    "challenge_received_desc": "desafiou-te para um duelo na Arena!",
+    "button_accept": "⚔️ Akeitar",
+    "button_decline": "🛡️ Fugir",
+    "accepted": "Desafio akeitado! A luta komeka!",
+    "declined": "O desafiante fugiu komo um kovarde! Hah!",
+    "no_weapons": "Não tens armas ainda, frako! Luta para desbloqueá-las!"
+  },
+  "coliseo": {
+    "button": "🪓 Koliseu",
+    "title": "O Koliseu - Luta Geral",
+    "description": "Mínimo quatro guerreiros. O último a pé ganha experiência!",
+    "register": "⚔️ Juntar à Luta",
+    "registered": "Estás dentro! Escolhe a tua arma:",
+    "not_enough": "Guerreiros insuficientes! Precisamos de pelo menos quatro para uma luta de verdade!",
+    "scheduled": "Koliseu agendado! Guerreiros podem juntar-se agora!",
+    "timer": "Tempo restante: ",
+    "participants": "Guerreiros prontos: ",
+    "executing": "Iniciando a luta...",
+    "cancelled": "A luta foi kanselada! Guerreiros corajosos insuficientes apareceram!"
+  },
+  "torneo": {
+    "button": "🪓 Torneio",
+    "title": "O Torneio - Kammino dos Kampioes",
+    "description": "Mínimo oito guerreiros. Luta atraves dos brackets. O vencedor leva experiência!",
+    "register": "⚔️ Juntar ao Torneio",
+    "registered": "Estás dentro! Escolhe a tua arma:",
+    "not_enough": "Guerreiros insuficientes! Precisamos de pelo menos oito para um torneio!",
+    "scheduled": "Torneio agendado! Guerreiros podem juntar-se agora!",
+    "timer": "Tempo restante: ",
+    "participants": "Guerreiros prontos: ",
+    "bracket_title": "Brackets do Torneio",
+    "round": "Ronda ",
+    "executing": "Iniciando o torneio...",
+    "cancelled": "O torneio foi kanselado! Guerreiros corajosos insuficientes!"
+  },
+  "ranking": {
+    "button": "🏆 Klassifikacao",
+    "title": "Klassifikacao de Guerreiros da Arena",
+    "no_fighters": "Sem guerreiros ainda! Sê o primeiro a lutar e ganhar glória!",
+    "wins": "Vitórias",
+    "participated": "Lutas",
+    "xp": "Experiência",
+    "weapon": "Arma ativa",
+    "personality": "Estilo de lutador"
+  },
+  "weapons": {
+    "button": "🦴 Armas",
+    "title": "Arsenal do Guerreiro",
+    "description": "Armas desbloqueadas atraves das tuas batalhas e vitórias!",
+    "unlocked": "Desbloqueadas",
+    "locked": "Blokeadas - Precisa de mais experiência",
+    "select_active": "Equipar Arma",
+    "equipped": "Arma equipada: ",
+    "none": "Sem armas ainda, frako!"
+  },
+  "battle_result": {
+    "title": "⚔️ Resultado da Batalha",
+    "winner": "Vitorioso: ",
+    "justification": "Razão: ",
+    "xp_gained": "Experiência ganha: ",
+    "new_weapon": "Nova arma desblokeada: ",
+    "dm_title": "O resultado da tua batalha na arena"
+  },
+  "admin": {
+    "button": "⚙️ Konfiguracao",
+    "title": "Konfiguracao da Arena",
+    "description": "Definicoes da arena (apenas para os komandantes de confianka do Putre).",
+    "min_coliseo": "Mínimo para o Koliseu",
+    "min_tournament": "Mínimo para o Torneio",
+    "registration_timeout": "Tempo de registro (horas)",
+    "xp_coliseo": "Experiência por Koliseu",
+    "xp_tournament": "Experiência por Torneio",
+    "xp_duel": "Experiência por Duelo"
+  },
+  "errors": {
+    "no_channel": "Não foi possível criar o kanal da Arena! Verifica as permissoes, umano!",
+    "role_disabled": "O modulo Arena nao esta ativo neste servidor!",
+    "already_registered": "Ja estas registrado neste evento, guerreiro!",
+    "not_registered": "Nao estas registrado neste evento!",
+    "event_in_progress": "Uma batalha esta em progresso! Espera que termine!",
+    "self_challenge": "Nao podes lutar kontigo mesmo, umano estupido! Isso nao funksiona!"
+  }
+}

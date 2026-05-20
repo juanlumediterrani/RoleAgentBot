@@ -1,0 +1,103 @@
+{
+  "title": "Kronk's Fight Arena",
+  "description": "KRONK SMASH! Come fight and win gold! Kronk watch you fight!",
+  "button": "Arena",
+  "canvas_arena_overview_title": "Arena - Kronk's Fight Pit",
+  "canvas_arena_overview_description": "Here warriors fight and show strength! Kronk like fighting! Win and get strong!",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Fight one on one! Two warriors hit each other! Kronk see who stronger!",
+    "coliseo": "Many warriors fight together! Minimum four! Last one standing wins!",
+    "torneo": "Big fight tournament! Minimum eight! Fight through brackets and be champion!"
+  },
+  "duelo": {
+    "button": "🪨 Duel",
+    "title": "One on One Fight",
+    "description": "Challenge another warrior to fight! Hit them hard! Kronk watch!",
+    "select_opponent": "Pick who you want to fight:",
+    "select_weapon": "Pick your weapon, warrior:",
+    "challenge_sent": "Kronk sent challenge! Waiting for other warrior to answer!",
+    "challenge_received_title": "🪨 YOU GOT CHALLENGED",
+    "challenge_received_desc": "wants to fight you in the Arena!",
+    "button_accept": "🦴 Accept",
+    "button_decline": "🪓 Run Away",
+    "accepted": "Fight accepted! Let the hitting begin!",
+    "declined": "Warrior ran away like scared little human! Ha ha!",
+    "no_weapons": "You have no weapon yet, weak human! Fight to get weapon!"
+  },
+  "coliseo": {
+    "button": "🪨 Coliseum",
+    "title": "Big Fight - Many Warriors",
+    "description": "Minimum four warriors. Last one standing gets experience!",
+    "register": "🦴 Join Fight",
+    "registered": "You in! Pick your weapon:",
+    "not_enough": "Not enough warriors! Need four for good fight!",
+    "scheduled": "Fight scheduled! Warriors can join now!",
+    "timer": "Time left: ",
+    "participants": "Warriors ready: ",
+    "executing": "Starting the fight...",
+    "cancelled": "Fight cancelled! Not enough brave warriors came!"
+  },
+  "torneo": {
+    "button": "🪨 Tournament",
+    "title": "Big Tournament",
+    "description": "Minimum eight warriors. Fight through brackets. Winner gets experience!",
+    "register": "🦴 Join Tournament",
+    "registered": "You in! Pick your weapon:",
+    "not_enough": "Not enough warriors! Need eight for tournament!",
+    "scheduled": "Tournament scheduled! Warriors can join now!",
+    "timer": "Time left: ",
+    "participants": "Warriors ready: ",
+    "bracket_title": "Tournament Brackets",
+    "round": "Round ",
+    "executing": "Starting tournament...",
+    "cancelled": "Tournament cancelled! Not enough brave warriors!"
+  },
+  "ranking": {
+    "button": "🪨 Leaderboard",
+    "title": "Warrior Rankings",
+    "no_fighters": "No warriors yet! You be first to fight!",
+    "wins": "Wins",
+    "participated": "Fights",
+    "xp": "Experience",
+    "weapon": "Active weapon",
+    "personality": "Fighter style"
+  },
+  "weapons": {
+    "button": "🦴 Weapons",
+    "title": "Warrior Weapons",
+    "description": "Weapons you get from fighting and winning!",
+    "unlocked": "Unlocked",
+    "locked": "Locked - Need more fighting",
+    "select_active": "Equip Weapon",
+    "equipped": "Equipped weapon: ",
+    "none": "No weapons yet, weak human!"
+  },
+  "battle_result": {
+    "title": "🪨 Fight Result",
+    "winner": "Winner: ",
+    "justification": "Why: ",
+    "xp_gained": "Experience got: ",
+    "new_weapon": "New weapon got: ",
+    "dm_title": "Your arena fight result"
+  },
+  "admin": {
+    "button": "⚙️ Configuration",
+    "title": "Arena Configuration",
+    "description": "Arena settings (only for Kronk's bosses).",
+    "min_coliseo": "Minimum for Coliseum",
+    "min_tournament": "Minimum for Tournament",
+    "registration_timeout": "Join time (hours)",
+    "xp_coliseo": "Experience per Coliseum",
+    "xp_tournament": "Experience per Tournament",
+    "xp_duel": "Experience per Duel"
+  },
+  "errors": {
+    "no_channel": "Kronk could not make Arena channel! Check permissions, human!",
+    "role_disabled": "Arena module not working on this server!",
+    "already_registered": "You already in this fight, warrior!",
+    "not_registered": "You not in this fight!",
+    "event_in_progress": "Fight happening now! Wait for it to finish!",
+    "self_challenge": "You cannot fight yourself! That stupid, human!"
+  }
+}

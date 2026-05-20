@@ -1,0 +1,103 @@
+{
+  "title": "La Arena del Espejo",
+  "description": "Un espacio donde se revela lo que otros prefieren ocultar. El combate como forma de presencia.",
+  "button": "🎎 Arena",
+  "canvas_arena_overview_title": "Arena - El Espejo que Corta",
+  "canvas_arena_overview_description": "En este espacio, la batalla no es lo que parece. Es una ceremonia disfrazada de violencia, o quizas al reves.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Un encuentro entre dos. Intimo, inevitable. Como el te entre personas que no se conocen.",
+    "coliseo": "Todos contra todos. Minimo cuatro. El caos tiene su propia elegancia cuando alguien la observa.",
+    "torneo": "Eliminacion ritual. Minimo ocho. Brackets que parecen flores desplegandose en sentido inverso."
+  },
+  "duelo": {
+    "button": "🎎 Encuentro",
+    "title": "El Duelo",
+    "description": "Invita a otro a cruzar el umbral. El resultado sera testigo de ambos.",
+    "select_opponent": "Elige a quien deseas enfrentarte:",
+    "select_weapon": "Escoge el instrumento que te acompanara:",
+    "challenge_sent": "La invitacion ha sido entregada. Ahora depende del otro aceptar el encuentro.",
+    "challenge_received_title": "🎎 HAS RECIBIDO UNA INVITACION",
+    "challenge_received_desc": "te ha invitado a un encuentro en la Arena.",
+    "button_accept": "🎎 Aceptar",
+    "button_decline": "🎎 Declinar",
+    "accepted": "El encuentro ha sido aceptado. Preparando el espacio...",
+    "declined": "La invitacion fue declinada. Hay encuentros que no estan destinados a ocurrir.",
+    "no_weapons": "Aun no tienes instrumentos disponibles. Participa en encuentros para desbloquearlos."
+  },
+  "coliseo": {
+    "button": "🏯 Coliseo",
+    "title": "El Coliseo - Todos contra todos",
+    "description": "Minimo cuatro participantes. El ultimo en pie recibe un punto de experiencia.",
+    "register": "⛩️ Inscribirse en el Coliseo",
+    "registered": "Inscrito. Escoge tu instrumento:",
+    "not_enough": "No hay suficientes presencias registradas. Se requieren cuatro.",
+    "scheduled": "Coliseo anunciado. Inscripciones abiertas.",
+    "timer": "Tiempo restante: ",
+    "participants": "Presencias inscritas: ",
+    "executing": "El coliseo comienza...",
+    "cancelled": "El coliseo se ha cancelado. No todas las ceremonias encuentran sus participantes."
+  },
+  "torneo": {
+    "button": "🏯 Torneo",
+    "title": "El Torneo - Eliminacion",
+    "description": "Minimo ocho participantes. Brackets de eliminacion ritual. Un punto de experiencia para el finalista.",
+    "register": "⛩️ Inscribirse en el Torneo",
+    "registered": "Inscrito. Escoge tu instrumento:",
+    "not_enough": "Presencias insuficientes. Se requieren ocho para los brackets.",
+    "scheduled": "Torneo anunciado. Inscripciones abiertas.",
+    "timer": "Tiempo restante: ",
+    "participants": "Presencias inscritas: ",
+    "bracket_title": "Brackets del Torneo",
+    "round": "Ronda ",
+    "executing": "El torneo comienza...",
+    "cancelled": "El torneo se ha cancelado. A veces el silencio es la unica respuesta posible."
+  },
+  "ranking": {
+    "button": "🍶 Clasificacion",
+    "title": "Las Presencias que Han Cruzado el Umbral",
+    "no_fighters": "Aun no hay presencias registradas. El espacio espera.",
+    "wins": "Victorias",
+    "participated": "Encuentros",
+    "xp": "Experiencia",
+    "weapon": "Instrumento activo",
+    "personality": "Presencia de combate"
+  },
+  "weapons": {
+    "button": "🗡️ Instrumentos",
+    "title": "Los Instrumentos de la Arena",
+    "description": "Herramientas desbloqueadas segun tu trayectoria en este espacio.",
+    "unlocked": "Desbloqueados",
+    "locked": "Aun no - Requiere experiencia",
+    "select_active": "Equipar instrumento",
+    "equipped": "Instrumento elegido: ",
+    "none": "Sin instrumentos disponibles aun."
+  },
+  "battle_result": {
+    "title": "🎎 El Resultado del Encuentro",
+    "winner": "Presencia prevaleciente: ",
+    "justification": "La razon: ",
+    "xp_gained": "Experiencia obtenida: ",
+    "new_weapon": "Nuevo instrumento desbloqueado: ",
+    "dm_title": "El resultado de tu encuentro en la Arena"
+  },
+  "admin": {
+    "button": "⚙️ Configuracion",
+    "title": "Configuracion de la Arena",
+    "description": "Ajustes del espacio (solo para quienes dirigen).",
+    "min_coliseo": "Minimo para el Coliseo",
+    "min_tournament": "Minimo para el Torneo",
+    "registration_timeout": "Tiempo de inscripcion (horas)",
+    "xp_coliseo": "Experiencia por Coliseo",
+    "xp_tournament": "Experiencia por Torneo",
+    "xp_duel": "Experiencia por Encuentro"
+  },
+  "errors": {
+    "no_channel": "No fue posible crear el canal de la Arena. Verifica los permisos.",
+    "role_disabled": "El modulo Arena no esta activo en este espacio.",
+    "already_registered": "Ya estas inscrito en este evento.",
+    "not_registered": "No estas inscrito en este evento.",
+    "event_in_progress": "Hay una ceremonia en curso. Espera a que concluya.",
+    "self_challenge": "No puedes enfrentarte a ti mismo. El espejo no funciona asi."
+  }
+}

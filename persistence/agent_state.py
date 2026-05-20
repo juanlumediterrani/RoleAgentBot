@@ -15,6 +15,12 @@ from agent_logging import get_logger
 
 logger = get_logger("agent_state")
 
+# Default database directory
+DEFAULT_DB_DIR = Path(__file__).parent.parent / "databases"
+
+# DM sessions file path
+DM_SESSIONS_FILE = DEFAULT_DB_DIR / "dm_sessions.json"
+
 
 def stagger_offset_seconds(server_id: str, window_seconds: int) -> int:
     """Deterministic per-server offset within a window (seconds).
@@ -229,6 +235,29 @@ class AgentState:
         """Mark a pending relationship refresh as completed."""
         return self._memory.mark_relationship_refresh_completed(user_id)
 
+    # --- GDPR and Retention ---
+
+    def forget_user(self, user_id, user_name: str = None, extra_names=None) -> dict:
+        """GDPR — right to erasure (Art. 17).
+
+        Two-phase wipe:
+        1. Drop every row directly keyed by this user_id (interactions, relationships, etc.)
+        2. When user_name (and optional aliases) is provided, redact mentions in memory tables.
+
+        Returns a per-section report of rows deleted / rewritten.
+        """
+        return self._memory.forget_user(user_id, user_name, extra_names)
+
+    def apply_retention(self, interactions_days: int = 90) -> dict:
+        """Purge data older than the retention thresholds.
+
+        Args:
+            interactions_days: Hard limit for raw interactions rows (default 90 days).
+
+        Returns a per-section count of what was deleted.
+        """
+        return self._memory.apply_retention(interactions_days)
+
     # --- Notable Recollections ---
 
     def add_notable_recollection(self, recollection_text, memory_date=None, source_paragraph=None):
@@ -291,3 +320,188 @@ def invalidate_agent_state(server_id: str = None):
             _agent_state_instances.pop(server_id, None)
         else:
             _agent_state_instances.clear()
+
+
+# --- Cross-server utilities (replacing global functions from agent_db.py) ---
+
+def get_all_server_ids(db_dir: Optional[Path] = None) -> List[str]:
+    """Return list of all server IDs that have NoSQL databases (state.json exists).
+
+    Replaces SQLite-based get_all_server_ids from agent_db.py.
+    """
+    db_dir = db_dir or DEFAULT_DB_DIR
+    if not db_dir.exists():
+        return []
+
+    server_ids = []
+    for server_dir in db_dir.iterdir():
+        if not server_dir.is_dir():
+            continue
+
+        # Check if state.json exists (indicates NoSQL database)
+        state_path = server_dir / "state.json"
+        if state_path.exists():
+            server_ids.append(server_dir.name)
+
+    return server_ids
+
+
+def get_active_servers(db_dir: Optional[Path] = None) -> List[str]:
+    """Return list of server IDs with active NoSQL databases.
+
+    Replaces AgentDatabase.get_active_servers() from agent_db.py.
+    """
+    return get_all_server_ids(db_dir)
+
+
+def get_user_last_server_id(user_id: str, db_dir: Optional[Path] = None) -> Optional[str]:
+    """Find the most recent server where a user had an interaction.
+
+    Scans all NoSQL databases (interactions.jsonl) to find the most recent
+    interaction for the given user_id across all servers.
+
+    Replaces SQLite-based get_user_last_server_id from agent_db.py.
+
+    Args:
+        user_id: User ID to search for
+        db_dir: Database directory (defaults to DEFAULT_DB_DIR)
+
+    Returns:
+        Server ID string or None if no interactions found
+    """
+    db_dir = db_dir or DEFAULT_DB_DIR
+    if not db_dir.exists():
+        return None
+
+    uid = str(user_id)
+    most_recent_server = None
+    most_recent_time = None
+
+    # Look through all server directories
+    for server_dir in db_dir.iterdir():
+        if not server_dir.is_dir():
+            continue
+
+        server_id = server_dir.name
+        # Check if interactions.jsonl exists
+        interactions_path = server_dir / "interactions.jsonl"
+        if not interactions_path.exists():
+            continue
+
+        try:
+            # Read interactions to find most recent for this user
+            from persistence.jsonl_store import JsonlRingBuffer
+            interactions = JsonlRingBuffer(interactions_path)
+
+            for record in interactions.iter_records():
+                if record.get("usuario_id") == uid:
+                    interaction_time = record.get("fecha", "")
+                    if interaction_time and (most_recent_time is None or interaction_time > most_recent_time):
+                        most_recent_time = interaction_time
+                        # Use servidor_id from record if available, else server_id from directory
+                        most_recent_server = record.get("servidor_id") or server_id
+
+        except Exception as e:
+            logger.debug(f"Could not check server {server_id} for user {uid}: {e}")
+            continue
+
+    return most_recent_server
+
+
+def forget_user_across_servers(user_id, user_name: str = None, extra_names=None, db_dir: Optional[Path] = None) -> Dict[str, dict]:
+    """GDPR deletion across all NoSQL databases.
+
+    Calls forget_user on every server's AgentState.
+
+    Replaces SQLite-based forget_user_across_servers from agent_db.py.
+
+    Returns:
+        Dict mapping server_id to deletion report
+    """
+    db_dir = db_dir or DEFAULT_DB_DIR
+    server_ids = get_all_server_ids(db_dir)
+    results = {}
+
+    for server_id in server_ids:
+        try:
+            agent_state = get_agent_state(server_id, db_dir)
+            report = agent_state.forget_user(user_id, user_name, extra_names)
+            results[server_id] = report
+        except Exception as e:
+            logger.exception(f"Error forgetting user {user_id} on server {server_id}: {e}")
+            results[server_id] = {"error": str(e)}
+
+    total_ops = sum(sum(report.values()) for report in results.values() if isinstance(report, dict))
+    logger.info(f"🧹 [GDPR] forget_user_across_servers({user_id}): {len(results)} servers processed, total_ops={total_ops}")
+    return results
+
+
+def apply_retention_across_servers(interactions_days: int = 90, db_dir: Optional[Path] = None) -> Dict[str, dict]:
+    """Apply retention policy across all NoSQL databases.
+
+    Calls apply_retention on every server's AgentState.
+
+    Replaces SQLite-based apply_retention_across_servers from agent_db.py.
+
+    Returns:
+        Dict mapping server_id to deletion report
+    """
+    db_dir = db_dir or DEFAULT_DB_DIR
+    server_ids = get_all_server_ids(db_dir)
+    results = {}
+
+    for server_id in server_ids:
+        try:
+            agent_state = get_agent_state(server_id, db_dir)
+            report = agent_state.apply_retention(interactions_days)
+            results[server_id] = report
+        except Exception as e:
+            logger.exception(f"Error applying retention on server {server_id}: {e}")
+            results[server_id] = {"error": str(e)}
+
+    total_ops = sum(sum(report.values()) for report in results.values() if isinstance(report, dict))
+    logger.info(f"🗑️ [Retention] apply_retention_across_servers: {len(results)} servers processed, total_ops={total_ops}")
+    return results
+
+
+# --- DM Sessions (cross-server DM routing) ---
+
+def _load_dm_sessions() -> Dict[str, str]:
+    """Load DM sessions from JSON file."""
+    if not DM_SESSIONS_FILE.exists():
+        return {}
+    try:
+        with open(DM_SESSIONS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.exception(f"Error loading DM sessions: {e}")
+        return {}
+
+
+def _save_dm_sessions(sessions: Dict[str, str]) -> None:
+    """Save DM sessions to JSON file."""
+    try:
+        DM_SESSIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(DM_SESSIONS_FILE, "w", encoding="utf-8") as f:
+            json.dump(sessions, f, indent=2)
+    except Exception as e:
+        logger.exception(f"Error saving DM sessions: {e}")
+
+
+def pin_dm_session(user_id: int, server_id: str) -> None:
+    """Pin a user's DM to a specific server for consistent routing.
+
+    Replaces SQLite-based pin_dm_session from agent_db.py.
+    """
+    sessions = _load_dm_sessions()
+    sessions[str(user_id)] = str(server_id)
+    _save_dm_sessions(sessions)
+    logger.debug(f"DM session pinned: user={user_id} → server={server_id}")
+
+
+def get_pinned_dm_server(user_id: int) -> Optional[str]:
+    """Return the pinned server_id for a user's DM, or None if not set.
+
+    Replaces SQLite-based get_pinned_dm_server from agent_db.py.
+    """
+    return _load_dm_sessions().get(str(user_id))

@@ -1,0 +1,103 @@
+{
+  "title": "Putre's Battle Arena",
+  "description": "Enter the fighting pit! Prove your strength and crush your enemies!",
+  "button": "⚔️ Arena",
+  "canvas_arena_overview_title": "Arena - Putre's Fighting Pit",
+  "canvas_arena_overview_description": "This is where warriors prove their worth! Fight, win, and earn glory in the arena!",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "A 1v1 fight! Challenge another warrior to single combat and prove who's stronger!",
+    "coliseo": "All-out brawl! Multiple warriors fight together. Last one standing wins!",
+    "torneo": "Tournament of champions! Fight through brackets and become the ultimate champion!"
+  },
+  "duelo": {
+    "button": "⚔️ Duel",
+    "title": "Single Combat",
+    "description": "Challenge another warrior to a 1v1 duel. Prove your strength!",
+    "select_opponent": "Choose your opponent, weakling:",
+    "select_weapon": "Pick your weapon, warrior:",
+    "challenge_sent": "Challenge sent! Waiting for the coward to respond!",
+    "challenge_received_title": "🪓 YOU HAVE BEEN CHALLENGED",
+    "challenge_received_desc": "has challenged you to a duel in the Arena!",
+    "button_accept": "⚔️ Accept",
+    "button_decline": "🛡️ Run Away",
+    "accepted": "Challenge accepted! The fight begins!",
+    "declined": "The challenger ran away like a coward! Hah!",
+    "no_weapons": "You have no weapons yet, weakling! Fight to unlock them!"
+  },
+  "coliseo": {
+    "button": "🪓 Coliseum",
+    "title": "The Coliseum - All-Out Brawl",
+    "description": "Minimum four warriors. Last one standing wins experience!",
+    "register": "⚔️ Join the Brawl",
+    "registered": "You're in! Pick your weapon:",
+    "not_enough": "Not enough warriors! We need at least four for a proper fight!",
+    "scheduled": "Coliseum scheduled! Warriors can join now!",
+    "timer": "Time remaining: ",
+    "participants": "Warriors ready: ",
+    "executing": "Starting the brawl...",
+    "cancelled": "The brawl is cancelled! Not enough brave warriors showed up!"
+  },
+  "torneo": {
+    "button": "🪓 Tournament",
+    "title": "The Tournament - Champion's Path",
+    "description": "Minimum eight warriors. Fight through brackets. Winner takes experience!",
+    "register": "⚔️ Join the Tournament",
+    "registered": "You're in! Pick your weapon:",
+    "not_enough": "Not enough warriors! We need at least eight for a tournament!",
+    "scheduled": "Tournament scheduled! Warriors can join now!",
+    "timer": "Time remaining: ",
+    "participants": "Warriors ready: ",
+    "bracket_title": "Tournament Brackets",
+    "round": "Round ",
+    "executing": "Starting the tournament...",
+    "cancelled": "The tournament is cancelled! Not enough brave warriors!"
+  },
+  "ranking": {
+    "button": "🏆 Leaderboard",
+    "title": "Arena Warriors Ranking",
+    "no_fighters": "No warriors yet! Be the first to fight and earn glory!",
+    "wins": "Victories",
+    "participated": "Fights",
+    "xp": "Experience",
+    "weapon": "Active weapon",
+    "personality": "Fighter style"
+  },
+  "weapons": {
+    "button": "🦴 Weapons",
+    "title": "Warrior's Arsenal",
+    "description": "Weapons unlocked through your battles and victories!",
+    "unlocked": "Unlocked",
+    "locked": "Locked - Need more experience",
+    "select_active": "Equip Weapon",
+    "equipped": "Equipped weapon: ",
+    "none": "No weapons yet, weakling!"
+  },
+  "battle_result": {
+    "title": "⚔️ Battle Result",
+    "winner": "Victor: ",
+    "justification": "Reason: ",
+    "xp_gained": "Experience earned: ",
+    "new_weapon": "New weapon unlocked: ",
+    "dm_title": "Your arena battle result"
+  },
+  "admin": {
+    "button": "⚙️ Configuration",
+    "title": "Arena Configuration",
+    "description": "Arena settings (only for Putre's trusted commanders).",
+    "min_coliseo": "Minimum for Coliseum",
+    "min_tournament": "Minimum for Tournament",
+    "registration_timeout": "Registration time (hours)",
+    "xp_coliseo": "Experience per Coliseum",
+    "xp_tournament": "Experience per Tournament",
+    "xp_duel": "Experience per Duel"
+  },
+  "errors": {
+    "no_channel": "Could not create the Arena channel! Check permissions, human!",
+    "role_disabled": "The Arena module is not active on this server!",
+    "already_registered": "You're already registered for this event, warrior!",
+    "not_registered": "You're not registered for this event!",
+    "event_in_progress": "A battle is in progress! Wait for it to finish!",
+    "self_challenge": "You can't fight yourself, stupid human! That doesn't work!"
+  }
+}

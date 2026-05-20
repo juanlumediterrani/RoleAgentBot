@@ -1,0 +1,103 @@
+{
+  "title": "Arena de Luta do Kronk",
+  "description": "KRONK ESMAGAR! Vem lutar e ganhar ouro! Kronk ver lutar!",
+  "button": "Arena",
+  "canvas_arena_overview_title": "Arena - Fossa de Luta do Kronk",
+  "canvas_arena_overview_description": "Aqui guerreiros lutam e mostram forka! Kronk gosta de lutar! Ganha e fikar forte!",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Lutar um contra um! Dois guerreiros bater um no outro! Kronk ver quem mais forte!",
+    "coliseo": "Muitos guerreiros lutarem juntos! Mínimo quatro! Último de pé ganha!",
+    "torneo": "Grande torneio de luta! Mínimo oito! Lutar atraves dos brackets e ser kampiao!"
+  },
+  "duelo": {
+    "button": "Duelo",
+    "title": "Luta um contra um",
+    "description": "Desafiar outro guerreiro para lutar! Bater forte! Kronk ver!",
+    "select_opponent": "Escolher quem quer bater:",
+    "select_weapon": "Escolher tua arma, guerreiro:",
+    "challenge_sent": "Kronk mandou desafio! Esperando outro guerreiro responder!",
+    "challenge_received_title": "RECEBES DESAFIO",
+    "challenge_received_desc": "quer lutar kontigo na Arena!",
+    "button_accept": "Akeitar",
+    "button_decline": "Korrer",
+    "accepted": "Desafio akeitado! Deixar bater komekar!",
+    "declined": "Guerreiro korreu komo humano medroso! Ha ha!",
+    "no_weapons": "Não tens arma ainda, humano frako! Lutar para ter arma!"
+  },
+  "coliseo": {
+    "button": "Koliseu",
+    "title": "Grande Luta - Muitos Guerreiros",
+    "description": "Mínimo quatro guerreiros. Último de pé ganha experiência!",
+    "register": "Juntar à Luta",
+    "registered": "Tu dentro! Escolher tua arma:",
+    "not_enough": "Guerreiros insuficientes! Precisar de quatro para boa luta!",
+    "scheduled": "Luta agendada! Guerreiros podem juntar agora!",
+    "timer": "Tempo faltando: ",
+    "participants": "Guerreiros prontos: ",
+    "executing": "Iniciando a luta...",
+    "cancelled": "Luta kanselada! Guerreiros corajosos insuficientes vieram!"
+  },
+  "torneo": {
+    "button": "Torneio",
+    "title": "Grande Torneio",
+    "description": "Mínimo oito guerreiros. Lutar atraves dos brackets. Vencedor ganha experiência!",
+    "register": "Juntar ao Torneio",
+    "registered": "Tu dentro! Escolher tua arma:",
+    "not_enough": "Guerreiros insuficientes! Precisar de oito para torneio!",
+    "scheduled": "Torneio agendado! Guerreiros podem juntar agora!",
+    "timer": "Tempo faltando: ",
+    "participants": "Guerreiros prontos: ",
+    "bracket_title": "Brackets do Torneio",
+    "round": "Ronda ",
+    "executing": "Iniciando torneio...",
+    "cancelled": "Torneio kanselado! Guerreiros corajosos insuficientes!"
+  },
+  "ranking": {
+    "button": "Klassifikacao",
+    "title": "Klassifikacao de Guerreiros",
+    "no_fighters": "Sem guerreiros ainda! Tu ser primeiro a lutar!",
+    "wins": "Vitórias",
+    "participated": "Lutas",
+    "xp": "Experiência",
+    "weapon": "Arma ativa",
+    "personality": "Estilo de lutador"
+  },
+  "weapons": {
+    "button": "Armas",
+    "title": "Armas de Guerreiro",
+    "description": "Armas que tu ter de lutar e ganhar!",
+    "unlocked": "Desblokeadas",
+    "locked": "Blokeadas - Precisar de mais luta",
+    "select_active": "Equipar Arma",
+    "equipped": "Arma equipada: ",
+    "none": "Sem armas ainda, humano frako!"
+  },
+  "battle_result": {
+    "title": "Resultado da Luta",
+    "winner": "Vencedor: ",
+    "justification": "Por que: ",
+    "xp_gained": "Experiência tida: ",
+    "new_weapon": "Nova arma tida: ",
+    "dm_title": "Teu resultado de luta na arena"
+  },
+  "admin": {
+    "button": "Konfiguracao",
+    "title": "Konfiguracao da Arena",
+    "description": "Definicoes da arena (apenas para khefes do Kronk).",
+    "min_coliseo": "Mínimo para Koliseu",
+    "min_tournament": "Mínimo para Torneio",
+    "registration_timeout": "Tempo de juntar (horas)",
+    "xp_coliseo": "Experiência por Koliseu",
+    "xp_tournament": "Experiência por Torneio",
+    "xp_duel": "Experiência por Duelo"
+  },
+  "errors": {
+    "no_channel": "Kronk não pode fazer kanal da Arena! Verificar permissoes, humano!",
+    "role_disabled": "Módulo Arena não funksionando neste servidor!",
+    "already_registered": "Tu já nesta luta, guerreiro!",
+    "not_registered": "Tu não nesta luta!",
+    "event_in_progress": "Luta akontesendo agora! Esperar terminar!",
+    "self_challenge": "Tu não pode lutar kontigo mesmo! Isso estúpido, humano!"
+  }
+}

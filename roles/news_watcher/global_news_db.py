@@ -41,11 +41,10 @@ class GlobalNewsDatabase:
             self._fix_permissions(self.db_path.parent)
             
             # Connect and force file permissions
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-            cursor.execute('PRAGMA journal_mode=WAL;')
-            cursor.execute('PRAGMA busy_timeout=5000;')
-            conn.close()
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('PRAGMA journal_mode=WAL;')
+                cursor.execute('PRAGMA busy_timeout=5000;')
             
             # Force DB file permissions
             self._fix_permissions(self.db_path)

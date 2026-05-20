@@ -137,7 +137,7 @@ class ForgetMeConfirmView(discord.ui.View):
 
         # Run the sweep off the event loop.
         import asyncio
-        from agent_db import forget_user_across_servers
+        from persistence.agent_state import forget_user_across_servers
 
         try:
             report = await asyncio.to_thread(

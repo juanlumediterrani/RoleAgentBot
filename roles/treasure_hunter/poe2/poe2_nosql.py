@@ -174,37 +174,36 @@ class Poe2NoSQL:
         logger.info(f"🔄 [NoSQL POE2] Migrating from {sqlite_path} for league {league}")
 
         try:
-            conn = sqlite3.connect(str(sqlite_path))
-            cursor = conn.cursor()
+            with sqlite3.connect(str(sqlite_path)) as conn:
+                cursor = conn.cursor()
 
-            # Migrate items catalog
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='items'")
-            if cursor.fetchone():
-                cursor.execute("SELECT * FROM items")
-                for row in cursor.fetchall():
-                    item_data = {
-                        "item_id": row[0],
-                        "name": row[1],
-                        # Add other fields as needed
-                    }
-                    self.save_item(row[1], item_data)
+                # Migrate items catalog
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='items'")
+                if cursor.fetchone():
+                    cursor.execute("SELECT * FROM items")
+                    for row in cursor.fetchall():
+                        item_data = {
+                            "item_id": row[0],
+                            "name": row[1],
+                            # Add other fields as needed
+                        }
+                        self.save_item(row[1], item_data)
 
-            # Migrate price history
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='price_history'")
-            if cursor.fetchone():
-                cursor.execute("SELECT * FROM price_history")
-                for row in cursor.fetchall():
-                    entry = {
-                        "item_id": row[0],
-                        "price": row[1],
-                        "timestamp": row[2],
-                        "league": league,
-                    }
-                    self.append_price_history(entry, league)
-                    # Also save as latest
-                    self.save_latest_price(league, row[0], {"price": row[1], "updated_at": row[2]})
+                # Migrate price history
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='price_history'")
+                if cursor.fetchone():
+                    cursor.execute("SELECT * FROM price_history")
+                    for row in cursor.fetchall():
+                        entry = {
+                            "item_id": row[0],
+                            "price": row[1],
+                            "timestamp": row[2],
+                            "league": league,
+                        }
+                        self.append_price_history(entry, league)
+                        # Also save as latest
+                        self.save_latest_price(league, row[0], {"price": row[1], "updated_at": row[2]})
 
-            conn.close()
             logger.info(f"✅ [NoSQL POE2] Migration completed for league {league}")
 
         except Exception as e:

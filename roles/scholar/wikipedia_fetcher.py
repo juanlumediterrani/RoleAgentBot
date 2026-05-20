@@ -22,44 +22,42 @@ CACHE_DURATION_DAYS = 7
 
 def init_cache_db():
     """Initialize SQLite cache database for Wikipedia extracts."""
-    conn = sqlite3.connect(CACHE_DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS wiki_cache (
-            topic TEXT,
-            lang TEXT,
-            extract TEXT,
-            fetched_at TIMESTAMP,
-            PRIMARY KEY (topic, lang)
-        )
-    ''')
-    cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_fetched_at ON wiki_cache(fetched_at)
-    ''')
-    conn.commit()
-    conn.close()
+    with sqlite3.connect(CACHE_DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS wiki_cache (
+                topic TEXT,
+                lang TEXT,
+                extract TEXT,
+                fetched_at TIMESTAMP,
+                PRIMARY KEY (topic, lang)
+            )
+        ''')
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_fetched_at ON wiki_cache(fetched_at)
+        ''')
+        conn.commit()
 
 def get_cached_extract(topic: str, lang: str) -> Optional[str]:
     """Get cached Wikipedia extract if available and not expired."""
     try:
-        conn = sqlite3.connect(CACHE_DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            'SELECT extract, fetched_at FROM wiki_cache WHERE topic = ? AND lang = ?',
-            (topic, lang)
-        )
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result:
-            extract, fetched_at_str = result
-            fetched_at = datetime.fromisoformat(fetched_at_str)
-            if datetime.now() - fetched_at < timedelta(days=CACHE_DURATION_DAYS):
-                logger.debug(f"Cache hit for {topic} ({lang})")
-                return extract
-            else:
-                logger.debug(f"Cache expired for {topic} ({lang})")
-                return None
+        with sqlite3.connect(CACHE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT extract, fetched_at FROM wiki_cache WHERE topic = ? AND lang = ?',
+                (topic, lang)
+            )
+            result = cursor.fetchone()
+
+            if result:
+                extract, fetched_at_str = result
+                fetched_at = datetime.fromisoformat(fetched_at_str)
+                if datetime.now() - fetched_at < timedelta(days=CACHE_DURATION_DAYS):
+                    logger.debug(f"Cache hit for {topic} ({lang})")
+                    return extract
+                else:
+                    logger.debug(f"Cache expired for {topic} ({lang})")
+                    return None
     except Exception as e:
         logger.warning(f"Error reading cache: {e}")
     return None
@@ -67,15 +65,14 @@ def get_cached_extract(topic: str, lang: str) -> Optional[str]:
 def cache_extract(topic: str, lang: str, extract: str):
     """Cache Wikipedia extract."""
     try:
-        conn = sqlite3.connect(CACHE_DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT OR REPLACE INTO wiki_cache (topic, lang, extract, fetched_at) VALUES (?, ?, ?, ?)',
-            (topic, lang, extract, datetime.now().isoformat())
-        )
-        conn.commit()
-        conn.close()
-        logger.debug(f"Cached extract for {topic} ({lang})")
+        with sqlite3.connect(CACHE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'INSERT OR REPLACE INTO wiki_cache (topic, lang, extract, fetched_at) VALUES (?, ?, ?, ?)',
+                (topic, lang, extract, datetime.now().isoformat())
+            )
+            conn.commit()
+            logger.debug(f"Cached extract for {topic} ({lang})")
     except Exception as e:
         logger.warning(f"Error caching extract: {e}")
 
@@ -318,15 +315,14 @@ def extract_until_second_header(wikitext: str) -> str:
 def cleanup_old_cache():
     """Remove cache entries older than CACHE_DURATION_DAYS."""
     try:
-        conn = sqlite3.connect(CACHE_DB_PATH)
-        cursor = conn.cursor()
-        cutoff_date = (datetime.now() - timedelta(days=CACHE_DURATION_DAYS)).isoformat()
-        cursor.execute('DELETE FROM wiki_cache WHERE fetched_at < ?', (cutoff_date,))
-        deleted = cursor.rowcount
-        conn.commit()
-        conn.close()
-        if deleted > 0:
-            logger.info(f"Cleaned up {deleted} old cache entries")
+        with sqlite3.connect(CACHE_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cutoff_date = (datetime.now() - timedelta(days=CACHE_DURATION_DAYS)).isoformat()
+            cursor.execute('DELETE FROM wiki_cache WHERE fetched_at < ?', (cutoff_date,))
+            deleted = cursor.rowcount
+            conn.commit()
+            if deleted > 0:
+                logger.info(f"Cleaned up {deleted} old cache entries")
     except Exception as e:
         logger.warning(f"Error cleaning up cache: {e}")
 

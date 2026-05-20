@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sqlite3
 import datetime
 
 import discord
@@ -15,7 +14,6 @@ import discord
 from agent_engine import PERSONALITY, _build_system_prompt
 from agent_mind import call_llm_async
 from agent_logging import get_logger
-from agent_db import AgentDatabase
 from behavior.greet import ReplyButton, ReplyButtonView
 from discord_bot.discord_utils import is_admin, get_db_for_server, set_role_enabled, send_personality_embed_dm
 from discord_bot.canvas.content import _get_personality_descriptions

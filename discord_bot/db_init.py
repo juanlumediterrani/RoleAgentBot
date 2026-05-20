@@ -591,6 +591,18 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
     except Exception as e:
         logger.warning(f"Failed to load default roles for server '{guild_name}': {e}")
 
+    # 3. Create Arena channel if Arena role is enabled
+    try:
+        from discord_bot.canvas.server_config import is_role_enabled
+        if is_role_enabled(server_key, "arena", default_enabled=False):
+            arena_channel = await _create_arena_channel(guild)
+            if arena_channel:
+                logger.info(f"✅ Arena channel created/found for '{guild_name}': #{arena_channel.name} ({arena_channel.id})")
+            else:
+                logger.warning(f"⚠️ Could not create Arena channel for '{guild_name}' - check bot permissions")
+    except Exception as e:
+        logger.warning(f"⚠️ Error setting up Arena channel for '{guild_name}': {e}")
+
     # Summary
     success_rate = (success_count / total_count) * 100 if total_count > 0 else 0
     if is_startup:
@@ -605,6 +617,57 @@ async def initialize_server_complete(guild, agent_config: dict = None, is_startu
         logger.warning(f"⚠️ Could not delete old personality databases for '{guild_name}': {e}")
 
     return success_count == total_count
+
+
+async def _create_arena_channel(guild) -> "discord.TextChannel | None":
+    """Create or find the Arena channel for a guild.
+
+    Tries to find an existing 'arena' channel first, then creates one if needed.
+    Stores the channel ID in server_config.json under roles.arena.config.channel_id.
+    """
+    try:
+        import discord
+        from discord_bot.discord_utils import get_server_key
+        from .canvas.server_config import get_role_config_value, set_role_config_value
+
+        server_id = get_server_key(guild)
+        existing_id = get_role_config_value(server_id, "arena", "config.channel_id")
+
+        # Check if existing channel is still valid
+        if existing_id:
+            existing_channel = guild.get_channel(int(existing_id))
+            if existing_channel:
+                return existing_channel
+
+        # Try to find by name
+        arena_channel = discord.utils.get(guild.text_channels, name="arena")
+        if arena_channel:
+            set_role_config_value(server_id, "arena", "config.channel_id", str(arena_channel.id))
+            return arena_channel
+
+        # Try bot personality suffixed name
+        bot_name = guild.me.display_name.lower().replace(" ", "-")
+        arena_channel = discord.utils.get(guild.text_channels, name=f"arena-{bot_name}")
+        if arena_channel:
+            set_role_config_value(server_id, "arena", "config.channel_id", str(arena_channel.id))
+            return arena_channel
+
+        # Create new channel
+        try:
+            new_channel = await guild.create_text_channel(
+                name="arena",
+                topic="Arena de combate - Batallas, duelos y torneos",
+                reason="Canal creado automaticamente por el modulo Arena del bot",
+            )
+            set_role_config_value(server_id, "arena", "config.channel_id", str(new_channel.id))
+            return new_channel
+        except discord.Forbidden:
+            logger.warning(f"[Arena] Bot lacks permission to create channels in guild {guild.id}")
+            return None
+
+    except Exception as e:
+        logger.error(f"[Arena] Error creating Arena channel: {e}")
+        return None
 
 
 def delete_old_personality_databases(server_id: str):

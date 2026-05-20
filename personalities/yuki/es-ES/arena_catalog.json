@@ -1,0 +1,25 @@
+{
+  "weapons": [
+    {"id": "katana", "name": "Katana", "subtitle": "", "desc": "Filo perfecto, precision. Arma inicial.", "unlock_xp": 0.0},
+    {"id": "naginata", "name": "Naginata", "subtitle": "Alabarda japonesa", "desc": "Alcance y fluidez. Desbloqueo: 2 XP.", "unlock_xp": 2.0},
+    {"id": "kusarigama", "name": "Kusarigama", "subtitle": "Hoz con cadena", "desc": "Versatil, atrapar. Desbloqueo: 5 XP.", "unlock_xp": 5.0},
+    {"id": "tanto", "name": "Tanto", "subtitle": "Daga ceremonial", "desc": "Rapida, letal en cercania. Desbloqueo: 9 XP.", "unlock_xp": 9.0},
+    {"id": "bo_staff", "name": "Bo Staff", "subtitle": "Baston largo", "desc": "Defensa y control de distancia. Desbloqueo: 14 XP.", "unlock_xp": 14.0},
+    {"id": "kanabo", "name": "Kanabo", "subtitle": "Maza con pinchos japonesa", "desc": "Poder oni, aplasta. Desbloqueo: 20 XP.", "unlock_xp": 20.0}
+  ],
+  "advantage_matrix": {
+    "katana":      {"katana": "=", "naginata": "-", "kusarigama": "+", "tanto": "--", "bo_staff": "++", "kanabo": "-"},
+    "naginata":    {"katana": "+", "naginata": "=", "kusarigama": "--", "tanto": "++", "bo_staff": "-", "kanabo": "+"},
+    "kusarigama":  {"katana": "-", "naginata": "++", "kusarigama": "=", "tanto": "+", "bo_staff": "--", "kanabo": "+"},
+    "tanto":       {"katana": "++", "naginata": "--", "kusarigama": "-", "tanto": "=", "bo_staff": "+", "kanabo": "--"},
+    "bo_staff":    {"katana": "--", "naginata": "+", "kusarigama": "++", "tanto": "-", "bo_staff": "=", "kanabo": "+"},
+    "kanabo":      {"katana": "+", "naginata": "-", "kusarigama": "-", "tanto": "++", "bo_staff": "-", "kanabo": "="}
+  },
+  "fighter_personalities": [
+    {"id": "ronin", "name": "RONIN", "desc": "Samurai sin amo. Codigo propio. Duelos honorables. Precision extrema. La derrota es peor que la muerte."},
+    {"id": "shinobi", "name": "SHINOBI", "desc": "Sombra. Invisible hasta el golpe final. Veneno y engano permitidos. Nunca se enfrenta abiertamente."},
+    {"id": "monje_guerrero", "name": "MONJE GUERRERO", "desc": "Cuerpo como arma. Control del ki. Meditacion en combate. La paz interior es la victoria verdadera... pero los golpes tambien ayudan."},
+    {"id": "onna_bugeisha", "name": "ONNA-BUGEISHA", "desc": "Elegancia letal. Fluidez sobre fuerza. Precisa como una flor que corta. Nunca desperdicia un movimiento."},
+    {"id": "yakuza", "name": "YAKUZA", "desc": "Codigo del submundo. Lealtad al clan. Violencia ritual y calculada. No pelea por honor, pelea por resultados."}
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "title": "雪的道场竞技场",
+  "description": "一个优雅的荣誉战斗空间。在战斗艺术中证明你的技艺。",
+  "button": "🎎 竞技场",
+  "canvas_arena_overview_title": "竞技场 - 荣誉道场",
+  "canvas_arena_overview_description": "在这个大厅中，战士通过战斗展示技艺与荣誉。每场比赛带来智慧。",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "单人决斗。两位战士比试技艺。结果记录在道场卷轴上。",
+    "coliseo": "多位战士在荣誉混乱中战斗。最少四人。最后站立者获得认可。",
+    "torneo": "结构化锦标赛。最少八人。对阵表如古代大师的路径。"
+  },
+  "duelo": {
+    "button": "🎎 决斗",
+    "title": "单人决斗",
+    "description": "邀请另一位战士进行技艺比试。结果记录在道场记录中。",
+    "select_opponent": "选择你想挑战的战士：",
+    "select_weapon": "谨慎选择你的武器：",
+    "challenge_sent": "邀请已发送。等待对手回应。",
+    "challenge_received_title": "🎎 你收到了挑战",
+    "challenge_received_desc": "在竞技场向你发起了决斗挑战。",
+    "button_accept": "🎎 接受",
+    "button_decline": "🎎 拒绝",
+    "accepted": "挑战已接受。比赛开始...",
+    "declined": "挑战已被拒绝。并非所有路径都通向战斗。",
+    "no_weapons": "你还没有武器。参加比赛来获取它们。"
+  },
+  "coliseo": {
+    "button": "🏯 斗兽场",
+    "title": "斗兽场 - 多人战斗",
+    "description": "最少四位参与者。最后站立者获得一点经验值。",
+    "register": "⛩️ 进入斗兽场",
+    "registered": "已注册。选择你的武器：",
+    "not_enough": "战士不足。比赛需要四人。",
+    "scheduled": "斗兽场已安排。注册开放。",
+    "timer": "剩余时间：",
+    "participants": "已注册战士：",
+    "executing": "开始斗兽场...",
+    "cancelled": "斗兽场已取消。并非所有战士都找到了他们的路径。"
+  },
+  "torneo": {
+    "button": "🏯 锦标赛",
+    "title": "锦标赛 - 冠军之路",
+    "description": "最少八位参与者。淘汰赛对阵表。最终战士获得一点经验值。",
+    "register": "⛩️ 进入锦标赛",
+    "registered": "已注册。选择你的武器：",
+    "not_enough": "战士不足。对阵表需要八人。",
+    "scheduled": "锦标赛已安排。注册开放。",
+    "timer": "剩余时间：",
+    "participants": "已注册战士：",
+    "bracket_title": "锦标赛对阵表",
+    "round": "轮次 ",
+    "executing": "开始锦标赛...",
+    "cancelled": "锦标赛已取消。有些比赛没有找到开始。"
+  },
+  "ranking": {
+    "button": "🍶 排行榜",
+    "title": "战士荣誉榜",
+    "no_fighters": "尚未有战士注册。道场等待它的第一场比赛。",
+    "wins": "胜利",
+    "participated": "比赛",
+    "xp": "经验",
+    "weapon": "当前武器",
+    "personality": "战斗风格"
+  },
+  "weapons": {
+    "button": "🗡️ 武器",
+    "title": "武器库",
+    "description": "通过你的战斗旅程解锁的武器。",
+    "unlocked": "已解锁",
+    "locked": "尚未 - 需要经验",
+    "select_active": "装备武器",
+    "equipped": "已装备武器：",
+    "none": "尚无可用武器。"
+  },
+  "battle_result": {
+    "title": "🎎 比赛结果",
+    "winner": "胜利战士：",
+    "justification": "理由：",
+    "xp_gained": "获得经验：",
+    "new_weapon": "新武器解锁：",
+    "dm_title": "你的竞技场比赛结果"
+  },
+  "admin": {
+    "button": "⚙️ 配置",
+    "title": "道场配置",
+    "description": "竞技场设置（仅限道场大师）。",
+    "min_coliseo": "斗兽场最少人数",
+    "min_tournament": "锦标赛最少人数",
+    "registration_timeout": "注册时间（小时）",
+    "xp_coliseo": "斗兽场经验值",
+    "xp_tournament": "锦标赛经验值",
+    "xp_duel": "决斗经验值"
+  },
+  "errors": {
+    "no_channel": "无法创建竞技场频道。请检查权限。",
+    "role_disabled": "竞技场模块在此大厅未激活。",
+    "already_registered": "你已注册此活动。",
+    "not_registered": "你未注册此活动。",
+    "event_in_progress": "比赛正在进行中。请等待它结束。",
+    "self_challenge": "你不能挑战自己。战斗之路需要另一位对手。"
+  }
+}

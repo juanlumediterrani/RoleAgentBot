@@ -1,0 +1,103 @@
+{
+  "title": "Arena do Forno do Panigorr",
+  "description": "Entra nas fossas ardentes... luta e queima nas chamas do forno!",
+  "button": "🔥 Arena",
+  "canvas_arena_overview_title": "Arena - As Fossas Ardentes",
+  "canvas_arena_overview_description": "Neste lugar, as almas queimam e lutam nas chamas eternas. Cada partida te aproxima do forno do amo.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Um duelo ardente. Duas almas a colidir em chamas. O resultado é escrito na cinza.",
+    "coliseo": "Múltiplas almas em caos ardente. Mínimo quatro. A última de pé ganha as cinzas.",
+    "torneo": "Torneio ardente estruturado. Mínimo oito. Brackets como os caminhos para o forno."
+  },
+  "duelo": {
+    "button": "🔥 Duelo",
+    "title": "O Duelo Ardente",
+    "description": "Desafia outra alma a queimar junto. O resultado é escrito nos registos do forno.",
+    "select_opponent": "Seleciona a alma que desejas queimar com:",
+    "select_weapon": "Escolhe o teu instrumento ardente:",
+    "challenge_sent": "O convite foi enviado para as chamas. Aguardando a resposta das cinzas.",
+    "challenge_received_title": "🔥 RECEBESTE UM DESAFIO ARDENTE",
+    "challenge_received_desc": "desafiou-te a queimar na Arena.",
+    "button_accept": "🔥 Aceitar",
+    "button_decline": "🧱 Escapar",
+    "accepted": "Desafio aceito. A queima começa...",
+    "declined": "O desafio foi rejeitado nas chamas. Algumas almas não estão destinadas a queimar.",
+    "no_weapons": "Não tens instrumentos ardentes ainda. Participa nas chamas para desbloqueá-los."
+  },
+  "coliseo": {
+    "button": "🔥 Koliseu",
+    "title": "O Koliseu Ardente",
+    "description": "Mínimo quatro almas ardentes. A última de pé ganha um ponto de experiência das cinzas.",
+    "register": "🍞 Entrar nas Chamas",
+    "registered": "Entrado. Escolhe o teu instrumento ardente:",
+    "not_enough": "Almas ardentes insuficientes. Quatro são necessárias para as chamas.",
+    "scheduled": "Koliseu agendado no forno. Entrada aberta.",
+    "timer": "Tempo restante: ",
+    "participants": "Almas ardentes entradas: ",
+    "executing": "Iniciando a queima...",
+    "cancelled": "A queima foi cancelada. Nem todas as almas encontraram o seu caminho para as chamas."
+  },
+  "torneo": {
+    "button": "🔥 Torneio",
+    "title": "O Torneio Ardente",
+    "description": "Mínimo oito almas ardentes. Brackets de eliminação. Um ponto de experiência para a alma final.",
+    "register": "🍞 Entrar no Torneio",
+    "registered": "Entrado. Escolhe o teu instrumento ardente:",
+    "not_enough": "Almas ardentes insuficientes. Oito são necessárias para os brackets.",
+    "scheduled": "Torneio agendado no forno. Entrada aberta.",
+    "timer": "Tempo restante: ",
+    "participants": "Almas ardentes entradas: ",
+    "bracket_title": "Brackets do Torneio",
+    "round": "Ronda ",
+    "executing": "Iniciando o torneio...",
+    "cancelled": "O torneio foi cancelado. Algumas queimas não encontram o seu início."
+  },
+  "ranking": {
+    "button": "🥖 Klassifikacao",
+    "title": "Klassifikacao de Almas Ardentes",
+    "no_fighters": "Sem almas ardentes registadas ainda. O forno aguarda a sua primeira cinza.",
+    "wins": "Vitórias",
+    "participated": "Queimas",
+    "xp": "Experiência",
+    "weapon": "Instrumento ativo",
+    "personality": "Estilo ardente"
+  },
+  "weapons": {
+    "button": "🧱 Instrumentos",
+    "title": "Instrumentos Ardentes",
+    "description": "Instrumentos desbloqueados através da tua jornada nas chamas.",
+    "unlocked": "Desbloqueados",
+    "locked": "Ainda não - Requer experiência",
+    "select_active": "Equipar Instrumento",
+    "equipped": "Instrumento equipado: ",
+    "none": "Sem instrumentos ardentes disponíveis ainda."
+  },
+  "battle_result": {
+    "title": "🔥 Resultado Ardente",
+    "winner": "Alma dominante: ",
+    "justification": "A razão: ",
+    "xp_gained": "Experiência obtida: ",
+    "new_weapon": "Novo instrumento desbloqueado: ",
+    "dm_title": "O teu resultado ardente na Arena"
+  },
+  "admin": {
+    "button": "⚙️ Konfiguracao",
+    "title": "Konfiguracao do Forno",
+    "description": "Definições da arena (apenas para os servos do amo).",
+    "min_coliseo": "Mínimo para o Koliseu",
+    "min_tournament": "Mínimo para o Torneio",
+    "registration_timeout": "Tempo de entrada (horas)",
+    "xp_coliseo": "Experiência por Koliseu",
+    "xp_tournament": "Experiência por Torneio",
+    "xp_duel": "Experiência por Duelo"
+  },
+  "errors": {
+    "no_channel": "Não foi possível criar o canal da Arena. Verifique as permissões do forno.",
+    "role_disabled": "O módulo Arena não está ativo neste porão.",
+    "already_registered": "Já está entrado nesta queima.",
+    "not_registered": "Não está entrado nesta queima.",
+    "event_in_progress": "Uma queima está em progresso. Aguarde que conclua.",
+    "self_challenge": "Não te podes queimar a ti mesmo. As chamas não funcionam assim."
+  }
+}

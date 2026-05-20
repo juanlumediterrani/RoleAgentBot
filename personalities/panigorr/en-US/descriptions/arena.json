@@ -1,0 +1,103 @@
+{
+  "title": "Panigorr's Oven Arena",
+  "description": "Enter the burning pits... fight and burn in the oven's flames!",
+  "button": "🔥 Arena",
+  "canvas_arena_overview_title": "Arena - The Burning Pits",
+  "canvas_arena_overview_description": "In this place, souls burn and fight in the eternal flames. Each match brings you closer to the master's oven.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "A single burning duel. Two souls colliding in flames. The result is written in the ash.",
+    "coliseo": "Multiple souls in burning chaos. Minimum four. The last one standing wins the ashes.",
+    "torneo": "Structured burning tournament. Minimum eight. Brackets like the paths to the oven."
+  },
+  "duelo": {
+    "button": "🔥 Duel",
+    "title": "The Burning Duel",
+    "description": "Challenge another soul to burn together. The result is written in the oven's records.",
+    "select_opponent": "Select the soul you wish to burn with:",
+    "select_weapon": "Choose your burning instrument:",
+    "challenge_sent": "The invitation has been sent into the flames. Awaiting the response from the ashes.",
+    "challenge_received_title": "🔥 YOU HAVE RECEIVED A BURNING CHALLENGE",
+    "challenge_received_desc": "has challenged you to burn in the Arena.",
+    "button_accept": "🔥 Accept",
+    "button_decline": "🧱 Escape",
+    "accepted": "Challenge accepted. The burning begins...",
+    "declined": "The challenge has been rejected into the flames. Some souls are not destined to burn.",
+    "no_weapons": "You have no burning instruments yet. Participate in the flames to unlock them."
+  },
+  "coliseo": {
+    "button": "🔥 Coliseum",
+    "title": "The Burning Coliseum",
+    "description": "Minimum four burning souls. The last one wins one experience point from the ashes.",
+    "register": "🍞 Enter the Flames",
+    "registered": "Entered. Choose your burning instrument:",
+    "not_enough": "Insufficient burning souls. Four are required for the flames.",
+    "scheduled": "Coliseum scheduled in the oven. Entry open.",
+    "timer": "Time remaining: ",
+    "participants": "Burning souls entered: ",
+    "executing": "Starting the burning...",
+    "cancelled": "The burning has been cancelled. Not all souls found their way to the flames."
+  },
+  "torneo": {
+    "button": "🔥 Tournament",
+    "title": "The Burning Tournament",
+    "description": "Minimum eight burning souls. Elimination brackets. One experience point for the final soul.",
+    "register": "🍞 Enter the Tournament",
+    "registered": "Entered. Choose your burning instrument:",
+    "not_enough": "Insufficient burning souls. Eight are necessary for the brackets.",
+    "scheduled": "Tournament scheduled in the oven. Entry open.",
+    "timer": "Time remaining: ",
+    "participants": "Burning souls entered: ",
+    "bracket_title": "Tournament Brackets",
+    "round": "Round ",
+    "executing": "Starting the tournament...",
+    "cancelled": "The tournament has been cancelled. Some burnings do not find their beginning."
+  },
+  "ranking": {
+    "button": "🥖 Leaderboard",
+    "title": "Burning Souls Ranking",
+    "no_fighters": "No burning souls registered yet. The oven awaits its first ash.",
+    "wins": "Victories",
+    "participated": "Burnings",
+    "xp": "Experience",
+    "weapon": "Active instrument",
+    "personality": "Burning style"
+  },
+  "weapons": {
+    "button": "🧱 Instruments",
+    "title": "Burning Instruments",
+    "description": "Instruments unlocked through your journey in the flames.",
+    "unlocked": "Unlocked",
+    "locked": "Not yet - Requires experience",
+    "select_active": "Equip Instrument",
+    "equipped": "Equipped instrument: ",
+    "none": "No burning instruments available yet."
+  },
+  "battle_result": {
+    "title": "🔥 Burning Result",
+    "winner": "Dominant soul: ",
+    "justification": "The reason: ",
+    "xp_gained": "Experience obtained: ",
+    "new_weapon": "New instrument unlocked: ",
+    "dm_title": "Your burning result in the Arena"
+  },
+  "admin": {
+    "button": "⚙️ Configuration",
+    "title": "Oven Configuration",
+    "description": "Arena settings (only for the master's servants).",
+    "min_coliseo": "Minimum for Coliseum",
+    "min_tournament": "Minimum for Tournament",
+    "registration_timeout": "Entry time (hours)",
+    "xp_coliseo": "Experience per Coliseum",
+    "xp_tournament": "Experience per Tournament",
+    "xp_duel": "Experience per Duel"
+  },
+  "errors": {
+    "no_channel": "Could not create the Arena channel. Verify the oven's permissions.",
+    "role_disabled": "The Arena module is not active in this basement.",
+    "already_registered": "You are already entered in this burning.",
+    "not_registered": "You are not entered in this burning.",
+    "event_in_progress": "A burning is in progress. Wait for it to conclude.",
+    "self_challenge": "You cannot burn with yourself. The flames do not work that way."
+  }
+}

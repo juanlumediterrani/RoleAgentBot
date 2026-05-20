@@ -1,0 +1,103 @@
+{
+  "title": "**Oficial de la Arena de Combate**",
+  "description": "Gestion de batallas narrativas, armas y duelos en el frente.",
+  "button": "🎖️ Arena",
+  "canvas_arena_overview_title": "**Arena de Combate - Her Hans**",
+  "canvas_arena_overview_description": "Estado del frente de batalla. Gestionar operaciones de combate.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Reto 1v1. Desafia a otro soldado y gana honor.",
+    "coliseo": "Todos contra todos. Minimo 4 participantes. El ultimo en pie gana.",
+    "torneo": "Torneo de eliminacion. Minimo 8 participantes. Brackets y rondas."
+  },
+  "duelo": {
+    "button": "🎖️ Duelo",
+    "title": "Reto Individual",
+    "description": "Desafia a otro soldado a un duelo 1v1. El resultado se publica en la Arena.",
+    "select_opponent": "Selecciona al soldado que deseas retar:",
+    "select_weapon": "Escoge tu arma para el duelo:",
+    "challenge_sent": "Reto enviado. Esperando respuesta del contrincante.",
+    "challenge_received_title": "🎖️ HAS SIDO RETADO",
+    "challenge_received_desc": "te ha retado a un duelo en la Arena.",
+    "button_accept": "🎖️ Aceptar",
+    "button_decline": "🏅 Rechazar",
+    "accepted": "Reto aceptado. Preparando batalla...",
+    "declined": "Reto rechazado. Cobardia documentada.",
+    "no_weapons": "No tienes armas disponibles. Participa en batallas para desbloquearlas."
+  },
+  "coliseo": {
+    "button": "🎖️ Coliseo",
+    "title": "Coliseo - Todos contra todos",
+    "description": "Minimo 4 participantes. El ultimo en pie gana 1 XP.",
+    "register": "⚔️ Apuntarse al Coliseo",
+    "registered": "Registrado. Escoge tu arma:",
+    "not_enough": "No hay suficientes soldados registrados. Minimo 4.",
+    "scheduled": "Coliseo programado. Registro abierto.",
+    "timer": "Tiempo restante: ",
+    "participants": "Participantes registrados: ",
+    "executing": "Ejecutando coliseo...",
+    "cancelled": "Coliseo cancelado por falta de participantes."
+  },
+  "torneo": {
+    "button": "🎖️ Torneo",
+    "title": "Torneo - Eliminacion",
+    "description": "Minimo 8 participantes. Brackets de eliminacion. Gana 1 XP.",
+    "register": "⚔️ Apuntarse al Torneo",
+    "registered": "Registrado. Escoge tu arma:",
+    "not_enough": "No hay suficientes soldados. Minimo 8 para brackets.",
+    "scheduled": "Torneo programado. Registro abierto.",
+    "timer": "Tiempo restante: ",
+    "participants": "Participantes: ",
+    "bracket_title": "Bracket del Torneo",
+    "round": "Ronda ",
+    "executing": "Ejecutando torneo...",
+    "cancelled": "Torneo cancelado por falta de participantes."
+  },
+  "ranking": {
+    "button": "🏅 Ranking",
+    "title": "Clasificacion de Combatientes",
+    "no_fighters": "No hay combatientes registrados aun.",
+    "wins": "Victorias",
+    "participated": "Batallas",
+    "xp": "XP Arena",
+    "weapon": "Arma activa",
+    "personality": "Personalidad de combate"
+  },
+  "weapons": {
+    "button": "🎯 Armas",
+    "title": "Arsenal de Combate",
+    "description": "Armas desbloqueadas segun tu experiencia en la Arena.",
+    "unlocked": "Desbloqueadas",
+    "locked": "Bloqueadas - Requiere XP",
+    "select_active": "Equipar arma",
+    "equipped": "Arma equipada: ",
+    "none": "Sin armas disponibles."
+  },
+  "battle_result": {
+    "title": "🎖️ Resultado de Batalla",
+    "winner": "Ganador: ",
+    "justification": "Justificacion: ",
+    "xp_gained": "XP ganado: ",
+    "new_weapon": "Nuevo arma desbloqueada: ",
+    "dm_title": "Resultado de tu batalla en la Arena"
+  },
+  "admin": {
+    "button": "⚙️ Configuracion",
+    "title": "Configuracion de la Arena",
+    "description": "Ajustes del modulo Arena (solo oficiales).",
+    "min_coliseo": "Minimo para Coliseo",
+    "min_tournament": "Minimo para Torneo",
+    "registration_timeout": "Tiempo de registro (horas)",
+    "xp_coliseo": "XP por Coliseo",
+    "xp_tournament": "XP por Torneo",
+    "xp_duel": "XP por Duelo"
+  },
+  "errors": {
+    "no_channel": "No se pudo crear el canal de Arena. Verifica permisos.",
+    "role_disabled": "El modulo Arena no esta activo en este servidor.",
+    "already_registered": "Ya estas registrado en este evento.",
+    "not_registered": "No estas registrado en este evento.",
+    "event_in_progress": "Hay un evento en curso. Espera a que termine.",
+    "self_challenge": "No puedes retarte a ti mismo. Eso es desorden."
+  }
+}

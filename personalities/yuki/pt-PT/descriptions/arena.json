@@ -1,0 +1,103 @@
+{
+  "title": "Dojo de Arena da Yuki",
+  "description": "Um espaço refinado para combate honroso. Prova a tua habilidade na arte da batalha.",
+  "button": "🎎 Arena",
+  "canvas_arena_overview_title": "Arena - O Dojo Honroso",
+  "canvas_arena_overview_description": "Neste salão, guerreiros demonstram a sua habilidade e honra através do combate. Cada partida traz sabedoria.",
+  "canvas_arena_overview_separator": "──────────────────────────────",
+  "canvas_arena_subrole_descriptions": {
+    "duelo": "Um duelo singular. Dois guerreiros a testar as suas habilidades. O resultado é registado nos pergaminhos do dojo.",
+    "coliseo": "Múltiplos guerreiros em caos honroso. Mínimo quatro. O último de pé ganha reconhecimento.",
+    "torneo": "Torneio estruturado. Mínimo oito. Brackets como os caminhos dos mestres antigos."
+  },
+  "duelo": {
+    "button": "🎎 Duelo",
+    "title": "O Duelo Singular",
+    "description": "Convida outro guerreiro para uma partida de habilidade. O resultado é escrito nos registos do dojo.",
+    "select_opponent": "Seleciona o guerreiro que desejas desafiar:",
+    "select_weapon": "Escolhe a tua arma com cuidado:",
+    "challenge_sent": "O convite foi enviado. Aguardando a resposta do teu oponente.",
+    "challenge_received_title": "🎎 RECEBESTE UM DESAFIO",
+    "challenge_received_desc": "desafiou-te para um duelo na Arena.",
+    "button_accept": "🎎 Aceitar",
+    "button_decline": "🎎 Recusar",
+    "accepted": "Desafio aceito. A partida começa...",
+    "declined": "O desafio foi recusado. Nem todos os caminhos levam ao combate.",
+    "no_weapons": "Não tens armas ainda. Participa em partidas para as adquirir."
+  },
+  "coliseo": {
+    "button": "🏯 Koliseu",
+    "title": "O Koliseu - Combate Multi-Guerreiro",
+    "description": "Mínimo quatro participantes. O último de pé ganha um ponto de experiência.",
+    "register": "⛩️ Entrar no Koliseu",
+    "registered": "Registado. Escolhe a tua arma:",
+    "not_enough": "Guerreiros insuficientes. Quatro são necessários para a partida.",
+    "scheduled": "Koliseu agendado. Registo aberto.",
+    "timer": "Tempo restante: ",
+    "participants": "Guerreiros registados: ",
+    "executing": "Iniciando o koliseu...",
+    "cancelled": "O koliseu foi cancelado. Nem todos os guerreiros encontraram o seu caminho."
+  },
+  "torneo": {
+    "button": "🏯 Torneio",
+    "title": "O Torneio - Kammino dos Kampioes",
+    "description": "Mínimo oito participantes. Brackets de eliminação. Um ponto de experiência para o guerreiro final.",
+    "register": "⛩️ Entrar no Torneio",
+    "registered": "Registado. Escolhe a tua arma:",
+    "not_enough": "Guerreiros insuficientes. Oito são necessários para os brackets.",
+    "scheduled": "Torneio agendado. Registo aberto.",
+    "timer": "Tempo restante: ",
+    "participants": "Guerreiros registados: ",
+    "bracket_title": "Brackets do Torneio",
+    "round": "Ronda ",
+    "executing": "Iniciando o torneio...",
+    "cancelled": "O torneio foi cancelado. Algumas partidas não encontram o seu início."
+  },
+  "ranking": {
+    "button": "🍶 Klassifikacao",
+    "title": "Quadro de Honra dos Guerreiros",
+    "no_fighters": "Sem guerreiros registados ainda. O dojo aguarda a sua primeira partida.",
+    "wins": "Vitórias",
+    "participated": "Partidas",
+    "xp": "Experiência",
+    "weapon": "Arma ativa",
+    "personality": "Estilo de combate"
+  },
+  "weapons": {
+    "button": "🗡️ Armas",
+    "title": "Arsenal",
+    "description": "Armas desbloqueadas através da tua jornada em combate.",
+    "unlocked": "Desbloqueadas",
+    "locked": "Ainda não - Requer experiência",
+    "select_active": "Equipar Arma",
+    "equipped": "Arma equipada: ",
+    "none": "Sem armas disponíveis ainda."
+  },
+  "battle_result": {
+    "title": "🎎 Resultado da Partida",
+    "winner": "Guerreiro vitorioso: ",
+    "justification": "O raciocínio: ",
+    "xp_gained": "Experiência ganha: ",
+    "new_weapon": "Nova arma desbloqueada: ",
+    "dm_title": "O resultado da tua partida na arena"
+  },
+  "admin": {
+    "button": "⚙️ Konfiguracao",
+    "title": "Konfiguracao do Dojo",
+    "description": "Definições da arena (apenas para mestres do dojo).",
+    "min_coliseo": "Mínimo para o Koliseu",
+    "min_tournament": "Mínimo para o Torneio",
+    "registration_timeout": "Tempo de registo (horas)",
+    "xp_coliseo": "Experiência por Koliseu",
+    "xp_tournament": "Experiência por Torneio",
+    "xp_duel": "Experiência por Duelo"
+  },
+  "errors": {
+    "no_channel": "Não foi possível criar o canal da Arena. Por favor verifica as permissões.",
+    "role_disabled": "O módulo Arena não está ativo neste salão.",
+    "already_registered": "Já estás registado neste evento.",
+    "not_registered": "Não estás registado neste evento.",
+    "event_in_progress": "Uma partida está em progresso. Por favor aguarda que conclua.",
+    "self_challenge": "Não te podes desafiar a ti mesmo. O caminho do combate requer outro."
+  }
+}

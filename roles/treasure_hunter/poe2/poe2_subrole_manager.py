@@ -368,6 +368,7 @@ class POE2SubroleManager:
     
     def get_registered_items(self, league: str) -> List[Dict]:
         """Get all registered items for a league."""
+        conn = None
         try:
             conn = self.init_price_history_db(league)
             cursor = conn.cursor()
@@ -388,51 +389,57 @@ class POE2SubroleManager:
                 for row in cursor.fetchall()
             ]
             
-            conn.close()
             return items
         except Exception as e:
             logger.error(f"❌ Error getting registered items for {league}: {e}")
             return []
+        finally:
+            if conn:
+                conn.close()
     
-    def insert_price_for_item(self, league: str, item_id: int, item_name: str, 
-                              price: float, quantity: int = None, 
+    def insert_price_for_item(self, league: str, item_id: int, item_name: str,
+                              price: float, quantity: int = None,
                               timestamp: datetime = None) -> bool:
         """Insert a price entry for a specific item."""
+        conn = None
         try:
             conn = self.init_price_history_db(league)
-            
+
             # Ensure table exists
             self.create_item_price_table(conn, item_id, item_name, league)
-            
+
             table_name = self._get_item_table_name(item_id)
-            
+
             if timestamp is None:
                 timestamp = datetime.now()
-            
+
             conn.execute(f'''
                 INSERT INTO {table_name} (price, timestamp, quantity)
                 VALUES (?, ?, ?)
             ''', (price, timestamp, quantity))
-            
+
             conn.commit()
-            conn.close()
             return True
         except Exception as e:
             logger.error(f"❌ Error inserting price for item {item_id} in {league}: {e}")
             return False
+        finally:
+            if conn:
+                conn.close()
     
     def insert_prices_bulk_for_item(self, league: str, item_id: int, item_name: str,
                                     price_entries: List[Dict]) -> int:
         """Insert multiple price entries for an item efficiently."""
+        conn = None
         try:
             conn = self.init_price_history_db(league)
-            
+
             # Ensure table exists
             self.create_item_price_table(conn, item_id, item_name, league)
-            
+
             table_name = self._get_item_table_name(item_id)
             inserted = 0
-            
+
             for entry in price_entries:
                 try:
                     conn.execute(f'''
@@ -447,31 +454,33 @@ class POE2SubroleManager:
                 except Exception as e:
                     logger.warning(f"⚠️ Error inserting price entry for {item_name}: {e}")
                     continue
-            
+
             conn.commit()
-            conn.close()
             return inserted
         except Exception as e:
             logger.error(f"❌ Error in bulk insert for item {item_id} in {league}: {e}")
             return 0
+        finally:
+            if conn:
+                conn.close()
     
     def get_latest_price_for_item(self, league: str, item_id: int) -> Optional[Dict]:
         """Get the latest price for a specific item."""
+        conn = None
         try:
             conn = self.init_price_history_db(league)
             table_name = self._get_item_table_name(item_id)
-            
+
             cursor = conn.cursor()
             cursor.execute(f'''
-                SELECT price, timestamp, quantity 
+                SELECT price, timestamp, quantity
                 FROM {table_name}
                 ORDER BY timestamp DESC
                 LIMIT 1
             ''')
-            
+
             row = cursor.fetchone()
-            conn.close()
-            
+
             if row:
                 return {
                     'price': row[0],
@@ -490,24 +499,28 @@ class POE2SubroleManager:
         except Exception as e:
             logger.error(f"❌ Error getting latest price for item {item_id} in {league}: {e}")
             return None
+        finally:
+            if conn:
+                conn.close()
     
-    def get_price_history_for_item(self, league: str, item_id: int, 
+    def get_price_history_for_item(self, league: str, item_id: int,
                                    days: int = 30) -> List[Dict]:
         """Get price history for a specific item."""
+        conn = None
         try:
             conn = self.init_price_history_db(league)
             table_name = self._get_item_table_name(item_id)
-            
+
             cutoff_date = datetime.now() - timedelta(days=days)
-            
+
             cursor = conn.cursor()
             cursor.execute(f'''
-                SELECT price, timestamp, quantity 
+                SELECT price, timestamp, quantity
                 FROM {table_name}
                 WHERE timestamp > ?
                 ORDER BY timestamp ASC
             ''', (cutoff_date,))
-            
+
             history = [
                 {
                     'price': row[0],
@@ -516,8 +529,7 @@ class POE2SubroleManager:
                 }
                 for row in cursor.fetchall()
             ]
-            
-            conn.close()
+
             return history
         except sqlite3.OperationalError as e:
             # Table doesn't exist yet - this is normal during initialization
@@ -529,6 +541,9 @@ class POE2SubroleManager:
         except Exception as e:
             logger.error(f"❌ Error getting price history for item {item_id} in {league}: {e}")
             return []
+        finally:
+            if conn:
+                conn.close()
     
     def get_price_statistics_for_item(self, league: str, item_id: int, 
                                        days: int = 30) -> Tuple[Optional[float], Optional[float]]:
@@ -785,8 +800,9 @@ class POE2SubroleManager:
                     return False
             
             # Initialize price history database
-            self.init_price_history_db(league)
-            
+            conn = self.init_price_history_db(league)
+            conn.close()
+
             # Start background downloads for default items
             items = self.load_item_list(league)
             default_items = self._default_objectives.get(league, self._default_objectives["Standard"])

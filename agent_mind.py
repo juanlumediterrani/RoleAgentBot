@@ -517,12 +517,28 @@ def _build_relationship_summary_prompt(previous_summary: str, new_interactions: 
         (previous_relationship_label, previous_block),
         (recent_interactions_label, interactions_block),
     ]
+
+    # Arena module integration: inject fighter personality assignment if Arena is active
+    arena_personality_block = ""
+    if server_id:
+        try:
+            from discord_bot.canvas.server_config import is_role_enabled
+            if is_role_enabled(server_id, "arena", default_enabled=False):
+                from roles.arena import arena_catalogs
+                arena_personality_block = arena_catalogs.build_personality_prompt_block(server_id)
+        except Exception:
+            pass  # Fail silently if Arena module not available
+
+    closing = "Return only the new final relationship-memory paragraph."
+    if arena_personality_block:
+        closing = f"{arena_personality_block}\n\n{closing}"
+
     return _build_configured_synthesis_prompt(
         prompt_key="prompt_relationship_memory_summary",
         fallback_instructions=_get_relationship_summary_task_lines(server_id),
         replacements={"user_name": user_name or "human", "target_date": target_date},
         sections=sections,
-        fallback_closing="Return only the new final relationship-memory paragraph.",
+        fallback_closing=closing,
     )
 
 
@@ -972,12 +988,30 @@ def generate_user_relationship_memory_summary(
         server_id=server_id
     )
     llm_response = (summary_response or "").strip()
-    
+
+    # Arena module integration: parse fighter personality from LLM response
+    try:
+        from discord_bot.canvas.server_config import is_role_enabled
+        if server_id and is_role_enabled(server_id, "arena", default_enabled=False):
+            from roles.arena import arena_catalogs
+            fighter_personality = arena_catalogs.parse_fighter_personality(llm_response)
+            if fighter_personality:
+                from roles.arena.arena_db import ArenaStatsStore
+                arena_stats = ArenaStatsStore(server_id)
+                arena_stats.set_fighter_personality(user_id, fighter_personality)
+                logger.info(f"[ARENA] Fighter personality assigned to user={user_id}: {fighter_personality}")
+    except Exception as arena_err:
+        logger.debug(f"[ARENA] Could not parse fighter personality: {arena_err}")
+
+    # Clean up fighter personality marker from the summary text before storing
+    import re
+    cleaned_response = re.sub(r'\[FIGHTER_PERSONALITY:[^\]]*\]\n?', '', llm_response, flags=re.IGNORECASE).strip()
+
     # Only update if LLM successfully generated new content (not error messages)
-    if llm_response and llm_response != "[Error in internal task]":
+    if cleaned_response and cleaned_response != "[Error in internal task]":
         # LLM succeeded, use the new memory
-        summary_text = llm_response
-        
+        summary_text = cleaned_response
+
         latest_interaction_at = last_interaction_at
         if new_interactions:
             latest_interaction_at = new_interactions[-1].get("fecha") or last_interaction_at
